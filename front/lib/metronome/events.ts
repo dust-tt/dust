@@ -187,13 +187,14 @@ export function getToolCategory(
  * Usages are grouped by (providerId, modelId) — one event per model used
  * with aggregated token counts and cost.
  *
- * transaction_id pattern: llm-{workspaceId}-{agentMessageId}-{providerId}-{modelId}
+ * transaction_id pattern: llm-{workspaceId}-{agentMessageId}-{runKey}-{providerId}-{modelId}
  */
 export function buildLlmUsageEvents({
   workspaceId,
   userId,
   agentMessageId,
   parentAgentMessageId,
+  runKey,
   runUsages,
   origin,
   isProgrammaticUsage,
@@ -205,6 +206,7 @@ export function buildLlmUsageEvents({
   userId: string | null;
   agentMessageId: string;
   parentAgentMessageId: string | null;
+  runKey: string;
   runUsages: RunUsageType[];
   origin: UserMessageOrigin;
   isProgrammaticUsage: boolean;
@@ -249,7 +251,7 @@ export function buildLlmUsageEvents({
   }
 
   return [...groups.values()].map((group) => ({
-    transaction_id: `llm-${workspaceId}-${agentMessageId}-${group.providerId}-${group.modelId}`,
+    transaction_id: `llm-${workspaceId}-${agentMessageId}-${runKey}-${group.providerId}-${group.modelId}`,
     customer_id: workspaceId,
     event_type: "llm_usage",
     timestamp,
@@ -293,13 +295,14 @@ export interface ToolAction {
  * Actions are grouped by (toolName, internalMCPServerName, mcpServerId, status)
  * — one event per group with `count` and `total_execution_duration_ms`.
  *
- * transaction_id pattern: tool-{workspaceId}-{agentMessageId}-{toolName}-{mcpServerId}-{status}
+ * transaction_id pattern: tool-{workspaceId}-{agentMessageId}-{runKey}-{toolName}-{mcpServerId}-{status}
  */
 export function buildToolUseEvents({
   workspaceId,
   userId,
   agentMessageId,
   parentAgentMessageId,
+  runKey,
   actions,
   origin,
   isProgrammaticUsage,
@@ -311,6 +314,7 @@ export function buildToolUseEvents({
   userId: string | null;
   agentMessageId: string;
   parentAgentMessageId: string | null;
+  runKey: string;
   actions: ToolAction[];
   origin: UserMessageOrigin;
   isProgrammaticUsage: boolean;
@@ -339,7 +343,7 @@ export function buildToolUseEvents({
   }
 
   return [...groups.values()].map(({ action, count, totalDurationMs }) => ({
-    transaction_id: `tool-${workspaceId}-${agentMessageId}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}`,
+    transaction_id: `tool-${workspaceId}-${agentMessageId}-${runKey}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}`,
     customer_id: workspaceId,
     event_type: "tool_use",
     timestamp,

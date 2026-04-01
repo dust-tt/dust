@@ -36,6 +36,7 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import { isDevelopment } from "@app/types/shared/env";
+import { createHash } from "crypto";
 
 export async function recordUsageActivity(workspaceId: string) {
   const workspace = await WorkspaceResource.fetchById(workspaceId);
@@ -297,12 +298,20 @@ export async function emitMetronomeUsageEventsActivity(
   );
   const messageTier = classifyMessageTier({ modelIds, toolCategories });
 
+  // Deterministic short hash of runIds — ensures different runs of the same
+  // message produce different transaction_ids (e.g., error then success finalization).
+  const runKey = createHash("sha256")
+    .update(agentMessage.runIds.sort().join("-"))
+    .digest("hex")
+    .slice(0, 12);
+
   // Build and ingest events.
   const llmEvents = buildLlmUsageEvents({
     workspaceId: workspace.sId,
     userId,
     agentMessageId,
     parentAgentMessageId,
+    runKey,
     runUsages,
     origin: userMessageOrigin,
     isProgrammaticUsage: programmatic,
@@ -316,6 +325,7 @@ export async function emitMetronomeUsageEventsActivity(
     userId,
     agentMessageId,
     parentAgentMessageId,
+    runKey,
     actions: toolActions,
     origin: userMessageOrigin,
     isProgrammaticUsage: programmatic,
