@@ -3,7 +3,10 @@
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { sendGitHubDeletionEmail } from "@app/lib/api/email";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import {
+  getLlmCredentials,
+  MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+} from "@app/lib/api/provider_credentials";
 import { upsertTableFromCsv } from "@app/lib/api/tables";
 import {
   getMembers,
@@ -562,7 +565,17 @@ export async function upsertDocument({
     );
   }
 
-  const credentials = await getLlmCredentials(auth);
+  let credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
+  try {
+    credentials = await getLlmCredentials(auth);
+  } catch {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE
+      )
+    );
+  }
 
   // Create document with the Dust internal API.
   const upsertRes = await coreAPI.upsertDataSourceDocument({
@@ -609,7 +622,16 @@ export async function handleDataSourceSearch({
     Omit<DustError, "code"> & { code: "data_source_error" }
   >
 > {
-  const credentials = await getLlmCredentials(auth);
+  let credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
+  try {
+    credentials = await getLlmCredentials(auth);
+  } catch {
+    return new Err({
+      name: "dust_error",
+      code: "data_source_error",
+      message: MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+    });
+  }
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const data = await coreAPI.searchDataSource(
@@ -1075,7 +1097,16 @@ export async function createDataSourceWithoutProvider(
         });
       }
 
-      const credentials = await getLlmCredentials(auth);
+      let credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
+      try {
+        credentials = await getLlmCredentials(auth);
+      } catch {
+        return new Err({
+          name: "dust_error",
+          code: "invalid_request_error",
+          message: MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+        });
+      }
 
       const dustDataSource = await coreAPI.createDataSource({
         projectId: dustProject.value.project.project_id.toString(),

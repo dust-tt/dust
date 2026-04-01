@@ -10,7 +10,10 @@ import {
   fetchProjectDataSourceView,
   getProjectConversationsDatasourceName,
 } from "@app/lib/api/projects/data_sources";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import {
+  getLlmCredentials,
+  MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+} from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
 import { isConnectorProviderAssistantDefaultSelected } from "@app/lib/connector_providers";
@@ -131,7 +134,12 @@ export async function createDataSourceAndConnectorForProject(
         coreProjectId = dustProject.value.project.project_id.toString();
 
         // Create Core API data source
-        const credentials = await getLlmCredentials(auth);
+        let credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
+        try {
+          credentials = await getLlmCredentials(auth);
+        } catch {
+          return new Err(new Error(MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE));
+        }
 
         const dustDataSource = await coreAPI.createDataSource({
           projectId: coreProjectId,

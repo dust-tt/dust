@@ -11,7 +11,10 @@ import {
   registerSlackWebhookRouterEntry,
 } from "@app/lib/api/data_sources";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import {
+  getLlmCredentials,
+  MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+} from "@app/lib/api/provider_credentials";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags, getOrCreateSystemApiKey } from "@app/lib/auth";
@@ -401,7 +404,18 @@ const handleDataSourceWithProvider = async ({
     });
   }
 
-  const credentials = await getLlmCredentials(auth);
+  let credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
+  try {
+    credentials = await getLlmCredentials(auth);
+  } catch {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+      },
+    });
+  }
 
   const dustDataSource = await coreAPI.createDataSource({
     projectId: dustProject.value.project.project_id.toString(),

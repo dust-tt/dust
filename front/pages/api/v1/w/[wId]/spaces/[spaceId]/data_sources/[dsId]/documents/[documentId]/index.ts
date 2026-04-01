@@ -1,7 +1,10 @@
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { computeWorkspaceOverallSizeCached } from "@app/lib/api/data_sources";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import {
+  getLlmCredentials,
+  MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+} from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes_constants";
 import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
@@ -646,7 +649,18 @@ async function handler(
           },
         });
       } else {
-        const credentials = await getLlmCredentials(auth);
+        let credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
+        try {
+          credentials = await getLlmCredentials(auth);
+        } catch {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+            },
+          });
+        }
 
         // Create document with the Dust internal API.
         const upsertRes = await coreAPI.upsertDataSourceDocument({

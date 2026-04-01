@@ -1,5 +1,8 @@
 import { default as config } from "@app/lib/api/config";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import {
+  getLlmCredentials,
+  MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+} from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -24,7 +27,12 @@ export interface ConversationSearchResult {
 export async function searchProjectConversations(
   auth: Authenticator,
   options: SearchProjectConversationsOptions
-): Promise<Result<ConversationSearchResult[], DustError<"core_api_error">>> {
+): Promise<
+  Result<
+    ConversationSearchResult[],
+    DustError<"core_api_error" | "invalid_request_error">
+  >
+> {
   const { query, spaceIds, topK } = options;
 
   if (spaceIds.length === 0) {
@@ -65,7 +73,17 @@ export async function searchProjectConversations(
   }));
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const credentials = await getLlmCredentials(auth);
+  let credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
+  try {
+    credentials = await getLlmCredentials(auth);
+  } catch {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE
+      )
+    );
+  }
   const searchResult = await coreAPI.bulkSearchDataSources(
     query,
     topK,
