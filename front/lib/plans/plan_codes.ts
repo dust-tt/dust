@@ -1,4 +1,4 @@
-import type { PlanType } from "@app/types/plan";
+import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 
 // Current free plans:
@@ -68,8 +68,8 @@ export function isProOrBusinessPlanCode(plan?: PlanType) {
   return isProPlan(plan) || isBusinessPlan(plan);
 }
 
-export function isMetronomeBilled(plan: PlanType): boolean {
-  return plan.metronomePackageAlias != null;
+export function isMetronomeBilled(subscription: SubscriptionType): boolean {
+  return subscription.metronomeContractId != null;
 }
 
 /**

@@ -44,6 +44,7 @@ export function createMockAuthenticator(): Authenticator {
       endDate: null,
       planId: -1,
       stripeSubscriptionId: null,
+      metronomeContractId: null,
       requestCancelAt: null,
       workspaceId: -1,
       createdAt: new Date(),

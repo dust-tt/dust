@@ -83,6 +83,7 @@ type CachedSubscription = {
   status: SubscriptionStatusType;
   trialing: boolean;
   stripeSubscriptionId: string | null;
+  metronomeContractId: string | null;
   startDate: number;
   endDate: number | null;
   paymentFailingSince: number | null;
@@ -152,6 +153,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       status: subscription.status,
       trialing: subscription.trialing ?? false,
       stripeSubscriptionId: subscription.stripeSubscriptionId,
+      metronomeContractId: subscription.metronomeContractId ?? null,
       startDate: subscription.startDate?.getTime() ?? Date.now(),
       endDate: subscription.endDate?.getTime() ?? null,
       paymentFailingSince: subscription.paymentFailingSince?.getTime() ?? null,
@@ -185,6 +187,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         : null,
       planId: data.planId,
       stripeSubscriptionId: data.stripeSubscriptionId,
+      metronomeContractId: data.metronomeContractId ?? null,
       requestCancelAt: data.requestCancelAt
         ? new Date(data.requestCancelAt)
         : null,
@@ -928,6 +931,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       sId: this.sId || null,
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       stripeSubscriptionId: this.stripeSubscriptionId || null,
+      metronomeContractId: this.metronomeContractId ?? null,
       startDate: this.startDate?.getTime() || null,
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       endDate: this.endDate?.getTime() || null,
@@ -955,6 +959,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       paymentFailingSince: null,
       planId: -1,
       stripeSubscriptionId: null,
+      metronomeContractId: null,
       requestCancelAt: null,
     };
   }

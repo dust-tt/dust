@@ -70,7 +70,6 @@ export type PlanType = {
   trialPeriodDays: number;
   isByok: boolean;
   isAuditLogsAllowed: boolean;
-  metronomePackageAlias?: string | null;
 };
 
 export type SubscriptionType = {
@@ -81,6 +80,7 @@ export type SubscriptionType = {
   trialing: boolean;
   // `null` means that this is a free plan. Otherwise, it's a paid plan.
   stripeSubscriptionId: string | null;
+  metronomeContractId: string | null;
   startDate: number | null;
   endDate: number | null;
   paymentFailingSince: number | null;

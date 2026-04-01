@@ -44,6 +44,7 @@ const EXTENSION_SUBSCRIPTION: SubscriptionType = {
   status: "active",
   trialing: false,
   stripeSubscriptionId: null,
+  metronomeContractId: null,
   startDate: null,
   endDate: null,
   paymentFailingSince: null,
