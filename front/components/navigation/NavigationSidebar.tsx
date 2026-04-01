@@ -7,7 +7,10 @@ import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { UserMenu } from "@app/components/UserMenu";
 import type { AppStatus } from "@app/lib/api/status";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import {
+  FREE_BYOK_TRANSITIONING_PLAN_CODE,
+  FREE_TRIAL_PHONE_PLAN_CODE,
+} from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
@@ -115,7 +118,10 @@ export const NavigationSidebar = React.forwardRef<
     <div ref={ref} className="flex min-w-0 grow flex-col">
       <div className={cn("flex flex-col gap-3")}>
         <div className={cn("flex flex-col gap-2")}>
-          <UnhealthyCredentialsBanner owner={owner} />
+          <UnhealthyCredentialsBanner
+            owner={owner}
+            subscription={subscription}
+          />
           {appStatus && <AppStatusBanner appStatus={appStatus} />}
           {subscription.paymentFailingSince && isAdmin(owner) && (
             <SubscriptionPastDueBanner />
@@ -230,7 +236,13 @@ function StatusBanner({
   );
 }
 
-function UnhealthyCredentialsBanner({ owner }: { owner: WorkspaceType }) {
+function UnhealthyCredentialsBanner({
+  owner,
+  subscription,
+}: {
+  owner: WorkspaceType;
+  subscription: SubscriptionType;
+}) {
   const { providersHealth } = useAuth();
 
   if (!providersHealth) {
@@ -267,7 +279,11 @@ function UnhealthyCredentialsBanner({ owner }: { owner: WorkspaceType }) {
     <StatusBanner
       title="Your workspace is not operational"
       description={description}
-      variant="warning"
+      variant={
+        subscription.plan.code === FREE_BYOK_TRANSITIONING_PLAN_CODE
+          ? "info"
+          : "warning"
+      }
       footer={footer}
     />
   );
