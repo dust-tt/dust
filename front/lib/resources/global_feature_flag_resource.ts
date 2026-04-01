@@ -5,7 +5,6 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
-import { createHash } from "crypto";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -80,8 +79,6 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
     if (rolloutPercentage >= 100) {
       return true;
     }
-    const hash = createHash("md5").update(`${workspaceId}`).digest();
-    const bucket = hash.readUInt16BE(0) % 100; // 0–99
-    return bucket < rolloutPercentage;
+    return workspaceId % 100 < rolloutPercentage;
   }
 }
