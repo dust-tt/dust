@@ -199,12 +199,14 @@ export const InputBar = React.memo(function InputBar({
     const singleAgentInput = isSingleAgentInputEnabled();
     // When single-agent input is enabled, inject the selected agent into mentions
     // since it's no longer in the editor as a mention node.
-    const allMentions =
+    const shouldInjectSelectedAgent =
       singleAgentInput &&
       selectedAgent &&
-      !rawMentions.some((m) => m.id === selectedAgent.id)
-        ? [selectedAgent, ...rawMentions]
-        : rawMentions;
+      !rawMentions.some((m) => m.id === selectedAgent.id);
+      
+    const allMentions = shouldInjectSelectedAgent
+      ? [selectedAgent, ...rawMentions]
+      : rawMentions;
     const mentions = _.uniqBy(allMentions, "id");
 
     const uploadedFiles = fileUploaderService.getFileBlobs();
@@ -265,7 +267,6 @@ export const InputBar = React.memo(function InputBar({
           clearDraft();
           resetEditorText();
           fileUploaderService.resetUpload();
-          setSelectedAgent(null);
         }
       } finally {
         setLoading(false);
@@ -292,7 +293,6 @@ export const InputBar = React.memo(function InputBar({
         clearDraft();
         fileUploaderService.resetUpload();
         setAttachedNodes([]);
-        setSelectedAgent(null);
 
         await submitPromise;
       } finally {
