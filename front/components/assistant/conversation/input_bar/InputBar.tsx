@@ -83,8 +83,12 @@ export const InputBar = React.memo(function InputBar({
     DataSourceViewContentNode[]
   >([]);
 
-  const { selectedAgent, getAndClearPendingInputText, fileUploaderService } =
-    useContext(InputBarContext);
+  const {
+    getAndClearSelectedAgent,
+    singleAgentSelection,
+    getAndClearPendingInputText,
+    fileUploaderService,
+  } = useContext(InputBarContext);
 
   // We use this specific hook because this component is involved in the new conversation page.
   const { agentConfigurations } = useUnifiedAgentConfigurations({
@@ -110,6 +114,10 @@ export const InputBar = React.memo(function InputBar({
     }
   }, [droppedFiles, setDroppedFiles, fileUploaderService]);
 
+  const selectedAgent = useMemo(
+    () => getAndClearSelectedAgent(),
+    [getAndClearSelectedAgent]
+  );
   const pendingInputText = useMemo(
     () => getAndClearPendingInputText(),
     [getAndClearPendingInputText]
@@ -197,11 +205,11 @@ export const InputBar = React.memo(function InputBar({
     // since it's no longer in the editor as a mention node.
     const shouldInjectSelectedAgent =
       singleAgentInput &&
-      selectedAgent &&
-      !rawMentions.some((m) => m.id === selectedAgent.id);
+      singleAgentSelection &&
+      !rawMentions.some((m) => m.id === singleAgentSelection.id);
 
     const allMentions = shouldInjectSelectedAgent
-      ? [selectedAgent, ...rawMentions]
+      ? [singleAgentSelection, ...rawMentions]
       : rawMentions;
     const mentions = _.uniqBy(allMentions, "id");
 

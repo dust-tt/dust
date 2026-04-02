@@ -145,13 +145,14 @@ const InputBarContainer = ({
   const { subscription } = useAuth();
   const isMobile = useIsMobile();
   const singleAgentInput = isSingleAgentInputEnabled();
-  const { setSelectedAgent } = useContext(InputBarContext);
+  const { singleAgentSelection, setSingleAgentSelection } =
+    useContext(InputBarContext);
 
   // Callback for the editor's @ mention suggestion — sets the selected agent
   // without focusing (the editor already has focus when the user types @).
   const onAgentSelect = (mention: RichMention) => {
     if (isRichAgentMention(mention)) {
-      setSelectedAgent(mention);
+      setSingleAgentSelection(mention);
     }
   };
 
@@ -582,11 +583,11 @@ const InputBarContainer = ({
   const handleAgentSelect = useCallback(
     (mention: RichMention) => {
       if (isRichAgentMention(mention)) {
-        setSelectedAgent(mention);
+        setSingleAgentSelection(mention);
         editorService.focusEnd();
       }
     },
-    [setSelectedAgent, editorService]
+    [setSingleAgentSelection, editorService]
   );
 
   const isMac = useMemo(() => {
@@ -874,7 +875,7 @@ const InputBarContainer = ({
                     onNodeUnselect={onNodeUnselect}
                     onSkillSelect={onSkillSelect}
                     owner={owner}
-                    selectedAgent={selectedAgent}
+                    selectedAgent={singleAgentSelection}
                     selectedMCPServerViews={selectedMCPServerViews}
                     selectedSkills={selectedSkills}
                     singleAgentInput={singleAgentInput}

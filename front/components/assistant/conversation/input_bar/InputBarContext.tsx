@@ -15,9 +15,11 @@ import {
 
 export const InputBarContext = createContext<{
   animate: boolean;
-  selectedAgent: RichAgentMention | null;
+  getAndClearSelectedAgent: () => RichAgentMention | null;
   setAnimate: React.Dispatch<React.SetStateAction<boolean>>;
   setSelectedAgent: (agentMention: RichAgentMention | null) => void;
+  singleAgentSelection: RichAgentMention | null;
+  setSingleAgentSelection: (agentMention: RichAgentMention | null) => void;
   getAndClearPendingInputText: () => string | null;
   setPendingInputText: (text: string | null) => void;
   fileUploaderService: FileUploaderService;
@@ -27,9 +29,11 @@ export const InputBarContext = createContext<{
   };
 }>({
   animate: false,
-  selectedAgent: null,
+  getAndClearSelectedAgent: () => null,
   setAnimate: () => {},
   setSelectedAgent: () => {},
+  singleAgentSelection: null,
+  setSingleAgentSelection: () => {},
   getAndClearPendingInputText: () => null,
   setPendingInputText: () => {},
   fileUploaderService: {
@@ -66,6 +70,10 @@ export function InputBarContextProvider({
     null
   );
 
+  // Persistent agent selection for single-agent input mode (displayed in the agent picker button).
+  const [singleAgentSelection, setSingleAgentSelection] =
+    useState<RichAgentMention | null>(null);
+
   // Useful when a component needs to pre-fill the input bar with text (e.g. butler suggestions).
   const [pendingInputText, setPendingInputTextState] = useState<string | null>(
     null
@@ -84,6 +92,14 @@ export function InputBarContextProvider({
     [setSelectedAgent]
   );
 
+  // Immediately clear the selected agent and return the previous selected agent to avoid sticky agent mentions.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
+  const getAndClearSelectedAgent = useCallback(() => {
+    const previousSelectedAgent = selectedAgent;
+    setSelectedAgent(null);
+    return previousSelectedAgent;
+  }, [selectedAgent, setSelectedAgent]);
+
   const getAndClearPendingInputText = useCallback(() => {
     const text = pendingInputText;
     setPendingInputTextState(null);
@@ -98,8 +114,10 @@ export function InputBarContextProvider({
     () => ({
       animate,
       setAnimate,
-      selectedAgent,
+      getAndClearSelectedAgent,
       setSelectedAgent: setSelectedAgentOuter,
+      singleAgentSelection,
+      setSingleAgentSelection,
       getAndClearPendingInputText,
       setPendingInputText,
       captureActions,
@@ -107,8 +125,9 @@ export function InputBarContextProvider({
     }),
     [
       animate,
-      selectedAgent,
+      getAndClearSelectedAgent,
       setSelectedAgentOuter,
+      singleAgentSelection,
       getAndClearPendingInputText,
       setPendingInputText,
       captureActions,

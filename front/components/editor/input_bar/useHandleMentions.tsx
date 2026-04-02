@@ -17,7 +17,7 @@ const useHandleMentions = (
 ) => {
   const stickyMentionsTextContent = useRef<string | null>(null);
   const singleAgentInput = isSingleAgentInputEnabled();
-  const { setSelectedAgent } = useContext(InputBarContext);
+  const { setSingleAgentSelection } = useContext(InputBarContext);
 
   // In single agent mode, sync the selected agent from sticky mentions
   // so the agent picker button shows the correct agent on existing conversations,
@@ -27,8 +27,8 @@ const useHandleMentions = (
       return;
     }
     const agentMention = stickyMentions?.find(isRichAgentMention) ?? null;
-    setSelectedAgent(agentMention);
-  }, [singleAgentInput, stickyMentions, setSelectedAgent]);
+    setSingleAgentSelection(agentMention);
+  }, [singleAgentInput, stickyMentions, setSingleAgentSelection]);
 
   useEffect(() => {
     if (!stickyMentions || stickyMentions.length === 0) {
@@ -48,7 +48,7 @@ const useHandleMentions = (
       const mentionsToInsert: RichMention[] = [];
 
       if (singleAgentInput) {
-        // Only insert user mentions into the editor; agent mentions are handled via selectedAgent.
+        // Only insert user mentions into the editor; agent mentions are handled via singleAgentSelection.
         mentionsToInsert.push(
           ...stickyMentions.filter((m) => m.type !== "agent")
         );
@@ -66,24 +66,24 @@ const useHandleMentions = (
     }
   }, [editorService, stickyMentions, disableAutoFocus, singleAgentInput]);
 
-  // Insert the selected agent mention into the editor (non-single-agent mode only)
-  // and any pending input text (e.g. from butler suggestions).
-  // Scheduled via queueMicrotask to avoid synchronous editor updates during React render/effects.
   useEffect(() => {
-    queueMicrotask(() => {
-      if (
-        !singleAgentInput &&
-        selectedAgent &&
-        !editorService.hasMention(selectedAgent)
-      ) {
-        editorService.insertMention(selectedAgent);
-        setSelectedAgent(null);
+    if (selectedAgent) {
+      if (!editorService.hasMention(selectedAgent)) {
+        // Schedule insertion to avoid synchronous editor updates during React render/effects.
+        queueMicrotask(() => {
+          editorService.insertMention(selectedAgent);
+          // If there's pending input text (e.g. from a butler suggestion), insert it after the mention.
+          if (pendingInputText) {
+            editorService.insertText(pendingInputText);
+          }
+        });
+      } else if (pendingInputText) {
+        queueMicrotask(() => editorService.insertText(pendingInputText));
       }
-      if (pendingInputText) {
-        editorService.insertText(pendingInputText);
-      }
-    });
-  }, [selectedAgent, pendingInputText, editorService, singleAgentInput]);
+    } else if (pendingInputText) {
+      queueMicrotask(() => editorService.insertText(pendingInputText));
+    }
+  }, [selectedAgent, pendingInputText, editorService]);
 
   return { stickyMentionsTextContent };
 };
