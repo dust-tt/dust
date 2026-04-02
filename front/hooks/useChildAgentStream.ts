@@ -62,7 +62,6 @@ function childAgentStreamReducer(
     case "tool_error":
       return { ...state, status: "error" };
 
-    // TODO(graceful_stop): handle `gracefully_stopped` status
     case "agent_message_gracefully_stopped":
     case "agent_generation_cancelled":
       return { ...state, status: "done" };
