@@ -262,7 +262,7 @@ async function handler(
         }
       }
 
-      const { userFavorite: _userFavorite, ...configPatch } = r.data;
+      const { userFavorite: _userFavorite, ...configPatch } = req.body;
       const hasConfigPatch = Object.keys(configPatch).length > 0;
 
       if (hasConfigPatch) {

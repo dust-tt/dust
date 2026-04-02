@@ -1944,11 +1944,9 @@ export type GetOrPatchAgentConfigurationResponseType = z.infer<
   typeof GetOrPatchAgentConfigurationResponseSchema
 >;
 
-export const PatchAgentConfigurationRequestSchema = z
-  .object({
-    userFavorite: z.boolean().optional(),
-  })
-  .passthrough();
+export const PatchAgentConfigurationRequestSchema = z.object({
+  userFavorite: z.boolean().optional(),
+});
 
 export type PatchAgentConfigurationRequestType = z.infer<
   typeof PatchAgentConfigurationRequestSchema
