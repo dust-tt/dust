@@ -10,6 +10,7 @@ import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type {
   LLMParameters,
+  LLMStreamMetadata,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
@@ -86,12 +87,15 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
     });
   }
 
-  private buildRequestPayload({
-    conversation,
-    prompt,
-    specifications,
-    forceToolCall,
-  }: LLMStreamParameters): ResponseCreateParamsBase {
+  private buildRequestPayload(
+    {
+      conversation,
+      prompt,
+      specifications,
+      forceToolCall,
+    }: LLMStreamParameters,
+    metadata?: LLMStreamMetadata
+  ): ResponseCreateParamsBase {
     const promptText = systemPromptToText(prompt);
     const reasoning = toReasoning(this.modelId, this.reasoningEffort);
 
@@ -107,14 +111,16 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
       // Only models supporting reasoning can do encrypted content for reasoning.
       include: reasoning !== null ? ["reasoning.encrypted_content"] : [],
       tool_choice: toToolOption(specifications, forceToolCall),
+      ...(metadata ? { prompt_cache_key: metadata.conversationId } : {}),
     };
   }
 
   protected buildStreamRequestPayload(
-    streamParameters: LLMStreamParameters
+    streamParameters: LLMStreamParameters,
+    metadata: LLMStreamMetadata
   ): ResponseCreateParamsStreaming {
     return {
-      ...this.buildRequestPayload(streamParameters),
+      ...this.buildRequestPayload(streamParameters, metadata),
       stream: true,
     };
   }
@@ -144,7 +150,9 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
     const lines = Array.from(conversations.entries()).map(
       ([customId, streamParams]) => {
         const body = {
-          ...this.buildRequestPayload(streamParams),
+          ...this.buildRequestPayload(streamParams, {
+            conversationId: customId,
+          }),
           stream: false,
         };
         return JSON.stringify({

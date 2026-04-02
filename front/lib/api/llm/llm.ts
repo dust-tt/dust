@@ -14,6 +14,7 @@ import { EventError } from "@app/lib/api/llm/types/events";
 import type {
   LLMClientMetadata,
   LLMParameters,
+  LLMStreamMetadata,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
@@ -89,10 +90,11 @@ export abstract class LLM<TPayload = unknown> {
   }
 
   private async *completeStream(
-    streamParameters: LLMStreamParameters
+    streamParameters: LLMStreamParameters,
+    metadata?: LLMStreamMetadata
   ): AsyncGenerator<LLMEvent> {
     let currentEvent: LLMEvent | null = null;
-    for await (const event of this.internalStream(streamParameters)) {
+    for await (const event of this.internalStream(streamParameters, metadata)) {
       currentEvent = event;
       yield event;
     }
@@ -115,10 +117,11 @@ export abstract class LLM<TPayload = unknown> {
    * Private method that wraps the abstract internalStream() with tracing functionality
    */
   private async *streamWithTracing(
-    streamParameters: LLMStreamParameters
+    streamParameters: LLMStreamParameters,
+    metadata?: LLMStreamMetadata
   ): AsyncGenerator<LLMEvent> {
     if (!this.context) {
-      yield* this.completeStream(streamParameters);
+      yield* this.completeStream(streamParameters, metadata);
       return;
     }
     const { conversation, prompt, specifications } = streamParameters;
@@ -201,7 +204,10 @@ export abstract class LLM<TPayload = unknown> {
     let timeToFirstEventMs: number | undefined = undefined;
 
     try {
-      for await (const event of this.completeStream(streamParameters)) {
+      for await (const event of this.completeStream(
+        streamParameters,
+        metadata
+      )) {
         if (currentEvent === null) {
           timeToFirstEventMs = Date.now() - startTime;
         }
@@ -354,9 +360,10 @@ export abstract class LLM<TPayload = unknown> {
   }
 
   async *stream(
-    streamParameters: LLMStreamParameters
+    streamParameters: LLMStreamParameters,
+    metadata?: LLMStreamMetadata
   ): AsyncGenerator<LLMEvent> {
-    yield* this.streamWithTracing(streamParameters);
+    yield* this.streamWithTracing(streamParameters, metadata);
   }
 
   /**
@@ -585,7 +592,8 @@ export abstract class LLM<TPayload = unknown> {
    * The payload is automatically captured for tracing.
    */
   protected abstract buildStreamRequestPayload(
-    streamParameters: LLMStreamParameters
+    streamParameters: LLMStreamParameters,
+    metadata?: LLMStreamMetadata
   ): TPayload;
 
   /**
@@ -600,9 +608,10 @@ export abstract class LLM<TPayload = unknown> {
    * Orchestrates the request lifecycle: build -> capture for tracing -> send.
    */
   protected async *internalStream(
-    streamParameters: LLMStreamParameters
+    streamParameters: LLMStreamParameters,
+    metadata?: LLMStreamMetadata
   ): AsyncGenerator<LLMEvent> {
-    const payload = this.buildStreamRequestPayload(streamParameters);
+    const payload = this.buildStreamRequestPayload(streamParameters, metadata);
 
     // Update the generation span with the actual payload.
     this.generation?.update({ input: payload });

@@ -159,12 +159,17 @@ export async function getOutputFromLLMStream(
 ): Promise<GetOutputResponse> {
   const start = Date.now();
   let timeToFirstEvent: number | undefined = undefined;
-  const events = llm.stream({
-    conversation: modelConversationRes.value.modelConversation,
-    hasConditionalJITTools,
-    prompt,
-    specifications,
-  });
+  const events = llm.stream(
+    {
+      conversation: modelConversationRes.value.modelConversation,
+      hasConditionalJITTools,
+      prompt,
+      specifications,
+    },
+    {
+      conversationId: conversation.sId,
+    }
+  );
 
   const contents: Output["contents"] = [];
   const actions: Output["actions"] = [];
