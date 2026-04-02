@@ -36,7 +36,10 @@ function formatDateTime(dateString: string | undefined): string {
   }
 }
 
-export function renderCall(call: GongCall, includeDetails = false): string {
+export function renderCall(
+  call: GongCall,
+  { includeDetails = false }: { includeDetails?: boolean } = {}
+): string {
   const lines: string[] = [];
 
   lines.push(`## ${call.title ?? "Untitled Call"}`);
@@ -152,13 +155,16 @@ export function renderCall(call: GongCall, includeDetails = false): string {
   return lines.join("\n");
 }
 
-export function renderCalls(calls: GongCall[], includeDetails = false): string {
+export function renderCalls(
+  calls: GongCall[],
+  { includeDetails = false }: { includeDetails?: boolean } = {}
+): string {
   if (calls.length === 0) {
     return "No calls found.";
   }
 
   return calls
-    .map((call) => renderCall(call, includeDetails))
+    .map((call) => renderCall(call, { includeDetails }))
     .join("\n\n---\n\n");
 }
 

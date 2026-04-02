@@ -100,7 +100,7 @@ const handlers: ToolHandlers<typeof GONG_TOOLS_METADATA> = {
     return new Ok([
       {
         type: "text" as const,
-        text: renderCall(call, true),
+        text: renderCall(call, { includeDetails: true }),
       },
     ]);
   },

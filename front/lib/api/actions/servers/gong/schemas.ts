@@ -5,34 +5,32 @@ const idSchema = z.coerce.string();
 
 const GongPartySchema = z
   .object({
-    name: z.string().optional().nullable(),
-    emailAddress: z.string().optional().nullable(),
-    title: z.string().optional().nullable(),
-    affiliation: z.string().optional().nullable(),
-    speakerId: idSchema.optional().nullable(),
+    name: z.string().nullish(),
+    emailAddress: z.string().nullish(),
+    title: z.string().nullish(),
+    affiliation: z.string().nullish(),
+    speakerId: idSchema.nullish(),
   })
   .passthrough();
 
 const GongCallSchema = z
   .object({
     id: idSchema,
-    url: z.string().optional().nullable(),
-    title: z.string().optional().nullable(),
-    started: z.string().optional().nullable(),
-    duration: z.number().optional().nullable(),
-    direction: z.string().optional().nullable(),
-    scope: z.string().optional().nullable(),
-    media: z.string().optional().nullable(),
-    language: z.string().optional().nullable(),
-    purpose: z.string().optional().nullable(),
-    parties: z.array(GongPartySchema).optional().nullable(),
+    url: z.string().nullish(),
+    title: z.string().nullish(),
+    started: z.string().nullish(),
+    duration: z.number().nullish(),
+    direction: z.string().nullish(),
+    scope: z.string().nullish(),
+    media: z.string().nullish(),
+    language: z.string().nullish(),
+    purpose: z.string().nullish(),
+    parties: z.array(GongPartySchema).nullish(),
     content: z
       .object({
-        brief: z.string().optional().nullable(),
+        brief: z.string().nullish(),
         keyPoints: z
-          .array(
-            z.object({ text: z.string().optional().nullable() }).passthrough()
-          )
+          .array(z.object({ text: z.string().nullish() }).passthrough())
           .optional()
           .nullable(),
         topics: z
@@ -40,7 +38,7 @@ const GongCallSchema = z
             z
               .object({
                 name: z.string(),
-                duration: z.number().optional().nullable(),
+                duration: z.number().nullish(),
               })
               .passthrough()
           )
@@ -48,8 +46,8 @@ const GongCallSchema = z
           .nullable(),
         callOutcome: z
           .object({
-            category: z.string().optional().nullable(),
-            name: z.string().optional().nullable(),
+            category: z.string().nullish(),
+            name: z.string().nullish(),
           })
           .passthrough()
           .optional()
@@ -60,7 +58,7 @@ const GongCallSchema = z
               .array(
                 z
                   .object({
-                    snippet: z.string().optional().nullable(),
+                    snippet: z.string().nullish(),
                   })
                   .passthrough()
               )
@@ -80,8 +78,8 @@ const GongCallSchema = z
           .array(
             z
               .object({
-                name: z.string().optional().nullable(),
-                value: z.unknown().optional().nullable(),
+                name: z.string().nullish(),
+                value: z.unknown().nullish(),
               })
               .passthrough()
           )
@@ -97,8 +95,8 @@ const GongCallSchema = z
           .array(
             z
               .object({
-                comment: z.string().optional().nullable(),
-                posted: z.string().optional().nullable(),
+                comment: z.string().nullish(),
+                posted: z.string().nullish(),
               })
               .passthrough()
           )
@@ -120,22 +118,22 @@ const GongRecordsSchema = z
 export const GongCallsResponseSchema = z
   .object({
     calls: z.array(GongCallSchema),
-    records: GongRecordsSchema.optional().nullable(),
-    cursor: z.string().optional().nullable(),
+    records: GongRecordsSchema.nullish(),
+    cursor: z.string().nullish(),
   })
   .passthrough();
 
 const GongTranscriptSentenceSchema = z
   .object({
-    text: z.string().optional().nullable(),
+    text: z.string().nullish(),
   })
   .passthrough();
 
 const GongTranscriptSegmentSchema = z
   .object({
-    speakerId: idSchema.optional().nullable(),
-    topic: z.string().optional().nullable(),
-    sentences: z.array(GongTranscriptSentenceSchema).optional().nullable(),
+    speakerId: idSchema.nullish(),
+    topic: z.string().nullish(),
+    sentences: z.array(GongTranscriptSentenceSchema).nullish(),
   })
   .passthrough();
 
