@@ -27,10 +27,7 @@ import {
   ProjectTodoSourceModel,
 } from "@app/lib/resources/storage/models/project_todo";
 import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_project_digest";
-import type {
-  ConversationError,
-  ConversationWithoutContentType,
-} from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -186,7 +183,7 @@ export async function destroyConversation(
   }: {
     conversation: ConversationResource;
   }
-): Promise<Result<void, ConversationError>> {
+): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
   // Clean up all branches attached to this conversation before deleting messages.
@@ -333,7 +330,7 @@ export async function destroyConversation(
   // );
   const result = await conversation.delete(auth);
   if (result.isErr()) {
-    throw result.error;
+    return result;
   }
 
   return new Ok(undefined);
