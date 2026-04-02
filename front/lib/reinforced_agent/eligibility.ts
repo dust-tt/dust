@@ -1,6 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
-import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -18,6 +17,11 @@ function recordReinforcedAgentEligibilityMetrics({
   candidateCount: number;
   eligibleCount: number;
 }) {
+  logger.info(
+    { workspaceId, candidateCount, eligibleCount },
+    "ReinforcedAgent: reinforcement eligibility"
+  );
+
   const tags = [`workspace_id:${workspaceId}`];
   const statsd = getStatsDClient();
 
@@ -44,8 +48,9 @@ function recordReinforcedAgentEligibilityMetrics({
 }
 
 // An agent is eligible if: reinforcement is not "off", it is workspace-owned (id > 0),
-// has signal in the lookback window (human conversation, feedback, or tool usage),
-// and has no recent pending suggestions.
+// has no recent pending suggestions, and either:
+//   (a) has explicit human feedback in the lookback window, or
+//   (b) has recent qualifying conversations in the lookback window.
 export async function filterEligibleAgents(
   auth: Authenticator,
   agents: LightAgentConfigurationType[],
@@ -56,14 +61,6 @@ export async function filterEligibleAgents(
     (a) => a.reinforcement !== "off" && a.id > 0
   );
   if (candidates.length === 0) {
-    logger.info(
-      {
-        workspaceId,
-        candidateCount: 0,
-        eligibleCount: 0,
-      },
-      "ReinforcedAgent: reinforcement eligibility"
-    );
     recordReinforcedAgentEligibilityMetrics({
       workspaceId,
       candidateCount: 0,
@@ -80,56 +77,42 @@ export async function filterEligibleAgents(
     pendingSuggestionCutoff.getDate() - PENDING_SUGGESTION_MAX_AGE_DAYS
   );
 
-  const [
-    agentSIdsWithConversations,
-    feedbackCounts,
-    agentsWithFunctionCalls,
-    pendingSuggestions,
-  ] = await Promise.all([
-    ConversationResource.listConversationsForAgents(auth, {
-      agentSIds: candidateSIds,
-      cutoffDate,
-      excludeHumanOutOfTheLoop: true,
-    }),
-    AgentMessageFeedbackResource.getFeedbackCountForAssistants(
-      auth,
-      candidateSIds,
-      lookbackWindowDays
-    ),
-    AgentStepContentResource.getAgentsWithFunctionCalls(auth, {
-      agentConfigurationIds: candidateSIds,
-      createdAfter: cutoffDate,
-    }),
-    AgentSuggestionResource.listByAgentConfigurationIds(auth, candidateSIds, {
-      states: ["pending"],
-      createdAfter: pendingSuggestionCutoff,
-    }),
-  ]);
+  const [agentsWithRecentConversations, feedbackCounts, pendingSuggestions] =
+    await Promise.all([
+      ConversationResource.listIdsOfAgentsWithRecentConversations(auth, {
+        agentSIds: candidateSIds,
+        cutoffDate,
+      }),
+      AgentMessageFeedbackResource.getFeedbackCountForAssistants(
+        auth,
+        candidateSIds,
+        lookbackWindowDays
+      ),
+      AgentSuggestionResource.listByAgentConfigurationIds(auth, candidateSIds, {
+        states: ["pending"],
+        createdAfter: pendingSuggestionCutoff,
+      }),
+    ]);
 
-  const agentsWithSignal = new Set([
-    ...agentSIdsWithConversations,
-    ...feedbackCounts.map((f) => f.agentConfigurationId),
-    ...agentsWithFunctionCalls,
-  ]);
-
+  const agentsWithFeedback = new Set(
+    feedbackCounts.map((f) => f.agentConfigurationId)
+  );
+  const agentsWithRecentConversationsSet = new Set(
+    agentsWithRecentConversations
+  );
   const agentsWithRecentPendingSuggestions = new Set(
     pendingSuggestions.map((s) => s.agentConfigurationSId)
   );
 
-  const eligible = candidates.filter(
-    (a) =>
-      agentsWithSignal.has(a.sId) &&
-      !agentsWithRecentPendingSuggestions.has(a.sId)
-  );
-
-  logger.info(
-    {
-      workspaceId,
-      candidateCount: candidates.length,
-      eligibleCount: eligible.length,
-    },
-    "ReinforcedAgent: reinforcement eligibility"
-  );
+  const eligible = candidates.filter((a) => {
+    if (agentsWithRecentPendingSuggestions.has(a.sId)) {
+      return false;
+    }
+    if (agentsWithFeedback.has(a.sId)) {
+      return true;
+    }
+    return agentsWithRecentConversationsSet.has(a.sId);
+  });
 
   recordReinforcedAgentEligibilityMetrics({
     workspaceId,

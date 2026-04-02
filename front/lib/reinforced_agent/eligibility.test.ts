@@ -5,7 +5,9 @@ vi.mock("@app/lib/utils/statsd", () => ({
 }));
 
 import type { Authenticator } from "@app/lib/auth";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { filterEligibleAgents } from "@app/lib/reinforced_agent/eligibility";
+import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -16,16 +18,26 @@ import type { LightWorkspaceType } from "@app/types/user";
 const daysAgo = (days: number) =>
   new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-async function createConversationWithUpdatedAt(
+async function createRecentAgentMessage(
   auth: Authenticator,
-  agentSId: string,
-  updatedAt: Date
+  workspace: LightWorkspaceType,
+  agent: LightAgentConfigurationType,
+  agentMessageCreatedAt: Date
 ) {
   const conv = await ConversationFactory.create(auth, {
-    agentConfigurationId: agentSId,
-    messagesCreatedAt: [updatedAt],
+    agentConfigurationId: agent.sId,
+    messagesCreatedAt: [],
+    visibility: "unlisted",
   });
-  await ConversationFactory.setUpdatedAtForTest(auth, conv.id, updatedAt);
+  const { agentMessage } = await ConversationFactory.createAgentMessage(auth, {
+    workspace,
+    conversation: conv,
+    agentConfig: agent,
+  });
+  await AgentMessageModel.update(
+    { createdAt: agentMessageCreatedAt },
+    { where: { workspaceId: workspace.id, id: agentMessage.agentMessageId } }
+  );
   return conv;
 }
 
@@ -58,9 +70,37 @@ describe("filterEligibleAgents", () => {
     expect(await filterEligibleAgents(auth, [withBadId], 30)).toEqual([]);
   });
 
-  it("includes agents with a recent human conversation and no pending suggestion", async () => {
+  it("includes agents with a recent agent message", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
-    await createConversationWithUpdatedAt(auth, agent.sId, daysAgo(2));
+    await createRecentAgentMessage(auth, workspace, agent, daysAgo(2));
+
+    const result = await filterEligibleAgents(auth, [agent], 30);
+    expect(result.map((a) => a.sId)).toEqual([agent.sId]);
+  });
+
+  it("includes agents with feedback even without a recent agent message", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const conv = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+    const { agentMessage } = await ConversationFactory.createAgentMessage(
+      auth,
+      { workspace, conversation: conv, agentConfig: agent }
+    );
+    await AgentMessageFeedbackResource.makeNew({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      agentConfigurationId: agent.sId,
+      agentConfigurationVersion: 0,
+      agentMessageId: agentMessage.agentMessageId,
+      userId: auth.getNonNullableUser().id,
+      conversationId: conv.id,
+      thumbDirection: "up",
+      content: null,
+      isConversationShared: false,
+      dismissed: false,
+    });
 
     const result = await filterEligibleAgents(auth, [agent], 30);
     expect(result.map((a) => a.sId)).toEqual([agent.sId]);
@@ -68,41 +108,18 @@ describe("filterEligibleAgents", () => {
 
   it("excludes agents blocked by a recent pending suggestion", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
-    await createConversationWithUpdatedAt(auth, agent.sId, daysAgo(2));
+    await createRecentAgentMessage(auth, workspace, agent, daysAgo(2));
     await AgentSuggestionFactory.createInstructions(auth, agent);
 
     const result = await filterEligibleAgents(auth, [agent], 30);
     expect(result).toEqual([]);
   });
 
-  it("excludes agents whose conversations fall outside the lookback window", async () => {
+  it("excludes agents whose agent messages fall outside the lookback window", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
-    await createConversationWithUpdatedAt(auth, agent.sId, daysAgo(60));
+    await createRecentAgentMessage(auth, workspace, agent, daysAgo(60));
 
     const result = await filterEligibleAgents(auth, [agent], 30);
     expect(result).toEqual([]);
-  });
-
-  it("includes agents with only recent function_call steps as signal", async () => {
-    const agent = await AgentConfigurationFactory.createTestAgent(auth);
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: agent.sId,
-      messagesCreatedAt: [],
-      visibility: "unlisted",
-    });
-    const { agentMessage } = await ConversationFactory.createAgentMessage(
-      auth,
-      { workspace, conversation, agentConfig: agent }
-    );
-
-    const recent = daysAgo(2);
-    await ConversationFactory.createFunctionCallStepForTest(
-      auth,
-      agentMessage.agentMessageId,
-      { createdAt: recent }
-    );
-
-    const result = await filterEligibleAgents(auth, [agent], 30);
-    expect(result.map((a) => a.sId)).toEqual([agent.sId]);
   });
 });

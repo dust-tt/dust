@@ -32,7 +32,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op, Sequelize } from "sequelize";
+import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -307,54 +307,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       totalCount,
       nextCursor,
     };
-  }
-
-  /**
-   * Returns the set of agent sIds that have at least one function_call step in
-   * the workspace within the optional time window.
-   */
-  static async getAgentsWithFunctionCalls(
-    auth: Authenticator,
-    {
-      agentConfigurationIds,
-      createdAfter,
-    }: {
-      agentConfigurationIds: string[];
-      createdAfter?: Date;
-    }
-  ): Promise<Set<string>> {
-    if (agentConfigurationIds.length === 0) {
-      return new Set();
-    }
-
-    const owner = auth.getNonNullableWorkspace();
-
-    // Query from AgentMessageModel side with GROUP BY so we get one row per
-    // distinct agentConfigurationId (much less data than scanning all step rows)
-    const rows = await AgentMessageModel.findAll({
-      attributes: ["agentConfigurationId"],
-      where: {
-        workspaceId: owner.id,
-        agentConfigurationId: { [Op.in]: agentConfigurationIds },
-      },
-      include: [
-        {
-          model: this.model,
-          as: "agentStepContents",
-          required: true,
-          attributes: [],
-          where: {
-            workspaceId: owner.id,
-            type: "function_call",
-            ...(createdAfter ? { createdAt: { [Op.gte]: createdAfter } } : {}),
-          },
-        },
-      ],
-      group: [Sequelize.col("agent_message.agentConfigurationId")],
-      raw: true,
-    });
-
-    return new Set(rows.map((row) => row.agentConfigurationId));
   }
 
   isFunctionCallContent(): this is AgentStepContentResource & {
