@@ -1,4 +1,7 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+
+import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
+import type { StepContext } from "@app/lib/actions/types";
 import {
   getAgentConfiguration,
   getAgentConfigurations,
@@ -16,7 +19,7 @@ import {
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
-import { getCompletionDuration } from "@app/lib/api/assistant/messages";
+import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR_WINDOW_SECONDS,
@@ -46,6 +49,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString } from "@app/lib/mentions/format";
+import {
+  AgentMCPActionModel,
+  AgentMCPActionOutputItemModel,
+} from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageModel,
@@ -100,6 +107,7 @@ import type {
   AgenticMessageData,
   AgentMessageType,
   AgentMessageTypeWithoutMentions,
+  CitationType,
   ConversationMetadata,
   ConversationType,
   ConversationVisibility,
@@ -132,6 +140,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { md5 } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import type { NextApiRequest } from "next";
 import type { Transaction } from "sequelize";
@@ -139,6 +148,15 @@ import { col } from "sequelize";
 
 // Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
 const PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE = 3;
+
+/** Citations and generated files aggregated from source MCP output items (e.g. branch merge). */
+export type CitationsAndFilesFromOutputItemsType = {
+  citationsAllocated: number;
+  outputItems: Array<{
+    fileId: ModelId | null;
+    citations: Record<string, CitationType> | null;
+  }>;
+};
 
 /**
  * Conversation Creation, update and deletion
@@ -1353,6 +1371,7 @@ export async function createAgentMessageFromText(
     content,
     agentConfiguration,
     skipToolsValidation = true,
+    citationsAndFilesFromOutputItems,
   }: {
     conversation: ConversationType;
     parentId: ModelId;
@@ -1360,15 +1379,16 @@ export async function createAgentMessageFromText(
     content: string;
     agentConfiguration: { sId: string; version: number };
     skipToolsValidation?: boolean;
+    citationsAndFilesFromOutputItems?: CitationsAndFilesFromOutputItemsType;
   }
 ): Promise<{
-  id: ModelId;
-  sId: string;
+  messageId: ModelId;
+  messageSId: string;
   agentMessageId: ModelId;
 }> {
   const owner = auth.getNonNullableWorkspace();
 
-  const created = await withTransaction(async (transaction) => {
+  const created = await withTransaction(async (t) => {
     const agentMessageRow = await AgentMessageModel.create(
       {
         status: "succeeded",
@@ -1384,7 +1404,7 @@ export async function createAgentMessageFromText(
         errorMessage: null,
         errorMetadata: null,
       },
-      { transaction }
+      { transaction: t }
     );
 
     const messageRow = await MessageModel.create(
@@ -1399,7 +1419,7 @@ export async function createAgentMessageFromText(
         agentMessageId: agentMessageRow.id,
         workspaceId: owner.id,
       },
-      { transaction }
+      { transaction: t }
     );
 
     await AgentStepContentModel.create(
@@ -1412,69 +1432,153 @@ export async function createAgentMessageFromText(
         type: "text_content",
         value: { type: "text_content", value: content },
       },
-      { transaction }
+      { transaction: t }
     );
 
+    if (citationsAndFilesFromOutputItems) {
+      const { citationsAllocated, outputItems } =
+        citationsAndFilesFromOutputItems;
+
+      const functionCallStepContent = await AgentStepContentModel.create(
+        {
+          workspaceId: owner.id,
+          agentMessageId: agentMessageRow.id,
+          step: 0,
+          index: 1,
+          version: 0,
+          type: "function_call",
+          value: {
+            type: "function_call",
+            value: {
+              id: `merged_output_${messageRow.id}`,
+              name: "merged_output",
+              arguments: "{}",
+            },
+          },
+        },
+        { transaction: t }
+      );
+
+      const createdAction = await AgentMCPActionModel.create(
+        {
+          workspaceId: owner.id,
+          mcpServerConfigurationId: "",
+          version: 0,
+          agentMessageId: agentMessageRow.id,
+          stepContentId: functionCallStepContent.id,
+          status: "succeeded",
+          citationsAllocated,
+          augmentedInputs: {},
+          toolConfiguration: {} as LightMCPToolConfigurationType,
+          stepContext: {} as StepContext,
+          executionDurationMs: null,
+        },
+        { transaction: t }
+      );
+
+      if (outputItems.length > 0) {
+        const syntheticMcpOutputContent: CallToolResult["content"][number] = {
+          type: "text",
+          text: "",
+        };
+        await AgentMCPActionOutputItemModel.bulkCreate(
+          outputItems.map((oi) => ({
+            workspaceId: owner.id,
+            agentMCPActionId: createdAction.id,
+            content: syntheticMcpOutputContent,
+            contentGcsPath: null,
+            fileId: oi.fileId,
+            citations: oi.citations,
+          })),
+          { transaction: t }
+        );
+      }
+    }
+
     return {
-      id: messageRow.id,
-      sId: messageRow.sId,
+      messageId: messageRow.id,
+      messageSId: messageRow.sId,
       agentMessageId: agentMessageRow.id,
     };
   });
 
-  const [agentMessageRow, messageRow, parentMessageRow, configuration] =
-    await Promise.all([
-      AgentMessageModel.findOne({
-        where: { id: created.agentMessageId, workspaceId: owner.id },
-      }),
-      MessageModel.findOne({
-        where: { id: created.id, workspaceId: owner.id },
-      }),
-      MessageModel.findOne({
-        where: { id: parentId, workspaceId: owner.id },
-        attributes: ["sId"],
-      }),
-      getAgentConfiguration(auth, {
-        agentId: agentConfiguration.sId,
-        agentVersion: agentConfiguration.version,
-        variant: "light",
-      }),
-    ]);
-
-  if (agentMessageRow && messageRow && parentMessageRow && configuration) {
-    await handleAgentMessage(auth, {
-      conversation,
-      agentMessage: {
-        id: messageRow.id,
-        agentMessageId: agentMessageRow.id,
-        created: agentMessageRow.createdAt.getTime(),
-        completedTs: agentMessageRow.completedAt?.getTime() ?? null,
-        sId: messageRow.sId,
-        type: "agent_message",
-        visibility: messageRow.visibility,
-        version: messageRow.version,
-        parentMessageId: parentMessageRow.sId,
-        parentAgentMessageId: null,
-        status: agentMessageRow.status,
-        actions: [],
-        content,
-        chainOfThought: null,
-        error: null,
-        configuration,
-        rank: messageRow.rank,
-        branchId: conversation.branchId ?? null,
-        skipToolsValidation: agentMessageRow.skipToolsValidation,
-        contents: [],
-        modelInteractionDurationMs: agentMessageRow.modelInteractionDurationMs,
-        completionDurationMs: getCompletionDuration(
-          agentMessageRow.createdAt.getTime(),
-          agentMessageRow.completedAt?.getTime() ?? null,
-          []
-        ),
-        reactions: [],
+  const conversationResource = await ConversationResource.fetchById(
+    auth,
+    conversation.sId
+  );
+  if (!conversationResource) {
+    logger.error(
+      {
+        workspaceId: owner.sId,
+        conversationSId: conversation.sId,
+        messageSId: created.messageSId,
       },
-    });
+      "createAgentMessageFromText: conversation not found for event publish."
+    );
+    return created;
   }
+
+  const messageRow = await MessageModel.findOne({
+    where: { id: created.messageId, workspaceId: owner.id },
+    include: [
+      {
+        model: AgentMessageModel,
+        as: "agentMessage",
+        required: true,
+      },
+    ],
+  });
+
+  if (!messageRow?.agentMessage) {
+    logger.error(
+      {
+        workspaceId: owner.sId,
+        conversationSId: conversation.sId,
+        messageSId: created.messageSId,
+      },
+      "createAgentMessageFromText: message row missing for batch render."
+    );
+    return created;
+  }
+
+  const renderedRes = await batchRenderMessages(
+    auth,
+    conversationResource,
+    [messageRow],
+    "full"
+  );
+
+  if (renderedRes.isErr()) {
+    logger.error(
+      {
+        workspaceId: owner.sId,
+        conversationSId: conversation.sId,
+        messageSId: created.messageSId,
+        error: renderedRes.error,
+      },
+      "createAgentMessageFromText: batchRenderMessages failed."
+    );
+    return created;
+  }
+
+  const agentMessage = renderedRes.value.find(
+    (m): m is AgentMessageType =>
+      isAgentMessageType(m) && m.sId === created.messageSId
+  );
+
+  if (!agentMessage) {
+    logger.error(
+      {
+        workspaceId: owner.sId,
+        conversationSId: conversation.sId,
+        messageSId: created.messageSId,
+      },
+      "createAgentMessageFromText: rendered agent message not found."
+    );
+    return created;
+  }
+
+  await publishAgentMessagesEvents(conversation, [agentMessage]);
 
   return created;
 }

@@ -87,7 +87,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async fetchByModelIds(
     auth: Authenticator,
-    ids: number[],
+    ids: ModelId[],
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<ConversationResource[]> {
     if (ids.length === 0) {

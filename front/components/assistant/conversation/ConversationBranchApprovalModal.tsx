@@ -7,6 +7,10 @@ import {
   type VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
 import {
+  useCancelMessage,
+  useConversationBranchActions,
+} from "@app/hooks/conversations";
+import {
   ArrowLeftIcon,
   ScrollArea,
   Sheet,
@@ -57,6 +61,45 @@ export function ConversationBranchApprovalModal({
   );
   const [selectedMessage, setSelectedMessage] =
     useState<MessageTemporaryState | null>(null);
+
+  const { mergeBranch, closeBranch, isMerging, isClosing } =
+    useConversationBranchActions({
+      owner: context.owner,
+      conversationId: context.conversation?.sId,
+    });
+
+  const cancelMessage = useCancelMessage({
+    owner: context.owner,
+    conversationId: context.conversation?.sId,
+  });
+
+  const branchId = context.branchIdToApprove ?? null;
+
+  const [activeBranchAction, setActiveBranchAction] = useState<
+    "close" | "merge" | null
+  >(null);
+
+  const isBranchActionInProgress =
+    isMerging || isClosing || activeBranchAction !== null;
+
+  const allAgentMessagesSucceeded = useMemo(() => {
+    const agentMessages = branchMessagesToApprove.filter(
+      isMessageTemporayState
+    );
+    return (
+      agentMessages.length > 0 &&
+      agentMessages.every((m) => m.status === "succeeded")
+    );
+  }, [branchMessagesToApprove]);
+
+  const cancelOngoingAgentGenerations = async () => {
+    const inFlightAgentMessageIds = branchMessagesToApprove
+      .filter(isMessageTemporayState)
+      .filter((m) => m.status === "created")
+      .map((m) => m.sId);
+
+    await cancelMessage(inFlightAgentMessageIds);
+  };
 
   return (
     <Sheet defaultOpen={false} open={branchMessagesToApprove.length > 0}>
@@ -126,12 +169,47 @@ export function ConversationBranchApprovalModal({
             leftButtonProps={{
               label: "Reject",
               variant: "outline",
-              onClick: () => {},
+              disabled: !branchId || isBranchActionInProgress,
+              isLoading: isClosing || activeBranchAction === "close",
+              onClick: async () => {
+                if (!branchId) {
+                  return;
+                }
+                setActiveBranchAction("close");
+                try {
+                  await cancelOngoingAgentGenerations();
+                  const ok = await closeBranch(branchId);
+                  if (ok) {
+                    context.setBranchIdToApprove?.(null);
+                  }
+                } finally {
+                  setActiveBranchAction(null);
+                }
+              },
             }}
             rightButtonProps={{
               label: "Publish in conversation",
               variant: "highlight",
-              onClick: () => {},
+              disabled:
+                !branchId ||
+                isBranchActionInProgress ||
+                !allAgentMessagesSucceeded,
+              isLoading: isMerging || activeBranchAction === "merge",
+              onClick: async () => {
+                if (!branchId) {
+                  return;
+                }
+                setActiveBranchAction("merge");
+                try {
+                  await cancelOngoingAgentGenerations();
+                  const ok = await mergeBranch(branchId);
+                  if (ok) {
+                    context.setBranchIdToApprove?.(null);
+                  }
+                } finally {
+                  setActiveBranchAction(null);
+                }
+              },
             }}
           />
         </div>
