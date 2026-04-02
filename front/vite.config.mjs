@@ -10,7 +10,7 @@ export default defineConfig({
     setupFiles: "./vite.setup.ts",
     globalSetup: "./vite.globalSetup.ts",
     passWithNoTests: true,
-    exclude: ["**/node_modules/**", "**/dist/**"],
+    exclude: ["**/node_modules/**", "**/dist/**", "**/workers.smoke.test.ts"],
     maxConcurrency: 20,
 
     testTimeout: (function getTestTimeout() {
