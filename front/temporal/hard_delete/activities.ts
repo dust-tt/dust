@@ -188,10 +188,13 @@ export async function purgeExpiredSyntheticSuggestionsActivity(
     let hasMore = true;
 
     do {
-      const deletedCount =
-        await AgentSuggestionResource.deleteExpiredSynthetic(auth, cutoffDate, {
+      const deletedCount = await AgentSuggestionResource.deleteExpiredSynthetic(
+        auth,
+        cutoffDate,
+        {
           limit: batchSize,
-        });
+        }
+      );
 
       totalDeleted += deletedCount;
       hasMore = deletedCount === batchSize;
