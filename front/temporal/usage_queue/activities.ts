@@ -212,7 +212,7 @@ export async function emitMetronomeUsageEventsActivity(
   }
   const auth = authResult.value;
   const workspace = auth.getNonNullableWorkspace();
-  const { agentMessageId, userMessageId } = agentLoopArgs;
+  const { agentMessageId, conversationId, userMessageId } = agentLoopArgs;
   const userMessageOrigin = agentLoopArgs.userMessageOrigin ?? "web";
 
   // Query agent message with its run IDs.
@@ -301,13 +301,14 @@ export async function emitMetronomeUsageEventsActivity(
   // Deterministic short hash of runIds — ensures different runs of the same
   // message produce different transaction_ids (e.g., error then success finalization).
   const runKey = createHash("sha256")
-    .update(agentMessage.runIds.sort().join("-"))
+    .update([...agentMessage.runIds].sort().join("-"))
     .digest("hex")
     .slice(0, 12);
 
   // Build and ingest events.
   const llmEvents = buildLlmUsageEvents({
     workspaceId: workspace.sId,
+    conversationId,
     userId,
     agentMessageId,
     parentAgentMessageId,
@@ -322,6 +323,7 @@ export async function emitMetronomeUsageEventsActivity(
 
   const toolEvents = buildToolUseEvents({
     workspaceId: workspace.sId,
+    conversationId,
     userId,
     agentMessageId,
     parentAgentMessageId,
