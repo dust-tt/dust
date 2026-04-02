@@ -62,6 +62,7 @@ function toAssistantInputItem(
         role: "assistant",
         type: "message",
         content: content.value,
+        phase: content.metadata?.phase,
       };
     case "function_call":
       return {

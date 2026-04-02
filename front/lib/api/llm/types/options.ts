@@ -132,6 +132,10 @@ export interface LLMStreamParameters {
   omittedThinking?: boolean;
 }
 
+export interface LLMStreamMetadata {
+  conversationId: string;
+}
+
 export type LLMParametersWithoutConversation = Omit<
   LLMStreamParameters,
   "conversation"
