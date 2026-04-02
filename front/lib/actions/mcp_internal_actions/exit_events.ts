@@ -67,15 +67,13 @@ export async function getExitOrPauseEvents(
       case "tool_blocked_awaiting_input": {
         const { blockingEvents, state } = exitOutputItem;
 
-        // Update the step context BEFORE status to avoid a race where the action
-        // appears blocked but stepContext lacks the resume state.
+        // Update the action status to blocked_child_action_input_required to break the agent loop.
+        await action.updateStatus("blocked_child_action_input_required");
+
         await action.updateStepContext({
           ...action.stepContext,
           resumeState: state,
         });
-
-        // Update the action status to blocked_child_action_input_required to break the agent loop.
-        await action.updateStatus("blocked_child_action_input_required");
 
         // Yield the blocking events.
         return blockingEvents;
@@ -127,8 +125,8 @@ export async function getExitOrPauseEvents(
           `The tool ${action.functionCallName} requires file authorization ` +
           `for ${fileName}, please authorize the file to continue.`;
 
-        // Persist file auth info BEFORE updating status to avoid a race where the
-        // action appears blocked but stepContext lacks file authorization data.
+        await action.updateStatus("blocked_file_authorization_required");
+
         await action.updateStepContext({
           ...action.stepContext,
           fileAuthorizationInfo: {
@@ -138,8 +136,6 @@ export async function getExitOrPauseEvents(
             mimeType: mimeType_file,
           },
         });
-
-        await action.updateStatus("blocked_file_authorization_required");
 
         return [
           {
