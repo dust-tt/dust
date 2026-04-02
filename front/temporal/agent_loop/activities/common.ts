@@ -90,12 +90,15 @@ export async function updateAgentMessageDBAndMemory(
             "conversation is required for terminal status updates"
           );
         }
-        await finalizeAgentMessage(auth, {
+        const completedAt = await finalizeAgentMessage(auth, {
           conversation,
           agentMessage,
           status: "failed",
           error: update.error,
         });
+        agentMessage.status = "failed";
+        agentMessage.completedTs = completedAt.getTime();
+        agentMessage.error = update.error;
       }
       break;
 
@@ -106,11 +109,13 @@ export async function updateAgentMessageDBAndMemory(
             "conversation is required for terminal status updates"
           );
         }
-        await finalizeAgentMessage(auth, {
+        const completedAt = await finalizeAgentMessage(auth, {
           conversation,
           agentMessage,
           status: update.status,
         });
+        agentMessage.status = update.status;
+        agentMessage.completedTs = completedAt.getTime();
       }
       break;
 
