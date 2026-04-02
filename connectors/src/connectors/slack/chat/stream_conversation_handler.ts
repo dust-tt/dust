@@ -647,6 +647,9 @@ async function streamAgentAnswerToSlack(
 
       case "agent_context_pruned":
       case "agent_message_done":
+      // TODO(2026-04-02 ask-user-question): add support for the AskUserQuestion tool on Slack.
+      // Temporarily we will not add the tool for messages coming from Slack to avoid receiving this event at all here.
+      case "tool_ask_user_question":
         // No-op.
         break;
 

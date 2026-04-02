@@ -2,6 +2,7 @@ import type {
   MCPToolStakeLevelType,
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
+import type { UserQuestion } from "@app/lib/actions/types";
 import type { OAuthProvider } from "@app/types/oauth/lib";
 
 export interface ToolExecution<
@@ -70,6 +71,12 @@ export interface ToolFileAuthRequiredEvent
 
 export interface MCPApproveExecutionEvent extends ToolExecution {
   type: "tool_approve_execution";
+}
+
+export interface ToolAskUserQuestionEvent extends ToolExecution {
+  type: "tool_ask_user_question";
+  question: UserQuestion;
+  questionMetadata: Record<string, unknown> | null;
 }
 
 export type ToolEarlyExitEvent = {

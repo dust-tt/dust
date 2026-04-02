@@ -9,6 +9,7 @@ import {
 import {
   NotificationInteractiveContentFileContentSchema,
   OAuthProviderSchema,
+  UserQuestionItemSchema,
 } from "./output_schemas";
 import { CallToolResultSchema, ContentBlockSchema } from "./raw_mcp_types";
 import { TIMEZONE_NAMES } from "./timezone_names";
@@ -1350,6 +1351,9 @@ const BlockedActionExecutionSchema = ToolExecutionMetadataSchema.extend({
   messageId: z.string(),
   conversationId: z.string(),
   status: ToolExecutionBlockedStatusSchema,
+  // Present only when status is "blocked_user_question_required".
+  question: UserQuestionItemSchema.optional(),
+  questionMetadata: z.record(z.unknown()).nullish(),
 });
 
 export type BlockedActionExecutionType = z.infer<
@@ -1434,11 +1438,27 @@ const AgentErrorEventSchema = z.object({
 });
 export type AgentErrorEvent = z.infer<typeof AgentErrorEventSchema>;
 
+const ToolAskUserQuestionEventSchema = ToolExecutionMetadataSchema.extend({
+  type: z.literal("tool_ask_user_question"),
+  userId: z.string().optional(),
+  configurationId: z.string(),
+  conversationId: z.string(),
+  created: z.number(),
+  messageId: z.string(),
+  question: UserQuestionItemSchema,
+  questionMetadata: z.record(z.unknown()).nullable(),
+});
+
+export type ToolAskUserQuestionEvent = z.infer<
+  typeof ToolAskUserQuestionEventSchema
+>;
+
 const AgentActionSpecificEventSchema = z.union([
   MCPParamsEventSchema,
   ToolNotificationEventSchema,
   MCPApproveExecutionEventSchema,
   ToolPersonalAuthRequiredEventSchema,
+  ToolAskUserQuestionEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema

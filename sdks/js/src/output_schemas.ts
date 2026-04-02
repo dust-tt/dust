@@ -638,6 +638,17 @@ export const FileAuthRequiredOutputResourceSchema = z.object({
   uri: z.string(),
 });
 
+export const UserQuestionItemSchema = z.object({
+  question: z.string(),
+  options: z.array(
+    z.object({
+      label: z.string(),
+      description: z.string().nullable(),
+    })
+  ),
+  multiSelect: z.boolean(),
+});
+
 export const AgentPauseOutputResourceSchema = z.union([
   AuthRequiredOutputResourceSchema,
   BlockedAwaitingInputOutputResourceSchema,

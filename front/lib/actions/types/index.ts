@@ -9,30 +9,35 @@ import type {
   ConversationType,
 } from "@app/types/assistant/conversation";
 import type { AllSupportedFileContentType } from "@app/types/files";
+import { z } from "zod";
 
-export type FileAuthorizationInfo = {
-  fileId: string;
-  fileName: string;
-  connectionId: string;
-  mimeType: string;
-};
+const FileAuthorizationInfoSchema = z.object({
+  fileId: z.string(),
+  fileName: z.string(),
+  connectionId: z.string(),
+  mimeType: z.string(),
+});
+
+export type FileAuthorizationInfo = z.infer<typeof FileAuthorizationInfoSchema>;
 
 export function isFileAuthorizationInfo(
   value: unknown
 ): value is FileAuthorizationInfo {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "fileId" in value &&
-    typeof (value as Record<string, unknown>).fileId === "string" &&
-    "fileName" in value &&
-    typeof (value as Record<string, unknown>).fileName === "string" &&
-    "connectionId" in value &&
-    typeof (value as Record<string, unknown>).connectionId === "string" &&
-    "mimeType" in value &&
-    typeof (value as Record<string, unknown>).mimeType === "string"
-  );
+  return FileAuthorizationInfoSchema.safeParse(value).success;
 }
+
+const UserQuestionOptionSchema = z.object({
+  label: z.string(),
+  description: z.string().nullable(),
+});
+
+export const UserQuestionSchema = z.object({
+  question: z.string(),
+  options: z.array(UserQuestionOptionSchema),
+  multiSelect: z.boolean(),
+});
+
+export type UserQuestion = z.infer<typeof UserQuestionSchema>;
 
 export type StepContext = {
   citationsCount: number;
