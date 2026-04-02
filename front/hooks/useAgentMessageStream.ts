@@ -185,6 +185,7 @@ function flushPendingSegment(
   lastClassification: TokenClassification | null,
   chainOfThought: React.MutableRefObject<string>,
   currentTextSegment: React.MutableRefObject<string>,
+  content: React.MutableRefObject<string>,
   idSuffix: string
 ): InlineActivityStep[] {
   if (lastClassification === "chain_of_thought" && chainOfThought.current) {
@@ -195,6 +196,8 @@ function flushPendingSegment(
   if (lastClassification === "tokens" && currentTextSegment.current) {
     const text = currentTextSegment.current;
     currentTextSegment.current = "";
+    // Clear message body — this text now lives only in the activity step.
+    content.current = "";
     return appendContentStep(steps, text, `content-${idSuffix}`);
   }
   return steps;
@@ -316,6 +319,7 @@ export function useAgentMessageStream({
                       lastClassification.current,
                       chainOfThought,
                       currentTextSegment,
+                      content,
                       `switch-${Date.now()}`
                     ),
                   },
@@ -381,8 +385,6 @@ export function useAgentMessageStream({
 
         case "tool_params":
           const toolParams = eventPayload.data;
-          // Clear message body content — intermediate text lives only in activity steps.
-          content.current = "";
           methods.data.map((m) => {
             if (!isMessageTemporayState(m) || m.sId !== sId) {
               return m;
@@ -392,6 +394,7 @@ export function useAgentMessageStream({
               lastClassification.current,
               chainOfThought,
               currentTextSegment,
+              content,
               `toolparams-${Date.now()}`
             );
             lastClassification.current = null;
@@ -427,6 +430,7 @@ export function useAgentMessageStream({
               lastClassification.current,
               chainOfThought,
               currentTextSegment,
+              content,
               `error-${Date.now()}`
             );
             lastClassification.current = null;
@@ -475,13 +479,31 @@ export function useAgentMessageStream({
             if (!isMessageTemporayState(m) || m.sId !== sId) {
               return m;
             }
-            const steps = flushPendingSegment(
-              m.streaming.inlineActivitySteps,
-              lastClassification.current,
-              chainOfThought,
-              currentTextSegment,
-              `final-${Date.now()}`
+            // Flush pending thinking — NOT text content.
+            // The final text segment becomes the message body, not an activity step.
+            let steps = m.streaming.inlineActivitySteps;
+            if (
+              lastClassification.current === "chain_of_thought" &&
+              chainOfThought.current
+            ) {
+              steps = appendThinkingStep(
+                steps,
+                chainOfThought.current,
+                `thinking-final-${Date.now()}`
+              );
+              chainOfThought.current = "";
+            }
+            // Remove the last content step — it duplicates the message body (final answer).
+            const lastContentIdx = steps.findLastIndex(
+              (s) => s.type === "content"
             );
+            if (lastContentIdx !== -1) {
+              steps = [
+                ...steps.slice(0, lastContentIdx),
+                ...steps.slice(lastContentIdx + 1),
+              ];
+            }
+            currentTextSegment.current = "";
             lastClassification.current = null;
             return {
               ...m,

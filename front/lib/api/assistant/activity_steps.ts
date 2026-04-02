@@ -44,6 +44,15 @@ export async function contentsToActivitySteps(
 ): Promise<InlineActivityStep[]> {
   const actionsByCallId = new Map(actions.map((a) => [a.functionCallId, a]));
 
+  // Find the last text_content index — it becomes the message body, not an activity step.
+  let lastTextContentIndex = -1;
+  for (let i = contents.length - 1; i >= 0; i--) {
+    if (isAgentTextContent(contents[i].content)) {
+      lastTextContentIndex = i;
+      break;
+    }
+  }
+
   const steps: InlineActivityStep[] = [];
 
   for (const [index, c] of contents.entries()) {
@@ -76,7 +85,8 @@ export async function contentsToActivitySteps(
           id: `cot-${c.step}-${index}`,
         });
       }
-      if (parsedContent.content?.trim()) {
+      // Skip the last text_content — it becomes the message body, not an activity step.
+      if (parsedContent.content?.trim() && index !== lastTextContentIndex) {
         steps.push({
           type: "content",
           content: parsedContent.content,

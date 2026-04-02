@@ -531,8 +531,9 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
 
         if (reasoningContents.length > 0) {
           return {
+            // For multiple steps outputting text content, we display only the last one as the final answer.
+            // Earlier text segments live in activitySteps only.
             content:
-              // For mutliple steps outputing text content, we want to display only the last one as the final answer.
               textFragments.length > 0
                 ? textFragments[textFragments.length - 1]
                 : "",
@@ -542,13 +543,17 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
               .join("\n\n"),
           };
         } else {
+          // Same as above: only the last text fragment is the final answer.
+          const lastFragment =
+            textFragments.length > 0
+              ? [textFragments[textFragments.length - 1]]
+              : textFragments;
           const contentParser = new AgentMessageContentParser(
             agentConfiguration,
             message.sId,
             getCoTDelimitersConfiguration({ agentConfiguration })
           );
-          const parsedContent =
-            await contentParser.parseContents(textFragments);
+          const parsedContent = await contentParser.parseContents(lastFragment);
           return {
             content: parsedContent.content,
             chainOfThought: parsedContent.chainOfThought,

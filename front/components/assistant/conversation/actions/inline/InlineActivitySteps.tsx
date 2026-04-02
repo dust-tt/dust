@@ -174,6 +174,8 @@ export function InlineActivitySteps({
                           content={step.content}
                           isStreaming={false}
                           isLastMessage={false}
+                          textColor="text-muted-foreground dark:text-muted-foreground-night"
+                          forcedTextSize="text-sm"
                         />
                       </TruncatedContent>
                     </div>
@@ -198,7 +200,7 @@ export function InlineActivitySteps({
                         size="xs"
                         className="shrink-0 text-muted-foreground dark:text-muted-foreground-night"
                       />
-                      <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
+                      <span className="text-sm text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
                         {step.label}
                         <Icon
                           size="xs"
@@ -236,6 +238,8 @@ export function InlineActivitySteps({
                     animationDurationSeconds={0.3}
                     delimiter=" "
                     isLastMessage={false}
+                    textColor="text-muted-foreground dark:text-muted-foreground-night"
+                    forcedTextSize="text-sm"
                   />
                 </div>
               ) : (
@@ -248,7 +252,7 @@ export function InlineActivitySteps({
                 <div className="shrink-0">
                   <Spinner size="xs" />
                 </div>
-                <span className="text-muted-foreground dark:text-muted-foreground-night">
+                <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                   {getActionOneLineLabel(activeAction, "running")}
                 </span>
               </div>
