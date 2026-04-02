@@ -99,6 +99,22 @@ export interface TeamsChannel {
   webUrl: string;
 }
 
+export interface TeamsMeeting {
+  id: string;
+  meetingId: string;
+  subject: string;
+  start: { dateTime: string; timeZone: string };
+  end: { dateTime: string; timeZone: string };
+  organizer: { emailAddress: { name: string; address: string } };
+  attendees: {
+    emailAddress: { name: string; address: string };
+    type: string;
+  }[];
+  onlineMeeting: { joinUrl: string } | null;
+  webLink: string;
+  isOnlineMeeting: boolean;
+}
+
 export interface TeamsUser {
   id: string;
   displayName: string;
