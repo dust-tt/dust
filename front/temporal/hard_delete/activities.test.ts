@@ -1,7 +1,7 @@
 import { createPendingAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
+import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import {
   purgeExpiredPendingAgentsActivity,
@@ -232,7 +232,7 @@ const PAST_SYNTHETIC_THRESHOLD_MS =
 
 describe("purgeExpiredSyntheticSuggestionsActivity", () => {
   it("deletes synthetic suggestions older than threshold", async () => {
-    const { authenticator, workspace } = await createResourceTest({
+    const { authenticator } = await createResourceTest({
       role: "admin",
     });
 
@@ -252,14 +252,15 @@ describe("purgeExpiredSyntheticSuggestionsActivity", () => {
 
     await purgeExpiredSyntheticSuggestionsActivity();
 
-    const remaining = await AgentSuggestionModel.findOne({
-      where: { id: suggestion.id, workspaceId: workspace.id },
-    });
+    const remaining = await AgentSuggestionResource.fetchById(
+      authenticator,
+      suggestion.sId
+    );
     expect(remaining).toBeNull();
   });
 
   it("does not delete synthetic suggestions younger than threshold", async () => {
-    const { authenticator, workspace } = await createResourceTest({
+    const { authenticator } = await createResourceTest({
       role: "admin",
     });
 
@@ -276,14 +277,15 @@ describe("purgeExpiredSyntheticSuggestionsActivity", () => {
 
     await purgeExpiredSyntheticSuggestionsActivity();
 
-    const remaining = await AgentSuggestionModel.findOne({
-      where: { id: suggestion.id, workspaceId: workspace.id },
-    });
+    const remaining = await AgentSuggestionResource.fetchById(
+      authenticator,
+      suggestion.sId
+    );
     expect(remaining).not.toBeNull();
   });
 
   it("does not delete non-synthetic suggestions older than threshold", async () => {
-    const { authenticator, workspace } = await createResourceTest({
+    const { authenticator } = await createResourceTest({
       role: "admin",
     });
 
@@ -303,9 +305,10 @@ describe("purgeExpiredSyntheticSuggestionsActivity", () => {
 
     await purgeExpiredSyntheticSuggestionsActivity();
 
-    const remaining = await AgentSuggestionModel.findOne({
-      where: { id: suggestion.id, workspaceId: workspace.id },
-    });
+    const remaining = await AgentSuggestionResource.fetchById(
+      authenticator,
+      suggestion.sId
+    );
     expect(remaining).not.toBeNull();
   });
 });
