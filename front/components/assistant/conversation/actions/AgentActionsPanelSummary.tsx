@@ -30,7 +30,7 @@ export function AgentActionSummary({
   } else if (agentMessageToRender.status === "cancelled") {
     statusText = "Cancelled after";
   } else if (agentMessageToRender.status === "gracefully_stopped") {
-    statusText = "Stopped after";
+    statusText = "Stopped in";
   }
 
   const timeString = formatDurationString(completedInMs);
