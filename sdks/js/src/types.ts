@@ -1964,6 +1964,13 @@ export type ImportAgentConfigurationFromYAMLResponseType = z.infer<
   typeof ImportAgentConfigurationFromYAMLResponseSchema
 >;
 
+export const PatchAgentConfigurationFromYAMLResponseSchema =
+  ImportAgentConfigurationFromYAMLResponseSchema;
+
+export type PatchAgentConfigurationFromYAMLResponseType = z.infer<
+  typeof PatchAgentConfigurationFromYAMLResponseSchema
+>;
+
 export const GetAgentConfigurationsResponseSchema = z.object({
   agentConfigurations: LightAgentConfigurationSchema.array(),
 });

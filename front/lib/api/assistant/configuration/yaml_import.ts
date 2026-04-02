@@ -1,6 +1,11 @@
 import { AgentYAMLConverter } from "@app/lib/agent_yaml_converter/converter";
 import type { AgentYAMLConfig } from "@app/lib/agent_yaml_converter/schemas";
-import { agentYAMLConfigSchema } from "@app/lib/agent_yaml_converter/schemas";
+import {
+  agentYAMLBasicInfoSchema,
+  agentYAMLConfigSchema,
+  agentYAMLGenerationSettingsSchema,
+} from "@app/lib/agent_yaml_converter/schemas";
+import { getAgentConfigurationAsYAMLConfig } from "@app/lib/api/assistant/configuration/yaml_export";
 import type { Authenticator } from "@app/lib/auth";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -176,4 +181,56 @@ export async function importAgentConfigurationFromJSON(
   }
 
   return importAgentConfiguration(auth, parsed.data);
+}
+
+// Top-level fields are optional; nested `agent` and `generation_settings` are
+// also partial so callers can patch individual sub-fields.
+const agentYAMLConfigPatchSchema = agentYAMLConfigSchema.partial().extend({
+  agent: agentYAMLBasicInfoSchema.partial().optional(),
+  generation_settings: agentYAMLGenerationSettingsSchema.partial().optional(),
+});
+
+export async function patchAgentConfigurationFromJSON(
+  auth: Authenticator,
+  agentId: string,
+  body: unknown
+): Promise<ImportResult> {
+  const parsed = agentYAMLConfigPatchSchema.safeParse(body);
+  if (!parsed.success) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid patch body: ${parsed.error.message}`,
+      },
+    });
+  }
+
+  const patch = parsed.data;
+
+  const existingResult = await getAgentConfigurationAsYAMLConfig(auth, agentId);
+  if (existingResult.isErr()) {
+    return existingResult;
+  }
+
+  const existing = existingResult.value;
+
+  // Merge: top-level arrays are replaced when provided, scalar/object fields
+  // are shallow-merged one level deep.
+  const merged: AgentYAMLConfig = {
+    agent: { ...existing.agent, ...patch.agent },
+    instructions: patch.instructions ?? existing.instructions,
+    generation_settings: {
+      ...existing.generation_settings,
+      ...patch.generation_settings,
+    },
+    tags: patch.tags ?? existing.tags,
+    editors: patch.editors ?? existing.editors,
+    toolset: patch.toolset ?? existing.toolset,
+    spaces: patch.spaces ?? existing.spaces,
+    skills: patch.skills ?? existing.skills,
+    slack_integration: patch.slack_integration ?? existing.slack_integration,
+  };
+
+  return importAgentConfiguration(auth, merged);
 }
