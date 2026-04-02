@@ -78,7 +78,7 @@ The value is a struct (stored as JSONB). The `context` field reuses the existing
     DROP CONSTRAINT IF EXISTS agent_step_contents_type_check;
   ALTER TABLE agent_step_contents
     ADD CONSTRAINT agent_step_contents_type_check
-    CHECK ("type" IN ('text_content', 'reasoning', 'function_call', 'error', 'user_steering'));
+    CHECK ("type" IN ('text_content', 'reasoning', 'function_call', 'error', 'steering'));
   ```
 
 ### 3. Conversation Rendering for Model — Step Layer
