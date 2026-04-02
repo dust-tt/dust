@@ -355,12 +355,13 @@ Agent loop gracefully stops
 
 | # | File | Change |
 |---|------|--------|
-| 1 | `front/types/assistant/conversation.ts` | Add `"pending"` to `MessageVisibility`, add `UserMessagePromotedEvent` |
-| 2 | `front/lib/models/agent/conversation.ts` | Add `"pending"` to `MessageModel.visibility` validation |
-| 3 | New migration SQL | Update CHECK constraint on `visibility` column |
+| 1 | `front/types/assistant/conversation.ts` | Add `"pending"` to `MessageVisibility`, add `wasPending` to `UserMessageType`, add `UserMessagePromotedEvent` |
+| 2 | `front/lib/models/agent/conversation.ts` | Add `"pending"` to `MessageModel.visibility` validation, add `wasPending` boolean to `MessageModel` |
+| 3 | New migration SQL | Update CHECK constraint on `visibility` column, add `wasPending` column to `messages` table |
 | 4 | `front/lib/api/assistant/conversation.ts` | Constraints + pending path in `postUserMessage`; add `finalizeGracefulStopAndPromote()` and `finalizeSucceededAndPromote()` (all locked operations in one file) |
-| 5 | `front/temporal/agent_loop/activities/finalize.ts` | `finalizeGracefullyStoppedAgentLoopActivity` calls `finalizeGracefulStopAndPromote()`, publishes events, launches new agent loop |
-| 6 | `front/lib/api/assistant/streaming/types.ts` | Add `UserMessagePromotedEvent` to `ConversationEvents` union |
+| 5 | `front/lib/api/assistant/conversation_rendering/helpers.ts` | Add steering instruction to `renderUserMessage()` when `wasPending` is true |
+| 6 | `front/temporal/agent_loop/activities/finalize.ts` | `finalizeGracefullyStoppedAgentLoopActivity` calls `finalizeGracefulStopAndPromote()`, publishes events, launches new agent loop |
+| 7 | `front/lib/api/assistant/streaming/types.ts` | Add `UserMessagePromotedEvent` to `ConversationEvents` union |
 
 Dependencies:
 - graceful_stop.md must be implemented first (signal, status, finalization).
@@ -383,6 +384,75 @@ Dependencies:
 4. **Graceful stop requested by user (not steering)** — When the user explicitly requests a
    graceful stop (reason: `"user_requested"`), there are no pending messages to promote.
    `finalizeGracefullyStoppedAgentLoopActivity` finds no pending messages and skips promotion.
+
+## Rendering Pending Messages for the Model
+
+When the promoted pending messages are included in the new agent loop's conversation context, they
+are rendered by `renderUserMessage()` (in `helpers.ts`). This function wraps each user message
+with a `<dust_system>` block containing metadata:
+
+```
+<dust_system>
+- Sender: John Doe (@John Doe) <john@example.com>
+- Conversation: abc123
+- Sent at: Apr 02, 2026, 14:30:00 UTC
+- Source: web
+</dust_system>
+
+The actual message content here...
+```
+
+This rendering is already correct for steering messages — the sender identity, timestamp, and
+source are all accurate and useful context for the model.
+
+To make the model aware that these messages were sent to steer its current work (rather than
+being a new conversation turn), an additional instruction is added to the `<dust_system>` block
+for messages that were pending (i.e. sent while the previous agent loop was running):
+
+```
+<dust_system>
+- Sender: John Doe (@John Doe) <john@example.com>
+- Conversation: abc123
+- Sent at: Apr 02, 2026, 14:30:00 UTC
+- Source: web
+
+This message was sent by the user to steer your current work.
+</dust_system>
+
+Please focus on the backend first...
+```
+
+### Implementation
+
+In `renderUserMessage()` (`front/lib/api/assistant/conversation_rendering/helpers.ts`), the
+`additionalInstructions` variable already supports appending context-specific instructions (e.g.
+for Slack-originated messages). For steering messages, append a steering instruction when the
+message was pending:
+
+```typescript
+if (m.wasPending) {
+  additionalInstructions +=
+    "This message was sent by the user to steer your current work.";
+}
+```
+
+The `wasPending` flag needs to be carried on `UserMessageType`. This is a boolean set to `true`
+when a message is promoted from `"pending"` to `"visible"`, and `false` for all other messages.
+It is stored on `MessageModel` (not `UserMessageModel`) since `visibility` is also on
+`MessageModel`.
+
+### Introspection: Nothing Problematic in Existing `<dust_system>`
+
+The existing `<dust_system>` content for user messages contains only:
+- **Sender identity** (name, mention, email) — correct for steering, identifies who is steering.
+- **Conversation ID** — neutral.
+- **Timestamp** — useful, tells the model when the steering was sent relative to its work.
+- **Source origin** (web, slack, etc.) — neutral.
+- **Slack/Teams-specific instructions** ("retrieve context from thread", "tag users with @") —
+  only added for those origins, not relevant for steering from web. No conflict.
+
+None of these interfere with the model interpreting the message as steering. The added instruction
+("sent by the user to steer your current work") is the only change needed.
 
 ## Open Questions
 
