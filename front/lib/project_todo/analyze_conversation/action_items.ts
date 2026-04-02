@@ -50,7 +50,5 @@ export function buildPromptActionItems(
     }
     prompt += "\n";
   }
-  prompt +=
-    "You MUST call the tool. Always call it, even if there are no action items (use an empty array).";
   return prompt;
 }

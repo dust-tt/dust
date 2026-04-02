@@ -1,7 +1,7 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import type { Authenticator } from "@app/lib/auth";
-import { EXTRACT_ACTION_ITEMS_FUNCTION_NAME } from "@app/lib/project_todo/analyze_conversation/types";
+import { EXTRACT_CONVERSATION_TODOS_FUNCTION_NAME } from "@app/lib/project_todo/analyze_conversation/types";
 import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
@@ -9,9 +9,9 @@ import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 
 export function buildSpec(): AgentActionSpecification {
   return {
-    name: EXTRACT_ACTION_ITEMS_FUNCTION_NAME,
+    name: EXTRACT_CONVERSATION_TODOS_FUNCTION_NAME,
     description:
-      "Extract action items and the conversation topic from the conversation.",
+      "Extract action items, notable facts, and the conversation topic from the conversation.",
     inputSchema: {
       type: "object",
       properties: {
@@ -60,8 +60,32 @@ export function buildSpec(): AgentActionSpecification {
             required: ["text", "source_message_rank", "status"],
           },
         },
+        notable_facts: {
+          type: "array",
+          description: "List of notable facts extracted from the conversation.",
+          items: {
+            type: "object",
+            properties: {
+              sId: {
+                type: "string",
+                description:
+                  "Stable identifier for this notable fact. Copy verbatim from the known notable facts list if this fact was previously tracked. Omit for brand-new facts.",
+              },
+              text: {
+                type: "string",
+                description: "Short description of the notable fact.",
+              },
+              source_message_rank: {
+                type: "number",
+                description:
+                  "Rank of the message where this fact was first mentioned.",
+              },
+            },
+            required: ["text", "source_message_rank"],
+          },
+        },
       },
-      required: ["topic", "action_items"],
+      required: ["topic", "action_items", "notable_facts"],
     },
   };
 }
