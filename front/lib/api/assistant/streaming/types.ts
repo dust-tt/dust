@@ -19,7 +19,6 @@ import type {
   ButlerSuggestionCreatedEvent,
   ButlerThinkingEvent,
   ConversationTitleEvent,
-  GracefulStopRequestedEvent,
   UserMessageNewEvent,
 } from "@app/types/assistant/conversation";
 import type { GenerationTokensEvent } from "@app/types/assistant/generation";
@@ -42,7 +41,6 @@ export type ConversationEvents =
   | ButlerSuggestionCreatedEvent
   | ButlerThinkingEvent
   | ConversationTitleEvent
-  | GracefulStopRequestedEvent
   | AgentMessageNewEvent
   | UserMessageNewEvent
   | AgentMessageDoneEvent;
