@@ -76,7 +76,6 @@ export interface MCPApproveExecutionEvent extends ToolExecution {
 export interface ToolAskUserQuestionEvent extends ToolExecution {
   type: "tool_ask_user_question";
   question: UserQuestion;
-  questionMetadata: Record<string, unknown> | null;
 }
 
 export type ToolEarlyExitEvent = {
