@@ -1,7 +1,7 @@
 export type TodoVersionedActionItemStatus = "open" | "done";
 
 export type TodoVersionedActionItem = {
-  key: string;
+  sId: string;
   text: string;
   assigneeUserId: string | null;
   assigneeName: string | null;
