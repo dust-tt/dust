@@ -6,7 +6,7 @@ Three phases of bitesize PRs. Each PR should be small, reviewable, and independe
 
 Foundational refactors that don't change any user-facing behavior.
 
-### - [ ] PR 1.1 — Add `finalizeSucceededAgentMessage` in `conversation.ts`
+### - [x] PR 1.1 — Add `finalizeSucceededAgentMessage` in `conversation.ts`
 
 Move the agent message success status update behind the conversation advisory lock. Today,
 `updateAgentMessageDBAndMemory` does a bare `UPDATE` on `AgentMessageModel.status`. Extract
