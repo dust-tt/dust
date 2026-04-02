@@ -1,8 +1,8 @@
 import animSpinnerBrand from "@sparkle/lottie/spinnerDust";
 import animSpinnerBrandColored from "@sparkle/lottie/spinnerDustColored";
 import animSpinnerBrandColoredGray from "@sparkle/lottie/spinnerDustColoredGray";
-import Lottie from "lottie-react";
-import React from "react";
+import Lottie, { type LottieRefCurrentProps } from "lottie-react";
+import React, { useEffect, useRef } from "react";
 
 type SpinnerBrandSizeType = (typeof SPINNER_DUST_SIZES)[number];
 const SPINNER_DUST_SIZES = ["xs", "sm", "md", "lg", "xl", "2xl"] as const;
@@ -13,6 +13,7 @@ const SPINNER_DUST_VARIANTS = ["mono", "colored", "colored-gray"] as const;
 export interface SpinnerBrandProps {
   size?: SpinnerBrandSizeType;
   variant?: SpinnerBrandVariantType;
+  speed?: number;
 }
 
 const pxSizeClasses: Record<SpinnerBrandSizeType, number> = {
@@ -33,11 +34,18 @@ const animationData: Record<SpinnerBrandVariantType, object> = {
 const SpinnerBrand: React.FC<SpinnerBrandProps> = ({
   size = "md",
   variant = "mono",
+  speed = 1,
 }) => {
   const fullSize = pxSizeClasses[size];
+  const lottieRef = useRef<LottieRefCurrentProps | null>(null);
+
+  useEffect(() => {
+    lottieRef.current?.setSpeed(speed);
+  }, [speed]);
 
   return (
     <Lottie
+      lottieRef={lottieRef}
       animationData={animationData[variant]}
       style={{ width: `${fullSize}px`, height: `${fullSize}px` }}
       loop

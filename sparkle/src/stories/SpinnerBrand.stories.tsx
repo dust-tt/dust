@@ -21,6 +21,10 @@ const meta = {
       control: { type: "select" },
       description: "Visual variant of the spinner",
     },
+    speed: {
+      control: { type: "number", min: 0.1, max: 5, step: 0.1 },
+      description: "Animation speed multiplier (1 = normal)",
+    },
   },
 } satisfies Meta<typeof SpinnerBrand>;
 
@@ -31,6 +35,7 @@ export const Playground: Story = {
   args: {
     size: "md",
     variant: "mono",
+    speed: 1,
   },
 };
 
