@@ -87,7 +87,7 @@ const SuggestionList = forwardRef<SuggestionListHandle, SuggestionProps>(
           return true;
         }
 
-        if (event.key === "Enter") {
+        if (event.key === "Enter" || event.key === "Tab" || event.key === " ") {
           selectItem(selectedIndex);
           return true;
         }
@@ -596,6 +596,7 @@ type RichTextAreaProps = {
   }) => void;
   onSuggestionsChange?: (hasSuggestions: boolean) => void;
   onTextChange?: (value: string) => void;
+  onMentionsChange?: (hasMentions: boolean) => void;
   onFocus?: () => void;
   onBlur?: () => void;
   scrollContainer?: HTMLElement | null;
@@ -617,6 +618,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       onAskSidekick,
       onSuggestionsChange,
       onTextChange,
+      onMentionsChange,
       onFocus,
       onBlur,
       scrollContainer,
@@ -919,6 +921,25 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         editor.off("update", emit);
       };
     }, [editor, onTextChange]);
+
+    useEffect(() => {
+      if (!editor || !onMentionsChange) return;
+      const check = () => {
+        let found = false;
+        editor.state.doc.descendants((node) => {
+          if (node.type.name === "mention") {
+            found = true;
+            return false;
+          }
+        });
+        onMentionsChange(found);
+      };
+      check();
+      editor.on("update", check);
+      return () => {
+        editor.off("update", check);
+      };
+    }, [editor, onMentionsChange]);
 
     const acceptAllSuggestions = useMemo(() => {
       return () => {

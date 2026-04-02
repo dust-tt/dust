@@ -22,6 +22,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { NewCitation, NewCitationGrid } from "./NewCitation";
 import { RichTextArea, type RichTextAreaHandle } from "./RichTextArea";
 
+// Set to "2000ms" to debug animations, "300ms" for production.
+const TRANSITION_DURATION = "200ms";
+const TRANSITION_EASING = "cubic-bezier(0.34, 1.15, 0.64, 1)";
+
 type DroppedFile = { id: string; file: File; objectUrl?: string };
 
 interface InputBarProps {
@@ -39,6 +43,7 @@ export function InputBar({
 }: InputBarProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [hasMention, setHasMention] = useState(false);
   const [droppedFiles, setDroppedFiles] = useState<DroppedFile[]>([]);
   const [selectedDroppedFile, setSelectedDroppedFile] =
     useState<DroppedFile | null>(null);
@@ -176,7 +181,11 @@ export function InputBar({
       <div className="s-flex s-w-full s-flex-col">
         {droppedFiles.length > 0 && (
           <NewCitationGrid
-            className="s-pt-2 s-px-2 s-pb-0 s-w-full"
+            className={cn(
+              "s-pt-2 s-px-2 s-pb-0 s-w-full s-transition-all",
+              hasMention &&
+                "s-max-h-0 s-overflow-hidden s-opacity-0 s-pt-0 s-pb-0"
+            )}
             justify="start"
           >
             {droppedFiles.map(({ id, file, objectUrl }) => (
@@ -203,45 +212,84 @@ export function InputBar({
             ))}
           </NewCitationGrid>
         )}
-        <RichTextArea
-          ref={richTextAreaRef}
-          placeholder={placeholder}
-          onFocus={handleFocus}
-          variant="compact"
-          showFormattingMenu
-          showAskSidekickMenu={false}
-          className="placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night"
-        />
-        <div className="s-flex s-w-full s-gap-2 s-p-2 s-pl-4">
-          <Button
-            variant="outline"
-            icon={PlusIcon}
-            size="sm"
-            tooltip="Attach a document"
-            className="md:s-hidden"
+        {/* Text area wrapper – controls height transition in sync with toolbar */}
+        <div
+          style={{
+            transitionDuration: TRANSITION_DURATION,
+            transitionTimingFunction: TRANSITION_EASING,
+          }}
+          className={cn(
+            "s-w-full s-transition-all",
+            hasMention ? "s-max-h-[3rem] s-overflow-hidden" : "s-max-h-96"
+          )}
+        >
+          <RichTextArea
+            ref={richTextAreaRef}
+            placeholder={placeholder}
+            onFocus={handleFocus}
+            onMentionsChange={setHasMention}
+            variant="compact"
+            showFormattingMenu={!hasMention}
+            showAskSidekickMenu={false}
+            className={cn(
+              "placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night",
+              hasMention && "!s-pt-3 !s-pb-3 !s-pl-4 !s-pr-20"
+            )}
           />
-          <div className="s-hidden s-gap-0 md:s-flex">
+        </div>
+        {/* Toolbar row – collapses to 0 height when mention is active */}
+        <div
+          style={{
+            transitionDuration: TRANSITION_DURATION,
+            transitionTimingFunction: TRANSITION_EASING,
+          }}
+          className={cn(
+            "s-flex s-w-full s-items-center s-gap-2 s-pl-4 s-pr-4 s-overflow-hidden",
+            "s-transition-all",
+            hasMention ? "s-max-h-0 s-py-0" : "s-max-h-16 s-py-2"
+          )}
+        >
+          <div
+            style={{
+              transitionDuration: hasMention ? "50ms" : "150ms",
+              transitionTimingFunction: TRANSITION_EASING,
+            }}
+            className={cn(
+              "s-flex s-items-center s-gap-0 s-transition-opacity",
+              hasMention ? "s-opacity-0" : "s-opacity-100"
+            )}
+          >
             <Button
-              variant="ghost-secondary"
-              icon={AttachmentIcon}
-              size="xs"
+              variant="outline"
+              icon={PlusIcon}
+              size="sm"
               tooltip="Attach a document"
+              className="md:s-hidden"
             />
-            <Button
-              variant="ghost-secondary"
-              icon={BoltIcon}
-              size="xs"
-              tooltip="Add functionality"
-            />
-            <Button
-              variant="ghost-secondary"
-              icon={RobotIcon}
-              size="xs"
-              tooltip="Mention an Agent"
-            />
+            <div className="s-hidden s-gap-0 md:s-flex">
+              <Button
+                variant="ghost-secondary"
+                icon={AttachmentIcon}
+                size="xs"
+                tooltip="Attach a document"
+              />
+              <Button
+                variant="ghost-secondary"
+                icon={BoltIcon}
+                size="xs"
+                tooltip="Add functionality"
+              />
+              <Button
+                variant="ghost-secondary"
+                icon={RobotIcon}
+                size="xs"
+                tooltip="Mention an Agent"
+              />
+            </div>
           </div>
           <div className="s-grow" />
-          <div className="s-flex s-items-center s-gap-2 md:s-gap-1">
+          {/* Invisible spacer to reserve space for the absolutely-positioned send/mic */}
+          <div className="s-flex s-items-center s-gap-2 md:s-gap-1 s-invisible">
             <Button
               variant="ghost-secondary"
               icon={MicIcon}
@@ -252,11 +300,25 @@ export function InputBar({
               variant="highlight"
               icon={ArrowUpIcon}
               size="xs"
-              tooltip="Send message"
               isRounded
             />
           </div>
         </div>
+      </div>
+
+      {/* Single send/mic – absolutely positioned; moves vertically as container height changes */}
+      <div
+        className="s-absolute s-right-4 s-flex s-items-center s-gap-2 md:s-gap-1"
+        style={{ bottom: "10px" }}
+      >
+        <Button variant="ghost-secondary" icon={MicIcon} size="xs" isRounded />
+        <Button
+          variant="highlight"
+          icon={ArrowUpIcon}
+          size="xs"
+          tooltip="Send message"
+          isRounded
+        />
       </div>
 
       {/* Image preview dialog */}
