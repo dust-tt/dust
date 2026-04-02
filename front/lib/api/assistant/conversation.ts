@@ -16,6 +16,7 @@ import {
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
+import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR_WINDOW_SECONDS,
@@ -45,6 +46,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString } from "@app/lib/mentions/format";
+import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageModel,
   ConversationModel,
@@ -1125,7 +1127,6 @@ export async function editUserMessage(
       const userMessageWithoutMentions = await createUserMessage(auth, {
         conversation,
         content,
-
         metadata: {
           type: "edit",
           message,
@@ -1341,6 +1342,141 @@ export async function handleAgentMessage(
       { ...agentMessage, richMentions },
     ]);
   }
+}
+
+export async function createAgentMessageFromText(
+  auth: Authenticator,
+  {
+    conversation,
+    parentId,
+    rank,
+    content,
+    agentConfiguration,
+    skipToolsValidation = true,
+  }: {
+    conversation: ConversationType;
+    parentId: ModelId;
+    rank: number;
+    content: string;
+    agentConfiguration: { sId: string; version: number };
+    skipToolsValidation?: boolean;
+  }
+): Promise<{
+  id: ModelId;
+  sId: string;
+  agentMessageId: ModelId;
+}> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const created = await withTransaction(async (transaction) => {
+    const agentMessageRow = await AgentMessageModel.create(
+      {
+        status: "succeeded",
+        agentConfigurationId: agentConfiguration.sId,
+        agentConfigurationVersion: agentConfiguration.version,
+        workspaceId: owner.id,
+        skipToolsValidation,
+        runIds: null,
+        completedAt: new Date(),
+        modelInteractionDurationMs: 0,
+        prunedContext: false,
+        errorCode: null,
+        errorMessage: null,
+        errorMetadata: null,
+      },
+      { transaction }
+    );
+
+    const messageRow = await MessageModel.create(
+      {
+        sId: generateRandomModelSId(),
+        rank,
+        conversationId: conversation.id,
+        branchId: conversation.branchId
+          ? getResourceIdFromSId(conversation.branchId)
+          : null,
+        parentId,
+        agentMessageId: agentMessageRow.id,
+        workspaceId: owner.id,
+      },
+      { transaction }
+    );
+
+    await AgentStepContentModel.create(
+      {
+        workspaceId: owner.id,
+        agentMessageId: agentMessageRow.id,
+        step: 0,
+        index: 0,
+        version: 0,
+        type: "text_content",
+        value: { type: "text_content", value: content },
+      },
+      { transaction }
+    );
+
+    return {
+      id: messageRow.id,
+      sId: messageRow.sId,
+      agentMessageId: agentMessageRow.id,
+    };
+  });
+
+  const [agentMessageRow, messageRow, parentMessageRow, configuration] =
+    await Promise.all([
+      AgentMessageModel.findOne({
+        where: { id: created.agentMessageId, workspaceId: owner.id },
+      }),
+      MessageModel.findOne({
+        where: { id: created.id, workspaceId: owner.id },
+      }),
+      MessageModel.findOne({
+        where: { id: parentId, workspaceId: owner.id },
+        attributes: ["sId"],
+      }),
+      getAgentConfiguration(auth, {
+        agentId: agentConfiguration.sId,
+        agentVersion: agentConfiguration.version,
+        variant: "light",
+      }),
+    ]);
+
+  if (agentMessageRow && messageRow && parentMessageRow && configuration) {
+    await handleAgentMessage(auth, {
+      conversation,
+      agentMessage: {
+        id: messageRow.id,
+        agentMessageId: agentMessageRow.id,
+        created: agentMessageRow.createdAt.getTime(),
+        completedTs: agentMessageRow.completedAt?.getTime() ?? null,
+        sId: messageRow.sId,
+        type: "agent_message",
+        visibility: messageRow.visibility,
+        version: messageRow.version,
+        parentMessageId: parentMessageRow.sId,
+        parentAgentMessageId: null,
+        status: agentMessageRow.status,
+        actions: [],
+        content,
+        chainOfThought: null,
+        error: null,
+        configuration,
+        rank: messageRow.rank,
+        branchId: conversation.branchId ?? null,
+        skipToolsValidation: agentMessageRow.skipToolsValidation,
+        contents: [],
+        modelInteractionDurationMs: agentMessageRow.modelInteractionDurationMs,
+        completionDurationMs: getCompletionDuration(
+          agentMessageRow.createdAt.getTime(),
+          agentMessageRow.completedAt?.getTime() ?? null,
+          []
+        ),
+        reactions: [],
+      },
+    });
+  }
+
+  return created;
 }
 
 // This method is in charge of re-running an agent interaction (generating a new

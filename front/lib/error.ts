@@ -11,6 +11,11 @@ export type DustErrorCode =
   | "data_source_view_not_found"
   | "space_not_found"
   | "invalid_request_error"
+  // Conversation branch errors
+  | "branch_not_found"
+  | "branch_not_open"
+  | "branch_write_not_authorized"
+  | "branch_has_no_user_message"
   // Data source
   | "data_source_error"
   | "data_source_quota_error"

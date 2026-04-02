@@ -83,6 +83,58 @@ const dateFromDaysAgo = (days: number) => {
 };
 
 describe("ConversationResource", () => {
+  describe("fetchByModelIds", () => {
+    it("should fetch by model ids within workspace", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      const convo = await ConversationModel.create({
+        workspaceId: workspace.id,
+        sId: generateRandomModelSId(),
+        title: "FetchByModelId test",
+        requestedSpaceIds: [],
+      });
+
+      const fetched = await ConversationResource.fetchByModelIds(auth, [
+        convo.id,
+      ]);
+      expect(fetched.length).toBe(1);
+      expect(fetched[0].id).toBe(convo.id);
+      expect(fetched[0].workspaceId).toBe(workspace.id);
+    });
+
+    it("should not return conversations from another workspace", async () => {
+      const workspaceA = await WorkspaceFactory.basic();
+      const userA = await UserFactory.basic();
+      await MembershipFactory.associate(workspaceA, userA, { role: "user" });
+      const authA = await Authenticator.fromUserIdAndWorkspaceId(
+        userA.sId,
+        workspaceA.sId
+      );
+
+      const workspaceB = await WorkspaceFactory.basic();
+      const userB = await UserFactory.basic();
+      await MembershipFactory.associate(workspaceB, userB, { role: "user" });
+      const convoB = await ConversationModel.create({
+        workspaceId: workspaceB.id,
+        sId: generateRandomModelSId(),
+        title: "FetchByModelId cross-workspace test",
+        requestedSpaceIds: [],
+      });
+
+      const fetched = await ConversationResource.fetchByModelIds(authA, [
+        convoB.id,
+      ]);
+      expect(fetched.length).toBe(0);
+    });
+  });
+
   describe("listAllBeforeDate", () => {
     let auth: Authenticator;
     let convo1Id: string;
