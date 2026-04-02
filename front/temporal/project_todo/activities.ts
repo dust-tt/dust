@@ -1,6 +1,8 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { Authenticator, type AuthenticatorType } from "@app/lib/auth";
+import { analyzeConversationTodos } from "@app/lib/project_todo/analyze_conversation";
 import logger from "@app/logger/logger";
+import { Context } from "@temporalio/activity";
 
 export async function analyzeProjectTodosActivity({
   authType,
@@ -33,26 +35,10 @@ export async function analyzeProjectTodosActivity({
   const conversation = conversationRes.value;
 
   // Skip very short conversations.
-  const messageCount = conversation.content.length;
-  if (messageCount < 2) {
+  if (conversation.content.length < 2) {
     return;
   }
 
-  // TODO: call LLM to extract action items, key decisions, notable facts, and
-  // agent suggestions from the conversation, then persist with:
-  //   ConversationTodoVersionedResource.makeNew(auth, {
-  //     conversationId: conversation.id,
-  //     runId: <uuid>,
-  //     topic: ...,
-  //     actionItems: [...],
-  //     notableFacts: [...],
-  //     keyDecisions: [...],
-  //     agentSuggestions: [...],
-  //     lastRunAt: new Date(),
-  //     lastProcessedMessageRank: <highest rank seen>,
-  //   });
-  logger.info(
-    { conversationId, messageId, messageCount },
-    "Conversation todo: analysis not yet implemented"
-  );
+  const { runId } = Context.current().info.workflowExecution;
+  await analyzeConversationTodos(auth, { conversation, messageId, runId });
 }
