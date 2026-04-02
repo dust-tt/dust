@@ -158,7 +158,7 @@ export async function createConversation(
     triggerId?: ModelId | null;
     spaceId: ModelId | null;
     metadata?: ConversationMetadata;
-  }
+  },
 ): Promise<ConversationType> {
   const owner = auth.getNonNullableWorkspace();
   let space: SpaceResource | null = null;
@@ -185,7 +185,7 @@ export async function createConversation(
       requestedSpaceIds: spaceId ? [spaceId] : [],
       metadata: metadata ?? {},
     },
-    space
+    space,
   );
 
   const conversationAsJson = conversation.toJSON();
@@ -232,14 +232,14 @@ export async function deleteOrLeaveConversation(
   }: {
     conversationId: string;
     forceDelete?: boolean;
-  }
+  },
 ): Promise<Result<{ success: true }, Error>> {
   const conversation = await ConversationResource.fetchById(
     auth,
     conversationId,
     {
       includeDeleted: true,
-    }
+    },
   );
 
   if (!conversation) {
@@ -275,7 +275,7 @@ export async function deleteOrLeaveConversation(
         wasLastMember: leaveRes.value.wasLastMember,
         isConversationCreator,
       },
-      "Conversation soft-deleted"
+      "Conversation soft-deleted",
     );
     await conversation.updateVisibilityToDeleted();
   }
@@ -286,7 +286,7 @@ export async function deleteOrLeaveConversation(
 export async function getConversationMessageType(
   auth: Authenticator,
   conversation: ConversationWithoutContentType,
-  messageId: string
+  messageId: string,
 ): Promise<"user_message" | "agent_message" | "content_fragment" | null> {
   if (!auth.workspace()) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -307,7 +307,7 @@ export async function getConversationMessageType(
   if (message.branchSId) {
     const branch = await ConversationBranchResource.fetchById(
       auth,
-      message.branchSId
+      message.branchSId,
     );
     if (!branch || !branch.canRead(auth)) {
       return null;
@@ -329,7 +329,7 @@ export async function getConversationMessageType(
 
 export async function getMessageConversationId(
   auth: Authenticator,
-  { messageId }: { messageId: number }
+  { messageId }: { messageId: number },
 ): Promise<{ conversationId: string | null; messageId: string | null }> {
   const messageRow = await MessageModel.findOne({
     attributes: ["sId"],
@@ -354,7 +354,7 @@ export async function getMessageConversationId(
 
 export async function getLastUserMessage(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType
+  conversation: ConversationWithoutContentType,
 ): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
@@ -379,7 +379,7 @@ export async function getLastUserMessage(
   const content = message?.userMessage?.content;
   if (!content) {
     return new Err(
-      new Error("Error suggesting agents: no content found in conversation.")
+      new Error("Error suggesting agents: no content found in conversation."),
     );
   }
   return new Ok(content);
@@ -390,7 +390,7 @@ export async function getLastUserMessage(
  */
 export async function getLastUserMessageMentions(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType
+  conversation: ConversationWithoutContentType,
 ): Promise<Result<string[], Error>> {
   const owner = auth.getNonNullableWorkspace();
 
@@ -432,8 +432,8 @@ export async function getLastUserMessageMentions(
   const mentions: string[] = removeNulls(
     (message as any).mentions.map(
       (mention: MentionModel) =>
-        mention.agentConfigurationId ?? mention.user?.sId
-    )
+        mention.agentConfigurationId ?? mention.user?.sId,
+    ),
   );
   return new Ok(mentions);
 }
@@ -451,7 +451,7 @@ export async function getLastUserMessageMentions(
 async function getConversationRankVersionLock(
   auth: Authenticator,
   conversation: ConversationWithoutContentType,
-  t: Transaction
+  t: Transaction,
 ) {
   const now = new Date();
   // Get a lock using the unique lock key (number withing postgresql BigInt range).
@@ -470,14 +470,14 @@ async function getConversationRankVersionLock(
       duration: new Date().getTime() - now.getTime(),
       lockKey,
     },
-    "[ASSISTANT_TRACE] Advisory lock acquired"
+    "[ASSISTANT_TRACE] Advisory lock acquired",
   );
 }
 
 export function isUserMessageContextValid(
   auth: Authenticator,
   req: NextApiRequest,
-  context: UserMessageContext
+  context: UserMessageContext,
 ): boolean {
   const authMethod = auth.authMethod();
 
@@ -553,7 +553,7 @@ export async function postUserMessage(
     agenticMessageData?: AgenticMessageData;
     skipToolsValidation: boolean;
     doNotAssociateUser?: boolean;
-  }
+  },
 ): Promise<
   Result<
     {
@@ -651,7 +651,7 @@ export async function postUserMessage(
 
     const isProviderEnabled = isProviderWhitelisted(
       auth,
-      agentConfig.model.providerId
+      agentConfig.model.providerId,
     );
     if (!isProviderEnabled) {
       // Stop processing if any agent uses a disabled provider.
@@ -714,11 +714,11 @@ export async function postUserMessage(
         logger.error("User is null, cannot create branch without a user.");
       } else if (mentions.some(isUserMention)) {
         logger.info(
-          "Message has user mentions, for now we do not support branching with user mentions."
+          "Message has user mentions, for now we do not support branching with user mentions.",
         );
       } else if (conversation.content.length === 0) {
         logger.info(
-          "Conversation has no content, cannot create branch as the start of the conversation."
+          "Conversation has no content, cannot create branch as the start of the conversation.",
         );
       } else {
         // Get the last message in the conversation.
@@ -726,7 +726,7 @@ export async function postUserMessage(
           conversation.content[conversation.content.length - 1].at(-1);
         if (!previousMessage) {
           logger.error(
-            "Last message in conversation has no content, cannot create branch."
+            "Last message in conversation has no content, cannot create branch.",
           );
         } else {
           // Create a new branch for the conversation.
@@ -738,7 +738,7 @@ export async function postUserMessage(
               state: "open",
               userId: user.id,
             },
-            t
+            t,
           );
 
           // Update the conversation with the new branch id so the rest of the functions will operate on the branch.
@@ -756,7 +756,7 @@ export async function postUserMessage(
         {
           conversation,
         },
-        t
+        t,
       );
     }
 
@@ -854,11 +854,11 @@ export async function postUserMessage(
 
   const conversationRes = await ConversationResource.fetchById(
     auth,
-    conversation.sId
+    conversation.sId,
   );
   if (!conversationRes) {
     throw new Error(
-      "Unexpected: Conversation not found after posting message."
+      "Unexpected: Conversation not found after posting message.",
     );
   }
   await triggerConversationUnreadNotifications(auth, {
@@ -908,7 +908,7 @@ export async function postUserMessage(
         ...userMessage,
         contentFragments: getRelatedContentFragments(conversation, userMessage),
       },
-      agentMessages
+      agentMessages,
     ),
     // If the conversation did not have any agent messages yet, we might not have a title, this ensure we generate one.
     // Doing after 3 messages to avoid generating a title too early.
@@ -929,7 +929,7 @@ export async function postUserMessage(
 
     if (featureFlags.includes("project_todo")) {
       void launchOrSignalProjectTodoWorkflow(
-        projectTodoAndConversationButlerParams
+        projectTodoAndConversationButlerParams,
       );
 
       if (agentMessages.length === 0) {
@@ -957,7 +957,7 @@ export async function postUserMessage(
  * Can a user mention a given configuration
  */
 function canAccessAgent(
-  agentConfiguration: LightAgentConfigurationType
+  agentConfiguration: LightAgentConfigurationType,
 ): boolean {
   switch (agentConfiguration.status) {
     case "active":
@@ -994,7 +994,7 @@ export async function editUserMessage(
     content: string;
     mentions: MentionType[];
     skipToolsValidation: boolean;
-  }
+  },
 ): Promise<
   Result<
     { userMessage: UserMessageType; agentMessages: AgentMessageType[] },
@@ -1033,8 +1033,8 @@ export async function editUserMessage(
         getAgentConfiguration(auth, {
           agentId: mention.configurationId,
           variant: "light",
-        })
-      )
+        }),
+      ),
     ),
     ConversationResource.upsertParticipation(auth, {
       conversation,
@@ -1059,7 +1059,7 @@ export async function editUserMessage(
 
     const isProviderEnabled = isProviderWhitelisted(
       auth,
-      agentConfig.model.providerId
+      agentConfig.model.providerId,
     );
     if (!isProviderEnabled) {
       // Stop processing if any agent uses a disabled provider.
@@ -1102,7 +1102,7 @@ export async function editUserMessage(
 
       if (!messageRow || !messageRow.userMessage) {
         throw new Error(
-          "Unexpected: Message or UserMessage to edit not found in DB"
+          "Unexpected: Message or UserMessage to edit not found in DB",
         );
       }
 
@@ -1118,7 +1118,7 @@ export async function editUserMessage(
 
       if (newerMessage) {
         throw new UserMessageError(
-          "Invalid user message edit request, this message was already edited."
+          "Invalid user message edit request, this message was already edited.",
         );
       }
 
@@ -1261,7 +1261,7 @@ export async function editUserMessage(
       ...userMessage,
       contentFragments: getRelatedContentFragments(conversation, userMessage),
     },
-    agentMessages
+    agentMessages,
   );
 
   const featureFlags = await getFeatureFlags(auth);
@@ -1274,7 +1274,7 @@ export async function editUserMessage(
 
     if (featureFlags.includes("project_todo")) {
       void launchOrSignalProjectTodoWorkflow(
-        projectTodoAndConversationButlerParams
+        projectTodoAndConversationButlerParams,
       );
 
       if (agentMessages.length === 0) {
@@ -1308,7 +1308,7 @@ export async function handleAgentMessage(
   }: {
     conversation: ConversationWithoutContentType;
     agentMessage: AgentMessageTypeWithoutMentions;
-  }
+  },
 ) {
   if (!agentMessage.content) {
     return new Err({
@@ -1320,7 +1320,7 @@ export async function handleAgentMessage(
     });
   }
   const userMentions = extractFromString(agentMessage.content).filter(
-    isUserMention
+    isUserMention,
   );
 
   const richMentions: RichMentionWithStatus[] = [];
@@ -1332,7 +1332,7 @@ export async function handleAgentMessage(
           message: agentMessage,
           conversation,
           transaction: t,
-        }))
+        })),
       );
     });
 
@@ -1353,7 +1353,7 @@ export async function retryAgentMessage(
   }: {
     conversation: ConversationType;
     message: AgentMessageType;
-  }
+  },
 ): Promise<Result<AgentMessageType, APIErrorWithStatusCode>> {
   // Find the parent user message to get the original context for rate limiting.
   // This ensures retries are counted with the same origin (web vs programmatic) as the original.
@@ -1361,7 +1361,7 @@ export async function retryAgentMessage(
     .flat()
     .find(
       (m): m is UserMessageType =>
-        isUserMessageType(m) && m.sId === message.parentMessageId
+        isUserMessageType(m) && m.sId === message.parentMessageId,
     );
 
   if (!parentUserMessage) {
@@ -1398,7 +1398,7 @@ export async function retryAgentMessage(
           {
             conversation,
           },
-          t
+          t,
         );
       }
 
@@ -1432,7 +1432,7 @@ export async function retryAgentMessage(
       });
       if (newerMessage) {
         throw new AgentMessageError(
-          "Invalid agent message retry request, this message was already retried."
+          "Invalid agent message retry request, this message was already retried.",
         );
       }
 
@@ -1443,7 +1443,7 @@ export async function retryAgentMessage(
       });
       if (!agentConfiguration || !canAccessAgent(agentConfiguration)) {
         throw new AgentMessageError(
-          "Invalid agent message retry request, the agent is no longer available to you."
+          "Invalid agent message retry request, the agent is no longer available to you.",
         );
       }
 
@@ -1455,7 +1455,7 @@ export async function retryAgentMessage(
         });
         if (!canAgentBeUsed) {
           throw new AgentMessageError(
-            "Invalid agent message retry request, the agent is restricted by space usage."
+            "Invalid agent message retry request, the agent is restricted by space usage.",
           );
         }
       }
@@ -1472,7 +1472,7 @@ export async function retryAgentMessage(
 
       if (agentMessages.length !== 1) {
         throw new AgentMessageError(
-          `Unexpected: expected 1 agent message result while retrying agent message, got ${agentMessages.length} instead.`
+          `Unexpected: expected 1 agent message result while retrying agent message, got ${agentMessages.length} instead.`,
         );
       }
 
@@ -1514,7 +1514,7 @@ export async function retryAgentMessage(
   });
   if (parentMessageIndex === -1) {
     throw new Error(
-      `Parent message ${agentMessage.parentMessageId} not found in conversation`
+      `Parent message ${agentMessage.parentMessageId} not found in conversation`,
     );
   }
 
@@ -1533,7 +1533,7 @@ export async function retryAgentMessage(
 
   assert(
     agentConfiguration,
-    "Unreachable: could not find detailed configuration for agent"
+    "Unreachable: could not find detailed configuration for agent",
   );
 
   void launchAgentLoopWorkflow({
@@ -1561,7 +1561,7 @@ export async function retryAgentMessage(
 
     if (featureFlags.includes("project_todo")) {
       void launchOrSignalProjectTodoWorkflow(
-        projectTodoAndConversationButlerParams
+        projectTodoAndConversationButlerParams,
       );
     }
 
@@ -1584,7 +1584,7 @@ export async function postNewContentFragment(
   auth: Authenticator,
   conversation: ConversationType,
   cf: ContentFragmentInputWithFileIdType | ContentFragmentInputWithContentNode,
-  context: ContentFragmentContextType | null
+  context: ContentFragmentContextType | null,
 ): Promise<Result<ContentFragmentType, Error>> {
   const owner = auth.workspace();
   if (!owner || owner.id !== conversation.owner.id) {
@@ -1598,7 +1598,7 @@ export async function postNewContentFragment(
   ) {
     const dsView = await DataSourceViewResource.fetchById(
       auth,
-      cf.nodeDataSourceViewId
+      cf.nodeDataSourceViewId,
     );
     if (!dsView) {
       return new Err(new Error("Data source view not found"));
@@ -1609,8 +1609,8 @@ export async function postNewContentFragment(
     ) {
       return new Err(
         new Error(
-          "Only content fragments from the project space or the global space are allowed in a project conversation"
-        )
+          "Only content fragments from the project space or the global space are allowed in a project conversation",
+        ),
       );
     }
   }
@@ -1666,7 +1666,7 @@ export async function postNewContentFragment(
         return ContentFragmentResource.makeNewVersion(
           supersededContentFragmentId,
           fullBlob,
-          t
+          t,
         );
       } else {
         return ContentFragmentResource.makeNew(fullBlob, t);
@@ -1697,7 +1697,7 @@ export async function postNewContentFragment(
       },
       {
         transaction: t,
-      }
+      },
     );
 
     if (isContentFragmentInputWithContentNode(cf)) {
@@ -1728,7 +1728,7 @@ export async function postNewContentFragment(
 
     if (featureFlags.includes("project_todo")) {
       void launchOrSignalProjectTodoWorkflow(
-        projectTodoAndConversationButlerParams
+        projectTodoAndConversationButlerParams,
       );
       void signalProjectTodoComplete(projectTodoAndConversationButlerParams);
     }
@@ -1751,7 +1751,7 @@ export async function softDeleteUserMessage(
   }: {
     message: UserMessageType;
     conversation: ConversationType;
-  }
+  },
 ): Promise<Result<{ success: true }, ConversationError>> {
   if (message.visibility === "deleted") {
     return new Ok({ success: true });
@@ -1770,7 +1770,7 @@ export async function softDeleteUserMessage(
 
     const relatedContentFragments = getRelatedContentFragments(
       conversation,
-      message
+      message,
     );
 
     const userMessage = await createUserMessage(auth, {
@@ -1796,7 +1796,7 @@ export async function softDeleteUserMessage(
             id: relatedContentFragments.map((cf) => cf.id),
           },
           transaction: t,
-        }
+        },
       );
     }
 
@@ -1808,7 +1808,7 @@ export async function softDeleteUserMessage(
   await publishMessageEventsOnMessagePostOrEdit(
     conversation,
     { ...userMessage, contentFragments: [], mentions: [], richMentions: [] },
-    []
+    [],
   );
 
   auditLog(
@@ -1820,7 +1820,7 @@ export async function softDeleteUserMessage(
     },
     auth.isAdmin()
       ? "Admin deleted a user message"
-      : "User deleted their message"
+      : "User deleted their message",
   );
 
   return new Ok({ success: true });
@@ -1834,7 +1834,7 @@ export async function softDeleteAgentMessage(
   }: {
     message: AgentMessageType;
     conversation: ConversationType;
-  }
+  },
 ): Promise<Result<{ success: true }, ConversationError>> {
   if (message.visibility === "deleted") {
     return new Ok({ success: true });
@@ -1889,7 +1889,7 @@ export async function softDeleteAgentMessage(
       conversationId: conversation.sId,
       messageId: message.sId,
     },
-    "User deleted an agent message"
+    "User deleted an agent message",
   );
 
   return new Ok({ success: true });
@@ -1908,7 +1908,7 @@ async function checkMessagesLimit(
   }: {
     mentions: MentionType[];
     context: UserMessageContext;
-  }
+  },
 ): Promise<Result<void, APIErrorWithStatusCode>> {
   // Skip rate limiting for system-initiated messages (e.g. reinforced agent workflows).
   if (!auth.user() && !auth.key() && auth.authMethod() === "internal") {
@@ -1938,7 +1938,7 @@ async function checkMessagesLimit(
 // This prevents close-to-0 credit attacks where many messages are sent simultaneously
 // before token usage is computed. Rate limit is based on total credit amount in dollars.
 async function checkProgrammaticUsageRateLimit(
-  auth: Authenticator
+  auth: Authenticator,
 ): Promise<MessageLimit> {
   const owner = auth.getNonNullableWorkspace();
   const activeCredits = await CreditResource.listActive(auth);
@@ -1947,15 +1947,16 @@ async function checkProgrammaticUsageRateLimit(
   const totalRemainingCreditsDollars =
     activeCredits.reduce(
       (sum, c) => sum + (c.initialAmountMicroUsd - c.consumedAmountMicroUsd),
-      0
+      0,
     ) / 1_000_000;
 
   // Minimum of 1 to allow at least some messages even with very low credits.
   const maxMessagesPerMinute = Math.max(
     1,
     Math.floor(
-      totalRemainingCreditsDollars / PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE
-    )
+      totalRemainingCreditsDollars /
+        PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE,
+    ),
   );
 
   const remainingMessages = await rateLimiter({
@@ -1971,13 +1972,13 @@ async function checkProgrammaticUsageRateLimit(
         workspaceId: owner.sId,
         totalRemainingCreditsDollars,
       },
-      "Pre-emptive rate limit triggered for programmatic usage."
+      "Pre-emptive rate limit triggered for programmatic usage.",
     );
 
     getStatsDClient().increment(
       "assistant.rate_limiter.programmatic_usage.credit_based_limit_triggered",
       1,
-      { workspace_id: owner.sId }
+      { workspace_id: owner.sId },
     );
 
     return {
@@ -1996,8 +1997,8 @@ async function checkProgrammaticUsageRateLimit(
       const keyMaxMessagesPerMinute = Math.max(
         1,
         Math.floor(
-          remainingCapDollars / PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE
-        )
+          remainingCapDollars / PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE,
+        ),
       );
 
       const keyRemainingMessages = await rateLimiter({
@@ -2014,13 +2015,13 @@ async function checkProgrammaticUsageRateLimit(
             keyId: keyAuth.id,
             remainingCapDollars,
           },
-          "Pre-emptive rate limit triggered for key cap."
+          "Pre-emptive rate limit triggered for key cap.",
         );
 
         getStatsDClient().increment(
           "assistant.rate_limiter.key_cap.credit_based_limit_triggered",
           1,
-          { workspace_id: owner.sId }
+          { workspace_id: owner.sId },
         );
 
         return {
@@ -2057,7 +2058,7 @@ function getMessageRateLimitActor(auth: Authenticator):
   }
 
   throw new Error(
-    "Unexpected unauthenticated call to assistant message rate limiter."
+    "Unexpected unauthenticated call to assistant message rate limiter.",
   );
 }
 
@@ -2069,7 +2070,7 @@ async function isMessagesLimitReached(
   }: {
     mentions: MentionType[];
     context: UserMessageContext;
-  }
+  },
 ): Promise<MessageLimit> {
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
@@ -2109,7 +2110,7 @@ async function isMessagesLimitReached(
 
   // Checking rate limit
   const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
-    owner.sId
+    owner.sId,
   );
 
   const userMessagesLimit = 10 * activeSeats;
@@ -2168,13 +2169,13 @@ async function isMessagesLimitReached(
       rateLimiter({
         key: makeAgentMentionsRateLimitKeyForWorkspace(
           owner,
-          maxMessagesTimeframe
+          maxMessagesTimeframe,
         ),
         maxPerTimeframe: effectiveMaxMessages,
         timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
         logger,
-      })
-    )
+      }),
+    ),
   );
   // We let the user talk to all agents if any of the rate limiter answered "ok".
   // Subsequent calls to this function would block the user anyway.
@@ -2194,7 +2195,7 @@ export async function isConversationEventAllowedForAuth(
     event,
   }: {
     event: ConversationEvents;
-  }
+  },
 ): Promise<boolean> {
   const type = event.type;
   switch (type) {
@@ -2204,7 +2205,7 @@ export async function isConversationEventAllowedForAuth(
         // It's okay to fetch the branch here because theses events are only sent once per message.
         const branch = await ConversationBranchResource.fetchById(
           auth,
-          event.message.branchId
+          event.message.branchId,
         );
         return !!branch && branch.canRead(auth);
       }
@@ -2226,7 +2227,7 @@ export async function isConversationEventAllowedForAuth(
  * This ensures the status transition is serialized against other conversation operations (e.g.
  * postUserMessage's pending path in the future).
  */
-export async function finalizeAgentMessage(
+export async function updateAgentMessageWithFinalStatus(
   auth: Authenticator,
   {
     conversation,
@@ -2238,7 +2239,7 @@ export async function finalizeAgentMessage(
     agentMessage: AgentMessageType;
     status: "succeeded" | "cancelled" | "failed";
     error?: ToolErrorEvent["error"];
-  }
+  },
 ): Promise<{
   completedTs: number;
   status: "succeeded" | "cancelled" | "failed";
@@ -2266,7 +2267,7 @@ export async function finalizeAgentMessage(
           workspaceId: auth.getNonNullableWorkspace().id,
         },
         transaction: t,
-      }
+      },
     );
   });
 

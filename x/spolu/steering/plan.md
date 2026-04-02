@@ -6,16 +6,16 @@ Three phases of bitesize PRs. Each PR should be small, reviewable, and independe
 
 Foundational refactors that don't change any user-facing behavior.
 
-### - [x] PR 1.1 — Add `finalizeAgentMessage` in `conversation.ts`
+### - [x] PR 1.1 — Add `updateAgentMessageWithFinalStatus` in `conversation.ts`
 
 Move all agent message terminal status updates behind the conversation advisory lock.
 
-- Add `finalizeAgentMessage()` to `front/lib/api/assistant/conversation.ts` that:
+- Add `updateAgentMessageWithFinalStatus()` to `front/lib/api/assistant/conversation.ts` that:
   - Takes `status: "succeeded" | "cancelled" | "failed"` and optional `error`
   - Acquires `getConversationRankVersionLock`
   - Updates `AgentMessageModel.status` + `completedAt` (+ error fields if applicable)
   - Returns `{ completedTs, status }`
-- Update `updateAgentMessageDBAndMemory` in `common.ts` to delegate to `finalizeAgentMessage`
+- Update `updateAgentMessageDBAndMemory` in `common.ts` to delegate to `updateAgentMessageWithFinalStatus`
   for `"status"` and `"error"` update types via discriminated union (conversation required at
   compile time for terminal updates only).
 - In-memory `agentMessage` mutation stays in `common.ts` (caller side).
@@ -131,9 +131,9 @@ Behind `enable_steering_behavior` feature flag:
 - Update `finalizeGracefullyStoppedAgentLoopActivity` to call this function, publish
   `UserMessagePromotedEvent` events, publish `AgentMessageNewEvent`, launch new agent loop.
 
-### - [ ] PR 3.4 — Safety net in `finalizeAgentMessage` for succeeded path
+### - [ ] PR 3.4 — Safety net in `updateAgentMessageWithFinalStatus` for succeeded path
 
-- Update `finalizeAgentMessage()` to check for orphaned pending messages when `status` is
+- Update `updateAgentMessageWithFinalStatus()` to check for orphaned pending messages when `status` is
   `"succeeded"` and promote them (same logic as `finalizeGracefulStopAgentMessage`).
 - This handles the edge case where the graceful stop signal was lost or arrived after the loop
   already decided to exit naturally.
