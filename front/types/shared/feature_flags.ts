@@ -270,6 +270,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable Metronome usage event emission (llm_usage, tool_use) for this workspace.",
     stage: "dust_only",
   },
+  gong_tool: {
+    description: "Gong MCP tool for sales conversation analytics",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

@@ -128,6 +128,7 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   val_town: "connectors",
   vanta: "connectors",
   front: "connectors",
+  gong: "connectors",
   zendesk: "connectors",
   ashby: "connectors",
 
