@@ -509,7 +509,7 @@ describe("listConversationWithAgentCreatedBeforeDate", () => {
           cutoffDate: dateFromDaysAgo(1),
         }
       );
-    
+
     const conversationsAgent1Ids = conversationsAgent1.map((c) => c.sId);
     expect(conversationsAgent1.length).toBe(1);
     expect(conversationsAgent1Ids).toContain(convo4Id);
