@@ -51,6 +51,7 @@ function childAgentStreamReducer(
       return state;
     }
 
+    case "agent_message_gracefully_stopped":
     case "agent_message_success":
       return {
         response: event.message.content ?? state.response,
@@ -62,7 +63,6 @@ function childAgentStreamReducer(
     case "tool_error":
       return { ...state, status: "error" };
 
-    case "agent_message_gracefully_stopped":
     case "agent_generation_cancelled":
       return { ...state, status: "done" };
 
