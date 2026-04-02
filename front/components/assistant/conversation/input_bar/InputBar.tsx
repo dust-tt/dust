@@ -207,6 +207,7 @@ export const InputBar = React.memo(function InputBar({
     const shouldInjectSelectedAgent =
       singleAgentInput &&
       selectedSingleAgent &&
+      rawMentions.length > 0 &&
       !rawMentions.some((m) => m.id === selectedSingleAgent.id);
 
     const allMentions = shouldInjectSelectedAgent

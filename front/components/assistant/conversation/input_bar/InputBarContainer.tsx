@@ -78,6 +78,44 @@ const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
 const FADE_OUT_TRANSITION = "50ms ease-out";
 const FADE_IN_TRANSITION = "150ms ease-out";
 
+function getButtonsTransitionStyle(
+  singleAgentInput: boolean,
+  hideButtons: boolean
+): React.CSSProperties | undefined {
+  if (!singleAgentInput) {
+    return undefined;
+  }
+  const opacityTransition = hideButtons
+    ? FADE_OUT_TRANSITION
+    : FADE_IN_TRANSITION;
+  return {
+    maxWidth: hideButtons ? 0 : 500,
+    opacity: hideButtons ? 0 : 1,
+    overflow: "hidden",
+    transition: `max-width ${COLLAPSE_TRANSITION}, opacity ${opacityTransition}`,
+  };
+}
+
+function getToolbarRowTransitionStyle(
+  singleAgentInput: boolean,
+  hideButtons: boolean
+): React.CSSProperties | undefined {
+  if (!singleAgentInput) {
+    return undefined;
+  }
+  const opacityTransition = hideButtons
+    ? FADE_OUT_TRANSITION
+    : FADE_IN_TRANSITION;
+  return {
+    maxHeight: hideButtons ? 0 : 100,
+    opacity: hideButtons ? 0 : 1,
+    overflow: "hidden",
+    paddingTop: hideButtons ? 0 : undefined,
+    paddingBottom: hideButtons ? 0 : undefined,
+    transition: `max-height ${COLLAPSE_TRANSITION}, opacity ${opacityTransition}, padding ${COLLAPSE_TRANSITION}`,
+  };
+}
+
 export const INPUT_BAR_ACTIONS = [
   "capabilities",
   "attachment",
@@ -155,8 +193,8 @@ const InputBarContainer = ({
   const [hasUserMention, setHasUserMention] = useState(false);
 
   // Auto-select the "dust" agent by default in single-agent mode for new conversations.
-  // Skip when a human is mentioned — the user explicitly chose to talk to a person, not an agent.
-  if (singleAgentInput && !conversation && !selectedSingleAgent && !hasUserMention && allAgents.length > 0) {
+  // Skip when a human is mentioned or when sticky mentions are provided (e.g. agent builder).
+  if (singleAgentInput && !conversation && !selectedSingleAgent && !hasUserMention && !stickyMentions?.length && allAgents.length > 0) {
     const dustAgent = allAgents.find(
       (a) => a.sId === GLOBAL_AGENTS_SID.DUST
     );
@@ -178,7 +216,6 @@ const InputBarContainer = ({
   >(null);
   const [pastedCount, setPastedCount] = useState(0);
   const [isEmpty, setIsEmpty] = useState(true);
-  // In single-agent mode, set to false when a human is mentioned to hide agents from the @ dropdown.
   // A ref so the mention suggestion plugin (which lives outside React) can read it synchronously.
   const shouldSuggestAgentRef = useRef(true);
   const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
@@ -461,29 +498,20 @@ const InputBarContainer = ({
   });
 
   // When a user is mentioned in single-agent mode, deselect the agent and clear capabilities.
-  // TODO: Refactor to avoid cascading re-runs — each deselect call mutates a dependency array,
-  // re-triggering this effect until all arrays are empty.
-  useEffect(() => {
-    shouldSuggestAgentRef.current = !(singleAgentInput && hasUserMention);
-    if (singleAgentInput && hasUserMention) {
+  // Uses a ref so the editor listener always calls the latest closure without needing
+  // all the deselection callbacks/arrays as effect dependencies.
+  const onEditorMentionsChangedRef = useRef((_userMentioned: boolean) => {});
+  
+  onEditorMentionsChangedRef.current = (userMentioned: boolean) => {
+    shouldSuggestAgentRef.current = !(singleAgentInput && userMentioned);
+    if (singleAgentInput && userMentioned) {
       setSelectedSingleAgent(null);
       selectedMCPServerViews.forEach((sv) => onMCPServerViewDeselect(sv));
       selectedSkills.forEach((s) => onSkillDeselect(s));
       attachedNodes.forEach((n) => onNodeUnselect(n));
       fileUploaderService.resetUpload();
     }
-  }, [
-    singleAgentInput,
-    hasUserMention,
-    setSelectedSingleAgent,
-    selectedMCPServerViews,
-    onMCPServerViewDeselect,
-    selectedSkills,
-    onSkillDeselect,
-    attachedNodes,
-    onNodeUnselect,
-    fileUploaderService,
-  ]);
+  };
 
   // Update the editor ref when the editor is created and listen for updates to the editor.
   useEffect(() => {
@@ -493,7 +521,9 @@ const InputBarContainer = ({
       // Auto-save draft when content changes and track user mentions.
       const { markdown, mentions } = editorService.getMarkdownAndMentions();
       saveDraft(markdown);
-      setHasUserMention(mentions.some((m) => m.type === "user"));
+      const userMentioned = mentions.some((m) => m.type === "user");
+      setHasUserMention(userMentioned);
+      onEditorMentionsChangedRef.current(userMentioned);
     };
 
     if (editorRef.current) {
@@ -767,31 +797,14 @@ const InputBarContainer = ({
 
   const isRecording = voiceTranscriberService.status === "recording";
 
-  const opacityTransition = hideButtons
-    ? FADE_OUT_TRANSITION
-    : FADE_IN_TRANSITION;
-
-  const buttonsTransitionStyle: React.CSSProperties | undefined =
-    singleAgentInput
-      ? {
-          maxWidth: hideButtons ? 0 : 500,
-          opacity: hideButtons ? 0 : 1,
-          overflow: "hidden",
-          transition: `max-width ${COLLAPSE_TRANSITION}, opacity ${opacityTransition}`,
-        }
-      : undefined;
-
-  const toolbarRowTransitionStyle: React.CSSProperties | undefined =
-    singleAgentInput
-      ? {
-          maxHeight: hideButtons ? 0 : 100,
-          opacity: hideButtons ? 0 : 1,
-          overflow: "hidden",
-          paddingTop: hideButtons ? 0 : undefined,
-          paddingBottom: hideButtons ? 0 : undefined,
-          transition: `max-height ${COLLAPSE_TRANSITION}, opacity ${opacityTransition}, padding ${COLLAPSE_TRANSITION}`,
-        }
-      : undefined;
+  const buttonsTransitionStyle = getButtonsTransitionStyle(
+    singleAgentInput,
+    hideButtons
+  );
+  const toolbarRowTransitionStyle = getToolbarRowTransitionStyle(
+    singleAgentInput,
+    hideButtons
+  );
 
   return (
     <div
