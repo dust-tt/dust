@@ -479,9 +479,11 @@ describe("listConversationWithAgentCreatedBeforeDate", () => {
           cutoffDate: dateFromDaysAgo(7),
         }
       );
+
+    const conversationIds = conversations.map((c) => c.sId);
     expect(conversations.length).toBe(2);
-    expect(conversations).toContain(convo1Id);
-    expect(conversations).toContain(convo2Id);
+    expect(conversationIds).toContain(convo1Id);
+    expect(conversationIds).toContain(convo2Id);
   });
   it("should return only conversations created before cutoff date and with the valid agent: 1 day ago", async () => {
     const conversationsAgent0 =
@@ -492,10 +494,12 @@ describe("listConversationWithAgentCreatedBeforeDate", () => {
           cutoffDate: dateFromDaysAgo(1),
         }
       );
+
+    const conversationsAgent0Ids = conversationsAgent0.map((c) => c.sId);
     expect(conversationsAgent0.length).toBe(3);
-    expect(conversationsAgent0).toContain(convo1Id);
-    expect(conversationsAgent0).toContain(convo2Id);
-    expect(conversationsAgent0).toContain(convo3Id);
+    expect(conversationsAgent0Ids).toContain(convo1Id);
+    expect(conversationsAgent0Ids).toContain(convo2Id);
+    expect(conversationsAgent0Ids).toContain(convo3Id);
 
     const conversationsAgent1 =
       await ConversationResource.listConversationWithAgentCreatedBeforeDate(
@@ -505,8 +509,10 @@ describe("listConversationWithAgentCreatedBeforeDate", () => {
           cutoffDate: dateFromDaysAgo(1),
         }
       );
+    
+    const conversationsAgent1Ids = conversationsAgent1.map((c) => c.sId);
     expect(conversationsAgent1.length).toBe(1);
-    expect(conversationsAgent1).toContain(convo4Id);
+    expect(conversationsAgent1Ids).toContain(convo4Id);
   });
 });
 
