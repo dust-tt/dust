@@ -54,6 +54,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "search_candidates": "never_ask",
     "update_job_posting": "high",
   },
+  "ask_user_question": {
+    "ask_user_question": "never_ask",
+  },
   "common_utilities": {
     "generate_random_float": "never_ask",
     "generate_random_number": "never_ask",
