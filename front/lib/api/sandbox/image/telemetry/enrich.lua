@@ -42,6 +42,7 @@ function enrich_message(tag, timestamp, record)
         record["gcsfuse_mount_id"] = mount_id
     end
 
+    record["sandbox_id"] = os.getenv("E2B_SANDBOX_ID")
     record["conversation_id"] = os.getenv("CONVERSATION_ID")
     record["workspace_id"] = os.getenv("WORKSPACE_ID")
 
