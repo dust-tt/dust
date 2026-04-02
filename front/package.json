@@ -28,6 +28,8 @@
     "test": "FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI REDIS_URI=$TEST_REDIS_URI REDIS_CACHE_URI=$TEST_REDIS_URI vitest --run",
     "test:watch": "FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI REDIS_URI=$TEST_REDIS_URI REDIS_CACHE_URI=$TEST_REDIS_URI vitest --watch",
     "test:ci": "vitest --reporter=junit --watch=false --test-timeout=30000",
+    "test:workers": "vitest --run --config vite.smoke.config.mjs tests/temporal/workers.smoke.test.ts",
+    "test:workers:ci": "vitest --run --config vite.smoke.config.mjs --reporter=junit --outputFile=junit-workers.xml tests/temporal/workers.smoke.test.ts",
     "coverage": "vitest --coverage",
     "initdb": "./admin/init_db.sh",
     "create-db-migration": "./create_db_migration_file.sh",

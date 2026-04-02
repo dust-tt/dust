@@ -62,3 +62,35 @@ jobs:
           flaky_summary: true
           group_suite: true
           check_name: Tests Report
+  worker-smoke-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          node-version: "22.22.0"
+          build-sdks: "true"
+      - name: Build Temporal Bundles
+        working-directory: connectors
+        env:
+          CONNECTORS_DATABASE_URI: "postgres://fake:fake@localhost:5432/fake"
+        run: npm run build:temporal-bundles
+      - name: Build Worker
+        working-directory: connectors
+        run: npm run build
+      - name: Run Worker Smoke Tests
+        working-directory: connectors
+        env:
+          NODE_ENV: production
+          USE_TEMPORAL_BUNDLES: "true"
+          CONNECTORS_DATABASE_URI: "postgres://fake:fake@localhost:5432/fake"
+          LOG_LEVEL: error
+        run: npm run test:workers:ci
+      - name: Upload Test Results
+        if: always()
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: "connectors/junit-workers.xml"
+          check_name: Worker Smoke Tests (Connectors)
+          detailed_summary: true
