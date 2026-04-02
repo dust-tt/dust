@@ -21,7 +21,7 @@ export type TodoVersionedNotableFact = {
 export type TodoVersionedKeyDecisionStatus = "decided" | "open";
 
 export type TodoVersionedKeyDecision = {
-  key: string;
+  sId: string;
   text: string;
   relevantUserIds: string[];
   sourceMessageRank: number;
