@@ -1,5 +1,6 @@
 import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
+import type { AgentMessagePhase } from "@app/types/assistant/agent_message_content";
 
 export type Delta = {
   delta: string;
@@ -52,7 +53,7 @@ export interface ToolCallEvent {
 export interface TextGeneratedEvent {
   type: "text_generated";
   content: Text;
-  metadata: LLMClientMetadata;
+  metadata: LLMClientMetadata & { phase?: AgentMessagePhase };
 }
 
 export interface ReasoningGeneratedEvent {

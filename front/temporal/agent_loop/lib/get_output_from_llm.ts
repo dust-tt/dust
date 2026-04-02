@@ -316,6 +316,7 @@ export async function getOutputFromLLMStream(
         contents.push({
           type: "text_content",
           value: event.content.text,
+          metadata: event.metadata,
         });
         generation += event.content.text;
       }
