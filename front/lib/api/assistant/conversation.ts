@@ -2223,8 +2223,8 @@ export async function isConversationEventAllowedForAuth(
 /**
  * Finalize an agent message terminal status behind the conversation advisory lock.
  *
- * This ensures the status transition is serialized against other conversation
- * operations (e.g. postUserMessage's pending path in the future).
+ * This ensures the status transition is serialized against other conversation operations (e.g.
+ * postUserMessage's pending path in the future).
  */
 export async function finalizeAgentMessage(
   auth: Authenticator,
