@@ -6,6 +6,8 @@ import type {
   FileAuthorizationInfo,
 } from "@app/lib/actions/mcp";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
 import type { PickerTokenResponseType } from "@app/pages/api/w/[wId]/google_drive/picker_token";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -14,6 +16,7 @@ import {
   CheckCircleIcon,
   ContentMessage,
   DocumentTextIcon,
+  ExternalLinkIcon,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -35,6 +38,8 @@ export function GoogleDriveFileAuthorizationRequired({
   retryHandler,
 }: GoogleDriveFileAuthorizationRequiredProps) {
   const { user } = useAuth();
+  const clientType = useClientType();
+  const { regionInfo } = useRegionContext();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isOpeningPicker, setIsOpeningPicker] = useState(false);
   const [pickerCredentials, setPickerCredentials] = useState<{
@@ -46,6 +51,7 @@ export function GoogleDriveFileAuthorizationRequired({
   const [credentialsError, setCredentialsError] = useState<string | null>(null);
 
   const { removeCompletedAction } = useBlockedActionsContext();
+  const isExtension = clientType === "extension";
 
   const isTriggeredByCurrentUser = useMemo(
     () => triggeringUser?.sId === user?.sId,
@@ -54,7 +60,7 @@ export function GoogleDriveFileAuthorizationRequired({
 
   // Pre-fetch picker credentials on mount for faster picker opening
   useEffect(() => {
-    if (!isTriggeredByCurrentUser || pickerCredentials) {
+    if (isExtension || !isTriggeredByCurrentUser || pickerCredentials) {
       return;
     }
 
@@ -81,7 +87,13 @@ export function GoogleDriveFileAuthorizationRequired({
     };
 
     void fetchCredentials();
-  }, [isTriggeredByCurrentUser, owner.sId, mcpServerId, pickerCredentials]);
+  }, [
+    isExtension,
+    isTriggeredByCurrentUser,
+    owner.sId,
+    mcpServerId,
+    pickerCredentials,
+  ]);
 
   const handleFilesSelected = useCallback(
     async (files: GooglePickerFile[]) => {
@@ -136,6 +148,12 @@ export function GoogleDriveFileAuthorizationRequired({
     setIsOpeningPicker(true);
   };
 
+  const webAppConversationUrl = `${regionInfo.url}/w/${owner.sId}/conversation/${blockedAction.conversationId}`;
+
+  const handleOpenInWebApp = () => {
+    window.open(webAppConversationUrl, "_blank");
+  };
+
   const isReady = pickerCredentials && isPickerLoaded;
   const isButtonLoading = isOpeningPicker || (!isReady && !credentialsError);
 
@@ -151,23 +169,38 @@ export function GoogleDriveFileAuthorizationRequired({
           <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
             {isAuthorized ? (
               ` your file is now accessible. Continuing...`
+            ) : isExtension ? (
+              <>
+                File authorization is not available in the extension. Please
+                open this conversation in the web app to authorize the file.
+              </>
             ) : (
               <>To access your file, please authorize it once.</>
             )}
           </div>
           {!isAuthorized && (
             <div className="mt-3 flex flex-col justify-end sm:flex-row">
-              <Button
-                label={isButtonLoading ? "Loading..." : "Open File Picker"}
-                variant="highlight"
-                size="xs"
-                icon={DocumentTextIcon}
-                disabled={isButtonLoading || !!error || !!credentialsError}
-                onClick={handleOpenPicker}
-              />
+              {isExtension ? (
+                <Button
+                  label="Open in Web App"
+                  variant="highlight"
+                  size="xs"
+                  icon={ExternalLinkIcon}
+                  onClick={handleOpenInWebApp}
+                />
+              ) : (
+                <Button
+                  label={isButtonLoading ? "Loading..." : "Open File Picker"}
+                  variant="highlight"
+                  size="xs"
+                  icon={DocumentTextIcon}
+                  disabled={isButtonLoading || !!error || !!credentialsError}
+                  onClick={handleOpenPicker}
+                />
+              )}
             </div>
           )}
-          {(error ?? credentialsError) && (
+          {!isExtension && (error ?? credentialsError) && (
             <div className="text-sm text-warning-500">
               {credentialsError ??
                 "Failed to load file picker. Please try again."}
