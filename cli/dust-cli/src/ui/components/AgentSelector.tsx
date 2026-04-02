@@ -18,14 +18,14 @@ interface AgentItem extends BaseItem {
 }
 
 interface AgentSelectorProps {
-  requestedSIds?: string[];
+  requestedAgentIds?: string[];
   selectMultiple?: boolean;
   onError: (error: string) => void;
   onConfirm: (agents: AgentConfiguration[]) => void;
 }
 
 const AgentSelector: FC<AgentSelectorProps> = ({
-  requestedSIds = [],
+  requestedAgentIds = [],
   selectMultiple = true,
   onError,
   onConfirm,
@@ -45,12 +45,12 @@ const AgentSelector: FC<AgentSelectorProps> = ({
   }, [agentsError, onError]);
 
   useEffect(() => {
-    if (!allAgents?.length || requestedSIds.length === 0) {
+    if (!allAgents?.length || requestedAgentIds.length === 0) {
       return;
     }
 
     const requestedAgents: AgentConfiguration[] = [];
-    for (const sId of requestedSIds) {
+    for (const sId of requestedAgentIds) {
       const agent = allAgents.find((agent) => agent.sId === sId);
       if (agent) {
         requestedAgents.push(agent);
@@ -61,7 +61,7 @@ const AgentSelector: FC<AgentSelectorProps> = ({
     }
 
     onConfirm(requestedAgents);
-  }, [allAgents, requestedSIds, onError, onConfirm]);
+  }, [allAgents, requestedAgentIds, onError, onConfirm]);
 
   const renderAgentItem = useCallback(
     (item: AgentItem, isSelected: boolean, isFocused: boolean): ReactNode => {
@@ -156,7 +156,7 @@ const AgentSelector: FC<AgentSelectorProps> = ({
     );
   }
 
-  if (requestedSIds?.length > 0) {
+  if (requestedAgentIds?.length > 0) {
     return null;
   }
 
