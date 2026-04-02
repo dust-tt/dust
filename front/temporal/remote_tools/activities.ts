@@ -3,8 +3,9 @@ import { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
+import type { ModelId } from "@app/types/shared/model_id";
 
-export async function syncRemoteMCPServers(ids: number[]): Promise<void> {
+export async function syncRemoteMCPServers(ids: ModelId[]): Promise<void> {
   logger.info({ msg: "Starting sync of remote_mcp_servers" });
 
   try {

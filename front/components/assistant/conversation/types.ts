@@ -103,6 +103,7 @@ export type VirtuosoMessageListContext = {
   projectSpaceId?: string;
   projectSpaceName?: string;
   branchIdToApprove?: string;
+  setBranchIdToApprove?: (branchId: string | null) => void;
 };
 
 export const areSameRankAndBranch = (

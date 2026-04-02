@@ -64,7 +64,7 @@ export class ConversationBranchResource extends BaseResource<ConversationBranchM
    */
   static async fetchByModelIds(
     auth: Authenticator,
-    ids: number[]
+    ids: ModelId[]
   ): Promise<ConversationBranchResource[]> {
     if (ids.length === 0) {
       return [];
@@ -82,40 +82,6 @@ export class ConversationBranchResource extends BaseResource<ConversationBranchM
     return branches.map(
       (b) => new this(ConversationBranchResource.model, b.get())
     );
-  }
-
-  static async fetchByModelId(
-    id: ModelId | string,
-    transaction?: Transaction
-  ): Promise<ConversationBranchResource | null>;
-  static async fetchByModelId(
-    auth: Authenticator,
-    id: number,
-    { transaction }: { transaction?: Transaction }
-  ): Promise<ConversationBranchResource | null>;
-  static async fetchByModelId(
-    arg1: Authenticator | ModelId | string,
-    arg2?: number | Transaction,
-    arg3?: { transaction?: Transaction }
-  ): Promise<ConversationBranchResource | null> {
-    // Authenticator overload: (auth, id, {transaction})
-    if (
-      typeof arg1 === "object" &&
-      arg1 !== null &&
-      "getNonNullableWorkspace" in arg1
-    ) {
-      const auth = arg1 as Authenticator;
-      const id = arg2 as number;
-      const [branch] = await this.fetchByModelIds(auth, [id]);
-      return branch ?? null;
-    }
-
-    // BaseResource-compatible overload: (id, transaction?)
-    const id = arg1 as ModelId | string;
-    const transaction = arg2 as Transaction | undefined;
-    const parsedId = typeof id === "string" ? parseInt(id, 10) : id;
-    const blob = await this.model.findByPk(parsedId, { transaction });
-    return blob ? new this(this.model, blob.get()) : null;
   }
 
   async fetchAllMessages(

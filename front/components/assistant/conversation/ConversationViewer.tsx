@@ -928,6 +928,7 @@ export const ConversationViewer = ({
       projectSpaceId: conversation?.spaceId ?? undefined,
       projectSpaceName: spaceInfo?.name,
       branchIdToApprove: branchIdToApprove ?? undefined,
+      setBranchIdToApprove,
     };
   }, [
     user,
