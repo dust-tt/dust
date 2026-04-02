@@ -46,36 +46,38 @@ const DEEP_CONVERSATION_FLUSH_INTERVAL_MS = 1000;
  */
 export async function updateAgentMessageDBAndMemory(
   auth: Authenticator,
-  {
-    agentMessage,
-    conversation,
-    update,
-  }: {
-    agentMessage: AgentMessageType;
-    conversation?: ConversationWithoutContentType;
-    update:
-      | {
-          type: "status";
-          status: "succeeded" | "cancelled";
-        }
-      | {
-          type: "error";
-          error: ToolErrorEvent["error"];
-        }
-      | {
-          type: "runIds";
-          runIds: string[];
-        }
-      | {
-          type: "modelInteractionDurationMs";
-          modelInteractionDurationMs: number;
-        }
-      | {
-          type: "prunedContext";
-          prunedContext: true;
-        };
-  }
+  args:
+    | {
+        agentMessage: AgentMessageType;
+        conversation: ConversationWithoutContentType;
+        update:
+          | {
+              type: "status";
+              status: "succeeded" | "cancelled";
+            }
+          | {
+              type: "error";
+              error: ToolErrorEvent["error"];
+            };
+      }
+    | {
+        agentMessage: AgentMessageType;
+        update:
+          | {
+              type: "runIds";
+              runIds: string[];
+            }
+          | {
+              type: "modelInteractionDurationMs";
+              modelInteractionDurationMs: number;
+            }
+          | {
+              type: "prunedContext";
+              prunedContext: true;
+            };
+      }
 ): Promise<void> {
+  const { agentMessage, update } = args;
   const updateType = update.type;
   const where: WhereOptions<InferAttributes<AgentMessageModel>> = {
     id: agentMessage.agentMessageId,
@@ -85,11 +87,9 @@ export async function updateAgentMessageDBAndMemory(
   switch (updateType) {
     case "error":
       {
-        if (!conversation) {
-          throw new Error(
-            "conversation is required for terminal status updates"
-          );
-        }
+        const { conversation } = args as {
+          conversation: ConversationWithoutContentType;
+        };
         const result = await finalizeAgentMessage(auth, {
           conversation,
           agentMessage,
@@ -104,11 +104,9 @@ export async function updateAgentMessageDBAndMemory(
 
     case "status":
       {
-        if (!conversation) {
-          throw new Error(
-            "conversation is required for terminal status updates"
-          );
-        }
+        const { conversation } = args as {
+          conversation: ConversationWithoutContentType;
+        };
         const result = await finalizeAgentMessage(auth, {
           conversation,
           agentMessage,
