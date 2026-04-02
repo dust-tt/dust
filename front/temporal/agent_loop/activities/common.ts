@@ -77,46 +77,51 @@ export async function updateAgentMessageDBAndMemory(
             };
       }
 ): Promise<void> {
-  const { agentMessage, update } = args;
-  const updateType = update.type;
+  const { agentMessage } = args;
   const where: WhereOptions<InferAttributes<AgentMessageModel>> = {
     id: agentMessage.agentMessageId,
     workspaceId: auth.getNonNullableWorkspace().id,
   };
 
-  switch (updateType) {
-    case "error":
-      {
-        const { conversation } = args as {
-          conversation: ConversationWithoutContentType;
-        };
-        const result = await finalizeAgentMessage(auth, {
-          conversation,
-          agentMessage,
-          status: "failed",
-          error: update.error,
-        });
-        agentMessage.status = result.status;
-        agentMessage.completedTs = result.completedTs;
-        agentMessage.error = update.error;
-      }
-      break;
+  // Terminal status updates go through the advisory-locked finalizeAgentMessage.
+  if ("conversation" in args) {
+    const { conversation, update } = args;
+    switch (update.type) {
+      case "error":
+        {
+          const result = await finalizeAgentMessage(auth, {
+            conversation,
+            agentMessage,
+            status: "failed",
+            error: update.error,
+          });
+          agentMessage.status = result.status;
+          agentMessage.completedTs = result.completedTs;
+          agentMessage.error = update.error;
+        }
+        break;
 
-    case "status":
-      {
-        const { conversation } = args as {
-          conversation: ConversationWithoutContentType;
-        };
-        const result = await finalizeAgentMessage(auth, {
-          conversation,
-          agentMessage,
-          status: update.status,
-        });
-        agentMessage.status = result.status;
-        agentMessage.completedTs = result.completedTs;
-      }
-      break;
+      case "status":
+        {
+          const result = await finalizeAgentMessage(auth, {
+            conversation,
+            agentMessage,
+            status: update.status,
+          });
+          agentMessage.status = result.status;
+          agentMessage.completedTs = result.completedTs;
+        }
+        break;
 
+      default:
+        assertNever(update);
+    }
+    return;
+  }
+
+  // Non-terminal metadata updates — no lock needed.
+  const { update } = args;
+  switch (update.type) {
     case "modelInteractionDurationMs":
       {
         const roundedModelInteractionDurationMs = Math.round(
@@ -170,7 +175,7 @@ export async function updateAgentMessageDBAndMemory(
       break;
 
     default:
-      assertNever(updateType);
+      assertNever(update);
   }
 }
 
