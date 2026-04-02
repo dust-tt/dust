@@ -274,6 +274,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Gong MCP tool for sales conversation analytics",
     stage: "dust_only",
   },
+  use_dust_keys: {
+    description:
+      "Force BYOK workspaces to use Dust-managed keys instead of customer-provided keys",
+    // Not really on_demand but we want to be able to enable it for customers
+    stage: "on_demand",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
