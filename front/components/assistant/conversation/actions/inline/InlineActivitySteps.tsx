@@ -1,4 +1,3 @@
-import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { AgentStateClassification } from "@app/components/assistant/conversation/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
@@ -14,13 +13,13 @@ import { isLightAgentMessageWithActionsType } from "@app/types/assistant/convers
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   AnimatedText,
-  ChatBubbleThoughtIcon,
-  CheckIcon,
   ChevronRightIcon,
   cn,
   Icon,
   Markdown,
+  Spinner,
   ToolsIcon,
+  TruncatedContent,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
@@ -136,12 +135,12 @@ export function InlineActivitySteps({
   }
 
   return (
-    <div className="flex flex-col text-sm">
+    <div className={`flex flex-col ${isCollapsed ? "" : "gap-4"}`}>
       <button
         className="self-start text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors duration-200 flex gap-1 items-center"
         onClick={toggleCollapse}
       >
-        {headerLabel ?? <AnimatedText>Thinking…</AnimatedText>}
+        {headerLabel ?? <AnimatedText>Activity</AnimatedText>}
         <span
           className={cn(
             "transition-transform duration-200 ease-out",
@@ -157,30 +156,27 @@ export function InlineActivitySteps({
         style={getCollapseAnimationStyle(isCollapsed)}
       >
         <div className="overflow-hidden">
-          <div className="mt-4 flex flex-col gap-2">
-            {completedSteps.map((step, index) => {
-              const isLast =
-                index === completedSteps.length - 1 &&
-                !showActiveThinking &&
-                !activeAction &&
-                !isDone;
-
+          <div className="flex flex-col gap-4">
+            {completedSteps.map((step) => {
               switch (step.type) {
                 case "thinking":
                   return (
-                    <TimelineRow
-                      key={step.id}
-                      icon={ChatBubbleThoughtIcon}
-                      isLast={isLast}
-                    >
-                      <Markdown
-                        content={step.content}
-                        isStreaming={false}
-                        forcedTextSize="text-sm"
-                        textColor="text-muted-foreground dark:text-muted-foreground-night"
-                        isLastMessage={false}
-                      />
-                    </TimelineRow>
+                    <div key={step.id}>
+                      <TruncatedContent
+                        thresholdPx={220}
+                        collapsedHeightPx={180}
+                        animated
+                        expandLabel="Show more"
+                        collapseLabel="Hide"
+                        buttonVariant="ghost-secondary"
+                      >
+                        <Markdown
+                          content={step.content}
+                          isStreaming={false}
+                          isLastMessage={false}
+                        />
+                      </TruncatedContent>
+                    </div>
                   );
                 case "action": {
                   const actionIcon = step.internalMCPServerName
@@ -194,35 +190,44 @@ export function InlineActivitySteps({
                   return (
                     <div
                       key={step.id}
-                      className="cursor-pointer"
+                      className="flex cursor-pointer items-center gap-2"
                       onClick={() => openBreakdownPanel(step.actionId)}
                     >
-                      <TimelineRow icon={actionIcon} isLast={isLast}>
-                        <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
-                          {step.label}
-                          <Icon
-                            size="xs"
-                            visual={ChevronRightIcon}
-                            className="shrink-0 opacity-50"
-                          />
-                        </span>
-                      </TimelineRow>
+                      <Icon
+                        visual={actionIcon}
+                        size="xs"
+                        className="shrink-0 text-muted-foreground dark:text-muted-foreground-night"
+                      />
+                      <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
+                        {step.label}
+                        <Icon
+                          size="xs"
+                          visual={ChevronRightIcon}
+                          className="shrink-0 opacity-50"
+                        />
+                      </span>
                     </div>
                   );
                 }
+                case "content":
+                  return (
+                    <div key={step.id}>
+                      <Markdown
+                        content={step.content}
+                        isStreaming={false}
+                        isLastMessage={false}
+                      />
+                    </div>
+                  );
                 default:
                   assertNever(step);
               }
             })}
 
             {/* Active thinking (streaming CoT) */}
-            {showActiveThinking && (
-              <TimelineRow
-                icon={chainOfThought ? ChatBubbleThoughtIcon : null}
-                spinner={!chainOfThought}
-                isLast={!activeAction && !isDone}
-              >
-                {chainOfThought ? (
+            {showActiveThinking &&
+              (chainOfThought ? (
+                <div>
                   <Markdown
                     content={chainOfThought}
                     isStreaming={false}
@@ -230,33 +235,28 @@ export function InlineActivitySteps({
                     enableAnimation
                     animationDurationSeconds={0.3}
                     delimiter=" "
-                    forcedTextSize="text-sm"
-                    textColor="text-muted-foreground dark:text-muted-foreground-night"
                     isLastMessage={false}
                   />
-                ) : null}
-              </TimelineRow>
-            )}
+                </div>
+              ) : (
+                <Spinner size="xs" />
+              ))}
 
             {/* Active action (tool in progress) */}
             {isActing && activeAction && (
-              <TimelineRow spinner isLast={false}>
+              <div className="flex items-center gap-2">
+                <div className="shrink-0">
+                  <Spinner size="xs" />
+                </div>
                 <span className="text-muted-foreground dark:text-muted-foreground-night">
                   {getActionOneLineLabel(activeAction, "running")}
                 </span>
-              </TimelineRow>
+              </div>
             )}
 
             {/* Pending spinner — shown when between transitions (not done, nothing active) */}
             {!isDone && !showActiveThinking && !activeAction && (
-              <TimelineRow spinner isLast />
-            )}
-            {isDone && completedSteps.length > 0 && (
-              <TimelineRow icon={CheckIcon} isLast>
-                <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  Done
-                </span>
-              </TimelineRow>
+              <Spinner size="xs" />
             )}
           </div>
         </div>

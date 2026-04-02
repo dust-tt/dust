@@ -76,6 +76,13 @@ export async function contentsToActivitySteps(
           id: `cot-${c.step}-${index}`,
         });
       }
+      if (parsedContent.content?.trim()) {
+        steps.push({
+          type: "content",
+          content: parsedContent.content,
+          id: `content-${c.step}-${index}`,
+        });
+      }
       continue;
     }
 

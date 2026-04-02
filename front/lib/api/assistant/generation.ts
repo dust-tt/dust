@@ -145,12 +145,6 @@ function constructToolsSection({
     !model.useNativeLightReasoning
   ) {
     toolUseDirectives += `${CHAIN_OF_THOUGHT_META_PROMPT}\n`;
-  } else if (
-    model.nativeReasoningMetaPrompt &&
-    (agentConfiguration.model.reasoningEffort === "medium" ||
-      agentConfiguration.model.reasoningEffort === "high")
-  ) {
-    toolUseDirectives += `${model.nativeReasoningMetaPrompt}\n`;
   }
 
   toolUseDirectives +=

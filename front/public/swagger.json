@@ -9079,6 +9079,7 @@
                   "type": "string",
                   "enum": [
                     "thinking",
+                    "content",
                     "action"
                   ]
                 },

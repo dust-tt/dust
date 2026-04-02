@@ -415,7 +415,7 @@
  *             properties:
  *               type:
  *                 type: string
- *                 enum: [thinking, action]
+ *                 enum: [thinking, content, action]
  *               content:
  *                 type: string
  *                 description: Chain of thought text (thinking steps only)

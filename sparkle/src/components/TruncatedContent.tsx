@@ -27,6 +27,7 @@ export interface TruncatedContentProps {
   footer?: React.ReactNode;
   className?: string;
   buttonClassName?: string;
+  buttonVariant?: React.ComponentProps<typeof Button>["variant"];
 }
 
 export function TruncatedContent({
@@ -41,6 +42,7 @@ export function TruncatedContent({
   footer,
   className,
   buttonClassName,
+  buttonVariant = "outline",
 }: TruncatedContentProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [exceedsThreshold, setExceedsThreshold] = useState(defaultCollapsed);
@@ -83,7 +85,7 @@ export function TruncatedContent({
       <div className="s-flex s-items-center s-gap-3">
         {shouldShowToggle && (
           <Button
-            variant="outline"
+            variant={buttonVariant}
             size="xs"
             label={isCollapsed ? expandLabel : collapseLabel}
             icon={isCollapsed ? ChevronDownIcon : ChevronUpIcon}

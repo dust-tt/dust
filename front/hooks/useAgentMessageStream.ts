@@ -166,6 +166,40 @@ function appendThinkingStep(
   return [...steps, { type: "thinking", content: cotContent, id }];
 }
 
+function appendContentStep(
+  steps: InlineActivityStep[],
+  textContent: string,
+  id: string
+): InlineActivityStep[] {
+  return [...steps, { type: "content", content: textContent, id }];
+}
+
+type TokenClassification = "tokens" | "chain_of_thought";
+
+/**
+ * Flush the pending segment (thinking or content) to inline activity steps
+ * based on the last classification.
+ */
+function flushPendingSegment(
+  steps: InlineActivityStep[],
+  lastClassification: TokenClassification | null,
+  chainOfThought: React.MutableRefObject<string>,
+  currentTextSegment: React.MutableRefObject<string>,
+  idSuffix: string
+): InlineActivityStep[] {
+  if (lastClassification === "chain_of_thought" && chainOfThought.current) {
+    const cot = chainOfThought.current;
+    chainOfThought.current = "";
+    return appendThinkingStep(steps, cot, `thinking-${idSuffix}`);
+  }
+  if (lastClassification === "tokens" && currentTextSegment.current) {
+    const text = currentTextSegment.current;
+    currentTextSegment.current = "";
+    return appendContentStep(steps, text, `content-${idSuffix}`);
+  }
+  return steps;
+}
+
 interface UseAgentMessageStreamParams {
   agentMessage: MessageTemporaryState;
   conversationId: string | null;
@@ -204,8 +238,10 @@ export function useAgentMessageStream({
 
   const chainOfThought = useRef(agentMessage.chainOfThought ?? "");
   const content = useRef(agentMessage.content ?? "");
-  // Tracks whether response token generation has started, to flush CoT once.
-  const writingStarted = useRef(false);
+  // Tracks the current text segment for content activity steps.
+  const currentTextSegment = useRef("");
+  // Tracks the last classification to detect switches and flush segments.
+  const lastClassification = useRef<TokenClassification | null>(null);
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
@@ -249,10 +285,9 @@ export function useAgentMessageStream({
             (eventPayload.data.classification === "tokens" ||
               eventPayload.data.classification === "chain_of_thought")
           ) {
-            // If this is a fresh mount with existing content and we're getting generation_tokens,
-            // we need to clear the content first to avoid duplication
             content.current = "";
             chainOfThought.current = "";
+            currentTextSegment.current = "";
             isFreshMountWithContent.current = false;
           }
 
@@ -263,15 +298,11 @@ export function useAgentMessageStream({
             classification === "tokens" ||
             classification === "chain_of_thought"
           ) {
-            // First "tokens" event means thinking → writing: flush pending CoT once.
+            // Flush the pending segment when classification switches.
             if (
-              classification === "tokens" &&
-              !writingStarted.current &&
-              chainOfThought.current
+              lastClassification.current !== null &&
+              classification !== lastClassification.current
             ) {
-              writingStarted.current = true;
-              const cotToFlush = chainOfThought.current;
-              chainOfThought.current = "";
               methods.data.map((m) => {
                 if (!isMessageTemporayState(m) || m.sId !== sId) {
                   return m;
@@ -280,19 +311,23 @@ export function useAgentMessageStream({
                   ...m,
                   streaming: {
                     ...m.streaming,
-                    inlineActivitySteps: appendThinkingStep(
+                    inlineActivitySteps: flushPendingSegment(
                       m.streaming.inlineActivitySteps,
-                      cotToFlush,
-                      `thinking-pretokens-${Date.now()}`
+                      lastClassification.current,
+                      chainOfThought,
+                      currentTextSegment,
+                      `switch-${Date.now()}`
                     ),
                   },
                 };
               });
             }
+            lastClassification.current = classification;
 
             if (classification === "tokens") {
               content.current += generationTokens.text;
-            } else if (classification === "chain_of_thought") {
+              currentTextSegment.current += generationTokens.text;
+            } else {
               chainOfThought.current += generationTokens.text;
             }
             updateMessageThrottled({
@@ -346,21 +381,20 @@ export function useAgentMessageStream({
 
         case "tool_params":
           const toolParams = eventPayload.data;
-          writingStarted.current = false;
-          // Snapshot CoT before it gets cleared by updateMessageWithAction.
-          const cotAtToolParams = chainOfThought.current;
-          chainOfThought.current = "";
+          // Clear message body content — intermediate text lives only in activity steps.
+          content.current = "";
           methods.data.map((m) => {
             if (!isMessageTemporayState(m) || m.sId !== sId) {
               return m;
             }
-            const steps = cotAtToolParams
-              ? appendThinkingStep(
-                  m.streaming.inlineActivitySteps,
-                  cotAtToolParams,
-                  `thinking-${Date.now()}`
-                )
-              : m.streaming.inlineActivitySteps;
+            const steps = flushPendingSegment(
+              m.streaming.inlineActivitySteps,
+              lastClassification.current,
+              chainOfThought,
+              currentTextSegment,
+              `toolparams-${Date.now()}`
+            );
+            lastClassification.current = null;
             return {
               ...updateMessageWithAction(m, toolParams.action),
               streaming: {
@@ -384,19 +418,18 @@ export function useAgentMessageStream({
         case "tool_error":
         case "agent_error":
           const error = eventPayload.data.error;
-          const cotAtError = chainOfThought.current;
-          chainOfThought.current = "";
           methods.data.map((m) => {
             if (!isMessageTemporayState(m) || m.sId !== sId) {
               return m;
             }
-            const steps = cotAtError
-              ? appendThinkingStep(
-                  m.streaming.inlineActivitySteps,
-                  cotAtError,
-                  `thinking-error-${Date.now()}`
-                )
-              : m.streaming.inlineActivitySteps;
+            const steps = flushPendingSegment(
+              m.streaming.inlineActivitySteps,
+              lastClassification.current,
+              chainOfThought,
+              currentTextSegment,
+              `error-${Date.now()}`
+            );
+            lastClassification.current = null;
             return {
               ...m,
               status: "failed",
@@ -438,20 +471,18 @@ export function useAgentMessageStream({
 
         case "agent_message_success":
           const messageSuccess = eventPayload.data;
-          // Safety net: flush any remaining CoT not yet captured.
-          const cotAtSuccess = chainOfThought.current;
-          chainOfThought.current = "";
           methods.data.map((m) => {
             if (!isMessageTemporayState(m) || m.sId !== sId) {
               return m;
             }
-            const steps = cotAtSuccess
-              ? appendThinkingStep(
-                  m.streaming.inlineActivitySteps,
-                  cotAtSuccess,
-                  `thinking-final-${Date.now()}`
-                )
-              : m.streaming.inlineActivitySteps;
+            const steps = flushPendingSegment(
+              m.streaming.inlineActivitySteps,
+              lastClassification.current,
+              chainOfThought,
+              currentTextSegment,
+              `final-${Date.now()}`
+            );
+            lastClassification.current = null;
             return {
               ...m,
               ...getLightAgentMessageFromAgentMessage(messageSuccess.message),
