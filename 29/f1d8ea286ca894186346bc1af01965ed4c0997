@@ -1,0 +1,27 @@
+front/lib/workspace_usage.ts
+  b008040257c625a5 18,24-34,773-823
+front/pages/api/v1/w/[wId]/workspace-usage.ts
+  b008040257c625a5 5
+front/pages/api/w/[wId]/workspace-usage.ts
+  b008040257c625a5 6-7,26-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.3",
+  "base_commit_sha": "29f1d8ea286ca894186346bc1af01965ed4c0997",
+  "prompts": {
+    "b008040257c625a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56f72356-45c5-43bc-bb74-984b971d001b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon",
+      "messages": [],
+      "total_additions": 137,
+      "total_deletions": 224,
+      "accepted_lines": 68,
+      "overriden_lines": 0
+    }
+  }
+}
