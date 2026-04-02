@@ -8,10 +8,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
  * @swagger
- * /api/v1/w/{wId}/assistant/agent_configurations/import/yaml:
+ * /api/v1/w/{wId}/assistant/agent_configurations/import:
  *   post:
- *     summary: Import agent configuration from YAML
- *     description: Create a new agent configuration from a JSON body matching the agent YAML config schema.
+ *     summary: Import agent configuration
+ *     description: Create a new agent configuration from a JSON body matching the agent config schema.
  *     tags:
  *       - Agents
  *     parameters:

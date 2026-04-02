@@ -1934,6 +1934,9 @@ export type GetDataSourcesResponseType = z.infer<
 
 export const GetOrPatchAgentConfigurationResponseSchema = z.object({
   agentConfiguration: LightAgentConfigurationSchema,
+  skippedActions: z
+    .array(z.object({ name: z.string(), reason: z.string() }))
+    .optional(),
 });
 
 export type GetOrPatchAgentConfigurationResponseType = z.infer<

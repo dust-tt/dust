@@ -1,6 +1,11 @@
 import { AgentYAMLConverter } from "@app/lib/agent_yaml_converter/converter";
 import type { AgentYAMLConfig } from "@app/lib/agent_yaml_converter/schemas";
-import { agentYAMLConfigSchema } from "@app/lib/agent_yaml_converter/schemas";
+import {
+  agentYAMLBasicInfoSchema,
+  agentYAMLConfigSchema,
+  agentYAMLGenerationSettingsSchema,
+} from "@app/lib/agent_yaml_converter/schemas";
+import { getAgentConfigurationAsYAMLConfig } from "@app/lib/api/assistant/configuration/yaml_export";
 import type { Authenticator } from "@app/lib/auth";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -26,7 +31,8 @@ type ImportResult = Result<
 
 async function importAgentConfiguration(
   auth: Authenticator,
-  yamlConfig: AgentYAMLConfig
+  yamlConfig: AgentYAMLConfig,
+  agentConfigurationId?: string
 ): Promise<ImportResult> {
   const isSaveAgentConfigurationsEnabled =
     await KillSwitchResource.isKillSwitchEnabledCached(
@@ -120,6 +126,7 @@ async function importAgentConfiguration(
   const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
     auth,
     assistant,
+    agentConfigurationId,
     authorId: authorModelId,
   });
 
@@ -176,4 +183,47 @@ export async function importAgentConfigurationFromJSON(
   }
 
   return importAgentConfiguration(auth, parsed.data);
+}
+
+const agentYAMLConfigPatchSchema = agentYAMLConfigSchema.partial().extend({
+  agent: agentYAMLBasicInfoSchema.partial().optional(),
+  generation_settings: agentYAMLGenerationSettingsSchema.partial().optional(),
+});
+
+export async function patchAgentConfigurationFromJSON(
+  auth: Authenticator,
+  agentId: string,
+  body: unknown
+): Promise<ImportResult> {
+  const parsed = agentYAMLConfigPatchSchema.safeParse(body);
+  if (!parsed.success) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid patch body: ${parsed.error.message}`,
+      },
+    });
+  }
+
+  const patch = parsed.data;
+
+  const existingResult = await getAgentConfigurationAsYAMLConfig(auth, agentId);
+  if (existingResult.isErr()) {
+    return existingResult;
+  }
+
+  const existing = existingResult.value;
+
+  const merged: AgentYAMLConfig = {
+    ...existing,
+    ...patch,
+    agent: { ...existing.agent, ...patch.agent },
+    generation_settings: {
+      ...existing.generation_settings,
+      ...patch.generation_settings,
+    },
+  };
+
+  return importAgentConfiguration(auth, merged, agentId);
 }
