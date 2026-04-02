@@ -177,7 +177,7 @@ export function DetectedSkillsList({
               ))}
             </ContextItem.List>
             {canScrollDown && (
-              <div className="pointer-events-none sticky bottom-0 left-0 right-0 -mt-12 h-12 bg-gradient-to-t from-background  to-transparent dark:from-background-night " />
+              <div className="pointer-events-none sticky bottom-0 left-0 right-0 -mt-12 h-12 bg-gradient-to-t from-background via-background/60 to-transparent dark:from-background-night dark:via-background-night/60" />
             )}
           </div>
         </div>
