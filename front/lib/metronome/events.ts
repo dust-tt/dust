@@ -4,8 +4,24 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import { createHash } from "crypto";
 
 import type { MetronomeEvent } from "./types";
+
+const MAX_TRANSACTION_ID_LENGTH = 128;
+
+/**
+ * If a transaction_id exceeds Metronome's 128-char limit, keep the first
+ * (128 - 13) chars as a readable prefix and append a 12-char hash suffix
+ * for uniqueness.
+ */
+function truncateTransactionId(id: string): string {
+  if (id.length <= MAX_TRANSACTION_ID_LENGTH) {
+    return id;
+  }
+  const hash = createHash("sha256").update(id).digest("hex").slice(0, 12);
+  return `${id.slice(0, MAX_TRANSACTION_ID_LENGTH - 13)}-${hash}`;
+}
 
 // ---------------------------------------------------------------------------
 // AWU message tier
@@ -187,13 +203,15 @@ export function getToolCategory(
  * Usages are grouped by (providerId, modelId) — one event per model used
  * with aggregated token counts and cost.
  *
- * transaction_id pattern: llm-{workspaceId}-{agentMessageId}-{providerId}-{modelId}
+ * transaction_id pattern: llm-{workspaceId}-{conversationId}-{agentMessageId}-{runKey}-{providerId}-{modelId}
  */
 export function buildLlmUsageEvents({
   workspaceId,
+  conversationId,
   userId,
   agentMessageId,
   parentAgentMessageId,
+  runKey,
   runUsages,
   origin,
   isProgrammaticUsage,
@@ -202,9 +220,11 @@ export function buildLlmUsageEvents({
   timestamp,
 }: {
   workspaceId: string;
+  conversationId: string;
   userId: string | null;
   agentMessageId: string;
   parentAgentMessageId: string | null;
+  runKey: string;
   runUsages: RunUsageType[];
   origin: UserMessageOrigin;
   isProgrammaticUsage: boolean;
@@ -249,7 +269,7 @@ export function buildLlmUsageEvents({
   }
 
   return [...groups.values()].map((group) => ({
-    transaction_id: `llm-${workspaceId}-${agentMessageId}-${group.providerId}-${group.modelId}`,
+    transaction_id: `llm-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${group.providerId}-${group.modelId}`,
     customer_id: workspaceId,
     event_type: "llm_usage",
     timestamp,
@@ -293,13 +313,16 @@ export interface ToolAction {
  * Actions are grouped by (toolName, internalMCPServerName, mcpServerId, status)
  * — one event per group with `count` and `total_execution_duration_ms`.
  *
- * transaction_id pattern: tool-{workspaceId}-{agentMessageId}-{toolName}-{mcpServerId}-{status}
+ * transaction_id pattern: tool-{workspaceId}-{conversationId}-{agentMessageId}-{runKey}-{toolHash}
+ * toolHash is a 12-char SHA-256 of toolName|mcpServerId|status to keep under 128 chars.
  */
 export function buildToolUseEvents({
   workspaceId,
+  conversationId,
   userId,
   agentMessageId,
   parentAgentMessageId,
+  runKey,
   actions,
   origin,
   isProgrammaticUsage,
@@ -308,9 +331,11 @@ export function buildToolUseEvents({
   timestamp,
 }: {
   workspaceId: string;
+  conversationId: string;
   userId: string | null;
   agentMessageId: string;
   parentAgentMessageId: string | null;
+  runKey: string;
   actions: ToolAction[];
   origin: UserMessageOrigin;
   isProgrammaticUsage: boolean;
@@ -339,7 +364,9 @@ export function buildToolUseEvents({
   }
 
   return [...groups.values()].map(({ action, count, totalDurationMs }) => ({
-    transaction_id: `tool-${workspaceId}-${agentMessageId}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}`,
+    transaction_id: truncateTransactionId(
+      `tool-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}`
+    ),
     customer_id: workspaceId,
     event_type: "tool_use",
     timestamp,
