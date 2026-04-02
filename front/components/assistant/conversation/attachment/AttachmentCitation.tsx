@@ -24,12 +24,13 @@ interface AttachmentCitationProps {
   owner: LightWorkspaceType;
   attachmentCitation: AttachmentCitation;
   conversationId?: string | null;
+  compact?: boolean;
 }
 
 export function AttachmentCitation({
   owner,
   attachmentCitation,
-  conversationId,
+  compact,
 }: AttachmentCitationProps) {
   const [viewerOpen, setViewerOpen] = useState(false);
 
@@ -82,6 +83,7 @@ export function AttachmentCitation({
           <Citation
             {...dialogOrDownloadProps}
             isLoading={isLoading}
+            compact={compact}
             containerClassName={cn("h-full", isImage && "min-h-24")}
             action={
               !isImage &&
