@@ -433,6 +433,7 @@ function eventToStoredStepContent(
     case "success":
     case "text_delta":
     case "token_usage":
+    case "tool_call_started":
     case "tool_call_delta":
       return null;
     default:
