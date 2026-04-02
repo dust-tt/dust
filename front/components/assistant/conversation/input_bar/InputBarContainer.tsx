@@ -20,13 +20,13 @@ import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
 import { isSingleAgentInputEnabled } from "@app/lib/development";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { getSkillIcon } from "@app/lib/skill";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
 import { getManageSkillsRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
   RichAgentMention,
@@ -138,7 +138,10 @@ export interface InputBarContainerProps {
   disableInput: boolean;
   disableUserMentions?: boolean;
   fileUploaderService: FileUploaderService;
-  getDraft: () => { text: string } | null;
+  getDraft: () => {
+    text: string;
+    agentMention?: RichAgentMention | null;
+  } | null;
   isSubmitting: boolean;
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   onMCPServerViewDeselect: (serverView: MCPServerViewType) => void;
@@ -148,7 +151,7 @@ export interface InputBarContainerProps {
   onSkillDeselect: (skill: SkillType) => void;
   onSkillSelect: (skill: SkillType) => void;
   owner: WorkspaceType;
-  saveDraft: (markdown: string) => void;
+  saveDraft: (markdown: string, agentMention?: RichAgentMention | null) => void;
   pendingInputText: string | null;
   selectedAgent: RichAgentMention | null;
   selectedMCPServerViews: MCPServerViewType[];
@@ -192,16 +195,42 @@ const InputBarContainer = ({
     useContext(InputBarContext);
   const [hasUserMention, setHasUserMention] = useState(false);
 
-  // Auto-select the "dust" agent by default in single-agent mode for new conversations.
-  // Skip when a human is mentioned or when sticky mentions are provided (e.g. agent builder).
-  if (singleAgentInput && !conversation && !selectedSingleAgent && !hasUserMention && !stickyMentions?.length) {
-    const dustAgent = allAgents.find(
-      (a) => a.sId === GLOBAL_AGENTS_SID.DUST
-    );
+  // Auto-select the agent in single-agent mode for new conversations on mount.
+  // Prefer the agent saved in the draft; fall back to "dust".
+  // Runs once on mount (empty deps) so it doesn't override manual agent changes later.
+  const hasInitializedAgentRef = useRef(false);
+
+  useEffect(() => {
+    if (
+      hasInitializedAgentRef.current ||
+      !singleAgentInput ||
+      conversation ||
+      hasUserMention ||
+      stickyMentions?.length
+    ) {
+      return;
+    }
+    hasInitializedAgentRef.current = true;
+
+    const draft = getDraft();
+    if (draft?.agentMention) {
+      setSelectedSingleAgent(draft.agentMention);
+      return;
+    }
+
+    const dustAgent = allAgents.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST);
     if (dustAgent) {
       setSelectedSingleAgent(toRichAgentMentionType(dustAgent));
     }
-  }
+  }, [
+    singleAgentInput,
+    conversation,
+    hasUserMention,
+    stickyMentions?.length,
+    allAgents,
+    setSelectedSingleAgent,
+    getDraft,
+  ]);
 
   // Callback for the editor's @ mention suggestion — sets the selected agent
   // without focusing (the editor already has focus when the user types @).
@@ -501,7 +530,7 @@ const InputBarContainer = ({
   // Uses a ref so the editor listener always calls the latest closure without needing
   // all the deselection callbacks/arrays as effect dependencies.
   const onEditorMentionsChangedRef = useRef((_userMentioned: boolean) => {});
-  
+
   onEditorMentionsChangedRef.current = (userMentioned: boolean) => {
     shouldSuggestAgentRef.current = !(singleAgentInput && userMentioned);
     if (singleAgentInput && userMentioned) {
@@ -512,6 +541,14 @@ const InputBarContainer = ({
       fileUploaderService.resetUpload();
     }
   };
+
+  // Persist the selected agent to the draft whenever it changes.
+  useEffect(() => {
+    if (singleAgentInput && selectedSingleAgent) {
+      const { markdown } = editorService.getMarkdownAndMentions();
+      saveDraft(markdown, selectedSingleAgent);
+    }
+  }, [singleAgentInput, selectedSingleAgent, editorService, saveDraft]);
 
   // Update the editor ref when the editor is created and listen for updates to the editor.
   useEffect(() => {
@@ -756,6 +793,10 @@ const InputBarContainer = ({
       draft &&
       (editorService.isEmpty() || editorContainsOnlyStickyMentions)
     ) {
+      // Restore the selected agent from the draft (single-agent mode).
+      if (singleAgentInput && draft.agentMention) {
+        setSelectedSingleAgent(draft.agentMention);
+      }
       // Schedule content restoration to avoid flushing during render lifecycle.
       queueMicrotask(() =>
         editorService.setContent(draft.text, { focus: !disableAutoFocus })
