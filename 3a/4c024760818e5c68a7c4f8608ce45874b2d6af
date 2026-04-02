@@ -1,0 +1,29 @@
+front/lib/api/actions/servers/productboard/metadata.ts
+  dc229edb8291746a 15,17,348-349,363,381
+front/lib/api/actions/servers/productboard/tools/index.ts
+  dc229edb8291746a 413,444
+front/lib/api/actions/servers/productboard/types.ts
+  dc229edb8291746a 44,280-282
+front/lib/api/actions/servers/productboard/client.ts
+  dc229edb8291746a 131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.3",
+  "base_commit_sha": "3a4c024760818e5c68a7c4f8608ce45874b2d6af",
+  "prompts": {
+    "dc229edb8291746a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a71f233-93c9-41f5-b1df-d968b6b2db8f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon",
+      "messages": [],
+      "total_additions": 13,
+      "total_deletions": 13,
+      "accepted_lines": 13,
+      "overriden_lines": 0
+    }
+  }
+}
