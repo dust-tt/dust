@@ -1,5 +1,6 @@
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { ProjectKickoffButton } from "@app/components/assistant/conversation/space/conversations/ProjectKickoffButton";
+import { ProjectTodosPanel } from "@app/components/assistant/conversation/space/conversations/ProjectTodosPanel";
 import { SpaceConversationListItem } from "@app/components/assistant/conversation/space/conversations/SpaceConversationListItem";
 import { SpaceConversationsActions } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsActions";
 import { SpaceLoadingConversationListItem } from "@app/components/assistant/conversation/space/conversations/SpaceLoadingConversationListItem";
@@ -169,6 +170,14 @@ export function SpaceConversationsTab({
               space={spaceInfo}
               hasConversations={hasHistory}
               unreadCount={unreadConversationIds.length}
+            />
+          )}
+
+          {hasFeature("project_todo") && (
+            <ProjectTodosPanel
+              owner={owner}
+              spaceId={spaceInfo.sId}
+              hasFeatureFlagProjectTodo={hasFeature("project_todo")}
             />
           )}
 

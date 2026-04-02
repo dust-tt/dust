@@ -9,7 +9,10 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { ProjectTodoSourceType } from "@app/types/project_todo";
+import type {
+  ProjectTodoSourceType,
+  ProjectTodoType,
+} from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Ok, type Result } from "@app/types/shared/result";
 import type {
@@ -145,6 +148,32 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     });
   }
 
+  // Returns only the latest version of each logical todo for the given space.
+  // Fetches all version rows ordered by (sId ASC, version DESC) then keeps
+  // only the first occurrence per sId, which has the highest version number.
+  static async fetchLatestBySpace(
+    auth: Authenticator,
+    { spaceId }: { spaceId: ModelId }
+  ): Promise<ProjectTodoResource[]> {
+    const all = await this.baseFetch(auth, {
+      where: { spaceId, userId: auth.getNonNullableUser().id },
+      order: [
+        ["sId", "ASC"],
+        ["version", "DESC"],
+      ],
+    });
+
+    // O(n) deduplication — keep the first occurrence per sId (highest version).
+    const latestBySId = new Map<string, ProjectTodoResource>();
+    for (const todo of all) {
+      if (!latestBySId.has(todo.sId)) {
+        latestBySId.set(todo.sId, todo);
+      }
+    }
+
+    return Array.from(latestBySId.values());
+  }
+
   // Returns every version row for (spaceId, userId), across all sIds. Used by the
   // diff algorithm to reconstruct snapshots at arbitrary cutoff dates.
   static async fetchAllVersionsBySpace(
@@ -236,6 +265,28 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       },
       transaction,
     });
+  }
+
+  // ── Serialization ──────────────────────────────────────────────────────────
+
+  toJSON(): ProjectTodoType {
+    return {
+      id: this.id,
+      sId: this.sId,
+      category: this.category,
+      text: this.text,
+      status: this.status,
+      version: this.version,
+      doneAt: this.doneAt,
+      actorRationale: this.actorRationale,
+      createdByType: this.createdByType,
+      createdByAgentConfigurationId: this.createdByAgentConfigurationId,
+      markedAsDoneByType: this.markedAsDoneByType,
+      markedAsDoneByAgentConfigurationId:
+        this.markedAsDoneByAgentConfigurationId,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+    };
   }
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
