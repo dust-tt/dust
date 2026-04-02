@@ -1,6 +1,7 @@
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { FileModel } from "@app/lib/resources/storage/models/files";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
@@ -33,6 +34,7 @@ export class ContentFragmentModel extends WorkspaceAwareModel<ContentFragmentMod
 
   declare userId: ForeignKey<UserModel["id"]> | null;
   declare fileId: ForeignKey<FileModel["id"]> | null;
+  declare spaceId: ForeignKey<SpaceModel["id"]> | null;
 
   declare nodeId: string | null;
   declare nodeDataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
@@ -107,16 +109,25 @@ ContentFragmentModel.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    spaceId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+    },
   },
   {
     modelName: "content_fragment",
     sequelize: frontSequelize,
     indexes: [
       { fields: ["fileId"] },
+      { fields: ["spaceId"], concurrently: true },
       // TODO(WORKSPACE_ID_ISOLATION 2025-05-14): Remove index
       { fields: ["sId", "version"] },
       {
         fields: ["workspaceId", "sId", "version"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "spaceId"],
         concurrently: true,
       },
     ],
@@ -135,4 +146,13 @@ ContentFragmentModel.belongsTo(FileModel, {
 });
 FileModel.hasOne(ContentFragmentModel, {
   foreignKey: { name: "fileId", allowNull: true },
+});
+
+ContentFragmentModel.belongsTo(SpaceModel, {
+  as: "space",
+  foreignKey: { name: "spaceId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+SpaceModel.hasMany(ContentFragmentModel, {
+  as: "contentFragments",
 });

@@ -1,11 +1,13 @@
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/projects";
+import { MessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_resource";
+import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -546,6 +548,54 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       },
       transaction,
     });
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const projectContentFragmentIds = await ContentFragmentModel.findAll({
+      attributes: ["id"],
+      where: {
+        spaceId: this.id,
+        workspaceId,
+      },
+      transaction,
+    }).then((rows) => rows.map((r) => r.id));
+
+    if (projectContentFragmentIds.length > 0) {
+      const messagesReferencing = await MessageModel.findAll({
+        attributes: ["contentFragmentId"],
+        where: {
+          workspaceId,
+          contentFragmentId: {
+            [Op.in]: projectContentFragmentIds,
+          },
+        },
+        transaction,
+      });
+      const referencedIds = new Set(
+        removeNulls(messagesReferencing.map((m) => m.contentFragmentId))
+      );
+      const orphanIds = projectContentFragmentIds.filter(
+        (id) => !referencedIds.has(id)
+      );
+      if (orphanIds.length > 0) {
+        await ContentFragmentModel.destroy({
+          where: {
+            id: { [Op.in]: orphanIds },
+            workspaceId,
+          },
+          transaction,
+        });
+      }
+      await ContentFragmentModel.update(
+        { spaceId: null },
+        {
+          where: {
+            spaceId: this.id,
+            workspaceId,
+          },
+          transaction,
+        }
+      );
+    }
 
     await SpaceModel.destroy({
       where: {

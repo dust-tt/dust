@@ -1587,6 +1587,7 @@ describe("searchProjectsByNamePaginated", () => {
 const KNOWN_SPACE_RELATED_MODELS = [
   "agent_project_configuration",
   "app",
+  "content_fragment",
   "conversation",
   "data_source",
   "data_source_view",
@@ -1644,14 +1645,14 @@ describe("SpaceResource cleanup on delete", () => {
           errorMessage += `New models detected with space relationships:\n${missing.map((m) => `  - ${m}`).join("\n")}\n\n`;
           errorMessage +=
             "You MUST:\n" +
-            "1. Add these models to KNOWN_SPACE_RELATED_MODELS in space_resource_cleanup.test.ts\n" +
+            "1. Add these models to KNOWN_SPACE_RELATED_MODELS in space_resource.test.ts\n" +
             "2. Add proper cleanup logic in `scrubSpaceActivity`\n";
         }
 
         if (extra.length > 0) {
           errorMessage += `Models removed or renamed:\n${extra.map((m) => `  - ${m}`).join("\n")}\n\n`;
           errorMessage +=
-            "Remove these from KNOWN_SPACE_RELATED_MODELS in space_resource_cleanup.test.ts\n";
+            "Remove these from KNOWN_SPACE_RELATED_MODELS in space_resource.test.ts\n";
         }
 
         throw new Error(errorMessage);
