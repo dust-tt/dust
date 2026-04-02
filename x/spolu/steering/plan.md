@@ -6,19 +6,19 @@ Three phases of bitesize PRs. Each PR should be small, reviewable, and independe
 
 Foundational refactors that don't change any user-facing behavior.
 
-### - [x] PR 1.1 — Add `finalizeSucceededAgentMessage` in `conversation.ts`
+### - [x] PR 1.1 — Add `finalizeAgentMessage` in `conversation.ts`
 
-Move the agent message success status update behind the conversation advisory lock. Today,
-`updateAgentMessageDBAndMemory` does a bare `UPDATE` on `AgentMessageModel.status`. Extract
-the `"succeeded"` transition into a new locked function:
+Move all agent message terminal status updates behind the conversation advisory lock.
 
-- Add `finalizeSucceededAgentMessage()` to `front/lib/api/assistant/conversation.ts` that:
+- Add `finalizeAgentMessage()` to `front/lib/api/assistant/conversation.ts` that:
+  - Takes `status: "succeeded" | "cancelled" | "failed"` and optional `error`
   - Acquires `getConversationRankVersionLock`
-  - Updates `AgentMessageModel.status` to `"succeeded"` + `completedAt`
-  - (For now, the "promote" part is a no-op — no pending messages exist yet)
-- Update `updateResourceAndPublishEvent` in `common.ts` to call this new function for the
-  `agent_message_success` event instead of `updateAgentMessageDBAndMemory` for the status update.
-- Verify no behavior change via existing tests.
+  - Updates `AgentMessageModel.status` + `completedAt` (+ error fields if applicable)
+  - Returns `{ completedTs, status }`
+- Update `updateAgentMessageDBAndMemory` in `common.ts` to delegate to `finalizeAgentMessage`
+  for `"status"` and `"error"` update types via discriminated union (conversation required at
+  compile time for terminal updates only).
+- In-memory `agentMessage` mutation stays in `common.ts` (caller side).
 
 ---
 
@@ -131,10 +131,10 @@ Behind `enable_steering_behavior` feature flag:
 - Update `finalizeGracefullyStoppedAgentLoopActivity` to call this function, publish
   `UserMessagePromotedEvent` events, publish `AgentMessageNewEvent`, launch new agent loop.
 
-### - [ ] PR 3.4 — Safety net in `finalizeSucceededAgentMessage`
+### - [ ] PR 3.4 — Safety net in `finalizeAgentMessage` for succeeded path
 
-- Update `finalizeSucceededAgentMessage()` to check for orphaned pending messages and promote
-  them (same logic as `finalizeGracefulStopAgentMessage`).
+- Update `finalizeAgentMessage()` to check for orphaned pending messages when `status` is
+  `"succeeded"` and promote them (same logic as `finalizeGracefulStopAgentMessage`).
 - This handles the edge case where the graceful stop signal was lost or arrived after the loop
   already decided to exit naturally.
 
