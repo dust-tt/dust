@@ -11,7 +11,10 @@ import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_lo
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
 import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { makeAgentLoopConversationTitleWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
-import { cancelAgentLoopSignal } from "@app/temporal/agent_loop/signals";
+import {
+  cancelAgentLoopSignal,
+  gracefullyStopAgentLoopSignal,
+} from "@app/temporal/agent_loop/signals";
 import type { AgentLoopInstrumentationSinks } from "@app/temporal/agent_loop/sinks";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import type {
@@ -142,6 +145,15 @@ export async function agentLoopWorkflow({
     executionScope.cancel();
   });
 
+  // Graceful stop: let the current step finish, then exit the loop at the
+  // next step boundary. Unlike cancellation, in-flight activities are not
+  // killed.
+  let gracefulStopRequested = false;
+
+  setHandler(gracefullyStopAgentLoopSignal, () => {
+    gracefulStopRequested = true;
+  });
+
   try {
     const { agentMessageId, conversationId } = agentLoopArgs;
 
@@ -212,7 +224,7 @@ export async function agentLoopWorkflow({
           }
         }
 
-        if (!shouldContinue) {
+        if (!shouldContinue || gracefulStopRequested) {
           break;
         }
       }
