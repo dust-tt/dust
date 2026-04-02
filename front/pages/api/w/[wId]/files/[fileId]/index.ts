@@ -126,7 +126,7 @@ import {
   isFileTypeUpsertableForUseCase,
   processAndUpsertToDataSource,
 } from "@app/lib/api/files/upsert";
-import { upsertProjectContextFile } from "@app/lib/api/projects";
+import { addFileToProject } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -458,7 +458,7 @@ async function handler(
         space &&
         isFileTypeUpsertableForUseCase(file)
       ) {
-        const upsertRes = await upsertProjectContextFile(auth, file);
+        const upsertRes = await addFileToProject(auth, file);
 
         if (upsertRes.isErr()) {
           logger.error({

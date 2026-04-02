@@ -281,6 +281,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     }
 
     const sourceUrl = file.getPrivateUrl(auth);
+    const user = auth.user();
 
     const fragment = await ContentFragmentResource.makeNew(
       {
@@ -291,11 +292,11 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         contentType: file.contentType,
         sourceUrl,
         textBytes: file.fileSize,
-        userId: auth.user()?.id ?? null,
-        userContextUsername: null,
-        userContextFullName: null,
-        userContextEmail: null,
-        userContextProfilePictureUrl: null,
+        userId: user?.id ?? null,
+        userContextUsername: user?.username ?? null,
+        userContextFullName: user?.fullName() ?? null,
+        userContextEmail: user?.email ?? null,
+        userContextProfilePictureUrl: user?.imageUrl ?? null,
         nodeId: null,
         nodeDataSourceViewId: null,
         nodeType: null,
@@ -305,6 +306,111 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     );
 
     return new Ok(fragment);
+  }
+
+  /**
+   * Latest project content fragment for this file + space: update if present or insert.
+   * Supersedes extra `version: latest` rows for the same file/space (duplicate cleanup).
+   */
+  static async upsertLatestProjectFileFragment(
+    auth: Authenticator,
+    space: SpaceResource,
+    file: FileResource,
+    transaction?: Transaction
+  ): Promise<Result<ContentFragmentResource, Error>> {
+    const workspace = auth.getNonNullableWorkspace();
+    if (
+      space.workspaceId !== workspace.id ||
+      file.workspaceId !== workspace.id
+    ) {
+      return new Err(
+        new Error("Space and file must belong to the authenticated workspace.")
+      );
+    }
+
+    if (file.useCase !== "project_context") {
+      return new Err(
+        new Error(
+          "File must be a project context file (useCase project_context)."
+        )
+      );
+    }
+
+    const metadataSpaceId = file.useCaseMetadata?.spaceId;
+    if (!metadataSpaceId || metadataSpaceId !== space.sId) {
+      return new Err(
+        new Error("File project metadata spaceId must match the target space.")
+      );
+    }
+
+    if (!file.isReady) {
+      return new Err(
+        new Error(
+          "File is not ready; cannot create a project content fragment."
+        )
+      );
+    }
+
+    if (!isSupportedFileContentType(file.contentType)) {
+      return new Err(
+        new Error("Unsupported file content type for content fragment.")
+      );
+    }
+
+    const sourceUrl = file.getPrivateUrl(auth);
+    const user = auth.user();
+    const blob = {
+      title: file.fileName,
+      contentType: file.contentType,
+      sourceUrl,
+      textBytes: file.fileSize,
+      userId: user?.id ?? null,
+      userContextUsername: user?.username ?? null,
+      userContextFullName: user?.fullName() ?? null,
+      userContextEmail: user?.email ?? null,
+      userContextProfilePictureUrl: user?.imageUrl ?? null,
+    };
+
+    const rows = await ContentFragmentResource.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+        spaceId: space.id,
+        fileId: file.id,
+        version: "latest",
+      },
+      order: [["id", "DESC"]],
+      transaction,
+    });
+
+    if (rows.length > 1) {
+      await ContentFragmentResource.model.update(
+        { version: "superseded" },
+        {
+          where: {
+            id: { [Op.in]: rows.slice(1).map((r) => r.id) },
+          },
+          transaction,
+        }
+      );
+    }
+
+    const existing = rows[0];
+    if (existing) {
+      await existing.update(blob, { transaction });
+      return new Ok(
+        new ContentFragmentResource(
+          ContentFragmentResource.model,
+          existing.get()
+        )
+      );
+    }
+
+    return ContentFragmentResource.makeProjectFragment(
+      auth,
+      space,
+      file,
+      transaction
+    );
   }
 
   /**
