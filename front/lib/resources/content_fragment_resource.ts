@@ -36,13 +36,11 @@ import type {
   ContentFragmentVersion,
   ContentNodeContentFragmentType,
   FileContentFragmentType,
+  SupportedContentFragmentType,
 } from "@app/types/content_fragment";
 import type { ContentNodeType } from "@app/types/core/content_node";
 import { CoreAPI } from "@app/types/core/core_api";
-import {
-  isLLMVisionSupportedImageContentType,
-  isSupportedFileContentType,
-} from "@app/types/files";
+import { isLLMVisionSupportedImageContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -274,12 +272,6 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       );
     }
 
-    if (!isSupportedFileContentType(file.contentType)) {
-      return new Err(
-        new Error("Unsupported file content type for content fragment.")
-      );
-    }
-
     const sourceUrl = file.getPrivateUrl(auth);
     const user = auth.user();
 
@@ -351,15 +343,19 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       );
     }
 
-    if (!isSupportedFileContentType(file.contentType)) {
-      return new Err(
-        new Error("Unsupported file content type for content fragment.")
-      );
-    }
-
     const sourceUrl = file.getPrivateUrl(auth);
     const user = auth.user();
-    const blob = {
+    const blob: {
+      title: string;
+      contentType: SupportedContentFragmentType;
+      sourceUrl: string;
+      textBytes: number;
+      userId: number | null;
+      userContextUsername: string | null;
+      userContextFullName: string | null;
+      userContextEmail: string | null;
+      userContextProfilePictureUrl: string | null;
+    } = {
       title: file.fileName,
       contentType: file.contentType,
       sourceUrl,
