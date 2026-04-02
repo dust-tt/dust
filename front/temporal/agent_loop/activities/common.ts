@@ -75,7 +75,7 @@ export async function updateAgentMessageDBAndMemory(
               type: "prunedContext";
               prunedContext: true;
             };
-      },
+      }
 ): Promise<void> {
   const { agentMessage } = args;
   const where: WhereOptions<InferAttributes<AgentMessageModel>> = {
@@ -125,17 +125,17 @@ export async function updateAgentMessageDBAndMemory(
     case "modelInteractionDurationMs":
       {
         const roundedModelInteractionDurationMs = Math.round(
-          update.modelInteractionDurationMs,
+          update.modelInteractionDurationMs
         );
         // Note: we update the modelInteractionDurationMs directly in the database using a function to ensure
         // an atomic update.
         await AgentMessageModel.update(
           {
             modelInteractionDurationMs: literal(
-              `COALESCE("modelInteractionDurationMs", 0) + ${roundedModelInteractionDurationMs}`,
+              `COALESCE("modelInteractionDurationMs", 0) + ${roundedModelInteractionDurationMs}`
             ),
           },
-          { where },
+          { where }
         );
 
         agentMessage.modelInteractionDurationMs =
@@ -153,11 +153,11 @@ export async function updateAgentMessageDBAndMemory(
             runIds: fn(
               "ARRAY",
               literal(
-                `SELECT DISTINCT unnest(COALESCE("runIds", '{}') || ARRAY['${update.runIds.join("','")}']::text[])`,
-              ),
+                `SELECT DISTINCT unnest(COALESCE("runIds", '{}') || ARRAY['${update.runIds.join("','")}']::text[])`
+              )
             ),
           },
-          { where },
+          { where }
         );
       }
       break;
@@ -168,7 +168,7 @@ export async function updateAgentMessageDBAndMemory(
           {
             prunedContext: update.prunedContext,
           },
-          { where },
+          { where }
         );
         agentMessage.prunedContext = update.prunedContext;
       }
@@ -189,7 +189,7 @@ export async function markAgentMessageAsFailed(
     agentMessage: AgentMessageType;
     conversation: ConversationWithoutContentType;
     error: ToolErrorEvent["error"];
-  },
+  }
 ): Promise<void> {
   await updateAgentMessageDBAndMemory(auth, {
     agentMessage,
@@ -216,7 +216,7 @@ export async function processEventForDatabase(
     step: number;
     conversation: ConversationWithoutContentType;
     modelInteractionDurationMs?: number;
-  },
+  }
 ): Promise<void> {
   // If we have a model interaction duration, store it.
   if (modelInteractionDurationMs) {
@@ -332,7 +332,7 @@ async function processEventForUnreadState(
   }: {
     event: AgentMessageEvents;
     conversation: ConversationWithoutContentType;
-  },
+  }
 ) {
   // If the event is a done event, we want to mark the conversation as unread for all participants.
   if (TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(event.type)) {
@@ -368,7 +368,7 @@ export async function updateResourceAndPublishEvent(
     conversation: ConversationWithoutContentType;
     step: number;
     modelInteractionDurationMs?: number;
-  },
+  }
 ): Promise<void> {
   // Process DB updates and unread state for all events.
   await Promise.all([
@@ -418,7 +418,7 @@ function toUserFriendlyMessage(error: {
 export async function notifyWorkflowError(
   authType: AuthenticatorType,
   { conversationId, agentMessageId, agentMessageVersion }: AgentLoopArgs,
-  error: { message: string; name: string },
+  error: { message: string; name: string }
 ): Promise<void> {
   let authResult = await AuthenticatorClass.fromJSON(authType);
 
@@ -430,7 +430,7 @@ export async function notifyWorkflowError(
         workspaceId: authType.workspaceId,
         originalSubscriptionId: authType.subscriptionId,
       },
-      "Subscription changed while message was running, using fresh auth in notifyWorkflowError",
+      "Subscription changed while message was running, using fresh auth in notifyWorkflowError"
     );
 
     // Retry without the subscriptionId constraint to get the current subscription.
@@ -442,7 +442,7 @@ export async function notifyWorkflowError(
 
   if (authResult.isErr()) {
     throw new Error(
-      `Failed to deserialize authenticator: ${authResult.error.code}`,
+      `Failed to deserialize authenticator: ${authResult.error.code}`
     );
   }
   const auth = authResult.value;
@@ -450,7 +450,7 @@ export async function notifyWorkflowError(
   // Use lighter fetchConversationWithoutContent
   const conversation = await ConversationResource.fetchById(
     auth,
-    conversationId,
+    conversationId
   );
   if (!conversation) {
     return;
@@ -460,7 +460,7 @@ export async function notifyWorkflowError(
   const messageRes = await conversation.getMessageById(
     auth,
     agentMessageId,
-    agentMessageVersion,
+    agentMessageVersion
   );
 
   if (messageRes.isErr()) {
@@ -516,7 +516,7 @@ export async function notifyWorkflowError(
     completionDurationMs: getCompletionDuration(
       messageRow.agentMessage.createdAt.getTime(),
       messageRow.agentMessage.completedAt?.getTime() ?? null,
-      [],
+      []
     ),
     richMentions: [],
     reactions: [],
@@ -540,7 +540,7 @@ export async function notifyWorkflowError(
  */
 export async function finalizeCancellation(
   authType: AuthenticatorType,
-  agentLoopArgs: AgentLoopArgs,
+  agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
   const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
   if (runAgentDataRes.isErr()) {
@@ -550,12 +550,12 @@ export async function finalizeCancellation(
           conversationId: agentLoopArgs.conversationId,
           agentMessageId: agentLoopArgs.agentMessageId,
         },
-        "Message or conversation was deleted, exiting",
+        "Message or conversation was deleted, exiting"
       );
       return;
     }
     throw new Error(
-      `Failed to get run agent data: ${runAgentDataRes.error.message}`,
+      `Failed to get run agent data: ${runAgentDataRes.error.message}`
     );
   }
   const { auth, agentConfiguration, agentMessage, conversation } =
@@ -567,7 +567,7 @@ export async function finalizeCancellation(
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
     agentMessage.sId,
-    getDelimitersConfiguration({ agentConfiguration }),
+    getDelimitersConfiguration({ agentConfiguration })
   );
 
   // Flush pending tokens from the content parser, if any.
@@ -595,6 +595,6 @@ export async function finalizeCancellation(
       agentMessageId: agentMessage.sId,
       conversationId: conversation.sId,
     },
-    "Agent generation cancelled",
+    "Agent generation cancelled"
   );
 }
