@@ -1,8 +1,9 @@
 // biome-ignore-all lint/plugin/noRawSql: hard delete activities require raw SQL for cascade deletions
 import { batchHardDeletePendingAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
+import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type {
@@ -183,17 +184,14 @@ export async function purgeExpiredSyntheticSuggestionsActivity(
   let totalDeleted = 0;
 
   for (const workspace of workspaces) {
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     let hasMore = true;
 
     do {
-      const deletedCount = await AgentSuggestionModel.destroy({
-        where: {
-          workspaceId: workspace.id,
-          source: "synthetic",
-          createdAt: { [Op.lt]: cutoffDate },
-        },
-        limit: batchSize,
-      });
+      const deletedCount =
+        await AgentSuggestionResource.deleteExpiredSynthetic(auth, cutoffDate, {
+          limit: batchSize,
+        });
 
       totalDeleted += deletedCount;
       hasMore = deletedCount === batchSize;
