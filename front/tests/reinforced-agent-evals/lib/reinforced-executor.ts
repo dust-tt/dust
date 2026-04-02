@@ -24,7 +24,6 @@ import {
 } from "@app/tests/reinforced-agent-evals/lib/config";
 import {
   buildConversationText,
-  buildToolsAndSkillsContextFromWorkspace,
   type CategorizedTestCase,
   type ExecutionResult,
   isAnalysisTestCase,
@@ -95,9 +94,6 @@ function buildPromptForTestCase(testCase: TestCase): {
   systemPrompt: string;
   userMessage: string;
 } {
-  const toolsAndSkillsContext = buildToolsAndSkillsContextFromWorkspace(
-    testCase.workspaceContext
-  );
   const agentConfig = makeAgentConfig(testCase.agentConfig);
   const agentSkills = testCase.agentConfig.skills ?? [];
 
@@ -109,7 +105,6 @@ function buildPromptForTestCase(testCase: TestCase): {
     agentConfig,
     testCase.syntheticSuggestions,
     testCase.existingSuggestions ?? { pending: [], rejected: [] },
-    toolsAndSkillsContext,
     agentSkills
   );
 }
