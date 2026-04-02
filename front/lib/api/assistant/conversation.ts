@@ -2216,3 +2216,40 @@ export async function isConversationEventAllowedForAuth(
       assertNever(type);
   }
 }
+
+/**
+ * Finalize a succeeded agent message behind the conversation advisory lock.
+ *
+ * This ensures the status transition is serialized against other conversation
+ * operations (e.g. postUserMessage's pending path in the future).
+ */
+export async function finalizeSucceededAgentMessage(
+  auth: Authenticator,
+  {
+    conversation,
+    agentMessage,
+  }: {
+    conversation: ConversationWithoutContentType;
+    agentMessage: AgentMessageType;
+  }
+): Promise<void> {
+  const completedAt = new Date();
+
+  await withTransaction(async (t) => {
+    await getConversationRankVersionLock(auth, conversation, t);
+
+    await AgentMessageModel.update(
+      { status: "succeeded", completedAt },
+      {
+        where: {
+          id: agentMessage.agentMessageId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        transaction: t,
+      }
+    );
+  });
+
+  agentMessage.status = "succeeded";
+  agentMessage.completedTs = completedAt.getTime();
+}
