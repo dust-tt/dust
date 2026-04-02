@@ -69,6 +69,10 @@ async function provisionCustomer(
       return;
     }
 
+    // Explicitly await cache invalidation — the fire-and-forget invalidation
+    // in update() may not complete before the script calls process.exit().
+    await WorkspaceResource.invalidateCache(workspace.sId);
+
     logger.info(
       { workspaceId: workspace.sId, metronomeCustomerId },
       "Metronome customer provisioned and workspace updated"
