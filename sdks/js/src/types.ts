@@ -1954,14 +1954,6 @@ export type GetAgentConfigurationYAMLExportResponseType = z.infer<
   typeof GetAgentConfigurationYAMLExportResponseSchema
 >;
 
-export const ImportAgentConfigurationFromYAMLRequestSchema = z.object({
-  yamlContent: z.string(),
-});
-
-export type ImportAgentConfigurationFromYAMLRequestType = z.infer<
-  typeof ImportAgentConfigurationFromYAMLRequestSchema
->;
-
 export const ImportAgentConfigurationFromYAMLResponseSchema = z.object({
   agentConfiguration: LightAgentConfigurationSchema,
   skippedActions: z
