@@ -3,16 +3,13 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { getConversationsDataRetention } from "@app/lib/data_retention";
 import {
-  getAssistantsUsageData,
-  getBuildersUsageData,
-  getFeedbackUsageData,
-  getMessageUsageData,
-  getUserUsageData,
+  fetchUsageData,
+  USAGE_TABLES,
+  type UsageTableType,
 } from "@app/lib/workspace_usage";
 import { getWorkspaceUsageRetentionErrorMessage } from "@app/lib/workspace_usage_retention";
 import { apiError } from "@app/logger/withlogging";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { WorkspaceType } from "@app/types/user";
 import { endOfMonth } from "date-fns/endOfMonth";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -26,19 +23,8 @@ const MonthSchema = t.refinement(
   "YYYY-MM"
 );
 
-const usageTables = [
-  "users",
-  "assistant_messages",
-  "builders",
-  "assistants",
-  "feedback",
-  "all",
-];
-
-type usageTableType = (typeof usageTables)[number];
-
-function getSupportedUsageTablesCodec(): t.Mixed {
-  const [first, second, ...rest] = usageTables;
+function getSupportedUsageTablesCodec(): t.Type<UsageTableType> {
+  const [first, second, ...rest] = USAGE_TABLES;
   return t.union([
     t.literal(first),
     t.literal(second),
@@ -190,54 +176,5 @@ function resolveDates(query: t.TypeOf<typeof GetUsageQueryParamsSchema>) {
       };
     default:
       assertNever(query);
-  }
-}
-
-async function fetchUsageData({
-  table,
-  start,
-  end,
-  workspace,
-  includeInactive = false,
-}: {
-  table: usageTableType;
-  start: Date;
-  end: Date;
-  workspace: WorkspaceType;
-  includeInactive?: boolean;
-}): Promise<Partial<Record<usageTableType, string>>> {
-  switch (table) {
-    case "users":
-      return {
-        users: await getUserUsageData(start, end, workspace, {
-          includeInactive,
-        }),
-      };
-    case "assistant_messages":
-      return { mentions: await getMessageUsageData(start, end, workspace) };
-    case "builders":
-      return { builders: await getBuildersUsageData(start, end, workspace) };
-    case "feedback":
-      return {
-        feedback: await getFeedbackUsageData(start, end, workspace),
-      };
-    case "assistants":
-      return {
-        assistants: await getAssistantsUsageData(start, end, workspace, {
-          includeInactive,
-        }),
-      };
-    case "all":
-      const [users, assistant_messages, builders, assistants, feedback] =
-        await Promise.all([
-          getUserUsageData(start, end, workspace, { includeInactive }),
-          getMessageUsageData(start, end, workspace),
-          getBuildersUsageData(start, end, workspace),
-          getAssistantsUsageData(start, end, workspace, { includeInactive }),
-          getFeedbackUsageData(start, end, workspace),
-        ]);
-      return { users, assistant_messages, builders, assistants, feedback };
-    default:
-      return {};
   }
 }
