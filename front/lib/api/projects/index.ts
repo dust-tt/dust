@@ -4,6 +4,7 @@ export {
   addFileToProject,
   getProjectDataSourceFromFile,
   listProjectContentFragments,
+  listProjectContextFiles,
 } from "./context";
 export {
   fetchProjectDataSource,

@@ -9,12 +9,13 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { FileResource } from "@app/lib/resources/file_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { isSupportedDelimitedTextContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { slugify } from "@app/types/shared/utils/string_utils";
 
 function validateFileMetadataForProjectContext(
@@ -71,6 +72,46 @@ export async function listProjectContentFragments(
   space: SpaceResource
 ): Promise<ContentFragmentResource[]> {
   return ContentFragmentResource.listBySpace(auth, space);
+}
+
+/**
+ * Project context files for a space from latest file-backed `content_fragments`
+ * rows (`spaceId`), in fragment order (`createdAt` DESC).
+ */
+export async function listProjectContextFiles(
+  auth: Authenticator,
+  space: SpaceResource
+): Promise<FileResource[]> {
+  const fragments = await ContentFragmentResource.listBySpace(auth, space);
+  const fileModelIds = removeNulls(fragments.map((fr) => fr.fileId));
+
+  const filesByModelId = new Map<number, FileResource>();
+  if (fileModelIds.length > 0) {
+    const fetched = await FileResource.fetchByModelIdsWithAuth(
+      auth,
+      fileModelIds
+    );
+    for (const f of fetched) {
+      filesByModelId.set(f.id, f);
+    }
+  }
+
+  const files: FileResource[] = [];
+  const seenSIds = new Set<string>();
+
+  for (const fr of fragments) {
+    if (fr.fileId == null) {
+      continue;
+    }
+    const file = filesByModelId.get(fr.fileId);
+    if (!file || seenSIds.has(file.sId)) {
+      continue;
+    }
+    seenSIds.add(file.sId);
+    files.push(file);
+  }
+
+  return files;
 }
 
 /**

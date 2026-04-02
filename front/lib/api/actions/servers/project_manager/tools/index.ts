@@ -16,7 +16,10 @@ import { PROJECT_MANAGER_TOOLS_METADATA } from "@app/lib/api/actions/servers/pro
 import { formatConversationsForDisplay } from "@app/lib/api/actions/servers/project_manager/tools/conversation_formatting";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import config from "@app/lib/api/config";
-import { addFileToProject } from "@app/lib/api/projects";
+import {
+  addFileToProject,
+  listProjectContextFiles,
+} from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -357,10 +360,7 @@ export function createProjectManagerTools(
           space
         );
 
-        // Fetch files
-        const files = await FileResource.listByProject(auth, {
-          projectId: space.sId,
-        });
+        const files = await listProjectContextFiles(auth, space);
 
         const fileList = files
           .filter((file) => isSupportedFileContentType(file.contentType))

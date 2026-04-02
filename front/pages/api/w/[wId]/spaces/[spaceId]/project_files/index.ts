@@ -1,7 +1,7 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { listProjectContextFiles } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
-import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -53,9 +53,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const files = await FileResource.listByProject(auth, {
-        projectId: spaceId,
-      });
+      const files = await listProjectContextFiles(auth, space);
 
       // Fetch user information for all files
       const userIds = files
