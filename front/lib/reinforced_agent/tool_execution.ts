@@ -12,7 +12,7 @@ import type {
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_message_content";
 import type { ModelId } from "@app/types/shared/model_id";
 

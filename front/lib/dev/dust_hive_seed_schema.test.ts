@@ -10,7 +10,7 @@
  */
 
 import { frontSequelize } from "@app/lib/resources/storage";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import * as fs from "fs";
 import * as path from "path";
 import { QueryTypes } from "sequelize";

@@ -3,7 +3,7 @@
 // import { Plan, Subscription } from "@app/lib/models/plan";
 // import { Workspace } from "@app/lib/models/workspace";
 // import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
-// import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+// import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 //
 // async function main() {
 //   const workspaces = await Workspace.findAll({

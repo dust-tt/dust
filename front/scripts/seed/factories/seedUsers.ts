@@ -1,5 +1,5 @@
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { UserResource } from "@app/lib/resources/user_resource";
 
 import type { SeedContext, UserAsset } from "./types";

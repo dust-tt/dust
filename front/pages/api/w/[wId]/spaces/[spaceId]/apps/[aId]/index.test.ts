@@ -3,7 +3,7 @@ import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { describe, expect, it } from "vitest";
 
