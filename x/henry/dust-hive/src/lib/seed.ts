@@ -54,7 +54,7 @@ function buildDatabaseUri(envVars: Record<string, string>): string {
   return buildPostgresUri(envVars, "dust_front");
 }
 
-async function listActiveSeededuserIds({
+async function listActiveSeededUserIds({
   databaseUri,
   workspaceId,
 }: {
@@ -142,22 +142,22 @@ async function queueSeededUsersForUserSearchIndexation({
   envShPath: string;
   worktreePath: string;
 }): Promise<void> {
-  const seededuserIds = await listActiveSeededuserIds({
+  const seededUserIds = await listActiveSeededUserIds({
     databaseUri,
     workspaceId,
   });
 
-  if (seededuserIds.length === 0) {
+  if (seededUserIds.length === 0) {
     logger.warn("No active seeded users found for user search indexing.");
     return;
   }
 
-  logger.step(`Queueing user search indexing workflows (${seededuserIds.length} user(s))...`);
+  logger.step(`Queueing user search indexing workflows (${seededUserIds.length} user(s))...`);
 
   const queueResult = await queueUserSearchIndexationWorkflows({
     envShPath,
     worktreePath,
-    userIds: seededuserIds,
+    userIds: seededUserIds,
   });
 
   if (!queueResult.success) {
@@ -171,7 +171,7 @@ async function queueSeededUsersForUserSearchIndexation({
     return;
   }
 
-  logger.success(`Queued user search indexing workflows for ${seededuserIds.length} user(s)`);
+  logger.success(`Queued user search indexing workflows for ${seededUserIds.length} user(s)`);
 }
 
 export async function runSqlSeed(env: Environment): Promise<boolean> {
