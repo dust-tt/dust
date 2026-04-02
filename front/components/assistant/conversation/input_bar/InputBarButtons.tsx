@@ -31,7 +31,7 @@ interface InputBarButtonsProps {
   editorService: ReturnType<typeof useCustomEditor>["editorService"];
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
   fileUploaderService: FileUploaderService;
-  handleAgentSelect: (mention: RichMention) => void;
+  handleSingleAgentSelect: (mention: RichMention) => void;
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
@@ -56,7 +56,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   editorService,
   fileInputRef,
   fileUploaderService,
-  handleAgentSelect,
+  handleSingleAgentSelect,
   onMCPServerViewSelect,
   onNodeSelect,
   onNodeUnselect,
@@ -76,7 +76,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       size={buttonSize}
       onItemClick={(c) => {
         if (singleAgentInput) {
-          handleAgentSelect(toRichAgentMentionType(c));
+          handleSingleAgentSelect(toRichAgentMentionType(c));
         } else {
           editorService.insertMention(toRichAgentMentionType(c));
         }

@@ -150,7 +150,7 @@ const InputBarContainer = ({
 
   // Callback for the editor's @ mention suggestion — sets the selected agent
   // without focusing (the editor already has focus when the user types @).
-  const onAgentSelect = (mention: RichMention) => {
+  const onSingleAgentSelect = (mention: RichMention) => {
     if (isRichAgentMention(mention)) {
       setSelectedSingleAgent(mention);
     }
@@ -330,7 +330,7 @@ const InputBarContainer = ({
     disableAutoFocus,
     disableUserMentions,
     onUrlDetected: handleUrlDetected,
-    onAgentSelect,
+    onAgentSelect: onSingleAgentSelect,
     singleAgentInputEnabled: singleAgentInput,
     owner,
     conversationId: conversation?.sId,
@@ -414,7 +414,7 @@ const InputBarContainer = ({
             if (singleAgentInput) {
               const agent = allAgents.find((a) => a.sId === message.id);
               if (agent) {
-                handleAgentSelect(toRichAgentMentionType(agent));
+                handleSingleAgentSelect(toRichAgentMentionType(agent));
               }
             } else {
               editorService.insertMention({
@@ -580,7 +580,7 @@ const InputBarContainer = ({
   // the input bar), we grab it back.
   const { animate, captureActions } = useContext(InputBarContext);
 
-  const handleAgentSelect = useCallback(
+  const handleSingleAgentSelect = useCallback(
     (mention: RichMention) => {
       if (isRichAgentMention(mention)) {
         setSelectedSingleAgent(mention);
@@ -869,7 +869,7 @@ const InputBarContainer = ({
                     editorService={editorService}
                     fileInputRef={fileInputRef}
                     fileUploaderService={fileUploaderService}
-                    handleAgentSelect={handleAgentSelect}
+                    handleSingleAgentSelect={handleSingleAgentSelect}
                     onMCPServerViewSelect={onMCPServerViewSelect}
                     onNodeSelect={onNodeSelect}
                     onNodeUnselect={onNodeUnselect}
