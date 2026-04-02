@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/assistant/global_agents/sidekick_context";
 import { getLLM } from "@app/lib/api/llm";
 import type { LLM } from "@app/lib/api/llm/llm";
+import type { BatchResultWithRunIds } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
@@ -246,7 +247,7 @@ function sleep(ms: number): Promise<void> {
 async function submitAndWaitForBatch(
   llm: LLM,
   batchMap: Map<string, LLMStreamParameters>
-): Promise<Map<string, LLMEvent[]>> {
+): Promise<BatchResultWithRunIds> {
   const batchId = await llm.sendBatchProcessing(batchMap);
 
   let status = await llm.getBatchStatus(batchId);
@@ -290,7 +291,7 @@ export async function executeBatch(
 
     const nextPendingParams = new Map<string, LLMStreamParameters>();
 
-    for (const [scenarioId, events] of batchResult) {
+    for (const [scenarioId, { events }] of batchResult) {
       const stepResult = extractFromEvents(events);
       const prev = accumulatedToolCalls.get(scenarioId) ?? [];
       const allToolCalls = [...prev, ...stepResult.toolCalls];

@@ -160,7 +160,8 @@ export async function storeLlmResult(
   auth: Authenticator,
   conversation: ConversationResource,
   events: LLMEvent[],
-  agentConfigurationId: string
+  agentConfigurationId: string,
+  { runIds }: { runIds?: string[] } = {}
 ): Promise<StoreLlmResultInfo> {
   const workspace = auth.getNonNullableWorkspace();
 
@@ -212,6 +213,7 @@ export async function storeLlmResult(
           errorCode: firstError ? firstError.content.type : null,
           errorMessage: firstError ? firstError.content.message : null,
           completedAt: new Date(),
+          runIds: runIds ?? null,
         },
         { transaction: t }
       );
@@ -350,7 +352,7 @@ export async function downloadBatchResultFromLlm(
   conversationIds: string[],
   agentConfigurationId: string
 ): Promise<BatchDownloadResult> {
-  const events = await llm.getBatchResult(batchId);
+  const batchResults = await llm.getBatchResult(batchId);
 
   const conversationResources = await ConversationResource.fetchByIds(
     auth,
@@ -360,8 +362,13 @@ export async function downloadBatchResultFromLlm(
     conversationResources.map((c) => [c.sId, c])
   );
 
+  const events = new Map<string, LLMEvent[]>();
   const storedResultInfo = new Map<string, StoreLlmResultInfo>();
-  for (const [conversationId, convEvents] of events) {
+  for (const [
+    conversationId,
+    { events: convEvents, dustRunId },
+  ] of batchResults) {
+    events.set(conversationId, convEvents);
     const conversation = conversationById.get(conversationId);
     if (!conversation) {
       continue;
@@ -370,7 +377,8 @@ export async function downloadBatchResultFromLlm(
       auth,
       conversation,
       convEvents,
-      agentConfigurationId
+      agentConfigurationId,
+      { runIds: [dustRunId] }
     );
     storedResultInfo.set(conversationId, info);
   }

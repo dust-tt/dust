@@ -299,13 +299,14 @@ describe.skipIf(!RUN_LLM_BATCH_TEST || modelsWithBatchSupport.length === 0)(
           expect(result.size).toBe(batchMap.size);
 
           for (const { id, expectedInResponse } of conversations) {
-            const events = result.get(id);
+            const entry = result.get(id);
             expect(
-              events,
+              entry,
               `Expected results for conversation ${id}`
             ).toBeDefined();
-            if (events) {
-              checkResponse(id, events, expectedInResponse);
+            if (entry) {
+              expect(entry.dustRunId).toBeDefined();
+              checkResponse(id, entry.events, expectedInResponse);
             }
           }
         },

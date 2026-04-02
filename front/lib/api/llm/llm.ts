@@ -8,7 +8,11 @@ import type {
   LLMTraceContext,
   LLMTraceCustomization,
 } from "@app/lib/api/llm/traces/types";
-import type { BatchResult, BatchStatus } from "@app/lib/api/llm/types/batch";
+import type {
+  BatchResult,
+  BatchResultWithRunIds,
+  BatchStatus,
+} from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type {
@@ -455,12 +459,12 @@ export abstract class LLM<TPayload = unknown> {
    * Only call this when getBatchStatus returns "ready".
    * Results are automatically traced when a tracing context is set.
    */
-  async getBatchResult(batchId: string): Promise<BatchResult> {
+  async getBatchResult(batchId: string): Promise<BatchResultWithRunIds> {
     const results = await this.internalGetBatchResult(batchId);
-    if (!this.context) {
-      return results;
+    if (this.context) {
+      await this.traceBatchResults(results);
     }
-    return this.traceBatchResults(results);
+    return this.createRunsForBatchResults(results);
   }
 
   /**
@@ -477,7 +481,47 @@ export abstract class LLM<TPayload = unknown> {
   /**
    * Traces batch results by creating one Langfuse generation per batch entry.
    */
-  private async traceBatchResults(results: BatchResult): Promise<BatchResult> {
+  /**
+   * Creates RunResource entries and records token usage for each batch entry.
+   * This enables cost tracking by linking batch results to run_usages.
+   */
+  private async createRunsForBatchResults(
+    results: BatchResult
+  ): Promise<BatchResultWithRunIds> {
+    const workspaceId = this.authenticator.getNonNullableWorkspace().id;
+    const enrichedResults: BatchResultWithRunIds = new Map();
+
+    for (const [customId, events] of results) {
+      const traceId = createLLMTraceId(randomUUID());
+
+      const run = await RunResource.makeNew({
+        appId: null,
+        dustRunId: traceId,
+        runType: "deploy",
+        useWorkspaceCredentials: false,
+        workspaceId,
+      });
+
+      // Extract token usage from events and record it.
+      const tokenUsageEvent = events.find((e) => e.type === "token_usage");
+      if (tokenUsageEvent && tokenUsageEvent.type === "token_usage") {
+        await run.recordTokenUsage(
+          this.authenticator,
+          tokenUsageEvent.content,
+          this.modelId
+        );
+      }
+
+      enrichedResults.set(customId, { events, dustRunId: traceId });
+    }
+
+    return enrichedResults;
+  }
+
+  /**
+   * Traces batch results by creating one Langfuse generation per batch entry.
+   */
+  private async traceBatchResults(results: BatchResult): Promise<void> {
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
 
     for (const [customId, events] of results) {
@@ -581,8 +625,6 @@ export abstract class LLM<TPayload = unknown> {
 
       generation.end();
     }
-
-    return results;
   }
 
   /**
