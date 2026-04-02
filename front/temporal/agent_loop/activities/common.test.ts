@@ -1,3 +1,4 @@
+import { finalizeSucceededAgentMessage } from "@app/lib/api/assistant/conversation";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -628,13 +629,10 @@ describe("updateAgentMessageDBAndMemory", () => {
       expect(agentMessage.status).toBe("created");
       expect(agentMessage.completedTs).toBeNull();
 
-      // Act: Update status to succeeded
-      await updateAgentMessageDBAndMemory(auth, {
+      // Act: Update status to succeeded via locked finalization
+      await finalizeSucceededAgentMessage(auth, {
+        conversation,
         agentMessage,
-        update: {
-          type: "status",
-          status: "succeeded",
-        },
       });
 
       // Assert: Database should be updated

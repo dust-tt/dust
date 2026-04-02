@@ -1,3 +1,4 @@
+import { finalizeSucceededAgentMessage } from "@app/lib/api/assistant/conversation";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
@@ -53,7 +54,7 @@ export async function updateAgentMessageDBAndMemory(
     update:
       | {
           type: "status";
-          status: "succeeded" | "cancelled";
+          status: "cancelled";
         }
       | {
           type: "error";
@@ -288,13 +289,10 @@ export async function processEventForDatabase(
 
     case "agent_message_success":
       await Promise.all([
-        // Store success in database. runIds are already merged above.
-        updateAgentMessageDBAndMemory(auth, {
+        // Store success in database behind advisory lock.
+        finalizeSucceededAgentMessage(auth, {
+          conversation,
           agentMessage,
-          update: {
-            type: "status",
-            status: "succeeded",
-          },
         }),
         // Mark the conversation as updated
         ConversationResource.markAsUpdated(auth, { conversation }),
