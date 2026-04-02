@@ -122,12 +122,11 @@ async function handler(
       let backpressureCount = 0;
 
       for await (const event of eventStream) {
-        // Butler suggestions and graceful stop requests are internal events, not exposed via the public API.
+        // Butler suggestions are internal events, not exposed via the public API.
         if (
           event.data.type === "butler_suggestion_created" ||
           event.data.type === "butler_done" ||
-          event.data.type === "butler_thinking" ||
-          event.data.type === "graceful_stop_requested"
+          event.data.type === "butler_thinking"
         ) {
           continue;
         }

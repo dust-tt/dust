@@ -502,16 +502,6 @@ export type ButlerSuggestionCreatedEvent = {
   suggestion: ButlerSuggestionPublicType;
 };
 
-// Event sent when a graceful stop is requested on a running agent loop.
-export type GracefulStopReason = "user_requested" | "steering";
-
-export type GracefulStopRequestedEvent = {
-  type: "graceful_stop_requested";
-  created: number;
-  agentMessageSId: string;
-  reason: GracefulStopReason;
-};
-
 // Event sent when the butler starts analyzing a conversation.
 export type ButlerThinkingEvent = {
   type: "butler_thinking";

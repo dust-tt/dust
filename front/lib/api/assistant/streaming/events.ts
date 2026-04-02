@@ -129,7 +129,6 @@ function isMessageEventParams(
     case "agent_message_new":
     case "agent_message_done":
     case "conversation_title":
-    case "graceful_stop_requested":
       return false;
     default:
       assertNever(eventType);
