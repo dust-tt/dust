@@ -11,6 +11,7 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { isSingleAgentInputEnabled } from "@app/lib/development";
