@@ -7,9 +7,9 @@ import {
 import {
   Checkbox,
   Chip,
-  cn,
   ContentMessage,
   ContextItem,
+  cn,
   InformationCircleIcon,
   Label,
   PuzzleIcon,
@@ -134,10 +134,7 @@ export function DetectedSkillsList({
             </ContextItem.List>
           )}
           <div className="relative max-h-64 overflow-hidden">
-            <div
-              ref={scrollCallbackRef}
-              className="max-h-64 overflow-y-auto"
-            >
+            <div ref={scrollCallbackRef} className="max-h-64 overflow-y-auto">
               <ContextItem.List>
                 {detectedSkills.map((skill) => (
                   <ContextItem
