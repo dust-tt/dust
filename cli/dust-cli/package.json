@@ -2,7 +2,7 @@
   "name": "@dust-tt/dust-cli",
   "version": "0.4.5",
   "engines": {
-    "node": ">=22.22.0"
+    "node": ">=24.14.0"
   },
   "description": "A command-line interface for interacting with Dust.",
   "type": "module",
