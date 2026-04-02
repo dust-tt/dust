@@ -152,9 +152,11 @@ const InputBarContainer = ({
   const singleAgentInput = isSingleAgentInputEnabled();
   const { selectedSingleAgent, setSelectedSingleAgent } =
     useContext(InputBarContext);
+  const [hasUserMention, setHasUserMention] = useState(false);
 
   // Auto-select the "dust" agent by default in single-agent mode for new conversations.
-  if (singleAgentInput && !conversation && !selectedSingleAgent && allAgents.length > 0) {
+  // Skip when a human is mentioned — the user explicitly chose to talk to a person, not an agent.
+  if (singleAgentInput && !conversation && !selectedSingleAgent && !hasUserMention && allAgents.length > 0) {
     const dustAgent = allAgents.find(
       (a) => a.sId === GLOBAL_AGENTS_SID.DUST
     );
@@ -176,7 +178,6 @@ const InputBarContainer = ({
   >(null);
   const [pastedCount, setPastedCount] = useState(0);
   const [isEmpty, setIsEmpty] = useState(true);
-  const [hasUserMention, setHasUserMention] = useState(false);
   // In single-agent mode, set to false when a human is mentioned to hide agents from the @ dropdown.
   // A ref so the mention suggestion plugin (which lives outside React) can read it synchronously.
   const shouldSuggestAgentRef = useRef(true);
