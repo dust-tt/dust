@@ -197,7 +197,7 @@ const InputBarContainer = ({
 
   // Auto-select the agent in single-agent mode for new conversations on mount.
   // Prefer the agent saved in the draft; fall back to "dust".
-  // Runs once on mount (empty deps) so it doesn't override manual agent changes later.
+  // The ref guard ensures this only runs once so it doesn't override manual agent changes.
   const hasInitializedAgentRef = useRef(false);
 
   useEffect(() => {
