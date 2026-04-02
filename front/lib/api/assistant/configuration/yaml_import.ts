@@ -31,7 +31,8 @@ type ImportResult = Result<
 
 async function importAgentConfiguration(
   auth: Authenticator,
-  yamlConfig: AgentYAMLConfig
+  yamlConfig: AgentYAMLConfig,
+  agentConfigurationId?: string
 ): Promise<ImportResult> {
   const isSaveAgentConfigurationsEnabled =
     await KillSwitchResource.isKillSwitchEnabledCached(
@@ -125,6 +126,7 @@ async function importAgentConfiguration(
   const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
     auth,
     assistant,
+    agentConfigurationId,
     authorId: authorModelId,
   });
 
@@ -232,5 +234,5 @@ export async function patchAgentConfigurationFromJSON(
     slack_integration: patch.slack_integration ?? existing.slack_integration,
   };
 
-  return importAgentConfiguration(auth, merged);
+  return importAgentConfiguration(auth, merged, agentId);
 }
