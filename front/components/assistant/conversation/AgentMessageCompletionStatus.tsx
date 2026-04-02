@@ -44,7 +44,7 @@ export const AgentMessageCompletionStatus = ({
     } else if (agentMessage.status === "cancelled") {
       statusText = "Cancelled after";
     } else if (agentMessage.status === "gracefully_stopped") {
-      statusText = "Stopped after";
+      statusText = "Stopped in";
     }
     const completedInMs = agentMessage.completionDurationMs;
     timeString = formatDurationString(completedInMs);
