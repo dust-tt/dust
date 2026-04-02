@@ -13,7 +13,6 @@ import {
 import type { BatchStatus } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
-import { Authenticator } from "@app/lib/auth";
 import { notifyAgentSuggestionsReady } from "@app/lib/notifications/workflows/agent-suggestions-ready";
 import {
   aggregateSyntheticSuggestions,
@@ -39,10 +38,13 @@ import {
   type ReinforcedToolActionInfo,
   storeTerminalToolCallResults,
 } from "@app/lib/reinforced_agent/tool_execution";
+import {
+  getAuthForWorkspace,
+  listRecentConversationsForAgent,
+} from "@app/lib/reinforced_agent/utils";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { updateActiveTrace } from "@langfuse/tracing";
 import { ApplicationFailure } from "@temporalio/common";
@@ -50,18 +52,6 @@ import { ApplicationFailure } from "@temporalio/common";
 // Re-export runToolActivity so the reinforced agent worker registers it,
 // allowing the workflow to call it via proxyActivities.
 export { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
-
-async function getAuthForWorkspace(
-  workspaceId: string
-): Promise<Authenticator> {
-  const workspace = await WorkspaceResource.fetchById(workspaceId);
-  if (!workspace) {
-    throw ApplicationFailure.nonRetryable(
-      `Workspace not found: ${workspaceId}`
-    );
-  }
-  return Authenticator.internalAdminForWorkspace(workspaceId);
-}
 
 /**
  * List agent configuration sIds for active (non-global) agents in a workspace.
@@ -102,16 +92,9 @@ export async function getRecentConversationsForAgentActivity({
     metadata: { agentConfigurationId },
   });
 
-  const auth = await getAuthForWorkspace(workspaceId);
-
-  const updatedSince = new Date();
-  updatedSince.setHours(
-    updatedSince.getHours() - conversationLookbackDays * 24
-  );
-
-  return ConversationResource.listRecentConversationsForAgent(auth, {
+  return listRecentConversationsForAgent(workspaceId, {
     agentConfigurationId,
-    updatedSince,
+    conversationLookbackDays,
   });
 }
 
