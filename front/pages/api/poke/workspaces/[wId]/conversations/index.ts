@@ -53,7 +53,7 @@ async function handler(
           );
       } else if (isString(agentId)) {
         // Get conversation IDs for this agent
-        const conversationIds =
+        const conversationResources =
           await ConversationResource.listConversationWithAgentCreatedBeforeDate(
             auth,
             {
@@ -61,12 +61,6 @@ async function handler(
               cutoffDate: new Date(), // Current time to get all conversations.
             }
           );
-
-        // Fetch full conversation objects
-        const conversationResources = await ConversationResource.fetchByIds(
-          auth,
-          conversationIds
-        );
 
         conversations = conversationResources.map((c) => {
           return {

@@ -612,7 +612,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       cutoffDate: Date;
     },
     options?: FetchConversationOptions
-  ): Promise<string[]> {
+  ): Promise<ConversationResource[]> {
     // Find all conversations that:
     // 1. Were created before the cutoff date.
     // 2. Have at least one message from the specified agent.
@@ -651,7 +651,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     // Step 2: Filter conversations by creation date.
     const conversationIds = messageWithAgent.map((m) => m.conversationId);
-    const conversations = await this.baseFetchWithAuthorization(auth, options, {
+    return this.baseFetchWithAuthorization(auth, options, {
       where: {
         id: {
           [Op.in]: conversationIds,
@@ -661,8 +661,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
       },
     });
-
-    return conversations.map((c) => c.sId);
   }
 
   /**
