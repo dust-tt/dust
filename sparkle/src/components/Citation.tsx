@@ -8,8 +8,12 @@ import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React, { type ReactNode } from "react";
 
+const CitationContext = React.createContext<{ compact: boolean }>({
+  compact: false,
+});
+
 const citationVariants = cva(
-  "s-relative s-flex s-min-w-24 s-flex-none s-flex-col s-overflow-hidden",
+  "s-relative s-flex s-min-w-24 s-flex-none s-overflow-hidden",
   {
     variants: {
       hasImage: {
@@ -18,15 +22,21 @@ const citationVariants = cva(
         false: "s-pt-[min(8%,theme(spacing.3))]",
         true: "s-border-0 s-p-0",
       },
+      compact: {
+        true: "s-flex-row s-flex-wrap s-items-center s-gap-x-2 s-pt-0",
+        false: "s-flex-col",
+      },
     },
     defaultVariants: {
       hasImage: false,
+      compact: false,
     },
   }
 );
 
 type CitationProps = CardProps & {
   children: React.ReactNode;
+  compact?: boolean;
   isLoading?: boolean;
   tooltip?: string;
 };
@@ -35,6 +45,7 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
   (
     {
       children,
+      compact = false,
       variant = "secondary",
       isLoading,
       className,
@@ -64,7 +75,7 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
     const contentWithDescription = (
       <>
         {children}
-        {!hasDescription && !hasImage && (
+        {!hasDescription && !hasImage && !compact && (
           <CitationDescription>&nbsp;</CitationDescription>
         )}
       </>
@@ -74,10 +85,12 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
         ref={ref}
         variant={variant}
         size="sm"
-        className={cn(citationVariants({ hasImage }), className)}
+        className={cn(citationVariants({ hasImage, compact }), className)}
         {...props}
       >
-        {contentWithDescription}
+        <CitationContext.Provider value={{ compact }}>
+          {contentWithDescription}
+        </CitationContext.Provider>
         {isLoading && <CitationLoading />}
       </Card>
     );
@@ -218,10 +231,15 @@ const CitationIcons = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ children, className, ...props }, ref) => {
+  const { compact } = React.useContext(CitationContext);
   return (
     <div
       ref={ref}
-      className={cn("s-flex s-items-center s-gap-2 s-pb-1", className)}
+      className={cn(
+        "s-flex s-items-center s-gap-2",
+        !compact && "s-pb-1",
+        className
+      )}
       {...props}
     >
       {children}
@@ -256,6 +274,7 @@ interface CitationTitleProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const CitationTitle = React.forwardRef<HTMLDivElement, CitationTitleProps>(
   ({ children, className, ...props }, ref) => {
+    const { compact } = React.useContext(CitationContext);
     return (
       <div
         ref={ref}
@@ -264,6 +283,7 @@ const CitationTitle = React.forwardRef<HTMLDivElement, CitationTitleProps>(
           "s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-break-all",
           "s-heading-sm",
           "s-text-foreground dark:s-text-foreground-night",
+          compact && "s-flex-1 s-min-w-0",
           className
         )}
         {...props}
@@ -284,6 +304,7 @@ const CitationDescription = React.forwardRef<
   HTMLDivElement,
   CitationDescriptionProps
 >(({ children, className, ...props }, ref) => {
+  const { compact } = React.useContext(CitationContext);
   return (
     <div
       ref={ref}
@@ -292,6 +313,7 @@ const CitationDescription = React.forwardRef<
         "s-line-clamp-1 s-overflow-hidden s-text-ellipsis",
         "s-text-xs s-font-normal",
         "s-text-muted-foreground dark:s-text-muted-foreground-night",
+        compact && "s-basis-full",
         className
       )}
       {...props}

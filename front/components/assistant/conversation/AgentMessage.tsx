@@ -1456,6 +1456,7 @@ function getCitations({
       <AttachmentCitation
         key={index}
         attachmentCitation={attachmentCitation}
+        compact
         owner={owner}
         conversationId={conversationId}
       />
