@@ -53,7 +53,7 @@ export async function updateAgentMessageDBAndMemory(
         update:
           | {
               type: "status";
-              status: "succeeded" | "cancelled";
+              status: "succeeded" | "cancelled" | "gracefully_stopped";
             }
           | {
               type: "error";
@@ -300,15 +300,19 @@ export async function processEventForDatabase(
       });
       break;
 
+    case "agent_message_gracefully_stopped":
     case "agent_message_success":
       await Promise.all([
-        // Store success in database behind advisory lock.
+        // Store terminal status in database behind advisory lock.
         updateAgentMessageDBAndMemory(auth, {
           agentMessage,
           conversation,
           update: {
             type: "status",
-            status: "succeeded",
+            status:
+              event.type === "agent_message_gracefully_stopped"
+                ? "gracefully_stopped"
+                : "succeeded",
           },
         }),
         // Mark the conversation as updated
@@ -596,5 +600,57 @@ export async function finalizeCancellation(
       conversationId: conversation.sId,
     },
     "Agent generation cancelled"
+  );
+}
+
+/**
+ * Activity executed after a graceful stop signal. The current step
+ * completed normally so all content is already flushed — we just
+ * need to emit the terminal event.
+ */
+export async function finalizeGracefulStop(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs
+): Promise<void> {
+  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
+  if (runAgentDataRes.isErr()) {
+    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      logger.info(
+        {
+          conversationId: agentLoopArgs.conversationId,
+          agentMessageId: agentLoopArgs.agentMessageId,
+        },
+        "Message or conversation was deleted, exiting"
+      );
+      return;
+    }
+    throw new Error(
+      `Failed to get run agent data: ${runAgentDataRes.error.message}`
+    );
+  }
+  const { auth, agentConfiguration, agentMessage, conversation } =
+    runAgentDataRes.value;
+
+  const step = _.maxBy(agentMessage.contents, "step")?.step ?? 0;
+
+  await updateResourceAndPublishEvent(auth, {
+    event: {
+      type: "agent_message_gracefully_stopped",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      message: agentMessage,
+      runIds: [],
+    },
+    agentMessage,
+    conversation,
+    step,
+  });
+  logger.info(
+    {
+      agentMessageId: agentMessage.sId,
+      conversationId: conversation.sId,
+    },
+    "Agent generation gracefully stopped"
   );
 }

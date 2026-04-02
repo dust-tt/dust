@@ -17,6 +17,7 @@ import logger from "@app/logger/logger";
 import { launchAgentMessageAnalytics } from "@app/temporal/agent_loop/activities/analytics";
 import {
   finalizeCancellation,
+  finalizeGracefulStop,
   notifyWorkflowError,
 } from "@app/temporal/agent_loop/activities/common";
 import { handleMentions } from "@app/temporal/agent_loop/activities/mentions";
@@ -90,6 +91,65 @@ export async function finalizeSuccessfulAgentLoopActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
+  const authResult = await Authenticator.fromJSON(authType);
+  if (authResult.isErr()) {
+    return;
+  }
+
+  const auth = authResult.value;
+  const featureFlags = await getFeatureFlags(auth);
+
+  let shouldSignalButler = false;
+  let shouldSignalTodo = false;
+  if (
+    featureFlags.includes("conversation_butler") ||
+    featureFlags.includes("project_todo")
+  ) {
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      agentLoopArgs.conversationId
+    );
+    shouldSignalButler = conversation?.spaceId !== null;
+  }
+
+  await Promise.all([
+    snapshotAgentMessageSkills(authType, agentLoopArgs),
+    launchAgentMessageAnalytics(authType, agentLoopArgs),
+    launchTrackProgrammaticUsage(authType, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(authType, agentLoopArgs),
+    conversationUnreadNotificationActivity(authType, agentLoopArgs),
+    handleMentions(authType, agentLoopArgs),
+    sendEmailReplyOnCompletion(authType, agentLoopArgs),
+    shouldSignalButler
+      ? signalButlerComplete({
+          authType,
+          conversationId: agentLoopArgs.conversationId,
+          messageId: agentLoopArgs.agentMessageId,
+        })
+      : Promise.resolve(),
+    shouldSignalButler
+      ? linkButlerSuggestionResult(auth, agentLoopArgs)
+      : Promise.resolve(),
+    shouldSignalTodo
+      ? signalProjectTodoComplete({
+          authType,
+          conversationId: agentLoopArgs.conversationId,
+          messageId: agentLoopArgs.agentMessageId,
+        })
+      : Promise.resolve(),
+  ]);
+}
+
+/**
+ * Graceful stop mirrors the successful path: content is valid,
+ * all side-effects (analytics, notifications, etc.) should run.
+ */
+export async function finalizeGracefullyStoppedAgentLoopActivity(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs
+): Promise<void> {
+  await finalizeGracefulStop(authType, agentLoopArgs);
+
   const authResult = await Authenticator.fromJSON(authType);
   if (authResult.isErr()) {
     return;
