@@ -604,9 +604,8 @@ export async function finalizeCancellation(
 }
 
 /**
- * Activity executed after a graceful stop signal. The current step
- * completed normally so all content is already flushed — we just
- * need to emit the terminal event.
+ * Activity executed after a graceful stop signal. The current step completed normally so all
+ * content is already flushed — we just need to emit the terminal event.
  */
 export async function finalizeGracefulStop(
   authType: AuthenticatorType,
