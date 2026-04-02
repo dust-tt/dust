@@ -796,8 +796,8 @@ async function createServer(
     schema: schema,
     stake: "never_ask",
     displayLabels: {
-      running: "Running child agent",
-      done: "Run child agent",
+      running: `Running @${childAgentBlob.name}`,
+      done: `Run @${childAgentBlob.name}`,
     },
     enableAlerting: true,
     handler: (params: SchemaType, extra: ToolHandlerExtra) =>

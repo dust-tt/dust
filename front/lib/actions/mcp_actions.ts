@@ -226,6 +226,7 @@ function makeServerSideMCPToolConfigurations(
     secretName: config.secretName,
     dustProject: config.dustProject,
     ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
+    ...(tool.displayLabels && { displayLabels: tool.displayLabels }),
     argumentsRequiringApproval: toolsArgumentsRequiringApproval?.[tool.name],
   }));
 }
