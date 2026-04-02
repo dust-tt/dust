@@ -27,7 +27,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/user_project_digests/generate", () 
     const resourceTest = await createResourceTest({});
     workspace = resourceTest.workspace;
     auth = resourceTest.authenticator;
-    await FeatureFlagFactory.basic(auth, "project_butler");
+    await FeatureFlagFactory.basic(auth, "project_todo");
   });
 
   it("should successfully trigger digest generation for a project space", async () => {

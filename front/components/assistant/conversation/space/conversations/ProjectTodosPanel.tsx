@@ -195,18 +195,12 @@ function TodoItem({ todo, isPendingDone, onMarkDone }: TodoItemProps) {
 interface ProjectTodosPanelProps {
   owner: LightWorkspaceType;
   spaceId: string;
-  hasFeatureFlagProjectTodo: boolean;
 }
 
-export function ProjectTodosPanel({
-  owner,
-  spaceId,
-  hasFeatureFlagProjectTodo,
-}: ProjectTodosPanelProps) {
+export function ProjectTodosPanel({ owner, spaceId }: ProjectTodosPanelProps) {
   const { todos, isTodosLoading, mutateTodos } = useProjectTodos({
     owner,
     spaceId,
-    disabled: !hasFeatureFlagProjectTodo,
   });
   const doCreate = useCreateProjectTodo({ owner, spaceId });
   const doUpdate = useUpdateProjectTodo({ owner, spaceId });

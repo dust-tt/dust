@@ -24,13 +24,12 @@ async function handler(
   { space }: { space: SpaceResource }
 ): Promise<void> {
   const featureFlags = await getFeatureFlags(auth);
-  if (!featureFlags.includes("project_butler")) {
+  if (!featureFlags.includes("project_todo")) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "feature_flag_not_found",
-        message:
-          "The project butler feature is not enabled for this workspace.",
+        message: "The project todo feature is not enabled for this workspace.",
       },
     });
   }

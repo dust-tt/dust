@@ -683,7 +683,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "confluence_tool"
   | "conversation_butler"
   | "conversation_branches"
-  | "project_butler"
   | "project_todo"
   | "projects"
   | "databricks_tool"
