@@ -87,6 +87,7 @@ export function createPlaceholderUserMessage({
             sourceProvider: null,
             sourceIcon: null,
             isInProjectContext: false,
+            hidden: false,
           }) satisfies FileContentFragmentType
       ),
       ...(contentFragments?.contentNodes ?? []).map(

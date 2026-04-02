@@ -183,6 +183,7 @@ export async function processToolResults(
               conversationId: conversation.sId,
               content: block.text,
               snippet,
+              hideFromUser: true,
             });
             return {
               content: {
@@ -341,6 +342,7 @@ export async function processToolResults(
                 conversationId: conversation.sId,
                 content: text,
                 snippet,
+                hideFromUser: true,
               });
               return {
                 content: {
@@ -390,7 +392,7 @@ export async function processToolResults(
 
   const generatedFiles: ActionGeneratedFileType[] = removeNulls(
     cleanContent.map((c) => {
-      if (!c.file || c.file.useCaseMetadata?.hideFromGeneratedFiles) {
+      if (!c.file) {
         return null;
       }
 
@@ -402,6 +404,7 @@ export async function processToolResults(
         createdAt: c.file.createdAt.getTime(),
         updatedAt: c.file.updatedAt.getTime(),
         isInProjectContext: c.file.useCase === "project_context",
+        hidden: c.file.useCaseMetadata?.hideFromUser ?? false,
       } satisfies ActionGeneratedFileType;
     })
   );

@@ -8,7 +8,7 @@ import {
   isToolMarkerResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
-  getAttachmentFromFile,
+  makeFileAttachment,
   renderAttachmentXml,
 } from "@app/lib/api/assistant/conversation/attachments";
 import type { ProcessAndStoreFileError } from "@app/lib/api/files/processing";
@@ -99,13 +99,14 @@ export function rewriteContentForModel(
     isToolGeneratedFile(content) &&
     isSupportedFileContentType(content.resource.contentType)
   ) {
-    const attachment = getAttachmentFromFile({
+    const attachment = makeFileAttachment({
       fileId: content.resource.fileId,
       source: "agent",
       contentType: content.resource.contentType,
       title: content.resource.title,
       snippet: content.resource.snippet,
       isInProjectContext: content.resource.isInProjectContext ?? false,
+      hideFromUser: false, // Model do not care.
     });
     const xml = renderAttachmentXml({ attachment });
     let text = content.resource.text;

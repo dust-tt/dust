@@ -40,7 +40,7 @@ export type FileUseCaseMetadata = {
   lastEditedByAgentConfigurationId?: string;
   sourceProvider?: string;
   sourceIcon?: string;
-  hideFromGeneratedFiles?: boolean;
+  hideFromUser?: boolean;
 };
 
 export function isConversationFileUseCase(

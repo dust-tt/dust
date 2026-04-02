@@ -199,7 +199,7 @@ async function handleWebbrowser(
           conversationId,
           content: fileContent,
           snippet,
-          hideFromGeneratedFiles: true,
+          hideFromUser: true,
         });
 
         await uploadFileToConversationDataSource({ auth, file });
