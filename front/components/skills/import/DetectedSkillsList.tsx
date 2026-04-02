@@ -113,7 +113,7 @@ export function DetectedSkillsList({
           {importableNames.length > 1 && (
             <ContextItem.List>
               <ContextItem
-                title=""
+                title="Skill name"
                 visual={
                   <Checkbox
                     id="select-all-skills"
@@ -136,7 +136,7 @@ export function DetectedSkillsList({
                     </Label>
                   }
                   visual={
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <Checkbox
                         id={skill.name}
                         size="xs"
