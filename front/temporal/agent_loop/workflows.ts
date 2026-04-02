@@ -145,9 +145,8 @@ export async function agentLoopWorkflow({
     executionScope.cancel();
   });
 
-  // Graceful stop: let the current step finish, then exit the loop at the
-  // next step boundary. Unlike cancellation, in-flight activities are not
-  // killed.
+  // Graceful stop: let the current step finish, then exit the loop at the next step boundary.
+  // Unlike cancellation, in-flight activities are not killed.
   let gracefulStopRequested = false;
 
   setHandler(gracefullyStopAgentLoopSignal, () => {
@@ -200,9 +199,9 @@ export async function agentLoopWorkflow({
           stepStartTime
         );
 
-        // After the first step completes, launch title generation in the background.
-        // We wait until the first step so the agent has at least one response in the database,
-        // otherwise the title model would only see the user's question without context.
+        // After the first step completes, launch title generation in the background. We wait until
+        // the first step so the agent has at least one response in the database, otherwise the
+        // title model would only see the user's question without context.
         if (i === startStep && !agentLoopArgs.conversationTitle) {
           try {
             childWorkflowHandle = await startChild(
@@ -256,9 +255,9 @@ export async function agentLoopWorkflow({
       if (cancelRequested) {
         return finalizeCancelledAgentLoopActivity(authType, agentLoopArgs);
       }
-      // Error objects don't survive JSON serialization across the workflow→activity
-      // boundary (Error.message is not enumerable), so we extract the relevant
-      // fields into a plain object before passing to the activity.
+      // Error objects don't survive JSON serialization across the workflow→activity boundary
+      // (Error.message is not enumerable), so we extract the relevant fields into a plain object
+      // before passing to the activity.
       await finalizeErroredAgentLoopActivity(authType, agentLoopArgs, {
         message: workflowError.message,
         name: workflowError.name,
