@@ -195,6 +195,9 @@ function buildMountCommand({
 }): string {
   const flags = [
     `--token-url http://127.0.0.1:9876`,
+    // Disable token caching so gcsfuse fetches fresh token from server on every GCS API request.
+    // This ensures gcsfuse never uses stale credentials, eliminating 401 errors after token expiry.
+    `--reuse-token-from-url=false`,
     `--only-dir ${prefix}`,
     `--implicit-dirs`,
     `-o allow_other`,
