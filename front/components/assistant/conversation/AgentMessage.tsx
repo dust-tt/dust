@@ -170,6 +170,7 @@ interface AgentMessageProps {
   user: UserType;
   triggeringUser: UserType | null;
   isOnboardingConversation: boolean;
+  onCompletionStatusClick?: (messageId: string, actionId?: string) => void;
   handleSubmit: (
     input: string,
     mentions: RichMention[],
@@ -188,6 +189,7 @@ export function AgentMessage({
   user,
   triggeringUser,
   isOnboardingConversation,
+  onCompletionStatusClick,
   handleSubmit,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
@@ -874,6 +876,7 @@ export function AgentMessage({
         <DeletedMessage />
       ) : (
         <AgentMessageContent
+          onOpenDetails={onCompletionStatusClick}
           onQuickReplySend={handleQuickReply}
           owner={owner}
           conversationId={conversationId}
@@ -954,7 +957,14 @@ export function AgentMessage({
           }
           completionStatus={
             hideCompletionStatus ? undefined : (
-              <AgentMessageCompletionStatus agentMessage={agentMessage} />
+              <AgentMessageCompletionStatus
+                agentMessage={agentMessage}
+                onClick={
+                  onCompletionStatusClick
+                    ? () => onCompletionStatusClick(agentMessage.sId)
+                    : undefined
+                }
+              />
             )
           }
           renderName={renderName}
@@ -969,6 +979,7 @@ export function AgentMessage({
 }
 
 function AgentMessageContent({
+  onOpenDetails,
   triggeringUser,
   isLastMessage,
   agentMessage,
@@ -987,6 +998,7 @@ function AgentMessageContent({
   additionalMarkdownComponents: propsAdditionalMarkdownComponents,
   additionalMarkdownPlugins,
 }: {
+  onOpenDetails?: (messageId: string, actionId?: string) => void;
   triggeringUser: UserType | null;
   isLastMessage: boolean;
   owner: LightWorkspaceType;
@@ -1260,6 +1272,7 @@ function AgentMessageContent({
           agentMessage={agentMessage}
           lastAgentStateClassification={agentMessage.streaming.agentState}
           completedSteps={agentMessage.streaming.inlineActivitySteps}
+          onOpenDetails={onOpenDetails}
         />
       ) : (
         <AgentMessageActions

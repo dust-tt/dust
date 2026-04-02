@@ -28,6 +28,7 @@ interface InlineActivityStepsProps {
   agentMessage: LightAgentMessageType | LightAgentMessageWithActionsType;
   lastAgentStateClassification: AgentStateClassification;
   completedSteps: InlineActivityStep[];
+  onOpenDetails?: (messageId: string) => void;
 }
 
 function getCompletionLabel(
@@ -65,6 +66,7 @@ export function InlineActivitySteps({
   agentMessage,
   lastAgentStateClassification,
   completedSteps,
+  onOpenDetails,
 }: InlineActivityStepsProps) {
   const isAgentMessageWithActions =
     isLightAgentMessageWithActionsType(agentMessage);
@@ -83,6 +85,18 @@ export function InlineActivitySteps({
       setIsCollapsed(true);
     }
   }, [isDone]);
+
+  const openBreakdownPanel = (actionId?: string) => {
+    if (onOpenDetails) {
+      onOpenDetails(agentMessage.sId);
+      return;
+    }
+    openPanel({
+      type: "actions",
+      messageId: agentMessage.sId,
+      actionId,
+    });
+  };
 
   const isThinking = lastAgentStateClassification === "thinking";
   const isActing = lastAgentStateClassification === "acting";
@@ -181,13 +195,7 @@ export function InlineActivitySteps({
                     <div
                       key={step.id}
                       className="cursor-pointer"
-                      onClick={() =>
-                        openPanel({
-                          type: "actions",
-                          messageId: agentMessage.sId,
-                          actionId: step.actionId,
-                        })
-                      }
+                      onClick={() => openBreakdownPanel(step.actionId)}
                     >
                       <TimelineRow icon={actionIcon} isLast={isLast}>
                         <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">

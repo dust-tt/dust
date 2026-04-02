@@ -1,7 +1,11 @@
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
+import { ConversationBranchApprovalModal } from "@app/components/assistant/conversation/ConversationBranchApprovalModal";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import {
+  parseDataAsMessageIdAndActionId,
+  useConversationSidePanelContext,
+} from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
   createPlaceholderAgentMessage,
@@ -42,8 +46,10 @@ import type { DustError } from "@app/lib/error";
 import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import logger from "@app/logger/logger";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { isUserMessageType } from "@app/types/assistant/conversation";
+import {
+  type ConversationWithoutContentType,
+  isUserMessageTypeWithContentFragments,
+} from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import {
   isRichAgentMention,
@@ -173,6 +179,10 @@ export const ConversationViewer = ({
     owner,
     options: { disabled: true },
   });
+
+  const [branchIdToApprove, setBranchIdToApprove] = useState<string | null>(
+    null
+  );
 
   const {
     conversation,
@@ -331,7 +341,10 @@ export const ConversationViewer = ({
   const onRenderedDataChange = useCallback(
     (renderedData: VirtuosoMessage[]) => {
       if (currentPanel === "actions" && panelData) {
-        const messageId = panelData;
+        const { messageId } = parseDataAsMessageIdAndActionId(panelData);
+        if (!messageId) {
+          return;
+        }
         const message = renderedData
           .filter(isMessageTemporayState)
           .find((m) => m.sId === messageId);
@@ -553,6 +566,10 @@ export const ConversationViewer = ({
                 } else {
                   ref.current.data.append([agentMessage]);
                 }
+              }
+
+              if (agentMessage.branchId) {
+                setBranchIdToApprove(agentMessage.branchId);
               }
 
               void mutateConversationParticipants(async (participants) =>
@@ -888,7 +905,7 @@ export const ConversationViewer = ({
   const firstMessage = messages.at(-1)?.messages.at(0);
   const isOnboardingConversation =
     !!firstMessage &&
-    isUserMessageType(firstMessage) &&
+    isUserMessageTypeWithContentFragments(firstMessage) &&
     firstMessage.context.origin === "onboarding_conversation";
 
   const context: VirtuosoMessageListContext = useMemo(() => {
@@ -910,6 +927,7 @@ export const ConversationViewer = ({
       isProjectRestricted: spaceInfo?.isRestricted,
       projectSpaceId: conversation?.spaceId ?? undefined,
       projectSpaceName: spaceInfo?.name,
+      branchIdToApprove: branchIdToApprove ?? undefined,
     };
   }, [
     user,
@@ -928,6 +946,7 @@ export const ConversationViewer = ({
     isProjectMember,
     spaceInfo?.isRestricted,
     spaceInfo?.name,
+    branchIdToApprove,
   ]);
 
   return (
@@ -942,6 +961,7 @@ export const ConversationViewer = ({
       >
         <VirtuosoMessageList<VirtuosoMessage, VirtuosoMessageListContext>
           onRenderedDataChange={onRenderedDataChange}
+          StickyHeader={ConversationBranchApprovalModal}
           data={{
             data: initialListData,
             scrollModifier: {

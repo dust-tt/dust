@@ -10,12 +10,18 @@ import React from "react";
 
 export const AgentMessageCompletionStatus = ({
   agentMessage,
+  onClick,
 }: {
   agentMessage: LightAgentMessageType | LightAgentMessageWithActionsType;
+  onClick?: () => void;
 }) => {
   const { openPanel, data } = useConversationSidePanelContext();
 
-  const onClick = () => {
+  const handleClick = () => {
+    if (onClick) {
+      onClick();
+      return;
+    }
     openPanel({
       type: "actions",
       messageId: agentMessage.sId,
@@ -57,7 +63,7 @@ export const AgentMessageCompletionStatus = ({
         "hover:text-foreground dark:hover:text-foreground-night",
         isOpened && "text-foreground dark:text-foreground-night"
       )}
-      onClick={onClick}
+      onClick={handleClick}
     >
       <div>
         <span className={hasCompletedTimestamp ? "hidden sm:inline-block" : ""}>
