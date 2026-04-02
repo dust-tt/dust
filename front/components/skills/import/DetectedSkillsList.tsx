@@ -181,7 +181,7 @@ export function DetectedSkillsList({
             </div>
             <div
               className={cn(
-                "pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t",
+                "pointer-events-none absolute -bottom-px left-0 right-0 h-12 bg-gradient-to-t",
                 "from-background via-background/60 to-transparent transition-opacity duration-300 dark:from-background-night dark:via-background-night/60",
                 canScrollDown ? "opacity-100" : "opacity-0"
               )}
