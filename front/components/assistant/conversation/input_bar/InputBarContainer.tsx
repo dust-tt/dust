@@ -459,19 +459,30 @@ const InputBarContainer = ({
     },
   });
 
-  // Keep a ref to the deselection logic so the editor listener doesn't need
-  // all the deselection callbacks/arrays as effect dependencies.
-  const onEditorMentionsChangedRef = useRef((_userMentioned: boolean) => {});
-  onEditorMentionsChangedRef.current = (userMentioned: boolean) => {
-    shouldSuggestAgentRef.current = !(singleAgentInput && userMentioned);
-    if (singleAgentInput && userMentioned) {
+  // When a user is mentioned in single-agent mode, deselect the agent and clear capabilities.
+  // TODO: Refactor to avoid cascading re-runs — each deselect call mutates a dependency array,
+  // re-triggering this effect until all arrays are empty.
+  useEffect(() => {
+    shouldSuggestAgentRef.current = !(singleAgentInput && hasUserMention);
+    if (singleAgentInput && hasUserMention) {
       setSelectedSingleAgent(null);
       selectedMCPServerViews.forEach((sv) => onMCPServerViewDeselect(sv));
       selectedSkills.forEach((s) => onSkillDeselect(s));
       attachedNodes.forEach((n) => onNodeUnselect(n));
       fileUploaderService.resetUpload();
     }
-  };
+  }, [
+    singleAgentInput,
+    hasUserMention,
+    setSelectedSingleAgent,
+    selectedMCPServerViews,
+    onMCPServerViewDeselect,
+    selectedSkills,
+    onSkillDeselect,
+    attachedNodes,
+    onNodeUnselect,
+    fileUploaderService,
+  ]);
 
   // Update the editor ref when the editor is created and listen for updates to the editor.
   useEffect(() => {
@@ -481,9 +492,7 @@ const InputBarContainer = ({
       // Auto-save draft when content changes and track user mentions.
       const { markdown, mentions } = editorService.getMarkdownAndMentions();
       saveDraft(markdown);
-      const userMentioned = mentions.some((m) => m.type === "user");
-      setHasUserMention(userMentioned);
-      onEditorMentionsChangedRef.current(userMentioned);
+      setHasUserMention(mentions.some((m) => m.type === "user"));
     };
 
     if (editorRef.current) {
