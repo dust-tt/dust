@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-export const EXTRACT_ACTION_ITEMS_FUNCTION_NAME = "extract_action_items";
+export const EXTRACT_CONVERSATION_TODOS_FUNCTION_NAME =
+  "extract_conversation_todos";
 
 export const ActionItemSchema = z.object({
   // Present when the item matches a previously known action item. The LLM
@@ -13,9 +14,18 @@ export const ActionItemSchema = z.object({
   detected_done_rationale: z.string().optional(),
 });
 
+export const NotableFactSchema = z.object({
+  // Present when the fact matches a previously known notable fact. The LLM
+  // should copy the sId verbatim from the list provided in the prompt.
+  sId: z.string().optional(),
+  text: z.string(),
+  source_message_rank: z.number().int(),
+});
+
 export const ExtractActionItemsResult = z.object({
   topic: z.string(),
   action_items: z.array(ActionItemSchema),
+  notable_facts: z.array(NotableFactSchema),
 });
 
 export type ExtractionResult = z.infer<typeof ExtractActionItemsResult>;

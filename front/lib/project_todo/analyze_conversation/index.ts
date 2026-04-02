@@ -8,6 +8,10 @@ import {
   buildPromptActionItems,
 } from "@app/lib/project_todo/analyze_conversation/action_items";
 import {
+  buildNotableFacts,
+  buildPromptNotableFacts,
+} from "@app/lib/project_todo/analyze_conversation/notable_facts";
+import {
   ExtractActionItemsResult,
   type ExtractionResult,
 } from "@app/lib/project_todo/analyze_conversation/types";
@@ -133,7 +137,12 @@ export async function analyzeConversationTodos(
   }
 
   const previousActionItems = previousVersion?.actionItems ?? [];
-  const prompt = buildPromptActionItems(previousActionItems);
+  const previousNotableFacts = previousVersion?.notableFacts ?? [];
+  const prompt = [
+    buildPromptActionItems(previousActionItems),
+    buildPromptNotableFacts(previousNotableFacts),
+    "You MUST call the tool. Always call it, even if there are no action items or notable facts (use empty arrays).",
+  ].join("\n\n");
   const specification = buildSpec();
   const conv = await renderConversationForLLM(auth, {
     conversation,
@@ -159,13 +168,17 @@ export async function analyzeConversationTodos(
     extraction.action_items,
     new Set(previousActionItems.map((item) => item.sId))
   );
+  const notableFacts = buildNotableFacts(
+    extraction.notable_facts,
+    new Set(previousNotableFacts.map((fact) => fact.sId))
+  );
 
   await ConversationTodoVersionedResource.makeNew(auth, {
     conversationId: conversation.id,
     runId,
     topic: extraction.topic,
     actionItems,
-    notableFacts: [],
+    notableFacts,
     keyDecisions: [],
     agentSuggestions: [],
     lastRunAt: new Date(),
@@ -177,6 +190,7 @@ export async function analyzeConversationTodos(
       conversationId: conversation.id,
       workspaceId: owner.sId,
       actionItemCount: actionItems.length,
+      notableFactCount: notableFacts.length,
     },
     "Conversation todo: analysis complete"
   );

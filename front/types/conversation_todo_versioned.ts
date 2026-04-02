@@ -12,7 +12,7 @@ export type TodoVersionedActionItem = {
 };
 
 export type TodoVersionedNotableFact = {
-  key: string;
+  sId: string;
   text: string;
   relevantUserIds: string[];
   sourceMessageRank: number;
