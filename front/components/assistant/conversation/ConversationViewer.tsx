@@ -640,6 +640,9 @@ export const ConversationViewer = ({
               return next;
             });
             break;
+          case "graceful_stop_requested":
+            // No-op for now.
+            break;
           default:
             ((t: never) => {
               logger.error({ event: t }, "Unknown event type");

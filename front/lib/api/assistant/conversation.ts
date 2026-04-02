@@ -2214,6 +2214,7 @@ export async function isConversationEventAllowedForAuth(
     case "butler_done":
     case "butler_thinking":
     case "conversation_title":
+    case "graceful_stop_requested":
       return true;
     default:
       assertNever(type);
@@ -2236,12 +2237,12 @@ export async function finalizeAgentMessage(
   }: {
     conversation: ConversationWithoutContentType;
     agentMessage: AgentMessageType;
-    status: "succeeded" | "cancelled" | "failed";
+    status: "succeeded" | "cancelled" | "failed" | "gracefully_stopped";
     error?: ToolErrorEvent["error"];
   }
 ): Promise<{
   completedTs: number;
-  status: "succeeded" | "cancelled" | "failed";
+  status: "succeeded" | "cancelled" | "failed" | "gracefully_stopped";
 }> {
   const completedAt = new Date();
 

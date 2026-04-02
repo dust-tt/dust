@@ -112,7 +112,12 @@ export interface MCPActionDetailsProps {
   action: AgentMCPActionWithOutputType;
   owner: LightWorkspaceType;
   lastNotification: ProgressNotificationContentType | null;
-  messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
+  messageStatus?:
+    | "created"
+    | "succeeded"
+    | "failed"
+    | "cancelled"
+    | "gracefully_stopped";
   displayContext: ActionDetailsDisplayContext;
 }
 

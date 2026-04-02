@@ -367,6 +367,14 @@ export type AgentGenerationCancelledEvent = {
   messageId: string;
 };
 
+// Event sent when the agent loop was gracefully stopped (current step completed, then exited).
+export type AgentMessageGracefullyStoppedEvent = {
+  type: "agent_message_gracefully_stopped";
+  created: number;
+  configurationId: string;
+  messageId: string;
+};
+
 // Event sent once the message is completed and successful.
 export type AgentMessageSuccessEvent = {
   type: "agent_message_success";
