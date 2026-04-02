@@ -1,3 +1,5 @@
+import type { ModelId } from "@app/types/shared/model_id";
+
 export const PROJECT_TODO_CATEGORIES = [
   "need_attention",
   "key_decisions",
@@ -18,3 +20,21 @@ export type ProjectTodoActorType = (typeof PROJECT_TODO_ACTOR_TYPES)[number];
 export const PROJECT_TODO_SOURCE_TYPES = ["conversation"] as const;
 
 export type ProjectTodoSourceType = (typeof PROJECT_TODO_SOURCE_TYPES)[number];
+
+// Safe public representation of a ProjectTodo — no internal ModelIds exposed.
+export type ProjectTodoType = {
+  id: ModelId;
+  sId: string;
+  category: ProjectTodoCategory;
+  text: string;
+  status: ProjectTodoStatus;
+  version: number;
+  doneAt: Date | null;
+  actorRationale: string | null;
+  createdByType: ProjectTodoActorType;
+  createdByAgentConfigurationId: string | null;
+  markedAsDoneByType: ProjectTodoActorType | null;
+  markedAsDoneByAgentConfigurationId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};

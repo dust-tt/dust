@@ -114,6 +114,8 @@ const API_ERROR_TYPES = [
   // Spaces:
   "space_already_exists",
   "space_not_found",
+  // Project todos:
+  "project_todo_not_found",
   // Groups:
   "group_not_found",
   // Plugins:
