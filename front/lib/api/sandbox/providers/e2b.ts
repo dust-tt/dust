@@ -76,8 +76,8 @@ export class E2BSandboxProvider implements SandboxProvider {
   }
 
   async create(
-    tracingOpts: { workspaceSId: string },
-    config: SandboxCreateConfig
+    config: SandboxCreateConfig,
+    tracingOpts: { workspaceSId: string }
   ): Promise<Result<SandboxHandle, Error>> {
     if (!config.imageId) {
       throw new Error(
@@ -129,8 +129,8 @@ export class E2BSandboxProvider implements SandboxProvider {
   }
 
   async wake(
-    tracingOpts: { workspaceSId: string },
-    providerId: string
+    providerId: string,
+    tracingOpts: { workspaceSId: string }
   ): Promise<Result<SandboxHandle, Error>> {
     return traceSandboxOperation(
       "wake",
@@ -162,8 +162,8 @@ export class E2BSandboxProvider implements SandboxProvider {
   }
 
   async sleep(
-    tracingOpts: { workspaceSId: string },
-    providerId: string
+    providerId: string,
+    tracingOpts: { workspaceSId: string }
   ): Promise<Result<void, Error>> {
     return traceSandboxOperation(
       "sleep",
@@ -201,8 +201,8 @@ export class E2BSandboxProvider implements SandboxProvider {
   }
 
   async destroy(
-    tracingOpts: { workspaceSId: string },
-    providerId: string
+    providerId: string,
+    tracingOpts: { workspaceSId: string }
   ): Promise<Result<void, Error>> {
     return traceSandboxOperation(
       "destroy",
@@ -230,10 +230,10 @@ export class E2BSandboxProvider implements SandboxProvider {
   }
 
   async exec(
-    tracingOpts: { workspaceSId: string },
     providerId: string,
     command: string,
-    opts?: ExecOptions
+    execOpts: ExecOptions | undefined,
+    tracingOpts: { workspaceSId: string }
   ): Promise<Result<ExecResult, Error>> {
     return traceSandboxOperation(
       "exec",
@@ -253,10 +253,10 @@ export class E2BSandboxProvider implements SandboxProvider {
 
         try {
           const result = await sandbox.commands.run(command, {
-            cwd: opts?.workingDirectory,
-            envs: opts?.envVars,
-            timeoutMs: opts?.timeoutMs,
-            user: opts?.user,
+            cwd: execOpts?.workingDirectory,
+            envs: execOpts?.envVars,
+            timeoutMs: execOpts?.timeoutMs,
+            user: execOpts?.user,
           });
 
           return new Ok({
@@ -285,10 +285,10 @@ export class E2BSandboxProvider implements SandboxProvider {
   }
 
   async writeFile(
-    tracingOpts: { workspaceSId: string },
     providerId: string,
     path: string,
-    data: ArrayBuffer
+    data: ArrayBuffer,
+    tracingOpts: { workspaceSId: string }
   ): Promise<Result<void, Error>> {
     return traceSandboxOperation(
       "writeFile",
@@ -323,18 +323,18 @@ export class E2BSandboxProvider implements SandboxProvider {
   }
 
   async readFile(
-    _tracingOpts: { workspaceSId: string },
     _providerId: string,
-    _path: string
+    _path: string,
+    _tracingOpts: { workspaceSId: string }
   ): Promise<Buffer> {
     throw new Error("readFile is not implemented yet.");
   }
 
   async listFiles(
-    tracingOpts: { workspaceSId: string },
     providerId: string,
     path: string,
-    opts?: { recursive?: boolean }
+    opts: { recursive?: boolean } | undefined,
+    tracingOpts: { workspaceSId: string }
   ): Promise<FileEntry[]> {
     return traceSandboxOperation(
       "listFiles",
