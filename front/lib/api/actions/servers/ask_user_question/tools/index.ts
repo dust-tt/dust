@@ -19,9 +19,7 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
 
     const resumeState = agentLoopContext?.runContext?.stepContext?.resumeState;
     const parsed = UserQuestionAnswerSchema.safeParse(
-      resumeState && "answer" in resumeState
-        ? resumeState.answer
-        : undefined
+      resumeState && "answer" in resumeState ? resumeState.answer : undefined
     );
 
     if (parsed.success) {
