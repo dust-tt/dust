@@ -26,12 +26,10 @@ export function isFileAuthorizationInfo(
   return FileAuthorizationInfoSchema.safeParse(value).success;
 }
 
-export const UserQuestionOptionSchema = z.object({
+const UserQuestionOptionSchema = z.object({
   label: z.string(),
   description: z.string(),
 });
-
-export type UserQuestionOption = z.infer<typeof UserQuestionOptionSchema>;
 
 export const UserQuestionSchema = z.object({
   question: z.string(),

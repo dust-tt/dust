@@ -104,9 +104,9 @@ export async function answerUserQuestion(
 
   await getRedisHybridManager().removeEvent((event) => {
     const payload = JSON.parse(event.message["payload"]);
-    return isToolAskUserQuestionEvent(payload)
-      ? payload.actionId === actionId
-      : false;
+    return (
+      isToolAskUserQuestionEvent(payload) && payload.actionId === actionId
+    );
   }, getMessageChannelId(messageId));
 
   // Only launch the agent loop if there are no remaining blocked actions.
