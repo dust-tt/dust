@@ -19,6 +19,12 @@ RUN GCSFUSE_REPO=$(lsb_release -c -s) \
 RUN apt-get update && apt-get install -y --no-install-recommends gcsfuse \
   && rm -rf /var/lib/apt/lists/*
 
+# Fluent Bit for telemetry
+RUN curl -fsSL https://packages.fluentbit.io/fluentbit.key | gpg --dearmor -o /usr/share/keyrings/fluentbit-keyring.gpg \
+  && echo 'deb [signed-by=/usr/share/keyrings/fluentbit-keyring.gpg] https://packages.fluentbit.io/ubuntu/noble noble main' > /etc/apt/sources.list.d/fluent-bit.list \
+  && apt-get update && apt-get install -y --no-install-recommends fluent-bit \
+  && rm -rf /var/lib/apt/lists/*
+
 # Python via uv (official Astral approach)
 # UV handles arch automatically
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
@@ -40,8 +46,6 @@ RUN ARCH=$(dpkg --print-architecture) && \
   tar -xJf node.tar.xz -C /usr/local --strip-components=1 && \
   rm node.tar.xz SHASUMS256.txt
 
-# Create user home directory and uv cache with proper permissions
-RUN mkdir -p /home/user/.cache/uv && chmod -R 777 /home/user
 
 # Set permissions for venv, npm global, and bin directories
 RUN chmod -R 777 /opt/venv && mkdir -p /opt/npm-global /opt/bin && chmod -R 777 /opt/npm-global /opt/bin
@@ -52,5 +56,3 @@ RUN printf '%s\n' \
   'export VIRTUAL_ENV="/opt/venv"' \
   'export NPM_CONFIG_PREFIX="/opt/npm-global"' \
   > /etc/profile.d/dust-env.sh
-
-WORKDIR /home/user

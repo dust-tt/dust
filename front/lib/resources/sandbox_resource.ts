@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import {
@@ -266,7 +267,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         const tracingOpts = {
           workspaceSId: auth.getNonNullableWorkspace().sId,
         };
-        const result = await provider.destroy(tracingOpts, sandbox.providerId);
+        const result = await provider.destroy(sandbox.providerId, tracingOpts);
         if (result.isErr() && !(result.error instanceof SandboxNotFoundError)) {
           logger.error(
             { sandbox: sandbox.toLogJSON(), error: result.error.message },
@@ -331,9 +332,21 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         if (imageResult.isErr()) {
           return imageResult;
         }
+
+        const createConfig = imageResult.value.toCreateConfig();
+
         const createResult = await provider.create(
-          tracingOpts,
-          imageResult.value.toCreateConfig()
+          {
+            ...createConfig,
+            envVars: {
+              ...createConfig.envVars,
+              DD_API_KEY: config.getDatadogApiKey() ?? "",
+              DD_HOST: "http-intake.logs.datadoghq.eu",
+              CONVERSATION_ID: conversation.sId,
+              WORKSPACE_ID: auth.getNonNullableWorkspace().sId,
+            },
+          },
+          tracingOpts
         );
         if (createResult.isErr()) {
           return createResult;
@@ -344,6 +357,19 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           providerId: createResult.value.providerId,
           status: "running",
         });
+
+        const startTelemetry = await provider.exec(
+          createResult.value.providerId,
+          "systemd-cat -t fluent-bit /opt/fluent-bit/bin/fluent-bit -c /etc/fluent-bit/fluent-bit.conf &",
+          undefined,
+          tracingOpts
+        );
+        if (startTelemetry.isErr()) {
+          logger.warn(
+            { error: startTelemetry.error.message },
+            "Failed to start fluent-bit telemetry"
+          );
+        }
 
         logger.info(
           { sandbox: sandbox.toLogJSON() },
@@ -363,8 +389,8 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
         case "sleeping": {
           const wakeResult = await provider.wake(
-            tracingOpts,
-            existing.providerId
+            existing.providerId,
+            tracingOpts
           );
           if (wakeResult.isErr()) {
             // The sandbox may have been killed by the provider (e.g. lifetime
@@ -390,15 +416,41 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           if (imageResult.isErr()) {
             return imageResult;
           }
+
+          const createConfig = imageResult.value.toCreateConfig();
+
           const createResult = await provider.create(
-            tracingOpts,
-            imageResult.value.toCreateConfig()
+            {
+              ...createConfig,
+              envVars: {
+                ...createConfig.envVars,
+                DD_API_KEY: config.getDatadogApiKey() ?? "",
+                DD_HOST: "http-intake.logs.datadoghq.eu",
+                CONVERSATION_ID: conversation.sId,
+                WORKSPACE_ID: auth.getNonNullableWorkspace().sId,
+              },
+            },
+            tracingOpts
           );
           if (createResult.isErr()) {
             return createResult;
           }
           await existing.update({ providerId: createResult.value.providerId });
           freshlyCreated = true;
+
+          const startTelemetry = await provider.exec(
+            createResult.value.providerId,
+            "systemd-cat -t fluent-bit /opt/fluent-bit/bin/fluent-bit -c /etc/fluent-bit/fluent-bit.conf &",
+            undefined,
+            tracingOpts
+          );
+          if (startTelemetry.isErr()) {
+            logger.warn(
+              { error: startTelemetry.error.message },
+              "Failed to start fluent-bit telemetry"
+            );
+          }
+
           logger.info(
             {
               sandbox: existing.toLogJSON(),
@@ -447,7 +499,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       const ctx = { workspaceSId: auth.getNonNullableWorkspace().sId };
       const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
 
-      const result = await provider.sleep(tracingOpts, sandbox.providerId);
+      const result = await provider.sleep(sandbox.providerId, tracingOpts);
       if (result.isErr()) {
         if (result.error instanceof SandboxNotFoundError) {
           logger.info(
@@ -489,7 +541,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       const ctx = { workspaceSId: auth.getNonNullableWorkspace().sId };
       const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
 
-      const result = await provider.destroy(tracingOpts, sandbox.providerId);
+      const result = await provider.destroy(sandbox.providerId, tracingOpts);
       if (result.isErr()) {
         if (result.error instanceof SandboxNotFoundError) {
           logger.info(
@@ -524,10 +576,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
     const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
     const result = await provider.exec(
-      tracingOpts,
       this.providerId,
       command,
-      opts
+      opts,
+      tracingOpts
     );
 
     if (result.isErr() && result.error instanceof SandboxNotFoundError) {
@@ -557,10 +609,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     try {
       const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
       const entries = await provider.listFiles(
-        tracingOpts,
         this.providerId,
         path,
-        opts
+        opts,
+        tracingOpts
       );
       return new Ok(entries);
     } catch (err) {
@@ -590,10 +642,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
     const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
     const result = await provider.writeFile(
-      tracingOpts,
       this.providerId,
       path,
-      data
+      data,
+      tracingOpts
     );
 
     if (result.isErr() && result.error instanceof SandboxNotFoundError) {

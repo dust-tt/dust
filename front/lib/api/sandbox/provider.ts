@@ -59,6 +59,8 @@ export interface ExecOptions {
   timeoutMs?: number;
   /** Additional environment variables for this execution only. */
   envVars?: Record<string, string>;
+  /** User to run the command as (e.g., "root" for privileged tasks). */
+  user?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -99,47 +101,47 @@ export class SandboxNotFoundError extends Error {
  */
 export interface SandboxProvider {
   create(
-    tracingOpts: { workspaceSId: string },
-    config: SandboxCreateConfig
+    config: SandboxCreateConfig,
+    tracingOpts: { workspaceSId: string }
   ): Promise<Result<SandboxHandle, Error>>;
   wake(
-    tracingOpts: { workspaceSId: string },
-    providerId: string
+    providerId: string,
+    tracingOpts: { workspaceSId: string }
   ): Promise<Result<SandboxHandle, Error>>;
   sleep(
-    tracingOpts: { workspaceSId: string },
-    providerId: string
+    providerId: string,
+    tracingOpts: { workspaceSId: string }
   ): Promise<Result<void, Error>>;
   destroy(
-    tracingOpts: { workspaceSId: string },
-    providerId: string
+    providerId: string,
+    tracingOpts: { workspaceSId: string }
   ): Promise<Result<void, Error>>;
 
   exec(
-    tracingOpts: { workspaceSId: string },
     providerId: string,
     command: string,
-    opts?: ExecOptions
+    execOpts: ExecOptions | undefined,
+    tracingOpts: { workspaceSId: string }
   ): Promise<Result<ExecResult, Error>>;
 
   writeFile(
-    tracingOpts: { workspaceSId: string },
     providerId: string,
     path: string,
-    data: ArrayBuffer
+    data: ArrayBuffer,
+    tracingOpts: { workspaceSId: string }
   ): Promise<Result<void, Error>>;
 
   readFile(
-    tracingOpts: { workspaceSId: string },
     providerId: string,
-    path: string
+    path: string,
+    tracingOpts: { workspaceSId: string }
   ): Promise<Buffer>;
 
   listFiles(
-    tracingOpts: { workspaceSId: string },
     providerId: string,
     path: string,
-    opts?: { recursive?: boolean }
+    opts: { recursive?: boolean } | undefined,
+    tracingOpts: { workspaceSId: string }
   ): Promise<FileEntry[]>;
 }
 
