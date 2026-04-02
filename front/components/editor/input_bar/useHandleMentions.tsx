@@ -20,14 +20,17 @@ const useHandleMentions = (
   const { setSelectedSingleAgent } = useContext(InputBarContext);
 
   // In single agent mode, sync the selected agent from sticky mentions
-  // so the agent picker button shows the correct agent on existing conversations,
-  // and clears it when navigating to a new conversation.
+  // so the agent picker button shows the correct agent on existing conversations.
+  // Only sync when sticky mentions are provided (existing conversations); skip for
+  // new conversations (undefined stickyMentions) to avoid overriding the auto-selected default.
   useEffect(() => {
-    if (!singleAgentInput) {
+    if (!singleAgentInput || !stickyMentions) {
       return;
     }
-    const agentMention = stickyMentions?.find(isRichAgentMention) ?? null;
-    setSelectedSingleAgent(agentMention);
+    const agentMention = stickyMentions.find(isRichAgentMention) ?? null;
+    if (agentMention) {
+      setSelectedSingleAgent(agentMention);
+    }
   }, [singleAgentInput, stickyMentions, setSelectedSingleAgent]);
 
   useEffect(() => {
