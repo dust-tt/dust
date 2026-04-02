@@ -11,6 +11,7 @@ import { default as agentRouterServer } from "@app/lib/api/actions/servers/agent
 import { default as agentSidekickAgentStateServer } from "@app/lib/api/actions/servers/agent_sidekick_agent_state";
 import { default as agentSidekickContextServer } from "@app/lib/api/actions/servers/agent_sidekick_context";
 import { default as ashbyServer } from "@app/lib/api/actions/servers/ashby";
+import { default as askUserQuestionServer } from "@app/lib/api/actions/servers/ask_user_question";
 import { default as commonUtilitiesServer } from "@app/lib/api/actions/servers/common_utilities";
 import { default as confluenceServer } from "@app/lib/api/actions/servers/confluence";
 import { default as conversationFilesServer } from "@app/lib/api/actions/servers/conversation_files";
@@ -247,6 +248,8 @@ export async function getInternalMCPServer(
       return pokeServer(auth, agentLoopContext);
     case "project_conversation":
       return projectConversationServer(auth, agentLoopContext);
+    case "ask_user_question":
+      return askUserQuestionServer(auth, agentLoopContext);
     case "ukg_ready":
       return ukgReadyServer(auth, agentLoopContext);
     case "user_mentions":

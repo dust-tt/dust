@@ -678,6 +678,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "analytics_csv_export"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
+  | "ask_user_question_tool"
   | "audit_logs"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
@@ -1353,7 +1354,6 @@ const BlockedActionExecutionSchema = ToolExecutionMetadataSchema.extend({
   status: ToolExecutionBlockedStatusSchema,
   // Present only when status is "blocked_user_question_required".
   question: UserQuestionItemSchema.optional(),
-  questionMetadata: z.record(z.unknown()).nullish(),
 });
 
 export type BlockedActionExecutionType = z.infer<
@@ -1446,7 +1446,6 @@ const ToolAskUserQuestionEventSchema = ToolExecutionMetadataSchema.extend({
   created: z.number(),
   messageId: z.string(),
   question: UserQuestionItemSchema,
-  questionMetadata: z.record(z.unknown()).nullable(),
 });
 
 export type ToolAskUserQuestionEvent = z.infer<
