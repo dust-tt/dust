@@ -13,9 +13,9 @@ import {
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
-import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
-import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
+import { ListItemExtension } from "@app/lib/editor/listItemExtension";
+import { preprocessMarkdownForEditor } from "@app/lib/editor/preprocessMarkdown";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { Editor } from "@tiptap/core";
 import type { Node as PMNode } from "@tiptap/pm/model";

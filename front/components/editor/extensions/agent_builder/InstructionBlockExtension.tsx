@@ -4,7 +4,7 @@ import {
   INSTRUCTION_BLOCK_REGEX,
   OPENING_TAG_BEGINNING_REGEX,
   OPENING_TAG_REGEX,
-} from "@app/components/editor/extensions/agent_builder/instructionBlockUtils";
+} from "@app/lib/editor/instructionBlockUtils";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { ChevronDownIcon, ChevronRightIcon, Chip, cn } from "@dust-tt/sparkle";

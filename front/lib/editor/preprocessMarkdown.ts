@@ -1,4 +1,4 @@
-import { TAG_NAME_PATTERN } from "@app/components/editor/extensions/agent_builder/instructionBlockUtils";
+import { TAG_NAME_PATTERN } from "@app/lib/editor/instructionBlockUtils";
 
 /** Zero-width space to break HTML parsing without affecting display. */
 const ZWS = "\u200B";
