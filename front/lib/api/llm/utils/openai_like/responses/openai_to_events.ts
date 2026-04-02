@@ -239,6 +239,22 @@ function toEvents({
 
       return [reasoningDelta("\n\n", metadata)];
     }
+    case "response.output_item.added":
+      if (event.item.type !== "function_call") {
+        return [];
+      }
+
+      return [
+        {
+          type: "tool_call_started",
+          content: {
+            id: event.item.call_id,
+            index: event.output_index,
+            name: event.item.name,
+          },
+          metadata,
+        },
+      ];
     case "response.function_call_arguments.delta":
       return [{ type: "tool_call_delta", metadata }];
     default:
