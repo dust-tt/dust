@@ -2239,7 +2239,10 @@ export async function finalizeAgentMessage(
     status: "succeeded" | "cancelled" | "failed";
     error?: ToolErrorEvent["error"];
   }
-): Promise<{ completedTs: number; status: "succeeded" | "cancelled" | "failed" }> {
+): Promise<{
+  completedTs: number;
+  status: "succeeded" | "cancelled" | "failed";
+}> {
   const completedAt = new Date();
 
   await withTransaction(async (t) => {
