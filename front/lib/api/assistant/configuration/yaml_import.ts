@@ -185,13 +185,18 @@ export async function importAgentConfigurationFromJSON(
   return importAgentConfiguration(auth, parsed.data);
 }
 
-// Top-level fields are optional; nested `agent` and `generation_settings` are
-// also partial so callers can patch individual sub-fields.
+// All top-level fields are optional; nested `agent` and `generation_settings`
+// are also partial so callers can patch individual sub-fields.
 const agentYAMLConfigPatchSchema = agentYAMLConfigSchema.partial().extend({
   agent: agentYAMLBasicInfoSchema.partial().optional(),
   generation_settings: agentYAMLGenerationSettingsSchema.partial().optional(),
 });
 
+/**
+ * Partially update an existing agent configuration. Top-level arrays (tags,
+ * editors, toolset, etc.) are replaced when provided; nested objects (`agent`,
+ * `generation_settings`) are shallow-merged one level deep.
+ */
 export async function patchAgentConfigurationFromJSON(
   auth: Authenticator,
   agentId: string,
@@ -217,21 +222,17 @@ export async function patchAgentConfigurationFromJSON(
 
   const existing = existingResult.value;
 
-  // Merge: top-level arrays are replaced when provided, scalar/object fields
-  // are shallow-merged one level deep.
+  // Spread existing as the base, then override with provided patch fields.
+  // `agent` and `generation_settings` are shallow-merged; all other fields
+  // are replaced wholesale when present in the patch.
   const merged: AgentYAMLConfig = {
+    ...existing,
+    ...patch,
     agent: { ...existing.agent, ...patch.agent },
-    instructions: patch.instructions ?? existing.instructions,
     generation_settings: {
       ...existing.generation_settings,
       ...patch.generation_settings,
     },
-    tags: patch.tags ?? existing.tags,
-    editors: patch.editors ?? existing.editors,
-    toolset: patch.toolset ?? existing.toolset,
-    spaces: patch.spaces ?? existing.spaces,
-    skills: patch.skills ?? existing.skills,
-    slack_integration: patch.slack_integration ?? existing.slack_integration,
   };
 
   return importAgentConfiguration(auth, merged, agentId);

@@ -502,6 +502,111 @@
                 "properties": {
                   "userFavorite": {
                     "type": "boolean"
+                  },
+                  "agent": {
+                    "type": "object",
+                    "properties": {
+                      "handle": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "scope": {
+                        "type": "string",
+                        "enum": [
+                          "visible",
+                          "hidden"
+                        ]
+                      },
+                      "avatar_url": {
+                        "type": "string"
+                      },
+                      "max_steps_per_run": {
+                        "type": "number"
+                      },
+                      "visualization_enabled": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  "instructions": {
+                    "type": "string"
+                  },
+                  "generation_settings": {
+                    "type": "object",
+                    "properties": {
+                      "model_id": {
+                        "type": "string"
+                      },
+                      "provider_id": {
+                        "type": "string"
+                      },
+                      "temperature": {
+                        "type": "number"
+                      },
+                      "reasoning_effort": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "standard",
+                            "protected"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "editors": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "user_id": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "full_name": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "toolset": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "MCP"
+                          ]
+                        },
+                        "configuration": {
+                          "type": "object"
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -523,6 +628,20 @@
                   "properties": {
                     "agentConfiguration": {
                       "$ref": "#/components/schemas/AgentConfiguration"
+                    },
+                    "skippedActions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        }
+                      }
                     }
                   }
                 }
@@ -547,10 +666,10 @@
         }
       }
     },
-    "/api/v1/w/{wId}/assistant/agent_configurations/import/yaml": {
+    "/api/v1/w/{wId}/assistant/agent_configurations/import": {
       "post": {
-        "summary": "Import agent configuration from YAML",
-        "description": "Create a new agent configuration from a JSON body matching the agent YAML config schema.",
+        "summary": "Import agent configuration",
+        "description": "Create a new agent configuration from a JSON body matching the agent config schema.",
         "tags": [
           "Agents"
         ],
