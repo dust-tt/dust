@@ -68,7 +68,7 @@ async function handler(
 
   return res.status(200).json({
     agentConfiguration,
-    skippedActions: skippedActions.length > 0 ? skippedActions : undefined,
+    skippedActions,
   });
 }
 

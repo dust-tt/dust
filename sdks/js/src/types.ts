@@ -1956,9 +1956,7 @@ export type GetAgentConfigurationYAMLExportResponseType = z.infer<
 
 export const ImportAgentConfigurationFromYAMLResponseSchema = z.object({
   agentConfiguration: LightAgentConfigurationSchema,
-  skippedActions: z
-    .array(z.object({ name: z.string(), reason: z.string() }))
-    .optional(),
+  skippedActions: z.array(z.object({ name: z.string(), reason: z.string() })),
 });
 
 export type ImportAgentConfigurationFromYAMLResponseType = z.infer<

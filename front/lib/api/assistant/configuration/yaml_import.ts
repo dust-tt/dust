@@ -43,8 +43,8 @@ async function importAgentConfiguration(
     });
   }
 
-  const editorSIds = yamlConfig.editors.map((e) => e.user_id);
-  if (editorSIds.length === 0) {
+  const editorIds = yamlConfig.editors.map((e) => e.user_id);
+  if (editorIds.length === 0) {
     return new Err({
       status_code: 400,
       api_error: {
@@ -54,7 +54,7 @@ async function importAgentConfiguration(
     });
   }
 
-  const editorUsers = await UserResource.fetchByIds(editorSIds);
+  const editorUsers = await UserResource.fetchByIds(editorIds);
   if (editorUsers.length === 0) {
     return new Err({
       status_code: 400,
@@ -65,7 +65,7 @@ async function importAgentConfiguration(
     });
   }
 
-  const authorId = editorUsers[0].id;
+  const authorModelId = editorUsers[0].id;
 
   const mcpConfigurationsResult =
     await AgentYAMLConverter.convertYAMLActionsToMCPConfigurations(
@@ -120,7 +120,7 @@ async function importAgentConfiguration(
   const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
     auth,
     assistant,
-    authorId,
+    authorId: authorModelId,
   });
 
   if (agentConfigurationRes.isErr()) {
