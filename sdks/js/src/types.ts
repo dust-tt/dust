@@ -2046,6 +2046,8 @@ export type RetryMessageResponseType = z.infer<
 
 export const GetConversationResponseSchema = z.object({
   conversation: ConversationSchema,
+  hasMore: z.boolean().optional(),
+  lastValue: z.string().nullable().optional(),
 });
 
 export type GetConversationResponseType = z.infer<
