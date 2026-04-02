@@ -5,7 +5,7 @@ import { logger } from "../lib/logger";
 import { getWorktreeDir } from "../lib/paths";
 import { restoreTerminal } from "../lib/prompt";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
-import { WORKSPACE_SID } from "../lib/seed";
+import { WORKSPACE_ID } from "../lib/seed";
 import { getStateInfo } from "../lib/state";
 
 interface FlagInfo {
@@ -92,7 +92,7 @@ export async function flagCommand(
   const disable = Boolean(options?.disable);
   const action = disable ? "Disabling" : "Enabling";
 
-  logger.info(`${action} feature flag '${flagName}' on workspace ${WORKSPACE_SID}...`);
+  logger.info(`${action} feature flag '${flagName}' on workspace ${WORKSPACE_ID}...`);
   console.log();
 
   const args = [
@@ -102,7 +102,7 @@ export async function flagCommand(
     "--featureFlag",
     flagName,
     "--workspaceIds",
-    WORKSPACE_SID,
+    WORKSPACE_ID,
     "--execute",
   ];
 

@@ -16,7 +16,7 @@ export interface SeedUserConfig {
   provider: string | null;
   providerId: string | null;
   imageUrl: string | null;
-  workspaceSId: string;
+  workspaceId: string;
   workspaceName: string;
   extractedAt: string;
   sourceUri: string;
@@ -213,7 +213,7 @@ export async function seedConfigCommand(postgresUri?: string): Promise<Result<vo
     provider: nullableField(f[7]),
     providerId: nullableField(f[8]),
     imageUrl: nullableField(f[9]),
-    workspaceSId: workspace.sId,
+    workspaceId: workspace.sId,
     workspaceName: workspace.name,
     extractedAt: new Date().toISOString(),
     sourceUri: postgresUri.replace(/:[^:@]+@/, ":***@"),
