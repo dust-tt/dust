@@ -374,39 +374,6 @@ export async function getMessageConversationId(
   };
 }
 
-export async function getLastUserMessage(
-  auth: Authenticator,
-  conversation: ConversationWithoutContentType
-): Promise<Result<string, Error>> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const message = await MessageModel.findOne({
-    where: {
-      workspaceId: owner.id,
-      conversationId: conversation.id,
-    },
-    order: [
-      ["rank", "DESC"],
-      ["version", "ASC"],
-    ],
-    include: [
-      {
-        model: UserMessageModel,
-        as: "userMessage",
-        required: false,
-      },
-    ],
-  });
-
-  const content = message?.userMessage?.content;
-  if (!content) {
-    return new Err(
-      new Error("Error suggesting agents: no content found in conversation.")
-    );
-  }
-  return new Ok(content);
-}
-
 /**
  * Get the mentions from the last user message in a conversation
  */
