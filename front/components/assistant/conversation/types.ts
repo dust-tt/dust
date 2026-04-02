@@ -26,7 +26,6 @@ import type { ButlerSuggestionPublicType } from "@app/types/conversation_butler_
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import uniq from "lodash/uniq";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -169,9 +168,6 @@ export const makeInitialMessageStreamState = (
     },
   };
 };
-
-export const hasHumansInteracting = (messages: VirtuosoMessage[]) =>
-  uniq(messages.filter(isUserMessage).map((m) => m.user?.sId)).length >= 2;
 
 export const isSidekickBootstrapMessage = (
   message: UserMessageTypeWithContentFragments
