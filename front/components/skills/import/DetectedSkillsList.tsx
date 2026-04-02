@@ -7,9 +7,9 @@ import {
 import {
   Checkbox,
   Chip,
-  cn,
   ContentMessage,
   ContextItem,
+  cn,
   InformationCircleIcon,
   Label,
   PuzzleIcon,
@@ -142,10 +142,7 @@ export function DetectedSkillsList({
                 <ContextItem
                   key={skill.name}
                   title={
-                    <Label
-                      className="text-sm font-normal"
-                      htmlFor={skill.name}
-                    >
+                    <Label className="text-sm font-normal" htmlFor={skill.name}>
                       {skill.name}
                     </Label>
                   }
