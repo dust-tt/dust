@@ -488,7 +488,6 @@ export abstract class LLM<TPayload = unknown> {
   private async createRunsForBatchResults(
     results: BatchResult
   ): Promise<BatchResultWithRunIds> {
-    const workspaceId = this.authenticator.getNonNullableWorkspace().id;
     const enrichedResults: BatchResultWithRunIds = new Map();
 
     for (const [customId, events] of results) {
@@ -499,7 +498,7 @@ export abstract class LLM<TPayload = unknown> {
         dustRunId: traceId,
         runType: "deploy",
         useWorkspaceCredentials: false,
-        workspaceId,
+        workspaceId: this.authenticator.getNonNullableWorkspace().id,
       });
 
       // Extract token usage from events and record it.
