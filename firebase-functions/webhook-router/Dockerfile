@@ -1,4 +1,4 @@
-FROM node:22
+FROM node:24
 
 # Install Java 21 (required for Firebase storage/database emulators)
 # Add Adoptium repo
