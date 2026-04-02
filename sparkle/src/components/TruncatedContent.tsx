@@ -47,6 +47,7 @@ export function TruncatedContent({
   const contentRef = useRef<HTMLDivElement>(null);
   const [exceedsThreshold, setExceedsThreshold] = useState(defaultCollapsed);
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
     const el = contentRef.current;
@@ -58,7 +59,10 @@ export function TruncatedContent({
   const shouldShowToggle = exceedsThreshold;
   const isCurrentlyCollapsed = shouldShowToggle && isCollapsed;
 
-  const handleToggle = () => setIsCollapsed((prev) => !prev);
+  const handleToggle = () => {
+    setIsAnimating(animated);
+    setIsCollapsed((prev) => !prev);
+  };
 
   return (
     <div className={className}>
@@ -68,14 +72,14 @@ export function TruncatedContent({
         style={{
           maxHeight: isCurrentlyCollapsed
             ? `${collapsedHeightPx}px`
-            : animated && shouldShowToggle
+            : isAnimating
               ? `${contentRef.current?.scrollHeight}px`
               : undefined,
-          transition:
-            animated && shouldShowToggle
-              ? `max-height ${animationDurationMs}ms ease-out`
-              : undefined,
+          transition: isAnimating
+            ? `max-height ${animationDurationMs}ms ease-out`
+            : undefined,
         }}
+        onTransitionEnd={() => setIsAnimating(false)}
       >
         {children}
         <div
