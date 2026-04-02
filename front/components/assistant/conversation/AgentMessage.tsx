@@ -322,6 +322,7 @@ export function AgentMessage({
             break;
 
           case "agent_message_success":
+          case "agent_message_gracefully_stopped":
           case "agent_generation_cancelled":
           case "agent_error":
           case "generation_tokens":

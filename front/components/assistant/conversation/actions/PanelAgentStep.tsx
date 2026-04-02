@@ -12,7 +12,12 @@ interface AgentStepProps {
   streamingActions?: AgentMCPActionWithOutputType[];
   streamActionProgress: Map<number, any>;
   owner: LightWorkspaceType;
-  messageStatus: "created" | "succeeded" | "failed" | "cancelled";
+  messageStatus:
+    | "created"
+    | "succeeded"
+    | "failed"
+    | "cancelled"
+    | "gracefully_stopped";
   showSeparator?: boolean;
 }
 

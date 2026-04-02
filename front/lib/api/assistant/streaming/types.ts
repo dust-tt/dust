@@ -9,6 +9,7 @@ import type {
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentMessageDoneEvent,
+  AgentMessageGracefullyStoppedEvent,
   AgentMessageSuccessEvent,
   ToolErrorEvent,
 } from "@app/types/assistant/agent";
@@ -18,6 +19,7 @@ import type {
   ButlerSuggestionCreatedEvent,
   ButlerThinkingEvent,
   ConversationTitleEvent,
+  GracefulStopRequestedEvent,
   UserMessageNewEvent,
 } from "@app/types/assistant/conversation";
 import type { GenerationTokensEvent } from "@app/types/assistant/generation";
@@ -28,6 +30,7 @@ export type AgentMessageEvents =
   | AgentContextPrunedEvent
   | AgentErrorEvent
   | AgentGenerationCancelledEvent
+  | AgentMessageGracefullyStoppedEvent
   | AgentMessageSuccessEvent
   | GenerationTokensEvent
   | ToolErrorEvent
@@ -39,6 +42,7 @@ export type ConversationEvents =
   | ButlerSuggestionCreatedEvent
   | ButlerThinkingEvent
   | ConversationTitleEvent
+  | GracefulStopRequestedEvent
   | AgentMessageNewEvent
   | UserMessageNewEvent
   | AgentMessageDoneEvent;
@@ -46,6 +50,7 @@ export type ConversationEvents =
 export const TERMINAL_AGENT_MESSAGE_EVENT_TYPES: AgentMessageEvents["type"][] =
   [
     "agent_message_success",
+    "agent_message_gracefully_stopped",
     "agent_generation_cancelled",
     "agent_error",
     "tool_error",

@@ -63,6 +63,7 @@ function childAgentStreamReducer(
       return { ...state, status: "error" };
 
     case "agent_generation_cancelled":
+    case "agent_message_gracefully_stopped":
       return { ...state, status: "done" };
 
     // Events we don't use for the child stream display.

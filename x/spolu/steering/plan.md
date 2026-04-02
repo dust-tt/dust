@@ -36,8 +36,7 @@ Implement the graceful stop mechanism end-to-end.
 - Add `AgentMessageGracefullyStoppedEvent` type in `front/types/assistant/conversation.ts`.
 - Add `"agent_message_gracefully_stopped"` to `TERMINAL_AGENT_MESSAGE_EVENT_TYPES` and
   `AgentMessageEvents` union in `front/lib/api/assistant/streaming/types.ts`.
-- Handle in frontend event processing (`AgentMessage.tsx`) — treat like `agent_generation_cancelled`
-  for now.
+- Handle in frontend event processing (`AgentMessage.tsx`) — treat like `succeeded` for now.
 - Add `GracefulStopReason`, `GracefulStopRequestedEvent` types in
   `front/types/assistant/conversation.ts`.
 - Add to `ConversationEvents` union in `front/lib/api/assistant/streaming/types.ts`.
