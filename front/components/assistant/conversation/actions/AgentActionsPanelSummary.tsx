@@ -29,8 +29,6 @@ export function AgentActionSummary({
     statusText = "Errored after";
   } else if (agentMessageToRender.status === "cancelled") {
     statusText = "Cancelled after";
-  } else if (agentMessageToRender.status === "gracefully_stopped") {
-    statusText = "Stopped in";
   }
 
   const timeString = formatDurationString(completedInMs);
