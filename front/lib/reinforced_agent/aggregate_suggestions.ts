@@ -18,7 +18,10 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentConfigurationType,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type {
@@ -259,7 +262,7 @@ export async function buildAggregationBatchMap(
  */
 export async function createAgentSuggestionsConversations(
   auth: Authenticator,
-  agentConfiguration: AgentConfigurationType
+  agentConfiguration: LightAgentConfigurationType
 ): Promise<void> {
   const editors = await getEditors(auth, agentConfiguration);
   if (editors.length === 0) {

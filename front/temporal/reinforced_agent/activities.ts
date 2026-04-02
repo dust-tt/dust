@@ -17,6 +17,7 @@ import { notifyAgentSuggestionsReady } from "@app/lib/notifications/workflows/ag
 import {
   buildAggregationBatchMap,
   buildAggregationSystemPrompt,
+  createAgentSuggestionsConversations,
   loadAggregationContext,
 } from "@app/lib/reinforced_agent/aggregate_suggestions";
 import {
@@ -401,6 +402,7 @@ export async function finalizeAggregationActivity({
         agentConfiguration: agentConfig,
         suggestionCount: suggestionsCreated,
       });
+      await createAgentSuggestionsConversations(auth, agentConfig);
     }
   }
 
