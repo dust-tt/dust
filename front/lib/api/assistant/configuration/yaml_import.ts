@@ -185,18 +185,11 @@ export async function importAgentConfigurationFromJSON(
   return importAgentConfiguration(auth, parsed.data);
 }
 
-// All top-level fields are optional; nested `agent` and `generation_settings`
-// are also partial so callers can patch individual sub-fields.
 const agentYAMLConfigPatchSchema = agentYAMLConfigSchema.partial().extend({
   agent: agentYAMLBasicInfoSchema.partial().optional(),
   generation_settings: agentYAMLGenerationSettingsSchema.partial().optional(),
 });
 
-/**
- * Partially update an existing agent configuration. Top-level arrays (tags,
- * editors, toolset, etc.) are replaced when provided; nested objects (`agent`,
- * `generation_settings`) are shallow-merged one level deep.
- */
 export async function patchAgentConfigurationFromJSON(
   auth: Authenticator,
   agentId: string,
@@ -222,9 +215,6 @@ export async function patchAgentConfigurationFromJSON(
 
   const existing = existingResult.value;
 
-  // Spread existing as the base, then override with provided patch fields.
-  // `agent` and `generation_settings` are shallow-merged; all other fields
-  // are replaced wholesale when present in the patch.
   const merged: AgentYAMLConfig = {
     ...existing,
     ...patch,

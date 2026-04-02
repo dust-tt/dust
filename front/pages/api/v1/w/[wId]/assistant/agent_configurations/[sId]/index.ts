@@ -262,7 +262,6 @@ async function handler(
         }
       }
 
-      // Check if any config fields are present (anything besides userFavorite).
       const { userFavorite: _userFavorite, ...configPatch } = r.data;
       const hasConfigPatch = Object.keys(configPatch).length > 0;
 
