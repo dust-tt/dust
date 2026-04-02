@@ -972,7 +972,7 @@ export function AgentMessage({
         />
       </div>
 
-      <div className="group flex w-full min-w-0 flex-col gap-2 @sm:px-4 px-2">
+      <div className="group flex w-full min-w-0 flex-col gap-2 @sm:pr-4 pr-2">
         {renderMessageContent()}
       </div>
     </ConversationMessageContainer>

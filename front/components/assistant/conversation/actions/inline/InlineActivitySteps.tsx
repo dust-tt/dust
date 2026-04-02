@@ -14,7 +14,6 @@ import { isLightAgentMessageWithActionsType } from "@app/types/assistant/convers
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   AnimatedText,
-  ChatBubbleThoughtIcon,
   CheckIcon,
   ChevronRightIcon,
   cn,
@@ -157,7 +156,7 @@ export function InlineActivitySteps({
         style={getCollapseAnimationStyle(isCollapsed)}
       >
         <div className="overflow-hidden">
-          <div className="mt-4 flex flex-col gap-2">
+          <div className="mt-4 flex flex-col gap-3">
             {completedSteps.map((step, index) => {
               const isLast =
                 index === completedSteps.length - 1 &&
@@ -168,11 +167,7 @@ export function InlineActivitySteps({
               switch (step.type) {
                 case "thinking":
                   return (
-                    <TimelineRow
-                      key={step.id}
-                      icon={ChatBubbleThoughtIcon}
-                      isLast={isLast}
-                    >
+                    <TimelineRow key={step.id} icon="circle" isLast={isLast}>
                       <Markdown
                         content={step.content}
                         isStreaming={false}
@@ -218,7 +213,7 @@ export function InlineActivitySteps({
             {/* Active thinking (streaming CoT) */}
             {showActiveThinking && (
               <TimelineRow
-                icon={chainOfThought ? ChatBubbleThoughtIcon : null}
+                icon={chainOfThought ? "circle" : null}
                 spinner={!chainOfThought}
                 isLast={!activeAction && !isDone}
               >
