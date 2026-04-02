@@ -982,7 +982,7 @@ export const ConversationViewer = ({
           className={cn(
             "dd-privacy-mask",
             "@container/conversation",
-            "h-full w-full px-4",
+            "h-full w-full px-5",
             !agentBuilderContext && "md:px-8"
           )}
           shortSizeAlign="top"

@@ -6,7 +6,7 @@ const LINE_ANIMATION_STYLE: React.CSSProperties = {
 };
 
 interface TimelineRowProps {
-  icon?: React.ComponentType<{ className?: string }> | null;
+  icon?: React.ComponentType<{ className?: string }> | "circle" | null;
   spinner?: boolean;
   isLast?: boolean;
   children?: React.ReactNode;
@@ -30,6 +30,8 @@ export function TimelineRow({
         <div className="flex h-5 w-4 flex-shrink-0 items-center justify-center">
           {spinner ? (
             <Spinner size="xs" />
+          ) : icon === "circle" ? (
+            <div className="h-2 w-2 rounded-full border-[1.5px] border-border dark:border-border-night" />
           ) : icon ? (
             <Icon
               visual={icon}
@@ -40,7 +42,7 @@ export function TimelineRow({
         </div>
         {!isLast && (
           <div
-            className="mt-0.5 w-0.5 flex-1 rounded-full bg-border dark:bg-border-night"
+            className="w-px flex-1 rounded-full bg-border dark:bg-border-night"
             style={LINE_ANIMATION_STYLE}
           />
         )}
@@ -48,7 +50,7 @@ export function TimelineRow({
 
       {/* Content */}
       {children && (
-        <div className="flex min-h-6 min-w-0 flex-wrap items-start gap-1.5 overflow-x-auto pb-1">
+        <div className="flex min-h-5 min-w-0 flex-wrap items-start gap-1.5 overflow-x-auto">
           {children}
         </div>
       )}

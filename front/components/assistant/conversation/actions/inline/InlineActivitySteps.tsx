@@ -14,13 +14,13 @@ import { isLightAgentMessageWithActionsType } from "@app/types/assistant/convers
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   AnimatedText,
-  ChatBubbleThoughtIcon,
   CheckIcon,
   ChevronRightIcon,
   cn,
   Icon,
   Markdown,
   ToolsIcon,
+  TruncatedContent,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
@@ -157,7 +157,7 @@ export function InlineActivitySteps({
         style={getCollapseAnimationStyle(isCollapsed)}
       >
         <div className="overflow-hidden">
-          <div className="mt-4 flex flex-col gap-2">
+          <div className="mt-4 flex flex-col gap-3">
             {completedSteps.map((step, index) => {
               const isLast =
                 index === completedSteps.length - 1 &&
@@ -168,18 +168,22 @@ export function InlineActivitySteps({
               switch (step.type) {
                 case "thinking":
                   return (
-                    <TimelineRow
-                      key={step.id}
-                      icon={ChatBubbleThoughtIcon}
-                      isLast={isLast}
-                    >
-                      <Markdown
-                        content={step.content}
-                        isStreaming={false}
-                        forcedTextSize="text-sm"
-                        textColor="text-muted-foreground dark:text-muted-foreground-night"
-                        isLastMessage={false}
-                      />
+                    <TimelineRow key={step.id} icon="circle" isLast={isLast}>
+                      <TruncatedContent
+                        thresholdPx={80}
+                        collapsedHeightPx={60}
+                        variant="light"
+                        buttonClassName="mt-1"
+                        animated
+                      >
+                        <Markdown
+                          content={step.content}
+                          isStreaming={false}
+                          forcedTextSize="text-sm"
+                          textColor="text-muted-foreground dark:text-muted-foreground-night"
+                          isLastMessage={false}
+                        />
+                      </TruncatedContent>
                     </TimelineRow>
                   );
                 case "action": {
@@ -218,7 +222,7 @@ export function InlineActivitySteps({
             {/* Active thinking (streaming CoT) */}
             {showActiveThinking && (
               <TimelineRow
-                icon={chainOfThought ? ChatBubbleThoughtIcon : null}
+                icon={chainOfThought ? "circle" : null}
                 spinner={!chainOfThought}
                 isLast={!activeAction && !isDone}
               >
