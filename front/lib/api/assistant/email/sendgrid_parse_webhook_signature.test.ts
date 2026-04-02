@@ -1,4 +1,4 @@
-import { generateKeyPairSync, sign } from "node:crypto";
+import { generateKeyPairSync, sign, type KeyObject } from "node:crypto";
 import {
   createBufferedRequestFromRawBody,
   isSendgridParseFormRequest,
@@ -17,18 +17,27 @@ const publicKeyPem = publicKey
 const publicKeyBase64 = publicKey
   .export({ format: "der", type: "spki" })
   .toString("base64");
+const { privateKey: rsaPrivateKey, publicKey: rsaPublicKey } =
+  generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+  });
+const rsaPublicKeyPem = rsaPublicKey
+  .export({ format: "pem", type: "pkcs1" })
+  .toString();
 
 function signWebhook({
+  privateKey: signingKey = privateKey,
   rawBody,
   timestamp,
 }: {
+  privateKey?: KeyObject;
   rawBody: Buffer;
   timestamp: string;
 }): string {
   return sign(
     "sha256",
     Buffer.concat([Buffer.from(timestamp, "utf8"), rawBody]),
-    privateKey
+    signingKey
   ).toString("base64");
 }
 
@@ -71,6 +80,23 @@ describe("verifySendgridParseWebhookSignature", () => {
     expect(
       verifySendgridParseWebhookSignature({
         publicKey: publicKeyBase64,
+        rawBody: multipartPayload,
+        signature,
+        timestamp,
+      })
+    ).toBe(true);
+  });
+
+  it("accepts PEM public keys with non-SPKI headers", () => {
+    const signature = signWebhook({
+      privateKey: rsaPrivateKey,
+      rawBody: multipartPayload,
+      timestamp,
+    });
+
+    expect(
+      verifySendgridParseWebhookSignature({
+        publicKey: rsaPublicKeyPem,
         rawBody: multipartPayload,
         signature,
         timestamp,
@@ -121,6 +147,8 @@ describe("validateSendgridParseWebhookSignature", () => {
   const nowMs = Date.now();
   const freshTimestamp = `${Math.floor(nowMs / 1000)}`;
   const staleTimestamp = `${Math.floor((nowMs - 10 * 60 * 1000) / 1000)}`;
+  const slightlyFutureTimestamp = `${Math.floor((nowMs + 30 * 1000) / 1000)}`;
+  const tooFutureTimestamp = `${Math.floor((nowMs + 2 * 60 * 1000) / 1000)}`;
   const signature = signWebhook({
     rawBody,
     timestamp: freshTimestamp,
@@ -203,12 +231,52 @@ describe("validateSendgridParseWebhookSignature", () => {
     expect(result.error.apiError.type).toBe("invalid_request_error");
   });
 
+  it("rejects timestamps that are too far in the future", () => {
+    const result = validateSendgridParseWebhookSignature({
+      publicKey: publicKeyPem,
+      headers: {
+        "x-twilio-email-event-webhook-signature": signWebhook({
+          rawBody,
+          timestamp: tooFutureTimestamp,
+        }),
+        "x-twilio-email-event-webhook-timestamp": tooFutureTimestamp,
+      },
+      rawBody,
+      nowMs,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("Expected too-far-future timestamp to be rejected");
+    }
+
+    expect(result.error.statusCode).toBe(403);
+    expect(result.error.apiError.type).toBe("invalid_request_error");
+  });
+
   it("accepts a valid signature", () => {
     const result = validateSendgridParseWebhookSignature({
       publicKey: publicKeyPem,
       headers: {
         "x-twilio-email-event-webhook-signature": signature,
         "x-twilio-email-event-webhook-timestamp": freshTimestamp,
+      },
+      rawBody,
+      nowMs,
+    });
+
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("accepts a small amount of clock skew", () => {
+    const result = validateSendgridParseWebhookSignature({
+      publicKey: publicKeyPem,
+      headers: {
+        "x-twilio-email-event-webhook-signature": signWebhook({
+          rawBody,
+          timestamp: slightlyFutureTimestamp,
+        }),
+        "x-twilio-email-event-webhook-timestamp": slightlyFutureTimestamp,
       },
       rawBody,
       nowMs,

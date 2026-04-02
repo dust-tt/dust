@@ -16,7 +16,8 @@ const SENDGRID_PARSE_WEBHOOK_SIGNATURE_HEADER =
   "x-twilio-email-event-webhook-signature";
 const SENDGRID_PARSE_WEBHOOK_TIMESTAMP_HEADER =
   "x-twilio-email-event-webhook-timestamp";
-const SENDGRID_PARSE_WEBHOOK_TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;
+const SENDGRID_PARSE_WEBHOOK_MAX_AGE_MS = 5 * 60 * 1000;
+const SENDGRID_PARSE_WEBHOOK_MAX_FUTURE_SKEW_MS = 60 * 1000;
 
 function getHeaderValue(
   headers: IncomingHttpHeaders,
@@ -39,15 +40,15 @@ function hasFreshTimestamp(timestamp: string, nowMs: number): boolean {
   const timestampMs = Number(timestamp) * 1000;
 
   return (
-    timestampMs <= nowMs + SENDGRID_PARSE_WEBHOOK_TIMESTAMP_TOLERANCE_MS &&
-    nowMs - timestampMs <= SENDGRID_PARSE_WEBHOOK_TIMESTAMP_TOLERANCE_MS
+    timestampMs <= nowMs + SENDGRID_PARSE_WEBHOOK_MAX_FUTURE_SKEW_MS &&
+    nowMs - timestampMs <= SENDGRID_PARSE_WEBHOOK_MAX_AGE_MS
   );
 }
 
 function createSendgridParseWebhookPublicKey(publicKey: string) {
   const normalizedPublicKey = publicKey.replace(/\\n/g, "\n").trim();
 
-  if (normalizedPublicKey.includes("BEGIN PUBLIC KEY")) {
+  if (/-----BEGIN [A-Z0-9 ]+-----/.test(normalizedPublicKey)) {
     return createPublicKey(normalizedPublicKey);
   }
 
