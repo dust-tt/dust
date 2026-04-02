@@ -9,12 +9,13 @@ import {
   Chip,
   ContentMessage,
   ContextItem,
+  cn,
   InformationCircleIcon,
   Label,
   PuzzleIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 const STATUS_CHIP_LABEL: Record<
@@ -37,6 +38,33 @@ export function DetectedSkillsList({
   isDetecting,
   detectError,
 }: DetectedSkillsListProps) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [canScrollDown, setCanScrollDown] = useState(false);
+
+  const updateScrollIndicator = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) {
+      return;
+    }
+    setCanScrollDown(el.scrollHeight - el.scrollTop - el.clientHeight > 1);
+  }, []);
+
+  const scrollCallbackRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      const prev = scrollRef.current;
+      if (prev) {
+        prev.removeEventListener("scroll", updateScrollIndicator);
+      }
+      scrollRef.current = node;
+      if (node) {
+        node.addEventListener("scroll", updateScrollIndicator);
+        // Check on mount (after layout).
+        requestAnimationFrame(updateScrollIndicator);
+      }
+    },
+    [updateScrollIndicator]
+  );
+
   const { control } = useFormContext<ImportFormValues>();
   const { field: selectedField } = useController({
     name: "selectedSkillNames",
@@ -105,7 +133,10 @@ export function DetectedSkillsList({
               />
             </ContextItem.List>
           )}
-          <div className="max-h-64 overflow-y-auto">
+          <div
+            ref={scrollCallbackRef}
+            className="relative max-h-64 overflow-y-auto"
+          >
             <ContextItem.List>
               {detectedSkills.map((skill) => (
                 <ContextItem
@@ -143,6 +174,13 @@ export function DetectedSkillsList({
                 />
               ))}
             </ContextItem.List>
+            <div
+              className={cn(
+                "pointer-events-none sticky -bottom-px left-0 right-0 -mt-12 h-12 bg-gradient-to-t",
+                "from-background via-background/60 to-transparent transition-opacity duration-300 dark:from-background-night dark:via-background-night/60",
+                canScrollDown ? "opacity-100" : "opacity-0"
+              )}
+            />
           </div>
         </div>
       )}
