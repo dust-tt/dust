@@ -3,25 +3,25 @@ import {
   RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
   RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
-import type { AuthenticatorType } from "@app/lib/auth";
+import type {AuthenticatorType} from "@app/lib/auth";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
-import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
-import { makeAgentLoopConversationTitleWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
+import {RUN_MODEL_MAX_RETRIES} from "@app/temporal/agent_loop/config";
+import {makeAgentLoopConversationTitleWorkflowId} from "@app/temporal/agent_loop/lib/workflow_ids";
 import {
   cancelAgentLoopSignal,
   gracefullyStopAgentLoopSignal,
 } from "@app/temporal/agent_loop/signals";
-import type { AgentLoopInstrumentationSinks } from "@app/temporal/agent_loop/sinks";
-import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
+import type {AgentLoopInstrumentationSinks} from "@app/temporal/agent_loop/sinks";
+import {MAX_STEPS_USE_PER_RUN_LIMIT} from "@app/types/assistant/agent";
 import type {
   AgentLoopArgs,
   AgentLoopArgsWithTiming,
 } from "@app/types/assistant/agent_run";
-import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
+import {WorkflowExecutionAlreadyStartedError} from "@temporalio/common";
 import type {
   ChildWorkflowHandle,
   WorkflowInterceptorsFactory,
@@ -55,7 +55,7 @@ export const interceptors: WorkflowInterceptorsFactory = () => ({
   internals: [new OpenTelemetryInternalsInterceptor()],
 });
 
-const { runModelAndCreateActionsActivity } = proxyActivities<
+const {runModelAndCreateActionsActivity} = proxyActivities<
   typeof runModelAndCreateWrapperActivities
 >({
   startToCloseTimeout: "10 minutes",
@@ -66,7 +66,7 @@ const { runModelAndCreateActionsActivity } = proxyActivities<
   },
 });
 
-const { runToolActivity } = proxyActivities<typeof runToolActivities>({
+const {runToolActivity} = proxyActivities<typeof runToolActivities>({
   // Activity timeout keeps a short buffer above the tool timeout to detect worker restarts promptly.
   startToCloseTimeout: toolActivityStartToCloseTimeoutMs,
   heartbeatTimeout: TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
@@ -76,7 +76,7 @@ const { runToolActivity } = proxyActivities<typeof runToolActivities>({
   },
 });
 
-const { runToolActivity: runRetryableToolActivity } = proxyActivities<
+const {runToolActivity: runRetryableToolActivity} = proxyActivities<
   typeof runToolActivities
 >({
   startToCloseTimeout: toolActivityStartToCloseTimeoutMs,
@@ -86,15 +86,15 @@ const { runToolActivity: runRetryableToolActivity } = proxyActivities<
   },
 });
 
-const { publishDeferredEventsActivity } = proxyActivities<
+const {publishDeferredEventsActivity} = proxyActivities<
   typeof publishDeferredEventsActivities
 >({
   startToCloseTimeout: "2 minutes",
 });
 
-const { metrics } = proxySinks<AgentLoopInstrumentationSinks>();
+const {metrics} = proxySinks<AgentLoopInstrumentationSinks>();
 
-const { ensureConversationTitleActivity } = proxyActivities<
+const {ensureConversationTitleActivity} = proxyActivities<
   typeof ensureTitleActivities
 >({
   startToCloseTimeout: "5 minutes",
@@ -135,7 +135,7 @@ export async function agentLoopWorkflow({
   agentLoopArgs: AgentLoopArgs;
   startStep: number;
 }) {
-  const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
+  const {searchAttributes: parentSearchAttributes, memo} = workflowInfo();
 
   // Allow cancellation of in-flight activities via signal-triggered scope cancellation.
   let cancelRequested = false;
@@ -155,7 +155,7 @@ export async function agentLoopWorkflow({
   });
 
   try {
-    const { agentMessageId, conversationId } = agentLoopArgs;
+    const {agentMessageId, conversationId} = agentLoopArgs;
 
     await executionScope.run(async () => {
       const runIds: string[] = [];
@@ -177,7 +177,7 @@ export async function agentLoopWorkflow({
 
         const stepStartTime = Date.now();
 
-        const { runId, shouldContinue } = await executeStepIteration({
+        const {runId, shouldContinue} = await executeStepIteration({
           authType,
           agentLoopArgs: {
             ...agentLoopArgs,
@@ -213,7 +213,7 @@ export async function agentLoopWorkflow({
                   agentLoopArgs
                 ),
                 searchAttributes: parentSearchAttributes,
-                args: [{ authType, agentLoopArgs }],
+                args: [{authType, agentLoopArgs}],
                 memo,
               }
             );
@@ -310,7 +310,7 @@ async function executeStepIteration({
     };
   }
 
-  const { runId, actionBlobs } = result;
+  const {runId, actionBlobs} = result;
 
   // If at least one action needs approval, we break out of the loop and will resume once all
   // actions have been approved.
@@ -324,20 +324,20 @@ async function executeStepIteration({
 
   // Execute tools and collect any deferred events.
   const toolResults = await Promise.all(
-    actionBlobs.map(({ actionId, retryPolicy }) =>
+    actionBlobs.map(({actionId, retryPolicy}) =>
       retryPolicy === "no_retry"
         ? runToolActivity(authType, {
-            actionId,
-            runAgentArgs: agentLoopArgs,
-            step: currentStep,
-            runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
-          })
+          actionId,
+          runAgentArgs: agentLoopArgs,
+          step: currentStep,
+          runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
+        })
         : runRetryableToolActivity(authType, {
-            actionId,
-            runAgentArgs: agentLoopArgs,
-            step: currentStep,
-            runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
-          })
+          actionId,
+          runAgentArgs: agentLoopArgs,
+          step: currentStep,
+          runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
+        })
     )
   );
 
