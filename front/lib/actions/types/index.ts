@@ -52,6 +52,13 @@ export const UserQuestionSchema = z.object({
 
 export type UserQuestion = z.infer<typeof UserQuestionSchema>;
 
+export const UserQuestionAnswerSchema = z.object({
+  selectedOptions: z.array(z.number()),
+  customResponse: z.string().optional(),
+});
+
+export type UserQuestionAnswer = z.infer<typeof UserQuestionAnswerSchema>;
+
 export type StepContext = {
   citationsCount: number;
   citationsOffset: number;
