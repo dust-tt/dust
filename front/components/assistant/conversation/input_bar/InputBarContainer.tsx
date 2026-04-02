@@ -210,16 +210,16 @@ const InputBarContainer = ({
     ) {
       return;
     }
-    hasInitializedAgentRef.current = true;
-
     const draft = getDraft();
     if (draft?.agentMention) {
+      hasInitializedAgentRef.current = true;
       setSelectedSingleAgent(draft.agentMention);
       return;
     }
 
     const dustAgent = allAgents.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST);
     if (dustAgent) {
+      hasInitializedAgentRef.current = true;
       setSelectedSingleAgent(toRichAgentMentionType(dustAgent));
     }
   }, [
