@@ -39,42 +39,6 @@ export const UserQuestionSchema = z.object({
 
 export type UserQuestion = z.infer<typeof UserQuestionSchema>;
 
-const UserQuestionResumeStateSchema = z.object({
-  type: z.literal("user_question"),
-  questions: z.array(UserQuestionSchema),
-  metadata: z.record(z.unknown()).optional(),
-});
-
-export type UserQuestionResumeState = z.infer<
-  typeof UserQuestionResumeStateSchema
->;
-
-export function isUserQuestionResumeState(
-  value: Record<string, unknown> | null
-): value is UserQuestionResumeState {
-  return UserQuestionResumeStateSchema.safeParse(value).success;
-}
-
-export const UserQuestionAnswerItemSchema = z.object({
-  selectedOptions: z.array(z.number()),
-  customResponse: z.string().optional(),
-});
-
-export type UserQuestionAnswerItem = z.infer<
-  typeof UserQuestionAnswerItemSchema
->;
-
-const UserQuestionAnswersSchema = z.object({
-  answers: z.array(UserQuestionAnswerItemSchema),
-});
-
-export type UserQuestionAnswers = z.infer<typeof UserQuestionAnswersSchema>;
-
-export function isUserQuestionAnswers(
-  value: unknown
-): value is UserQuestionAnswers {
-  return UserQuestionAnswersSchema.safeParse(value).success;
-}
 
 export type StepContext = {
   citationsCount: number;
