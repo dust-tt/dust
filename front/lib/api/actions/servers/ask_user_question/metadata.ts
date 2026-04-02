@@ -1,5 +1,6 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { UserQuestionSchema } from "@app/lib/actions/types";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -23,36 +24,7 @@ export const ASK_USER_QUESTION_TOOLS_METADATA = createToolsRecord({
       "- List the recommended option first with '(Recommended)' in its label.\n" +
       "- The user always gets an automatic 'Other' option for free-text input.",
     schema: {
-      question: z
-        .string()
-        .describe("The question text. Should be clear and specific."),
-      options: z
-        .array(
-          z.object({
-            label: z
-              .string()
-              .describe(
-                "Concise choice text, 1-5 words. " +
-                  "Recommended option should include '(Recommended)'."
-              ),
-            description: z
-              .string()
-              .nullable()
-              .describe("Explanation of this option."),
-          })
-        )
-        .min(2)
-        .max(4)
-        .describe("The available choices (2 to 4 options)."),
-      multi_select: z
-        .boolean()
-        .describe(
-          "Whether the user can select multiple options for this question."
-        ),
-      metadata: z
-        .record(z.unknown())
-        .optional()
-        .describe("Optional analytics/tracking metadata."),
+      ...UserQuestionSchema.shape,
     },
     stake: "never_ask",
     displayLabels: {
