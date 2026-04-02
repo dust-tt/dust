@@ -60,5 +60,8 @@ struct NewConversationView: View {
         .task {
             await inputBarViewModel.loadAgents()
         }
+        .onDisappear {
+            inputBarViewModel.cancelUploads()
+        }
     }
 }

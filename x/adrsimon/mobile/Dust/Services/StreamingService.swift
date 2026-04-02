@@ -7,7 +7,7 @@ private let logger = Logger(subsystem: AppConfig.bundleId, category: "Streaming"
 /// URLSession strips auth headers on redirect by default (security measure).
 /// The Dust SSE endpoints redirect /api/…/events → /api/sse/…/events (307),
 /// so we must re-attach the header.
-private final class AuthPreservingDelegate: NSObject, URLSessionTaskDelegate {
+final private class AuthPreservingDelegate: NSObject, URLSessionTaskDelegate {
     let accessToken: String
 
     init(accessToken: String) {
@@ -112,9 +112,10 @@ enum StreamingService {
     ) async throws {
         for try await line in bytes.lines {
             guard !Task.isCancelled else { break }
-            guard line.hasPrefix("data: ") else { continue }
-            let payload = String(line.dropFirst(6))
+            guard line.hasPrefix("data:") else { continue }
+            let payload = String(line.dropFirst(5)).trimmingCharacters(in: .init(charactersIn: " "))
             if payload == "done" { break }
+            if payload.isEmpty { continue }
             continuation.yield(payload)
         }
     }

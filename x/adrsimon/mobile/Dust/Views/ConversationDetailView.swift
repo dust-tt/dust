@@ -60,6 +60,9 @@ struct ConversationDetailView: View {
         .task {
             await inputBarViewModel.loadAgents()
         }
+        .onDisappear {
+            inputBarViewModel.cancelUploads()
+        }
         .sheet(isPresented: $showFilesSheet) {
             ConversationFilesSheet(
                 workspaceId: workspaceId,

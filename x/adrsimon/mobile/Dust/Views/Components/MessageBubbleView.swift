@@ -107,9 +107,7 @@ struct AgentMessageBubble: View {
 
             // Show content (streamed or final)
             if let content = message.content, !content.isEmpty {
-                Markdown(preprocessDirectives(content))
-                    .markdownTheme(.dust)
-                    .lineSpacing(4)
+                StreamingMarkdownView(rawContent: content, isStreaming: message.isStreaming)
                     .textSelection(!message.isStreaming)
             }
         }
@@ -169,24 +167,34 @@ struct ContentFragmentChip: View {
 private struct FlowLayout: Layout {
     var spacing: CGFloat = 4
 
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache _: inout ()) -> CGSize {
-        let rows = computeRows(proposal: proposal, subviews: subviews)
+    struct CacheData {
+        var sizes: [CGSize]
+        var rows: [[Int]]
+    }
+
+    func makeCache(subviews: Subviews) -> CacheData {
+        let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        return CacheData(sizes: sizes, rows: [])
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout CacheData) -> CGSize {
+        cache.sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        cache.rows = computeRows(proposal: proposal, sizes: cache.sizes)
         var height: CGFloat = 0
-        for (i, row) in rows.enumerated() {
-            let rowHeight = row.map { subviews[$0].sizeThatFits(.unspecified).height }.max() ?? 0
+        for (i, row) in cache.rows.enumerated() {
+            let rowHeight = row.map { cache.sizes[$0].height }.max() ?? 0
             height += rowHeight + (i > 0 ? spacing : 0)
         }
         return CGSize(width: proposal.width ?? 0, height: height)
     }
 
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache _: inout ()) {
-        let rows = computeRows(proposal: proposal, subviews: subviews)
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout CacheData) {
         var y = bounds.minY
-        for row in rows {
-            let rowHeight = row.map { subviews[$0].sizeThatFits(.unspecified).height }.max() ?? 0
+        for row in cache.rows {
+            let rowHeight = row.map { cache.sizes[$0].height }.max() ?? 0
             var x = bounds.maxX
             for index in row.reversed() {
-                let size = subviews[index].sizeThatFits(.unspecified)
+                let size = cache.sizes[index]
                 x -= size.width
                 subviews[index].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
                 x -= spacing
@@ -195,12 +203,11 @@ private struct FlowLayout: Layout {
         }
     }
 
-    private func computeRows(proposal: ProposedViewSize, subviews: Subviews) -> [[Int]] {
+    private func computeRows(proposal: ProposedViewSize, sizes: [CGSize]) -> [[Int]] {
         let maxWidth = proposal.width ?? .infinity
         var rows: [[Int]] = [[]]
         var rowWidth: CGFloat = 0
-        for (i, subview) in subviews.enumerated() {
-            let size = subview.sizeThatFits(.unspecified)
+        for (i, size) in sizes.enumerated() {
             if !rows[rows.count - 1].isEmpty, rowWidth + spacing + size.width > maxWidth {
                 rows.append([])
                 rowWidth = 0
