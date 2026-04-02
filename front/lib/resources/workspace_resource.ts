@@ -216,6 +216,14 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     WorkspaceResource.workspaceCacheKeyResolver
   );
 
+  /**
+   * Public cache invalidation — for use in scripts where the fire-and-forget
+   * invalidation in update() may not complete before process.exit().
+   */
+  static async invalidateCache(sId: string): Promise<void> {
+    await this.invalidateWorkspaceCache(sId);
+  }
+
   private static fromCachedData(data: CachedWorkspaceData): WorkspaceResource {
     const blob: Attributes<WorkspaceModel> = {
       id: data.id,
