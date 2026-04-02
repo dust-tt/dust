@@ -1,9 +1,10 @@
+import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/lib/editor/instructionBlockNode";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { Node } from "@tiptap/core";
 
 import { BLOCK_ID_ATTRIBUTE } from "./BlockIdExtension";
 
-export const INSTRUCTIONS_ROOT_NODE_NAME = "instructionsRoot";
+export { INSTRUCTIONS_ROOT_NODE_NAME };
 
 // Wrapper node that sits between doc and the block-level content.
 // Carries a stable block-id so the sidekick can target it to replace

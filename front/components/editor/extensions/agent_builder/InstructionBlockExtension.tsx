@@ -1,15 +1,10 @@
-import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
+import { InstructionBlockBaseNode } from "@app/lib/editor/instructionBlockNode";
 import {
   CLOSING_TAG_REGEX,
-  INSTRUCTION_BLOCK_REGEX,
-  OPENING_TAG_BEGINNING_REGEX,
   OPENING_TAG_REGEX,
 } from "@app/lib/editor/instructionBlockUtils";
-import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { ChevronDownIcon, ChevronRightIcon, Chip, cn } from "@dust-tt/sparkle";
-import type { MarkdownLexerConfiguration, MarkdownToken } from "@tiptap/core";
-import { InputRule, mergeAttributes, Node } from "@tiptap/core";
+import { InputRule } from "@tiptap/core";
 import { Slice } from "@tiptap/pm/model";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import type { NodeViewProps } from "@tiptap/react";
@@ -20,10 +15,6 @@ import {
 } from "@tiptap/react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
-
-export interface InstructionBlockAttributes {
-  type: string;
-}
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -211,443 +202,296 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
   );
 };
 
-export const InstructionBlockExtension =
-  Node.create<InstructionBlockAttributes>({
-    name: "instructionBlock",
-    group: "block",
-    priority: 1000,
-    content: "block+",
-    defining: true,
-    // Prevents auto-merging two blocks when they're not separated by a paragraph
-    isolating: true,
-    selectable: true,
+export const InstructionBlockExtension = InstructionBlockBaseNode.extend({
+  addCommands() {
+    return {
+      insertInstructionBlock:
+        () =>
+        ({ chain }) => {
+          const content = {
+            type: this.name,
+            attrs: { type: "instructions", isCollapsed: false },
+            content: [{ type: "paragraph" }],
+          };
 
-    addAttributes() {
-      return {
-        type: {
-          default: "instructions",
-          parseHTML: (element) =>
-            element.getAttribute("data-instruction-type") ?? "instructions",
-          renderHTML: (attributes) => ({
-            "data-instruction-type": attributes.type,
-          }),
+          return chain().focus().insertContent(content).run();
         },
-        isCollapsed: {
-          default: false,
-          parseHTML: (element) =>
-            element.getAttribute("data-collapsed") === "true",
-          renderHTML: (attributes) => ({
-            "data-collapsed": attributes.isCollapsed,
-          }),
-        },
-      };
-    },
+    };
+  },
 
-    parseHTML() {
-      return [
-        {
-          tag: "div[data-type='instruction-block']",
-        },
-      ];
-    },
+  addNodeView() {
+    return ReactNodeViewRenderer(InstructionBlockComponent);
+  },
 
-    renderHTML({ HTMLAttributes }) {
-      return [
-        "div",
-        mergeAttributes(HTMLAttributes, {
-          "data-type": "instruction-block",
-        }),
-        0,
-      ];
-    },
+  addProseMirrorPlugins() {
+    const instructionBlockName = this.name;
 
-    addCommands() {
-      return {
-        insertInstructionBlock:
-          () =>
-          ({ chain }) => {
-            const content = {
-              type: this.name,
-              attrs: { type: "instructions", isCollapsed: false },
-              content: [{ type: "paragraph" }],
-            };
+    return [
+      new Plugin({
+        key: new PluginKey("instructionBlockCopyContext"),
+        props: {
+          // When copying text from inside an instruction block, ProseMirror
+          // builds a Slice that includes the surrounding nodes as context
+          // (stored in data-pm-slice). On paste, this context causes a new
+          // instruction block to be re-created, duplicating the XML tags.
+          //
+          // Copying just "test" from inside <example>test</example> produces:
+          //
+          //   instructionsRoot        (context — childCount: 1)
+          //     └── instructionBlock  (context — childCount: 1)
+          //           └── paragraph("test")  ← actual selection
+          //
+          // We strip the single-child instructionsRoot/instructionBlock
+          // wrappers so the clipboard only contains: paragraph("test").
+          //
+          // Copying the whole block (including the XML tag) produces:
+          //
+          //   instructionsRoot                (childCount: 3)
+          //     ├── paragraph()               ← before the block
+          //     ├── instructionBlock
+          //     │     └── paragraph("test")
+          //     └── paragraph()               ← after the block
+          //
+          // Here instructionsRoot has 3 children, so childCount !== 1 and
+          // the slice is left unchanged — the full block is preserved.
+          transformCopied(slice) {
+            let { content, openStart, openEnd } = slice;
 
-            return chain().focus().insertContent(content).run();
-          },
-      };
-    },
+            // Peel off wrapper nodes that are instructionsRoot or
+            // instructionBlock when they are part of the open (context) portion
+            // of the slice — i.e. not explicitly selected.
+            while (openStart > 0 && openEnd > 0 && content.childCount === 1) {
+              if (!content.firstChild) {
+                break;
+              }
+              const firstChild = content.firstChild;
+              const name = firstChild.type.name;
 
-    addNodeView() {
-      return ReactNodeViewRenderer(InstructionBlockComponent);
-    },
-
-    addProseMirrorPlugins() {
-      const instructionBlockName = this.name;
-
-      return [
-        new Plugin({
-          key: new PluginKey("instructionBlockCopyContext"),
-          props: {
-            // When copying text from inside an instruction block, ProseMirror
-            // builds a Slice that includes the surrounding nodes as context
-            // (stored in data-pm-slice). On paste, this context causes a new
-            // instruction block to be re-created, duplicating the XML tags.
-            //
-            // Copying just "test" from inside <example>test</example> produces:
-            //
-            //   instructionsRoot        (context — childCount: 1)
-            //     └── instructionBlock  (context — childCount: 1)
-            //           └── paragraph("test")  ← actual selection
-            //
-            // We strip the single-child instructionsRoot/instructionBlock
-            // wrappers so the clipboard only contains: paragraph("test").
-            //
-            // Copying the whole block (including the XML tag) produces:
-            //
-            //   instructionsRoot                (childCount: 3)
-            //     ├── paragraph()               ← before the block
-            //     ├── instructionBlock
-            //     │     └── paragraph("test")
-            //     └── paragraph()               ← after the block
-            //
-            // Here instructionsRoot has 3 children, so childCount !== 1 and
-            // the slice is left unchanged — the full block is preserved.
-            transformCopied(slice) {
-              let { content, openStart, openEnd } = slice;
-
-              // Peel off wrapper nodes that are instructionsRoot or
-              // instructionBlock when they are part of the open (context) portion
-              // of the slice — i.e. not explicitly selected.
-              while (openStart > 0 && openEnd > 0 && content.childCount === 1) {
-                if (!content.firstChild) {
-                  break;
-                }
-                const firstChild = content.firstChild;
-                const name = firstChild.type.name;
-
-                if (
-                  name !== instructionBlockName &&
-                  name !== "instructionsRoot"
-                ) {
-                  break;
-                }
-
-                content = firstChild.content;
-                openStart--;
-                openEnd--;
+              if (
+                name !== instructionBlockName &&
+                name !== "instructionsRoot"
+              ) {
+                break;
               }
 
-              if (content !== slice.content) {
-                return new Slice(content, openStart, openEnd);
-              }
-
-              return slice;
-            },
-          },
-        }),
-      ];
-    },
-
-    addInputRules() {
-      return [
-        new InputRule({
-          find: OPENING_TAG_REGEX,
-          handler: ({ range, match, chain }) => {
-            const type = match[1] ? match[1].toLowerCase() : "";
-            const tagType = type || "instructions";
-
-            const content = {
-              type: this.name,
-              attrs: { type: tagType, isCollapsed: false },
-              content: [{ type: "paragraph" }],
-            };
-
-            chain()
-              .focus()
-              .deleteRange({ from: range.from, to: range.to })
-              .insertContent(content)
-              .run();
-          },
-        }),
-      ];
-    },
-
-    addKeyboardShortcuts() {
-      return {
-        /**
-         * Handles Shift+Enter to split the block without creating a new paragraph.
-         * This allows users to create a new line within the instruction block.
-         */
-        "Shift-Enter": () => {
-          if (!this.editor.isActive(this.name)) {
-            return false;
-          }
-          return this.editor.commands.splitBlock();
-        },
-        /**
-         * Handles backspace key to remove empty instruction blocks.
-         */
-        Backspace: () => {
-          if (!this.editor.isActive(this.name)) {
-            return false;
-          }
-
-          const { state } = this.editor;
-          const { selection } = state;
-          const $from = selection.$from;
-
-          if (!selection.empty) {
-            return false;
-          }
-
-          // Only act if cursor is at the start of a paragraph
-          if ($from.parentOffset !== 0) {
-            return false;
-          }
-
-          let blockDepth: number | null = null;
-          for (let d = $from.depth; d >= 0; d -= 1) {
-            if ($from.node(d).type.name === this.name) {
-              blockDepth = d;
-              break;
+              content = firstChild.content;
+              openStart--;
+              openEnd--;
             }
-          }
 
-          if (blockDepth === null) {
-            return false;
-          }
-
-          const blockNode = $from.node(blockDepth);
-          const childIndex = $from.index(blockDepth);
-
-          // If we're not in the first paragraph, let default backspace behavior handle it
-          // (this will merge with the previous paragraph)
-          if (childIndex > 0) {
-            return false;
-          }
-
-          // We're in the first paragraph and at its start
-          // Only delete the block if it's completely empty
-          const isBlockEmpty = blockNode.textContent.trim().length === 0;
-
-          if (!isBlockEmpty) {
-            return false;
-          }
-
-          // Additional check: only delete if block has minimal structure (3 paragraphs)
-          // This prevents deletion when there are multiple empty lines
-          if (blockNode.childCount > 3) {
-            return false;
-          }
-
-          // Safety check for Safari: ensure editor is not destroyed before dispatch
-          if (this.editor.isDestroyed) {
-            return false;
-          }
-
-          const tr = state.tr;
-          const fromPos = $from.before(blockDepth);
-          const toPos = fromPos + blockNode.nodeSize;
-
-          tr.delete(fromPos, toPos);
-
-          // Place caret at end of previous paragraph if present; otherwise create one
-          const $before = tr.doc.resolve(fromPos);
-          const prev = $before.nodeBefore;
-          if (prev && prev.type.name === "paragraph") {
-            tr.setSelection(TextSelection.create(tr.doc, fromPos - 1));
-          } else {
-            tr.insert(fromPos, state.schema.nodes.paragraph.create());
-            tr.setSelection(TextSelection.create(tr.doc, fromPos + 1));
-          }
-
-          this.editor.view.dispatch(tr);
-          // Focus after dispatch
-          if (!this.editor.isDestroyed) {
-            this.editor.commands.focus();
-          }
-          return true;
-        },
-        /**
-         * Handles Enter to exit the block when on the last empty line
-         */
-        Enter: () => {
-          if (!this.editor.isActive(this.name)) {
-            return false;
-          }
-
-          const { state } = this.editor;
-          const { selection } = state;
-          const $from = selection.$from;
-
-          if (!selection.empty) {
-            return false;
-          }
-
-          let blockDepth: number | null = null;
-          for (let d = $from.depth; d >= 0; d -= 1) {
-            if ($from.node(d).type.name === this.name) {
-              blockDepth = d;
-              break;
+            if (content !== slice.content) {
+              return new Slice(content, openStart, openEnd);
             }
-          }
 
-          if (blockDepth === null) {
-            return false;
-          }
-
-          const blockNode = $from.node(blockDepth);
-          const childIndex = $from.index(blockDepth);
-
-          // Check if we're in the last paragraph of the block
-          const isInLastChild = childIndex === blockNode.childCount - 1;
-
-          if (!isInLastChild) {
-            // Let default behavior handle non-last lines
-            return false;
-          }
-
-          // Check if current paragraph is the closing tag or empty
-          const paragraphNode = $from.node(blockDepth + 1);
-          const isParagraphEmpty =
-            paragraphNode &&
-            paragraphNode.type.name === "paragraph" &&
-            paragraphNode.textContent.trim().length === 0;
-
-          // Check if cursor is at the end of closing tag (including empty tags)
-          const isAtEndOfClosingTag =
-            paragraphNode &&
-            paragraphNode.type.name === "paragraph" &&
-            paragraphNode.textContent.match(CLOSING_TAG_REGEX) &&
-            $from.parentOffset === paragraphNode.content.size;
-
-          if (!isParagraphEmpty && !isAtEndOfClosingTag) {
-            // Let default behavior handle other cases
-            return false;
-          }
-
-          // Safety check for Safari: ensure editor is not destroyed before dispatch
-          if (this.editor.isDestroyed) {
-            return false;
-          }
-
-          // Exit the block by creating a new paragraph after it
-          const tr = state.tr;
-          const posBeforeBlock = $from.before(blockDepth);
-          const posAfterBlock = posBeforeBlock + blockNode.nodeSize;
-
-          const $after = tr.doc.resolve(posAfterBlock);
-          const nextNode = $after.nodeAfter;
-          if (!nextNode || nextNode.type.name !== "paragraph") {
-            tr.insert(posAfterBlock, state.schema.nodes.paragraph.create());
-          }
-          tr.setSelection(TextSelection.create(tr.doc, posAfterBlock + 1));
-
-          this.editor.view.dispatch(tr);
-          // Focus after dispatch
-          if (!this.editor.isDestroyed) {
-            this.editor.commands.focus();
-          }
-          return true;
+            return slice;
+          },
         },
-      };
-    },
+      }),
+    ];
+  },
 
-    markdownTokenizer: {
-      name: "instructionBlock",
-      level: "block",
-      start: (src) => {
-        const match = src.match(OPENING_TAG_BEGINNING_REGEX);
-        return match?.index ?? -1;
+  addInputRules() {
+    return [
+      new InputRule({
+        find: OPENING_TAG_REGEX,
+        handler: ({ range, match, chain }) => {
+          const type = match[1] ? match[1].toLowerCase() : "";
+          const tagType = type || "instructions";
+
+          const content = {
+            type: this.name,
+            attrs: { type: tagType, isCollapsed: false },
+            content: [{ type: "paragraph" }],
+          };
+
+          chain()
+            .focus()
+            .deleteRange({ from: range.from, to: range.to })
+            .insertContent(content)
+            .run();
+        },
+      }),
+    ];
+  },
+
+  addKeyboardShortcuts() {
+    return {
+      /**
+       * Handles Shift+Enter to split the block without creating a new paragraph.
+       * This allows users to create a new line within the instruction block.
+       */
+      "Shift-Enter": () => {
+        if (!this.editor.isActive(this.name)) {
+          return false;
+        }
+        return this.editor.commands.splitBlock();
       },
-      tokenize: (
-        src: string,
-        _tokens: MarkdownToken[],
-        lexer: MarkdownLexerConfiguration
-      ) => {
-        // Match opening tag, content, and closing tag
-        const match = src.match(INSTRUCTION_BLOCK_REGEX);
-        if (!match) {
-          return undefined;
+      /**
+       * Handles backspace key to remove empty instruction blocks.
+       */
+      Backspace: () => {
+        if (!this.editor.isActive(this.name)) {
+          return false;
         }
 
-        const tagName = match[1] || "instructions";
-        const content = match[2];
+        const { state } = this.editor;
+        const { selection } = state;
+        const $from = selection.$from;
 
-        let tokens;
-        try {
-          // Attempt to tokenize nested content with original text in a try-catch
-          // Sometimes we can't tokenize with non-breakable-space content, hence
-          // the .trim() fallback
-          tokens = lexer.blockTokens(content);
-        } catch (error) {
-          try {
-            tokens = lexer.blockTokens(content.trim());
-            logger.warn("Marked lexer state corruption, passed with trim()", {
-              error: normalizeError(error),
-              sourceString: src,
-              match2: content,
-            });
-          } catch (error) {
-            // Marked lexer state corruption - fallback to treating as undefined, so we still at least display the content
-            // but not the `<instructions>`
-            logger.error(
-              "Marked lexer state corruption, failed with trim(). Fallbacking...",
-              {
-                error: normalizeError(error),
-                sourceString: src,
-                match2: content.trim(),
-              }
-            );
-            return undefined;
+        if (!selection.empty) {
+          return false;
+        }
+
+        // Only act if cursor is at the start of a paragraph
+        if ($from.parentOffset !== 0) {
+          return false;
+        }
+
+        let blockDepth: number | null = null;
+        for (let d = $from.depth; d >= 0; d -= 1) {
+          if ($from.node(d).type.name === this.name) {
+            blockDepth = d;
+            break;
           }
         }
 
-        return {
-          type: "instructionBlock",
-          raw: match[0],
-          attrs: {
-            type: tagName.toLowerCase(),
-          },
-          text: content,
-          tokens,
-        };
+        if (blockDepth === null) {
+          return false;
+        }
+
+        const blockNode = $from.node(blockDepth);
+        const childIndex = $from.index(blockDepth);
+
+        // If we're not in the first paragraph, let default backspace behavior handle it
+        // (this will merge with the previous paragraph)
+        if (childIndex > 0) {
+          return false;
+        }
+
+        // We're in the first paragraph and at its start
+        // Only delete the block if it's completely empty
+        const isBlockEmpty = blockNode.textContent.trim().length === 0;
+
+        if (!isBlockEmpty) {
+          return false;
+        }
+
+        // Additional check: only delete if block has minimal structure (3 paragraphs)
+        // This prevents deletion when there are multiple empty lines
+        if (blockNode.childCount > 3) {
+          return false;
+        }
+
+        // Safety check for Safari: ensure editor is not destroyed before dispatch
+        if (this.editor.isDestroyed) {
+          return false;
+        }
+
+        const tr = state.tr;
+        const fromPos = $from.before(blockDepth);
+        const toPos = fromPos + blockNode.nodeSize;
+
+        tr.delete(fromPos, toPos);
+
+        // Place caret at end of previous paragraph if present; otherwise create one
+        const $before = tr.doc.resolve(fromPos);
+        const prev = $before.nodeBefore;
+        if (prev && prev.type.name === "paragraph") {
+          tr.setSelection(TextSelection.create(tr.doc, fromPos - 1));
+        } else {
+          tr.insert(fromPos, state.schema.nodes.paragraph.create());
+          tr.setSelection(TextSelection.create(tr.doc, fromPos + 1));
+        }
+
+        this.editor.view.dispatch(tr);
+        // Focus after dispatch
+        if (!this.editor.isDestroyed) {
+          this.editor.commands.focus();
+        }
+        return true;
       },
-    },
+      /**
+       * Handles Enter to exit the block when on the last empty line
+       */
+      Enter: () => {
+        if (!this.editor.isActive(this.name)) {
+          return false;
+        }
 
-    parseMarkdown: (token, helpers) => {
-      const tagType = token.attrs?.type ?? "instructions";
-      const rawContent = helpers.parseChildren(token.tokens ?? []);
+        const { state } = this.editor;
+        const { selection } = state;
+        const $from = selection.$from;
 
-      // instructionsRoot: parseHTMLToken wraps malformed/unmatched tags via generateJSON(html,
-      // baseExtensions). Since the schema is doc > instructionsRoot > block+, ProseMirror wraps
-      // the fragment in instructionsRoot, which then appears as a child here. We unwrap it to
-      // preserve its block children rather than dropping them.
-      const content = rawContent.flatMap((node) =>
-        node.type === INSTRUCTIONS_ROOT_NODE_NAME
-          ? (node.content ?? [])
-          : [node]
-      );
+        if (!selection.empty) {
+          return false;
+        }
 
-      return {
-        type: "instructionBlock",
-        attrs: {
-          type: tagType,
-          isCollapsed: false,
-        },
-        // When tags contain only whitespace (e.g. "<foo>\n</foo>"), blockTokens("\n") produces
-        // tokens that parseChildren can't convert to valid blocks, returning an empty array. This
-        // violates the "block+" schema and crashes ProseMirror. Fall back to an empty paragraph.
-        content: content.length > 0 ? content : [{ type: "paragraph" }],
-      };
-    },
+        let blockDepth: number | null = null;
+        for (let d = $from.depth; d >= 0; d -= 1) {
+          if ($from.node(d).type.name === this.name) {
+            blockDepth = d;
+            break;
+          }
+        }
 
-    renderMarkdown: (node, helpers) => {
-      const tagType = node.attrs?.type ?? "instructions";
-      const children = node.content ?? [];
+        if (blockDepth === null) {
+          return false;
+        }
 
-      // We use "\n\n" as a separator, because of a weird bug, see unit tests
-      const content = helpers.renderChildren(children, "\n\n");
-      return `<${tagType}>\n\n${content}\n\n</${tagType}>`;
-    },
-  });
+        const blockNode = $from.node(blockDepth);
+        const childIndex = $from.index(blockDepth);
+
+        // Check if we're in the last paragraph of the block
+        const isInLastChild = childIndex === blockNode.childCount - 1;
+
+        if (!isInLastChild) {
+          // Let default behavior handle non-last lines
+          return false;
+        }
+
+        // Check if current paragraph is the closing tag or empty
+        const paragraphNode = $from.node(blockDepth + 1);
+        const isParagraphEmpty =
+          paragraphNode &&
+          paragraphNode.type.name === "paragraph" &&
+          paragraphNode.textContent.trim().length === 0;
+
+        // Check if cursor is at the end of closing tag (including empty tags)
+        const isAtEndOfClosingTag =
+          paragraphNode &&
+          paragraphNode.type.name === "paragraph" &&
+          paragraphNode.textContent.match(CLOSING_TAG_REGEX) &&
+          $from.parentOffset === paragraphNode.content.size;
+
+        if (!isParagraphEmpty && !isAtEndOfClosingTag) {
+          // Let default behavior handle other cases
+          return false;
+        }
+
+        // Safety check for Safari: ensure editor is not destroyed before dispatch
+        if (this.editor.isDestroyed) {
+          return false;
+        }
+
+        // Exit the block by creating a new paragraph after it
+        const tr = state.tr;
+        const posBeforeBlock = $from.before(blockDepth);
+        const posAfterBlock = posBeforeBlock + blockNode.nodeSize;
+
+        const $after = tr.doc.resolve(posAfterBlock);
+        const nextNode = $after.nodeAfter;
+        if (!nextNode || nextNode.type.name !== "paragraph") {
+          tr.insert(posAfterBlock, state.schema.nodes.paragraph.create());
+        }
+        tr.setSelection(TextSelection.create(tr.doc, posAfterBlock + 1));
+
+        this.editor.view.dispatch(tr);
+        // Focus after dispatch
+        if (!this.editor.isDestroyed) {
+          this.editor.commands.focus();
+        }
+        return true;
+      },
+    };
+  },
+});
