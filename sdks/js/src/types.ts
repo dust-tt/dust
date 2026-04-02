@@ -1440,8 +1440,8 @@ const AgentErrorEventSchema = z.object({
 });
 export type AgentErrorEvent = z.infer<typeof AgentErrorEventSchema>;
 
-const ToolUserQuestionEventSchema = ToolExecutionMetadataSchema.extend({
-  type: z.literal("tool_user_question"),
+const ToolAskUserQuestionEventSchema = ToolExecutionMetadataSchema.extend({
+  type: z.literal("tool_ask_user_question"),
   userId: z.string().optional(),
   configurationId: z.string(),
   conversationId: z.string(),
@@ -1451,14 +1451,14 @@ const ToolUserQuestionEventSchema = ToolExecutionMetadataSchema.extend({
   questionMetadata: z.record(z.unknown()).nullable(),
 });
 
-export type ToolUserQuestionEvent = z.infer<typeof ToolUserQuestionEventSchema>;
+export type ToolAskUserQuestionEvent = z.infer<typeof ToolAskUserQuestionEventSchema>;
 
 const AgentActionSpecificEventSchema = z.union([
   MCPParamsEventSchema,
   ToolNotificationEventSchema,
   MCPApproveExecutionEventSchema,
   ToolPersonalAuthRequiredEventSchema,
-  ToolUserQuestionEventSchema,
+  ToolAskUserQuestionEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema

@@ -651,7 +651,7 @@ export const UserQuestionItemSchema = z.object({
 
 export const UserQuestionRequiredOutputResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
-  type: z.literal("tool_user_question_required"),
+  type: z.literal("tool_ask_user_question_required"),
   questions: z.array(UserQuestionItemSchema),
   metadata: z.record(z.unknown()).nullable(),
   text: z.string(),

@@ -69,7 +69,7 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
         type: "resource",
         resource: {
           mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,
-          type: "tool_user_question_required",
+          type: "tool_ask_user_question_required",
           questions: typedQuestions,
           metadata: metadata ?? null,
           text: `Asking user: ${summaryText}`,

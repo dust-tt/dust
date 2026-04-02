@@ -118,7 +118,7 @@ export async function publishDeferredEventsActivity(
         };
         break;
 
-      case "tool_user_question":
+      case "tool_ask_user_question":
         eventToPublish = {
           ...event,
           metadata: {

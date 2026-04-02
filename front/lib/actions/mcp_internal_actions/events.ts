@@ -73,8 +73,8 @@ export interface MCPApproveExecutionEvent extends ToolExecution {
   type: "tool_approve_execution";
 }
 
-export interface ToolUserQuestionEvent extends ToolExecution {
-  type: "tool_user_question";
+export interface ToolAskUserQuestionEvent extends ToolExecution {
+  type: "tool_ask_user_question";
   questions: UserQuestion[];
   questionMetadata: Record<string, unknown> | null;
 }

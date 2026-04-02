@@ -8,7 +8,7 @@ import type {
   ToolExecution,
   ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
-  ToolUserQuestionEvent,
+  ToolAskUserQuestionEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -284,14 +284,14 @@ function isToolFileAuthRequiredEvent(
   );
 }
 
-export function isToolUserQuestionEvent(
+export function isToolAskUserQuestionEvent(
   event: unknown
-): event is ToolUserQuestionEvent {
+): event is ToolAskUserQuestionEvent {
   return (
     typeof event === "object" &&
     event !== null &&
     "type" in event &&
-    event.type === "tool_user_question"
+    event.type === "tool_ask_user_question"
   );
 }
 
@@ -301,7 +301,7 @@ export function isBlockedActionEvent(
   | MCPApproveExecutionEvent
   | ToolPersonalAuthRequiredEvent
   | ToolFileAuthRequiredEvent
-  | ToolUserQuestionEvent {
+  | ToolAskUserQuestionEvent {
   return (
     typeof event === "object" &&
     event !== null &&
@@ -309,7 +309,7 @@ export function isBlockedActionEvent(
     (isMCPApproveExecutionEvent(event) ||
       isToolPersonalAuthRequiredEvent(event) ||
       isToolFileAuthRequiredEvent(event) ||
-      isToolUserQuestionEvent(event) ||
+      isToolAskUserQuestionEvent(event) ||
       isLegacyToolPersonalAuthRequiredEvent(event))
   );
 }

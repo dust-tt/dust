@@ -322,7 +322,7 @@ export function AgentMessage({
             });
             break;
 
-          case "tool_user_question":
+          case "tool_ask_user_question":
             enqueueBlockedAction({
               messageId: sId,
               blockedAction: {

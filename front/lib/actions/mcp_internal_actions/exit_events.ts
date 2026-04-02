@@ -2,7 +2,7 @@ import type {
   ToolEarlyExitEvent,
   ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
-  ToolUserQuestionEvent,
+  ToolAskUserQuestionEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
@@ -41,7 +41,7 @@ export async function getExitOrPauseEvents(
     | ToolPersonalAuthRequiredEvent
     | ToolFileAuthRequiredEvent
     | ToolEarlyExitEvent
-    | ToolUserQuestionEvent
+    | ToolAskUserQuestionEvent
   )[]
 > {
   const exitOutputItem = outputItems
@@ -169,7 +169,7 @@ export async function getExitOrPauseEvents(
           },
         ];
       }
-      case "tool_user_question_required": {
+      case "tool_ask_user_question_required": {
         const { questions, metadata } = exitOutputItem;
 
         // Persist question data in stepContext BEFORE updating status to avoid a race
@@ -187,7 +187,7 @@ export async function getExitOrPauseEvents(
 
         return [
           {
-            type: "tool_user_question",
+            type: "tool_ask_user_question",
             created: Date.now(),
             configurationId: agentConfiguration.sId,
             userId: auth.user()?.sId,

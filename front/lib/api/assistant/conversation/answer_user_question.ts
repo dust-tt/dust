@@ -1,4 +1,4 @@
-import { isToolUserQuestionEvent } from "@app/lib/actions/mcp";
+import { isToolAskUserQuestionEvent } from "@app/lib/actions/mcp";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
@@ -104,7 +104,7 @@ export async function answerUserQuestion(
 
   await getRedisHybridManager().removeEvent((event) => {
     const payload = JSON.parse(event.message["payload"]);
-    return isToolUserQuestionEvent(payload)
+    return isToolAskUserQuestionEvent(payload)
       ? payload.actionId === actionId
       : false;
   }, getMessageChannelId(messageId));
