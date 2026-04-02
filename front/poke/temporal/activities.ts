@@ -254,7 +254,7 @@ async function deleteSpaceConversations(
     conversations,
     async (conversation) => {
       const result = await destroyConversation(auth, { conversation });
-      if (result.isErr() && result.error.type !== "conversation_not_found") {
+      if (result.isErr()) {
         throw result.error;
       }
     },
