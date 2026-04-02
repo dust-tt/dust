@@ -2267,6 +2267,8 @@ export async function finalizeAgentMessage(
     );
   });
 
+  // Update the in-memory object to reflect the DB state. Callers hold a reference to this object
+  // and rely on it being up-to-date for subsequent event publishing and finalization logic.
   agentMessage.status = status;
   agentMessage.completedTs = completedAt.getTime();
   if (error) {
