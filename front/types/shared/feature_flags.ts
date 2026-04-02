@@ -13,6 +13,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
     stage: "dust_only",
   },
+  ask_user_question_tool: {
+    description:
+      "Enable ask_user_question tool for agents to ask users questions",
+    stage: "dust_only",
+  },
   audit_logs: {
     description: "Enable audit log emission via WorkOS",
     stage: "dust_only",
