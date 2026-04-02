@@ -15,12 +15,24 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
 
-export interface WorkspaceUsageQueryResult {
+export const USAGE_TABLES = [
+  "users",
+  "assistant_messages",
+  "builders",
+  "assistants",
+  "feedback",
+  "all",
+] as const;
+
+export type UsageTableType = (typeof USAGE_TABLES)[number];
+
+interface WorkspaceUsageQueryResult {
   createdAt: string;
   conversationModelId: string;
   messageId: string;
@@ -195,7 +207,7 @@ export async function unsafeGetUsageData(
   return generateCsvFromQueryResult(results);
 }
 
-export async function getMessageUsageData(
+async function getMessageUsageData(
   startDate: Date,
   endDate: Date,
   workspace: WorkspaceType
@@ -250,27 +262,6 @@ export async function getMessageUsageData(
   return generateCsvFromQueryResult(results);
 }
 
-export async function getGroupMembershipsData(
-  startDate: Date,
-  endDate: Date,
-  workspace: WorkspaceType
-): Promise<string> {
-  const wId = workspace.id;
-  const userGroupsMap = await getUserGroupMemberships(wId, startDate, endDate);
-
-  const groupMembershipsData: GroupMembershipQueryResult[] = Object.entries(
-    userGroupsMap
-  ).map(([userId, groups]) => ({
-    userId,
-    groups,
-  }));
-
-  if (!groupMembershipsData.length) {
-    return "No group memberships data available.";
-  }
-  return generateCsvFromQueryResult(groupMembershipsData);
-}
-
 export async function getUserGroupMemberships(
   workspaceId: number,
   startDate: Date,
@@ -320,7 +311,7 @@ export async function getUserGroupMemberships(
   return result;
 }
 
-export async function getUserUsageData(
+async function getUserUsageData(
   startDate: Date,
   endDate: Date,
   workspace: WorkspaceType,
@@ -536,7 +527,7 @@ export async function getUserUsageData(
   return generateCsvFromQueryResult(userUsage);
 }
 
-export async function getBuildersUsageData(
+async function getBuildersUsageData(
   startDate: Date,
   endDate: Date,
   workspace: WorkspaceType
@@ -658,7 +649,7 @@ export async function getAssistantUsageData(
   return mentions[0].messages;
 }
 
-export async function getAssistantsUsageData(
+async function getAssistantsUsageData(
   startDate: Date,
   endDate: Date,
   workspace: WorkspaceType,
@@ -726,7 +717,7 @@ export async function getAssistantsUsageData(
   return generateCsvFromQueryResult(filteredAgents);
 }
 
-export async function getFeedbackUsageData(
+async function getFeedbackUsageData(
   startDate: Date,
   endDate: Date,
   workspace: WorkspaceType
@@ -777,6 +768,57 @@ function reconstructConversationUrl(
     undefined,
     config.getAppUrl()
   );
+}
+
+export async function fetchUsageData({
+  table,
+  start,
+  end,
+  workspace,
+  includeInactive = false,
+}: {
+  table: UsageTableType;
+  start: Date;
+  end: Date;
+  workspace: WorkspaceType;
+  includeInactive?: boolean;
+}): Promise<Partial<Record<UsageTableType, string>>> {
+  switch (table) {
+    case "users":
+      return {
+        users: await getUserUsageData(start, end, workspace, {
+          includeInactive,
+        }),
+      };
+    case "assistant_messages":
+      return {
+        assistant_messages: await getMessageUsageData(start, end, workspace),
+      };
+    case "builders":
+      return { builders: await getBuildersUsageData(start, end, workspace) };
+    case "assistants":
+      return {
+        assistants: await getAssistantsUsageData(start, end, workspace, {
+          includeInactive,
+        }),
+      };
+    case "feedback":
+      return {
+        feedback: await getFeedbackUsageData(start, end, workspace),
+      };
+    case "all":
+      const [users, assistant_messages, builders, assistants, feedback] =
+        await Promise.all([
+          getUserUsageData(start, end, workspace, { includeInactive }),
+          getMessageUsageData(start, end, workspace),
+          getBuildersUsageData(start, end, workspace),
+          getAssistantsUsageData(start, end, workspace, { includeInactive }),
+          getFeedbackUsageData(start, end, workspace),
+        ]);
+      return { users, assistant_messages, builders, assistants, feedback };
+    default:
+      assertNever(table);
+  }
 }
 
 function generateCsvFromQueryResult(

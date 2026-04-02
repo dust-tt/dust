@@ -2665,14 +2665,14 @@ const UpsertTableResponseSchema = z.object({
 });
 export type UpsertTableResponseType = z.infer<typeof UpsertTableResponseSchema>;
 
-const SupportedUsageTablesSchema = FlexibleEnumSchema<
-  | "users"
-  | "assistant_messages"
-  | "builders"
-  | "assistants"
-  | "feedback"
-  | "all"
->();
+const SupportedUsageTablesSchema = z.enum([
+  "users",
+  "assistant_messages",
+  "builders",
+  "assistants",
+  "feedback",
+  "all",
+]);
 
 export type UsageTableType = z.infer<typeof SupportedUsageTablesSchema>;
 
