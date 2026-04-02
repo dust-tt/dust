@@ -13,6 +13,7 @@ import {
   useConversationTools,
 } from "@app/hooks/conversations";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { isSingleAgentInputEnabled } from "@app/lib/development";
 import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
@@ -32,7 +33,7 @@ import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 // biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
@@ -83,9 +84,8 @@ export const InputBar = React.memo(function InputBar({
   >([]);
 
   const {
-    animate,
-    setAnimate,
     getAndClearSelectedAgent,
+    selectedSingleAgent,
     getAndClearPendingInputText,
     fileUploaderService,
   } = useContext(InputBarContext);
@@ -114,8 +114,6 @@ export const InputBar = React.memo(function InputBar({
     }
   }, [droppedFiles, setDroppedFiles, fileUploaderService]);
 
-  const [isAnimating, setIsAnimating] = useState<boolean>(false);
-  const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const selectedAgent = useMemo(
     () => getAndClearSelectedAgent(),
     [getAndClearSelectedAgent]
@@ -124,33 +122,6 @@ export const InputBar = React.memo(function InputBar({
     () => getAndClearPendingInputText(),
     [getAndClearPendingInputText]
   );
-  useEffect(() => {
-    if (animate && !isAnimating) {
-      setAnimate(false);
-      setIsAnimating(true);
-
-      // Clear any existing timeout to ensure animations do not overlap.
-      if (animationTimeoutRef.current) {
-        clearTimeout(animationTimeoutRef.current);
-      }
-
-      // Set timeout to set setIsAnimating to false after the duration.
-      animationTimeoutRef.current = setTimeout(() => {
-        setIsAnimating(false);
-        // Reset the ref after the timeout clears.
-        animationTimeoutRef.current = null;
-      }, 700);
-    }
-  }, [animate, isAnimating, setAnimate]);
-
-  // Cleanup timeout on component unmount.
-  useEffect(() => {
-    return () => {
-      if (animationTimeoutRef.current) {
-        clearTimeout(animationTimeoutRef.current);
-      }
-    };
-  }, []);
 
   // Tools selection
 
@@ -229,7 +200,18 @@ export const InputBar = React.memo(function InputBar({
     }
 
     const { mentions: rawMentions, markdown } = markdownAndMentions;
-    const mentions = _.uniqBy(rawMentions, "id");
+    const singleAgentInput = isSingleAgentInputEnabled();
+    // When single-agent input is enabled, inject the selected agent into mentions
+    // since it's no longer in the editor as a mention node.
+    const shouldInjectSelectedAgent =
+      singleAgentInput &&
+      selectedSingleAgent &&
+      !rawMentions.some((m) => m.id === selectedSingleAgent.id);
+
+    const allMentions = shouldInjectSelectedAgent
+      ? [selectedSingleAgent, ...rawMentions]
+      : rawMentions;
+    const mentions = _.uniqBy(allMentions, "id");
 
     const uploadedFiles = fileUploaderService.getFileBlobs();
     const mentionedAgents = agentConfigurations.filter((a) =>
@@ -362,7 +344,7 @@ export const InputBar = React.memo(function InputBar({
                 "focus-within:border-highlight-300",
                 "dark:focus-within:border-highlight-300-night"
               ),
-          isAnimating ? "duration-600 animate-shake" : "duration-300"
+          "duration-300"
         )}
       >
         <div className="relative flex w-full flex-1 flex-col">

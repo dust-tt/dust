@@ -18,6 +18,8 @@ export const InputBarContext = createContext<{
   getAndClearSelectedAgent: () => RichAgentMention | null;
   setAnimate: React.Dispatch<React.SetStateAction<boolean>>;
   setSelectedAgent: (agentMention: RichAgentMention | null) => void;
+  selectedSingleAgent: RichAgentMention | null;
+  setSelectedSingleAgent: (agentMention: RichAgentMention | null) => void;
   getAndClearPendingInputText: () => string | null;
   setPendingInputText: (text: string | null) => void;
   fileUploaderService: FileUploaderService;
@@ -30,6 +32,8 @@ export const InputBarContext = createContext<{
   getAndClearSelectedAgent: () => null,
   setAnimate: () => {},
   setSelectedAgent: () => {},
+  selectedSingleAgent: null,
+  setSelectedSingleAgent: () => {},
   getAndClearPendingInputText: () => null,
   setPendingInputText: () => {},
   fileUploaderService: {
@@ -65,6 +69,10 @@ export function InputBarContextProvider({
   const [selectedAgent, setSelectedAgent] = useState<RichAgentMention | null>(
     null
   );
+
+  // Persistent agent selection for single-agent input mode (displayed in the agent picker button).
+  const [selectedSingleAgent, setSelectedSingleAgent] =
+    useState<RichAgentMention | null>(null);
 
   // Useful when a component needs to pre-fill the input bar with text (e.g. butler suggestions).
   const [pendingInputText, setPendingInputTextState] = useState<string | null>(
@@ -108,6 +116,8 @@ export function InputBarContextProvider({
       setAnimate,
       getAndClearSelectedAgent,
       setSelectedAgent: setSelectedAgentOuter,
+      selectedSingleAgent,
+      setSelectedSingleAgent,
       getAndClearPendingInputText,
       setPendingInputText,
       captureActions,
@@ -117,6 +127,7 @@ export function InputBarContextProvider({
       animate,
       getAndClearSelectedAgent,
       setSelectedAgentOuter,
+      selectedSingleAgent,
       getAndClearPendingInputText,
       setPendingInputText,
       captureActions,

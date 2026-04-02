@@ -1,9 +1,12 @@
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
+import { isSingleAgentInputEnabled } from "@app/lib/development";
 import type {
   RichAgentMention,
   RichMention,
 } from "@app/types/assistant/mentions";
-import { useEffect, useRef } from "react";
+import { isRichAgentMention } from "@app/types/assistant/mentions";
+import { useContext, useEffect, useRef } from "react";
 
 const useHandleMentions = (
   editorService: EditorService,
@@ -13,6 +16,19 @@ const useHandleMentions = (
   pendingInputText?: string | null
 ) => {
   const stickyMentionsTextContent = useRef<string | null>(null);
+  const singleAgentInput = isSingleAgentInputEnabled();
+  const { setSelectedSingleAgent } = useContext(InputBarContext);
+
+  // In single agent mode, sync the selected agent from sticky mentions
+  // so the agent picker button shows the correct agent on existing conversations,
+  // and clears it when navigating to a new conversation.
+  useEffect(() => {
+    if (!singleAgentInput) {
+      return;
+    }
+    const agentMention = stickyMentions?.find(isRichAgentMention) ?? null;
+    setSelectedSingleAgent(agentMention);
+  }, [singleAgentInput, stickyMentions, setSelectedSingleAgent]);
 
   useEffect(() => {
     if (!stickyMentions || stickyMentions.length === 0) {
@@ -31,7 +47,14 @@ const useHandleMentions = (
     if (editorIsEmpty || onlyContainsPreviousStickyMention) {
       const mentionsToInsert: RichMention[] = [];
 
-      mentionsToInsert.push(...stickyMentions);
+      if (singleAgentInput) {
+        // Only insert user mentions into the editor; agent mentions are handled via singleAgentSelection.
+        mentionsToInsert.push(
+          ...stickyMentions.filter((m) => m.type !== "agent")
+        );
+      } else {
+        mentionsToInsert.push(...stickyMentions);
+      }
 
       if (mentionsToInsert.length !== 0) {
         queueMicrotask(() => {
@@ -41,7 +64,7 @@ const useHandleMentions = (
         });
       }
     }
-  }, [editorService, stickyMentions, disableAutoFocus]);
+  }, [editorService, stickyMentions, disableAutoFocus, singleAgentInput]);
 
   useEffect(() => {
     if (selectedAgent) {

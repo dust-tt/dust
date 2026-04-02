@@ -13,6 +13,7 @@ import { GenerationContextProvider } from "@app/components/assistant/conversatio
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { isSingleAgentInputEnabled } from "@app/lib/development";
 import type { DustError } from "@app/lib/error";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
@@ -133,7 +134,11 @@ function PreviewContent({
                 draftAgent ? [toRichAgentMentionType(draftAgent)] : []
               }
               draftKey={`agent-${draftAgent?.name}-builder-preview`}
-              actions={["attachment"]}
+              actions={
+                isSingleAgentInputEnabled()
+                  ? ["attachment", "agents-list"]
+                  : ["attachment"]
+              }
               disableAutoFocus
               isFloating={false}
               shouldUseDraft={false}
