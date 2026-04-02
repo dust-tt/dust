@@ -1,4 +1,3 @@
-import { finalizeSucceededAgentMessage } from "@app/lib/api/assistant/conversation";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -577,6 +576,7 @@ describe("updateAgentMessageDBAndMemory", () => {
       // Act: Update with error
       await updateAgentMessageDBAndMemory(auth, {
         agentMessage,
+        conversation,
         update: {
           type: "error",
           error,
@@ -629,10 +629,14 @@ describe("updateAgentMessageDBAndMemory", () => {
       expect(agentMessage.status).toBe("created");
       expect(agentMessage.completedTs).toBeNull();
 
-      // Act: Update status to succeeded via locked finalization
-      await finalizeSucceededAgentMessage(auth, {
-        conversation,
+      // Act: Update status to succeeded
+      await updateAgentMessageDBAndMemory(auth, {
         agentMessage,
+        conversation,
+        update: {
+          type: "status",
+          status: "succeeded",
+        },
       });
 
       // Assert: Database should be updated
@@ -674,6 +678,7 @@ describe("updateAgentMessageDBAndMemory", () => {
       // Act: Update status to cancelled
       await updateAgentMessageDBAndMemory(auth, {
         agentMessage,
+        conversation,
         update: {
           type: "status",
           status: "cancelled",
