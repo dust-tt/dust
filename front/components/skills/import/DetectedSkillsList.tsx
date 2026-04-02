@@ -15,7 +15,7 @@ import {
   PuzzleIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 const STATUS_CHIP_LABEL: Record<
@@ -39,31 +39,23 @@ export function DetectedSkillsList({
   detectError,
 }: DetectedSkillsListProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [canScrollDown, setCanScrollDown] = useState(false);
 
-  const updateScrollIndicator = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) {
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    const root = scrollRef.current;
+    if (!sentinel || !root) {
       return;
     }
-    setCanScrollDown(el.scrollHeight - el.scrollTop - el.clientHeight > 1);
-  }, []);
 
-  const scrollCallbackRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      const prev = scrollRef.current;
-      if (prev) {
-        prev.removeEventListener("scroll", updateScrollIndicator);
-      }
-      scrollRef.current = node;
-      if (node) {
-        node.addEventListener("scroll", updateScrollIndicator);
-        // Check on mount (after layout).
-        requestAnimationFrame(updateScrollIndicator);
-      }
-    },
-    [updateScrollIndicator]
-  );
+    const observer = new IntersectionObserver(
+      ([entry]) => setCanScrollDown(!entry.isIntersecting),
+      { root, threshold: 0.1 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, []);
 
   const { control } = useFormContext<ImportFormValues>();
   const { field: selectedField } = useController({
@@ -121,7 +113,7 @@ export function DetectedSkillsList({
           {importableNames.length > 1 && (
             <ContextItem.List>
               <ContextItem
-                title=""
+                title="Skill name"
                 visual={
                   <Checkbox
                     id="select-all-skills"
@@ -133,10 +125,7 @@ export function DetectedSkillsList({
               />
             </ContextItem.List>
           )}
-          <div
-            ref={scrollCallbackRef}
-            className="relative max-h-64 overflow-y-auto"
-          >
+          <div ref={scrollRef} className="relative max-h-64 overflow-y-auto">
             <ContextItem.List>
               {detectedSkills.map((skill) => (
                 <ContextItem
@@ -147,7 +136,7 @@ export function DetectedSkillsList({
                     </Label>
                   }
                   visual={
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <Checkbox
                         id={skill.name}
                         size="xs"
@@ -174,6 +163,7 @@ export function DetectedSkillsList({
                 />
               ))}
             </ContextItem.List>
+            <div ref={sentinelRef} className="h-px" />
             <div
               className={cn(
                 "pointer-events-none sticky -bottom-px left-0 right-0 -mt-12 h-12 bg-gradient-to-t",
