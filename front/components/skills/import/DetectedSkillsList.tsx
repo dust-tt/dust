@@ -7,6 +7,7 @@ import {
 import {
   Checkbox,
   Chip,
+  cn,
   ContentMessage,
   ContextItem,
   InformationCircleIcon,
@@ -176,9 +177,13 @@ export function DetectedSkillsList({
                 />
               ))}
             </ContextItem.List>
-            {canScrollDown && (
-              <div className="pointer-events-none sticky bottom-0 left-0 right-0 -mt-12 h-12 bg-gradient-to-t from-background via-background/60 to-transparent dark:from-background-night dark:via-background-night/60" />
-            )}
+            <div
+              className={cn(
+                "pointer-events-none sticky bottom-0 left-0 right-0 -mt-12 h-12 bg-gradient-to-t",
+                "from-background via-background/60 to-transparent transition-opacity dark:from-background-night dark:via-background-night/60",
+                canScrollDown ? "opacity-100" : "opacity-0"
+              )}
+            />
           </div>
         </div>
       )}
