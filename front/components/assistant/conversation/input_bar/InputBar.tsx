@@ -83,11 +83,8 @@ export const InputBar = React.memo(function InputBar({
     DataSourceViewContentNode[]
   >([]);
 
-  const {
-    selectedAgent,
-    getAndClearPendingInputText,
-    fileUploaderService,
-  } = useContext(InputBarContext);
+  const { selectedAgent, getAndClearPendingInputText, fileUploaderService } =
+    useContext(InputBarContext);
 
   // We use this specific hook because this component is involved in the new conversation page.
   const { agentConfigurations } = useUnifiedAgentConfigurations({
