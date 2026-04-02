@@ -7,9 +7,9 @@ import {
 import {
   Checkbox,
   Chip,
+  cn,
   ContentMessage,
   ContextItem,
-  cn,
   InformationCircleIcon,
   Label,
   PuzzleIcon,
@@ -133,52 +133,53 @@ export function DetectedSkillsList({
               />
             </ContextItem.List>
           )}
-          <div className="relative max-h-64 overflow-hidden">
-            <div ref={scrollCallbackRef} className="max-h-64 overflow-y-auto">
-              <ContextItem.List>
-                {detectedSkills.map((skill) => (
-                  <ContextItem
-                    key={skill.name}
-                    title={
-                      <Label
-                        className="text-sm font-normal"
-                        htmlFor={skill.name}
-                      >
-                        {skill.name}
-                      </Label>
-                    }
-                    visual={
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          id={skill.name}
-                          size="xs"
-                          checked={selectedField.value.includes(skill.name)}
-                          disabled={!isImportableSkillStatus(skill.status)}
-                          onCheckedChange={() => toggleSkill(skill.name)}
-                        />
-                        <ContextItem.Visual visual={PuzzleIcon} />
-                      </div>
-                    }
-                    action={
-                      skill.status !== "ready" ? (
-                        <Chip
-                          label={STATUS_CHIP_LABEL[skill.status]}
-                          size="xs"
-                          color={
-                            skill.status === "skill_already_exists"
-                              ? "info"
-                              : "warning"
-                          }
-                        />
-                      ) : undefined
-                    }
-                  />
-                ))}
-              </ContextItem.List>
-            </div>
+          <div
+            ref={scrollCallbackRef}
+            className="relative max-h-64 overflow-y-auto"
+          >
+            <ContextItem.List>
+              {detectedSkills.map((skill) => (
+                <ContextItem
+                  key={skill.name}
+                  title={
+                    <Label
+                      className="text-sm font-normal"
+                      htmlFor={skill.name}
+                    >
+                      {skill.name}
+                    </Label>
+                  }
+                  visual={
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id={skill.name}
+                        size="xs"
+                        checked={selectedField.value.includes(skill.name)}
+                        disabled={!isImportableSkillStatus(skill.status)}
+                        onCheckedChange={() => toggleSkill(skill.name)}
+                      />
+                      <ContextItem.Visual visual={PuzzleIcon} />
+                    </div>
+                  }
+                  action={
+                    skill.status !== "ready" ? (
+                      <Chip
+                        label={STATUS_CHIP_LABEL[skill.status]}
+                        size="xs"
+                        color={
+                          skill.status === "skill_already_exists"
+                            ? "info"
+                            : "warning"
+                        }
+                      />
+                    ) : undefined
+                  }
+                />
+              ))}
+            </ContextItem.List>
             <div
               className={cn(
-                "pointer-events-none absolute -bottom-px left-0 right-0 h-12 bg-gradient-to-t",
+                "pointer-events-none sticky -bottom-px left-0 right-0 -mt-12 h-12 bg-gradient-to-t",
                 "from-background via-background/60 to-transparent transition-opacity duration-300 dark:from-background-night dark:via-background-night/60",
                 canScrollDown ? "opacity-100" : "opacity-0"
               )}
