@@ -18,8 +18,8 @@ export const InputBarContext = createContext<{
   getAndClearSelectedAgent: () => RichAgentMention | null;
   setAnimate: React.Dispatch<React.SetStateAction<boolean>>;
   setSelectedAgent: (agentMention: RichAgentMention | null) => void;
-  singleAgentSelection: RichAgentMention | null;
-  setSingleAgentSelection: (agentMention: RichAgentMention | null) => void;
+  selectedSingleAgent: RichAgentMention | null;
+  setSelectedSingleAgent: (agentMention: RichAgentMention | null) => void;
   getAndClearPendingInputText: () => string | null;
   setPendingInputText: (text: string | null) => void;
   fileUploaderService: FileUploaderService;
@@ -32,8 +32,8 @@ export const InputBarContext = createContext<{
   getAndClearSelectedAgent: () => null,
   setAnimate: () => {},
   setSelectedAgent: () => {},
-  singleAgentSelection: null,
-  setSingleAgentSelection: () => {},
+  selectedSingleAgent: null,
+  setSelectedSingleAgent: () => {},
   getAndClearPendingInputText: () => null,
   setPendingInputText: () => {},
   fileUploaderService: {
@@ -71,7 +71,7 @@ export function InputBarContextProvider({
   );
 
   // Persistent agent selection for single-agent input mode (displayed in the agent picker button).
-  const [singleAgentSelection, setSingleAgentSelection] =
+  const [selectedSingleAgent, setSelectedSingleAgent] =
     useState<RichAgentMention | null>(null);
 
   // Useful when a component needs to pre-fill the input bar with text (e.g. butler suggestions).
@@ -116,8 +116,8 @@ export function InputBarContextProvider({
       setAnimate,
       getAndClearSelectedAgent,
       setSelectedAgent: setSelectedAgentOuter,
-      singleAgentSelection,
-      setSingleAgentSelection,
+      selectedSingleAgent,
+      setSelectedSingleAgent,
       getAndClearPendingInputText,
       setPendingInputText,
       captureActions,
@@ -127,7 +127,7 @@ export function InputBarContextProvider({
       animate,
       getAndClearSelectedAgent,
       setSelectedAgentOuter,
-      singleAgentSelection,
+      selectedSingleAgent,
       getAndClearPendingInputText,
       setPendingInputText,
       captureActions,

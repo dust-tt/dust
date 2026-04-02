@@ -17,7 +17,7 @@ const useHandleMentions = (
 ) => {
   const stickyMentionsTextContent = useRef<string | null>(null);
   const singleAgentInput = isSingleAgentInputEnabled();
-  const { setSingleAgentSelection } = useContext(InputBarContext);
+  const { setSelectedSingleAgent } = useContext(InputBarContext);
 
   // In single agent mode, sync the selected agent from sticky mentions
   // so the agent picker button shows the correct agent on existing conversations,
@@ -27,8 +27,8 @@ const useHandleMentions = (
       return;
     }
     const agentMention = stickyMentions?.find(isRichAgentMention) ?? null;
-    setSingleAgentSelection(agentMention);
-  }, [singleAgentInput, stickyMentions, setSingleAgentSelection]);
+    setSelectedSingleAgent(agentMention);
+  }, [singleAgentInput, stickyMentions, setSelectedSingleAgent]);
 
   useEffect(() => {
     if (!stickyMentions || stickyMentions.length === 0) {

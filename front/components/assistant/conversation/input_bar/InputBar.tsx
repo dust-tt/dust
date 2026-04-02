@@ -85,7 +85,7 @@ export const InputBar = React.memo(function InputBar({
 
   const {
     getAndClearSelectedAgent,
-    singleAgentSelection,
+    selectedSingleAgent,
     getAndClearPendingInputText,
     fileUploaderService,
   } = useContext(InputBarContext);
@@ -205,11 +205,11 @@ export const InputBar = React.memo(function InputBar({
     // since it's no longer in the editor as a mention node.
     const shouldInjectSelectedAgent =
       singleAgentInput &&
-      singleAgentSelection &&
-      !rawMentions.some((m) => m.id === singleAgentSelection.id);
+      selectedSingleAgent &&
+      !rawMentions.some((m) => m.id === selectedSingleAgent.id);
 
     const allMentions = shouldInjectSelectedAgent
-      ? [singleAgentSelection, ...rawMentions]
+      ? [selectedSingleAgent, ...rawMentions]
       : rawMentions;
     const mentions = _.uniqBy(allMentions, "id");
 
