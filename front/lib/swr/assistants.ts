@@ -198,6 +198,45 @@ export function useAgentConfigurations({
   };
 }
 
+export function useSuggestedAgentConfigurations({
+  workspaceId,
+  conversationId,
+  messageId,
+  disabled,
+}: {
+  workspaceId: string;
+  conversationId: string;
+  messageId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
+    fetcher;
+
+  const key = `/api/w/${workspaceId}/assistant/conversations/${conversationId}/suggest?messageId=${messageId}`;
+  const { cache } = useSWRConfig();
+  const cachedData: GetAgentConfigurationsResponseBody | undefined =
+    cache.get(key)?.data;
+  const inCache = typeof cachedData !== "undefined";
+
+  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(key, agentConfigurationsFetcher, {
+      disabled: inCache || disabled,
+    });
+
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+  const dataToUse = cachedData || data;
+
+  return {
+    suggestedAgentConfigurations:
+      dataToUse?.agentConfigurations ?? emptyArray(),
+    isSuggestedAgentConfigurationsLoading: !error && !dataToUse && !disabled,
+    isSuggestedAgentConfigurationsError: error,
+    mutate,
+    mutateRegardlessOfQueryParams,
+  };
+}
+
 // This is the call that is required for the new conversation page to load all views on that page.
 // All elements that are involved in that page should rely on it to avoid concurrent calls to
 // getAgentConfigurations at the initial page load.
