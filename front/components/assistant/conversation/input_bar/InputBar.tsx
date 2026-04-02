@@ -271,7 +271,6 @@ export const InputBar = React.memo(function InputBar({
           clearDraft();
           resetEditorText();
           fileUploaderService.resetUpload();
-          setSelectedAgent(null);
         }
       } finally {
         setLoading(false);
@@ -298,7 +297,6 @@ export const InputBar = React.memo(function InputBar({
         clearDraft();
         fileUploaderService.resetUpload();
         setAttachedNodes([]);
-        setSelectedAgent(null);
 
         await submitPromise;
       } finally {
