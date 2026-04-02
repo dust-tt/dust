@@ -1,12 +1,12 @@
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isString } from "@app/types/shared/utils/general";
 import type { GetSpaceMetadataResponseType } from "@dust-tt/client";
 import uniqBy from "lodash/uniqBy";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -20,28 +20,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetSpaceMetadataResponseType>>,
-  auth: Authenticator
+  auth: Authenticator,
+  { space }: { space: SpaceResource }
 ): Promise<void> {
-  const { wId, spaceId } = req.query;
-  if (!isString(wId)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Missing or invalid workspace id.",
-      },
-    });
-  }
-  if (!isString(spaceId)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Missing or invalid space id.",
-      },
-    });
-  }
-
   // Only allow system keys (connectors) to access this endpoint
   if (!auth.isSystemKey()) {
     return apiError(req, res, {
@@ -55,18 +36,6 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      // Fetch and verify space exists
-      const space = await SpaceResource.fetchById(auth, spaceId);
-      if (!space) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "space_not_found",
-            message: "Space not found.",
-          },
-        });
-      }
-
       // Only project spaces can have metadata
       if (!space.isProject()) {
         return apiError(req, res, {
@@ -128,4 +97,6 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler);
+export default withPublicAPIAuthentication(
+  withResourceFetchingFromRoute(handler, { space: {} })
+);

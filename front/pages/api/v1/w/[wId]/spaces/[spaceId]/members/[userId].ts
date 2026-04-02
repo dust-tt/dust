@@ -2,8 +2,9 @@
 // This endpoint only returns void as it is used only for deletion, so no need to use @dust-tt/client types.
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -17,7 +18,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<void>>,
-  auth: Authenticator
+  auth: Authenticator,
+  { space }: { space: SpaceResource }
 ): Promise<void> {
   if (!auth.isAdmin()) {
     return apiError(req, res, {
@@ -29,34 +31,13 @@ async function handler(
     });
   }
 
-  const { spaceId, userId } = req.query;
-  if (!spaceId || !isString(spaceId)) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space was not found.",
-      },
-    });
-  }
-
+  const { userId } = req.query;
   if (!userId || !isString(userId)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "user_not_found",
         message: "The user in the space was not found.",
-      },
-    });
-  }
-
-  const space = await SpaceResource.fetchById(auth, spaceId);
-  if (!space) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space was not found.",
       },
     });
   }
@@ -143,4 +124,6 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler);
+export default withPublicAPIAuthentication(
+  withResourceFetchingFromRoute(handler, { space: {} })
+);

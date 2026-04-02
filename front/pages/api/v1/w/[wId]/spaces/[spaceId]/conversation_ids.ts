@@ -1,11 +1,11 @@
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isString } from "@app/types/shared/utils/general";
 import type { GetSpaceConversationIdsResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -21,28 +21,9 @@ async function handler(
   res: NextApiResponse<
     WithAPIErrorResponse<GetSpaceConversationIdsResponseType>
   >,
-  auth: Authenticator
+  auth: Authenticator,
+  { space }: { space: SpaceResource }
 ): Promise<void> {
-  const { wId, spaceId } = req.query;
-  if (!isString(wId)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Missing or invalid workspace id.",
-      },
-    });
-  }
-  if (!isString(spaceId)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Missing or invalid space id.",
-      },
-    });
-  }
-
   // Only allow system keys (connectors) to access this endpoint
   if (!auth.isSystemKey()) {
     return apiError(req, res, {
@@ -56,24 +37,12 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      // Fetch and verify space exists
-      const space = await SpaceResource.fetchById(auth, spaceId);
-      if (!space) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "space_not_found",
-            message: "Space not found.",
-          },
-        });
-      }
-
       // Get all conversation IDs for the space (only visible/non-deleted conversations)
       // This endpoint is used for garbage collection to identify conversations that
       // were hard-deleted and no longer exist in the database
       const spaceConversations =
         await ConversationResource.listConversationsInSpace(auth, {
-          spaceId,
+          spaceId: space.sId,
           options: {
             dangerouslySkipPermissionFiltering: true, // System key has access
             // Don't include deleted - we only want conversations that still exist
@@ -87,8 +56,8 @@ async function handler(
 
       logger.info(
         {
-          workspaceId: wId,
-          spaceId,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          spaceId: space.sId,
           conversationCount: conversationIds.length,
         },
         "[GetSpaceConversationIds] Successfully fetched conversation IDs"
@@ -110,4 +79,6 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler);
+export default withPublicAPIAuthentication(
+  withResourceFetchingFromRoute(handler, { space: {} })
+);

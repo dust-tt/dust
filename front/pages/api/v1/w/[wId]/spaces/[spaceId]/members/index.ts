@@ -1,12 +1,12 @@
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isString } from "@app/types/shared/utils/general";
 import type {
   GetSpaceMembersResponseBody,
   PostSpaceMembersResponseBody,
@@ -27,7 +27,8 @@ async function handler(
       PostSpaceMembersResponseBody | GetSpaceMembersResponseBody
     >
   >,
-  auth: Authenticator
+  auth: Authenticator,
+  { space }: { space: SpaceResource }
 ): Promise<void> {
   if (!auth.isAdmin()) {
     return apiError(req, res, {
@@ -35,28 +36,6 @@ async function handler(
       api_error: {
         type: "workspace_auth_error",
         message: "Only users that are `admins` can access this endpoint.",
-      },
-    });
-  }
-
-  const { spaceId } = req.query;
-  if (!spaceId || !isString(spaceId)) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space was not found.",
-      },
-    });
-  }
-
-  const space = await SpaceResource.fetchById(auth, spaceId);
-  if (!space) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space was not found.",
       },
     });
   }
@@ -205,4 +184,6 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler);
+export default withPublicAPIAuthentication(
+  withResourceFetchingFromRoute(handler, { space: {} })
+);

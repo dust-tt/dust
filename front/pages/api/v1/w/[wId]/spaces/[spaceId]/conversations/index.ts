@@ -1,10 +1,11 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import { addBackwardCompatibleConversationFields } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
@@ -25,28 +26,9 @@ async function handler(
   res: NextApiResponse<
     WithAPIErrorResponse<GetSpaceConversationsForDataSourceResponseType>
   >,
-  auth: Authenticator
+  auth: Authenticator,
+  { space }: { space: SpaceResource }
 ): Promise<void> {
-  const { wId, spaceId } = req.query;
-  if (!isString(wId)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Missing or invalid workspace id.",
-      },
-    });
-  }
-  if (!isString(spaceId)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Missing or invalid space id.",
-      },
-    });
-  }
-
   // Only allow system keys (connectors) to access this endpoint
   if (!auth.isSystemKey()) {
     return apiError(req, res, {
@@ -65,23 +47,11 @@ async function handler(
         ? parseInt(updatedSince, 10)
         : null;
 
-      // Fetch and verify space exists
-      const space = await SpaceResource.fetchById(auth, spaceId);
-      if (!space) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "space_not_found",
-            message: "Space not found.",
-          },
-        });
-      }
-
       // Get all conversations for the space (including deleted ones)
       // Filter by updatedSince at the database level if provided
       const spaceConversations =
         await ConversationResource.listConversationsInSpace(auth, {
-          spaceId,
+          spaceId: space.sId,
           options: {
             dangerouslySkipPermissionFiltering: true, // System key has access
             includeDeleted: true, // Include deleted conversations so sync can detect and remove them
@@ -101,6 +71,8 @@ async function handler(
         conversationsFull.map((c) => (c.isOk() ? c.value : null))
       );
 
+      const wId = auth.getNonNullableWorkspace().sId;
+
       // Return raw conversations directly (ConversationSchema) - formatting happens in sync_conversation.ts
       const responseConversations = conversations.map((c: ConversationType) => {
         // Return the full conversation object as-is (matches ConversationSchema)
@@ -112,8 +84,8 @@ async function handler(
 
       logger.info(
         {
-          workspaceId: wId,
-          spaceId,
+          wId,
+          spaceId: space.sId,
           conversationCount: responseConversations.length,
           updatedSince,
         },
@@ -138,4 +110,6 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler);
+export default withPublicAPIAuthentication(
+  withResourceFetchingFromRoute(handler, { space: {} })
+);
