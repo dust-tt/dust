@@ -436,21 +436,8 @@ export function useAgentMessageStream({
           );
           break;
 
+        // TODO(graceful_stop): handle `gracefully_stopped` status
         case "agent_message_gracefully_stopped":
-          methods.data.map((m) =>
-            isMessageTemporayState(m) && m.sId === sId
-              ? {
-                  ...m,
-                  status: "succeeded",
-                  streaming: {
-                    ...m.streaming,
-                    agentState: "done",
-                  },
-                }
-              : m
-          );
-          break;
-
         case "agent_message_success":
           const messageSuccess = eventPayload.data;
           // Safety net: flush any remaining CoT not yet captured.
