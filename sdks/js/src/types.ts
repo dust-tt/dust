@@ -1944,53 +1944,11 @@ export type GetOrPatchAgentConfigurationResponseType = z.infer<
   typeof GetOrPatchAgentConfigurationResponseSchema
 >;
 
-export const PatchAgentConfigurationRequestSchema = z.object({
-  userFavorite: z.boolean().optional(),
-  agent: z
-    .object({
-      handle: z.string().optional(),
-      description: z.string().optional(),
-      scope: z.enum(["visible", "hidden"]).optional(),
-      avatar_url: z.string().optional(),
-      max_steps_per_run: z.number().optional(),
-      visualization_enabled: z.boolean().optional(),
-    })
-    .optional(),
-  instructions: z.string().optional(),
-  generation_settings: z
-    .object({
-      model_id: z.string().optional(),
-      provider_id: z.string().optional(),
-      temperature: z.number().optional(),
-      reasoning_effort: z.string().optional(),
-      response_format: z.string().optional(),
-    })
-    .optional(),
-  tags: z
-    .array(
-      z.object({ name: z.string(), kind: z.enum(["standard", "protected"]) })
-    )
-    .optional(),
-  editors: z
-    .array(
-      z.object({
-        user_id: z.string(),
-        email: z.string(),
-        full_name: z.string(),
-      })
-    )
-    .optional(),
-  toolset: z
-    .array(
-      z.object({
-        name: z.string(),
-        description: z.string(),
-        type: z.literal("MCP"),
-        configuration: z.record(z.unknown()),
-      })
-    )
-    .optional(),
-});
+export const PatchAgentConfigurationRequestSchema = z
+  .object({
+    userFavorite: z.boolean().optional(),
+  })
+  .passthrough();
 
 export type PatchAgentConfigurationRequestType = z.infer<
   typeof PatchAgentConfigurationRequestSchema
