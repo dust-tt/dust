@@ -605,6 +605,9 @@ export const ConversationViewer = ({
             );
 
             break;
+          case "graceful_stop_requested":
+            // No-op for now.
+            break;
           case "agent_message_done":
             // Mark as read and do not mutate the list of convos in the sidebar to avoid useless network request.
             // Debounce the call as we might receive multiple events for the same conversation (as we replay the events).
@@ -639,9 +642,6 @@ export const ConversationViewer = ({
               next.set(suggestion.sourceMessageSId, [...existing, suggestion]);
               return next;
             });
-            break;
-          case "graceful_stop_requested":
-            // No-op for now.
             break;
           default:
             ((t: never) => {
