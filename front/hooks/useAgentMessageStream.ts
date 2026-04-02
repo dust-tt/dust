@@ -436,9 +436,8 @@ export function useAgentMessageStream({
           );
           break;
 
-        // TODO(graceful_stop): handle `gracefully_stopped` status
         case "agent_message_gracefully_stopped":
-        case "agent_message_success":
+        case "agent_message_success": {
           const messageSuccess = eventPayload.data;
           // Safety net: flush any remaining CoT not yet captured.
           const cotAtSuccess = chainOfThought.current;
@@ -457,7 +456,6 @@ export function useAgentMessageStream({
             return {
               ...m,
               ...getLightAgentMessageFromAgentMessage(messageSuccess.message),
-              status: "succeeded",
               streaming: {
                 ...m.streaming,
                 agentState: "done",
@@ -466,6 +464,7 @@ export function useAgentMessageStream({
             };
           });
           break;
+        }
 
         default:
           assertNeverAndIgnore(eventType);
