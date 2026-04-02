@@ -19,9 +19,7 @@ export const ASK_USER_QUESTION_TOOLS_METADATA = createToolsRecord({
       "(e.g. deploy target, auth method, output format).\n" +
       "- Doing the work for every possibility would be noticeably slower or " +
       "noisier than asking one quick question first.\n\n" +
-      "Formatting:\n" +
-      "- List the recommended option first with '(Recommended)' in its label.\n" +
-      "- The user always gets an automatic 'Other' option for free-text input.",
+      "The user always gets an automatic 'Other' option for free-text input.",
     schema: {
       questions: z
         .array(
