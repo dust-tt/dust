@@ -20,6 +20,7 @@ import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
 import { isSingleAgentInputEnabled } from "@app/lib/development";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { getSkillIcon } from "@app/lib/skill";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
@@ -151,6 +152,16 @@ const InputBarContainer = ({
   const singleAgentInput = isSingleAgentInputEnabled();
   const { selectedSingleAgent, setSelectedSingleAgent } =
     useContext(InputBarContext);
+
+  // Auto-select the "dust" agent by default in single-agent mode for new conversations.
+  if (singleAgentInput && !conversation && !selectedSingleAgent && allAgents.length > 0) {
+    const dustAgent = allAgents.find(
+      (a) => a.sId === GLOBAL_AGENTS_SID.DUST
+    );
+    if (dustAgent) {
+      setSelectedSingleAgent(toRichAgentMentionType(dustAgent));
+    }
+  }
 
   // Callback for the editor's @ mention suggestion — sets the selected agent
   // without focusing (the editor already has focus when the user types @).
