@@ -479,9 +479,6 @@ export abstract class LLM<TPayload = unknown> {
   }
 
   /**
-   * Traces batch results by creating one Langfuse generation per batch entry.
-   */
-  /**
    * Creates RunResource entries and records token usage for each batch entry.
    * This enables cost tracking by linking batch results to run_usages.
    */
