@@ -1,0 +1,24 @@
+name: Label PMRR on comment
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  add_label:
+    if: github.event.issue.pull_request && github.event.comment.body == 'PMRR'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add PMRR label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['PMRR']
+            });
