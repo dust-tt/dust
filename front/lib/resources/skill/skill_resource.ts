@@ -1642,6 +1642,24 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this.editorGroup?.getActiveMembers(auth) ?? null;
   }
 
+  private async upsertCurrentUserAsEditor(auth: Authenticator): Promise<void> {
+    const user = auth.user();
+    if (!this.editorGroup || !user) {
+      return;
+    }
+
+    if (!this.editorGroup.canWrite(auth)) {
+      return;
+    }
+
+    const isMember = await this.editorGroup.isMember(user);
+    if (!isMember) {
+      await this.editorGroup.dangerouslyAddMember(auth, {
+        user: user.toJSON(),
+      });
+    }
+  }
+
   async fetchEditedByUser(auth: Authenticator): Promise<UserResource | null> {
     if (this.editedBy === null) {
       return null;
@@ -1818,6 +1836,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     if (fileAttachments) {
       await this.setFileAttachments(auth, fileAttachments);
     }
+
+    await this.upsertCurrentUserAsEditor(auth);
   }
 
   /**
