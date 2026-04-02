@@ -48,7 +48,7 @@ import { isModelAvailable, isProviderWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import { extractFromString } from "@app/lib/mentions/format";
+import { extractFromString, serializeMention } from "@app/lib/mentions/format";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
@@ -103,6 +103,7 @@ import type {
   LightAgentConfigurationType,
   ToolErrorEvent,
 } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   AgenticMessageData,
   AgentMessageType,
@@ -142,6 +143,7 @@ import { md5 } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
+import uniq from "lodash/uniq";
 import type { NextApiRequest } from "next";
 import type { Transaction } from "sequelize";
 import { col } from "sequelize";
@@ -634,9 +636,12 @@ export async function postUserMessage(
   // same workspace or a global one.
   const results = await Promise.all([
     getAgentConfigurations(auth, {
-      agentIds: mentions
-        .filter(isAgentMention)
-        .map((mention) => mention.configurationId),
+      agentIds: [
+        ...mentions
+          .filter(isAgentMention)
+          .map((mention) => mention.configurationId),
+        GLOBAL_AGENTS_SID.DUST,
+      ],
       variant: "extra_light",
     }),
     (() => {
@@ -699,6 +704,34 @@ export async function postUserMessage(
           message: "The model is not supported.",
         },
       });
+    }
+
+    // Check if no mentions, in that case, we might automatically append an @dust mention.
+    if (
+      mentions.length === 0 &&
+      (context.origin === "web" || context.origin === "extension")
+    ) {
+      const areHumansInteracting =
+        uniq(
+          conversation.content
+            .map((versions) => versions[versions.length - 1])
+            .filter(isUserMessageType)
+            .map((m) => m.user?.sId)
+        ).length >= 2;
+
+      if (!areHumansInteracting) {
+        // Check if the global @dust agent is active for this workspace.
+        const dustAgent = agentConfigurations.find(
+          (agent) =>
+            agent.sId === GLOBAL_AGENTS_SID.DUST && agent.status === "active"
+        );
+
+        if (dustAgent) {
+          const dustMention: MentionType = { configurationId: dustAgent.sId };
+          mentions.push(dustMention);
+          content = `${serializeMention({ id: dustAgent.sId, type: "agent", label: dustAgent.name })} ${content}`;
+        }
+      }
     }
 
     // If the conversation is part of a project and the conversation branches feature flag is enabled.
