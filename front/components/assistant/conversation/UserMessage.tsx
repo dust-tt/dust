@@ -314,7 +314,7 @@ export function UserMessage({
           {isCurrentUser && isFirstInGroup && (
             <div className="inline-flex items-center justify-between gap-0.5 self-end">
               <ConversationMessageTitle
-                name={undefined}
+                name={"Me"}
                 timestamp={timestamp}
                 infoChip={
                   displayChip ? (
@@ -332,7 +332,7 @@ export function UserMessage({
                     </>
                   ) : undefined
                 }
-                renderName={() => null}
+                renderName={() => <div>Me</div>}
               />
             </div>
           )}
