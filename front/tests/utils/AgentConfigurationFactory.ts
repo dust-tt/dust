@@ -48,6 +48,7 @@ export class AgentConfigurationFactory {
       requestedSpaceIds: [],
       tags: [], // Added missing tags property
       editors: [user.toJSON()],
+      authorId: user.id,
     });
 
     if (result.isErr()) {
@@ -91,6 +92,7 @@ export class AgentConfigurationFactory {
       requestedSpaceIds: [],
       tags: [],
       editors: [user.toJSON()],
+      authorId: user.id,
       agentConfigurationId: agentId,
     });
 

@@ -136,6 +136,7 @@ export async function createPendingAgentConfiguration(
 
     const group = await GroupResource.makeNewAgentEditorsGroup(auth, agent, {
       transaction: t,
+      authorId: user.id,
     });
     await auth.refresh({ transaction: t });
     if (!group.canWrite(auth)) {
@@ -425,6 +426,7 @@ export async function createAgentConfiguration(
     requestedSpaceIds,
     tags,
     editors,
+    authorId,
     reinforcement,
   }: {
     name: string;
@@ -440,6 +442,7 @@ export async function createAgentConfiguration(
     requestedSpaceIds: number[];
     tags: TagType[];
     editors: UserType[];
+    authorId: ModelId;
     reinforcement?: AgentReinforcementMode;
   },
   transaction?: Transaction
@@ -447,11 +450,6 @@ export async function createAgentConfiguration(
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  const user = auth.user();
-  if (!user) {
-    throw new Error("Unexpected `auth` without `user`.");
   }
 
   const isValidPictureUrl =
@@ -539,7 +537,7 @@ export async function createAgentConfiguration(
             where: {
               workspaceId: owner.id,
               agentConfiguration: agentConfigurationId,
-              userId: user.id,
+              userId: authorId,
             },
             transaction: t,
           }),
@@ -551,7 +549,7 @@ export async function createAgentConfiguration(
           // Handle pending agent: update in place (don't bump version, preserve id for FK relationships)
           // Otherwise: archive old versions and bump version
           if (existingAgent.status === "pending") {
-            if (existingAgent.authorId === user.id) {
+            if (existingAgent.authorId === authorId) {
               const timeToCreationMs =
                 Date.now() - existingAgent.createdAt.getTime();
               logger.info(
@@ -609,7 +607,7 @@ export async function createAgentConfiguration(
             reasoningEffort: model.reasoningEffort,
             maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
             pictureUrl,
-            authorId: user.id,
+            authorId,
             templateId: template?.id,
             requestedSpaceIds: requestedSpaceIds,
             responseFormat: model.responseFormat,
@@ -655,7 +653,7 @@ export async function createAgentConfiguration(
             maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
             pictureUrl,
             workspaceId: owner.id,
-            authorId: user.id,
+            authorId,
             templateId: template?.id,
             requestedSpaceIds: requestedSpaceIds,
             responseFormat: model.responseFormat,
@@ -706,14 +704,14 @@ export async function createAgentConfiguration(
         }
 
         assert(
-          editors.some((e) => e.sId === auth.user()?.sId) || isAdmin(owner),
-          "Unexpected: current user must be in editor group or admin"
+          editors.some((e) => e.id === authorId) || isAdmin(owner),
+          "Unexpected: author must be in editor group or admin"
         );
         if (!existingAgent) {
           const group = await GroupResource.makeNewAgentEditorsGroup(
             auth,
             agentConfigurationInstance,
-            { transaction: t }
+            { transaction: t, authorId }
           );
           await auth.refresh({ transaction: t });
           // No need to check on permission here since it was done a few lines above.
@@ -975,6 +973,7 @@ export async function createGenericAgentConfiguration(
     requestedSpaceIds: [],
     tags: [],
     editors: [user.toJSON()], // Only the current user as editor
+    authorId: user.id,
   });
 
   if (result.isErr()) {
