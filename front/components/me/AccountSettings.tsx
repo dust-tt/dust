@@ -331,7 +331,7 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
           </div>
           <div className="flex-1">
             <div className="mb-2">
-            <Label>Keyboard Shortcuts</Label>
+              <Label>Keyboard Shortcuts</Label>
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
