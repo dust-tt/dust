@@ -1,10 +1,12 @@
 import logger from "@app/logger/logger";
+import type { RichAgentMention } from "@app/types/assistant/mentions";
 import debounce from "lodash/debounce";
 import { useCallback, useEffect, useRef } from "react";
 
 interface ConversationDraft {
   text: string;
   timestamp: number;
+  agentMention?: RichAgentMention | null;
 }
 
 type KeyId = string;
@@ -92,6 +94,7 @@ export function useConversationDrafts({
             draftKey: string;
             text: string;
             timestamp: number;
+            agentMention?: RichAgentMention | null;
           }) => void
         >
       >
@@ -110,12 +113,14 @@ export function useConversationDrafts({
         draftKey,
         text,
         timestamp,
+        agentMention,
       }: {
         workspaceId: string;
         userId: string;
         draftKey: string;
         text: string;
         timestamp: number;
+        agentMention?: RichAgentMention | null;
       }) => {
         if (!userId) {
           return;
@@ -125,6 +130,7 @@ export function useConversationDrafts({
         drafts[getKeyId(workspaceId, userId, draftKey)] = {
           text,
           timestamp,
+          agentMention,
         };
         saveDraftsToStorage(drafts);
       },
@@ -134,7 +140,7 @@ export function useConversationDrafts({
 
   // Save draft for current conversation (debounced).
   const saveDraft = useCallback(
-    (text: string) => {
+    (text: string, agentMention?: RichAgentMention | null) => {
       if (!shouldUseDraft || !userId) {
         return;
       }
@@ -145,6 +151,7 @@ export function useConversationDrafts({
         draftKey,
         text,
         timestamp: Date.now(),
+        agentMention,
       });
     },
     [workspaceId, userId, shouldUseDraft, draftKey]
