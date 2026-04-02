@@ -115,6 +115,10 @@ export const InputBar = React.memo(function InputBar({
     }
   }, [droppedFiles, setDroppedFiles, fileUploaderService]);
 
+  const selectedAgent = useMemo(
+    () => getAndClearSelectedAgent(),
+    [getAndClearSelectedAgent]
+  );
   const pendingInputText = useMemo(
     () => getAndClearPendingInputText(),
     [getAndClearPendingInputText]
