@@ -1059,7 +1059,6 @@ const InputBarContainer = ({
             </div>
           </div>
         </div>
-        {/* Single voice + send group: absolutely positioned over editor when hideButtons, bottom-right otherwise */}
         <div
           className={cn(
             "absolute bottom-2 right-2 flex items-center gap-2 md:gap-1"
