@@ -49,6 +49,9 @@ procs:
     cwd: "<CONFIG_DIR>/../front"
     shell: |
       set -euo pipefail
+      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+      nvm use
       echo "Node $(node --version)"
       READY_FILE="../sdks/js/dist/client.esm.js.map"
       echo "Waiting for sdks-js to compile..."
@@ -61,6 +64,9 @@ procs:
     cwd: "<CONFIG_DIR>/../front"
     shell: |
       set -euo pipefail
+      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+      nvm use
       echo "Node $(node --version)"
       echo "Waiting for front to be ready..."
       until curl -sf http://localhost:3000/api/healthz; do sleep 1; done
@@ -85,6 +91,9 @@ procs:
     cwd: "<CONFIG_DIR>/../front-spa"
     shell: |
       set -euo pipefail
+      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+      nvm use
       echo "Node $(node --version)"
       READY_FILE="../sparkle/dist/cjs/index.js"
       echo "Waiting for sparkle to compile..."
@@ -96,6 +105,9 @@ procs:
     cwd: "<CONFIG_DIR>/../front-spa"
     shell: |
       set -euo pipefail
+      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+      nvm use
       echo "Node $(node --version)"
       READY_FILE="../sparkle/dist/cjs/index.js"
       echo "Waiting for sparkle to compile..."

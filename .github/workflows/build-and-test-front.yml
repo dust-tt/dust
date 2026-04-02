@@ -37,7 +37,7 @@ jobs:
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
         with:
-          node-version: "22.22.0"
+          node-version: "24.14.0"
           build-sdks: "true"
           build-sparkle: "true"
       - name: Install Postgres
@@ -75,7 +75,7 @@ jobs:
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
         with:
-          node-version: "22.22.0"
+          node-version: "24.14.0"
           build-sdks: "true"
           build-sparkle: "true"
       - name: Typecheck
@@ -92,7 +92,7 @@ jobs:
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
         with:
-          node-version: "22.22.0"
+          node-version: "24.14.0"
       - name: Lint test filenames
         run: npm -w front run lint:test-filenames
       - name: Lint swagger annotations
