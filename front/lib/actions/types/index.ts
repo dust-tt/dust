@@ -27,14 +27,27 @@ export function isFileAuthorizationInfo(
 }
 
 const UserQuestionOptionSchema = z.object({
-  label: z.string(),
-  description: z.string().nullable(),
+  label: z
+    .string()
+    .describe(
+      "Concise choice text, 1-5 words. " +
+        "Recommended option should include '(Recommended)'."
+    ),
+  description: z.string().nullable().describe("Explanation of this option."),
 });
 
 export const UserQuestionSchema = z.object({
-  question: z.string(),
-  options: z.array(UserQuestionOptionSchema),
-  multiSelect: z.boolean(),
+  question: z
+    .string()
+    .describe("The question text. Should be clear and specific."),
+  options: z
+    .array(UserQuestionOptionSchema)
+    .describe("The available choices (2 to 4 options)."),
+  multiSelect: z
+    .boolean()
+    .describe(
+      "Whether the user can select multiple options for this question."
+    ),
 });
 
 export type UserQuestion = z.infer<typeof UserQuestionSchema>;
