@@ -2,7 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { AcademyChapterVisitModel } from "@app/lib/resources/storage/models/academy_chapter_visit";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { AcademyIdentifier } from "@app/types/academy";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";

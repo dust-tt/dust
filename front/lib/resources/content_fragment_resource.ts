@@ -24,10 +24,8 @@ import {
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import {
-  generateRandomModelSId,
-  getResourceNameAndIdFromSId,
-} from "@app/lib/resources/string_ids";
+import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
 import type { ContentFragmentMessageTypeModel } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";

@@ -65,10 +65,8 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import {
-  generateRandomModelSId,
-  getResourceIdFromSId,
-} from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import {

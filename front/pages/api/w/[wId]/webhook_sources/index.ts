@@ -5,7 +5,7 @@ import config from "@app/lib/api/config";
 import { deleteWebhookSource } from "@app/lib/api/webhook_source";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { generateSecureSecret } from "@app/lib/resources/string_ids";
+import { generateSecureSecret } from "@app/lib/resources/string_ids_server";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";

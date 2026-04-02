@@ -7,7 +7,7 @@ import {
 } from "@app/lib/resources/storage/models/project_todo";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ProjectTodoSourceType } from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";

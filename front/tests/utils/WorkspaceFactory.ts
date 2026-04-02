@@ -6,7 +6,7 @@ import {
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
