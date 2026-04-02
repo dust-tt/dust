@@ -39,7 +39,6 @@ export const UserQuestionSchema = z.object({
 
 export type UserQuestion = z.infer<typeof UserQuestionSchema>;
 
-
 export type StepContext = {
   citationsCount: number;
   citationsOffset: number;
