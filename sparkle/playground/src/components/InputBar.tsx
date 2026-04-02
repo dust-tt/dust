@@ -212,31 +212,21 @@ export function InputBar({
             ))}
           </NewCitationGrid>
         )}
-        {/* Text area wrapper – controls height transition in sync with toolbar */}
-        <div
-          style={{
-            transitionDuration: TRANSITION_DURATION,
-            transitionTimingFunction: TRANSITION_EASING,
-          }}
+        {/* Text area */}
+        <RichTextArea
+          ref={richTextAreaRef}
+          placeholder={placeholder}
+          onFocus={handleFocus}
+          onMentionsChange={setHasMention}
+          variant="compact"
+          showFormattingMenu={!hasMention}
+          showAskSidekickMenu={false}
           className={cn(
-            "s-w-full s-transition-all",
-            hasMention ? "s-max-h-[3rem] s-overflow-hidden" : "s-max-h-96"
+            "placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night",
+            "s-overflow-y-auto s-max-h-[40vh]",
+            hasMention && "!s-pt-3 !s-pb-3 !s-pl-4 !s-pr-20"
           )}
-        >
-          <RichTextArea
-            ref={richTextAreaRef}
-            placeholder={placeholder}
-            onFocus={handleFocus}
-            onMentionsChange={setHasMention}
-            variant="compact"
-            showFormattingMenu={!hasMention}
-            showAskSidekickMenu={false}
-            className={cn(
-              "placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night",
-              hasMention && "!s-pt-3 !s-pb-3 !s-pl-4 !s-pr-20"
-            )}
-          />
-        </div>
+        />
         {/* Toolbar row – collapses to 0 height when mention is active */}
         <div
           style={{
