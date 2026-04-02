@@ -244,11 +244,21 @@ export function InlineActivitySteps({
 
             {/* Active action (tool in progress) */}
             {isActing && activeAction && (
-              <TimelineRow spinner isLast={false}>
-                <span className="text-muted-foreground dark:text-muted-foreground-night">
-                  {getActionOneLineLabel(activeAction, "running")}
-                </span>
-              </TimelineRow>
+              <div
+                className="cursor-pointer"
+                onClick={() => openBreakdownPanel(activeAction.sId)}
+              >
+                <TimelineRow spinner isLast={false}>
+                  <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
+                    {getActionOneLineLabel(activeAction, "running")}
+                    <Icon
+                      size="xs"
+                      visual={ChevronRightIcon}
+                      className="shrink-0 opacity-50"
+                    />
+                  </span>
+                </TimelineRow>
+              </div>
             )}
 
             {/* Pending spinner — shown when between transitions (not done, nothing active) */}
