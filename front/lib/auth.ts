@@ -967,6 +967,7 @@ export class Authenticator {
           whiteListedProviders: this._workspace.whiteListedProviders,
           defaultEmbeddingProvider: this._workspace.defaultEmbeddingProvider,
           metadata: this._workspace.metadata,
+          metronomeCustomerId: this._workspace.metronomeCustomerId ?? null,
           sharingPolicy: this._workspace.sharingPolicy ?? "all_scopes",
         }
       : null;

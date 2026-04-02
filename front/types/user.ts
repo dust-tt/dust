@@ -61,6 +61,7 @@ export type LightWorkspaceType = {
     [key: string]: string | number | boolean | object | undefined;
   } | null;
   sharingPolicy: WorkspaceSharingPolicy;
+  metronomeCustomerId: string | null;
   workOSOrganizationId?: string | null;
   groups?: string[];
 };
