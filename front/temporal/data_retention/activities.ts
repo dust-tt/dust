@@ -155,7 +155,7 @@ export async function purgeAgentConversationsBatchActivity({
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
-  const conversationIds =
+  const conversations =
     await ConversationResource.listConversationWithAgentCreatedBeforeDate(
       auth,
       {
@@ -170,26 +170,8 @@ export async function purgeAgentConversationsBatchActivity({
     );
 
   await concurrentExecutor(
-    conversationIds,
-    async (conversationId) => {
-      const conversation = await ConversationResource.fetchById(
-        auth,
-        conversationId,
-        {
-          dangerouslySkipPermissionFiltering: true,
-          includeDeleted: true,
-        }
-      );
-      if (!conversation) {
-        logger.warn(
-          {
-            workspaceId,
-            conversationId,
-          },
-          "Conversation not found."
-        );
-        return;
-      }
+    conversations,
+    async (conversation) => {
       const result = await destroyConversation(auth, { conversation });
       if (result.isErr()) {
         throw result.error;
@@ -205,6 +187,6 @@ export async function purgeAgentConversationsBatchActivity({
     workspaceModelId: workspace.id,
     workspaceId: workspace.sId,
     retentionDays,
-    nbConversationsDeleted: conversationIds.length,
+    nbConversationsDeleted: conversations.length,
   };
 }
