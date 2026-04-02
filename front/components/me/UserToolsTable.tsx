@@ -214,11 +214,11 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
           sorting={[{ id: "name", desc: false }]}
         />
       ) : (
-        <Label>
+         <p className="py-8 text-center text-muted-foreground">
           {searchQuery
             ? "No matching tools found"
             : "You don't have any tool-specific settings yet."}
-        </Label>
+               </p>
       )}
     </>
   );
