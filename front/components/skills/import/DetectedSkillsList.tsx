@@ -58,8 +58,6 @@ export function DetectedSkillsList({
       scrollRef.current = node;
       if (node) {
         node.addEventListener("scroll", updateScrollIndicator);
-        // Check on mount (after layout).
-        requestAnimationFrame(updateScrollIndicator);
       }
     },
     [updateScrollIndicator]
