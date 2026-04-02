@@ -643,7 +643,7 @@ export const UserQuestionItemSchema = z.object({
   options: z.array(
     z.object({
       label: z.string(),
-      description: z.string(),
+      description: z.string().nullable(),
     })
   ),
   multiSelect: z.boolean(),

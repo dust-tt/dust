@@ -28,7 +28,7 @@ export function isFileAuthorizationInfo(
 
 const UserQuestionOptionSchema = z.object({
   label: z.string(),
-  description: z.string(),
+  description: z.string().nullable(),
 });
 
 export const UserQuestionSchema = z.object({
