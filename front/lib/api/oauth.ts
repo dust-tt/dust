@@ -311,14 +311,13 @@ export async function finalizeConnection(
     }
   }
 
-  if (auth) {
+  const workspace = auth?.workspace();
+  if (auth && workspace) {
     // No req available in this library function — context defaults to auth.clientIp().
     void emitAuditLogEvent({
       auth,
       action: "oauth.authorized",
-      targets: [
-        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-      ],
+      targets: [buildAuditLogTarget("workspace", workspace)],
       metadata: {
         provider: String(provider),
         connectionId,
