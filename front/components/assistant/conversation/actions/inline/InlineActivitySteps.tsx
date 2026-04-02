@@ -40,8 +40,6 @@ function getCompletionLabel(
       return `Errored after ${formatDurationString(completionDurationMs)}`;
     case "cancelled":
       return `Cancelled after ${formatDurationString(completionDurationMs)}`;
-    case "gracefully_stopped":
-      return `Stopped in ${formatDurationString(completionDurationMs)}`;
     default:
       return `Completed in ${formatDurationString(completionDurationMs)}`;
   }
