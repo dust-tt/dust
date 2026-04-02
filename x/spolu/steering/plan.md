@@ -37,24 +37,15 @@ Implement the graceful stop mechanism end-to-end.
 - Map to `"succeeded"` in public API backward compatibility layer.
 - Frontend: use message status from event (no hardcoded override).
 
-### - [ ] PR 2.2 — Add `gracefullyStopAgentLoopSignal` + workflow handler
+### - [x] PR 2.2+2.3 — Add `gracefullyStopAgentLoopSignal` + finalization
 
-- Add signal definition in `front/temporal/agent_loop/signals.ts`.
-- Add `gracefulStopRequested` flag + `setHandler` in `agentLoopWorkflow`
-  (`front/temporal/agent_loop/workflows.ts`).
-- Check `gracefulStopRequested` at step boundary (`if (!shouldContinue || gracefulStopRequested)`).
-- No finalization yet — just break the loop. The existing `finalizeSuccessfulAgentLoopActivity`
-  runs (status = `"succeeded"`). This is safe because no one sends the signal yet.
-
-### - [ ] PR 2.3 — Add `finalizeGracefulStop` + `finalizeGracefullyStoppedAgentLoopActivity`
-
-- Add `finalizeGracefulStop` in `front/temporal/agent_loop/activities/common.ts` (mirrors
-  `finalizeCancellation` but sets `"gracefully_stopped"` + emits
-  `agent_message_gracefully_stopped`).
-- Add `finalizeGracefullyStoppedAgentLoopActivity` in
-  `front/temporal/agent_loop/activities/finalize.ts` (mirrors
-  `finalizeSuccessfulAgentLoopActivity`).
-- Route `gracefulStopRequested` in the workflow to the new finalization path.
+- Add `gracefullyStopAgentLoopSignal` in `signals.ts`.
+- Add `gracefulStopRequested` flag + handler in `agentLoopWorkflow`, check at step boundary.
+- Add `finalizeGracefulStop` in `common.ts` (emits `agent_message_gracefully_stopped`,
+  no content parser flush needed since step completed normally).
+- Add `finalizeGracefullyStoppedAgentLoopActivity` in `finalize.ts` (mirrors successful path).
+- Route `gracefulStopRequested` in the workflow to the new finalization.
+- Handle `agent_message_gracefully_stopped` in `processEventForDatabase`.
 
 ### - [ ] PR 2.4 — Add `gracefullyStopAgentLoop` helper
 
