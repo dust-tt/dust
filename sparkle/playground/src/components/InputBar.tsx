@@ -1,6 +1,7 @@
 import {
   ArrowUpIcon,
   AttachmentIcon,
+  Avatar,
   BoltIcon,
   Button,
   cn,
@@ -10,6 +11,9 @@ import {
   ImageZoomDialog,
   MicIcon,
   PlusIcon,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
   RobotIcon,
   Sheet,
   SheetContainer,
@@ -19,6 +23,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { mockAgents } from "../data";
 import { NewCitation, NewCitationGrid } from "./NewCitation";
 import { RichTextArea, type RichTextAreaHandle } from "./RichTextArea";
 
@@ -44,6 +49,10 @@ export function InputBar({
   const [isFocused, setIsFocused] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [hasMention, setHasMention] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<
+    (typeof mockAgents)[number] | null
+  >(null);
+  const [isAgentPopoverOpen, setIsAgentPopoverOpen] = useState(false);
   const [droppedFiles, setDroppedFiles] = useState<DroppedFile[]>([]);
   const [selectedDroppedFile, setSelectedDroppedFile] =
     useState<DroppedFile | null>(null);
@@ -256,24 +265,82 @@ export function InputBar({
               tooltip="Attach a document"
               className="md:s-hidden"
             />
-            <div className="s-hidden s-gap-0 md:s-flex">
+            <div className="s-hidden s-gap-0 s-items-center md:s-flex">
+              <PopoverRoot
+                open={isAgentPopoverOpen}
+                onOpenChange={setIsAgentPopoverOpen}
+              >
+                <PopoverTrigger asChild>
+                  {selectedAgent ? (
+                    <button
+                      type="button"
+                      className={cn(
+                        "s-flex s-items-center s-gap-1.5 s-rounded-xl s-px-2 s-py-1",
+                        "s-text-xs s-font-medium s-text-foreground dark:s-text-foreground-night",
+                        "s-border s-border-border dark:s-border-border-night",
+                        "hover:s-bg-muted-background dark:hover:s-bg-muted-background-night",
+                        "s-transition-colors s-cursor-pointer"
+                      )}
+                    >
+                      <Avatar
+                        size="xs"
+                        emoji={selectedAgent.emoji}
+                        name={selectedAgent.name}
+                      />
+                      <span>{selectedAgent.name}</span>
+                    </button>
+                  ) : (
+                    <Button
+                      variant="ghost-secondary"
+                      icon={RobotIcon}
+                      size="xs"
+                      label="Agent"
+                      tooltip="Select an Agent"
+                    />
+                  )}
+                </PopoverTrigger>
+                <PopoverContent className="s-w-64 s-p-1">
+                  <div className="s-flex s-flex-col s-max-h-80 s-overflow-y-auto">
+                    {mockAgents.map((agent) => (
+                      <button
+                        key={agent.id}
+                        type="button"
+                        className={cn(
+                          "s-flex s-items-center s-gap-2 s-rounded-lg s-px-3 s-py-2 s-w-full s-text-left",
+                          "hover:s-bg-muted-background dark:hover:s-bg-muted-background-night",
+                          "s-transition-colors s-cursor-pointer",
+                          selectedAgent?.id === agent.id &&
+                            "s-bg-muted-background dark:s-bg-muted-background-night"
+                        )}
+                        onClick={() => {
+                          setSelectedAgent(agent);
+                          setIsAgentPopoverOpen(false);
+                        }}
+                      >
+                        <Avatar
+                          size="xs"
+                          emoji={agent.emoji}
+                          name={agent.name}
+                        />
+                        <span className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night s-truncate">
+                          {agent.name}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </PopoverRoot>
+              <Button
+                variant="ghost-secondary"
+                icon={BoltIcon}
+                size="xs"
+                tooltip="Add a skill"
+              />
               <Button
                 variant="ghost-secondary"
                 icon={AttachmentIcon}
                 size="xs"
                 tooltip="Attach a document"
-              />
-              <Button
-                variant="ghost-secondary"
-                icon={BoltIcon}
-                size="xs"
-                tooltip="Add functionality"
-              />
-              <Button
-                variant="ghost-secondary"
-                icon={RobotIcon}
-                size="xs"
-                tooltip="Mention an Agent"
               />
             </div>
           </div>

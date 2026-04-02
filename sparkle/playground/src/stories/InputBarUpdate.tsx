@@ -85,7 +85,7 @@ function InputBarUpdateMain() {
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [selectedConversationId, setSelectedConversationId] = useState<
     string | null
-  >("new-conversation");
+  >(null);
   const [conversationsWithMessages, setConversationsWithMessages] = useState<
     Conversation[]
   >([]);
@@ -99,9 +99,12 @@ function InputBarUpdateMain() {
     const randomUser = getRandomUsers(1)[0];
     setUser(randomUser);
     setSpaces(getRandomSpaces(5));
-    setConversationsWithMessages(
-      createConversationsWithMessages(randomUser.id)
-    );
+    const convos = createConversationsWithMessages(randomUser.id);
+    setConversationsWithMessages(convos);
+    // Default to showing the first conversation with messages
+    if (convos.length > 0) {
+      setSelectedConversationId(convos[0].id);
+    }
   }, []);
 
   const allConversations = useMemo(
@@ -630,7 +633,7 @@ function InputBarUpdateMain() {
                   key={agent.id}
                   variant="outline"
                   size="sm"
-                  label={`${agent.emoji} ${agent.name}`}
+                  label={agent.name}
                   onClick={() => {}}
                 />
               ))}
