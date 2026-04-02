@@ -9,8 +9,6 @@ import {
   buildLlmUsageEvents,
   buildToolUseEvents,
   buildWorkspaceGaugeEvent,
-  classifyMessageTier,
-  getToolCategory,
 } from "@app/lib/metronome/events";
 import type { MetronomeEvent } from "@app/lib/metronome/types";
 import {
@@ -291,13 +289,6 @@ export async function emitMetronomeUsageEventsActivity(
     };
   });
 
-  // Classify message tier.
-  const modelIds = runUsages.map((u) => u.modelId);
-  const toolCategories = toolActions.map((a) =>
-    getToolCategory(a.internalMCPServerName)
-  );
-  const messageTier = classifyMessageTier({ modelIds, toolCategories });
-
   // Use the Temporal workflow run ID as the unique key — each workflow execution
   // gets a unique runId, even when the workflow ID is reused across retries.
   const { runId: workflowRunId } = Context.current().info.workflowExecution;
@@ -314,7 +305,6 @@ export async function emitMetronomeUsageEventsActivity(
     runUsages,
     origin: userMessageOrigin,
     isProgrammaticUsage: programmatic,
-    messageTier,
     isSubAgentMessage,
     timestamp,
   });
@@ -329,7 +319,6 @@ export async function emitMetronomeUsageEventsActivity(
     actions: toolActions,
     origin: userMessageOrigin,
     isProgrammaticUsage: programmatic,
-    messageTier,
     isSubAgentMessage,
     timestamp,
   });
