@@ -227,17 +227,25 @@ export function InlineActivitySteps({
                 isLast={!activeAction && !isDone}
               >
                 {chainOfThought ? (
-                  <Markdown
-                    content={chainOfThought}
-                    isStreaming={false}
-                    streamingState="streaming"
-                    enableAnimation
-                    animationDurationSeconds={0.3}
-                    delimiter=" "
-                    forcedTextSize="text-sm"
-                    textColor="text-muted-foreground dark:text-muted-foreground-night"
-                    isLastMessage={false}
-                  />
+                  <TruncatedContent
+                    thresholdPx={80}
+                    collapsedHeightPx={60}
+                    variant="light"
+                    buttonClassName="mt-1"
+                    animated
+                  >
+                    <Markdown
+                      content={chainOfThought}
+                      isStreaming={false}
+                      streamingState="streaming"
+                      enableAnimation
+                      animationDurationSeconds={0.3}
+                      delimiter=" "
+                      forcedTextSize="text-sm"
+                      textColor="text-muted-foreground dark:text-muted-foreground-night"
+                      isLastMessage={false}
+                    />
+                  </TruncatedContent>
                 ) : null}
               </TimelineRow>
             )}

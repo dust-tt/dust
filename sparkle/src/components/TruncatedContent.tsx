@@ -53,7 +53,7 @@ export function TruncatedContent({
     if (el) {
       setExceedsThreshold(el.scrollHeight > thresholdPx);
     }
-  }, [thresholdPx]);
+  }, [children, thresholdPx]);
 
   const shouldShowToggle = exceedsThreshold;
   const isCurrentlyCollapsed = shouldShowToggle && isCollapsed;
@@ -78,9 +78,13 @@ export function TruncatedContent({
         }}
       >
         {children}
-        {isCurrentlyCollapsed && (
-          <div className="s-pointer-events-none s-absolute s-bottom-0 s-left-0 s-right-0 s-h-24 s-bg-gradient-to-t s-from-background dark:s-from-background-night" />
-        )}
+        <div
+          className={cn(
+            "s-pointer-events-none s-absolute s-bottom-0 s-left-0 s-right-0 s-h-24 s-bg-gradient-to-t s-from-background dark:s-from-background-night s-transition-opacity",
+            isCurrentlyCollapsed ? "s-opacity-100" : "s-opacity-0"
+          )}
+          style={{ transitionDuration: `${animationDurationMs}ms` }}
+        />
       </div>
       <div className="s-flex s-items-center s-gap-3">
         {shouldShowToggle && (
