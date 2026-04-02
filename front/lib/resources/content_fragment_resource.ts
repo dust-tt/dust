@@ -21,6 +21,7 @@ import {
   FileResource,
   type FileVersion,
 } from "@app/lib/resources/file_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -38,7 +39,10 @@ import type {
 } from "@app/types/content_fragment";
 import type { ContentNodeType } from "@app/types/core/content_node";
 import { CoreAPI } from "@app/types/core/core_api";
-import { isLLMVisionSupportedImageContentType } from "@app/types/files";
+import {
+  isLLMVisionSupportedImageContentType,
+  isSupportedFileContentType,
+} from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -52,6 +56,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
 export const CONTENT_OUTDATED_MSG =
   "Content is outdated. Please refer to the latest version of this content.";
@@ -195,6 +200,111 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       (b: ContentFragmentModel) =>
         new ContentFragmentResource(ContentFragmentResource.model, b.get())
     );
+  }
+
+  /**
+   * Latest file-backed content fragments tagged with this space (project knowledge).
+   * Node-backed fragments (Step 2) are excluded via `fileId IS NOT NULL`.
+   */
+  static async listBySpace(
+    auth: Authenticator,
+    space: SpaceResource
+  ): Promise<ContentFragmentResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+    if (space.workspaceId !== workspace.id) {
+      throw new Error("Space does not belong to the authenticated workspace.");
+    }
+
+    const rows = await ContentFragmentResource.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+        spaceId: space.id,
+        version: "latest",
+        fileId: { [Op.not]: null },
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return rows.map(
+      (row) =>
+        new ContentFragmentResource(ContentFragmentResource.model, row.get())
+    );
+  }
+
+  /**
+   * Create a latest-version content fragment row for a project context file.
+   * Callers (e.g. upsert path) are responsible for idempotency / superseding duplicates.
+   */
+  static async makeProjectFragment(
+    auth: Authenticator,
+    space: SpaceResource,
+    file: FileResource,
+    transaction?: Transaction
+  ): Promise<Result<ContentFragmentResource, Error>> {
+    const workspace = auth.getNonNullableWorkspace();
+    if (
+      space.workspaceId !== workspace.id ||
+      file.workspaceId !== workspace.id
+    ) {
+      return new Err(
+        new Error("Space and file must belong to the authenticated workspace.")
+      );
+    }
+
+    if (file.useCase !== "project_context") {
+      return new Err(
+        new Error(
+          "File must be a project context file (useCase project_context)."
+        )
+      );
+    }
+
+    const metadataSpaceId = file.useCaseMetadata?.spaceId;
+    if (!metadataSpaceId || metadataSpaceId !== space.sId) {
+      return new Err(
+        new Error("File project metadata spaceId must match the target space.")
+      );
+    }
+
+    if (!file.isReady) {
+      return new Err(
+        new Error(
+          "File is not ready; cannot create a project content fragment."
+        )
+      );
+    }
+
+    if (!isSupportedFileContentType(file.contentType)) {
+      return new Err(
+        new Error("Unsupported file content type for content fragment.")
+      );
+    }
+
+    const sourceUrl = file.getPrivateUrl(auth);
+
+    const fragment = await ContentFragmentResource.makeNew(
+      {
+        workspaceId: workspace.id,
+        spaceId: space.id,
+        fileId: file.id,
+        title: file.fileName,
+        contentType: file.contentType,
+        sourceUrl,
+        textBytes: file.fileSize,
+        userId: auth.user()?.id ?? null,
+        userContextUsername: null,
+        userContextFullName: null,
+        userContextEmail: null,
+        userContextProfilePictureUrl: null,
+        nodeId: null,
+        nodeDataSourceViewId: null,
+        nodeType: null,
+        expiredReason: null,
+      },
+      transaction
+    );
+
+    return new Ok(fragment);
   }
 
   /**

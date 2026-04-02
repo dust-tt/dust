@@ -7,6 +7,7 @@ import { PROJECT_CONTEXT_FOLDER_ID } from "@app/lib/api/projects/constants";
 import { fetchProjectDataSource } from "@app/lib/api/projects/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
+import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -62,6 +63,13 @@ export async function getProjectDataSourceFromFile(
   }
 
   return new Ok(r.value);
+}
+
+export async function listProjectContentFragments(
+  auth: Authenticator,
+  space: SpaceResource
+): Promise<ContentFragmentResource[]> {
+  return ContentFragmentResource.listBySpace(auth, space);
 }
 
 export async function upsertProjectContextFile(
