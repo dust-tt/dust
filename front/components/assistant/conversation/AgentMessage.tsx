@@ -942,7 +942,7 @@ export function AgentMessage({
 
   return (
     <ConversationMessageContainer messageType="agent" type="agent">
-      <div className="inline-flex items-center gap-2">
+      <div className="inline-flex items-center gap-2 px-5">
         <ConversationMessageAvatar
           avatarUrl={agentConfiguration.pictureUrl}
           name={agentConfiguration.name}
@@ -972,7 +972,7 @@ export function AgentMessage({
         />
       </div>
 
-      <div className="group flex w-full min-w-0 flex-col gap-2 @sm:pr-4 pr-2">
+      <div className="group flex w-full min-w-0 flex-col gap-2 @sm:px-5 px-5">
         {renderMessageContent()}
       </div>
     </ConversationMessageContainer>

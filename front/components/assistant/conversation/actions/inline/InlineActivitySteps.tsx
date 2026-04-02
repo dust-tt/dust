@@ -20,6 +20,7 @@ import {
   Icon,
   Markdown,
   ToolsIcon,
+  TruncatedContent,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
@@ -168,13 +169,21 @@ export function InlineActivitySteps({
                 case "thinking":
                   return (
                     <TimelineRow key={step.id} icon="circle" isLast={isLast}>
-                      <Markdown
-                        content={step.content}
-                        isStreaming={false}
-                        forcedTextSize="text-sm"
-                        textColor="text-muted-foreground dark:text-muted-foreground-night"
-                        isLastMessage={false}
-                      />
+                      <TruncatedContent
+                        thresholdPx={80}
+                        collapsedHeightPx={60}
+                        variant="light"
+                        buttonClassName="mt-1"
+                        animated
+                      >
+                        <Markdown
+                          content={step.content}
+                          isStreaming={false}
+                          forcedTextSize="text-sm"
+                          textColor="text-muted-foreground dark:text-muted-foreground-night"
+                          isLastMessage={false}
+                        />
+                      </TruncatedContent>
                     </TimelineRow>
                   );
                 case "action": {

@@ -24,7 +24,7 @@ export function TimelineRow({
   children,
 }: TimelineRowProps) {
   return (
-    <div className="flex gap-1">
+    <div className="flex gap-2">
       {/* Icon column with connecting line */}
       <div className="flex flex-col items-center">
         <div className="flex h-5 w-4 flex-shrink-0 items-center justify-center">
