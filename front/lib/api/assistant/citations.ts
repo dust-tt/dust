@@ -190,6 +190,7 @@ export function getLightAgentMessageFromAgentMessage(
         isInProjectContext: f.isInProjectContext,
         createdAt: f.createdAt,
         updatedAt: f.updatedAt,
+        hidden: f.hidden,
       })),
     richMentions: agentMessage.richMentions,
     completionDurationMs: agentMessage.completionDurationMs,

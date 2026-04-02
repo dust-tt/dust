@@ -42,6 +42,7 @@ function createMockContentFragment(
     sourceProvider: null,
     sourceIcon: null,
     isInProjectContext: false,
+    hidden: false,
   };
 }
 

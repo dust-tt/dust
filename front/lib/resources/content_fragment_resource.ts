@@ -361,6 +361,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
           sourceProvider: null,
           sourceIcon: null,
           isInProjectContext: null,
+          hidden: true,
         };
       } else if (contentFragmentType === "content_node") {
         return {
@@ -390,6 +391,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       let sourceProvider: string | null = null;
       let sourceIcon: string | null = null;
       let isInProjectContext: boolean = false;
+      let hidden: boolean = true;
 
       // Use pre-fetched file if provided, otherwise fetch it (for backward compatibility)
       const fileResource =
@@ -405,6 +407,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         sourceProvider = fileResource.useCaseMetadata?.sourceProvider ?? null;
         sourceIcon = fileResource.useCaseMetadata?.sourceIcon ?? null;
         isInProjectContext = !!fileResource.useCaseMetadata?.spaceId;
+        hidden = !!fileResource.useCaseMetadata?.hideFromUser;
       }
 
       return {
@@ -419,6 +422,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         sourceProvider,
         sourceIcon,
         isInProjectContext,
+        hidden,
       } satisfies FileContentFragmentType;
     } else if (contentFragmentType === "content_node") {
       assert(

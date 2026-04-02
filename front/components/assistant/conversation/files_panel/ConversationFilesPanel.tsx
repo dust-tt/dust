@@ -138,9 +138,9 @@ export function ConversationFilesPanel({
 
   const fileRows = useMemo(
     () =>
-      attachments.map((a) =>
-        conversationAttachmentToRow(a, handleAttachmentClick)
-      ),
+      attachments
+        .filter((a) => !a.hidden)
+        .map((a) => conversationAttachmentToRow(a, handleAttachmentClick)),
     [attachments, handleAttachmentClick]
   );
 

@@ -333,7 +333,7 @@ export function AgentMessage({
             break;
           case "agent_action_success": {
             const action = eventPayload.data.action;
-            if (action.generatedFiles.length > 0) {
+            if (action.generatedFiles.filter((f) => !f.hidden).length > 0) {
               void mutateConversationAttachments();
             }
             if (action.internalMCPServerName === "sandbox") {
@@ -1237,10 +1237,10 @@ function AgentMessageContent({
 
   // Get completed images that are not already referenced in the Markdown content.
   // Combine from actions (updated during streaming) and generatedFiles (available on reload).
-  const filesFromActions = agentMessage.actions.flatMap(
-    (action) => action.generatedFiles
+  const filesFromActions = agentMessage.actions.flatMap((action) =>
+    action.generatedFiles.filter((f) => !f.hidden)
   );
-  const filesFromMessage = agentMessage.generatedFiles;
+  const filesFromMessage = agentMessage.generatedFiles.filter((f) => !f.hidden);
 
   // Combine both sources, preferring actions (more up-to-date during streaming).
   // Dedupe by fileId.
@@ -1259,7 +1259,7 @@ function AgentMessageContent({
     .filter((file) => isSupportedImageContentType(file.contentType))
     .filter((file) => !referencedFileIds.has(file.fileId));
 
-  const generatedFiles = agentMessage.generatedFiles.filter(
+  const generatedFiles = filesFromMessage.filter(
     (file) =>
       !isSupportedImageContentType(file.contentType) &&
       !isInteractiveContentType(file.contentType)

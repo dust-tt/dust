@@ -6,7 +6,7 @@ import type {
 } from "@app/lib/api/assistant/conversation/attachments";
 import {
   getAttachmentFromContentFragment,
-  getAttachmentFromFile,
+  makeFileAttachment,
 } from "@app/lib/api/assistant/conversation/attachments";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -56,7 +56,7 @@ export async function listAttachments(
       for (const f of generatedFiles) {
         attachments.set(
           f.fileId,
-          getAttachmentFromFile({
+          makeFileAttachment({
             fileId: f.fileId,
             source: "agent",
             createdAt: f.createdAt ?? 0,
@@ -65,6 +65,7 @@ export async function listAttachments(
             title: f.title,
             snippet: f.snippet,
             isInProjectContext: f.isInProjectContext ?? false,
+            hideFromUser: f.hidden ?? false,
             creator: agentCreator,
           })
         );
@@ -87,7 +88,7 @@ export async function listAttachments(
       for (const f of files) {
         attachments.set(
           f.sId,
-          getAttachmentFromFile({
+          makeFileAttachment({
             fileId: f.sId,
             source: null,
             createdAt: f.createdAt.getTime(),
@@ -96,6 +97,7 @@ export async function listAttachments(
             title: f.fileName,
             snippet: f.snippet,
             isInProjectContext: true,
+            hideFromUser: f.useCaseMetadata?.hideFromUser ?? false,
           })
         );
       }

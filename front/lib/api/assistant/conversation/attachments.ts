@@ -43,6 +43,7 @@ export type BaseConversationAttachmentType = {
   isQueryable: boolean;
   isInProjectContext: boolean;
   creator: AttachmentCreator | null;
+  hidden: boolean; // Do not show this attachment to the user.
 };
 
 export type FileAttachmentType = BaseConversationAttachmentType & {
@@ -155,6 +156,7 @@ export function getAttachmentFromContentNodeContentFragment(
     isQueryable,
     isSearchable,
     isInProjectContext: false, // For now, content nodes can only be from the conversation, not the project. To be revisited if/when we allow connected data in the projects.
+    hidden: false, // For now, content nodes are not hidden from the user.
     creator,
   };
 
@@ -215,6 +217,7 @@ export function getAttachmentFromFileContentFragment(
     isQueryable,
     isSearchable,
     isInProjectContext: cf.isInProjectContext,
+    hidden: cf.hidden,
     creator,
   };
 
@@ -226,7 +229,7 @@ export function getAttachmentFromFileContentFragment(
   };
 }
 
-export function getAttachmentFromFile({
+export function makeFileAttachment({
   fileId,
   source,
   createdAt,
@@ -235,6 +238,7 @@ export function getAttachmentFromFile({
   title,
   snippet,
   isInProjectContext,
+  hideFromUser,
   creator = null,
 }: {
   fileId: string;
@@ -245,6 +249,7 @@ export function getAttachmentFromFile({
   title: string;
   snippet: string | null;
   isInProjectContext: boolean;
+  hideFromUser: boolean;
   creator?: AttachmentCreator | null;
 }): FileAttachmentType {
   const canDoJIT = snippet !== null;
@@ -267,6 +272,7 @@ export function getAttachmentFromFile({
     isQueryable,
     isSearchable,
     isInProjectContext,
+    hidden: hideFromUser,
     creator,
   };
 }
