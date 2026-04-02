@@ -1,4 +1,4 @@
-import { finalizeSucceededAgentMessage } from "@app/lib/api/assistant/conversation";
+import { finalizeAgentMessage } from "@app/lib/api/assistant/conversation";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
@@ -48,13 +48,15 @@ export async function updateAgentMessageDBAndMemory(
   auth: Authenticator,
   {
     agentMessage,
+    conversation,
     update,
   }: {
     agentMessage: AgentMessageType;
+    conversation?: ConversationWithoutContentType;
     update:
       | {
           type: "status";
-          status: "cancelled";
+          status: "succeeded" | "cancelled";
         }
       | {
           type: "error";
@@ -83,35 +85,32 @@ export async function updateAgentMessageDBAndMemory(
   switch (updateType) {
     case "error":
       {
-        const completedAt = new Date();
-        await AgentMessageModel.update(
-          {
-            status: "failed",
-            completedAt,
-            errorCode: update.error.code,
-            errorMessage: update.error.message,
-            errorMetadata: update.error.metadata,
-          },
-          { where }
-        );
-        agentMessage.status = "failed";
-        agentMessage.completedTs = completedAt.getTime();
-        agentMessage.error = update.error;
+        if (!conversation) {
+          throw new Error(
+            "conversation is required for terminal status updates"
+          );
+        }
+        await finalizeAgentMessage(auth, {
+          conversation,
+          agentMessage,
+          status: "failed",
+          error: update.error,
+        });
       }
       break;
 
     case "status":
       {
-        const completedAt = new Date();
-        await AgentMessageModel.update(
-          {
-            status: update.status,
-            completedAt,
-          },
-          { where }
-        );
-        agentMessage.status = update.status;
-        agentMessage.completedTs = completedAt.getTime();
+        if (!conversation) {
+          throw new Error(
+            "conversation is required for terminal status updates"
+          );
+        }
+        await finalizeAgentMessage(auth, {
+          conversation,
+          agentMessage,
+          status: update.status,
+        });
       }
       break;
 
@@ -176,14 +175,17 @@ export async function markAgentMessageAsFailed(
   auth: Authenticator,
   {
     agentMessage,
+    conversation,
     error,
   }: {
     agentMessage: AgentMessageType;
+    conversation: ConversationWithoutContentType;
     error: ToolErrorEvent["error"];
   }
 ): Promise<void> {
   await updateAgentMessageDBAndMemory(auth, {
     agentMessage,
+    conversation,
     update: {
       type: "error",
       error,
@@ -236,6 +238,7 @@ export async function processEventForDatabase(
       // Store error in database.
       await markAgentMessageAsFailed(auth, {
         agentMessage,
+        conversation,
         error: event.error,
       });
 
@@ -267,6 +270,7 @@ export async function processEventForDatabase(
     case "tool_error":
       await markAgentMessageAsFailed(auth, {
         agentMessage,
+        conversation,
         error: event.error,
       });
 
@@ -280,6 +284,7 @@ export async function processEventForDatabase(
       // Store cancellation in database.
       await updateAgentMessageDBAndMemory(auth, {
         agentMessage,
+        conversation,
         update: {
           type: "status",
           status: "cancelled",
@@ -290,9 +295,13 @@ export async function processEventForDatabase(
     case "agent_message_success":
       await Promise.all([
         // Store success in database behind advisory lock.
-        finalizeSucceededAgentMessage(auth, {
-          conversation,
+        updateAgentMessageDBAndMemory(auth, {
           agentMessage,
+          conversation,
+          update: {
+            type: "status",
+            status: "succeeded",
+          },
         }),
         // Mark the conversation as updated
         ConversationResource.markAsUpdated(auth, { conversation }),

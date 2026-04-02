@@ -90,7 +90,10 @@ import type {
   ContentFragmentInputWithFileIdType,
 } from "@app/types/api/internal/assistant";
 import { isContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  LightAgentConfigurationType,
+  ToolErrorEvent,
+} from "@app/types/assistant/agent";
 import type {
   AgenticMessageData,
   AgentMessageType,
@@ -2218,19 +2221,23 @@ export async function isConversationEventAllowedForAuth(
 }
 
 /**
- * Finalize a succeeded agent message behind the conversation advisory lock.
+ * Finalize an agent message terminal status behind the conversation advisory lock.
  *
  * This ensures the status transition is serialized against other conversation
  * operations (e.g. postUserMessage's pending path in the future).
  */
-export async function finalizeSucceededAgentMessage(
+export async function finalizeAgentMessage(
   auth: Authenticator,
   {
     conversation,
     agentMessage,
+    status,
+    error,
   }: {
     conversation: ConversationWithoutContentType;
     agentMessage: AgentMessageType;
+    status: "succeeded" | "cancelled" | "failed";
+    error?: ToolErrorEvent["error"];
   }
 ): Promise<void> {
   const completedAt = new Date();
@@ -2239,7 +2246,17 @@ export async function finalizeSucceededAgentMessage(
     await getConversationRankVersionLock(auth, conversation, t);
 
     await AgentMessageModel.update(
-      { status: "succeeded", completedAt },
+      {
+        status,
+        completedAt,
+        ...(error
+          ? {
+              errorCode: error.code,
+              errorMessage: error.message,
+              errorMetadata: error.metadata,
+            }
+          : {}),
+      },
       {
         where: {
           id: agentMessage.agentMessageId,
@@ -2250,6 +2267,9 @@ export async function finalizeSucceededAgentMessage(
     );
   });
 
-  agentMessage.status = "succeeded";
+  agentMessage.status = status;
   agentMessage.completedTs = completedAt.getTime();
+  if (error) {
+    agentMessage.error = error;
+  }
 }
