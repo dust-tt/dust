@@ -1,6 +1,7 @@
 // biome-ignore-all lint/plugin/noRawSql: hard delete activities require raw SQL for cascade deletions
 import { batchHardDeletePendingAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -11,6 +12,7 @@ import type {
 import {
   getPendingAgentsDeletionCutoffDate,
   getRunExecutionsDeletionCutoffDate,
+  getSyntheticSuggestionsDeletionCutoffDate,
   isSequelizeForeignKeyConstraintError,
 } from "@app/temporal/hard_delete/utils";
 import { Context } from "@temporalio/activity";
@@ -163,5 +165,45 @@ export async function purgeExpiredPendingAgentsActivity(
   logger.info(
     { totalDeleted },
     "Done purging expired pending agent configurations."
+  );
+}
+
+export async function purgeExpiredSyntheticSuggestionsActivity(
+  batchSize: number = BATCH_SIZE
+) {
+  const cutoffDate = getSyntheticSuggestionsDeletionCutoffDate();
+
+  logger.info(
+    {},
+    `About to purge synthetic agent suggestions created before ${cutoffDate.toISOString()}.`
+  );
+
+  const workspaces = await WorkspaceResource.listAll();
+
+  let totalDeleted = 0;
+
+  for (const workspace of workspaces) {
+    let hasMore = true;
+
+    do {
+      const deletedCount = await AgentSuggestionModel.destroy({
+        where: {
+          workspaceId: workspace.id,
+          source: "synthetic",
+          createdAt: { [Op.lt]: cutoffDate },
+        },
+        limit: batchSize,
+      });
+
+      totalDeleted += deletedCount;
+      hasMore = deletedCount === batchSize;
+
+      Context.current().heartbeat();
+    } while (hasMore);
+  }
+
+  logger.info(
+    { totalDeleted },
+    "Done purging expired synthetic agent suggestions."
   );
 }
