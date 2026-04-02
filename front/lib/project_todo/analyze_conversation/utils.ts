@@ -11,7 +11,7 @@ export function buildSpec(): AgentActionSpecification {
   return {
     name: EXTRACT_CONVERSATION_TODOS_FUNCTION_NAME,
     description:
-      "Extract action items, notable facts, and the conversation topic from the conversation.",
+      "Extract action items, notable facts, key decisions, and the conversation topic from the conversation.",
     inputSchema: {
       type: "object",
       properties: {
@@ -84,8 +84,38 @@ export function buildSpec(): AgentActionSpecification {
             required: ["text", "source_message_rank"],
           },
         },
+        key_decisions: {
+          type: "array",
+          description: "List of key decisions extracted from the conversation.",
+          items: {
+            type: "object",
+            properties: {
+              sId: {
+                type: "string",
+                description:
+                  "Stable identifier for this key decision. Copy verbatim from the known key decisions list if this decision was previously tracked. Omit for brand-new decisions.",
+              },
+              text: {
+                type: "string",
+                description: "Short description of the key decision.",
+              },
+              source_message_rank: {
+                type: "number",
+                description:
+                  "Rank of the message where this decision was first reached.",
+              },
+              status: {
+                type: "string",
+                enum: ["decided", "open"],
+                description:
+                  "'decided' if the decision is finalized, 'open' if still being deliberated.",
+              },
+            },
+            required: ["text", "source_message_rank", "status"],
+          },
+        },
       },
-      required: ["topic", "action_items", "notable_facts"],
+      required: ["topic", "action_items", "notable_facts", "key_decisions"],
     },
   };
 }

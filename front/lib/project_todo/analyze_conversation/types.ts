@@ -22,10 +22,20 @@ export const NotableFactSchema = z.object({
   source_message_rank: z.number().int(),
 });
 
+export const KeyDecisionSchema = z.object({
+  // Present when the decision matches a previously known key decision. The LLM
+  // should copy the sId verbatim from the list provided in the prompt.
+  sId: z.string().optional(),
+  text: z.string(),
+  source_message_rank: z.number().int(),
+  status: z.enum(["decided", "open"]),
+});
+
 export const ExtractActionItemsResult = z.object({
   topic: z.string(),
   action_items: z.array(ActionItemSchema),
   notable_facts: z.array(NotableFactSchema),
+  key_decisions: z.array(KeyDecisionSchema),
 });
 
 export type ExtractionResult = z.infer<typeof ExtractActionItemsResult>;

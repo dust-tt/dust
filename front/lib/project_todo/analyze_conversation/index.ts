@@ -8,6 +8,10 @@ import {
   buildPromptActionItems,
 } from "@app/lib/project_todo/analyze_conversation/action_items";
 import {
+  buildKeyDecisions,
+  buildPromptKeyDecisions,
+} from "@app/lib/project_todo/analyze_conversation/key_decisions";
+import {
   buildNotableFacts,
   buildPromptNotableFacts,
 } from "@app/lib/project_todo/analyze_conversation/notable_facts";
@@ -138,10 +142,12 @@ export async function analyzeConversationTodos(
 
   const previousActionItems = previousVersion?.actionItems ?? [];
   const previousNotableFacts = previousVersion?.notableFacts ?? [];
+  const previousKeyDecisions = previousVersion?.keyDecisions ?? [];
   const prompt = [
     buildPromptActionItems(previousActionItems),
     buildPromptNotableFacts(previousNotableFacts),
-    "You MUST call the tool. Always call it, even if there are no action items or notable facts (use empty arrays).",
+    buildPromptKeyDecisions(previousKeyDecisions),
+    "You MUST call the tool. Always call it, even if there are no action items, notable facts, or key decisions (use empty arrays).",
   ].join("\n\n");
   const specification = buildSpec();
   const conv = await renderConversationForLLM(auth, {
@@ -172,6 +178,10 @@ export async function analyzeConversationTodos(
     extraction.notable_facts,
     new Set(previousNotableFacts.map((fact) => fact.sId))
   );
+  const keyDecisions = buildKeyDecisions(
+    extraction.key_decisions,
+    new Set(previousKeyDecisions.map((d) => d.sId))
+  );
 
   await ConversationTodoVersionedResource.makeNew(auth, {
     conversationId: conversation.id,
@@ -179,7 +189,7 @@ export async function analyzeConversationTodos(
     topic: extraction.topic,
     actionItems,
     notableFacts,
-    keyDecisions: [],
+    keyDecisions,
     agentSuggestions: [],
     lastRunAt: new Date(),
     lastProcessedMessageRank: getLastProcessedMessageRank(conversation),
@@ -191,6 +201,7 @@ export async function analyzeConversationTodos(
       workspaceId: owner.sId,
       actionItemCount: actionItems.length,
       notableFactCount: notableFacts.length,
+      keyDecisionCount: keyDecisions.length,
     },
     "Conversation todo: analysis complete"
   );
