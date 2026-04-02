@@ -64,8 +64,7 @@ export const LoginPage = () => {
           </div>
           <div className="max-w-[400px] text-center">
             <Page.H variant="h4">
-              Get more done, faster, with the power of your agents at your
-              fingertips.
+              This is a test change for the PR demo!
             </Page.H>
           </div>
           {authError && authError.code === "user_not_found" && (
