@@ -1,6 +1,5 @@
-import { AgentPicker } from "@app/components/assistant/AgentPicker";
-import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
+import { InputBarButtons } from "@app/components/assistant/conversation/input_bar/InputBarButtons";
 import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
@@ -38,7 +37,6 @@ import {
 } from "@app/types/assistant/mentions";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
-import { getSupportedFileExtensions } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
@@ -47,7 +45,6 @@ import { isBuilder } from "@app/types/user";
 import {
   ArrowUpIcon,
   AttachmentIcon,
-  Avatar,
   Button,
   CameraIcon,
   Chip,
@@ -59,7 +56,6 @@ import {
   DropdownMenuTrigger,
   GlobeAltIcon,
   PlusIcon,
-  RobotIcon,
   TextIcon,
   Toolbar,
   VoicePicker,
@@ -865,112 +861,30 @@ const InputBarContainer = ({
                     className={cn("flex", !isMobile && "hidden")}
                     onClick={() => setIsToolbarOpen(!isToolbarOpen)}
                   />
-                  {(() => {
-                    const agentButton = (actions.includes("agents-list") ||
-                      actions.includes("agents-list-with-actions")) && (
-                      <AgentPicker
-                        owner={owner}
-                        size={buttonSize}
-                        onItemClick={(c) => {
-                          if (singleAgentInput) {
-                            handleAgentSelect(toRichAgentMentionType(c));
-                          } else {
-                            editorService.insertMention(
-                              toRichAgentMentionType(c)
-                            );
-                          }
-                        }}
-                        agents={allAgents}
-                        showDropdownArrow={false}
-                        showFooterButtons={
-                          actions.includes("agents-list-with-actions") &&
-                          clientType !== "extension"
-                        }
-                        disabled={disableInput}
-                        pickerButton={
-                          singleAgentInput ? (
-                            selectedAgent ? (
-                              <Button
-                                variant="ghost-secondary"
-                                size={buttonSize}
-                                icon={() => (
-                                  <Avatar
-                                    size="xxs"
-                                    visual={selectedAgent.pictureUrl}
-                                  />
-                                )}
-                                label={selectedAgent.label}
-                              />
-                            ) : (
-                              <Button
-                                variant="ghost-secondary"
-                                size={buttonSize}
-                                icon={RobotIcon}
-                                label="Agent"
-                              />
-                            )
-                          ) : undefined
-                        }
-                      />
-                    );
-                    const toolsButton = actions.includes("capabilities") && (
-                      <CapabilitiesPicker
-                        owner={owner}
-                        user={user}
-                        selectedMCPServerViews={selectedMCPServerViews}
-                        onSelect={onMCPServerViewSelect}
-                        selectedSkills={selectedSkills}
-                        onSkillSelect={onSkillSelect}
-                        disabled={disableInput}
-                        buttonSize={buttonSize}
-                      />
-                    );
-                    const attachmentButton = actions.includes("attachment") &&
-                      clientType !== "extension" && (
-                        <>
-                          <input
-                            accept={getSupportedFileExtensions().join(",")}
-                            onChange={async (e) => {
-                              await fileUploaderService.handleFileChange(e);
-                              if (fileInputRef.current) {
-                                fileInputRef.current.value = "";
-                              }
-                              editorService.focusEnd();
-                            }}
-                            ref={fileInputRef}
-                            style={{ display: "none" }}
-                            type="file"
-                            multiple={true}
-                          />
-                          <InputBarAttachmentsPicker
-                            fileUploaderService={fileUploaderService}
-                            owner={owner}
-                            isLoading={false}
-                            onNodeSelect={onNodeSelect}
-                            onNodeUnselect={onNodeUnselect}
-                            attachedNodes={attachedNodes}
-                            disabled={disableInput}
-                            buttonSize={buttonSize}
-                            conversation={conversation}
-                            space={space}
-                            type="dropdown"
-                          />
-                        </>
-                      );
-                    return singleAgentInput ? (
-                      <>
-                        {agentButton}
-                        {toolsButton}
-                        {attachmentButton}
-                      </>
-                    ) : (
-                      <>
-                        {attachmentButton}
-                        {toolsButton}
-                        {agentButton}
-                      </>
-                    );
-                  })()}
+                  <InputBarButtons
+                    actions={actions}
+                    allAgents={allAgents}
+                    attachedNodes={attachedNodes}
+                    buttonSize={buttonSize}
+                    clientType={clientType}
+                    conversation={conversation}
+                    disableInput={disableInput}
+                    editorService={editorService}
+                    fileInputRef={fileInputRef}
+                    fileUploaderService={fileUploaderService}
+                    handleAgentSelect={handleAgentSelect}
+                    onMCPServerViewSelect={onMCPServerViewSelect}
+                    onNodeSelect={onNodeSelect}
+                    onNodeUnselect={onNodeUnselect}
+                    onSkillSelect={onSkillSelect}
+                    owner={owner}
+                    selectedAgent={selectedAgent}
+                    selectedMCPServerViews={selectedMCPServerViews}
+                    selectedSkills={selectedSkills}
+                    singleAgentInput={singleAgentInput}
+                    space={space}
+                    user={user}
+                  />
                 </div>
               )}
               <div className="grow" />
