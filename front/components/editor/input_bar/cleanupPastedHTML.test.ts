@@ -1,6 +1,7 @@
+import { stripHtmlAttributes } from "@app/lib/editor/stripHtmlAttributes";
 import { describe, expect, test } from "vitest";
 
-import { cleanupPastedHTML, stripHtmlAttributes } from "./cleanupPastedHTML";
+import { cleanupPastedHTML } from "./cleanupPastedHTML";
 
 describe("cleanupPastedHTML", () => {
   describe("allowed tags", () => {
