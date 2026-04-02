@@ -269,13 +269,13 @@ message), the Temporal activity sees it and promotes it.
 **Note:** Today, `updateAgentMessageDBAndMemory` updates `AgentMessageModel.status` with a bare
 `UPDATE` — no transaction, no advisory lock. The `finalizeGracefulStopAgentMessage` function
 replaces this for the graceful stop path. For the `"succeeded"` path, a similar
-`finalizeSucceededAgentMessage` function should be added to `conversation.ts` that acquires the lock,
+`finalizeAgentMessage` function should be added to `conversation.ts` that acquires the lock,
 so that all terminal status transitions are serialized. This ensures the safety net works:
 
 ```typescript
 // front/lib/api/assistant/conversation.ts
 
-export async function finalizeSucceededAgentMessage(
+export async function finalizeAgentMessage(
   auth: Authenticator,
   {
     conversation,
@@ -312,7 +312,7 @@ export async function finalizeSucceededAgentMessage(
 
 - **All locked conversation operations live in `conversation.ts`** — both the API side
   (`postUserMessage`) and the Temporal side (`finalizeGracefulStopAgentMessage`,
-  `finalizeSucceededAgentMessage`) use the same advisory lock via `getConversationRankVersionLock`.
+  `finalizeAgentMessage`) use the same advisory lock via `getConversationRankVersionLock`.
 - **One agent message** regardless of how many pending messages were sent. The model sees all
   pending messages as conversation context and generates a single response.
 - **`parentMessageId`** points to the last pending message (highest rank), establishing the
@@ -358,7 +358,7 @@ Agent loop gracefully stops
 | 1 | `front/types/assistant/conversation.ts` | Add `"pending"` to `MessageVisibility`, add `wasPending` to `UserMessageType`, add `UserMessagePromotedEvent` |
 | 2 | `front/lib/models/agent/conversation.ts` | Add `"pending"` to `MessageModel.visibility` validation, add `wasPending` boolean to `MessageModel` |
 | 3 | New migration SQL | Update CHECK constraint on `visibility` column, add `wasPending` column to `messages` table |
-| 4 | `front/lib/api/assistant/conversation.ts` | Constraints + pending path in `postUserMessage`; add `finalizeGracefulStopAgentMessage()` and `finalizeSucceededAgentMessage()` (all locked operations in one file) |
+| 4 | `front/lib/api/assistant/conversation.ts` | Constraints + pending path in `postUserMessage`; add `finalizeGracefulStopAgentMessage()` and `finalizeAgentMessage()` (all locked operations in one file) |
 | 5 | `front/lib/api/assistant/conversation_rendering/helpers.ts` | Add steering instruction to `renderUserMessage()` when `wasPending` is true |
 | 6 | `front/temporal/agent_loop/activities/finalize.ts` | `finalizeGracefullyStoppedAgentLoopActivity` calls `finalizeGracefulStopAgentMessage()`, publishes events, launches new agent loop |
 | 7 | `front/lib/api/assistant/streaming/types.ts` | Add `UserMessagePromotedEvent` to `ConversationEvents` union |
@@ -374,7 +374,7 @@ Dependencies:
 2. **Agent loop ends naturally before graceful stop takes effect** — The advisory lock in
    `postUserMessage` catches this: if status is no longer `"created"`, falls through to normal
    flow. If the race is narrower (pending message created, but loop ends before the signal is
-   processed), `finalizeSucceededAgentMessage` acts as safety net — it acquires the same advisory
+   processed), `finalizeAgentMessage` acts as safety net — it acquires the same advisory
    lock and promotes any orphaned pending messages.
 
 3. **User sends message, then sends another before graceful stop completes** — Both are created
