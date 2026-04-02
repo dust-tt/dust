@@ -22,7 +22,7 @@ const wrapperVariants = cva("s-flex s-flex-col s-@container @xs:s-flex-row", {
 const messageVariants = cva("s-flex s-rounded-2xl s-max-w-full", {
   variants: {
     type: {
-      user: "s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3 s-gap-2 s-w-fit",
+      user: "s-gap-2 s-w-fit",
       agent: "s-w-full s-gap-3 s-py-4 s-flex-col",
     },
   },
@@ -63,20 +63,30 @@ interface ConversationMessageContentProps
 export const ConversationMessageContent = React.forwardRef<
   HTMLDivElement,
   ConversationMessageContentProps
->(({ children, citations, className, ...props }, ref) => {
+>(({ children, citations, className, type, ...props }, ref) => {
   return (
-    <div
-      ref={ref}
-      className={cn("s-flex s-min-w-0 s-flex-col s-gap-1", className)}
-      {...props}
-    >
-      <div className="s-text-base s-text-foreground dark:s-text-foreground-night">
-        {children}
-      </div>
-      {citations && citations.length > 0 && (
-        <CitationGrid>{citations}</CitationGrid>
+    <>
+      {type === "user" && citations && citations.length > 0 && (
+        <CitationGrid reversed>{citations}</CitationGrid>
       )}
-    </div>
+      <div
+        ref={ref}
+        className={cn(
+          "s-flex s-min-w-0 s-flex-col s-gap-1",
+          type === "user" &&
+            "s-rounded-2xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3",
+          className
+        )}
+        {...props}
+      >
+        <div className="s-text-base s-text-foreground dark:s-text-foreground-night">
+          {children}
+        </div>
+        {type === "agent" && citations && citations.length > 0 && (
+          <CitationGrid>{citations}</CitationGrid>
+        )}
+      </div>
+    </>
   );
 });
 

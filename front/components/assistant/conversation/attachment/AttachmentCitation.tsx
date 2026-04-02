@@ -82,7 +82,7 @@ export function AttachmentCitation({
           <Citation
             {...dialogOrDownloadProps}
             isLoading={isLoading}
-            containerClassName={cn("h-full", isImage && "aspect-video")}
+            containerClassName={cn("h-full", isImage && "min-h-24")}
             action={
               !isImage &&
               attachmentCitation.onRemove && (

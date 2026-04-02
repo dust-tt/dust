@@ -123,25 +123,33 @@ const citationGridVariants = cva("s-grid s-gap-2", {
       grid: "s-grid-cols-2 @xxs:s-grid-cols-3 @xs:s-grid-cols-4 @md:s-grid-cols-5 @lg:s-grid-cols-6",
       list: "s-grid-cols-1",
     },
+    reversed: {
+      true: "s-rotate-180 [&>*]:s-rotate-180",
+      false: "",
+    },
   },
   defaultVariants: {
     variant: "grid",
+    reversed: false,
   },
 });
 
 interface CitationGridProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: CitationGridVariantType;
+  reversed?: boolean;
 }
 
 const CitationGrid = React.forwardRef<HTMLDivElement, CitationGridProps>(
-  ({ children, className, variant, ...props }, ref) => {
+  ({ children, className, variant, reversed, ...props }, ref) => {
     return (
       <div
         ref={ref}
         className={cn("s-min-w-60 s-@container", className)}
         {...props}
       >
-        <div className={citationGridVariants({ variant })}>{children}</div>
+        <div className={citationGridVariants({ variant, reversed })}>
+          {children}
+        </div>
       </div>
     );
   }
