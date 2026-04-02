@@ -85,7 +85,6 @@ export const InputBar = React.memo(function InputBar({
 
   const {
     selectedAgent,
-    setSelectedAgent,
     getAndClearPendingInputText,
     fileUploaderService,
   } = useContext(InputBarContext);
@@ -203,7 +202,7 @@ export const InputBar = React.memo(function InputBar({
       singleAgentInput &&
       selectedAgent &&
       !rawMentions.some((m) => m.id === selectedAgent.id);
-      
+
     const allMentions = shouldInjectSelectedAgent
       ? [selectedAgent, ...rawMentions]
       : rawMentions;

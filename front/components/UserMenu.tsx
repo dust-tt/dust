@@ -68,8 +68,8 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
       type: "success",
     });
   }, [sendNotification]);
-  const [singleAgentInput, setSingleAgentInput] = useState(
-    isSingleAgentInputEnabled
+  const [singleAgentInput, setSingleAgentInput] = useState(() =>
+    isSingleAgentInputEnabled()
   );
   const handleToggleSingleAgentInput = () => {
     const next = toggleSingleAgentInput();
