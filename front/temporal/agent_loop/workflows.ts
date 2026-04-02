@@ -107,6 +107,7 @@ const { ensureConversationTitleActivity } = proxyActivities<
 
 const {
   finalizeSuccessfulAgentLoopActivity,
+  finalizeGracefullyStoppedAgentLoopActivity,
   finalizeCancelledAgentLoopActivity,
   finalizeErroredAgentLoopActivity,
 } = proxyActivities<typeof finalizeActivities>({
@@ -240,7 +241,17 @@ export async function agentLoopWorkflow({
       );
 
       await CancellationScope.nonCancellable(async () => {
-        await finalizeSuccessfulAgentLoopActivity(authType, agentLoopArgs);
+        if (gracefulStopRequested) {
+          await finalizeGracefullyStoppedAgentLoopActivity(
+            authType,
+            agentLoopArgs
+          );
+        } else {
+          await finalizeSuccessfulAgentLoopActivity(
+            authType,
+            agentLoopArgs
+          );
+        }
       });
 
       if (childWorkflowHandle) {
