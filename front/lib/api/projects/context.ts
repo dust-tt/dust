@@ -11,6 +11,7 @@ import { ContentFragmentResource } from "@app/lib/resources/content_fragment_res
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import logger from "@app/logger/logger";
 import { isSupportedDelimitedTextContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -72,14 +73,36 @@ export async function listProjectContentFragments(
   return ContentFragmentResource.listBySpace(auth, space);
 }
 
-export async function upsertProjectContextFile(
+/**
+ * Indexes a project context file in the project data source (when possible) and
+ * ensures a latest `content_fragments` row for the file. Core upsert failures
+ * are logged and do not block the content fragment sync (file may still be used raw).
+ *
+ * On success, returns the latest project `ContentFragmentResource` for that file.
+ */
+export async function addFileToProject(
   auth: Authenticator,
   file: FileResource
-): Promise<Result<FileResource, DustError>> {
-  const projectContextDatasource = await getProjectDataSourceFromFile(
-    auth,
-    file
-  );
+): Promise<Result<ContentFragmentResource, DustError>> {
+  const metadataResult = validateFileMetadataForProjectContext(file);
+  if (metadataResult.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: metadataResult.error.message,
+    });
+  }
+
+  const space = await SpaceResource.fetchById(auth, metadataResult.value);
+  if (!space) {
+    return new Err({
+      name: "dust_error",
+      code: "space_not_found",
+      message: `Failed to fetch space.`,
+    });
+  }
+
+  const projectContextDatasource = await fetchProjectDataSource(auth, space);
   if (projectContextDatasource.isErr()) {
     return new Err(projectContextDatasource.error);
   }
@@ -118,5 +141,30 @@ export async function upsertProjectContextFile(
     { file, upsertArgs }
   );
 
-  return rUpsert;
+  if (rUpsert.isErr()) {
+    logger.warn(
+      {
+        workspaceId: auth.workspace()?.sId,
+        fileId: file.sId,
+        error: rUpsert.error,
+      },
+      "Project context Core upsert failed; file may still be used raw. Syncing content fragment."
+    );
+  }
+
+  const fragmentRes =
+    await ContentFragmentResource.upsertLatestProjectFileFragment(
+      auth,
+      space,
+      file
+    );
+  if (fragmentRes.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_error",
+      message: fragmentRes.error.message,
+    });
+  }
+
+  return new Ok(fragmentRes.value);
 }
