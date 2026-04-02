@@ -15,7 +15,7 @@ import {
 import type { BatchStatus } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { notifyAgentSuggestionsReady } from "@app/lib/notifications/workflows/agent-suggestions-ready";
 import {
   buildAggregationBatchMap,
@@ -49,11 +49,14 @@ import {
   storeTerminalToolCallResults,
 } from "@app/lib/reinforced_agent/tool_execution";
 import type { ReinforcedOperationType } from "@app/lib/reinforced_agent/types";
+import {
+  getAuthForWorkspace,
+  listRecentConversationsForAgent,
+} from "@app/lib/reinforced_agent/utils";
 import { hasReinforcementEnabled } from "@app/lib/reinforced_agent/workspace_check";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { updateActiveTrace } from "@langfuse/tracing";
@@ -62,18 +65,6 @@ import { ApplicationFailure } from "@temporalio/common";
 // Re-export runToolActivity so the reinforced agent worker registers it,
 // allowing the workflow to call it via proxyActivities.
 export { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
-
-async function getAuthForWorkspace(
-  workspaceId: string
-): Promise<Authenticator> {
-  const workspace = await WorkspaceResource.fetchById(workspaceId);
-  if (!workspace) {
-    throw ApplicationFailure.nonRetryable(
-      `Workspace not found: ${workspaceId}`
-    );
-  }
-  return Authenticator.internalAdminForWorkspace(workspaceId);
-}
 
 /**
  * Common logic for a single reinforced step (analysis or aggregation).
@@ -302,20 +293,13 @@ export async function getRecentConversationsForAgentActivity({
     metadata: { agentConfigurationId },
   });
 
-  const auth = await getAuthForWorkspace(workspaceId);
-
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - conversationLookbackDays);
 
-  const convSIdsByAgent = await ConversationResource.getConversationSIdsByAgent(
-    auth,
-    {
-      agentSIds: [agentConfigurationId],
-      cutoffDate,
-      excludeHumanOutOfTheLoop: true,
-    }
-  );
-  const conversationSIds = convSIdsByAgent.get(agentConfigurationId) ?? [];
+  const conversationSIds = await listRecentConversationsForAgent(workspaceId, {
+    agentConfigurationId,
+    cutoffDate,
+  });
   // TODO(https://github.com/dust-tt/tasks/issues/7313): This is a placeholder for the actual sampling logic
   return conversationSIds.slice(0, maxConversations);
 }

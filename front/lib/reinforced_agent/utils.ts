@@ -1,5 +1,9 @@
+import { Authenticator } from "@app/lib/auth";
 import type { ExploratoryToolCallInfo } from "@app/lib/reinforced_agent/types";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
+import { ApplicationFailure } from "@temporalio/common";
 
 /**
  * Build continuation messages from exploratory tool calls and their results.
@@ -40,4 +44,50 @@ export function buildContinuationMessages(
   }
 
   return messages;
+}
+
+export async function getAuthForWorkspace(
+  workspaceId: string
+): Promise<Authenticator> {
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    throw ApplicationFailure.nonRetryable(
+      `Workspace not found: ${workspaceId}`
+    );
+  }
+  // The auth need access to all groups to access conversations in projects
+  return Authenticator.internalAdminForWorkspace(workspaceId, {
+    dangerouslyRequestAllGroups: true,
+  });
+}
+
+/**
+ * List recent conversation sIds that involved a specific agent.
+ *
+ * Uses `getAuthForWorkspace` internally so that conversations in personal
+ * projects are included (the auth has access to all groups).
+ */
+export async function listRecentConversationsForAgent(
+  workspaceId: string,
+  {
+    agentConfigurationId,
+    cutoffDate,
+    excludeHumanOutOfTheLoop = true,
+  }: {
+    agentConfigurationId: string;
+    cutoffDate: Date;
+    excludeHumanOutOfTheLoop?: boolean;
+  }
+): Promise<string[]> {
+  const auth = await getAuthForWorkspace(workspaceId);
+
+  const convSIdsByAgent = await ConversationResource.getConversationSIdsByAgent(
+    auth,
+    {
+      agentSIds: [agentConfigurationId],
+      cutoffDate,
+      excludeHumanOutOfTheLoop,
+    }
+  );
+  return convSIdsByAgent.get(agentConfigurationId) ?? [];
 }
