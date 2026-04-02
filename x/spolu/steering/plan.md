@@ -26,20 +26,16 @@ Move all agent message terminal status updates behind the conversation advisory 
 
 Implement the graceful stop mechanism end-to-end.
 
-### - [ ] PR 2.1 — Add `"gracefully_stopped"` to `AgentMessageStatus` + event types
+### - [x] PR 2.1 — Add `"gracefully_stopped"` to `AgentMessageStatus` + event types
 
-- Add `"gracefully_stopped"` to `AgentMessageStatus` union in
-  `front/types/assistant/conversation.ts`.
-- Add to `AGENT_MESSAGE_STATUSES_TO_TRACK` if needed for analytics.
-- Handle `"gracefully_stopped"` in all exhaustive switches (`assertNever` / `assertNeverAndIgnore`)
-  — treat it like `"succeeded"` for now.
-- Add `AgentMessageGracefullyStoppedEvent` type in `front/types/assistant/conversation.ts`.
+- Add `"gracefully_stopped"` to `AgentMessageStatus` union and `AGENT_MESSAGE_STATUSES_TO_TRACK`.
+- Add `AgentMessageGracefullyStoppedEvent` type (with `message` + `runIds` fields, matching
+  `AgentMessageSuccessEvent` shape).
 - Add `"agent_message_gracefully_stopped"` to `TERMINAL_AGENT_MESSAGE_EVENT_TYPES` and
-  `AgentMessageEvents` union in `front/lib/api/assistant/streaming/types.ts`.
-- Handle in frontend event processing (`AgentMessage.tsx`) — treat like `succeeded` for now.
-- Add `GracefulStopReason`, `GracefulStopRequestedEvent` types in
-  `front/types/assistant/conversation.ts`.
-- Add to `ConversationEvents` union in `front/lib/api/assistant/streaming/types.ts`.
+  `AgentMessageEvents` union.
+- Handle `"gracefully_stopped"` in all exhaustive switches — treat like `"succeeded"`.
+- Map to `"succeeded"` in public API backward compatibility layer.
+- Frontend: use message status from event (no hardcoded override).
 
 ### - [ ] PR 2.2 — Add `gracefullyStopAgentLoopSignal` + workflow handler
 
@@ -60,12 +56,10 @@ Implement the graceful stop mechanism end-to-end.
   `finalizeSuccessfulAgentLoopActivity`).
 - Route `gracefulStopRequested` in the workflow to the new finalization path.
 
-### - [ ] PR 2.4 — Add `gracefullyStopAgentLoop` helper + publish `GracefulStopRequestedEvent`
+### - [ ] PR 2.4 — Add `gracefullyStopAgentLoop` helper
 
 - Add `gracefullyStopAgentLoop()` in `front/lib/api/assistant/pubsub.ts`.
-- Publishes `GracefulStopRequestedEvent` on the conversation SSE channel before sending the
-  Temporal signal.
-- Takes `reason: GracefulStopReason` parameter.
+- Sends the `gracefullyStopAgentLoopSignal` Temporal signal.
 
 ### - [ ] PR 2.5 — Rename `/cancel` endpoint to `/stop` with `reason`
 
@@ -85,6 +79,13 @@ Implement the graceful stop mechanism end-to-end.
   - Don't close interaction at agent→user boundary when the agent turn ended with
     `status === "gracefully_stopped"`.
 - Add/update tests in `interactions.test.ts`.
+
+### - [ ] PR 2.7 — Add `GracefulStopRequestedEvent` (when needed for UI)
+
+- Add `GracefulStopReason`, `GracefulStopRequestedEvent` types.
+- Add to conversation or message events (TBD based on UI needs).
+- Publish from `gracefullyStopAgentLoop()` before sending the Temporal signal.
+- Handle in frontend to show "stopping..." state.
 
 ---
 
