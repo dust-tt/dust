@@ -204,10 +204,11 @@ export const InputBar = React.memo(function InputBar({
     const singleAgentInput = isSingleAgentInputEnabled();
     // When single-agent input is enabled, inject the selected agent into mentions
     // since it's no longer in the editor as a mention node.
+    const hasUserMention = rawMentions.some((m) => m.type === "user");
     const shouldInjectSelectedAgent =
       singleAgentInput &&
       selectedSingleAgent &&
-      rawMentions.length > 0 &&
+      !hasUserMention &&
       !rawMentions.some((m) => m.id === selectedSingleAgent.id);
 
     const allMentions = shouldInjectSelectedAgent

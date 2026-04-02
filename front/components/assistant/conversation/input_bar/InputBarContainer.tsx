@@ -194,7 +194,7 @@ const InputBarContainer = ({
 
   // Auto-select the "dust" agent by default in single-agent mode for new conversations.
   // Skip when a human is mentioned or when sticky mentions are provided (e.g. agent builder).
-  if (singleAgentInput && !conversation && !selectedSingleAgent && !hasUserMention && !stickyMentions?.length && allAgents.length > 0) {
+  if (singleAgentInput && !conversation && !selectedSingleAgent && !hasUserMention && !stickyMentions?.length) {
     const dustAgent = allAgents.find(
       (a) => a.sId === GLOBAL_AGENTS_SID.DUST
     );
