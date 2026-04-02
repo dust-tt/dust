@@ -1,8 +1,8 @@
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { handleDataSourceSearch } from "@app/lib/api/data_sources";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -150,65 +150,9 @@ async function handler(
   req: NextApiRequest,
 
   res: NextApiResponse<WithAPIErrorResponse<DataSourceSearchResponseType>>,
-  auth: Authenticator
+  auth: Authenticator,
+  { dataSource }: { dataSource: DataSourceResource }
 ): Promise<void> {
-  const { dsId } = req.query;
-  if (typeof dsId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
-
-  const dataSource = await DataSourceResource.fetchByNameOrId(
-    auth,
-    dsId,
-    // TODO(DATASOURCE_SID): Clean-up
-    { origin: "v1_data_sources_search" }
-  );
-
-  // Handling the case where `spaceId` is undefined to keep support for the legacy endpoint (not under
-  // space, global space assumed for the auth (the authenticator associated with the app, not the
-  // user)).
-  let { spaceId } = req.query;
-  if (typeof spaceId !== "string") {
-    if (auth.isSystemKey()) {
-      // We also handle the legacy usage of connectors that taps into connected data sources which
-      // are not in the global space. If this is a system key we trust it and set the `spaceId` to the
-      // dataSource.space.sId.
-      spaceId = dataSource?.space.sId;
-    } else {
-      spaceId = (await SpaceResource.fetchWorkspaceGlobalSpace(auth)).sId;
-    }
-  }
-
-  if (
-    !dataSource ||
-    dataSource.space.sId !== spaceId ||
-    !dataSource.canRead(auth)
-  ) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  if (dataSource.space.kind === "conversations") {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET": {
       // I could not find a way to make the query params be an array if there is only one tag.
@@ -261,4 +205,8 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler);
+export default withPublicAPIAuthentication(
+  withResourceFetchingFromRoute(handler, {
+    dataSource: { requireCanRead: true },
+  })
+);

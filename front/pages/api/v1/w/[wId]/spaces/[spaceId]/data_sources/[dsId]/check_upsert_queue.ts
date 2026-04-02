@@ -1,6 +1,7 @@
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { checkRunningUpsertWorkflows } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -65,19 +66,9 @@ async function handler(
   req: NextApiRequest,
 
   res: NextApiResponse<WithAPIErrorResponse<CheckUpsertQueueResponseType>>,
-  auth: Authenticator
+  auth: Authenticator,
+  { dataSource }: { dataSource: DataSourceResource }
 ): Promise<void> {
-  const { dsId } = req.query;
-  if (typeof dsId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
-
   // Only allow system keys (connectors) to access this endpoint
   if (!auth.isSystemKey()) {
     return apiError(req, res, {
@@ -85,20 +76,6 @@ async function handler(
       api_error: {
         type: "data_source_auth_error",
         message: "Only system keys can check the upsert queue.",
-      },
-    });
-  }
-
-  const dataSource = await DataSourceResource.fetchByNameOrId(auth, dsId, {
-    origin: "v1_data_sources_check_upsert_queue",
-  });
-
-  if (!dataSource || !dataSource.canRead(auth)) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
       },
     });
   }
@@ -156,4 +133,6 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler);
+export default withPublicAPIAuthentication(
+  withResourceFetchingFromRoute(handler, { dataSource: {} })
+);

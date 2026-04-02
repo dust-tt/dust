@@ -6,7 +6,6 @@ import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { isManaged, isWebsite } from "@app/lib/data_sources";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { PostDataSourceDocumentRequestBodySchema } from "@app/types/api/public/data_sources";
@@ -36,10 +35,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PatchDocumentResponseBody>>,
   auth: Authenticator,
-  {
-    space,
-    dataSource,
-  }: { space: SpaceResource; dataSource: DataSourceResource }
+  { dataSource }: { dataSource: DataSourceResource }
 ): Promise<void> {
   const { documentId } = req.query;
   if (typeof documentId !== "string") {
@@ -218,7 +214,6 @@ async function handler(
 
 export default withSessionAuthenticationForWorkspace(
   withResourceFetchingFromRoute(handler, {
-    space: { requireCanRead: true },
     dataSource: { requireCanRead: true },
   })
 );

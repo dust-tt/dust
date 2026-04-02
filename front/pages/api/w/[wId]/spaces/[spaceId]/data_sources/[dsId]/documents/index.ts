@@ -4,7 +4,6 @@ import { upsertDocument } from "@app/lib/api/data_sources";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import { PostDataSourceDocumentRequestBodySchema } from "@app/types/api/public/data_sources";
 import type { CoreAPILightDocument } from "@app/types/core/data_source";
@@ -32,10 +31,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PostDocumentResponseBody>>,
   auth: Authenticator,
-  {
-    space,
-    dataSource,
-  }: { space: SpaceResource; dataSource: DataSourceResource }
+  { dataSource }: { dataSource: DataSourceResource }
 ): Promise<void> {
   switch (req.method) {
     case "POST":
@@ -161,7 +157,6 @@ async function handler(
 
 export default withSessionAuthenticationForWorkspace(
   withResourceFetchingFromRoute(handler, {
-    space: { requireCanRead: true },
     dataSource: { requireCanRead: true },
   })
 );

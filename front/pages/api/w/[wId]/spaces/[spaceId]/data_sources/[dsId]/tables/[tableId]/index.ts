@@ -5,7 +5,6 @@ import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import { deleteTable } from "@app/lib/api/tables";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import { PatchDataSourceTableRequestBodySchema } from "@app/types/api/public/data_sources";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -22,10 +21,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PatchTableResponseBody>>,
   auth: Authenticator,
-  {
-    space,
-    dataSource,
-  }: { space: SpaceResource; dataSource: DataSourceResource }
+  { dataSource }: { dataSource: DataSourceResource }
 ): Promise<void> {
   const { tableId } = req.query;
 
@@ -158,7 +154,6 @@ async function handler(
 
 export default withSessionAuthenticationForWorkspace(
   withResourceFetchingFromRoute(handler, {
-    space: { requireCanRead: true },
     dataSource: { requireCanRead: true },
   })
 );

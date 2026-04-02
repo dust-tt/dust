@@ -11,7 +11,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { DataSourceType } from "@app/types/data_source";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -34,11 +33,10 @@ async function handler(
     WithAPIErrorResponse<PatchSpaceDataSourceResponseBody | void>
   >,
   auth: Authenticator,
-  {
-    space,
-    dataSource,
-  }: { space: SpaceResource; dataSource: DataSourceResource }
+  { dataSource }: { dataSource: DataSourceResource }
 ): Promise<void> {
+  const space = dataSource.space;
+
   if (space.isSystem() && !space.canAdministrate(auth)) {
     return apiError(req, res, {
       status_code: 400,
@@ -185,7 +183,6 @@ async function handler(
 
 export default withSessionAuthenticationForWorkspace(
   withResourceFetchingFromRoute(handler, {
-    space: { requireCanReadOrAdministrate: true },
-    dataSource: {},
+    dataSource: { requireCanReadOrAdministrate: true },
   })
 );

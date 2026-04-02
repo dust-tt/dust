@@ -5,7 +5,6 @@ import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { isWebsite } from "@app/lib/data_sources";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { ConnectorConfiguration } from "@app/types/connectors/configuration";
@@ -33,10 +32,7 @@ async function handler(
     >
   >,
   auth: Authenticator,
-  {
-    space,
-    dataSource,
-  }: { space: SpaceResource; dataSource: DataSourceResource }
+  { dataSource }: { dataSource: DataSourceResource }
 ): Promise<void> {
   // Only Slack & Webcrawler connectors have configurations. SlackConfiguration can only be updated
   // from a Poke route. So these routes are currently only for Webcrawler connectors.
@@ -147,7 +143,6 @@ async function handler(
 
 export default withSessionAuthenticationForWorkspace(
   withResourceFetchingFromRoute(handler, {
-    space: { requireCanRead: true },
     dataSource: { requireCanRead: true },
   })
 );
