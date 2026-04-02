@@ -77,6 +77,7 @@ const useHandleMentions = (
         !editorService.hasMention(selectedAgent)
       ) {
         editorService.insertMention(selectedAgent);
+        setSelectedAgent(null);
       }
       if (pendingInputText) {
         editorService.insertText(pendingInputText);
