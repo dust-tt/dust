@@ -5,6 +5,7 @@ import {
 } from "@app/components/home/ContentComponents";
 
 // import { BlogSection } from "@app/components/home/content/Product/BlogSection";
+import { TestimonialsGridSection } from "@app/components/home/content/Competitive/TestimonialsGridSection";
 import { IntroSection } from "@app/components/home/content/Product/IntroSection";
 import { JustUseDustSection as ProductJustUseDustSection } from "@app/components/home/content/Product/JustUseDustSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -36,6 +37,28 @@ export function Landing() {
       <div className="mt-16 flex flex-col gap-16 md:gap-20 lg:gap-24">
         <CloudConnectorsSection />
         <SecurityComplianceSection />
+        <TestimonialsGridSection
+          testimonials={[
+            {
+              quote: "Dust has transformed how our team works with AI agents",
+              name: "Sarah Johnson",
+              title: "VP of Engineering at TechCorp",
+              logo: "/static/landing/logos/gray/clay.svg",
+            },
+            {
+              quote: "The best platform for deploying AI agents at scale",
+              name: "Michael Chen",
+              title: "CTO at DataFlow",
+              logo: "/static/landing/logos/gray/persona.svg",
+            },
+            {
+              quote: "Our productivity increased 40% after adopting Dust",
+              name: "Emily Rodriguez",
+              title: "Head of Operations at CloudBase",
+              logo: "/static/landing/logos/gray/watershed.svg",
+            },
+          ]}
+        />
         <QuoteSection
           quote="Dust is the most impactful software we've adopted since building Clay. It delivers immediate value while continuously getting smarter and more valuable over time"
           name="Everett Berry"
