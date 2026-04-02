@@ -404,7 +404,6 @@ const InputBarContainer = ({
     owner,
     fileUploaderService,
     onTranscribeComplete: (transcript) => {
-      let lastAgentMention: RichAgentMention | null = null;
       for (const message of transcript) {
         switch (message.type) {
           case "text":
@@ -414,7 +413,7 @@ const InputBarContainer = ({
             if (singleAgentInput) {
               const agent = allAgents.find((a) => a.sId === message.id);
               if (agent) {
-                lastAgentMention = toRichAgentMentionType(agent);
+                handleAgentSelect(toRichAgentMentionType(agent));
               }
             } else {
               editorService.insertMention({
@@ -428,9 +427,6 @@ const InputBarContainer = ({
           default:
             assertNever(message);
         }
-      }
-      if (singleAgentInput && lastAgentMention) {
-        handleAgentSelect(lastAgentMention);
       }
     },
     onError: (error) => {
