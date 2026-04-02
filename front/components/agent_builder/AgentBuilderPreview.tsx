@@ -109,7 +109,9 @@ function PreviewContent({
                 draftAgent: draftAgent ?? undefined,
                 isSubmitting: isSavingDraftAgent,
                 resetConversation,
-                actionsToShow: ["attachment"],
+                actionsToShow: isSingleAgentInputEnabled()
+                  ? ["attachment", "agents-list"]
+                  : ["attachment"],
               }}
               key={conversation.sId}
             />
