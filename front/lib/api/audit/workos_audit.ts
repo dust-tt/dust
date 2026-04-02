@@ -244,6 +244,7 @@ type AuditTargetType =
   | "workspace"
   | "user"
   | "agent"
+  | "conversation"
   | "space"
   | "data_source"
   | "tool"

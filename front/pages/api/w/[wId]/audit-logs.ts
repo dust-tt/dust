@@ -1,6 +1,6 @@
 /** @ignoreswagger */
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
   isAuditLogsEnabled,
@@ -14,14 +14,15 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type AuditLogsSetupResponse = {
-  viewLogsLink: string;
-  configureExportLink: string;
+export type AuditLogsPortal = "view_logs" | "configure_export";
+
+export type AuditLogsPortalResponse = {
+  portalUrl: string;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<AuditLogsSetupResponse>>,
+  res: NextApiResponse<WithAPIErrorResponse<AuditLogsPortalResponse>>,
   auth: Authenticator
 ) {
   if (!auth.isAdmin()) {
@@ -56,57 +57,50 @@ async function handler(
   }
 
   switch (req.method) {
-    case "GET": {
-      const returnUrl = `${config.getAppUrl()}/w/${owner.sId}/members`;
-
-      const [viewLogsResult, configureExportResult] = await Promise.all([
-        generateWorkOSAdminPortalUrl({
-          organization: owner.workOSOrganizationId,
-          workOSIntent: WorkOSPortalIntent.AuditLogs,
-          returnUrl,
-        }),
-        generateWorkOSAdminPortalUrl({
-          organization: owner.workOSOrganizationId,
-          workOSIntent: WorkOSPortalIntent.LogStreams,
-          returnUrl,
-        }),
-      ]);
-
-      return res.status(200).json({
-        viewLogsLink: viewLogsResult.link,
-        configureExportLink: configureExportResult.link,
-      });
-    }
-
-    // Emit audit events on button click. WorkOS portal links are org-scoped
-    // (not user-scoped), so this is the only place we can attribute portal
-    // access to a specific admin.
+    // Generates a WorkOS portal URL on click and emits an audit event.
+    // WorkOS portal links are org-scoped (not user-scoped), so this is the
+    // only place we can attribute portal access to a specific admin.
     case "POST": {
-      const { action } = req.body;
-      const allowedActions = [
-        "audit_log.viewed",
-        "audit_log.export_configured",
-      ] as const;
+      const { portal } = req.body;
 
-      if (!allowedActions.includes(action)) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid action. Must be one of: ${allowedActions.join(", ")}`,
-          },
-        });
+      let workOSIntent: WorkOSPortalIntent;
+      let action: "audit_log.viewed" | "audit_log.export_configured";
+
+      switch (portal) {
+        case "view_logs":
+          workOSIntent = WorkOSPortalIntent.AuditLogs;
+          action = "audit_log.viewed";
+          break;
+        case "configure_export":
+          workOSIntent = WorkOSPortalIntent.LogStreams;
+          action = "audit_log.export_configured";
+          break;
+        default:
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Invalid portal. Must be 'view_logs' or 'configure_export'.",
+            },
+          });
       }
+
+      const returnUrl = `${config.getAppUrl()}/w/${owner.sId}/members`;
+      const result = await generateWorkOSAdminPortalUrl({
+        organization: owner.workOSOrganizationId,
+        workOSIntent,
+        returnUrl,
+      });
 
       void emitAuditLogEvent({
         auth,
         action,
-        targets: [buildWorkspaceTarget(owner)],
+        targets: [buildAuditLogTarget("workspace", owner)],
         context: getAuditLogContext(auth, req),
       });
 
-      res.status(200).end();
-      return;
+      return res.status(200).json({ portalUrl: result.link });
     }
 
     default:

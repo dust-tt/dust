@@ -120,7 +120,7 @@ import { deleteOrLeaveConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
@@ -206,12 +206,11 @@ async function handler(
         auth,
         action: "conversation.accessed",
         targets: [
-          buildWorkspaceTarget(auth.getNonNullableWorkspace()),
-          {
-            type: "conversation",
-            id: conversation.sId,
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("conversation", {
+            sId: conversation.sId,
             name: conversation.title ?? "",
-          },
+          }),
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
