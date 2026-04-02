@@ -189,6 +189,8 @@ export interface CustomEditorProps {
   }) => void;
   longTextPasteCharsThreshold?: number;
   onInlineText?: (fileId: string, textContent: string) => void;
+  // Ref that dynamically controls whether agent suggestions are shown for single agent mode.
+  shouldSuggestAgentRef?: React.RefObject<boolean>;
 }
 
 export const buildEditorExtensions = ({
@@ -200,6 +202,7 @@ export const buildEditorExtensions = ({
   onUrlDetected,
   onAgentSelect,
   singleAgentInputEnabled,
+  shouldSuggestAgentRef,
 }: {
   owner: WorkspaceType;
   conversationId?: string | null;
@@ -209,6 +212,7 @@ export const buildEditorExtensions = ({
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
   onAgentSelect?: (mention: RichMention) => void;
   singleAgentInputEnabled?: boolean;
+  shouldSuggestAgentRef?: React.RefObject<boolean>;
 }) => {
   const extensions = [
     KeyboardShortcutsExtension,
@@ -282,6 +286,7 @@ export const buildEditorExtensions = ({
           agents: true,
           users: !disableUserMentions,
         },
+        shouldSuggestAgentRef,
         onAgentSelect,
         singleAgentInputEnabled,
       }),
@@ -326,6 +331,7 @@ const useCustomEditor = ({
   onLongTextPaste,
   longTextPasteCharsThreshold,
   onInlineText,
+  shouldSuggestAgentRef,
 }: CustomEditorProps) => {
   const editor = useEditor(
     {
@@ -339,6 +345,7 @@ const useCustomEditor = ({
         onUrlDetected,
         onAgentSelect,
         singleAgentInputEnabled,
+        shouldSuggestAgentRef,
       }),
       shouldRerenderOnTransaction: true, // necessary to update the editor state (and so the toolbar icons "activation") in real time
       editorProps: {
