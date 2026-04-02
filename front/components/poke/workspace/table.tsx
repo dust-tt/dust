@@ -9,6 +9,7 @@ import type { DataRetentionConfig } from "@app/lib/data_retention";
 import { usePokeWorkOSDSyncStatus } from "@app/lib/swr/poke";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type { ExtensionConfigurationType } from "@app/types/extension";
+import { isDevelopment } from "@app/types/shared/env";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
@@ -16,6 +17,7 @@ import { Chip, LinkWrapper } from "@dust-tt/sparkle";
 
 export function WorkspaceInfoTable({
   owner,
+  metronomeCustomerId,
   workspaceVerifiedDomains,
   workspaceCreationDay,
   extensionConfig,
@@ -23,6 +25,7 @@ export function WorkspaceInfoTable({
   workosEnvironmentId,
 }: {
   owner: WorkspaceType;
+  metronomeCustomerId: string | null;
   workspaceVerifiedDomains: WorkspaceDomain[];
   workspaceCreationDay: string;
   extensionConfig: ExtensionConfigurationType | null;
@@ -104,6 +107,22 @@ export function WorkspaceInfoTable({
                   >
                     {owner.workOSOrganizationId}
                   </LinkWrapper>
+                )}
+              </PokeTableCell>
+            </PokeTableRow>
+            <PokeTableRow>
+              <PokeTableCell>Metronome</PokeTableCell>
+              <PokeTableCell>
+                {metronomeCustomerId ? (
+                  <LinkWrapper
+                    href={`https://app.metronome.com/${isDevelopment() ? "sandbox/" : ""}customers/${metronomeCustomerId}`}
+                    target="_blank"
+                    className="text-xs text-highlight-400"
+                  >
+                    {metronomeCustomerId}
+                  </LinkWrapper>
+                ) : (
+                  "Not provisioned"
                 )}
               </PokeTableCell>
             </PokeTableRow>
