@@ -194,6 +194,55 @@ subscribers of the conversation SSE stream.
 | 7 | `front/types/assistant/conversation.ts` | Add `GracefulStopRequestedEvent`, `AgentMessageGracefullyStoppedEvent` types |
 | 8 | `front/lib/api/assistant/streaming/types.ts` | Add `"agent_message_gracefully_stopped"` to `TERMINAL_AGENT_MESSAGE_EVENT_TYPES` and both events to `ConversationEvents`/`AgentMessageEvents` unions |
 
+| 9 | `front/lib/api/assistant/conversation/interactions.ts` | Update `groupMessagesIntoInteractions` to treat gracefully stopped chains as a single interaction |
+| 10 | `front/lib/api/assistant/conversation_rendering/index.ts` | No logic change — benefits from updated interaction grouping |
+
 No changes to:
 - Frontend — the graceful stop will be controllable by the user, but design/UI is out of scope
   of this document.
+
+## Context Pruning: Preserving Full Agentic Loop Context
+
+### Problem
+
+`groupMessagesIntoInteractions()` (`front/lib/api/assistant/conversation/interactions.ts`)
+splits messages into interactions at each agent→user boundary. The pruning logic
+(`prunePreviousInteractions()`) then aggressively prunes tool results from older interactions,
+preserving only the most recent ones in full.
+
+With graceful stop + steering, a single logical agentic loop can span multiple interactions:
+
+```
+Interaction 1:  user → assistant (gracefully_stopped) → function results
+Interaction 2:  user (steering) → assistant (gracefully_stopped) → function results
+Interaction 3:  user (steering) → assistant (running/succeeded) → function results
+```
+
+The current pruning would treat interactions 1 and 2 as "previous" and strip their tool results.
+But these are all part of the same logical agentic loop — the model needs the full context of
+what it did in earlier segments to continue coherently.
+
+### Solution
+
+Modify `groupMessagesIntoInteractions()` to keep a chain of `gracefully_stopped` agent messages
+and their subsequent steering user messages within the **same interaction**. The interaction
+boundary should only be drawn when the agent message has a terminal status that is not
+`"gracefully_stopped"` (i.e. `"succeeded"`, `"failed"`, or `"cancelled"`).
+
+When `groupMessagesIntoInteractions` encounters an agent turn ending with
+`status === "gracefully_stopped"`, it does **not** close the interaction at the next user
+message — it continues accumulating messages into the same interaction.
+
+### Result
+
+A gracefully stopped chain is treated as a single interaction for pruning purposes:
+
+```
+Single Interaction:
+  user → assistant (gracefully_stopped) → function results →
+  user (steering) → assistant (gracefully_stopped) → function results →
+  user (steering) → assistant (running) → function results
+```
+
+The pruning logic sees this as the "current interaction" and applies progressive pruning
+(oldest tool results first) rather than wholesale stripping.
