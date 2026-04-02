@@ -817,7 +817,7 @@ export class FileResource extends BaseResource<FileModel> {
     return this.getBucketForVersion(version)
       .file(this.getCloudStoragePath(auth, version))
       .createWriteStream({
-        resumable: false,
+        resumable: true,
         contentType: overrideContentType ?? this.contentType,
       });
   }
