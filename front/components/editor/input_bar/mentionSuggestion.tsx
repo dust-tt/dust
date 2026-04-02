@@ -11,6 +11,7 @@ import type {
   SuggestionKeyDownProps,
   SuggestionProps,
 } from "@tiptap/suggestion";
+import type React from "react";
 import type { RefAttributes } from "react";
 
 export const mentionPluginKey = new PluginKey("mention-suggestion");
@@ -20,6 +21,7 @@ export function createMentionSuggestion({
   conversationId,
   spaceId,
   select,
+  shouldSuggestAgentRef,
   includeCurrentUser = false,
   onAgentSelect,
   singleAgentInputEnabled,
@@ -32,6 +34,8 @@ export function createMentionSuggestion({
     agents: boolean;
     users: boolean;
   };
+  // Optional ref that gates select.agents at render time (used to hide agents dynamically in single-agent mode).
+  shouldSuggestAgentRef?: React.RefObject<boolean>;
   onAgentSelect?: (mention: RichMention) => void;
   singleAgentInputEnabled?: boolean;
 }) {
@@ -90,7 +94,11 @@ export function createMentionSuggestion({
               spaceId,
               includeCurrentUser,
               onClose: closeDropdown,
-              select,
+              select: {
+                agents:
+                  select.agents && (shouldSuggestAgentRef?.current ?? true),
+                users: select.users,
+              },
             },
           });
 
@@ -104,6 +112,10 @@ export function createMentionSuggestion({
             owner,
             conversationId,
             spaceId,
+            select: {
+              agents: select.agents && (shouldSuggestAgentRef?.current ?? true),
+              users: select.users,
+            },
           });
         },
 
