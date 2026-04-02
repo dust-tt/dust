@@ -169,7 +169,7 @@ export async function getExitOrPauseEvents(
           },
         ];
       }
-      case "tool_ask_user_question_required": {
+      case "tool_user_answer_required": {
         const { questions, metadata } = exitOutputItem;
 
         // Persist question data in stepContext BEFORE updating status to avoid a race
