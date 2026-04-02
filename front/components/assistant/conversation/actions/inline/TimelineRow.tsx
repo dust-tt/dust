@@ -1,5 +1,10 @@
 import { Icon, Spinner } from "@dust-tt/sparkle";
 
+const LINE_ANIMATION_STYLE: React.CSSProperties = {
+  transformOrigin: "top",
+  animation: "grow-down 0.3s ease-out forwards, fade-in 0.3s ease-out forwards",
+};
+
 interface TimelineRowProps {
   icon?: React.ComponentType<{ className?: string }> | null;
   spinner?: boolean;
@@ -34,7 +39,10 @@ export function TimelineRow({
           ) : null}
         </div>
         {!isLast && (
-          <div className="mt-0.5 w-0.5 flex-1 rounded-full bg-border dark:bg-border-night" />
+          <div
+            className="mt-0.5 w-0.5 flex-1 rounded-full bg-border dark:bg-border-night"
+            style={LINE_ANIMATION_STYLE}
+          />
         )}
       </div>
 

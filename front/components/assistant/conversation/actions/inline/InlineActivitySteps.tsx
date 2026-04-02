@@ -49,8 +49,8 @@ function getCollapseAnimationStyle(isCollapsed: boolean): React.CSSProperties {
     gridTemplateRows: isCollapsed ? "0fr" : "1fr",
     opacity: isCollapsed ? 0 : 1,
     transition: isCollapsed
-      ? "grid-template-rows 200ms ease-out, opacity"
-      : "grid-template-rows 200ms ease-out, opacity 300ms",
+      ? "grid-template-rows 280ms ease, opacity 280ms"
+      : "grid-template-rows 200ms ease-in",
   };
 }
 
@@ -122,7 +122,7 @@ export function InlineActivitySteps({
   }
 
   return (
-    <div className={`flex flex-col text-sm ${isCollapsed ? "" : "gap-4"}`}>
+    <div className="flex flex-col text-sm">
       <button
         className="self-start text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors duration-200 flex gap-1 items-center"
         onClick={toggleCollapse}
@@ -143,7 +143,7 @@ export function InlineActivitySteps({
         style={getCollapseAnimationStyle(isCollapsed)}
       >
         <div className="overflow-hidden">
-          <div className="flex flex-col gap-2">
+          <div className="mt-4 flex flex-col gap-2">
             {completedSteps.map((step, index) => {
               const isLast =
                 index === completedSteps.length - 1 &&
