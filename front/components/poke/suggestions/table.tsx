@@ -7,6 +7,7 @@ import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import {
   AGENT_SUGGESTION_KINDS,
+  AGENT_SUGGESTION_SOURCES,
   AGENT_SUGGESTION_STATES,
 } from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -89,6 +90,14 @@ export function SuggestionDataTable({
       options: AGENT_SUGGESTION_STATES.map((state) => ({
         label: asDisplayName(state),
         value: state,
+      })),
+    },
+    {
+      columnId: "source",
+      title: "Source",
+      options: AGENT_SUGGESTION_SOURCES.map((source) => ({
+        label: asDisplayName(source),
+        value: source,
       })),
     },
   ];
