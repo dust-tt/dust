@@ -21,6 +21,11 @@ import {
   parseSendgridDkimResults,
 } from "@app/lib/api/assistant/email/inbound_auth";
 import {
+  createBufferedRequestFromRawBody,
+  isSendgridParseFormRequest,
+  validateSendgridParseWebhookSignature,
+} from "@app/lib/api/assistant/email/sendgrid_parse_webhook_signature";
+import {
   buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
@@ -32,6 +37,7 @@ import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isSupportedFileContentType } from "@app/types/files";
+import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -39,6 +45,9 @@ import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { IncomingForm } from "formidable";
 import { readFile } from "fs/promises";
 import type { NextApiRequest, NextApiResponse } from "next";
+import getRawBody from "raw-body";
+
+const SENDGRID_PARSE_WEBHOOK_MAX_SIZE = "30mb";
 
 // Disabling Next.js's body parser as formidable has its own
 export const config = {
@@ -187,8 +196,15 @@ function parseThreadingHeaders(rawHeaders: string | null) {
 
 // Parses the Sendgrid webhook form data and validates it returning a fully formed InboundEmail.
 const parseSendgridWebhookContent = async (
-  req: NextApiRequest
+  rawBody: Buffer,
+  headers: NextApiRequest["headers"]
 ): Promise<Result<InboundEmail, Error>> => {
+  const req = createBufferedRequestFromRawBody(rawBody, headers);
+  if (!isSendgridParseFormRequest(req)) {
+    return new Err(
+      new Error("Failed to recreate request body for multipart parsing")
+    );
+  }
   const form = new IncomingForm();
   const [fields, files] = await form.parse(req);
 
@@ -323,6 +339,8 @@ async function handler(
   switch (req.method) {
     case "POST":
       const authHeader = req.headers.authorization;
+      const isSendgridRequest = hasValidSendgridAuthorization(authHeader);
+      const isRelayRequest = hasValidRelayAuthorization(req);
 
       if (!authHeader) {
         return apiError(req, res, {
@@ -334,10 +352,7 @@ async function handler(
         });
       }
 
-      if (
-        !hasValidSendgridAuthorization(authHeader) &&
-        !hasValidRelayAuthorization(req)
-      ) {
+      if (!isSendgridRequest && !isRelayRequest) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -347,7 +362,48 @@ async function handler(
         });
       }
 
-      const emailRes = await parseSendgridWebhookContent(req);
+      // SendGrid signs the exact multipart bytes, so we must verify the raw body
+      // before formidable parses or rewrites anything.
+      let rawBody: Buffer;
+      try {
+        rawBody = await getRawBody(req, {
+          limit: SENDGRID_PARSE_WEBHOOK_MAX_SIZE,
+        });
+      } catch {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Failed to read raw request body.",
+          },
+        });
+      }
+
+      // Only the original SendGrid ingress carries the signed raw multipart body.
+      // Cross-region relays rebuild the form-data payload, so the forwarded hop must
+      // trust our relay auth instead of re-running SendGrid signature verification.
+      if (isSendgridRequest && !isDevelopment()) {
+        const signatureValidationRes = validateSendgridParseWebhookSignature({
+          publicKey: apiConfig.getSendgridParseWebhookPublicKey(),
+          headers: req.headers,
+          rawBody,
+        });
+        if (signatureValidationRes.isErr()) {
+          logger.warn(
+            {
+              errorType: signatureValidationRes.error.apiError.type,
+              message: signatureValidationRes.error.apiError.message,
+            },
+            "[email] Rejected SendGrid Parse webhook before multipart parsing"
+          );
+          return apiError(req, res, {
+            status_code: signatureValidationRes.error.statusCode,
+            api_error: signatureValidationRes.error.apiError,
+          });
+        }
+      }
+
+      const emailRes = await parseSendgridWebhookContent(rawBody, req.headers);
       if (emailRes.isErr()) {
         return apiError(req, res, {
           status_code: 401,

@@ -453,6 +453,11 @@ const config = {
   getEmailWebhookSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("EMAIL_WEBHOOK_SECRET");
   },
+  getSendgridParseWebhookPublicKey: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "SENDGRID_PARSE_WEBHOOK_PUBLIC_KEY"
+    );
+  },
   getProductionDustWorkspaceId: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
       "PRODUCTION_DUST_WORKSPACE_ID"
