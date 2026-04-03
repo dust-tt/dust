@@ -51,7 +51,7 @@ export const InputBarContext = createContext<{
 
 interface InputBarContextProviderProps {
   children: ReactNode;
-  conversationId: string | null;
+  conversationId?: string | null;
   fileUploaderService: FileUploaderService;
   captureActions?: {
     onCapture: (type: "text" | "screenshot") => void;
@@ -61,7 +61,7 @@ interface InputBarContextProviderProps {
 
 export function InputBarContextProvider({
   children,
-  conversationId,
+  conversationId = null,
   fileUploaderService,
   captureActions,
 }: InputBarContextProviderProps) {
