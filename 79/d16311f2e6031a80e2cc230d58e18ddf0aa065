@@ -1,0 +1,23 @@
+front/lib/metronome/client.ts
+  068bbc100a060eab 330-331,334,347-348,352-353,356,363
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "79d16311f2e6031a80e2cc230d58e18ddf0aa065",
+  "prompts": {
+    "068bbc100a060eab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ca0ebdb-9a62-4038-94b7-8a530c09bf58",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Alexandre Pinon",
+      "messages": [],
+      "total_additions": 10,
+      "total_deletions": 9,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    }
+  }
+}
