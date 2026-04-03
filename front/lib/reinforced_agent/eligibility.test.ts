@@ -5,8 +5,12 @@ vi.mock("@app/lib/utils/statsd", () => ({
 }));
 
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import { DEFAULT_PENDING_SUGGESTION_MAX_AGE_DAYS } from "@app/lib/reinforced_agent/constants";
 import { filterEligibleAgents } from "@app/lib/reinforced_agent/eligibility";
+import {
+  fetchReinforcementAutoTrackSignals,
+  type ReinforcementAutoTrackSignals,
+} from "@app/lib/reinforced_agent/signals";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
@@ -18,26 +22,25 @@ import type { LightWorkspaceType } from "@app/types/user";
 const daysAgo = (days: number) =>
   new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-async function createRecentAgentMessage(
+function emptySignals(): ReinforcementAutoTrackSignals {
+  return {
+    feedbackCountByAgentSId: new Map(),
+    humanConversationSIdsByAgent: new Map(),
+    agentSIdsWithRecentPendingSuggestions: new Set(),
+  };
+}
+
+async function createHumanInLoopConversation(
   auth: Authenticator,
-  workspace: LightWorkspaceType,
   agent: LightAgentConfigurationType,
-  agentMessageCreatedAt: Date
+  messageDate: Date
 ) {
   const conv = await ConversationFactory.create(auth, {
     agentConfigurationId: agent.sId,
-    messagesCreatedAt: [],
+    messagesCreatedAt: [messageDate],
     visibility: "unlisted",
   });
-  const { agentMessage } = await ConversationFactory.createAgentMessage(auth, {
-    workspace,
-    conversation: conv,
-    agentConfig: agent,
-  });
-  await AgentMessageModel.update(
-    { createdAt: agentMessageCreatedAt },
-    { where: { workspaceId: workspace.id, id: agentMessage.agentMessageId } }
-  );
+  await ConversationFactory.setUpdatedAtForTest(auth, conv.id, messageDate);
   return conv;
 }
 
@@ -51,34 +54,40 @@ describe("filterEligibleAgents", () => {
     workspace = setup.workspace;
   });
 
-  it("returns empty array when agents list is empty", async () => {
-    expect(await filterEligibleAgents(auth, [], 30)).toEqual([]);
+  it("returns empty array when agents list is empty", () => {
+    expect(filterEligibleAgents(auth, [], emptySignals())).toEqual([]);
   });
 
-  it("excludes agents with reinforcement off before any DB queries", async () => {
+  it("excludes agents with reinforcement off before using signals payload", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const withOff: LightAgentConfigurationType = {
       ...agent,
       reinforcement: "off",
     };
-    expect(await filterEligibleAgents(auth, [withOff], 30)).toEqual([]);
+    expect(filterEligibleAgents(auth, [withOff], emptySignals())).toEqual([]);
   });
 
-  it("excludes agents with non-positive id before any DB queries", async () => {
+  it("excludes agents with non-positive id before using signals payload", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const withBadId: LightAgentConfigurationType = { ...agent, id: 0 };
-    expect(await filterEligibleAgents(auth, [withBadId], 30)).toEqual([]);
+    expect(filterEligibleAgents(auth, [withBadId], emptySignals())).toEqual([]);
   });
 
-  it("includes agents with a recent agent message", async () => {
+  it("includes agents with a recent human-in-the-loop conversation", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
-    await createRecentAgentMessage(auth, workspace, agent, daysAgo(2));
+    await createHumanInLoopConversation(auth, agent, daysAgo(2));
 
-    const result = await filterEligibleAgents(auth, [agent], 30);
+    const signals = await fetchReinforcementAutoTrackSignals(auth, {
+      agentSIds: [agent.sId],
+      lookbackWindowDays: 30,
+      pendingSuggestionMaxAgeDays: DEFAULT_PENDING_SUGGESTION_MAX_AGE_DAYS,
+    });
+
+    const result = filterEligibleAgents(auth, [agent], signals);
     expect(result.map((a) => a.sId)).toEqual([agent.sId]);
   });
 
-  it("includes agents with feedback even without a recent agent message", async () => {
+  it("includes agents with feedback even without a human-in-the-loop conversation", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const conv = await ConversationFactory.create(auth, {
       agentConfigurationId: agent.sId,
@@ -87,7 +96,11 @@ describe("filterEligibleAgents", () => {
     });
     const { agentMessage } = await ConversationFactory.createAgentMessage(
       auth,
-      { workspace, conversation: conv, agentConfig: agent }
+      {
+        workspace,
+        conversation: conv,
+        agentConfig: agent,
+      }
     );
     await AgentMessageFeedbackResource.makeNew({
       workspaceId: auth.getNonNullableWorkspace().id,
@@ -102,24 +115,44 @@ describe("filterEligibleAgents", () => {
       dismissed: false,
     });
 
-    const result = await filterEligibleAgents(auth, [agent], 30);
+    const signals = await fetchReinforcementAutoTrackSignals(auth, {
+      agentSIds: [agent.sId],
+      lookbackWindowDays: 30,
+      pendingSuggestionMaxAgeDays: DEFAULT_PENDING_SUGGESTION_MAX_AGE_DAYS,
+    });
+
+    const result = filterEligibleAgents(auth, [agent], signals);
     expect(result.map((a) => a.sId)).toEqual([agent.sId]);
   });
 
   it("excludes agents blocked by a recent pending suggestion", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
-    await createRecentAgentMessage(auth, workspace, agent, daysAgo(2));
-    await AgentSuggestionFactory.createInstructions(auth, agent);
+    await createHumanInLoopConversation(auth, agent, daysAgo(2));
+    await AgentSuggestionFactory.createInstructions(auth, agent, {
+      source: "reinforcement",
+    });
 
-    const result = await filterEligibleAgents(auth, [agent], 30);
+    const signals = await fetchReinforcementAutoTrackSignals(auth, {
+      agentSIds: [agent.sId],
+      lookbackWindowDays: 30,
+      pendingSuggestionMaxAgeDays: DEFAULT_PENDING_SUGGESTION_MAX_AGE_DAYS,
+    });
+
+    const result = filterEligibleAgents(auth, [agent], signals);
     expect(result).toEqual([]);
   });
 
-  it("excludes agents whose agent messages fall outside the lookback window", async () => {
+  it("excludes agents whose human-in-the-loop activity falls outside the lookback window", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
-    await createRecentAgentMessage(auth, workspace, agent, daysAgo(60));
+    await createHumanInLoopConversation(auth, agent, daysAgo(60));
 
-    const result = await filterEligibleAgents(auth, [agent], 30);
+    const signals = await fetchReinforcementAutoTrackSignals(auth, {
+      agentSIds: [agent.sId],
+      lookbackWindowDays: 30,
+      pendingSuggestionMaxAgeDays: DEFAULT_PENDING_SUGGESTION_MAX_AGE_DAYS,
+    });
+
+    const result = filterEligibleAgents(auth, [agent], signals);
     expect(result).toEqual([]);
   });
 });
