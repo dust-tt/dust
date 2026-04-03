@@ -39,6 +39,7 @@ DO NOT:
 - Add new responsibilities or capabilities that diverge from the agent's purpose
 - Redefine the agent's role based on user requests that go beyond the original intentions
 - Turn a focused agent into a general-purpose one
+- Try to make the scope more explicit just because a user mentioned something outside of it. Make no suggestions when that happens.
 
 Example:
 - Agent: "You are a billing support agent"
