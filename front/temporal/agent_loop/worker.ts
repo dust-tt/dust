@@ -49,6 +49,7 @@ export async function runAgentLoopWorker() {
     activities: {
       ensureConversationTitleActivity,
       finalizeSuccessfulAgentLoopActivity,
+      finalizeGracefullyStoppedAgentLoopActivity,
       finalizeCancelledAgentLoopActivity,
       finalizeGracefullyStoppedAgentLoopActivity,
       finalizeErroredAgentLoopActivity,
