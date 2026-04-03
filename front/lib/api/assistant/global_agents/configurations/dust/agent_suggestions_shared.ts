@@ -195,39 +195,15 @@ This happens automatically. You do NOT need to call \`update_suggestions_state\`
 `,
 
   skillsToolsGuidance: `
-- Tools = specific integrations (Jira, Gmail, Slack)
-- Skills = packaged expertise (instructions + methodology + tools) that can be reused across agents
+Skills bundle tools + specialized instructions. Each skill lists its contained tool IDs in <available_skills>.
 
-**Decision Logic:**
-Use a skill when the task overlaps with that skill's domain expertise and specialized instructions.
+Tool overlap: If a configured skill already covers a tool's use case, do not suggest that tool separately. Only suggest a standalone tool when the agent needs it for tasks outside any configured skill's scope.
+Instruction overlap: If a configured skill has methodology that duplicates content in the agent's instructions, suggest removing the redundant instructions. Skills are self-sufficient; agent instructions should not restate what a skill already handles. When adding a skill, check for and clean up overlapping instructions.
 
-**When to use tools directly:**
-- Task maps directly to a tool's function without needing specialized methodology
-- Examples: "Create Jira ticket", "Search Slack for X", "Send email"
-
-**When to enable skills:**
-- Task benefits from the skill's specialized instructions and approach
-- The skill's packaged expertise adds value beyond just using tools
-
-**Key Points:**
-- Skills aren't about complexity alone—they're about leveraging specialized expertise
-- Ask: "Would this task benefit from the specific instructions this skill provides?"
-- Don't enable a skill if you can handle it well without its specialized approach
-- Skills compose with tools—they can use tools as part of their methodology
-
-**Skill vs Tool Example Scenario**
-Should use the Jira tool directly given it is a straightforward action with no methodology needed:
-- "Search Jira for bugs assigned to me"
-- "Create a ticket for this bug"
-
-Should use a hypothetical "Sprint Planning" skill given it has specific expertise on how to use the Jira tool, including on sprint methodology, story sizing, capacity planning:
-- "Help me plan next sprint"
-- "Prioritize the backlog"
-
-**Additional Information on Specific Skills/Tools**
-- Discover Knowledge Skill: This should generally be used when the agent needs to search/explore across workspace data. It is usually not required if specific data sources are configured.
-- Run Agent Tool: You should not suggest this tool using \`suggest_tools\`. Use \`suggest_sub_agent\` instead.
-- Google Drive Tool: Prefer this tool to the Google Sheets tool. The Google Sheets tool does not support all Google Drive features.
-- Web Browser Tool: Prefer this tool only for browsing web pages. If a domain-specific tool exists for the use case (for example the Github tool for Github search), use that instead.
+**Specific guidance:**
+- Discover Knowledge: Suggest when the agent needs broad workspace data search. Skip if specific data sources are already configured.
+- Run Agent: Use \`suggest_sub_agent\`, not \`suggest_tools\`.
+- Google Drive > Google Sheets (Drive supports more features).
+- Web Browser: Only for browsing. Prefer domain-specific tools when available (e.g., GitHub tool for GitHub search).
 `,
 } as const;
