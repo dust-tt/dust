@@ -55,13 +55,15 @@ Implement the graceful stop mechanism end-to-end.
 - When `action === "gracefully_stop"`, call `gracefullyStopAgentLoop()`.
 - Public v1 API endpoint unchanged (no breaking change).
 
-### - [ ] PR 2.6 — Context pruning: preserve gracefully stopped chains as single interaction
+### - [x] PR 2.6 — Context pruning: preserve gracefully stopped chains as single interaction
 
 - Update `groupMessagesIntoInteractions` in
   `front/lib/api/assistant/conversation/interactions.ts`:
   - Don't close interaction at agent→user boundary when the agent turn ended with
     `status === "gracefully_stopped"`.
 - Add/update tests in `interactions.test.ts`.
+
+==> We went with simply increasing PREVIOUS_INTERACTIONS_TO_PRESERVE to 3 for now
 
 ### - [ ] PR 2.7 — Add `GracefulStopRequestedEvent` (when needed for UI)
 
