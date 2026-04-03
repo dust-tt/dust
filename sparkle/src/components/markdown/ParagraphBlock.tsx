@@ -16,7 +16,7 @@ export const paragraphBlockVariants = cva(
     variants: {
       compactSpacing: {
         true: ["s-py-0"],
-        false: ["s-py-1 @md:s-py-2 @md:s-leading-7"],
+        false: ["s-py-1 @md:s-pt-2 @md:s-pb-[10px] @md:s-leading-relaxed"],
       },
     },
   }
