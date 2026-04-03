@@ -59,7 +59,12 @@ export type DustErrorCode =
   | "no_unread_messages_found"
   | "no_whitelisted_model_found"
   | "generation_failed"
-  | "invalid_conversation";
+  | "invalid_conversation"
+  // Subscription / billing errors
+  | "subscription_already_exists"
+  | "workspace_not_found"
+  | "plan_not_found"
+  | "metronome_error";
 
 export class DustError<T extends DustErrorCode = DustErrorCode> extends Error {
   constructor(

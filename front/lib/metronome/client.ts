@@ -91,16 +91,10 @@ export async function createMetronomeCustomer({
     );
     return new Ok({ metronomeCustomerId: response.data.id });
   } catch (err) {
-    // 409 means a customer with this ingest alias already exists — extract
-    // the conflicting ID and return it rather than failing.
     if (err instanceof ConflictError) {
-      const body = err.error as { conflicting_id?: string } | undefined;
-      if (body?.conflicting_id) {
-        logger.info(
-          { workspaceId, metronomeCustomerId: body.conflicting_id },
-          "[Metronome] Customer already exists, reusing conflicting ID"
-        );
-        return new Ok({ metronomeCustomerId: body.conflicting_id });
+      const findResult = await findMetronomeCustomerByAlias(workspaceId);
+      if (findResult.isOk() && findResult.value) {
+        return new Ok({ metronomeCustomerId: findResult.value });
       }
     }
 
@@ -143,13 +137,17 @@ export async function findMetronomeCustomerByAlias(
 /**
  * Create a contract for a Metronome customer using a package alias.
  * The package defines the rate card, seat subscriptions, and credit allocations.
+ *
+ * Handles 409 conflict by extracting the existing contract's ID.
  */
 export async function createMetronomeContract({
   metronomeCustomerId,
   packageAlias,
+  uniquenessKey,
 }: {
   metronomeCustomerId: string;
   packageAlias: string;
+  uniquenessKey: string;
 }): Promise<Result<{ contractId: string }, Error>> {
   try {
     const response = await getClient().v1.contracts.create({
@@ -159,6 +157,7 @@ export async function createMetronomeContract({
       starting_at: new Date(
         Math.floor(Date.now() / 3_600_000) * 3_600_000
       ).toISOString(),
+      uniqueness_key: uniquenessKey,
     });
 
     logger.info(
@@ -171,6 +170,14 @@ export async function createMetronomeContract({
     );
     return new Ok({ contractId: response.data.id });
   } catch (err) {
+    if (err instanceof ConflictError) {
+      const existingContract =
+        await getMetronomeActiveContract(metronomeCustomerId);
+      if (existingContract.isOk() && existingContract.value) {
+        return new Ok({ contractId: existingContract.value.contractId });
+      }
+    }
+
     const error = normalizeError(err);
     logger.error(
       { error, metronomeCustomerId, packageAlias },
@@ -190,13 +197,15 @@ export async function provisionMetronomeCustomerAndContract({
   workspaceName,
   stripeCustomerId,
   packageAlias,
+  uniquenessKey,
 }: {
   workspaceId: string;
   workspaceName: string;
-  stripeCustomerId: string | null;
+  stripeCustomerId: string;
   packageAlias: string;
+  uniquenessKey: string;
 }): Promise<
-  Result<{ metronomeCustomerId: string; contractId: string }, Error>
+  Result<{ metronomeCustomerId: string; metronomeContractId: string }, Error>
 > {
   // Find or create customer.
   let metronomeCustomerId: string | null = null;
@@ -210,7 +219,7 @@ export async function provisionMetronomeCustomerAndContract({
     const createResult = await createMetronomeCustomer({
       workspaceId,
       workspaceName,
-      stripeCustomerId: stripeCustomerId ?? "",
+      stripeCustomerId,
     });
     if (createResult.isErr()) {
       return new Err(createResult.error);
@@ -218,10 +227,10 @@ export async function provisionMetronomeCustomerAndContract({
     metronomeCustomerId = createResult.value.metronomeCustomerId;
   }
 
-  // Create contract.
   const contractResult = await createMetronomeContract({
     metronomeCustomerId,
     packageAlias,
+    uniquenessKey,
   });
   if (contractResult.isErr()) {
     return new Err(contractResult.error);
@@ -229,7 +238,7 @@ export async function provisionMetronomeCustomerAndContract({
 
   return new Ok({
     metronomeCustomerId,
-    contractId: contractResult.value.contractId,
+    metronomeContractId: contractResult.value.contractId,
   });
 }
 
@@ -312,6 +321,46 @@ export async function endMetronomeContract({
     logger.error(
       { error, metronomeCustomerId, contractId },
       "[Metronome] Failed to end contract"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Get the package aliases for a contract.
+ * Retrieves the contract to get its package_id, then retrieves the package
+ * to get its aliases.
+ */
+export async function getMetronomeContractPackageAliases({
+  metronomeCustomerId,
+  metronomeContractId,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+}): Promise<Result<string[], Error>> {
+  try {
+    const contractResponse = await getClient().v1.contracts.retrieve({
+      customer_id: metronomeCustomerId,
+      contract_id: metronomeContractId,
+    });
+
+    const packageId = contractResponse.data.package_id;
+    if (!packageId) {
+      return new Ok([]);
+    }
+
+    const packageResponse = await getClient().v1.packages.retrieve({
+      package_id: packageId,
+    });
+
+    const aliases = packageResponse.data.aliases?.map((a) => a.name) ?? [];
+
+    return new Ok(aliases);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, metronomeContractId },
+      "[Metronome] Failed to get contract package aliases"
     );
     return new Err(error);
   }
