@@ -42,6 +42,33 @@ export class BrowserMCPTransport implements Transport {
     window.addEventListener("beforeunload", this.handleBeforeUnload);
   }
 
+  private async deregisterServer(serverId: string): Promise<void> {
+    try {
+      const response = await clientFetch(
+        `/api/w/${this.workspaceId}/mcp/deregister`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({ serverId }),
+        }
+      );
+      if (!response.ok) {
+        console.warn(
+          "[BrowserMCPTransport] Failed to deregister MCP server:",
+          response.status
+        );
+      }
+    } catch (error) {
+      console.warn(
+        "[BrowserMCPTransport] Failed to deregister MCP server:",
+        error
+      );
+    }
+  }
+
   /**
    * Register the MCP server.
    */
@@ -393,6 +420,12 @@ export class BrowserMCPTransport implements Transport {
       console.log("[BrowserMCPTransport] Closing MCP SSE connection");
       this.eventSource.close();
       this.eventSource = null;
+    }
+
+    // Deregister the server to clean up Redis.
+    if (this.serverId) {
+      await this.deregisterServer(this.serverId);
+      this.serverId = null;
     }
 
     // Trigger onclose callback.
