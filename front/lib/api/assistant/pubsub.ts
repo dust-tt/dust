@@ -9,7 +9,10 @@ import { createCallbackReader } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
-import { cancelAgentLoopSignal } from "@app/temporal/agent_loop/signals";
+import {
+  cancelAgentLoopSignal,
+  gracefullyStopAgentLoopSignal,
+} from "@app/temporal/agent_loop/signals";
 import type {
   AgentActionSuccessEvent,
   AgentErrorEvent,
@@ -127,6 +130,40 @@ export async function cancelMessageGenerationEvent(
         logger.warn(
           { error: signalError, messageId },
           "Failed to signal agent loop workflow for cancellation"
+        );
+      }
+    },
+    { concurrency: 8 }
+  );
+}
+
+export async function gracefullyStopAgentLoop(
+  auth: Authenticator,
+  {
+    messageIds,
+    conversationId,
+  }: { messageIds: string[]; conversationId: string }
+): Promise<void> {
+  const client = await getTemporalClientForAgentNamespace();
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+
+  await concurrentExecutor(
+    messageIds,
+    async (messageId) => {
+      const agentMessageId = messageId;
+      const workflowId = makeAgentLoopWorkflowId({
+        workspaceId,
+        conversationId,
+        agentMessageId,
+      });
+      try {
+        const handle = client.workflow.getHandle(workflowId);
+        await handle.signal(gracefullyStopAgentLoopSignal);
+      } catch (signalError) {
+        // Workflow may have already completed — safe to ignore.
+        logger.info(
+          { error: signalError, messageId },
+          "Failed to signal agent loop workflow for graceful stop"
         );
       }
     },
