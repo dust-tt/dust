@@ -127,6 +127,7 @@ import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 
@@ -328,6 +329,8 @@ async function handler(
           ? "agent_sidekick"
           : "web");
 
+      const featureFlags = await getFeatureFlags(auth);
+
       const messageRes = await postUserMessage(auth, {
         conversation,
         content,
@@ -342,6 +345,7 @@ async function handler(
           clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
         },
         skipToolsValidation: skipToolsValidation ?? false,
+        enforceSteeringInvariants: featureFlags.includes("enable_steering"),
       });
 
       if (messageRes.isErr()) {
