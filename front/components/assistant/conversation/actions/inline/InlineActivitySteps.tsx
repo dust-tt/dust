@@ -14,15 +14,15 @@ import { isLightAgentMessageWithActionsType } from "@app/types/assistant/convers
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   AnimatedText,
+  ChatBubbleThoughtIcon,
   CheckIcon,
   ChevronRightIcon,
   cn,
   Icon,
   Markdown,
   ToolsIcon,
-  TruncatedContent,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface InlineActivityStepsProps {
   agentMessage: LightAgentMessageType | LightAgentMessageWithActionsType;
@@ -78,13 +78,7 @@ export function InlineActivitySteps({
   const isDone =
     lastAgentStateClassification === "done" || agentMessage.status === "failed";
 
-  const [isCollapsed, setIsCollapsed] = useState(isDone);
-
-  useEffect(() => {
-    if (isDone) {
-      setIsCollapsed(true);
-    }
-  }, [isDone]);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const openBreakdownPanel = (actionId?: string) => {
     if (onOpenDetails) {
@@ -167,23 +161,44 @@ export function InlineActivitySteps({
 
               switch (step.type) {
                 case "thinking":
+                  if (isDone) {
+                    return (
+                      <div
+                        key={step.id}
+                        className="cursor-pointer"
+                        onClick={() =>
+                          openPanel({
+                            type: "thinking",
+                            stepId: step.id,
+                            content: step.content,
+                          })
+                        }
+                      >
+                        <TimelineRow
+                          icon={ChatBubbleThoughtIcon}
+                          isLast={isLast}
+                        >
+                          <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
+                            Thinking
+                            <Icon
+                              size="xs"
+                              visual={ChevronRightIcon}
+                              className="shrink-0 opacity-50"
+                            />
+                          </span>
+                        </TimelineRow>
+                      </div>
+                    );
+                  }
                   return (
                     <TimelineRow key={step.id} icon="circle" isLast={isLast}>
-                      <TruncatedContent
-                        thresholdPx={80}
-                        collapsedHeightPx={60}
-                        variant="light"
-                        buttonClassName="mt-1"
-                        animated
-                      >
-                        <Markdown
-                          content={step.content}
-                          isStreaming={false}
-                          forcedTextSize="text-sm"
-                          textColor="text-muted-foreground dark:text-muted-foreground-night"
-                          isLastMessage={false}
-                        />
-                      </TruncatedContent>
+                      <Markdown
+                        content={step.content}
+                        isStreaming={false}
+                        forcedTextSize="text-sm"
+                        textColor="text-muted-foreground dark:text-muted-foreground-night"
+                        isLastMessage={false}
+                      />
                     </TimelineRow>
                   );
                 case "action": {
