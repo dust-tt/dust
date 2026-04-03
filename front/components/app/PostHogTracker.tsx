@@ -267,7 +267,9 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
 
         // Inject blog SEO article flag from page-level meta tag.
         if (event.event === "$pageview") {
-          const seoMeta = document.querySelector('meta[name="is_seo_article"]');
+          const seoMeta = document.querySelector(
+            'meta[name="dust:is_seo_article"]'
+          );
           if (seoMeta) {
             event.properties["is_seo_article"] =
               seoMeta.getAttribute("content") === "true";

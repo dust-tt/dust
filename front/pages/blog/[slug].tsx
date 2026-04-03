@@ -133,7 +133,7 @@ export default function BlogPost({
         {post.tags.map((tag) => (
           <meta key={tag} property="article:tag" content={tag} />
         ))}
-        <meta name="is_seo_article" content={String(post.isSeoArticle)} />
+        <meta name="dust:is_seo_article" content={String(post.isSeoArticle)} />
 
         <script
           type="application/ld+json"
