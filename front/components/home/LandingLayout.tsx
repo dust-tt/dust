@@ -164,7 +164,7 @@ export default function LandingLayout({
                       `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`
                     )}
                     onClick={withTracking(TRACKING_AREAS.NAVIGATION, "sign_in")}
-                    className="hidden xl:inline-flex h-9 w-max items-center justify-center rounded-md px-4 py-2 text-base font-medium font-sans text-primary-700 hover:text-primary-600 active:text-primary-800 transition-colors hover:underline hover:underline-offset-4"
+                    className="hidden xl:inline-flex h-9 w-max items-center justify-center rounded-md pl-4 pr-1 py-2 text-base font-medium font-sans text-primary-700 hover:text-primary-600 active:text-primary-800 transition-colors hover:underline hover:underline-offset-4"
                   >
                     Sign in
                   </a>
