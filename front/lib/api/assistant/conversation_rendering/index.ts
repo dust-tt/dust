@@ -74,14 +74,17 @@ export async function renderConversationForModel(
   const now = Date.now();
   let stepStart = now;
 
-  const messages = await renderAllMessages(auth, {
-    conversation,
-    model,
-    excludeActions,
-    excludeImages,
-    onMissingAction,
-    agentConfiguration,
-  });
+  const { messages, gracefullyStoppedMessageIndices } = await renderAllMessages(
+    auth,
+    {
+      conversation,
+      model,
+      excludeActions,
+      excludeImages,
+      onMissingAction,
+      agentConfiguration,
+    }
+  );
   const renderAllMessagesMs = Date.now() - stepStart;
   stepStart = Date.now();
 
@@ -133,7 +136,12 @@ export async function renderConversationForModel(
     ) +
     TOKENS_MARGIN;
 
-  const interactions = groupMessagesIntoInteractions(messagesWithTokens);
+  const interactions = groupMessagesIntoInteractions(messagesWithTokens, {
+    isGracefullyStopped: (msg) => {
+      const idx = messagesWithTokens.indexOf(msg);
+      return idx >= 0 && gracefullyStoppedMessageIndices.has(idx);
+    },
+  });
   let currentInteraction = interactions[interactions.length - 1];
   let currentInteractionTokens = getInteractionTokenCount(currentInteraction);
 

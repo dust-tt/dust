@@ -11,7 +11,12 @@ import type {
  * results in a single interaction.
  */
 export function groupMessagesIntoInteractions<T extends MinimalMessageType>(
-  messages: T[]
+  messages: T[],
+  {
+    isGracefullyStopped,
+  }: {
+    isGracefullyStopped?: (message: T) => boolean;
+  } = {}
 ): Interaction<T>[] {
   const interactions: Interaction<T>[] = [];
   let currentInteraction: T[] = [];
@@ -46,11 +51,16 @@ export function groupMessagesIntoInteractions<T extends MinimalMessageType>(
       const currentTurn = turnTypeForMessage(message);
       const nextTurn = turnTypeForMessage(messages[i + 1]);
       if (currentTurn === "agent" && nextTurn === "user") {
-        // Find the last assistant message in the current interaction.
-        const lastAssistant = [...currentInteraction]
-          .reverse()
-          .find((m) => m.role === "assistant");
-        return lastAssistant?.agentMessageStatus !== "gracefully_stopped";
+        if (isGracefullyStopped) {
+          // Find the last assistant message in the current interaction.
+          const lastAssistant = [...currentInteraction]
+            .reverse()
+            .find((m) => m.role === "assistant");
+          if (lastAssistant && isGracefullyStopped(lastAssistant)) {
+            return false;
+          }
+        }
+        return true;
       }
       return false;
     })();

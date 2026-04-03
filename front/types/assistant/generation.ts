@@ -41,20 +41,13 @@ export function isImageContent(content: object): content is ImageContent {
   );
 }
 
-// Optional field used by context pruning to keep gracefully_stopped agent chains
-// as a single interaction. Set on the last rendered message of an agent message.
-interface AgentMessageStatusMixin {
-  agentMessageStatus?: string;
-}
-
-export interface ContentFragmentMessageTypeModel
-  extends AgentMessageStatusMixin {
+export interface ContentFragmentMessageTypeModel {
   role: "content_fragment";
   name: string;
   content: Content[];
 }
 
-export interface UserMessageTypeModel extends AgentMessageStatusMixin {
+export interface UserMessageTypeModel {
   role: "user";
   name: string;
   content: Content[];
@@ -67,8 +60,7 @@ export interface FunctionCallType {
 }
 
 // Assistant requiring usage of function(s) call(s)
-export interface AssistantFunctionCallMessageTypeModel
-  extends AgentMessageStatusMixin {
+export interface AssistantFunctionCallMessageTypeModel {
   role: "assistant";
   /** @deprecated, use contents instead. */
   content?: string;
@@ -77,8 +69,7 @@ export interface AssistantFunctionCallMessageTypeModel
   contents: Array<Exclude<AgentContentItemType, AgentErrorContentType>>;
 }
 
-export interface AssistantContentMessageTypeModel
-  extends AgentMessageStatusMixin {
+export interface AssistantContentMessageTypeModel {
   role: "assistant";
   name: string;
   /** @deprecated, use contents instead. */
@@ -87,7 +78,7 @@ export interface AssistantContentMessageTypeModel
 }
 
 // This is the output of one function call
-export interface FunctionMessageTypeModel extends AgentMessageStatusMixin {
+export interface FunctionMessageTypeModel {
   role: "function";
   name: string;
   function_call_id: string;

@@ -147,8 +147,15 @@ export async function renderAllMessages(
     onMissingAction: "inject-placeholder" | "skip";
     agentConfiguration?: AgentConfigurationType;
   }
-): Promise<ModelMessageTypeMultiActions[]> {
+): Promise<{
+  messages: ModelMessageTypeMultiActions[];
+  gracefullyStoppedMessageIndices: Set<number>;
+}> {
   const messages: ModelMessageTypeMultiActions[] = [];
+  // Tracks indices of the last assistant message for each gracefully_stopped
+  // agent message. Used by groupMessagesIntoInteractions to keep chains as
+  // a single interaction for pruning.
+  const gracefullyStoppedMessageIndices = new Set<number>();
 
   // Render loop: render all messages and all actions.
   for (const versions of conversation.content) {
@@ -176,14 +183,15 @@ export async function renderAllMessages(
             conversation,
             !!excludeActions
           );
-          // Tag the last assistant message with the agent message status so
-          // that groupMessagesIntoInteractions can keep gracefully_stopped
-          // chains as a single interaction for pruning purposes.
-          const lastAssistant = [...agentMessages]
-            .reverse()
-            .find((msg) => msg.role === "assistant");
-          if (lastAssistant) {
-            lastAssistant.agentMessageStatus = m.status;
+          if (m.status === "gracefully_stopped" && agentMessages.length > 0) {
+            // Find the last assistant message index after pushing.
+            const baseIndex = messages.length;
+            for (let j = agentMessages.length - 1; j >= 0; j--) {
+              if (agentMessages[j].role === "assistant") {
+                gracefullyStoppedMessageIndices.add(baseIndex + j);
+                break;
+              }
+            }
           }
           messages.push(...agentMessages);
         } else {
@@ -216,5 +224,5 @@ export async function renderAllMessages(
     }
   }
 
-  return messages;
+  return { messages, gracefullyStoppedMessageIndices };
 }

@@ -2,13 +2,13 @@ import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversati
 import { describe, expect, it } from "vitest";
 
 describe("groupMessagesIntoInteractions", () => {
-  type Tagged = { role: string; tag: string; agentMessageStatus?: string };
+  type Tagged = { role: string; tag: string; gracefullyStopped?: boolean };
 
   const msg = (
     role: string,
     tag: string,
-    agentMessageStatus?: string
-  ): Tagged => ({ role, tag, agentMessageStatus });
+    gracefullyStopped?: boolean
+  ): Tagged => ({ role, tag, gracefullyStopped });
 
   it("returns an empty array when there are no messages", () => {
     expect(groupMessagesIntoInteractions([])).toEqual([]);
@@ -88,15 +88,22 @@ describe("groupMessagesIntoInteractions", () => {
     expect(interactions[1].messages.map((m) => m.tag)).toEqual(["u2"]);
   });
 
+  const gracefulStopCallback = {
+    isGracefullyStopped: (m: Tagged) => !!m.gracefullyStopped,
+  };
+
   it("keeps a gracefully_stopped chain as a single interaction", () => {
-    const interactions = groupMessagesIntoInteractions([
-      msg("user", "u1"),
-      msg("assistant", "a1", "gracefully_stopped"),
-      msg("function", "f1"),
-      msg("user", "u2"),
-      msg("assistant", "a2"),
-      msg("function", "f2"),
-    ]);
+    const interactions = groupMessagesIntoInteractions(
+      [
+        msg("user", "u1"),
+        msg("assistant", "a1", true),
+        msg("function", "f1"),
+        msg("user", "u2"),
+        msg("assistant", "a2"),
+        msg("function", "f2"),
+      ],
+      gracefulStopCallback
+    );
     expect(interactions).toHaveLength(1);
     expect(interactions[0].messages.map((m) => m.tag)).toEqual([
       "u1",
@@ -109,27 +116,33 @@ describe("groupMessagesIntoInteractions", () => {
   });
 
   it("keeps multiple gracefully_stopped segments as a single interaction", () => {
-    const interactions = groupMessagesIntoInteractions([
-      msg("user", "u1"),
-      msg("assistant", "a1", "gracefully_stopped"),
-      msg("function", "f1"),
-      msg("user", "u2"),
-      msg("assistant", "a2", "gracefully_stopped"),
-      msg("function", "f2"),
-      msg("user", "u3"),
-      msg("assistant", "a3"),
-    ]);
+    const interactions = groupMessagesIntoInteractions(
+      [
+        msg("user", "u1"),
+        msg("assistant", "a1", true),
+        msg("function", "f1"),
+        msg("user", "u2"),
+        msg("assistant", "a2", true),
+        msg("function", "f2"),
+        msg("user", "u3"),
+        msg("assistant", "a3"),
+      ],
+      gracefulStopCallback
+    );
     expect(interactions).toHaveLength(1);
   });
 
-  it("closes the interaction normally when agent is succeeded", () => {
-    const interactions = groupMessagesIntoInteractions([
-      msg("user", "u1"),
-      msg("assistant", "a1", "succeeded"),
-      msg("function", "f1"),
-      msg("user", "u2"),
-      msg("assistant", "a2"),
-    ]);
+  it("closes the interaction normally when agent is not gracefully stopped", () => {
+    const interactions = groupMessagesIntoInteractions(
+      [
+        msg("user", "u1"),
+        msg("assistant", "a1"),
+        msg("function", "f1"),
+        msg("user", "u2"),
+        msg("assistant", "a2"),
+      ],
+      gracefulStopCallback
+    );
     expect(interactions).toHaveLength(2);
     expect(interactions[0].messages.map((m) => m.tag)).toEqual([
       "u1",
