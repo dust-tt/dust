@@ -256,7 +256,16 @@ export async function getAgentConfigurationsActivity({
     variant: "extra_light",
   });
 
-  const eligible = await filterEligibleAgents(auth, agents, lookbackWindowDays);
+  const explicitOnAgents = agents.filter(
+    (a) => a.id > 0 && a.reinforcement === "on"
+  );
+
+  const eligible = await filterEligibleAgents(
+    auth,
+    explicitOnAgents,
+    lookbackWindowDays
+  );
+
   return eligible.map((a) => a.sId);
 }
 
