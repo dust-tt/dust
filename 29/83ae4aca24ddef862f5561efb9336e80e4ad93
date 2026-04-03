@@ -5,7 +5,7 @@ front/types/assistant/assistant.ts
 ---
 {
   "schema_version": "authorship/3.0.0",
-  "git_ai_version": "1.2.3",
+  "git_ai_version": "1.2.5",
   "base_commit_sha": "2983ae4aca24ddef862f5561efb9336e80e4ad93",
   "prompts": {
     "d7bfc585242fab5e": {
