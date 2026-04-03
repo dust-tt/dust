@@ -441,6 +441,107 @@ export async function editMetronomeContractSeats({
 }
 
 // ---------------------------------------------------------------------------
+// Commits
+// ---------------------------------------------------------------------------
+
+/**
+ * Add paid credits (=commits) to a Metronome contract via a contract edit.
+ */
+export async function createMetronomeCommit({
+  metronomeCustomerId,
+  contractId,
+  productId,
+  amountMicroUsd,
+  startingAt,
+  endingBefore,
+  name,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  productId: string;
+  amountMicroUsd: number;
+  startingAt: Date;
+  endingBefore: Date;
+  name?: string;
+}): Promise<Result<void, Error>> {
+  // Metronome commits are expressed in cents.
+  const amountCents = amountMicroUsd / 10_000;
+
+  // Metronome requires dates on hour boundaries — round down start, round up end.
+  const roundedStartingAt = new Date(
+    Math.floor(startingAt.getTime() / 3_600_000) * 3_600_000
+  );
+  const roundedEndingBefore = new Date(
+    Math.ceil(endingBefore.getTime() / 3_600_000) * 3_600_000
+  );
+  try {
+    logger.info(
+      {
+        metronomeCustomerId,
+        contractId,
+        productId,
+        amountMicroUsd,
+        amountCents,
+        roundedStartingAt,
+        roundedEndingBefore,
+      },
+      "[Metronome] Adding commits to contract"
+    );
+
+    await getClient().v2.contracts.edit({
+      customer_id: metronomeCustomerId,
+      contract_id: contractId,
+      add_commits: [
+        {
+          type: "PREPAID",
+          product_id: productId,
+          name: name ?? "Commit purchase",
+          access_schedule: {
+            schedule_items: [
+              {
+                amount: amountCents,
+                starting_at: roundedStartingAt.toISOString(),
+                ending_before: roundedEndingBefore.toISOString(),
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    logger.info(
+      {
+        metronomeCustomerId,
+        contractId,
+        productId,
+        amountMicroUsd,
+        amountCents,
+        roundedStartingAt,
+        roundedEndingBefore,
+      },
+      "[Metronome] Commits added to contract"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      {
+        error,
+        metronomeCustomerId,
+        contractId,
+        productId,
+        amountMicroUsd,
+        amountCents,
+        roundedStartingAt,
+        roundedEndingBefore,
+      },
+      "[Metronome] Failed to add commits to contract"
+    );
+    return new Err(error);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Products
 // ---------------------------------------------------------------------------
 

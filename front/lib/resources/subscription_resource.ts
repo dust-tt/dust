@@ -360,6 +360,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         attributes: [
           "endDate",
           "id",
+          "metronomeContractId",
           "paymentFailingSince",
           "sId",
           "startDate",

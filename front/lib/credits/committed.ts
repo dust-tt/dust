@@ -1,5 +1,9 @@
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  createMetronomeCommit,
+  listMetronomeProducts,
+} from "@app/lib/metronome/client";
 import type { CustomerFacingInvoiceInfo } from "@app/lib/plans/stripe";
 import {
   ENTERPRISE_N30_PAYMENTS_DAYS,
@@ -17,10 +21,13 @@ import { CreditResource } from "@app/lib/resources/credit_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
+import { CREDIT_EXPIRATION_DAYS } from "@app/types/credits";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import type Stripe from "stripe";
+
+const PREPAID_COMMIT_PRODUCT_NAME = "Prepaid Commit";
 
 export async function startCreditFromProOneOffInvoice({
   auth,
@@ -107,6 +114,20 @@ export async function startCreditFromProOneOffInvoice({
     "type:committed",
     "customer:pro",
   ]);
+
+  const amountMicroUsd = creditAmountCents
+    ? Math.round(creditAmountCents * 10_000)
+    : null;
+  if (amountMicroUsd) {
+    const metronomeResult = await addMetronomeCommitsForWorkspace({
+      auth,
+      amountMicroUsd,
+    });
+    if (metronomeResult.isErr()) {
+      return new Err(metronomeResult.error);
+    }
+  }
+
   logger.info(
     {
       workspaceId: workspace.sId,
@@ -294,6 +315,17 @@ export async function createEnterpriseCreditPurchase({
     "type:committed",
     "customer:enterprise",
   ]);
+
+  const metronomeResult = await addMetronomeCommitsForWorkspace({
+    auth,
+    amountMicroUsd,
+    startDate,
+    expirationDate,
+  });
+  if (metronomeResult.isErr()) {
+    return new Err(metronomeResult.error);
+  }
+
   logger.info(
     {
       workspaceId: workspace.sId,
@@ -457,4 +489,79 @@ export async function deleteCreditFromVoidedInvoice({
   await credit.delete(auth);
 
   return new Ok(undefined);
+}
+
+async function addMetronomeCommitsForWorkspace({
+  auth,
+  amountMicroUsd,
+  startDate,
+  expirationDate,
+}: {
+  auth: Authenticator;
+  amountMicroUsd: number;
+  startDate?: Date;
+  expirationDate?: Date;
+}): Promise<Result<void, Error>> {
+  const workspace = auth.getNonNullableWorkspace();
+  const subscription = auth.subscription();
+
+  const metronomeCustomerId = workspace.metronomeCustomerId;
+  const metronomeContractId = subscription?.metronomeContractId;
+
+  if (!metronomeCustomerId || !metronomeContractId) {
+    logger.info(
+      { subscription },
+      "[Credit Purchase] Subscription missing Metronome contract ID, skipping credit addition"
+    );
+    logger.info(
+      { workspaceId: workspace.sId, metronomeCustomerId, metronomeContractId },
+      "[Credit Purchase] Workspace not provisioned in Metronome, skipping credit addition"
+    );
+    return new Ok(undefined);
+  }
+
+  const effectiveStartDate = startDate ?? new Date();
+  const effectiveExpirationDate =
+    expirationDate ??
+    new Date(
+      effectiveStartDate.getTime() +
+        CREDIT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000
+    );
+
+  const productsResult = await listMetronomeProducts();
+  if (productsResult.isErr()) {
+    return new Err(productsResult.error);
+  }
+  const creditProduct = productsResult.value.find(
+    (p) => p.name === PREPAID_COMMIT_PRODUCT_NAME
+  );
+  if (!creditProduct) {
+    return new Err(
+      new Error(`Metronome product "${PREPAID_COMMIT_PRODUCT_NAME}" not found`)
+    );
+  }
+
+  const result = await createMetronomeCommit({
+    metronomeCustomerId,
+    contractId: metronomeContractId,
+    productId: creditProduct.id,
+    amountMicroUsd,
+    startingAt: effectiveStartDate,
+    endingBefore: effectiveExpirationDate,
+    name: `${PREPAID_COMMIT_PRODUCT_NAME} (${effectiveStartDate.toISOString()})`,
+  });
+
+  if (result.isErr()) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        metronomeCustomerId,
+        metronomeContractId,
+        amountMicroUsd,
+        error: result.error.message,
+      },
+      "[Commit Purchase] Failed to add commits to Metronome"
+    );
+  }
+  return result;
 }
