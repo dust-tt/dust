@@ -634,7 +634,7 @@ export async function postUserMessage(
   }
 
   const agentMentions = mentions.filter(isAgentMention);
-  const runningAgentMessage = conversation.content
+  let runningAgentMessage = conversation.content
     .flat()
     .find(
       (m): m is AgentMessageType =>
@@ -758,63 +758,70 @@ export async function postUserMessage(
     // connection pool, resulting in a deadlock.
     await getConversationRankVersionLock(auth, conversation, t);
 
-    // Pending path: re-read agent message status under lock. If the agent is
-    // still running, create a pending user message without an agent message.
+    // Re-read the agent message status inside the critical section of the
+    // advisory lock. Between the initial check and acquiring the lock, the
+    // agent loop may have finalized — if so, clear runningAgentMessage so we
+    // fall through to the normal flow.
     if (steeringEnabled && runningAgentMessage) {
       const agentMessageRow = await AgentMessageModel.findByPk(
         runningAgentMessage.agentMessageId,
         { transaction: t }
       );
 
-      if (agentMessageRow?.status === "created") {
-        const nextMessageRank =
-          ((await MessageModel.max<number | null, MessageModel>("rank", {
-            where: {
-              workspaceId: owner.id,
-              conversationId: conversation.id,
-              branchId: conversation.branchId
-                ? getResourceIdFromSId(conversation.branchId)
-                : null,
-            },
-            transaction: t,
-          })) ?? -1) + 1;
+      if (agentMessageRow?.status !== "created") {
+        runningAgentMessage = undefined;
+      }
+    }
 
-        const enrichedContext: UserMessageContext = {
-          ...context,
-          apiKeyId: auth.key()?.id ?? null,
-          authMethod: auth.authMethod(),
-        };
-
-        const userMessageWithoutMentions = await createUserMessage(auth, {
-          conversation,
-          content,
-          metadata: {
-            type: "create",
-            user: doNotAssociateUser ? null : (user?.toJSON() ?? null),
-            rank: nextMessageRank,
-            context: enrichedContext,
-            agenticMessageData,
-            visibility: "pending",
+    // Pending path: agent is still running, create a pending user message
+    // without an agent message.
+    if (steeringEnabled && runningAgentMessage) {
+      const nextMessageRank =
+        ((await MessageModel.max<number | null, MessageModel>("rank", {
+          where: {
+            workspaceId: owner.id,
+            conversationId: conversation.id,
+            branchId: conversation.branchId
+              ? getResourceIdFromSId(conversation.branchId)
+              : null,
           },
           transaction: t,
-        });
+        })) ?? -1) + 1;
 
-        const richMentions = await createUserMentions(auth, {
-          mentions,
-          message: userMessageWithoutMentions,
-          conversation,
-          transaction: t,
-        });
+      const enrichedContext: UserMessageContext = {
+        ...context,
+        apiKeyId: auth.key()?.id ?? null,
+        authMethod: auth.authMethod(),
+      };
 
-        const userMessage = {
-          ...userMessageWithoutMentions,
-          richMentions,
-          mentions: richMentions.map(toMentionType),
-        };
+      const userMessageWithoutMentions = await createUserMessage(auth, {
+        conversation,
+        content,
+        metadata: {
+          type: "create",
+          user: doNotAssociateUser ? null : (user?.toJSON() ?? null),
+          rank: nextMessageRank,
+          context: enrichedContext,
+          agenticMessageData,
+          visibility: "pending",
+        },
+        transaction: t,
+      });
 
-        return { userMessage, agentMessages: [] };
-      }
-      // Agent is no longer running — fall through to normal flow.
+      const richMentions = await createUserMentions(auth, {
+        mentions,
+        message: userMessageWithoutMentions,
+        conversation,
+        transaction: t,
+      });
+
+      const userMessage = {
+        ...userMessageWithoutMentions,
+        richMentions,
+        mentions: richMentions.map(toMentionType),
+      };
+
+      return { userMessage, agentMessages: [] };
     }
 
     let nextMessageRank: number | undefined;
