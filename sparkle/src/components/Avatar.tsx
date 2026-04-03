@@ -214,16 +214,18 @@ export function Avatar({
           rounded: isRounded,
         }),
         busy ? "s-animate-breathing s-cursor-default" : "",
-        hexBgColor
+        typeof visualToUse === "string"
           ? ""
-          : backgroundColorToUse
-            ? backgroundColorToUse
-            : name
-              ? getColor(name)
-              : "s-bg-muted-background",
+          : hexBgColor
+            ? ""
+            : backgroundColorToUse
+              ? backgroundColorToUse
+              : name
+                ? getColor(name)
+                : "s-bg-muted-background",
         className
       )}
-      style={hexBgColor ? { backgroundColor: hexBgColor } : undefined}
+      style={hexBgColor && typeof visualToUse !== "string" ? { backgroundColor: hexBgColor } : undefined}
     >
       {size === "auto" && <div style={{ paddingBottom: "100%" }} />}
       {typeof visualToUse === "string" ? (
