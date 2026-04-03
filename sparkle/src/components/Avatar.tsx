@@ -204,28 +204,31 @@ export function Avatar({
       ? "clickable"
       : "default";
 
+  const isImageVisual = typeof visualToUse === "string";
+  const bgColorClass =
+    isImageVisual || hexBgColor
+      ? ""
+      : (backgroundColorToUse ??
+        (name ? getColor(name) : "s-bg-muted-background"));
+
   return (
     <div
       className={cn(
-        typeof visualToUse !== "string" && "s-border s-border-primary-800/10",
+        !isImageVisual && "s-border s-border-primary-800/10",
         avatarVariants({
           size,
           variant,
           rounded: isRounded,
         }),
         busy ? "s-animate-breathing s-cursor-default" : "",
-        typeof visualToUse === "string"
-          ? ""
-          : hexBgColor
-            ? ""
-            : backgroundColorToUse
-              ? backgroundColorToUse
-              : name
-                ? getColor(name)
-                : "s-bg-muted-background",
+        bgColorClass,
         className
       )}
-      style={hexBgColor && typeof visualToUse !== "string" ? { backgroundColor: hexBgColor } : undefined}
+      style={
+        hexBgColor && !isImageVisual
+          ? { backgroundColor: hexBgColor }
+          : undefined
+      }
     >
       {size === "auto" && <div style={{ paddingBottom: "100%" }} />}
       {typeof visualToUse === "string" ? (
