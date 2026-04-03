@@ -305,6 +305,17 @@ const ContentFragmentView = ({ message }: ContentFragmentViewProps) => {
   );
 };
 
+function getDatadogSandboxLogsUrl(
+  conversationId: string,
+  conversationCreatedMs: number
+): string {
+  const nowMs = Date.now();
+  const fromMs = conversationCreatedMs;
+  const query = `service:sandbox-runner @conversation_id:${conversationId}`;
+
+  return `https://app.datadoghq.eu/logs?query=${encodeURIComponent(query)}&from_ts=${fromMs}&to_ts=${nowMs}&live=true`;
+}
+
 export function ConversationPage() {
   const owner = useWorkspace();
   useDocumentTitle(`Poke - ${owner.name} - Conversation`);
@@ -456,6 +467,16 @@ export function ConversationPage() {
             <Button
               href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=%60conversationId%60%3D"${conversationId}"`}
               label="Temporal Workflows"
+              variant="primary"
+              size="xs"
+              target="_blank"
+            />
+            <Button
+              href={getDatadogSandboxLogsUrl(
+                conversationId,
+                conversation.created
+              )}
+              label="Sandbox Logs"
               variant="primary"
               size="xs"
               target="_blank"

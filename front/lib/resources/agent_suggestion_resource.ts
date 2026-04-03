@@ -446,6 +446,33 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   }
 
   /**
+   * Deletes all synthetic suggestions older than the given cutoff date.
+   * Requires admin permissions. Returns the number of deleted rows.
+   */
+  static async deleteExpiredSynthetic(
+    auth: Authenticator,
+    cutoffDate: Date,
+    { limit }: { limit?: number } = {}
+  ): Promise<number> {
+    if (!auth.isAdmin()) {
+      throw new Error(
+        "Only workspace admins can delete expired synthetic suggestions"
+      );
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+
+    return AgentSuggestionModel.destroy({
+      where: {
+        workspaceId: owner.id,
+        source: "synthetic",
+        createdAt: { [Op.lt]: cutoffDate },
+      },
+      limit,
+    });
+  }
+
+  /**
    * Lists all suggestions for the workspace.
    */
   static async listAll(

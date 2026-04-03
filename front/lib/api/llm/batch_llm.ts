@@ -16,7 +16,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 import {
@@ -433,6 +433,7 @@ function eventToStoredStepContent(
     case "success":
     case "text_delta":
     case "token_usage":
+    case "tool_call_started":
     case "tool_call_delta":
       return null;
     default:

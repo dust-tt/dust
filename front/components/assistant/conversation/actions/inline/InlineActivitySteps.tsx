@@ -28,6 +28,7 @@ interface InlineActivityStepsProps {
   agentMessage: LightAgentMessageType | LightAgentMessageWithActionsType;
   lastAgentStateClassification: AgentStateClassification;
   completedSteps: InlineActivityStep[];
+  onOpenDetails?: (messageId: string) => void;
 }
 
 function getCompletionLabel(
@@ -49,8 +50,8 @@ function getCollapseAnimationStyle(isCollapsed: boolean): React.CSSProperties {
     gridTemplateRows: isCollapsed ? "0fr" : "1fr",
     opacity: isCollapsed ? 0 : 1,
     transition: isCollapsed
-      ? "grid-template-rows 200ms ease-out, opacity"
-      : "grid-template-rows 200ms ease-out, opacity 300ms",
+      ? "grid-template-rows 280ms ease, opacity 280ms"
+      : "grid-template-rows 200ms ease-in",
   };
 }
 
@@ -65,6 +66,7 @@ export function InlineActivitySteps({
   agentMessage,
   lastAgentStateClassification,
   completedSteps,
+  onOpenDetails,
 }: InlineActivityStepsProps) {
   const isAgentMessageWithActions =
     isLightAgentMessageWithActionsType(agentMessage);
@@ -84,10 +86,15 @@ export function InlineActivitySteps({
     }
   }, [isDone]);
 
-  const openBreakdownPanel = () => {
+  const openBreakdownPanel = (actionId?: string) => {
+    if (onOpenDetails) {
+      onOpenDetails(agentMessage.sId);
+      return;
+    }
     openPanel({
       type: "actions",
       messageId: agentMessage.sId,
+      actionId,
     });
   };
 
@@ -129,20 +136,20 @@ export function InlineActivitySteps({
   }
 
   return (
-    <div className={`flex flex-col text-sm ${isCollapsed ? "" : "gap-4"}`}>
+    <div className="flex flex-col text-sm">
       <button
         className="self-start text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors duration-200 flex gap-1 items-center"
         onClick={toggleCollapse}
       >
+        {headerLabel ?? <AnimatedText>Thinking…</AnimatedText>}
         <span
           className={cn(
             "transition-transform duration-200 ease-out",
-            !isCollapsed && "rotate-90"
+            isCollapsed ? "rotate-0" : "rotate-90"
           )}
         >
           <Icon size="xs" visual={ChevronRightIcon} />
         </span>
-        {headerLabel ?? <AnimatedText>Thinking…</AnimatedText>}
       </button>
 
       <div
@@ -150,10 +157,7 @@ export function InlineActivitySteps({
         style={getCollapseAnimationStyle(isCollapsed)}
       >
         <div className="overflow-hidden">
-          <div
-            className="cursor-pointer flex flex-col gap-2 ml-4"
-            onClick={openBreakdownPanel}
-          >
+          <div className="mt-4 flex flex-col gap-2">
             {completedSteps.map((step, index) => {
               const isLast =
                 index === completedSteps.length - 1 &&
@@ -188,15 +192,22 @@ export function InlineActivitySteps({
                     : ToolsIcon;
 
                   return (
-                    <TimelineRow
+                    <div
                       key={step.id}
-                      icon={actionIcon}
-                      isLast={isLast}
+                      className="cursor-pointer"
+                      onClick={() => openBreakdownPanel(step.actionId)}
                     >
-                      <span className="text-muted-foreground dark:text-muted-foreground-night">
-                        {step.label}
-                      </span>
-                    </TimelineRow>
+                      <TimelineRow icon={actionIcon} isLast={isLast}>
+                        <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
+                          {step.label}
+                          <Icon
+                            size="xs"
+                            visual={ChevronRightIcon}
+                            className="shrink-0 opacity-50"
+                          />
+                        </span>
+                      </TimelineRow>
+                    </div>
                   );
                 }
                 default:

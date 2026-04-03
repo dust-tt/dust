@@ -23,7 +23,7 @@ procs:
 
   oauth:
     cwd: "<CONFIG_DIR>/../core"
-    shell: "bacon oauth"
+    shell: "RUST_BACKTRACE=1 bacon oauth"
 
   sparkle:
     cwd: "<CONFIG_DIR>/../sparkle"

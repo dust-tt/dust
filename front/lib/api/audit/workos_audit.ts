@@ -205,44 +205,67 @@ export async function emitAuditLogEventDirect({
 
 /**
  * Builds the audit actor from an Authenticator.
+ * Uses the authenticated user when available, falls back to the API key.
  */
 export function buildAuditActor(auth: Authenticator): AuditLogActor {
-  const user = auth.getNonNullableUser();
+  const user = auth.user();
+  if (user) {
+    return {
+      type: "user",
+      id: user.sId,
+      name: user.fullName() ?? undefined,
+      metadata: {
+        email: user.email,
+      },
+    };
+  }
+
+  const key = auth.key();
+  if (key) {
+    return {
+      type: key.isSystem ? "system_key" : "api_key",
+      id: String(key.id),
+      name: key.name,
+    };
+  }
+
   return {
-    type: "user",
-    id: user.sId,
-    name: user.fullName() ?? undefined,
-    metadata: {
-      email: user.email,
-    },
+    type: "system",
+    id: auth.authMethod(),
   };
 }
 
-/**
- * Builds a workspace audit target.
- */
-export function buildWorkspaceTarget(workspace: {
-  sId: string;
-  name: string;
-}): AuditLogTarget {
-  return { type: "workspace", id: workspace.sId, name: workspace.name };
-}
+type AuditTargetType =
+  | "workspace"
+  | "user"
+  | "agent"
+  | "space"
+  | "data_source"
+  | "tool"
+  | "trigger"
+  | "api_key"
+  | "invitation"
+  | "group";
 
 /**
- * Derives the origin of an audit event from the Authenticator.
- * - "web": user-initiated via browser (user present, client IP available)
- * - "api": API-key-initiated (key present)
- * - "trigger": trigger-initiated (user present but no client IP)
- * - "system": system/internal (no user, no key)
+ * Resource shape required for each audit target type.
+ * All currently use { sId, name }; individual types can be tightened
+ * to specific resource types (e.g., LightWorkspaceType) in the future.
  */
-export function getAuditLogOrigin(auth: Authenticator): string {
-  if (auth.key()) {
-    return "api";
-  }
-  if (auth.user()) {
-    return auth.clientIp() ? "web" : "trigger";
-  }
-  return "system";
+type AuditTargetResourceMap = {
+  [K in AuditTargetType]: { sId: string; name: string };
+};
+
+/**
+ * Builds a typed audit log target.
+ * The generic constraint ensures the type string is a valid AuditTargetType
+ * and the resource matches the expected shape for that type.
+ */
+export function buildAuditLogTarget<T extends AuditTargetType>(
+  type: T,
+  resource: AuditTargetResourceMap[T]
+): AuditLogTarget {
+  return { type, id: resource.sId, name: resource.name };
 }
 
 /**

@@ -7,7 +7,11 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { GetTriggersResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers";
+import type {
+  GetTriggersResponseBody,
+  PatchTriggersRequestBody,
+  PostTriggersRequestBody,
+} from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers";
 import type { GetSubscribersResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers/[tId]/subscribers";
 import type {
   PostTextAsCronRuleRequestBody,
@@ -113,9 +117,7 @@ export function useDeleteTrigger({
         } else {
           return false;
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
+      } catch {
         return false;
       }
     },
@@ -123,6 +125,126 @@ export function useDeleteTrigger({
   );
 
   return deleteTrigger;
+}
+
+export function useCreateTrigger({
+  workspaceId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateTriggers } = useAgentTriggers({
+    workspaceId,
+    agentConfigurationId,
+    disabled: true,
+  });
+
+  const createTrigger = useCallback(
+    async (
+      triggerData: PostTriggersRequestBody["triggers"][number]
+    ): Promise<boolean> => {
+      try {
+        const response = await clientFetch(
+          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ triggers: [triggerData] }),
+          }
+        );
+
+        if (response.ok) {
+          sendNotification({
+            type: "success",
+            title: "Trigger created",
+            description: `The trigger "${triggerData.name}" has been created.`,
+          });
+          void mutateTriggers();
+          return true;
+        } else {
+          const errorData = await getErrorFromResponse(response);
+          sendNotification({
+            type: "error",
+            title: "Failed to create trigger",
+            description: `Error: ${errorData.message}`,
+          });
+          return false;
+        }
+      } catch {
+        sendNotification({
+          type: "error",
+          title: "Failed to create trigger",
+          description: "An unexpected error occurred. Please try again.",
+        });
+        return false;
+      }
+    },
+    [workspaceId, agentConfigurationId, sendNotification, mutateTriggers]
+  );
+
+  return createTrigger;
+}
+
+export function useUpdateTrigger({
+  workspaceId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateTriggers } = useAgentTriggers({
+    workspaceId,
+    agentConfigurationId,
+    disabled: true,
+  });
+
+  const updateTrigger = useCallback(
+    async (
+      triggerData: PatchTriggersRequestBody["triggers"][number]
+    ): Promise<boolean> => {
+      try {
+        const response = await clientFetch(
+          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ triggers: [triggerData] }),
+          }
+        );
+
+        if (response.ok) {
+          sendNotification({
+            type: "success",
+            title: "Trigger updated",
+            description: `The trigger "${triggerData.name}" has been updated.`,
+          });
+          void mutateTriggers();
+          return true;
+        } else {
+          const errorData = await getErrorFromResponse(response);
+          sendNotification({
+            type: "error",
+            title: "Failed to update trigger",
+            description: `Error: ${errorData.message}`,
+          });
+          return false;
+        }
+      } catch {
+        sendNotification({
+          type: "error",
+          title: "Failed to update trigger",
+          description: "An unexpected error occurred. Please try again.",
+        });
+        return false;
+      }
+    },
+    [workspaceId, agentConfigurationId, sendNotification, mutateTriggers]
+  );
+
+  return updateTrigger;
 }
 
 export function useTextAsCronRule({
@@ -284,9 +406,7 @@ export function useAddTriggerSubscriber({
           });
           return false;
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
+      } catch {
         sendNotification({
           type: "error",
           title: "Failed to subscribe",
@@ -362,9 +482,7 @@ export function useRemoveTriggerSubscriber({
           });
           return false;
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
+      } catch {
         sendNotification({
           type: "error",
           title: "Failed to unsubscribe",

@@ -249,7 +249,7 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
         onChange={handleImageUpload}
       />
       <div className="flex items-center gap-4 py-2">
-        <div className="group relative">
+        <div className="group relative mb-4">
           <Avatar size="lg" visual={currentImageUrl ?? null} isRounded />
           <Button
             variant="outline"
@@ -283,7 +283,7 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
 
         <div className="flex w-full flex-row justify-between gap-4">
           <div className="flex-1">
-            <div>
+            <div className="mb-2">
               <Label>Theme</Label>
             </div>
             <DropdownMenu>
@@ -330,7 +330,9 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
             </DropdownMenu>
           </div>
           <div className="flex-1">
-            <Label>Keyboard Shortcuts</Label>
+            <div className="mb-2">
+              <Label>Keyboard Shortcuts</Label>
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div className="copy-sm flex items-center gap-2 text-foreground dark:text-foreground-night">

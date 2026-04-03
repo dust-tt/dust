@@ -1,5 +1,8 @@
 /** @ignoreswagger */
-import { emitAuditLogEventDirect } from "@app/lib/api/audit/workos_audit";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEventDirect,
+} from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import { makeEnterpriseConnectionInitiateLoginUrl } from "@app/lib/api/enterprise_connection";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
@@ -287,7 +290,9 @@ async function handler(
         id: user.sId,
         name: user.name,
       },
-      targets: [{ type: "user", id: user.sId, name: user.name }],
+      targets: [
+        buildAuditLogTarget("user", { sId: user.sId, name: user.name }),
+      ],
       context: { location: ip ?? "internal" },
       metadata: {
         isSSO: String(session.isSSO),

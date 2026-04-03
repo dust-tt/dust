@@ -10,7 +10,7 @@
  */
 
 import { frontSequelize } from "@app/lib/resources/storage";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import * as fs from "fs";
 import * as path from "path";
 import { QueryTypes } from "sequelize";
@@ -57,9 +57,9 @@ Error details:
 
 describe("dust-hive seed SQL schema compatibility", () => {
   // Test data - these will be cleaned up after the test
-  const testUserSId = generateRandomModelSId();
-  const testWorkspaceSId = generateRandomModelSId();
-  const testSubscriptionSId = generateRandomModelSId();
+  const testUserId = generateRandomModelSId();
+  const testWorkspaceId = generateRandomModelSId();
+  const testSubscriptionId = generateRandomModelSId();
 
   // Track created IDs for cleanup
   let createdUserId: number | null = null;
@@ -126,7 +126,7 @@ describe("dust-hive seed SQL schema compatibility", () => {
     try {
       const result = await frontSequelize.query(seedSql, {
         replacements: {
-          userSid: testUserSId,
+          userId: testUserId,
           username: "test_dust_hive_seed",
           email: `test_dust_hive_${Date.now()}@example.com`,
           name: "Test Dust Hive Seed",
@@ -136,9 +136,9 @@ describe("dust-hive seed SQL schema compatibility", () => {
           provider: null,
           providerId: null,
           imageUrl: null,
-          workspaceSid: testWorkspaceSId,
+          workspaceId: testWorkspaceId,
           workspaceName: "Test Dust Hive Workspace",
-          subscriptionSid: testSubscriptionSId,
+          subscriptionId: testSubscriptionId,
         },
         type: QueryTypes.SELECT,
       });

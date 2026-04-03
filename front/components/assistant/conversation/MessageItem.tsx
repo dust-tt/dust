@@ -26,16 +26,24 @@ import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import React, { useMemo } from "react";
 
 interface MessageItemProps {
+  allowBranchMessages?: boolean;
   data: VirtuosoMessage;
   context: VirtuosoMessageListContext;
-  index: number;
   nextData: VirtuosoMessage | null;
   prevData: VirtuosoMessage | null;
+  onAgentMessageCompletionStatusClick?: (messageId: string) => void;
 }
 
 export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
   function MessageItem(
-    { data, context, prevData, nextData }: MessageItemProps,
+    {
+      allowBranchMessages,
+      data,
+      context,
+      prevData,
+      nextData,
+      onAgentMessageCompletionStatusClick,
+    }: MessageItemProps,
     ref
   ) {
     const sId = data.sId;
@@ -144,6 +152,10 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       }
     }, [data, methods.data]);
 
+    if (!allowBranchMessages && data.branchId) {
+      return null;
+    }
+
     if (isHiddenMessage(data)) {
       // This is hacky but in case of handover we generate a user message from the agent and we want to hide it in the conversation
       // because it has no value to display.
@@ -189,6 +201,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               owner={context.owner}
               handleSubmit={context.handleSubmit}
               isOnboardingConversation={context.isOnboardingConversation}
+              onCompletionStatusClick={onAgentMessageCompletionStatusClick}
               additionalMarkdownComponents={
                 context.additionalMarkdownComponents
               }

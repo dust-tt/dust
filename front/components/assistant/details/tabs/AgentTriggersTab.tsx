@@ -3,17 +3,15 @@ import {
   useAgentTriggers,
   useDeleteTrigger,
 } from "@app/lib/swr/agent_triggers";
-import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
-import { isAdmin } from "@app/types/user";
 import {
-  Avatar,
+  ActionCard,
   BellIcon,
   Button,
-  Chip,
-  ClockIcon,
+  CardGrid,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -21,23 +19,53 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  PencilSquareIcon,
+  PlusIcon,
   Spinner,
-  TrashIcon,
+  TimeIcon,
 } from "@dust-tt/sparkle";
 import cronstrue from "cronstrue";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+
+function getTriggerDescription(trigger: TriggerType): string {
+  switch (trigger.kind) {
+    case "schedule":
+      try {
+        return `Runs ${cronstrue.toString(trigger.configuration.cron)}.`;
+      } catch {
+        return "";
+      }
+    case "webhook":
+      return trigger.configuration.event
+        ? `Triggered by ${trigger.configuration.event} events.`
+        : "Triggered by webhook events.";
+    default:
+      assertNever(trigger);
+  }
+}
+
+function getTriggerIcon(trigger: TriggerType) {
+  switch (trigger.kind) {
+    case "schedule":
+      return TimeIcon;
+    case "webhook":
+      return BellIcon;
+    default:
+      assertNever(trigger);
+  }
+}
 
 interface AgentTriggersTabProps {
   agentConfiguration: LightAgentConfigurationType;
-  isGlobalAgent: boolean;
   owner: WorkspaceType;
+  onEditTrigger: (trigger: TriggerType) => void;
+  onAddTrigger: () => void;
 }
 
 export function AgentTriggersTab({
   agentConfiguration,
-  isGlobalAgent,
   owner,
+  onEditTrigger,
+  onAddTrigger,
 }: AgentTriggersTabProps) {
   const { triggers, isTriggersLoading } = useAgentTriggers({
     workspaceId: owner.sId,
@@ -79,85 +107,51 @@ export function AgentTriggersTab({
     }
   };
 
-  const canEditAgent =
-    !isGlobalAgent && (agentConfiguration.canEdit || isAdmin(owner));
-
   // TODO(adrien): for now, we only show the user's triggers.
   // We might reconsider it, and display a "My triggers" section,
   // and a "How others automate this" section in the future.
-  const filteredTriggers = triggers.filter((t) => t.isEditor);
+  const filteredTriggers = useMemo(
+    () => triggers.filter((t) => t.isEditor),
+    [triggers]
+  );
 
   return (
     <>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold">My triggers</h3>
+        <Button
+          label="Add trigger"
+          icon={PlusIcon}
+          variant="outline"
+          size="sm"
+          onClick={onAddTrigger}
+        />
+      </div>
+
       {isTriggersLoading ? (
         <div className="w-full p-6">
           <Spinner variant="dark" />
         </div>
-      ) : (
-        <div className="flex w-full flex-col gap-2">
-          {filteredTriggers.length === 0 && (
-            <div className="text-muted-foreground">
-              You have no triggers setup for this agent, yet.
-            </div>
-          )}
-          {filteredTriggers.map((trigger) => (
-            <div
-              key={trigger.sId}
-              className="flex w-full flex-row items-center justify-between border-b pb-2"
-            >
-              <div className="flex w-full flex-col gap-1">
-                <div className="flex w-full flex-row items-center justify-between gap-4">
-                  <div className="flex flex-row items-center gap-2">
-                    <Avatar
-                      size="xs"
-                      visual={
-                        trigger.kind === "schedule" ? (
-                          <ClockIcon />
-                        ) : (
-                          <BellIcon />
-                        )
-                      }
-                    />
-                    <div className="font-semibold">{trigger.name}</div>
-                    {trigger.status !== "enabled" && (
-                      <Chip size="xs" color="primary">
-                        Disabled
-                      </Chip>
-                    )}
-                  </div>
-                  <div className="self-end">
-                    {canEditAgent ? (
-                      <Button
-                        label="Edit"
-                        icon={PencilSquareIcon}
-                        variant="outline"
-                        size="sm"
-                        href={getAgentBuilderRoute(
-                          owner.sId,
-                          agentConfiguration.sId
-                        )}
-                      />
-                    ) : (
-                      <Button
-                        label="Delete"
-                        disabled={!trigger.isEditor}
-                        icon={TrashIcon}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setTriggerToDelete(trigger)}
-                      />
-                    )}
-                  </div>
-                </div>
-                {trigger.kind === "schedule" && (
-                  <div className="text-sm text-muted-foreground">
-                    Runs {cronstrue.toString(trigger.configuration.cron)}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+      ) : filteredTriggers.length === 0 ? (
+        <div className="text-muted-foreground text-sm">
+          You have no triggers set up for this agent yet.
         </div>
+      ) : (
+        <CardGrid>
+          {filteredTriggers.map((trigger) => (
+            <ActionCard
+              key={trigger.sId}
+              icon={getTriggerIcon(trigger)}
+              label={trigger.name}
+              description={getTriggerDescription(trigger)}
+              canAdd={false}
+              disabled={trigger.status !== "enabled"}
+              onClick={() => onEditTrigger(trigger)}
+              onRemove={() => setTriggerToDelete(trigger)}
+              cardContainerClassName="min-h-28"
+            />
+          ))}
+        </CardGrid>
       )}
 
       <Dialog

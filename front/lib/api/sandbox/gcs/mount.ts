@@ -87,7 +87,7 @@ export async function mountConversationFiles(
   // Start in background, then verify with a separate exec (matching PoC).
   const startResult = await sandbox.exec(
     auth,
-    "bash /home/user/.bin/token-server.sh > /tmp/server.log 2>&1 &"
+    "bash /home/agent/.bin/token-server.sh > /tmp/server.log 2>&1 &"
   );
   if (startResult.isErr()) {
     childLogger.error(
@@ -107,10 +107,11 @@ export async function mountConversationFiles(
     return new Err(new Error(msg));
   }
 
-  // 4. Mount via gcsfuse.
+  // 4. Mount via gcsfuse (runs as root for FUSE permissions).
   const mountCmd = buildMountCommand({ bucket, prefix });
   const mountResult = await sandbox.exec(auth, mountCmd, {
     timeoutMs: MOUNT_TIMEOUT_MS,
+    user: "root",
   });
   if (mountResult.isErr()) {
     childLogger.error(
@@ -194,6 +195,9 @@ function buildMountCommand({
 }): string {
   const flags = [
     `--token-url http://127.0.0.1:9876`,
+    // Disable token caching so gcsfuse fetches fresh token from server on every GCS API request.
+    // This ensures gcsfuse never uses stale credentials, eliminating 401 errors after token expiry.
+    `--reuse-token-from-url=false`,
     `--only-dir ${prefix}`,
     `--implicit-dirs`,
     `-o allow_other`,
@@ -206,7 +210,7 @@ function buildMountCommand({
     `--enable-hns=false`,
   ].join(" ");
 
-  return `timeout 30 sudo gcsfuse ${flags} ${bucket} ${MOUNT_POINT} 2>&1`;
+  return `timeout 30 gcsfuse ${flags} ${bucket} ${MOUNT_POINT} 2>&1`;
 }
 
 function escapeSingleQuotes(s: string): string {

@@ -943,7 +943,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
               outputItems.map((o) => {
                 const file = o.file;
 
-                if (!file || file.useCaseMetadata?.hideFromGeneratedFiles) {
+                if (!file) {
                   return null;
                 }
 
@@ -958,6 +958,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
                   createdAt: file.createdAt.getTime(),
                   updatedAt: file.updatedAt.getTime(),
                   isInProjectContext: file.useCase === "project_context",
+                  hidden: file.useCaseMetadata?.hideFromUser ?? false,
                 };
               })
             ),

@@ -34,9 +34,8 @@ import {
 } from "@app/lib/api/assistant/streaming/events";
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
-  getAuditLogOrigin,
 } from "@app/lib/api/audit/workos_audit";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
@@ -66,10 +65,8 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import {
-  generateRandomModelSId,
-  getResourceIdFromSId,
-} from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import {
@@ -93,7 +90,10 @@ import type {
   ContentFragmentInputWithFileIdType,
 } from "@app/types/api/internal/assistant";
 import { isContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  LightAgentConfigurationType,
+  ToolErrorEvent,
+} from "@app/types/assistant/agent";
 import type {
   AgenticMessageData,
   AgentMessageType,
@@ -875,26 +875,20 @@ export async function postUserMessage(
   });
 
   // Emit agent.executed for each agent being invoked.
-  if (auth.user()) {
-    for (const agentMessage of agentMessages) {
-      void emitAuditLogEvent({
-        auth,
-        action: "agent.executed",
-        targets: [
-          buildWorkspaceTarget(conversation.owner),
-          {
-            type: "agent",
-            id: agentMessage.configuration.sId,
-            name: agentMessage.configuration.name,
-          },
-        ],
-        metadata: {
-          conversationId: conversation.sId,
-          agentName: agentMessage.configuration.name,
-          origin: getAuditLogOrigin(auth),
-        },
-      });
-    }
+  for (const agentMessage of agentMessages) {
+    void emitAuditLogEvent({
+      auth,
+      action: "agent.executed",
+      targets: [
+        buildAuditLogTarget("workspace", conversation.owner),
+        buildAuditLogTarget("agent", agentMessage.configuration),
+      ],
+      metadata: {
+        conversationId: conversation.sId,
+        agentName: agentMessage.configuration.name,
+        origin: context.origin,
+      },
+    });
   }
 
   // Run agent loop workflows after the transaction commits, to ensure messages are persisted.
@@ -2224,4 +2218,57 @@ export async function isConversationEventAllowedForAuth(
     default:
       assertNever(type);
   }
+}
+
+/**
+ * Finalize an agent message terminal status behind the conversation advisory lock.
+ *
+ * This ensures the status transition is serialized against other conversation operations (e.g.
+ * postUserMessage's pending path in the future).
+ */
+export async function finalizeAgentMessage(
+  auth: Authenticator,
+  {
+    conversation,
+    agentMessage,
+    status,
+    error,
+  }: {
+    conversation: ConversationWithoutContentType;
+    agentMessage: AgentMessageType;
+    status: "succeeded" | "cancelled" | "failed";
+    error?: ToolErrorEvent["error"];
+  }
+): Promise<{
+  completedTs: number;
+  status: "succeeded" | "cancelled" | "failed";
+}> {
+  const completedAt = new Date();
+
+  await withTransaction(async (t) => {
+    await getConversationRankVersionLock(auth, conversation, t);
+
+    await AgentMessageModel.update(
+      {
+        status,
+        completedAt,
+        ...(error
+          ? {
+              errorCode: error.code,
+              errorMessage: error.message,
+              errorMetadata: error.metadata,
+            }
+          : {}),
+      },
+      {
+        where: {
+          id: agentMessage.agentMessageId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        transaction: t,
+      }
+    );
+  });
+
+  return { completedTs: completedAt.getTime(), status };
 }

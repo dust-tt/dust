@@ -1,6 +1,6 @@
 import config from "@app/lib/api/config";
 
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isByokTransitioningPlan } from "@app/lib/plans/plan_codes";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
@@ -17,6 +17,9 @@ import type { z } from "zod";
 
 // Fraction of requests that use BYOK credentials during the transition period.
 const BYOK_TRANSITION_BYOK_KEYS_RATIO = 0.2; // 20%
+
+export const MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE =
+  "An OpenAI API key is required to perform this action. Please configure it in your workspace settings or contact an admin.";
 
 /**
  * Returns LLM credentials for the workspace.
@@ -78,6 +81,15 @@ export async function getLlmCredentials(
     return {
       ...BASE_VARIABLES,
       ...DUST_MANAGED_OTHER_PROVIDERS_API_KEYS,
+      ...DUST_MANAGED_BYOK_PROVIDERS_API_KEYS,
+    };
+  }
+
+  const featureFlags = await getFeatureFlags(auth);
+
+  if (featureFlags.includes("use_dust_keys")) {
+    return {
+      ...BASE_VARIABLES,
       ...DUST_MANAGED_BYOK_PROVIDERS_API_KEYS,
     };
   }

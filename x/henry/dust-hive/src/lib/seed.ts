@@ -14,7 +14,7 @@ import { SEED_USER_PATH, getEnvFilePath, getWorktreeDir } from "./paths";
 import { buildShell, shellQuote } from "./shell";
 
 // Keep in sync with front/scripts/seed/* (workspace created by dust-hive seed SQL).
-export const WORKSPACE_SID = "DevWkSpace";
+export const WORKSPACE_ID = "DevWkSpace";
 
 // Generate a random 10-character alphanumeric ID
 // This is compatible with front's generateRandomModelSId() output format
@@ -54,21 +54,21 @@ function buildDatabaseUri(envVars: Record<string, string>): string {
   return buildPostgresUri(envVars, "dust_front");
 }
 
-async function listActiveSeededUserSids({
+async function listActiveSeededUserIds({
   databaseUri,
-  workspaceSid,
+  workspaceId,
 }: {
   databaseUri: string;
-  workspaceSid: string;
+  workspaceId: string;
 }): Promise<string[]> {
-  const escapedWorkspaceSid = workspaceSid.replace(/'/g, "''");
+  const escapedWorkspaceId = workspaceId.replace(/'/g, "''");
 
   const query = `
 SELECT DISTINCT u."sId"
 FROM users u
 JOIN memberships m ON m."userId" = u.id
 JOIN workspaces w ON w.id = m."workspaceId"
-WHERE w."sId" = '${escapedWorkspaceSid}'
+WHERE w."sId" = '${escapedWorkspaceId}'
   AND m."startAt" <= NOW()
   AND (m."endAt" IS NULL OR m."endAt" > NOW());
   `;
@@ -88,29 +88,29 @@ WHERE w."sId" = '${escapedWorkspaceSid}'
     );
   }
 
-  const userSids = stdout
+  const userIds = stdout
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
 
-  return [...new Set(userSids)];
+  return [...new Set(userIds)];
 }
 
 async function queueUserSearchIndexationWorkflows({
   envShPath,
   worktreePath,
-  userSids,
+  userIds,
 }: {
   envShPath: string;
   worktreePath: string;
-  userSids: string[];
+  userIds: string[];
 }): Promise<{ success: boolean; stdout: string; stderr: string }> {
-  const userSidArgs = userSids.map((userSid) => `--userSids ${shellQuote(userSid)}`).join(" ");
+  const userIdArgs = userIds.map((userId) => `--userIds ${shellQuote(userId)}`).join(" ");
 
   const command = buildShell({
     sourceEnv: envShPath,
     sourceNvm: true,
-    run: `npx tsx ./scripts/seed/queue_user_search_indexation.ts --execute ${userSidArgs}`,
+    run: `npx tsx ./scripts/seed/queue_user_search_indexation.ts --execute ${userIdArgs}`,
   });
 
   const proc = Bun.spawn(["bash", "-c", command], {
@@ -133,31 +133,31 @@ async function queueUserSearchIndexationWorkflows({
 
 async function queueSeededUsersForUserSearchIndexation({
   databaseUri,
-  workspaceSid,
+  workspaceId,
   envShPath,
   worktreePath,
 }: {
   databaseUri: string;
-  workspaceSid: string;
+  workspaceId: string;
   envShPath: string;
   worktreePath: string;
 }): Promise<void> {
-  const seededUserSids = await listActiveSeededUserSids({
+  const seededUserIds = await listActiveSeededUserIds({
     databaseUri,
-    workspaceSid,
+    workspaceId,
   });
 
-  if (seededUserSids.length === 0) {
+  if (seededUserIds.length === 0) {
     logger.warn("No active seeded users found for user search indexing.");
     return;
   }
 
-  logger.step(`Queueing user search indexing workflows (${seededUserSids.length} user(s))...`);
+  logger.step(`Queueing user search indexing workflows (${seededUserIds.length} user(s))...`);
 
   const queueResult = await queueUserSearchIndexationWorkflows({
     envShPath,
     worktreePath,
-    userSids: seededUserSids,
+    userIds: seededUserIds,
   });
 
   if (!queueResult.success) {
@@ -171,7 +171,7 @@ async function queueSeededUsersForUserSearchIndexation({
     return;
   }
 
-  logger.success(`Queued user search indexing workflows for ${seededUserSids.length} user(s)`);
+  logger.success(`Queued user search indexing workflows for ${seededUserIds.length} user(s)`);
 }
 
 export async function runSqlSeed(env: Environment): Promise<boolean> {
@@ -184,12 +184,12 @@ export async function runSqlSeed(env: Environment): Promise<boolean> {
 
   const envShPath = getEnvFilePath(env.name);
   const envVars = await loadEnvVars(envShPath);
-  const dbUri = buildDatabaseUri(envVars);
+  const databaseUri = buildDatabaseUri(envVars);
 
   // Generate sIds - workspace uses static ID for consistency across environments
-  const userSid = config.sId ?? generateRandomModelSId();
-  const workspaceSid = WORKSPACE_SID;
-  const subscriptionSid = generateRandomModelSId();
+  const userId = config.sId ?? generateRandomModelSId();
+  const workspaceId = WORKSPACE_ID;
+  const subscriptionId = generateRandomModelSId();
   const username = config.username ?? config.email.split("@")[0];
 
   // Read the SQL file from front (single source of truth)
@@ -211,9 +211,9 @@ export async function runSqlSeed(env: Environment): Promise<boolean> {
   // Replace Sequelize-style :paramName placeholders with actual values
   // Use word boundaries to avoid partial matches (e.g., :provider matching :providerId)
   const finalSql = sql
-    .replace(/:userSid\b/g, escapeSql(userSid))
-    .replace(/:workspaceSid\b/g, escapeSql(workspaceSid))
-    .replace(/:subscriptionSid\b/g, escapeSql(subscriptionSid))
+    .replace(/:userId\b/g, escapeSql(userId))
+    .replace(/:workspaceId\b/g, escapeSql(workspaceId))
+    .replace(/:subscriptionId\b/g, escapeSql(subscriptionId))
     .replace(/:email\b/g, escapeSql(config.email))
     .replace(/:username\b/g, escapeSql(username))
     .replace(/:firstName\b/g, escapeSql(config.firstName))
@@ -226,7 +226,7 @@ export async function runSqlSeed(env: Environment): Promise<boolean> {
     .replace(/:name\b/g, escapeSql(config.name));
 
   // Execute via psql
-  const proc = Bun.spawn(["psql", dbUri, "-c", finalSql], {
+  const proc = Bun.spawn(["psql", databaseUri, "-c", finalSql], {
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -260,8 +260,8 @@ export async function runSqlSeed(env: Environment): Promise<boolean> {
   logger.info("Created subscription");
 
   await queueSeededUsersForUserSearchIndexation({
-    databaseUri: dbUri,
-    workspaceSid,
+    databaseUri,
+    workspaceId,
     envShPath,
     worktreePath,
   }).catch((error) => {

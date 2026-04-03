@@ -10,7 +10,10 @@ import type {
   SandboxHandle,
   SandboxProvider,
 } from "@app/lib/api/sandbox/provider";
-import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
+import {
+  SandboxNotFoundError,
+  traceSandboxOperation,
+} from "@app/lib/api/sandbox/provider";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -73,213 +76,296 @@ export class E2BSandboxProvider implements SandboxProvider {
   }
 
   async create(
-    config: SandboxCreateConfig
+    config: SandboxCreateConfig,
+    tracingOpts: { workspaceSId: string }
   ): Promise<Result<SandboxHandle, Error>> {
     if (!config.imageId) {
       throw new Error(
         "imageId is required in SandboxCreateConfig. Use getSandboxImage().toCreateConfig() to get the config."
       );
     }
-    const templateId = formatSandboxImageId(config.imageId);
+    const imageId = formatSandboxImageId(config.imageId);
 
-    logger.info(
-      { templateId, imageId: config.imageId },
-      "Creating E2B sandbox"
+    return traceSandboxOperation(
+      "create",
+      async () => {
+        const templateId = imageId;
+
+        logger.info(
+          { templateId, imageId: config.imageId },
+          "Creating E2B sandbox"
+        );
+
+        let sandbox: Sandbox;
+        try {
+          const envVars = config.envVars ?? {};
+          const hasEnvVars = Object.keys(envVars).length > 0;
+          sandbox = await Sandbox.create(templateId, {
+            ...this.connectionOpts(),
+            envs: hasEnvVars ? envVars : undefined,
+            timeoutMs: SANDBOX_LIFETIME_MS,
+            requestTimeoutMs: REQUEST_TIMEOUT_MS,
+            network: {
+              ...(config.network ? toE2BNetworkOpts(config.network) : {}),
+              allowPublicTraffic: false,
+            },
+          });
+        } catch (err) {
+          return new Err(normalizeError(err));
+        }
+
+        logger.info(
+          { sandboxId: sandbox.sandboxId, templateId },
+          "E2B sandbox created"
+        );
+
+        return new Ok({ providerId: sandbox.sandboxId });
+      },
+      {
+        image_id: imageId,
+        workspace_id: tracingOpts.workspaceSId,
+      }
     );
+  }
 
-    let sandbox: Sandbox;
-    try {
-      const envVars = config.envVars ?? {};
-      const hasEnvVars = Object.keys(envVars).length > 0;
-      sandbox = await Sandbox.create(templateId, {
-        ...this.connectionOpts(),
-        envs: hasEnvVars ? envVars : undefined,
-        timeoutMs: SANDBOX_LIFETIME_MS,
-        requestTimeoutMs: REQUEST_TIMEOUT_MS,
-        network: {
-          ...(config.network ? toE2BNetworkOpts(config.network) : {}),
-          allowPublicTraffic: false,
-        },
-      });
-    } catch (err) {
-      return new Err(normalizeError(err));
-    }
+  async wake(
+    providerId: string,
+    tracingOpts: { workspaceSId: string }
+  ): Promise<Result<SandboxHandle, Error>> {
+    return traceSandboxOperation(
+      "wake",
+      async () => {
+        logger.info({ providerId }, "Waking E2B sandbox");
 
-    logger.info(
-      { sandboxId: sandbox.sandboxId, templateId },
-      "E2B sandbox created"
+        // Sandbox.connect auto-resumes paused sandboxes.
+        try {
+          await Sandbox.connect(providerId, {
+            ...this.connectionOpts(),
+            timeoutMs: SANDBOX_LIFETIME_MS,
+          });
+        } catch (err) {
+          if (err instanceof NotFoundError) {
+            return new Err(new SandboxNotFoundError(providerId));
+          }
+          return new Err(normalizeError(err));
+        }
+
+        logger.info({ providerId }, "E2B sandbox woken");
+
+        return new Ok({ providerId });
+      },
+      {
+        provider_id: providerId,
+        workspace_id: tracingOpts.workspaceSId,
+      }
     );
-
-    return new Ok({ providerId: sandbox.sandboxId });
   }
 
-  async wake(providerId: string): Promise<Result<SandboxHandle, Error>> {
-    logger.info({ providerId }, "Waking E2B sandbox");
+  async sleep(
+    providerId: string,
+    tracingOpts: { workspaceSId: string }
+  ): Promise<Result<void, Error>> {
+    return traceSandboxOperation(
+      "sleep",
+      async () => {
+        logger.info({ providerId }, "Pausing E2B sandbox");
 
-    // Sandbox.connect auto-resumes paused sandboxes.
-    try {
-      await Sandbox.connect(providerId, {
-        ...this.connectionOpts(),
-        timeoutMs: SANDBOX_LIFETIME_MS,
-      });
-    } catch (err) {
-      if (err instanceof NotFoundError) {
-        return new Err(new SandboxNotFoundError(providerId));
+        let sandbox: Sandbox;
+        try {
+          sandbox = await Sandbox.connect(providerId, this.connectionOpts());
+        } catch (err) {
+          if (err instanceof NotFoundError) {
+            return new Err(new SandboxNotFoundError(providerId));
+          }
+          return new Err(normalizeError(err));
+        }
+
+        try {
+          await sandbox.betaPause();
+        } catch (err) {
+          if (err instanceof NotFoundError) {
+            return new Err(new SandboxNotFoundError(providerId));
+          }
+          return new Err(normalizeError(err));
+        }
+
+        logger.info({ providerId }, "E2B sandbox paused");
+
+        return new Ok(undefined);
+      },
+      {
+        provider_id: providerId,
+        workspace_id: tracingOpts.workspaceSId,
       }
-      return new Err(normalizeError(err));
-    }
-
-    logger.info({ providerId }, "E2B sandbox woken");
-
-    return new Ok({ providerId });
+    );
   }
 
-  async sleep(providerId: string): Promise<Result<void, Error>> {
-    logger.info({ providerId }, "Pausing E2B sandbox");
+  async destroy(
+    providerId: string,
+    tracingOpts: { workspaceSId: string }
+  ): Promise<Result<void, Error>> {
+    return traceSandboxOperation(
+      "destroy",
+      async () => {
+        logger.info({ providerId }, "Killing E2B sandbox");
 
-    let sandbox: Sandbox;
-    try {
-      sandbox = await Sandbox.connect(providerId, this.connectionOpts());
-    } catch (err) {
-      if (err instanceof NotFoundError) {
-        return new Err(new SandboxNotFoundError(providerId));
+        try {
+          await Sandbox.kill(providerId, this.connectionOpts());
+        } catch (err) {
+          if (err instanceof NotFoundError) {
+            return new Err(new SandboxNotFoundError(providerId));
+          }
+          return new Err(normalizeError(err));
+        }
+
+        logger.info({ providerId }, "E2B sandbox killed");
+
+        return new Ok(undefined);
+      },
+      {
+        provider_id: providerId,
+        workspace_id: tracingOpts.workspaceSId,
       }
-      return new Err(normalizeError(err));
-    }
-
-    try {
-      await sandbox.betaPause();
-    } catch (err) {
-      if (err instanceof NotFoundError) {
-        return new Err(new SandboxNotFoundError(providerId));
-      }
-      return new Err(normalizeError(err));
-    }
-
-    logger.info({ providerId }, "E2B sandbox paused");
-
-    return new Ok(undefined);
-  }
-
-  async destroy(providerId: string): Promise<Result<void, Error>> {
-    logger.info({ providerId }, "Killing E2B sandbox");
-
-    try {
-      await Sandbox.kill(providerId, this.connectionOpts());
-    } catch (err) {
-      if (err instanceof NotFoundError) {
-        return new Err(new SandboxNotFoundError(providerId));
-      }
-      return new Err(normalizeError(err));
-    }
-
-    logger.info({ providerId }, "E2B sandbox killed");
-
-    return new Ok(undefined);
+    );
   }
 
   async exec(
     providerId: string,
     command: string,
-    opts?: ExecOptions
+    execOpts: ExecOptions | undefined,
+    tracingOpts: { workspaceSId: string }
   ): Promise<Result<ExecResult, Error>> {
-    let sandbox: Sandbox;
-    try {
-      sandbox = await Sandbox.connect(providerId, {
-        ...this.connectionOpts(),
-        timeoutMs: SANDBOX_LIFETIME_MS,
-      });
-    } catch (err) {
-      if (err instanceof NotFoundError) {
-        return new Err(new SandboxNotFoundError(providerId));
-      }
-      return new Err(normalizeError(err));
-    }
+    return traceSandboxOperation(
+      "exec",
+      async () => {
+        let sandbox: Sandbox;
+        try {
+          sandbox = await Sandbox.connect(providerId, {
+            ...this.connectionOpts(),
+            timeoutMs: SANDBOX_LIFETIME_MS,
+          });
+        } catch (err) {
+          if (err instanceof NotFoundError) {
+            return new Err(new SandboxNotFoundError(providerId));
+          }
+          return new Err(normalizeError(err));
+        }
 
-    try {
-      const result = await sandbox.commands.run(command, {
-        cwd: opts?.workingDirectory,
-        envs: opts?.envVars,
-        timeoutMs: opts?.timeoutMs,
-      });
+        try {
+          const result = await sandbox.commands.run(command, {
+            cwd: execOpts?.workingDirectory,
+            envs: execOpts?.envVars,
+            timeoutMs: execOpts?.timeoutMs,
+            user: execOpts?.user,
+          });
 
-      return new Ok({
-        exitCode: result.exitCode,
-        stdout: result.stdout,
-        stderr: result.stderr,
-      });
-    } catch (err) {
-      // The E2B SDK throws CommandExitError on non-zero exit codes.
-      // Normalize into a regular ExecResult so callers never see E2B types.
-      if (err instanceof CommandExitError) {
-        return new Ok({
-          exitCode: err.exitCode,
-          stdout: err.stdout,
-          stderr: err.stderr,
-        });
+          return new Ok({
+            exitCode: result.exitCode,
+            stdout: result.stdout,
+            stderr: result.stderr,
+          });
+        } catch (err) {
+          // The E2B SDK throws CommandExitError on non-zero exit codes.
+          // Normalize into a regular ExecResult so callers never see E2B types.
+          if (err instanceof CommandExitError) {
+            return new Ok({
+              exitCode: err.exitCode,
+              stdout: err.stdout,
+              stderr: err.stderr,
+            });
+          }
+          return new Err(normalizeError(err));
+        }
+      },
+      {
+        provider_id: providerId,
+        workspace_id: tracingOpts.workspaceSId,
       }
-      return new Err(normalizeError(err));
-    }
+    );
   }
 
   async writeFile(
     providerId: string,
     path: string,
-    data: ArrayBuffer
+    data: ArrayBuffer,
+    tracingOpts: { workspaceSId: string }
   ): Promise<Result<void, Error>> {
-    let sandbox: Sandbox;
-    try {
-      sandbox = await Sandbox.connect(providerId, {
-        ...this.connectionOpts(),
-        timeoutMs: SANDBOX_LIFETIME_MS,
-      });
-    } catch (err) {
-      if (err instanceof NotFoundError) {
-        return new Err(new SandboxNotFoundError(providerId));
+    return traceSandboxOperation(
+      "writeFile",
+      async () => {
+        let sandbox: Sandbox;
+        try {
+          sandbox = await Sandbox.connect(providerId, {
+            ...this.connectionOpts(),
+            timeoutMs: SANDBOX_LIFETIME_MS,
+          });
+        } catch (err) {
+          if (err instanceof NotFoundError) {
+            return new Err(new SandboxNotFoundError(providerId));
+          }
+          return new Err(normalizeError(err));
+        }
+
+        try {
+          // Note: this creates the necessary directories if missing.
+          await sandbox.files.write(path, data);
+        } catch (err) {
+          return new Err(normalizeError(err));
+        }
+
+        return new Ok(undefined);
+      },
+      {
+        provider_id: providerId,
+        workspace_id: tracingOpts.workspaceSId,
       }
-      return new Err(normalizeError(err));
-    }
-
-    try {
-      // Note: this creates the necessary directories if missing.
-      await sandbox.files.write(path, data);
-    } catch (err) {
-      return new Err(normalizeError(err));
-    }
-
-    return new Ok(undefined);
+    );
   }
 
-  async readFile(_providerId: string, _path: string): Promise<Buffer> {
+  async readFile(
+    _providerId: string,
+    _path: string,
+    _tracingOpts: { workspaceSId: string }
+  ): Promise<Buffer> {
     throw new Error("readFile is not implemented yet.");
   }
 
   async listFiles(
     providerId: string,
     path: string,
-    opts?: { recursive?: boolean }
+    opts: { recursive?: boolean } | undefined,
+    tracingOpts: { workspaceSId: string }
   ): Promise<FileEntry[]> {
-    let sandbox: Sandbox;
-    try {
-      sandbox = await Sandbox.connect(providerId, {
-        ...this.connectionOpts(),
-        timeoutMs: SANDBOX_LIFETIME_MS,
-      });
-    } catch (err) {
-      if (err instanceof NotFoundError) {
-        throw new SandboxNotFoundError(providerId);
+    return traceSandboxOperation(
+      "listFiles",
+      async () => {
+        let sandbox: Sandbox;
+        try {
+          sandbox = await Sandbox.connect(providerId, {
+            ...this.connectionOpts(),
+            timeoutMs: SANDBOX_LIFETIME_MS,
+          });
+        } catch (err) {
+          if (err instanceof NotFoundError) {
+            throw new SandboxNotFoundError(providerId);
+          }
+          throw normalizeError(err);
+        }
+
+        const entries = await sandbox.files.list(path, {
+          depth: opts?.recursive ? 10 : 1,
+        });
+
+        return entries.map((e) => ({
+          path: e.path,
+          size: e.size,
+          isDirectory: e.type === "dir",
+        }));
+      },
+      {
+        provider_id: providerId,
+        workspace_id: tracingOpts.workspaceSId,
       }
-      throw normalizeError(err);
-    }
-
-    const entries = await sandbox.files.list(path, {
-      depth: opts?.recursive ? 10 : 1,
-    });
-
-    return entries.map((e) => ({
-      path: e.path,
-      size: e.size,
-      isDirectory: e.type === "dir",
-    }));
+    );
   }
 }

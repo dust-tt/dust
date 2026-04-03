@@ -6,6 +6,7 @@ import { SettingSectionContainer } from "@app/components/agent_builder/shared/Se
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { getPublishingRestrictionForOwner } from "@app/lib/api/assistant/publishing_restrictions";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { isBuilder } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -117,7 +118,7 @@ export function AccessSection() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {scope.value === "visible" && slackDataSource && (
+        {scope.value === "visible" && slackDataSource && isBuilder(owner) && (
           <>
             <Button
               variant="outline"

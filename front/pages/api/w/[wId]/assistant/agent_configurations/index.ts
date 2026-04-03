@@ -153,6 +153,7 @@ import {
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { LightAgentConfigurationSchema } from "@app/types/assistant/agent";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -389,10 +390,12 @@ export async function createOrUpgradeAgentConfiguration({
   auth,
   assistant,
   agentConfigurationId,
+  authorId,
 }: {
   auth: Authenticator;
   assistant: PostOrPatchAgentConfigurationRequestBody["assistant"];
   agentConfigurationId?: string;
+  authorId?: ModelId;
 }): Promise<Result<AgentConfigurationType, Error>> {
   const { actions } = assistant;
 
@@ -488,6 +491,13 @@ export async function createOrUpgradeAgentConfiguration({
     );
   }
 
+  const resolvedAuthorId = authorId ?? auth.user()?.id;
+  if (!resolvedAuthorId) {
+    return new Err(
+      new Error("An author must be provided when no user is authenticated.")
+    );
+  }
+
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name: assistant.name,
     description: assistant.description,
@@ -502,6 +512,7 @@ export async function createOrUpgradeAgentConfiguration({
     requestedSpaceIds: allRequestedSpaceIds,
     tags: assistant.tags,
     editors,
+    authorId: resolvedAuthorId,
   });
 
   if (agentConfigurationRes.isErr()) {

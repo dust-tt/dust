@@ -693,13 +693,13 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
   | "discord_bot"
-  | "discover_skills"
   | "dust_academy"
   | "dust_internal_global_agents"
   | "dust_no_spa"
   | "dust_spa"
   | "fireworks_new_model_feature"
   | "gemini_3_1_pro_feature"
+  | "gong_tool"
   | "google_sheets_tool"
   | "hootl_subscriptions"
   | "http_client_tool"
@@ -739,6 +739,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "anthropic_reasoning_token_count"
   | "collapsible_messages"
   | "email_restricted_sharing"
+  | "use_dust_keys"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1954,6 +1955,15 @@ export type GetAgentConfigurationYAMLExportResponseType = z.infer<
   typeof GetAgentConfigurationYAMLExportResponseSchema
 >;
 
+export const ImportAgentConfigurationFromYAMLResponseSchema = z.object({
+  agentConfiguration: LightAgentConfigurationSchema,
+  skippedActions: z.array(z.object({ name: z.string(), reason: z.string() })),
+});
+
+export type ImportAgentConfigurationFromYAMLResponseType = z.infer<
+  typeof ImportAgentConfigurationFromYAMLResponseSchema
+>;
+
 export const GetAgentConfigurationsResponseSchema = z.object({
   agentConfigurations: LightAgentConfigurationSchema.array(),
 });
@@ -2046,6 +2056,8 @@ export type RetryMessageResponseType = z.infer<
 
 export const GetConversationResponseSchema = z.object({
   conversation: ConversationSchema,
+  hasMore: z.boolean().optional(),
+  lastValue: z.string().nullable().optional(),
 });
 
 export type GetConversationResponseType = z.infer<
@@ -2663,14 +2675,14 @@ const UpsertTableResponseSchema = z.object({
 });
 export type UpsertTableResponseType = z.infer<typeof UpsertTableResponseSchema>;
 
-const SupportedUsageTablesSchema = FlexibleEnumSchema<
-  | "users"
-  | "assistant_messages"
-  | "builders"
-  | "assistants"
-  | "feedback"
-  | "all"
->();
+const SupportedUsageTablesSchema = z.enum([
+  "users",
+  "assistant_messages",
+  "builders",
+  "assistants",
+  "feedback",
+  "all",
+]);
 
 export type UsageTableType = z.infer<typeof SupportedUsageTablesSchema>;
 
@@ -2791,6 +2803,7 @@ const AnalyticsExportTableSchema = z.enum([
   "users",
   "skill_usage",
   "tool_usage",
+  "messages",
 ]);
 
 const AnalyticsDateSchema = z

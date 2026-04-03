@@ -41,11 +41,16 @@ impl DustApiClient {
         format!("{}/{}", self.base_url, path)
     }
 
-    async fn get<T: DeserializeOwned>(&self, path: &str) -> anyhow::Result<T> {
+    async fn get<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        query: &[(&str, &str)],
+    ) -> anyhow::Result<T> {
         let url = self.url(path);
         let resp = self
             .client
             .get(&url)
+            .query(query)
             .send()
             .await
             .context(format!("GET {url}"))?;
@@ -91,19 +96,14 @@ impl DustApiClient {
         server: Option<&str>,
         light: bool,
     ) -> anyhow::Result<Vec<MCPServerView>> {
-        let mut params = Vec::new();
+        let mut query: Vec<(&str, &str)> = Vec::new();
         if let Some(s) = server {
-            params.push(format!("server={s}"));
+            query.push(("server", s));
         }
         if light {
-            params.push("light=true".to_string());
+            query.push(("light", "true"));
         }
-        let qs = if params.is_empty() {
-            String::new()
-        } else {
-            format!("?{}", params.join("&"))
-        };
-        let resp: SandboxToolsResponse = self.get(&format!("sandbox/tools{qs}")).await?;
+        let resp: SandboxToolsResponse = self.get("sandbox/tools", &query).await?;
         Ok(resp.server_views)
     }
 

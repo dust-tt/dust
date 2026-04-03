@@ -1,5 +1,5 @@
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
@@ -61,11 +61,14 @@ export async function createAndLogMembership({
     actor: {
       type: "user",
       id: user.sId,
-      name: user.fullName(),
+      name: user.fullName() ?? "unknown",
     },
     targets: [
-      buildWorkspaceTarget(w),
-      { type: "user", id: user.sId, name: user.fullName() },
+      buildAuditLogTarget("workspace", w),
+      buildAuditLogTarget("user", {
+        sId: user.sId,
+        name: user.fullName() ?? "unknown",
+      }),
     ],
     context: { location: "internal" },
     metadata: {

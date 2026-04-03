@@ -139,7 +139,6 @@ describe("buildAggregationPrompt", () => {
       makeAgentConfig({ name: "SalesBot" }),
       [makeInstructionSuggestion()],
       { pending: [], rejected: [] },
-      "No tools.",
       []
     );
 
@@ -158,7 +157,6 @@ describe("buildAggregationPrompt", () => {
       makeAgentConfig(),
       [suggestion],
       { pending: [], rejected: [] },
-      "No tools.",
       []
     );
 
@@ -172,7 +170,6 @@ describe("buildAggregationPrompt", () => {
       makeAgentConfig(),
       [makeToolSuggestion()],
       { pending: [], rejected: [] },
-      "No tools.",
       []
     );
 
@@ -186,7 +183,6 @@ describe("buildAggregationPrompt", () => {
       makeAgentConfig(),
       [makeSkillSuggestion()],
       { pending: [], rejected: [] },
-      "No tools.",
       []
     );
 
@@ -201,7 +197,6 @@ describe("buildAggregationPrompt", () => {
       makeAgentConfig(),
       [suggestion],
       { pending: [], rejected: [] },
-      "No tools.",
       []
     );
 
@@ -213,7 +208,6 @@ describe("buildAggregationPrompt", () => {
       makeAgentConfig(),
       [makeInstructionSuggestion(), makeToolSuggestion()],
       { pending: [], rejected: [] },
-      "No tools.",
       []
     );
 
@@ -226,7 +220,6 @@ describe("buildAggregationPrompt", () => {
       makeAgentConfig(),
       [makeInstructionSuggestion()],
       { pending: [makeToolSuggestion()], rejected: [] },
-      "No tools.",
       []
     );
 
@@ -240,7 +233,6 @@ describe("buildAggregationPrompt", () => {
       makeAgentConfig(),
       [makeInstructionSuggestion()],
       { pending: [], rejected: [] },
-      "No tools.",
       []
     );
 
@@ -252,7 +244,6 @@ describe("buildAggregationPrompt", () => {
       makeAgentConfig(),
       [makeInstructionSuggestion()],
       { pending: [], rejected: [makeToolSuggestion()] },
-      "No tools.",
       []
     );
 
@@ -266,35 +257,22 @@ describe("buildAggregationPrompt", () => {
       makeAgentConfig(),
       [makeInstructionSuggestion()],
       { pending: [], rejected: [] },
-      "No tools.",
       []
     );
 
     expect(userMessage).not.toContain("Previously rejected suggestions");
   });
 
-  it("includes tools and skills context", () => {
-    const toolsContext = "## Available tools\n- web_search\n- code_review";
-    const { userMessage } = buildAggregationPrompt(
-      makeAgentConfig(),
-      [makeInstructionSuggestion()],
-      { pending: [], rejected: [] },
-      toolsContext,
-      []
-    );
-
-    expect(userMessage).toContain(toolsContext);
-  });
-
-  it("system prompt mentions the three tools", () => {
+  it("system prompt mentions the exploration and suggestion tools", () => {
     const { systemPrompt } = buildAggregationPrompt(
       makeAgentConfig(),
       [makeInstructionSuggestion()],
       { pending: [], rejected: [] },
-      "No tools.",
       []
     );
 
+    expect(systemPrompt).toContain("get_available_skills");
+    expect(systemPrompt).toContain("get_available_tools");
     expect(systemPrompt).toContain("suggest_prompt_edits");
     expect(systemPrompt).toContain("suggest_tools");
     expect(systemPrompt).toContain("suggest_skills");
@@ -306,7 +284,6 @@ describe("buildAggregationPrompt", () => {
       makeAgentConfig({ actions: [action] }),
       [makeInstructionSuggestion()],
       { pending: [], rejected: [] },
-      "No tools.",
       []
     );
 
@@ -320,7 +297,6 @@ describe("buildAggregationPrompt", () => {
       makeAgentConfig(),
       [makeInstructionSuggestion()],
       { pending: [], rejected: [] },
-      "No tools.",
       [skill]
     );
 

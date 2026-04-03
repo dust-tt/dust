@@ -8,7 +8,7 @@
 // import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 // import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 // import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-// import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+// import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 // import type { AgentStatus } from "@app/types";
 
 // import { makeScript } from "../scripts/helpers";

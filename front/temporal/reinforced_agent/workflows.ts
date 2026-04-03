@@ -1,4 +1,7 @@
+import type { AuthenticatorType } from "@app/lib/auth";
 import type * as activities from "@app/temporal/reinforced_agent/activities";
+import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
+import type { ModelId } from "@app/types/shared/model_id";
 import {
   OpenTelemetryInboundInterceptor,
   OpenTelemetryInternalsInterceptor,
@@ -31,8 +34,8 @@ const { getRecentConversationsForAgentActivity } = proxyActivities<
   startToCloseTimeout: "5 minutes",
 });
 
-const { aggregateSuggestionsActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "10 minutes",
+const { finalizeAggregationActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "5 minutes",
 });
 
 const { startConversationAnalysisBatchActivity } = proxyActivities<
@@ -64,6 +67,12 @@ const { processAggregationBatchResultActivity } = proxyActivities<
 const { analyzeConversationStepActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
 });
+
+const { aggregateSuggestionsStepActivity } = proxyActivities<typeof activities>(
+  {
+    startToCloseTimeout: "10 minutes",
+  }
+);
 
 // runToolActivity is re-exported from the agent loop so the reinforced agent
 // worker registers it. We proxy it with retry for durability.
@@ -237,13 +246,8 @@ export async function reinforcedAgentForAgentWorkflow({
       // Execute exploratory tools via the agent loop's retryable tool activity.
       // Results are stored in the reinforcement conversations in DB.
       for (const c of continuations) {
-        const { authType, agentLoopArgs, actionIds } = c.toolActionInfo;
-        for (const actionId of actionIds) {
-          await runRetryableToolActivity(authType, {
-            actionId,
-            runAgentArgs: agentLoopArgs,
-            step: 0,
-          });
+        if (c.toolActionInfo) {
+          await executeReinforcedToolActions(c.toolActionInfo);
         }
       }
 
@@ -255,24 +259,12 @@ export async function reinforcedAgentForAgentWorkflow({
       step++;
     }
 
-    // Phase 2: Batch-aggregate synthetic suggestions into pending.
-    const aggregationResult = await startAggregationBatchActivity({
+    // Phase 2: Batch-aggregate synthetic suggestions into pending (multi-step).
+    await aggregateWithMultiStepBatch({
       workspaceId,
       agentConfigurationId,
+      disableNotifications,
     });
-
-    if (aggregationResult) {
-      await waitForBatch({ workspaceId, batchId: aggregationResult.batchId });
-
-      await processAggregationBatchResultActivity({
-        workspaceId,
-        agentConfigurationId,
-        batchId: aggregationResult.batchId,
-        reinforcementConversationIds:
-          aggregationResult.reinforcementConversationIds,
-        disableNotifications,
-      });
-    }
   } else {
     // Phase 1: Analyze all conversations in parallel via streaming (multi-step).
     await concurrentExecutor(
@@ -286,8 +278,8 @@ export async function reinforcedAgentForAgentWorkflow({
       { concurrency: CONVERSATION_ANALYSIS_CONCURRENCY }
     );
 
-    // Phase 2: Aggregate synthetic suggestions into pending.
-    await aggregateSuggestionsActivity({
+    // Phase 2: Aggregate synthetic suggestions into pending (multi-step).
+    await aggregateWithMultiStep({
       workspaceId,
       agentConfigurationId,
       disableNotifications,
@@ -295,14 +287,80 @@ export async function reinforcedAgentForAgentWorkflow({
   }
 }
 
+interface ReinforcedToolActionInfo {
+  authType: AuthenticatorType;
+  agentLoopArgs: AgentLoopArgsWithTiming;
+  actionIds: ModelId[];
+}
+
+// Matches the return type of analyzeConversationStepActivity / aggregateSuggestionsStepActivity.
+interface ReinforcedStepResult {
+  isTerminal: boolean;
+  suggestionsCreated: number;
+  reinforcementConversationId?: string;
+  toolActionInfo?: ReinforcedToolActionInfo;
+}
+
 /**
- * Multi-step streaming analysis of a single conversation (non batch mode).
- * Calls the step activity, executes exploratory tools via the agent loop's
- * runRetryableToolActivity, and continues until terminal tools are called.
+ * Execute tool actions from a reinforced step result.
+ * Wraps each tool execution in try/catch — if it fails after all retries,
+ * the rendering pipeline injects a placeholder error for the LLM to see.
+ */
+async function executeReinforcedToolActions(
+  toolActionInfo: ReinforcedToolActionInfo
+): Promise<void> {
+  const { authType, agentLoopArgs, actionIds } = toolActionInfo;
+  for (const actionId of actionIds) {
+    try {
+      await runRetryableToolActivity(authType, {
+        actionId,
+        runAgentArgs: agentLoopArgs,
+        step: 0,
+      });
+    } catch {
+      // Tool execution failed after all retries.
+      // The AgentMCPActionResource exists but has no output — the rendering
+      // pipeline will inject a placeholder error for the LLM to see.
+    }
+  }
+}
+
+/**
+ * Shared multi-step streaming loop for reinforced agent operations.
+ * Calls the step activity, executes exploratory tools, and loops until terminal.
  *
  * Tool results are stored in the reinforcement conversation by runRetryableToolActivity.
  * On the next step, the step activity renders the full conversation from DB via
  * renderConversationForModel — no need to pass continuation messages explicitly.
+ */
+async function runMultiStepStreamingLoop(
+  stepFn: (
+    reinforcementConversationId: string | undefined
+  ) => Promise<ReinforcedStepResult>
+): Promise<{ suggestionsCreated: number }> {
+  let reinforcementConversationId: string | undefined;
+  let totalSuggestionsCreated = 0;
+
+  for (let step = 0; step < MAX_REINFORCED_ANALYSIS_STEPS; step++) {
+    const result = await stepFn(reinforcementConversationId);
+
+    reinforcementConversationId = result.reinforcementConversationId;
+    totalSuggestionsCreated += result.suggestionsCreated;
+
+    if (result.isTerminal) {
+      break;
+    }
+
+    if (result.toolActionInfo) {
+      await executeReinforcedToolActions(result.toolActionInfo);
+    }
+  }
+
+  return { suggestionsCreated: totalSuggestionsCreated };
+}
+
+/**
+ * Multi-step streaming analysis of a single conversation (non batch mode).
  */
 async function analyzeConversationWithMultiStep({
   workspaceId,
@@ -313,34 +371,97 @@ async function analyzeConversationWithMultiStep({
   agentConfigurationId: string;
   conversationId: string;
 }): Promise<void> {
-  let reinforcementConversationId: string | undefined;
-
-  for (let step = 0; step < MAX_REINFORCED_ANALYSIS_STEPS; step++) {
-    const result = await analyzeConversationStepActivity({
+  await runMultiStepStreamingLoop((reinforcementConversationId) =>
+    analyzeConversationStepActivity({
       workspaceId,
       agentConfigurationId,
       conversationId,
       reinforcementConversationId,
+    })
+  );
+}
+
+/**
+ * Multi-step streaming aggregation (non-batch mode).
+ */
+async function aggregateWithMultiStep({
+  workspaceId,
+  agentConfigurationId,
+  disableNotifications,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  disableNotifications: boolean;
+}): Promise<void> {
+  const { suggestionsCreated } = await runMultiStepStreamingLoop(
+    (reinforcementConversationId) =>
+      aggregateSuggestionsStepActivity({
+        workspaceId,
+        agentConfigurationId,
+        reinforcementConversationId,
+      })
+  );
+
+  await finalizeAggregationActivity({
+    workspaceId,
+    agentConfigurationId,
+    suggestionsCreated,
+    disableNotifications,
+  });
+}
+
+/**
+ * Multi-step batch aggregation.
+ */
+async function aggregateWithMultiStepBatch({
+  workspaceId,
+  agentConfigurationId,
+  disableNotifications,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  disableNotifications: boolean;
+}): Promise<void> {
+  let reinforcementConversationId: string | undefined;
+  let totalSuggestionsCreated = 0;
+
+  for (let step = 0; step < MAX_REINFORCED_ANALYSIS_STEPS; step++) {
+    const batchResult = await startAggregationBatchActivity({
+      workspaceId,
+      agentConfigurationId,
+      existingReinforcementConversationId: reinforcementConversationId,
     });
+
+    if (!batchResult) {
+      break;
+    }
+
+    await waitForBatch({ workspaceId, batchId: batchResult.batchId });
+
+    const result = await processAggregationBatchResultActivity({
+      workspaceId,
+      agentConfigurationId,
+      batchId: batchResult.batchId,
+      reinforcementConversationIds: batchResult.reinforcementConversationIds,
+    });
+
+    totalSuggestionsCreated += result.suggestionsCreated;
+
+    if (!result.needsContinuation) {
+      break;
+    }
 
     reinforcementConversationId = result.reinforcementConversationId;
 
-    if (result.isTerminal || !result.toolActionInfo) {
-      return;
+    if (result.toolActionInfo) {
+      await executeReinforcedToolActions(result.toolActionInfo);
     }
-
-    const { authType, agentLoopArgs, actionIds } = result.toolActionInfo;
-
-    // Execute each exploratory tool via the agent loop's retryable tool activity.
-    // Results are stored in the reinforcement conversation DB.
-    for (const actionId of actionIds) {
-      await runRetryableToolActivity(authType, {
-        actionId,
-        runAgentArgs: agentLoopArgs,
-        step: 0,
-      });
-    }
-
-    // Next iteration will render the conversation from DB, picking up the tool results.
   }
+
+  await finalizeAggregationActivity({
+    workspaceId,
+    agentConfigurationId,
+    suggestionsCreated: totalSuggestionsCreated,
+    disableNotifications,
+  });
 }

@@ -3,32 +3,32 @@ import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/clien
 
 makeScript(
   {
-    userSids: {
+    userIds: {
       type: "array",
       demandOption: true,
       description: "User sIds to queue for user search indexation",
     },
   },
-  async ({ userSids, execute }, logger) => {
-    const uniqueUserSids = [...new Set(userSids)];
+  async ({ userIds, execute }, logger) => {
+    const uniqueUserIds = [...new Set(userIds)];
 
     if (!execute) {
       logger.info(
         {
-          userCount: uniqueUserSids.length,
+          userCount: uniqueUserIds.length,
         },
         "Would queue user search indexation workflows"
       );
       return;
     }
 
-    for (const userSid of uniqueUserSids) {
-      if (typeof userSid !== "string" || userSid.length === 0) {
-        throw new Error("All --userSids values must be non-empty strings");
+    for (const userId of uniqueUserIds) {
+      if (typeof userId !== "string" || userId.length === 0) {
+        throw new Error("All --userIds values must be non-empty strings");
       }
 
       const workflowResult = await launchIndexUserSearchWorkflow({
-        userId: userSid,
+        userId,
       });
       if (workflowResult.isErr()) {
         throw workflowResult.error;
@@ -36,7 +36,7 @@ makeScript(
 
       logger.info(
         {
-          userSid,
+          userId,
         },
         "Queued user search indexation workflow"
       );

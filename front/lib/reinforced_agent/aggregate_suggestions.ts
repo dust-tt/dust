@@ -6,23 +6,22 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getEditors } from "@app/lib/api/assistant/editors";
-import { buildToolsAndSkillsContext } from "@app/lib/api/assistant/global_agents/sidekick_context";
+import { REINFORCED_TOOLS_DESCRIPTION } from "@app/lib/api/assistant/global_agents/configurations/dust/agent_suggestions_shared";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import { notifyAgentSuggestionsReady } from "@app/lib/notifications/workflows/agent-suggestions-ready";
 import {
   type AgentContextSkill,
   formatAgentContext,
 } from "@app/lib/reinforced_agent/format_agent_context";
-import {
-  buildReinforcedLLMParams,
-  runReinforcedAnalysis,
-} from "@app/lib/reinforced_agent/run_reinforced_analysis";
+import { buildReinforcedLLMParams } from "@app/lib/reinforced_agent/run_reinforced_analysis";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentConfigurationType,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type {
@@ -43,14 +42,11 @@ const REINFORCED_AGGREGATION_SECTIONS: Record<AggregationSectionKey, string> = {
   primary: `You improve an AI agent's configuration by consolidating many draft suggestions. Each draft was produced from a single agent conversation.
 Your job is to produce a subset of the highest quality suggestions for the agent builder to review.
 
-You have access to the following tools to suggest improvements to the agent: suggest_prompt_edits, suggest_tools, and suggest_skills.
-You will call these tools to create each of the final suggestions. You MUST follow <suggestion_tool_calls> for each suggestion.
+${REINFORCED_TOOLS_DESCRIPTION}
 
 Your goal is to keep the most impactful suggestions. NEVER create more than 5 suggestions.
-You MUST call at least one tool. If you think no suggestions are impactful, call suggest_prompt_edits with an empty suggestions array.
 You MUST follow <aggregation_rules> to determine the final set of suggestions.
-
-The user will not look at your response. The user ONLY cares about the content of the suggestion tool calls.
+You will call suggestion tools to create each of the final suggestions. You MUST follow <suggestion_tool_calls> for each suggestion.
 `,
 
   aggregation_rules: `
@@ -76,7 +72,7 @@ The analysis MUST be a user-facing explanation of why the suggestion is impactfu
 `,
 };
 
-function buildAggregationSystemPrompt(): string {
+export function buildAggregationSystemPrompt(): string {
   return AGGREGATION_ASSEMBLY_ORDER.map((key) => {
     const body = REINFORCED_AGGREGATION_SECTIONS[key].trim();
     return `<${key}>\n${body}\n</${key}>`;
@@ -110,7 +106,7 @@ function toReinforcedSuggestions(
     );
 }
 
-async function loadAggregationContext(
+export async function loadAggregationContext(
   auth: Authenticator,
   agentConfigurationId: string
 ): Promise<AggregationContext | null> {
@@ -140,32 +136,27 @@ async function loadAggregationContext(
   const REJECTED_SUGGESTIONS_MAX_COUNT = 20;
   const REJECTED_SUGGESTIONS_MAX_AGE_MONTHS = 3;
 
-  const [
-    pendingSuggestions,
-    rejectedSuggestions,
-    toolsAndSkillsContext,
-    agentSkills,
-  ] = await Promise.all([
-    AgentSuggestionResource.listByAgentConfigurationId(
-      auth,
-      agentConfigurationId,
-      {
-        sources: ["reinforcement", "sidekick"],
-        states: ["pending"],
-      }
-    ),
-    AgentSuggestionResource.listByAgentConfigurationId(
-      auth,
-      agentConfigurationId,
-      {
-        sources: ["reinforcement", "sidekick"],
-        states: ["rejected"],
-        limit: REJECTED_SUGGESTIONS_MAX_COUNT,
-      }
-    ),
-    buildToolsAndSkillsContext(auth),
-    SkillResource.listByAgentConfiguration(auth, agentConfig),
-  ]);
+  const [pendingSuggestions, rejectedSuggestions, agentSkills] =
+    await Promise.all([
+      AgentSuggestionResource.listByAgentConfigurationId(
+        auth,
+        agentConfigurationId,
+        {
+          sources: ["reinforcement", "sidekick"],
+          states: ["pending"],
+        }
+      ),
+      AgentSuggestionResource.listByAgentConfigurationId(
+        auth,
+        agentConfigurationId,
+        {
+          sources: ["reinforcement", "sidekick"],
+          states: ["rejected"],
+          limit: REJECTED_SUGGESTIONS_MAX_COUNT,
+        }
+      ),
+      SkillResource.listByAgentConfiguration(auth, agentConfig),
+    ]);
 
   const rejectedCutoff = new Date();
   rejectedCutoff.setMonth(
@@ -182,7 +173,6 @@ async function loadAggregationContext(
       pending: toReinforcedSuggestions(pendingSuggestions),
       rejected: toReinforcedSuggestions(recentRejectedSuggestions),
     },
-    toolsAndSkillsContext,
     agentSkills
   );
 
@@ -222,14 +212,11 @@ export function buildAggregationPrompt(
     pending: ReinforcedSuggestionType[];
     rejected: ReinforcedSuggestionType[];
   },
-  toolsAndSkillsContext: string,
   agentSkills: AgentContextSkill[]
 ): { systemPrompt: string; userMessage: string } {
   const systemPrompt = buildAggregationSystemPrompt();
 
   let userMessage = `${formatAgentContext(agentConfig, agentSkills)}
-
-${toolsAndSkillsContext}
 
 ## Synthetic suggestions from conversation analyses
 
@@ -271,58 +258,12 @@ export async function buildAggregationBatchMap(
 }
 
 /**
- * Aggregate synthetic suggestions for an agent into pending suggestions.
- * Marks processed synthetic suggestions as approved.
+ * Create a conversation with the pending suggestions for the agent editors.
  */
-export async function aggregateSyntheticSuggestions(
+export async function createAgentSuggestionsConversations(
   auth: Authenticator,
-  agentConfigurationId: string,
-  disableNotifications: boolean
+  agentConfiguration: LightAgentConfigurationType
 ): Promise<void> {
-  const ctx = await loadAggregationContext(auth, agentConfigurationId);
-  if (!ctx) {
-    return;
-  }
-
-  const { agentConfig, syntheticSuggestions, prompt } = ctx;
-
-  const createdCount = await runReinforcedAnalysis({
-    auth,
-    agentConfig,
-    prompt,
-    source: "reinforcement",
-    operationType: "reinforced_agent_aggregate_suggestions",
-    contextId: agentConfigurationId,
-  });
-
-  if (createdCount > 0 && !disableNotifications) {
-    notifyAgentSuggestionsReady(auth, {
-      agentConfiguration: agentConfig,
-      suggestionCount: createdCount,
-    });
-    await createAgentSuggestionsConversations(auth, agentConfig);
-  }
-
-  await AgentSuggestionResource.bulkUpdateState(
-    auth,
-    syntheticSuggestions,
-    "approved"
-  );
-
-  logger.info(
-    {
-      agentConfigurationId,
-      syntheticCount: syntheticSuggestions.length,
-      pendingCreated: createdCount,
-    },
-    "ReinforcedAgent: aggregated synthetic suggestions into pending"
-  );
-}
-
-async function createAgentSuggestionsConversations(
-  auth: Authenticator,
-  agentConfiguration: AgentConfigurationType
-) {
   const editors = await getEditors(auth, agentConfiguration);
   if (editors.length === 0) {
     return;

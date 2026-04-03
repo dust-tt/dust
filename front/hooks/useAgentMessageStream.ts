@@ -322,6 +322,7 @@ export function useAgentMessageStream({
                     type: "action" as const,
                     label: getActionOneLineLabel(action),
                     id: `action-${action.id}`,
+                    actionId: action.sId,
                     internalMCPServerName: action.internalMCPServerName,
                   },
                 ];

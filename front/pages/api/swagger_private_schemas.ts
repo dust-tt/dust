@@ -424,6 +424,9 @@
  *                 description: Action display label (action steps only)
  *               id:
  *                 type: string
+ *               actionId:
+ *                 type: string
+ *                 description: Action string identifier (action steps only)
  *         reactions:
  *           type: array
  *           items:

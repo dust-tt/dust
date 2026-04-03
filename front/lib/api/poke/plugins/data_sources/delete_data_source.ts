@@ -1,5 +1,5 @@
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
@@ -76,12 +76,8 @@ export const deleteDataSourcePlugin = createPlugin({
       auth,
       action: "datasource.deleted_admin",
       targets: [
-        buildWorkspaceTarget(auth.getNonNullableWorkspace()),
-        {
-          type: "data_source",
-          id: dataSource.sId,
-          name: dataSource.name,
-        },
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("data_source", dataSource),
       ],
       metadata: {
         dataSourceName: dataSource.name,

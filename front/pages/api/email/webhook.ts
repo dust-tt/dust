@@ -21,7 +21,7 @@ import {
   parseSendgridDkimResults,
 } from "@app/lib/api/assistant/email/inbound_auth";
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
@@ -493,8 +493,11 @@ async function handler(
         auth,
         action: "trigger.email_received",
         targets: [
-          buildWorkspaceTarget(auth.getNonNullableWorkspace()),
-          { type: "trigger", id: triggerRes.value.conversation.sId },
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("trigger", {
+            sId: triggerRes.value.conversation.sId,
+            name: triggerRes.value.conversation.sId,
+          }),
         ],
         context: getAuditLogContext(auth, req),
         metadata: {

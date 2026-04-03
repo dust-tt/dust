@@ -352,6 +352,27 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     return new Ok(undefined);
   }
 
+  async updateUrl(
+    auth: Authenticator,
+    newUrl: string
+  ): Promise<Result<undefined, DustError<"unauthorized">>> {
+    const canAdministrate =
+      await SpaceResource.canAdministrateSystemSpace(auth);
+
+    if (!canAdministrate) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "The user is not authorized to update the URL of a remote MCP server"
+        )
+      );
+    }
+
+    await this.update({ url: newUrl });
+
+    return new Ok(undefined);
+  }
+
   async markAsErrored(
     auth: Authenticator,
     {

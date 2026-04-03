@@ -4,7 +4,7 @@ import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversa
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import assert from "assert";
 

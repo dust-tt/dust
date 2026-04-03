@@ -42,9 +42,8 @@ export function ProfilePage() {
 
   return (
     <Page>
-      <Page.Header title="Profile Settings" icon={UserIcon} />
+      <Page.Header title="Personal Settings" icon={UserIcon} />
       <Page.Layout direction="vertical">
-        <Page.SectionHeader title="Account Settings" />
         <AccountSettings owner={owner} />
 
         {isPendingInvitationsLoading ? (

@@ -1,7 +1,7 @@
 import {
   generateRandomModelSId,
   generateSecureSecret,
-} from "@app/lib/resources/string_ids";
+} from "@app/lib/resources/string_ids_server";
 import { describe, expect, it } from "vitest";
 
 describe("generateSecureSecret", () => {

@@ -13,7 +13,7 @@
 // import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 // import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 // import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-// import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+// import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 // import { concurrentExecutor } from "@app/lib/utils/async_utils";
 // import { makeScript } from "@app/scripts/helpers";
 // import type { AgentStatus, ModelId } from "@app/types";

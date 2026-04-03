@@ -4,6 +4,10 @@ import {
 } from "@app/lib/api/analytics/agents_export";
 import { sanitizeCsvCell } from "@app/lib/api/analytics/csv_utils";
 import {
+  fetchMessageExportRows,
+  MESSAGE_EXPORT_HEADERS,
+} from "@app/lib/api/analytics/messages_export";
+import {
   fetchUserExportRows,
   USER_EXPORT_HEADERS,
 } from "@app/lib/api/analytics/users_export";
@@ -25,6 +29,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
+import type { estypes } from "@elastic/elasticsearch";
 import { stringify } from "csv-stringify/sync";
 
 type AnalyticsExportTable =
@@ -34,18 +39,12 @@ type AnalyticsExportTable =
   | "agents"
   | "users"
   | "skill_usage"
-  | "tool_usage";
+  | "tool_usage"
+  | "messages";
 
-interface SkillUsageExportRow {
+interface UsageExportRow {
   date: string;
-  skillName: string;
-  executions: number;
-  uniqueUsers: number;
-}
-
-interface ToolUsageExportRow {
-  date: string;
-  toolName: string;
+  name: string;
   executions: number;
   uniqueUsers: number;
 }
@@ -75,9 +74,37 @@ export async function exportTable({
     case "users":
       return exportUsers({ startDate, endDate, timezone, owner });
     case "skill_usage":
-      return exportSkillUsage({ startDate, endDate, timezone, owner });
+      return exportItemUsage({
+        startDate,
+        endDate,
+        timezone,
+        owner,
+        headerLabel: "skillName",
+        fetchItems: async (q) => {
+          const r = await fetchAvailableSkills(q);
+          return r.isOk()
+            ? new Ok(r.value.map((s) => ({ name: s.skillName })))
+            : r;
+        },
+        fetchMetrics: fetchSkillUsageMetrics,
+      });
     case "tool_usage":
-      return exportToolUsage({ startDate, endDate, timezone, owner });
+      return exportItemUsage({
+        startDate,
+        endDate,
+        timezone,
+        owner,
+        headerLabel: "toolName",
+        fetchItems: async (q) => {
+          const r = await fetchAvailableTools(q);
+          return r.isOk()
+            ? new Ok(r.value.map((t) => ({ name: t.serverName })))
+            : r;
+        },
+        fetchMetrics: fetchToolUsageMetrics,
+      });
+    case "messages":
+      return exportMessages({ startDate, endDate, timezone, owner });
     default:
       assertNever(table);
   }
@@ -276,16 +303,33 @@ async function exportUsers({
   );
 }
 
-async function exportSkillUsage({
+async function exportItemUsage({
   startDate,
   endDate,
   timezone,
   owner,
+  headerLabel,
+  fetchItems,
+  fetchMetrics,
 }: {
   startDate: string;
   endDate: string;
   timezone: string;
   owner: WorkspaceType;
+  headerLabel: string;
+  fetchItems: (
+    q: estypes.QueryDslQueryContainer
+  ) => Promise<Result<{ name: string }[], Error>>;
+  fetchMetrics: (
+    q: estypes.QueryDslQueryContainer,
+    name: string,
+    tz: string
+  ) => Promise<
+    Result<
+      { date: string; executionCount: number; uniqueUsers: number }[],
+      Error
+    >
+  >;
 }): Promise<Result<string, Error>> {
   const baseQuery = buildAgentAnalyticsBaseQuery({
     workspaceId: owner.sId,
@@ -293,31 +337,27 @@ async function exportSkillUsage({
     endDate,
   });
 
-  const skillsResult = await fetchAvailableSkills(baseQuery);
-  if (skillsResult.isErr()) {
+  const itemsResult = await fetchItems(baseQuery);
+  if (itemsResult.isErr()) {
     return new Err(
       new Error(
-        `Failed to retrieve available skills: ${skillsResult.error.message}`
+        `Failed to retrieve available ${headerLabel}s: ${itemsResult.error.message}`
       )
     );
   }
 
   const nestedRows = await concurrentExecutor(
-    skillsResult.value,
-    async (skill) => {
-      const usageResult = await fetchSkillUsageMetrics(
-        baseQuery,
-        skill.skillName,
-        timezone
-      );
+    itemsResult.value,
+    async (item) => {
+      const usageResult = await fetchMetrics(baseQuery, item.name, timezone);
       if (usageResult.isErr()) {
         throw new Error(
-          `Failed to retrieve skill usage for ${skill.skillName}: ${usageResult.error.message}`
+          `Failed to retrieve ${headerLabel} usage for ${item.name}: ${usageResult.error.message}`
         );
       }
       return usageResult.value.map((point) => ({
         date: point.date,
-        skillName: skill.skillName,
+        name: item.name,
         executions: point.executionCount,
         uniqueUsers: point.uniqueUsers,
       }));
@@ -325,30 +365,28 @@ async function exportSkillUsage({
     { concurrency: 8 }
   );
 
-  const rows: SkillUsageExportRow[] = nestedRows.flat();
+  const rows: UsageExportRow[] = nestedRows.flat();
 
   rows.sort((a, b) => {
     const dateCompare = a.date.localeCompare(b.date);
     if (dateCompare !== 0) {
       return dateCompare;
     }
-    return a.skillName.localeCompare(b.skillName);
+    return a.name.localeCompare(b.name);
   });
 
-  const headers: (keyof SkillUsageExportRow)[] = [
-    "date",
-    "skillName",
-    "executions",
-    "uniqueUsers",
-  ];
-  const csvData = rows.map((row) =>
-    headers.map((h) => sanitizeCsvCell(row[h]))
-  );
+  const headers: string[] = ["date", headerLabel, "executions", "uniqueUsers"];
+  const csvData = rows.map((row) => [
+    sanitizeCsvCell(row.date),
+    sanitizeCsvCell(row.name),
+    row.executions,
+    row.uniqueUsers,
+  ]);
 
   return new Ok(stringify([headers, ...csvData], { header: false }));
 }
 
-async function exportToolUsage({
+async function exportMessages({
   startDate,
   endDate,
   timezone,
@@ -359,63 +397,25 @@ async function exportToolUsage({
   timezone: string;
   owner: WorkspaceType;
 }): Promise<Result<string, Error>> {
-  const baseQuery = buildAgentAnalyticsBaseQuery({
+  const result = await fetchMessageExportRows({
     workspaceId: owner.sId,
+    workspaceModelId: owner.id,
     startDate,
     endDate,
+    timezone,
   });
 
-  const toolsResult = await fetchAvailableTools(baseQuery);
-  if (toolsResult.isErr()) {
+  if (result.isErr()) {
     return new Err(
-      new Error(
-        `Failed to retrieve available tools: ${toolsResult.error.message}`
-      )
+      new Error(`Failed to retrieve message export: ${result.error.message}`)
     );
   }
 
-  const nestedRows = await concurrentExecutor(
-    toolsResult.value,
-    async (tool) => {
-      const usageResult = await fetchToolUsageMetrics(
-        baseQuery,
-        tool.serverName,
-        timezone
-      );
-      if (usageResult.isErr()) {
-        throw new Error(
-          `Failed to retrieve tool usage for ${tool.serverName}: ${usageResult.error.message}`
-        );
-      }
-      return usageResult.value.map((point) => ({
-        date: point.date,
-        toolName: tool.serverName,
-        executions: point.executionCount,
-        uniqueUsers: point.uniqueUsers,
-      }));
-    },
-    { concurrency: 8 }
+  const csvData = result.value.map((row) =>
+    MESSAGE_EXPORT_HEADERS.map((h) => sanitizeCsvCell(row[h]))
   );
 
-  const rows: ToolUsageExportRow[] = nestedRows.flat();
-
-  rows.sort((a, b) => {
-    const dateCompare = a.date.localeCompare(b.date);
-    if (dateCompare !== 0) {
-      return dateCompare;
-    }
-    return a.toolName.localeCompare(b.toolName);
-  });
-
-  const headers: (keyof ToolUsageExportRow)[] = [
-    "date",
-    "toolName",
-    "executions",
-    "uniqueUsers",
-  ];
-  const csvData = rows.map((row) =>
-    headers.map((h) => sanitizeCsvCell(row[h]))
+  return new Ok(
+    stringify([MESSAGE_EXPORT_HEADERS, ...csvData], { header: false })
   );
-
-  return new Ok(stringify([headers, ...csvData], { header: false }));
 }

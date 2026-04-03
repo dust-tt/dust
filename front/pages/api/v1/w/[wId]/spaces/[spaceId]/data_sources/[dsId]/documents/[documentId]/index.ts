@@ -1,7 +1,10 @@
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { computeWorkspaceOverallSizeCached } from "@app/lib/api/data_sources";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import {
+  getLlmCredentials,
+  MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+} from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes_constants";
 import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
@@ -17,6 +20,8 @@ import { CoreAPI } from "@app/types/core/core_api";
 import { sectionFullText } from "@app/types/core/data_source";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { fileSizeToHumanReadable } from "@app/types/files";
+import type { LLMCredentialsType } from "@app/types/provider_credential";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeSubstring } from "@app/types/shared/utils/string_utils";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
 import type {
@@ -646,7 +651,22 @@ async function handler(
           },
         });
       } else {
-        const credentials = await getLlmCredentials(auth);
+        let credentials: LLMCredentialsType;
+        try {
+          credentials = await getLlmCredentials(auth);
+        } catch (err) {
+          logger.error(
+            { error: normalizeError(err) },
+            "Failed to get LLM credentials to upsert document"
+          );
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+            },
+          });
+        }
 
         // Create document with the Dust internal API.
         const upsertRes = await coreAPI.upsertDataSourceDocument({

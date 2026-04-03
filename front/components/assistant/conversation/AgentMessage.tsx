@@ -170,6 +170,7 @@ interface AgentMessageProps {
   user: UserType;
   triggeringUser: UserType | null;
   isOnboardingConversation: boolean;
+  onCompletionStatusClick?: (messageId: string, actionId?: string) => void;
   handleSubmit: (
     input: string,
     mentions: RichMention[],
@@ -188,6 +189,7 @@ export function AgentMessage({
   user,
   triggeringUser,
   isOnboardingConversation,
+  onCompletionStatusClick,
   handleSubmit,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
@@ -331,7 +333,7 @@ export function AgentMessage({
             break;
           case "agent_action_success": {
             const action = eventPayload.data.action;
-            if (action.generatedFiles.length > 0) {
+            if (action.generatedFiles.filter((f) => !f.hidden).length > 0) {
               void mutateConversationAttachments();
             }
             if (action.internalMCPServerName === "sandbox") {
@@ -874,6 +876,7 @@ export function AgentMessage({
         <DeletedMessage />
       ) : (
         <AgentMessageContent
+          onOpenDetails={onCompletionStatusClick}
           onQuickReplySend={handleQuickReply}
           owner={owner}
           conversationId={conversationId}
@@ -954,7 +957,14 @@ export function AgentMessage({
           }
           completionStatus={
             hideCompletionStatus ? undefined : (
-              <AgentMessageCompletionStatus agentMessage={agentMessage} />
+              <AgentMessageCompletionStatus
+                agentMessage={agentMessage}
+                onClick={
+                  onCompletionStatusClick
+                    ? () => onCompletionStatusClick(agentMessage.sId)
+                    : undefined
+                }
+              />
             )
           }
           renderName={renderName}
@@ -969,6 +979,7 @@ export function AgentMessage({
 }
 
 function AgentMessageContent({
+  onOpenDetails,
   triggeringUser,
   isLastMessage,
   agentMessage,
@@ -987,6 +998,7 @@ function AgentMessageContent({
   additionalMarkdownComponents: propsAdditionalMarkdownComponents,
   additionalMarkdownPlugins,
 }: {
+  onOpenDetails?: (messageId: string, actionId?: string) => void;
   triggeringUser: UserType | null;
   isLastMessage: boolean;
   owner: LightWorkspaceType;
@@ -1225,10 +1237,10 @@ function AgentMessageContent({
 
   // Get completed images that are not already referenced in the Markdown content.
   // Combine from actions (updated during streaming) and generatedFiles (available on reload).
-  const filesFromActions = agentMessage.actions.flatMap(
-    (action) => action.generatedFiles
+  const filesFromActions = agentMessage.actions.flatMap((action) =>
+    action.generatedFiles.filter((f) => !f.hidden)
   );
-  const filesFromMessage = agentMessage.generatedFiles;
+  const filesFromMessage = agentMessage.generatedFiles.filter((f) => !f.hidden);
 
   // Combine both sources, preferring actions (more up-to-date during streaming).
   // Dedupe by fileId.
@@ -1247,7 +1259,7 @@ function AgentMessageContent({
     .filter((file) => isSupportedImageContentType(file.contentType))
     .filter((file) => !referencedFileIds.has(file.fileId));
 
-  const generatedFiles = agentMessage.generatedFiles.filter(
+  const generatedFiles = filesFromMessage.filter(
     (file) =>
       !isSupportedImageContentType(file.contentType) &&
       !isInteractiveContentType(file.contentType)
@@ -1260,6 +1272,7 @@ function AgentMessageContent({
           agentMessage={agentMessage}
           lastAgentStateClassification={agentMessage.streaming.agentState}
           completedSteps={agentMessage.streaming.inlineActivitySteps}
+          onOpenDetails={onOpenDetails}
         />
       ) : (
         <AgentMessageActions

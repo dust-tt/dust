@@ -8,15 +8,21 @@ import {
   makeTrackProgrammaticUsageWorkflowId,
 } from "@app/temporal/usage_queue/helpers";
 import {
+  emitMetronomeGaugeEventsWorkflow,
   emitMetronomeUsageEventsWorkflow,
   trackProgrammaticUsageWorkflow,
   updateWorkspaceUsageWorkflow,
 } from "@app/temporal/usage_queue/workflows";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
+import {
+  ScheduleAlreadyRunning,
+  ScheduleOverlapPolicy,
+  WorkflowExecutionAlreadyStartedError,
+} from "@temporalio/client";
 
 async function shouldProcessUsageUpdate(workflowId: string) {
   // Compute the max usage of the workspace once per hour.
@@ -176,4 +182,51 @@ export async function launchEmitMetronomeUsageEventsWorkflow({
 
     return new Err(normalizeError(e));
   }
+}
+
+const METRONOME_GAUGE_SCHEDULE_ID = "metronome-gauge-events-schedule";
+
+/**
+ * Launch a schedule that emits Metronome workspace_gauge events for all
+ * workspaces. Runs daily in prod, every 1h in dev.
+ */
+export async function launchMetronomeGaugeEventsSchedule(): Promise<
+  Result<undefined, Error>
+> {
+  const client = await getTemporalClientForFrontNamespace();
+
+  try {
+    await client.schedule.create({
+      action: {
+        type: "startWorkflow",
+        workflowType: emitMetronomeGaugeEventsWorkflow,
+        args: [],
+        taskQueue: QUEUE_NAME,
+      },
+      scheduleId: METRONOME_GAUGE_SCHEDULE_ID,
+      policies: {
+        overlap: ScheduleOverlapPolicy.SKIP,
+      },
+      spec: isDevelopment()
+        ? { intervals: [{ every: "1h" }] }
+        : {
+            calendars: [{ hour: { start: 2 }, comment: "Daily at 02:00 UTC" }],
+          },
+    });
+
+    logger.info(
+      { scheduleId: METRONOME_GAUGE_SCHEDULE_ID },
+      "Started Metronome gauge events schedule."
+    );
+  } catch (err) {
+    if (!(err instanceof ScheduleAlreadyRunning)) {
+      logger.error(
+        { scheduleId: METRONOME_GAUGE_SCHEDULE_ID, error: err },
+        "Failed to start Metronome gauge events schedule."
+      );
+      return new Err(normalizeError(err));
+    }
+  }
+
+  return new Ok(undefined);
 }

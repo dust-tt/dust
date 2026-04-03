@@ -200,7 +200,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
         <DropdownMenuLabel label="Account" />
         {subscription?.plan.limits.canUseProduct && (
           <DropdownMenuItem
-            label="Profile"
+            label="Personal Settings"
             icon={UserIcon}
             href={`/w/${owner.sId}/me`}
           />

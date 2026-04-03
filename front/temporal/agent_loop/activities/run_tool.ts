@@ -1,6 +1,7 @@
+import { isLightClientSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import {
-  buildWorkspaceTarget,
-  emitAuditLogEvent,
+  buildAuditLogTarget,
+  emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";
@@ -322,30 +323,33 @@ async function executeToolStreaming(
           { asType: "tool" }
         );
 
-        if (auth.user()) {
-          void emitAuditLogEvent({
-            auth,
-            action: "tool.executed",
-            targets: [
-              buildWorkspaceTarget(conversation.owner),
-              {
-                type: "agent",
-                id: agentConfiguration.sId,
-                name: agentConfiguration.name,
-              },
-              {
-                type: "tool",
-                id: action.toolConfiguration.name,
-                name: action.toolConfiguration.name,
-              },
-            ],
-            metadata: {
-              toolName: action.toolConfiguration.name,
-              toolType: action.toolConfiguration.mcpServerName,
-              conversationId: conversation.sId,
-            },
-          });
-        }
+        void emitAuditLogEventDirect({
+          workspace: conversation.owner,
+          action: "tool.executed",
+          actor: {
+            type: "agent",
+            id: agentConfiguration.sId,
+            name: agentConfiguration.name,
+          },
+          targets: [
+            buildAuditLogTarget("workspace", conversation.owner),
+            buildAuditLogTarget("agent", agentConfiguration),
+            buildAuditLogTarget("tool", {
+              sId: action.toolConfiguration.name,
+              name: action.toolConfiguration.originalName,
+            }),
+          ],
+          context: { location: auth.clientIp() ?? "internal" },
+          metadata: {
+            toolName: action.toolConfiguration.originalName,
+            toolType: isLightClientSideMCPToolConfiguration(
+              action.toolConfiguration
+            )
+              ? "remote"
+              : "internal",
+            conversationId: conversation.sId,
+          },
+        });
 
         await updateResourceAndPublishEvent(auth, {
           event: {

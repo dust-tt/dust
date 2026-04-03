@@ -410,7 +410,7 @@ export function createProductboardTools(): ToolDefinition[] {
 
       let config: ProductboardConfiguration;
 
-      if (entity_type === "simple" || entity_type === "conversation") {
+      if (entity_type === "textNote" || entity_type === "conversationNote") {
         const result = await client.getNotesConfigurations();
         if (result.isErr()) {
           return new Err(
@@ -441,7 +441,7 @@ export function createProductboardTools(): ToolDefinition[] {
       }
 
       const isNoteType =
-        entity_type === "simple" || entity_type === "conversation";
+        entity_type === "textNote" || entity_type === "conversationNote";
       const text = isNoteType
         ? renderNoteConfigurationsList([config])
         : renderEntityConfigurationsList([config]);

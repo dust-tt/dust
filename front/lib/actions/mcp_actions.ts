@@ -85,7 +85,7 @@ import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_conne
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
@@ -911,6 +911,7 @@ export async function tryListMCPTools(
           new Error(
             `An error occurred while listing the available tools for ${action.name}. ` +
               "Tools from this server are not available for this message. " +
+              `Reason: ${normalizeError(toolsAndInstructionsRes.error).message}. ` +
               "Inform the user of this issue."
           )
         );

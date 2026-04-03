@@ -128,7 +128,7 @@ export class ProductboardClient {
   }
 
   async createNote(params: {
-    type: "simple" | "conversation";
+    type: "textNote" | "conversationNote";
     fields: Record<string, unknown>;
     relationships?: Array<{
       type: "customer" | "link";

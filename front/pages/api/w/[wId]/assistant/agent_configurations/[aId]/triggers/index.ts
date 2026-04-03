@@ -270,16 +270,6 @@ async function handler(
     }
 
     case "POST": {
-      if (!agentConfiguration.canEdit) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message: "Only editors can create triggers for this agent.",
-          },
-        });
-      }
-
       const postDecoded = PostTriggersRequestBodyCodec.safeParse(req.body);
       if (!postDecoded.success) {
         return apiError(req, res, {

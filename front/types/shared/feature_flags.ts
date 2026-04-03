@@ -252,11 +252,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable reinforced agents: background analysis of conversations to suggest agent improvements",
     stage: "dust_only",
   },
-  discover_skills: {
-    description:
-      "Enable default skills discovery on global agents (do not enable for customers)",
-    stage: "dust_only",
-  },
   collapsible_messages: {
     description: "Enable collapsible messages in conversations",
     stage: "dust_only",
@@ -274,6 +269,16 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Enable Metronome usage event emission (llm_usage, tool_use) for this workspace.",
     stage: "dust_only",
+  },
+  gong_tool: {
+    description: "Gong MCP tool for sales conversation analytics",
+    stage: "dust_only",
+  },
+  use_dust_keys: {
+    description:
+      "Force BYOK workspaces to use Dust-managed keys instead of customer-provided keys",
+    // Not really on_demand but we want to be able to enable it for customers
+    stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

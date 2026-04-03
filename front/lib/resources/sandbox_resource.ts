@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import {
@@ -22,7 +23,6 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -115,7 +115,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   }
 
   /**
-   * Return conversation sIds that have a sandbox with the given `status` and
+   * Return conversation sIds and workspace ModelIds for sandboxes with the given `status`
    * whose `lastActivityAt` is older than `olderThanMs`. Used by the reaper
    * workflow to identify candidates for sleep/destroy.
    *
@@ -125,7 +125,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     status: SandboxStatus;
     olderThanMs: number;
     limit: number;
-  }): Promise<string[]> {
+  }): Promise<Array<{ conversationId: string; workspaceModelId: ModelId }>> {
     const rows = await this.model.findAll({
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
@@ -138,7 +138,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       include: [
         {
           model: ConversationModel,
-          attributes: ["sId"],
+          attributes: ["sId", "workspaceId"],
           required: true,
         },
       ],
@@ -146,7 +146,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       limit: opts.limit,
     });
 
-    return rows.map((r) => r.conversation.sId);
+    return rows.map((r) => ({
+      conversationId: r.conversation.sId,
+      workspaceModelId: r.conversation.workspaceId,
+    }));
   }
 
   /**
@@ -261,7 +264,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       }
 
       if (sandbox.status !== "deleted") {
-        const result = await provider.destroy(sandbox.providerId);
+        const tracingOpts = {
+          workspaceSId: auth.getNonNullableWorkspace().sId,
+        };
+        const result = await provider.destroy(sandbox.providerId, tracingOpts);
         if (result.isErr() && !(result.error instanceof SandboxNotFoundError)) {
           logger.error(
             { sandbox: sandbox.toLogJSON(), error: result.error.message },
@@ -314,6 +320,8 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     );
 
     return this.withLifecycleLock(conversation.sId, async (provider) => {
+      const ctx = { workspaceSId: auth.getNonNullableWorkspace().sId };
+      const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
       const existing = await SandboxResource.fetchByConversationId(
         auth,
         conversation.sId
@@ -324,8 +332,21 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         if (imageResult.isErr()) {
           return imageResult;
         }
+
+        const createConfig = imageResult.value.toCreateConfig();
+
         const createResult = await provider.create(
-          imageResult.value.toCreateConfig()
+          {
+            ...createConfig,
+            envVars: {
+              ...createConfig.envVars,
+              DD_API_KEY: config.getDatadogApiKey() ?? "",
+              DD_HOST: "http-intake.logs.datadoghq.eu",
+              CONVERSATION_ID: conversation.sId,
+              WORKSPACE_ID: auth.getNonNullableWorkspace().sId,
+            },
+          },
+          tracingOpts
         );
         if (createResult.isErr()) {
           return createResult;
@@ -336,6 +357,19 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           providerId: createResult.value.providerId,
           status: "running",
         });
+
+        const startTelemetry = await provider.exec(
+          createResult.value.providerId,
+          "systemd-cat -t fluent-bit /opt/fluent-bit/bin/fluent-bit -c /etc/fluent-bit/fluent-bit.conf &",
+          undefined,
+          tracingOpts
+        );
+        if (startTelemetry.isErr()) {
+          logger.warn(
+            { error: startTelemetry.error.message },
+            "Failed to start fluent-bit telemetry"
+          );
+        }
 
         logger.info(
           { sandbox: sandbox.toLogJSON() },
@@ -354,7 +388,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           break;
 
         case "sleeping": {
-          const wakeResult = await provider.wake(existing.providerId);
+          const wakeResult = await provider.wake(
+            existing.providerId,
+            tracingOpts
+          );
           if (wakeResult.isErr()) {
             // The sandbox may have been killed by the provider (e.g. lifetime
             // expired). Fall through to recreation instead of propagating the
@@ -379,14 +416,41 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           if (imageResult.isErr()) {
             return imageResult;
           }
+
+          const createConfig = imageResult.value.toCreateConfig();
+
           const createResult = await provider.create(
-            imageResult.value.toCreateConfig()
+            {
+              ...createConfig,
+              envVars: {
+                ...createConfig.envVars,
+                DD_API_KEY: config.getDatadogApiKey() ?? "",
+                DD_HOST: "http-intake.logs.datadoghq.eu",
+                CONVERSATION_ID: conversation.sId,
+                WORKSPACE_ID: auth.getNonNullableWorkspace().sId,
+              },
+            },
+            tracingOpts
           );
           if (createResult.isErr()) {
             return createResult;
           }
           await existing.update({ providerId: createResult.value.providerId });
           freshlyCreated = true;
+
+          const startTelemetry = await provider.exec(
+            createResult.value.providerId,
+            "systemd-cat -t fluent-bit /opt/fluent-bit/bin/fluent-bit -c /etc/fluent-bit/fluent-bit.conf &",
+            undefined,
+            tracingOpts
+          );
+          if (startTelemetry.isErr()) {
+            logger.warn(
+              { error: startTelemetry.error.message },
+              "Failed to start fluent-bit telemetry"
+            );
+          }
+
           logger.info(
             {
               sandbox: existing.toLogJSON(),
@@ -401,7 +465,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           assertNever(status);
       }
 
-      const ctx = { workspaceSId: auth.getNonNullableWorkspace().sId };
       await existing.updateStatus("running", { ctx });
       await existing.updateLastActivityAt();
 
@@ -423,6 +486,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * / WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
    */
   static async dangerouslySleepIfRunning(
+    auth: Authenticator,
     conversationId: string
   ): Promise<Result<void, Error>> {
     return this.withLifecycleLock(conversationId, async (provider) => {
@@ -432,12 +496,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return new Ok(undefined);
       }
 
-      const [workspace] = await WorkspaceResource.fetchByModelIds([
-        sandbox.workspaceId,
-      ]);
-      const ctx = { workspaceSId: workspace?.sId ?? "unknown" };
+      const ctx = { workspaceSId: auth.getNonNullableWorkspace().sId };
+      const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
 
-      const result = await provider.sleep(sandbox.providerId);
+      const result = await provider.sleep(sandbox.providerId, tracingOpts);
       if (result.isErr()) {
         if (result.error instanceof SandboxNotFoundError) {
           logger.info(
@@ -466,6 +528,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * / WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
    */
   static async dangerouslyDestroyIfSleeping(
+    auth: Authenticator,
     conversationId: string
   ): Promise<Result<void, Error>> {
     return this.withLifecycleLock(conversationId, async (provider) => {
@@ -475,12 +538,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return new Ok(undefined);
       }
 
-      const [workspace] = await WorkspaceResource.fetchByModelIds([
-        sandbox.workspaceId,
-      ]);
-      const ctx = { workspaceSId: workspace?.sId ?? "unknown" };
+      const ctx = { workspaceSId: auth.getNonNullableWorkspace().sId };
+      const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
 
-      const result = await provider.destroy(sandbox.providerId);
+      const result = await provider.destroy(sandbox.providerId, tracingOpts);
       if (result.isErr()) {
         if (result.error instanceof SandboxNotFoundError) {
           logger.info(
@@ -513,7 +574,13 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       return new Err(new Error("Sandbox provider not configured."));
     }
 
-    const result = await provider.exec(this.providerId, command, opts);
+    const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
+    const result = await provider.exec(
+      this.providerId,
+      command,
+      opts,
+      tracingOpts
+    );
 
     if (result.isErr() && result.error instanceof SandboxNotFoundError) {
       logger.error(
@@ -530,6 +597,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * List files in a directory on this sandbox.
    */
   async listFiles(
+    auth: Authenticator,
     path: string,
     opts?: { recursive?: boolean }
   ): Promise<Result<FileEntry[], Error>> {
@@ -539,7 +607,13 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     }
 
     try {
-      const entries = await provider.listFiles(this.providerId, path, opts);
+      const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
+      const entries = await provider.listFiles(
+        this.providerId,
+        path,
+        opts,
+        tracingOpts
+      );
       return new Ok(entries);
     } catch (err) {
       if (err instanceof SandboxNotFoundError) {
@@ -557,6 +631,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * Write a file to the sandbox filesystem.
    */
   private async writeFile(
+    auth: Authenticator,
     path: string,
     data: ArrayBuffer
   ): Promise<Result<void, Error>> {
@@ -565,7 +640,13 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       return new Err(new Error("Sandbox provider not configured."));
     }
 
-    const result = await provider.writeFile(this.providerId, path, data);
+    const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
+    const result = await provider.writeFile(
+      this.providerId,
+      path,
+      data,
+      tracingOpts
+    );
 
     if (result.isErr() && result.error instanceof SandboxNotFoundError) {
       logger.error(
@@ -599,7 +680,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       const readStream = file.getReadStream({ auth, version: "original" });
       const data = await streamConsumers.arrayBuffer(readStream);
 
-      const writeResult = await this.writeFile(targetPath, data);
+      const writeResult = await this.writeFile(auth, targetPath, data);
       if (writeResult.isErr()) {
         return writeResult;
       }

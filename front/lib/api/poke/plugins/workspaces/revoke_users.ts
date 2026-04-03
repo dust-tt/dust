@@ -1,5 +1,5 @@
 import {
-  buildWorkspaceTarget,
+  buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import { revokeAndTrackMembership } from "@app/lib/api/membership";
@@ -61,7 +61,9 @@ export const revokeUsersPlugin = createPlugin({
       void emitAuditLogEvent({
         auth,
         action: "member.bulk_revoked",
-        targets: [buildWorkspaceTarget(auth.getNonNullableWorkspace())],
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        ],
         metadata: {
           revokedUserIds: successfulRevocations.map((r) => r.userId).join(","),
           count: String(successfulRevocations.length),

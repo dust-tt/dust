@@ -1,3 +1,4 @@
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
   AgentBuilderFormData,
   AgentBuilderTriggerType,
@@ -15,6 +16,9 @@ import {
   BoltIcon,
   Button,
   CardGrid,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   EmptyCTA,
   Hoverable,
   Spinner,
@@ -84,6 +88,8 @@ export function AgentBuilderTriggersBlock({
     [webhookSourceViews, accessibleSpaceIds]
   );
 
+  const { user } = useAgentBuilderContext();
+
   // Combine triggers for display, excluding those marked for deletion
   const allTriggers = [
     ...triggersToCreate.map((t, index) => ({
@@ -96,7 +102,14 @@ export function AgentBuilderTriggersBlock({
       index,
       source: "update" as const,
     })),
-  ];
+  ].map((item, displayIndex) => ({ ...item, displayIndex }));
+
+  const myTriggers = allTriggers.filter(
+    (item) => item.trigger.editor === user.id
+  );
+  const otherTriggers = allTriggers.filter(
+    (item) => item.trigger.editor !== user.id
+  );
 
   const handleAddTrigger = () => {
     setSheetMode({ type: "add" });
@@ -176,6 +189,25 @@ export function AgentBuilderTriggersBlock({
     });
   };
 
+  const renderTriggerCards = (items: typeof allTriggers) =>
+    items.map((item) => (
+      <TriggerCard
+        key={
+          item.trigger.sId
+            ? `card-${item.trigger.sId}`
+            : `${item.source}-${item.index}`
+        }
+        trigger={item.trigger}
+        webhookSourceView={accessibleWebhookSourceViews.find((view) =>
+          item.trigger.kind === "webhook"
+            ? view.sId === item.trigger.webhookSourceViewSId
+            : undefined
+        )}
+        onRemove={() => handleTriggerRemove(item.trigger, item.displayIndex)}
+        onEdit={() => handleTriggerEdit(item.trigger)}
+      />
+    ));
+
   return (
     <AgentBuilderSectionContainer
       title="Triggers"
@@ -221,25 +253,22 @@ export function AgentBuilderTriggersBlock({
             className="py-4"
           />
         ) : (
-          <CardGrid>
-            {allTriggers.map((item, displayIndex) => (
-              <TriggerCard
-                key={
-                  item.trigger.sId
-                    ? `card-${item.trigger.sId}`
-                    : `${item.source}-${item.index}`
-                }
-                trigger={item.trigger}
-                webhookSourceView={accessibleWebhookSourceViews.find((view) =>
-                  item.trigger.kind === "webhook"
-                    ? view.sId === item.trigger.webhookSourceViewSId
-                    : undefined
-                )}
-                onRemove={() => handleTriggerRemove(item.trigger, displayIndex)}
-                onEdit={() => handleTriggerEdit(item.trigger)}
-              />
-            ))}
-          </CardGrid>
+          <div className="flex flex-col gap-4">
+            {myTriggers.length > 0 && (
+              <CardGrid>{renderTriggerCards(myTriggers)}</CardGrid>
+            )}
+            {otherTriggers.length > 0 && (
+              <Collapsible defaultOpen={false}>
+                <CollapsibleTrigger
+                  label="Other members' triggers"
+                  variant="secondary"
+                />
+                <CollapsibleContent>
+                  <CardGrid>{renderTriggerCards(otherTriggers)}</CardGrid>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+          </div>
         )}
       </div>
 

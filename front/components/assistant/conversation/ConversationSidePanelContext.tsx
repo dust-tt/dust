@@ -16,6 +16,7 @@ type OpenPanelParams =
   | {
       type: "actions";
       messageId: string;
+      actionId?: string;
     }
   | {
       type: "interactive_content";
@@ -56,6 +57,20 @@ export function useConversationSidePanelContext() {
   }
 
   return context;
+}
+
+export function parseDataAsMessageIdAndActionId(data?: string): {
+  messageId?: string;
+  actionId?: string;
+} {
+  // data can be "messageId" or "messageId@actionId" for single-action view.
+  // TODO: Clean up once inline activity is rolled out -- the single-action view
+  // should fetch only the action it needs, not the full message.
+  const [messageId, actionId] = data?.includes("@")
+    ? data.split("@")
+    : [data, undefined];
+
+  return { messageId, actionId };
 }
 
 interface ConversationSidePanelProviderProps {
@@ -105,16 +120,20 @@ export function ConversationSidePanelProvider({
 
       switch (params.type) {
         case AGENT_ACTIONS_SIDE_PANEL_TYPE: {
+          const newData = params.actionId
+            ? `${params.messageId}@${params.actionId}`
+            : params.messageId;
+
           /**
-           * If the panel is already open for the same messageId,
+           * If the panel is already open for the same data,
            * we close it.
            */
-          if (params.messageId === data) {
+          if (newData === data) {
             closePanel();
             return;
           }
 
-          setData(params.messageId);
+          setData(newData);
           break;
         }
 

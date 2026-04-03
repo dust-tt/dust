@@ -63,7 +63,7 @@ function ImageZoomDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="fit" className="s-overflow-hidden s-p-3">
+      <DialogContent size="fit" className="s-overflow-hidden s-p-3 !s-w-fit">
         <div className="s-relative s-flex s-items-center s-justify-center s-gap-2">
           {/* Previous button */}
           {navigation?.hasPrevious && (
@@ -95,7 +95,7 @@ function ImageZoomDialog({
                 <ImageWrapper
                   src={image.src}
                   alt={image.alt ?? ""}
-                  className="s-max-h-full s-max-w-full s-object-contain"
+                  className="s-max-h-[calc(90vh-1.5rem)] s-max-w-[calc(90vw-1.5rem)]"
                   onLoad={() => setImageLoaded(true)}
                 />
                 <DialogClose asChild>

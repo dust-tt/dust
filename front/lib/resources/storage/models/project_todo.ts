@@ -33,6 +33,9 @@ export class ProjectTodoModel extends WorkspaceAwareModel<ProjectTodoModel> {
   declare markedAsDoneByUserId: ForeignKey<UserModel["id"]> | null;
   declare markedAsDoneByAgentConfigurationId: string | null;
 
+  // Stable identity: same sId across all version rows of one logical todo.
+  declare sId: string;
+
   declare category: ProjectTodoCategory;
   declare text: string;
   declare version: number;
@@ -98,6 +101,12 @@ ProjectTodoModel.init(
       comment:
         "sId of the agent configuration when markedAsDoneByType is agent.",
     },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      comment:
+        "Stable identifier shared across all version rows of the same logical todo.",
+    },
     category: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -133,6 +142,17 @@ ProjectTodoModel.init(
     modelName: "project_todo",
     sequelize: frontSequelize,
     indexes: [
+      {
+        name: "project_todos_sId_version_unique_idx",
+        fields: ["workspaceId", "sId", "version"],
+        unique: true,
+        concurrently: true,
+      },
+      {
+        name: "project_todos_sId_idx",
+        fields: ["sId"],
+        concurrently: true,
+      },
       {
         name: "project_todos_ws_space_user_version_idx",
         fields: ["workspaceId", "spaceId", "userId", "version"],

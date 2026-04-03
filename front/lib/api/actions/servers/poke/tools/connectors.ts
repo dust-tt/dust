@@ -71,14 +71,14 @@ export const connectorHandlers: ConnectorHandlers = {
       return gateResult;
     }
 
-    const targetAuth = await getTargetAuth(workspace_id);
-    if (targetAuth.isErr()) {
-      return targetAuth;
+    const targetAuthResult = await getTargetAuth(workspace_id);
+    if (targetAuthResult.isErr()) {
+      return targetAuthResult;
     }
-    const targetAuthResult = targetAuth.value;
+    const targetAuth = targetAuthResult.value;
 
     const dataSource = await DataSourceResource.fetchById(
-      targetAuthResult,
+      targetAuth,
       data_source_id,
       { includeEditedBy: true }
     );
@@ -99,7 +99,7 @@ export const connectorHandlers: ConnectorHandlers = {
     });
 
     const dataSourceViews = await DataSourceViewResource.listForDataSources(
-      targetAuthResult,
+      targetAuth,
       [dataSource]
     );
 

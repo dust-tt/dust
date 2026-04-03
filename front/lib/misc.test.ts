@@ -13,6 +13,7 @@ function makeWorkspace(sId: string): LightWorkspaceType {
     segmentation: null,
     whiteListedProviders: null,
     defaultEmbeddingProvider: null,
+    metronomeCustomerId: null,
     sharingPolicy: "emails_only",
   };
 }

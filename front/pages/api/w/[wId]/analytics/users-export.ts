@@ -6,6 +6,7 @@ import {
 } from "@app/lib/api/analytics/users_export";
 import {
   buildAgentAnalyticsBaseQuery,
+  daysToDateRange,
   timezoneSchema,
 } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -57,15 +58,16 @@ async function handler(
         days: q.data.days,
       });
 
-      const now = new Date();
-      const startDate = new Date(now);
-      startDate.setDate(startDate.getDate() - q.data.days);
+      const { startDate, endDate } = daysToDateRange(
+        q.data.days,
+        q.data.timezone
+      );
 
       const result = await fetchUserExportRows({
         baseQuery,
         owner,
-        startDate,
-        endDate: now,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
         timezone: q.data.timezone,
       });
 

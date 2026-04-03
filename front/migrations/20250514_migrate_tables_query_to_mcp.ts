@@ -10,7 +10,7 @@
 // } from "@app/lib/models/assistant/actions/tables_query";
 // import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 // import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-// import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+// import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 // import { concurrentExecutor } from "@app/lib/utils/async_utils";
 // import type Logger from "@app/logger/logger";
 // import { makeScript } from "@app/scripts/helpers";
