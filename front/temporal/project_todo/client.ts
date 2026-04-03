@@ -3,10 +3,14 @@ import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/project_todo/config";
 import {
+  mergeRequestSignal,
   todoCompleteSignal,
   todoRefreshSignal,
 } from "@app/temporal/project_todo/signals";
-import { projectTodoWorkflow } from "@app/temporal/project_todo/workflows";
+import {
+  projectMergeWorkflow,
+  projectTodoWorkflow,
+} from "@app/temporal/project_todo/workflows";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 function makeProjectTodoWorkflowId(
@@ -16,12 +20,21 @@ function makeProjectTodoWorkflowId(
   return `conversation-todo-${workspaceId}-${conversationId}`;
 }
 
+function makeProjectMergeWorkflowId(
+  workspaceId: string,
+  spaceId: string
+): string {
+  return `project-merge-todo-${workspaceId}-${spaceId}`;
+}
+
 export async function launchOrSignalProjectTodoWorkflow({
   authType,
+  spaceId,
   conversationId,
   messageId,
 }: {
   authType: AuthenticatorType;
+  spaceId: string;
   conversationId: string;
   messageId: string;
 }): Promise<void> {
@@ -33,7 +46,7 @@ export async function launchOrSignalProjectTodoWorkflow({
 
   try {
     await client.workflow.signalWithStart(projectTodoWorkflow, {
-      args: [{ authType, conversationId, messageId }],
+      args: [{ authType, conversationId, messageId, spaceId }],
       taskQueue: QUEUE_NAME,
       workflowId,
       signal: todoRefreshSignal,
@@ -43,6 +56,7 @@ export async function launchOrSignalProjectTodoWorkflow({
         workspaceId: authType.workspaceId,
         conversationId,
         messageId,
+        spaceId,
       },
     });
   } catch (e) {
@@ -53,6 +67,7 @@ export async function launchOrSignalProjectTodoWorkflow({
         workspaceId: authType.workspaceId,
         conversationId,
         messageId,
+        spaceId,
         error: normalizeError(e),
       },
       "Failed starting conversation todo workflow"
@@ -86,6 +101,46 @@ export async function signalProjectTodoComplete({
         error: normalizeError(e),
       },
       "Failed signaling conversation todo complete (workflow may have already finished)"
+    );
+  }
+}
+
+// Called from signalOrStartMergeWorkflowActivity to fan-in signals from per-conversation
+// workflows into the single per-project merge workflow. Uses signalWithStart so the merge
+// workflow is automatically created if not already running.
+export async function signalOrStartProjectMergeWorkflow({
+  authType,
+  spaceId,
+}: {
+  authType: AuthenticatorType;
+  spaceId: string;
+}): Promise<void> {
+  const client = await getTemporalClientForFrontNamespace();
+  const workflowId = makeProjectMergeWorkflowId(authType.workspaceId, spaceId);
+
+  try {
+    await client.workflow.signalWithStart(projectMergeWorkflow, {
+      args: [{ authType, spaceId }],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      signal: mergeRequestSignal,
+      signalArgs: [],
+      workflowExecutionTimeout: "7 days",
+      memo: {
+        workspaceId: authType.workspaceId,
+        spaceId,
+      },
+    });
+  } catch (e) {
+    // Swallow errors — merge workflow failures must not block the analysis workflow.
+    logger.error(
+      {
+        workflowId,
+        workspaceId: authType.workspaceId,
+        spaceId,
+        error: normalizeError(e),
+      },
+      "Failed signaling project merge workflow"
     );
   }
 }

@@ -943,6 +943,7 @@ export async function postUserMessage(
   if (isPartOfProject) {
     const projectTodoAndConversationButlerParams = {
       authType: auth.toJSON(),
+      spaceId: conversation.spaceId,
       conversationId: conversation.sId,
       messageId: userMessage.sId,
     };
@@ -1287,6 +1288,7 @@ export async function editUserMessage(
   if (isProjectConversation(conversation)) {
     const projectTodoAndConversationButlerParams = {
       authType: auth.toJSON(),
+      spaceId: conversation.spaceId,
       conversationId: conversation.sId,
       messageId: userMessage.sId,
     };
@@ -1795,6 +1797,7 @@ export async function retryAgentMessage(
   if (isProjectConversation(conversation)) {
     const projectTodoAndConversationButlerParams = {
       authType: auth.toJSON(),
+      spaceId: conversation.spaceId,
       conversationId: conversation.sId,
       messageId: agentMessage.sId,
     };
@@ -1962,6 +1965,7 @@ export async function postNewContentFragment(
   if (isProjectConversation(conversation)) {
     const projectTodoAndConversationButlerParams = {
       authType: auth.toJSON(),
+      spaceId: conversation.spaceId,
       conversationId: conversation.sId,
       messageId,
     };
