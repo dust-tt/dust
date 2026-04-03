@@ -197,6 +197,11 @@ const InputBarContainer = ({
     useContext(InputBarContext);
   const [hasUserMention, setHasUserMention] = useState(false);
 
+  const agentsBySId = useMemo(
+    () => new Map(allAgents.map((a) => [a.sId, a])),
+    [allAgents]
+  );
+
   // Auto-select the agent in single-agent mode for new conversations on mount.
   // Prefer the agent saved in the draft; fall back to "dust".
   // The ref guard ensures this only runs once so it doesn't override manual agent changes.
@@ -219,7 +224,7 @@ const InputBarContainer = ({
       return;
     }
 
-    const dustAgent = allAgents.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST);
+    const dustAgent = agentsBySId.get(GLOBAL_AGENTS_SID.DUST);
     if (dustAgent) {
       hasInitializedAgentRef.current = true;
       setSelectedSingleAgent(toRichAgentMentionType(dustAgent));
@@ -229,7 +234,7 @@ const InputBarContainer = ({
     conversation,
     hasUserMention,
     stickyMentions?.length,
-    allAgents,
+    agentsBySId,
     setSelectedSingleAgent,
     getDraft,
   ]);
@@ -501,7 +506,7 @@ const InputBarContainer = ({
             break;
           case "mention": {
             if (singleAgentInput) {
-              const agent = allAgents.find((a) => a.sId === message.id);
+              const agent = agentsBySId.get(message.id);
               if (agent) {
                 handleSingleAgentSelect(toRichAgentMentionType(agent));
               }
