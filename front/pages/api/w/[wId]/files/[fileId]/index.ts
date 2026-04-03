@@ -127,11 +127,14 @@ import {
   processAndUpsertToDataSource,
 } from "@app/lib/api/files/upsert";
 import { addFileToProject } from "@app/lib/api/projects";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { FileVersion } from "@app/lib/resources/file_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
+import type {
+  FileResource,
+  FileVersion,
+} from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -202,30 +205,9 @@ export function getSecureFileAction(
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<FileUploadedRequestResponseBody>>,
-  auth: Authenticator
+  auth: Authenticator,
+  { file }: { file: FileResource }
 ): Promise<void> {
-  const { fileId } = req.query;
-  if (typeof fileId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Missing fileId query parameter.",
-      },
-    });
-  }
-
-  const file = await FileResource.fetchById(auth, fileId);
-  if (!file) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "file_not_found",
-        message: "File not found.",
-      },
-    });
-  }
-
   let space: SpaceResource | null = null;
   if (file.useCaseMetadata?.spaceId) {
     if (file.useCase === "project_context") {
@@ -493,4 +475,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, { file: {} })
+);

@@ -1,8 +1,9 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { FileResource } from "@app/lib/resources/file_resource";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -17,30 +18,9 @@ export type RenameFileResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<RenameFileResponseBody>>,
-  auth: Authenticator
+  auth: Authenticator,
+  { file }: { file: FileResource }
 ): Promise<void> {
-  const { fileId } = req.query;
-  if (!isString(fileId)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Missing fileId query parameter.",
-      },
-    });
-  }
-
-  const file = await FileResource.fetchById(auth, fileId);
-  if (!file) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "file_not_found",
-        message: "File not found.",
-      },
-    });
-  }
-
   // Check feature flag for project_context files
   if (file.useCase === "project_context") {
     const featureFlags = await getFeatureFlags(auth);
@@ -112,4 +92,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, { file: {} })
+);

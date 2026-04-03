@@ -2,12 +2,18 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-const RESOURCE_KEYS = ["space", "dataSource", "dataSourceView"] as const;
+const RESOURCE_KEYS = [
+  "space",
+  "dataSource",
+  "dataSourceView",
+  "file",
+] as const;
 
 type ResourceKey = (typeof RESOURCE_KEYS)[number];
 
@@ -16,6 +22,7 @@ type KeyToResource = {
   space: SpaceResource;
   dataSource: DataSourceResource;
   dataSourceView: DataSourceViewResource;
+  file: FileResource;
 };
 
 type ResourceMap<U extends ResourceKey> = {
@@ -33,6 +40,7 @@ type OptionsMap<U extends ResourceKey> = {
 
 // Resolvers must be in reverse order : last one is applied first.
 const resolvers = [
+  withFileFromRoute,
   withDataSourceViewFromRoute,
   withDataSourceFromRoute,
   withSpaceFromRoute,
@@ -74,7 +82,11 @@ function spaceCheck(space: SpaceResource | null): space is SpaceResource {
 
 function hasPermission(
   auth: Authenticator,
-  resource: SpaceResource | DataSourceResource | DataSourceViewResource,
+  resource:
+    | SpaceResource
+    | DataSourceResource
+    | DataSourceViewResource
+    | FileResource,
   options:
     | {
         requireCanAdministrate?: boolean;
@@ -302,6 +314,58 @@ function withDataSourceFromRoute<T, A extends SessionOrKeyAuthType>(
         res,
         auth,
         { ...resources, space, dataSource },
+        options,
+        sessionOrKeyAuth
+      );
+    }
+
+    return handler(req, res, auth, resources, options, sessionOrKeyAuth);
+  };
+}
+
+/**
+ * for /w/[wId]/files/[fileId]/... => check the file exists and provide it to the handler.
+ */
+function withFileFromRoute<T, A extends SessionOrKeyAuthType>(
+  handler: ResourceResolver<T, A>
+): ResourceResolver<T, A> {
+  return async (
+    req: NextApiRequest,
+    res: NextApiResponse<WithAPIErrorResponse<T>>,
+    auth: Authenticator,
+    resources: Partial<ResourceMap<ResourceKey>>,
+    options: Partial<OptionsMap<ResourceKey>>,
+    sessionOrKeyAuth: A
+  ) => {
+    const { fileId } = req.query;
+
+    if (fileId) {
+      if (typeof fileId !== "string") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid path parameters.",
+          },
+        });
+      }
+
+      const file = await FileResource.fetchById(auth, fileId);
+      if (!file || !hasPermission(auth, file, options.file)) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "file_not_found",
+            message: "File not found.",
+          },
+        });
+      }
+
+      return handler(
+        req,
+        res,
+        auth,
+        { ...resources, file },
         options,
         sessionOrKeyAuth
       );
