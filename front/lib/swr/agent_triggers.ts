@@ -23,6 +23,7 @@ import type {
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/webhook_filter_generator";
 import type { GetUserTriggersResponseBody } from "@app/pages/api/w/[wId]/me/triggers";
 import type { GetTriggerEstimationResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]/trigger-estimation";
+import type { ScheduleConfig } from "@app/types/assistant/triggers";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
@@ -247,6 +248,22 @@ export function useUpdateTrigger({
   return updateTrigger;
 }
 
+function responseToScheduleConfig(
+  r: PostTextAsCronRuleResponseBody
+): ScheduleConfig {
+  if (r.type === "interval") {
+    return {
+      type: "interval",
+      intervalDays: r.intervalDays,
+      dayOfWeek: r.dayOfWeek,
+      hour: r.hour,
+      minute: r.minute,
+      timezone: r.timezone,
+    };
+  }
+  return { type: "cron", cron: r.cronRule, timezone: r.timezone };
+}
+
 export function useTextAsCronRule({
   workspace,
 }: {
@@ -275,7 +292,7 @@ export function useTextAsCronRule({
         return new Err(normalizeError(e));
       }
 
-      return new Ok({ cron: r.cronRule, timezone: r.timezone });
+      return new Ok(responseToScheduleConfig(r));
     },
     [workspace, fetcher]
   );

@@ -75,16 +75,37 @@ export function ViewTriggerTable({
               {/* Configuration - structured by kind */}
               {trigger.kind === "schedule" ? (
                 <>
-                  <PokeTableRow>
-                    <PokeTableHead>Cron</PokeTableHead>
-                    <PokeTableCell>{trigger.configuration.cron}</PokeTableCell>
-                  </PokeTableRow>
-                  <PokeTableRow>
-                    <PokeTableHead>Timezone</PokeTableHead>
-                    <PokeTableCell>
-                      {trigger.configuration.timezone}
-                    </PokeTableCell>
-                  </PokeTableRow>
+                  {trigger.configuration.type === "interval" ? (
+                    <>
+                      <PokeTableRow>
+                        <PokeTableHead>Interval</PokeTableHead>
+                        <PokeTableCell>
+                          Every {trigger.configuration.intervalDays} days
+                        </PokeTableCell>
+                      </PokeTableRow>
+                      <PokeTableRow>
+                        <PokeTableHead>Timezone</PokeTableHead>
+                        <PokeTableCell>
+                          {trigger.configuration.timezone}
+                        </PokeTableCell>
+                      </PokeTableRow>
+                    </>
+                  ) : (
+                    <>
+                      <PokeTableRow>
+                        <PokeTableHead>Cron</PokeTableHead>
+                        <PokeTableCell>
+                          {trigger.configuration.cron}
+                        </PokeTableCell>
+                      </PokeTableRow>
+                      <PokeTableRow>
+                        <PokeTableHead>Timezone</PokeTableHead>
+                        <PokeTableCell>
+                          {trigger.configuration.timezone}
+                        </PokeTableCell>
+                      </PokeTableRow>
+                    </>
+                  )}
                 </>
               ) : (
                 <>
