@@ -78,17 +78,15 @@ Implement the graceful stop mechanism end-to-end.
 
 All steering behavior gated behind a feature flag. No UI work except pending message display.
 
-### - [ ] PR 3.1 — Add `"pending"` to `MessageVisibility` + `wasPending` column + `UserMessagePromotedEvent`
+### - [ ] PR 3.1 — Add `"pending"` to `MessageVisibility` + `UserMessagePromotedEvent`
 
 Type + DB schema change, no runtime behavior.
 
 - Add `"pending"` to `MessageVisibility` type in `front/types/assistant/conversation.ts`.
 - Add `"pending"` to `MessageModel.visibility` `isIn` validation.
-- Add `wasPending: boolean` (default `false`) to `MessageModel`.
-- Migration: update CHECK constraint on `visibility`, add `wasPending` column.
+- Migration: update CHECK constraint on `visibility`.
 - Handle `"pending"` in all exhaustive switches — for now, treat pending messages as invisible
   (filter them out where `"visible"` messages are expected).
-- Add `wasPending` to `UserMessageType`.
 - Add `UserMessagePromotedEvent` type in `front/types/assistant/conversation.ts`.
 - Add to `ConversationEvents` union in `front/lib/api/assistant/streaming/types.ts`.
 
@@ -111,27 +109,27 @@ Behind `enable_steering_behavior` feature flag:
 - Add `finalizeGracefulStopAgentMessage()` in `front/lib/api/assistant/conversation.ts`:
   - Acquires conversation advisory lock.
   - Sets agent message status to `"gracefully_stopped"`.
-  - Finds pending messages, promotes visibility to `"visible"`, sets `wasPending: true`.
+  - Finds pending messages, promotes visibility to `"visible"`.
   - Creates one `AgentMessage` + `MessageModel`.
 - Update `finalizeGracefullyStoppedAgentLoopActivity` to call this function, publish
   `UserMessagePromotedEvent` events, publish `AgentMessageNewEvent`, launch new agent loop.
 
-### - [ ] PR 3.4 — Safety net in `updateAgentMessageWithFinalStatus` for succeeded path
+### - [ ] PR 3.4 — Safety net in `finalizeAgentMessage` for succeeded path
 
-- Update `updateAgentMessageWithFinalStatus()` to check for orphaned pending messages when `status` is
+- Update `finalizeAgentMessage()` to check for orphaned pending messages when `status` is
   `"succeeded"` and promote them (same logic as `finalizeGracefulStopAgentMessage`).
 - This handles the edge case where the graceful stop signal was lost or arrived after the loop
   already decided to exit naturally.
 
-### - [ ] PR 3.5 — `<dust_system>` steering instruction in `renderUserMessage`
-
-- In `renderUserMessage()` (`front/lib/api/assistant/conversation_rendering/helpers.ts`):
-  - When `m.wasPending` is true, append to `additionalInstructions`:
-    `"This message was sent by the user to steer your current work."`
-
-### - [ ] PR 3.6 — Frontend: pending message display with spinner
+### - [ ] PR 3.5 — Frontend: pending message display with spinner
 
 - In user message rendering component, when `visibility === "pending"`, render the message
   with a muted/greyed-out style and a spinner indicator.
 - When `UserMessagePromotedEvent` is received, update the message visibility to `"visible"`
   (remove spinner, normal style).
+
+### Future: `wasPending` flag + `<dust_system>` steering instruction
+
+A `wasPending` boolean on `MessageModel` could be set when promoting pending messages to visible.
+This would allow `renderUserMessage()` to append a steering instruction to `<dust_system>`:
+"This message was sent by the user to steer your current work." Deferred for now.
