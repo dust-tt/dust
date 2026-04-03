@@ -11,6 +11,7 @@ import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/cont
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { publishAgentMessagesEvents } from "@app/lib/api/assistant/streaming/events";
 import { Authenticator } from "@app/lib/auth";
+import { serializeMention } from "@app/lib/mentions/format";
 import {
   ConversationModel,
   MentionModel,
@@ -31,6 +32,7 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import { isContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   AgentMessageType,
   ConversationType,
@@ -1434,7 +1436,7 @@ describe("postUserMessage", () => {
         fullName: userJson.fullName,
         email: userJson.email,
         profilePictureUrl: userJson.image,
-        origin: "web",
+        origin: "api",
       },
       skipToolsValidation: false,
     });
@@ -1454,6 +1456,232 @@ describe("postUserMessage", () => {
       // Verify launchAgentLoopWorkflow was NOT called (no agent mentions)
       expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
     }
+  });
+
+  describe("auto-mention global @dust when posting without mentions", () => {
+    const expectedDustMentionPrefix = serializeMention({
+      id: GLOBAL_AGENTS_SID.DUST,
+      type: "agent",
+      label: "dust",
+    });
+
+    it("prepends serialized @dust and persists the mention for web origin", async () => {
+      const user = auth.getNonNullableUser();
+      const userJson = user.toJSON();
+
+      const result = await postUserMessage(auth, {
+        conversation,
+        content: "Hello without explicit mentions",
+        mentions: [],
+        context: {
+          username: userJson.username,
+          timezone: "UTC",
+          fullName: userJson.fullName,
+          email: userJson.email,
+          profilePictureUrl: userJson.image,
+          origin: "web",
+        },
+        skipToolsValidation: false,
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) {
+        return;
+      }
+
+      const { userMessage } = result.value;
+      expect(userMessage.content).toBe(
+        `${expectedDustMentionPrefix} Hello without explicit mentions`
+      );
+
+      expect(userMessage.mentions?.length).toBe(1);
+      expect(userMessage.mentions?.[0]).toEqual({
+        configurationId: GLOBAL_AGENTS_SID.DUST,
+      });
+
+      const agentMentions = userMessage.richMentions.filter(isRichAgentMention);
+      expect(agentMentions.some((m) => m.id === GLOBAL_AGENTS_SID.DUST)).toBe(
+        true
+      );
+
+      const mentionsInDb = await MentionModel.findAll({
+        where: {
+          messageId: userMessage.id,
+          workspaceId: workspace.id,
+        },
+      });
+      expect(
+        mentionsInDb.some(
+          (m) => m.agentConfigurationId === GLOBAL_AGENTS_SID.DUST
+        )
+      ).toBe(true);
+
+      expect(launchAgentLoopWorkflow).toHaveBeenCalled();
+    });
+
+    it("prepends serialized @dust for extension origin", async () => {
+      const user = auth.getNonNullableUser();
+      const userJson = user.toJSON();
+
+      const result = await postUserMessage(auth, {
+        conversation,
+        content: "From extension",
+        mentions: [],
+        context: {
+          username: userJson.username,
+          timezone: "UTC",
+          fullName: userJson.fullName,
+          email: userJson.email,
+          profilePictureUrl: userJson.image,
+          origin: "extension",
+        },
+        skipToolsValidation: false,
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) {
+        return;
+      }
+
+      expect(result.value.userMessage.content).toBe(
+        `${expectedDustMentionPrefix} From extension`
+      );
+      expect(result.value.userMessage.mentions?.[0]).toEqual({
+        configurationId: GLOBAL_AGENTS_SID.DUST,
+      });
+    });
+
+    it("does not auto-mention @dust for api origin", async () => {
+      const user = auth.getNonNullableUser();
+      const userJson = user.toJSON();
+
+      const result = await postUserMessage(auth, {
+        conversation,
+        content: "API message",
+        mentions: [],
+        context: {
+          username: userJson.username,
+          timezone: "UTC",
+          fullName: userJson.fullName,
+          email: userJson.email,
+          profilePictureUrl: userJson.image,
+          origin: "api",
+        },
+        skipToolsValidation: false,
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) {
+        return;
+      }
+
+      expect(result.value.userMessage.content).toBe("API message");
+      expect(result.value.userMessage.mentions?.length ?? 0).toBe(0);
+      expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
+    });
+
+    it("does not auto-mention @dust when two distinct users already posted", async () => {
+      const rateLimiterSpy = vi
+        .spyOn(rateLimiterModule, "rateLimiter")
+        .mockResolvedValue(100);
+
+      const userA = auth.getNonNullableUser();
+      const userAJson = userA.toJSON();
+
+      const userBModel = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, userBModel, {
+        role: "user",
+      });
+      const authB = await Authenticator.fromUserIdAndWorkspaceId(
+        userBModel.sId,
+        workspace.sId
+      );
+      const userB = authB.getNonNullableUser();
+      const userBJson = userB.toJSON();
+
+      const firstFromA = await postUserMessage(auth, {
+        conversation,
+        content: "first from A",
+        mentions: [],
+        context: {
+          username: userAJson.username,
+          timezone: "UTC",
+          fullName: userAJson.fullName,
+          email: userAJson.email,
+          profilePictureUrl: userAJson.image,
+          origin: "web",
+        },
+        skipToolsValidation: false,
+      });
+      expect(firstFromA.isOk()).toBe(true);
+      if (!firstFromA.isOk()) {
+        rateLimiterSpy.mockRestore();
+        return;
+      }
+
+      const afterA = await getConversation(auth, conversation.sId);
+      expect(afterA.isOk()).toBe(true);
+      if (afterA.isErr()) {
+        rateLimiterSpy.mockRestore();
+        return;
+      }
+
+      const firstFromB = await postUserMessage(authB, {
+        conversation: afterA.value,
+        content: "first from B",
+        mentions: [],
+        context: {
+          username: userBJson.username,
+          timezone: "UTC",
+          fullName: userBJson.fullName,
+          email: userBJson.email,
+          profilePictureUrl: userBJson.image,
+          origin: "web",
+        },
+        skipToolsValidation: false,
+      });
+      expect(firstFromB.isOk()).toBe(true);
+      if (!firstFromB.isOk()) {
+        rateLimiterSpy.mockRestore();
+        return;
+      }
+
+      const afterB = await getConversation(auth, conversation.sId);
+      expect(afterB.isOk()).toBe(true);
+      if (afterB.isErr()) {
+        rateLimiterSpy.mockRestore();
+        return;
+      }
+
+      vi.clearAllMocks();
+
+      const secondFromA = await postUserMessage(auth, {
+        conversation: afterB.value,
+        content: "second from A",
+        mentions: [],
+        context: {
+          username: userAJson.username,
+          timezone: "UTC",
+          fullName: userAJson.fullName,
+          email: userAJson.email,
+          profilePictureUrl: userAJson.image,
+          origin: "web",
+        },
+        skipToolsValidation: false,
+      });
+
+      expect(secondFromA.isOk()).toBe(true);
+      if (!secondFromA.isOk()) {
+        rateLimiterSpy.mockRestore();
+        return;
+      }
+
+      expect(secondFromA.value.userMessage.content).toBe("second from A");
+      expect(secondFromA.value.userMessage.mentions?.length ?? 0).toBe(0);
+      expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
+
+      rateLimiterSpy.mockRestore();
+    });
   });
 
   describe("project conversation member constraint", () => {
@@ -1538,7 +1766,7 @@ describe("postUserMessage", () => {
           fullName: userJson.fullName,
           email: userJson.email,
           profilePictureUrl: userJson.image,
-          origin: "web",
+          origin: "api",
         },
         skipToolsValidation: false,
       });
@@ -1645,7 +1873,7 @@ describe("postUserMessage", () => {
           fullName: userJson.fullName,
           email: userJson.email,
           profilePictureUrl: userJson.image,
-          origin: "web",
+          origin: "api",
         },
         skipToolsValidation: false,
       });
