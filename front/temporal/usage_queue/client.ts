@@ -210,7 +210,9 @@ export async function launchMetronomeGaugeEventsSchedule(): Promise<
       spec: isDevelopment()
         ? { intervals: [{ every: "1h" }] }
         : {
-            calendars: [{ hour: { start: 2 }, comment: "Daily at 02:00 UTC" }],
+            calendars: [
+              { hour: [{ start: 2, end: 2 }], comment: "Daily at 02:00 UTC" },
+            ],
           },
     });
 
