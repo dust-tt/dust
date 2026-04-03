@@ -265,7 +265,7 @@ export async function getAgentConfigurationsActivity({
     explicitOnAgents,
     lookbackWindowDays
   );
-  
+
   return eligible.map((a) => a.sId);
 }
 
