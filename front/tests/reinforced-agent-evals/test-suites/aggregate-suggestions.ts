@@ -417,5 +417,45 @@ Score 0 if it creates a suggestion similar to the rejected one (empathy/acknowle
 Score 1 if it creates an unrelated suggestion.
 Score 3 if no suggestion is created.`,
     },
+    {
+      scenarioId: "dismiss-or-generalize-overly-specific-suggestion",
+      type: "aggregation",
+      agentConfig: {
+        name: "Incident Analysis Bot",
+        description:
+          "Helps the on-call team investigate production incidents using Datadog, Jira, and GitHub",
+      },
+      syntheticSuggestions: [
+        makeInstructionSuggestion({
+          id: 1,
+          sId: "sug-1",
+          analysis:
+            "The agent had difficulty finding a specific error in Datadog. Adding an instruction about this error pattern would help the agent handle it in the future.",
+          suggestion: {
+            content:
+              '<p>When a user reports the error "TypeError: Cannot read properties of undefined (reading subresult) at ProcessingPipeline.transform (pipeline.js:453:22)", search Datadog with the query \'service:data-processor "Cannot read properties of undefined (reading subresult)"\' and check the GitHub repo for recent commits to pipeline.js.</p>',
+            targetBlockId: "instructions-root",
+            type: "replace",
+          },
+        }),
+      ],
+      workspaceContext: WORKSPACE_CONTEXT,
+      expectedToolCalls: [],
+      judgeCriteria: `The synthetic suggestion hardcodes a specific error message ("TypeError: Cannot read properties
+of undefined (reading subresult) at ProcessingPipeline.transform (pipeline.js:453:22)") and specific
+file references. The aggregation agent must either:
+1. Dismiss the suggestion entirely (no suggestion created) — this is acceptable, OR
+2. Generalize it into a broader, useful instruction about how to investigate errors in Datadog
+   (e.g., general guidance on searching for error patterns, correlating across tools, etc.)
+
+What is NOT acceptable:
+- Reproducing the suggestion as-is with the specific error message hardcoded
+- Keeping any reference to "subresult", "pipeline.js:453", or the exact TypeError text
+
+Score 0 if the suggestion is reproduced with the specific error message, file name, or line number.
+Score 1 if the suggestion is partially generalized but still contains overly specific references.
+Score 2 if the suggestion is dismissed entirely (acceptable but not ideal if a generic version would be useful).
+Score 3 if the suggestion is generalized into clear, actionable guidance about investigating errors using Datadog/Jira/GitHub without hardcoding specifics.`,
+    },
   ],
 };
