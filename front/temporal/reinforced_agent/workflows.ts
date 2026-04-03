@@ -204,6 +204,11 @@ export async function reinforcedAgentForAgentWorkflow({
     conversationLookbackDays,
   });
 
+  // No conversations to analyze: skip both analysis and aggregation.
+  if (conversationIds.length === 0) {
+    return;
+  }
+
   if (useBatchMode) {
     // Phase 1: Batch-analyze all conversations with multi-step loop.
     // Each iteration: submit batch → wait → process results → execute tools.
