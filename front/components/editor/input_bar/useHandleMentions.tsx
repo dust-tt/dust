@@ -6,6 +6,7 @@ import type {
   RichMention,
 } from "@app/types/assistant/mentions";
 import { isRichAgentMention } from "@app/types/assistant/mentions";
+import type { MutableRefObject } from "react";
 import { useContext, useEffect, useRef } from "react";
 
 const useHandleMentions = (
@@ -13,7 +14,8 @@ const useHandleMentions = (
   stickyMentions: RichMention[] | undefined,
   selectedAgent: RichAgentMention | null,
   disableAutoFocus: boolean,
-  pendingInputText?: string | null
+  pendingInputText?: string | null,
+  draftAgentRestoredRef?: MutableRefObject<boolean>
 ) => {
   const stickyMentionsTextContent = useRef<string | null>(null);
   const singleAgentInput = isSingleAgentInputEnabled();
@@ -23,15 +25,20 @@ const useHandleMentions = (
   // so the agent picker button shows the correct agent on existing conversations.
   // Only sync when sticky mentions are provided (existing conversations); skip for
   // new conversations (undefined stickyMentions) to avoid overriding the auto-selected default.
+  // Also skip when the draft restore already set the agent to avoid overwriting the user's draft.
   useEffect(() => {
     if (!singleAgentInput || !stickyMentions) {
+      return;
+    }
+    // Skip if the draft restore effect already set the selected agent.
+    if (draftAgentRestoredRef?.current) {
       return;
     }
     const agentMention = stickyMentions.find(isRichAgentMention) ?? null;
     if (agentMention) {
       setSelectedSingleAgent(agentMention);
     }
-  }, [singleAgentInput, stickyMentions, setSelectedSingleAgent]);
+  }, [singleAgentInput, stickyMentions, setSelectedSingleAgent, draftAgentRestoredRef]);
 
   useEffect(() => {
     if (!stickyMentions || stickyMentions.length === 0) {

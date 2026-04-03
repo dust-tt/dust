@@ -772,9 +772,15 @@ const InputBarContainer = ({
     };
   }, [clientType, editorService]);
 
+  // Tracks whether the draft restore effect set the selected agent,
+  // so the sticky-mentions sync in useHandleMentions can skip overwriting it.
+  const draftAgentRestoredRef = useRef(false);
+
   // Restore draft when switching conversations (including new conversations).
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
+    draftAgentRestoredRef.current = false;
+
     if (
       !editor ||
       editor.isDestroyed ||
@@ -796,6 +802,7 @@ const InputBarContainer = ({
       // Restore the selected agent from the draft (single-agent mode).
       if (singleAgentInput && draft.agentMention) {
         setSelectedSingleAgent(draft.agentMention);
+        draftAgentRestoredRef.current = true;
       }
       // Schedule content restoration to avoid flushing during render lifecycle.
       queueMicrotask(() =>
@@ -816,7 +823,8 @@ const InputBarContainer = ({
     stickyMentions,
     selectedAgent,
     disableAutoFocus,
-    pendingInputText
+    pendingInputText,
+    draftAgentRestoredRef
   );
 
   const buttonSize = useMemo(() => {
