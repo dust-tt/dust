@@ -15,7 +15,9 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { isSingleAgentInputEnabled } from "@app/lib/development";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { RichAgentMention } from "@app/types/assistant/mentions";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
@@ -78,8 +80,22 @@ function SidekickContent({
   clientSideMCPServerIds,
 }: SidekickContentProps) {
   const { subscription } = useAuth();
+
+  const sidekickStickyMention: RichAgentMention = useMemo(
+    () => ({
+      id: GLOBAL_AGENTS_SID.SIDEKICK,
+      type: "agent" as const,
+      label: "Sidekick",
+      pictureUrl: "",
+      description: "",
+      userFavorite: false,
+    }),
+    []
+  );
+
   const agentBuilderContext = useMemo(
     () => ({
+      stickyMentions: [sidekickStickyMention],
       isSubmitting: false,
       resetConversation,
       actionsToShow: [
@@ -90,7 +106,12 @@ function SidekickContent({
       clientSideMCPServerIds,
       skipToolsValidation: true,
     }),
-    [resetConversation, clientSideMCPServerIds, subscription.plan.isByok]
+    [
+      sidekickStickyMention,
+      resetConversation,
+      clientSideMCPServerIds,
+      subscription.plan.isByok,
+    ]
   );
 
   const additionalMarkdownComponents: Components = useMemo(

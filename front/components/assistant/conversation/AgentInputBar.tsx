@@ -75,8 +75,14 @@ export const AgentInputBar = ({
     );
 
   const draftAgent = context.agentBuilderContext?.draftAgent;
+  const contextStickyMentions = context.agentBuilderContext?.stickyMentions;
 
   const autoMentions = useMemo(() => {
+    // If the agent builder context provides explicit sticky mentions, use them.
+    if (contextStickyMentions && contextStickyMentions.length > 0) {
+      return contextStickyMentions;
+    }
+
     // If we are in the agent builder, we show the draft agent as the sticky mention, all the time.
     // Especially since the draft agent have a new sId every time it is updated.
     if (draftAgent) {
@@ -92,7 +98,7 @@ export const AgentInputBar = ({
     }
 
     return lastUserMessage.richMentions;
-  }, [draftAgent, lastUserMessage]);
+  }, [contextStickyMentions, draftAgent, lastUserMessage]);
 
   // Calculate positions and determine which user messages are navigable.
   const {
