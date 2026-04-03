@@ -21,6 +21,7 @@ import type {
   ButlerThinkingEvent,
   ConversationTitleEvent,
   UserMessageNewEvent,
+  UserMessagePromotedEvent,
 } from "@app/types/assistant/conversation";
 import type { GenerationTokensEvent } from "@app/types/assistant/generation";
 
@@ -45,6 +46,7 @@ export type ConversationEvents =
   | ConversationTitleEvent
   | AgentMessageNewEvent
   | UserMessageNewEvent
+  | UserMessagePromotedEvent
   | AgentMessageDoneEvent;
 
 export const TERMINAL_AGENT_MESSAGE_EVENT_TYPES: AgentMessageEvents["type"][] =

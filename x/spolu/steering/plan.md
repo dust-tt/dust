@@ -72,6 +72,8 @@ Implement the graceful stop mechanism end-to-end.
 - Publish from `gracefullyStopAgentLoop()` before sending the Temporal signal.
 - Handle in frontend to show "stopping..." state.
 
+==> P1 compared to phase3
+
 ---
 
 ## Phase 3: Steering (behind `enable_steering_behavior` feature flag)
