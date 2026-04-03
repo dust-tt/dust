@@ -1,10 +1,12 @@
 import { AgentActionsPanel } from "@app/components/assistant/conversation/actions/AgentActionsPanel";
+import { ThinkingPanel } from "@app/components/assistant/conversation/actions/ThinkingPanel";
 import { ConversationFilesPanel } from "@app/components/assistant/conversation/files_panel/ConversationFilesPanel";
 import { InteractiveContentContainer } from "@app/components/assistant/conversation/interactive_content/InteractiveContentContainer";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
+  AGENT_THINKING_SIDE_PANEL_TYPE,
   FILES_SIDE_PANEL_TYPE,
   INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
 } from "@app/types/conversation_side_panel";
@@ -37,6 +39,9 @@ export default function ConversationSidePanelContent({
       return (
         <ConversationFilesPanel conversation={conversation} owner={owner} />
       );
+
+    case AGENT_THINKING_SIDE_PANEL_TYPE:
+      return <ThinkingPanel />;
 
     default:
       return null;
