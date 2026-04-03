@@ -59,9 +59,6 @@ NEVER hardcode overly specific values (exact error messages, specific line numbe
 
 Ask yourself: "Would this instruction still be useful if the exact error message, variable name, or line number changed?"
 
-DO: Suggest category-level handling rules (e.g., "When encountering null reference errors, check the data pipeline upstream")
-DON'T: Hardcode specific error text (e.g., "When you see 'Cannot read property subresult of undefined at line 453', check the parser module")
-
 DO: Suggest general diagnostic approaches (e.g., "For performance issues, start by checking slow database queries and high memory usage")
 DON'T: Suggest handling for one-off incidents (e.g., "If latency spikes to 2847ms on endpoint /api/v2/reports/quarterly, restart pod west-2a")
 
