@@ -311,7 +311,7 @@ export async function finalizeConnection(
     }
   }
 
-  if (auth) {
+  if (auth && auth.workspace()) {
     // No req available in this library function — context defaults to auth.clientIp().
     void emitAuditLogEvent({
       auth,
