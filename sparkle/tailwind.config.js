@@ -594,6 +594,10 @@ module.exports = {
             night: colors.rose[500],
           },
         },
+        hover: {
+          DEFAULT: colors.gray[100],
+          night: colors.gray[800],
+        },
         muted: {
           DEFAULT: colors.gray[50],
           night: colors.gray[950],
