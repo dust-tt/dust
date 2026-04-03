@@ -51,7 +51,6 @@ export async function runAgentLoopWorker() {
       finalizeSuccessfulAgentLoopActivity,
       finalizeGracefullyStoppedAgentLoopActivity,
       finalizeCancelledAgentLoopActivity,
-      finalizeGracefullyStoppedAgentLoopActivity,
       finalizeErroredAgentLoopActivity,
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,
