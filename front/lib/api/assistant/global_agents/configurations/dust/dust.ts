@@ -335,7 +335,10 @@ function _getDustLikeGlobalAgent(
     omittedThinking?: boolean;
   }
 ): (AgentConfigurationType & { omittedThinking?: boolean }) | null {
-  const { agent_memory: agentMemoryMCPServerView } = mcpServerViews;
+  const {
+    agent_memory: agentMemoryMCPServerView,
+    ask_user_question: askUserQuestionMCPServerView,
+  } = mcpServerViews;
   const owner = auth.getNonNullableWorkspace();
 
   const description = `Dust is your general purpose agent. It has access to all of your company data and tools available in the Company space. Dust can help you:
@@ -500,6 +503,27 @@ function _getDustLikeGlobalAgent(
       description: "The agent memory tool",
       mcpServerViewId: agentMemoryMCPServerView.sId,
       internalMCPServerId: agentMemoryMCPServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+      secretName: null,
+      dustProject: null,
+    });
+  }
+
+  if (askUserQuestionMCPServerView) {
+    actions.push({
+      id: -1,
+      sId: agentId + "-ask-user-question",
+      type: "mcp_server_configuration",
+      name: "ask_user_question" satisfies InternalMCPServerNameType,
+      description: "Ask the user a question with multiple-choice options.",
+      mcpServerViewId: askUserQuestionMCPServerView.sId,
+      internalMCPServerId: askUserQuestionMCPServerView.internalMCPServerId,
       dataSources: null,
       tables: null,
       childAgentId: null,
