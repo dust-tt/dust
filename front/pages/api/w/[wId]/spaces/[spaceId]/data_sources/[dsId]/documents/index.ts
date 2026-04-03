@@ -3,7 +3,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { upsertDocument } from "@app/lib/api/data_sources";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import { PostDataSourceDocumentRequestBodySchema } from "@app/types/api/public/data_sources";
@@ -32,34 +32,11 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PostDocumentResponseBody>>,
   auth: Authenticator,
-  { space }: { space: SpaceResource }
+  {
+    space,
+    dataSource,
+  }: { space: SpaceResource; dataSource: DataSourceResource }
 ): Promise<void> {
-  const { dsId } = req.query;
-  if (typeof dsId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
-
-  const dataSource = await DataSourceResource.fetchById(auth, dsId);
-  if (
-    !dataSource ||
-    space.sId !== dataSource.space.sId ||
-    !dataSource.canRead(auth)
-  ) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
   switch (req.method) {
     case "POST":
       if (!dataSource.canWrite(auth)) {
@@ -183,5 +160,8 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, { space: { requireCanRead: true } })
+  withResourceFetchingFromRoute(handler, {
+    space: { requireCanRead: true },
+    dataSource: { requireCanRead: true },
+  })
 );

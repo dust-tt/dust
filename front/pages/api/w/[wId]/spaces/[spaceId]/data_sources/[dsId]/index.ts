@@ -10,7 +10,7 @@ import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isRemoteDatabase } from "@app/lib/data_sources";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { DataSourceType } from "@app/types/data_source";
@@ -34,19 +34,11 @@ async function handler(
     WithAPIErrorResponse<PatchSpaceDataSourceResponseBody | void>
   >,
   auth: Authenticator,
-  { space }: { space: SpaceResource }
+  {
+    space,
+    dataSource,
+  }: { space: SpaceResource; dataSource: DataSourceResource }
 ): Promise<void> {
-  const { dsId } = req.query;
-  if (typeof dsId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
-
   if (space.isSystem() && !space.canAdministrate(auth)) {
     return apiError(req, res, {
       status_code: 400,
@@ -63,17 +55,6 @@ async function handler(
         type: "data_source_auth_error",
         message:
           "Only the users that are `builders` for the current workspace can update a data source.",
-      },
-    });
-  }
-
-  const dataSource = await DataSourceResource.fetchById(auth, dsId);
-  if (!dataSource || dataSource.space.sId !== space.sId) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
       },
     });
   }
@@ -205,5 +186,6 @@ async function handler(
 export default withSessionAuthenticationForWorkspace(
   withResourceFetchingFromRoute(handler, {
     space: { requireCanReadOrAdministrate: true },
+    dataSource: {},
   })
 );

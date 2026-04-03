@@ -2,6 +2,7 @@
 *.sqlite
 .DS_Store
 .idea
+.air
 test.ts
 .env.local
 .env.agent.local
