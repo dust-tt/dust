@@ -148,7 +148,10 @@ async function handler(
     tool,
     accessToken,
     externalId,
-    conversationId,
+    useCase: "conversation",
+    useCaseMetadata: {
+      conversationId,
+    },
     metadata,
     serverName,
     serverIcon,

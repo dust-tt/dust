@@ -2,6 +2,7 @@ import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
+import { addFileToProject } from "@app/lib/api/projects/context";
 import type { Authenticator } from "@app/lib/auth";
 import {
   download as githubDownload,
@@ -39,7 +40,11 @@ import type {
 } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
 import type { ConnectorProvider } from "@app/types/data_source";
-import type { FileType } from "@app/types/files";
+import type {
+  FileType,
+  FileUseCase,
+  FileUseCaseMetadata,
+} from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { Readable } from "stream";
@@ -252,7 +257,8 @@ export async function downloadAndUploadToolFile({
   tool,
   accessToken,
   externalId,
-  conversationId,
+  useCase,
+  useCaseMetadata,
   metadata,
   serverName,
   serverIcon,
@@ -261,7 +267,8 @@ export async function downloadAndUploadToolFile({
   tool: SearchableTool;
   accessToken: string;
   externalId: string;
-  conversationId?: string;
+  useCase: FileUseCase;
+  useCaseMetadata?: FileUseCaseMetadata;
   metadata?: Record<string, string>;
   serverName?: string;
   serverIcon?: string;
@@ -306,9 +313,9 @@ export async function downloadAndUploadToolFile({
     fileSize: Buffer.byteLength(downloadResult.content, "utf8"),
     userId: user.id,
     workspaceId: owner.id,
-    useCase: "conversation",
+    useCase,
     useCaseMetadata: {
-      ...(conversationId ? { conversationId } : {}),
+      ...(useCaseMetadata ? useCaseMetadata : {}),
       ...(serverName ? { sourceProvider: serverName } : {}),
       ...(serverIcon ? { sourceIcon: serverIcon } : {}),
     },
@@ -326,6 +333,22 @@ export async function downloadAndUploadToolFile({
     return new Err(
       new Error(`Failed to process file: ${processResult.error.message}`)
     );
+  }
+
+  // TODO(seb): we shouldn't have multiple places where we handle the post file upload logic.
+  if (useCase === "project_context" && useCaseMetadata?.spaceId) {
+    const space = await SpaceResource.fetchById(auth, useCaseMetadata?.spaceId);
+    if (!space) {
+      return new Err(new Error("Space not found."));
+    }
+    const addFileToProjectRes = await addFileToProject(auth, {
+      file,
+      space,
+    });
+
+    if (addFileToProjectRes.isErr()) {
+      return new Err(new Error("Failed to add file to project."));
+    }
   }
 
   return new Ok(file.toJSON(auth));

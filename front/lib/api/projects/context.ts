@@ -1,3 +1,9 @@
+import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import {
+  getAttachmentFromContentFragment,
+  isFileAttachmentType,
+} from "@app/lib/api/assistant/conversation/attachments";
+import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import type {
   UpsertDocumentArgs,
   UpsertTableArgs,
@@ -11,6 +17,7 @@ import { ContentFragmentResource } from "@app/lib/resources/content_fragment_res
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import { isSupportedDelimitedTextContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -49,11 +56,11 @@ export async function listProjectContextFiles(
   const files: FileResource[] = [];
   const seenSIds = new Set<string>();
 
-  for (const fr of fragments) {
-    if (fr.fileId == null) {
+  for (const fragment of fragments) {
+    if (fragment.fileId == null) {
       continue;
     }
-    const file = filesByModelId.get(fr.fileId);
+    const file = filesByModelId.get(fragment.fileId);
     if (!file || seenSIds.has(file.sId)) {
       continue;
     }
@@ -62,6 +69,63 @@ export async function listProjectContextFiles(
   }
 
   return files;
+}
+
+/**
+ * Project context attachments: latest file-backed and content-node fragments for the space,
+ * same item shape as conversation attachments (see GET `.../conversations/[cId]/attachments`).
+ */
+export async function listProjectContextAttachments(
+  auth: Authenticator,
+  space: SpaceResource
+): Promise<ConversationAttachmentType[]> {
+  const fragments = await ContentFragmentResource.listBySpace(auth, space);
+  const fileModelIds = removeNulls(fragments.map((fr) => fr.fileId));
+  const filesByModelId = new Map<number, FileResource>();
+  if (fileModelIds.length > 0) {
+    const fetched = await FileResource.fetchByModelIdsWithAuth(
+      auth,
+      fileModelIds
+    );
+    for (const f of fetched) {
+      filesByModelId.set(f.id, f);
+    }
+  }
+
+  const merged = new Map<string, ConversationAttachmentType>();
+
+  for (const fragment of fragments) {
+    const file =
+      fragment.fileId != null
+        ? (filesByModelId.get(fragment.fileId) ?? null)
+        : null;
+    if (fragment.fileId != null && !file) {
+      continue;
+    }
+
+    const cf = await ContentFragmentResource.renderToContentFragmentType(
+      auth,
+      fragment,
+      {
+        kind: "project_context",
+        file,
+      }
+    );
+    const attachment = getAttachmentFromContentFragment(cf);
+    if (!attachment) {
+      continue;
+    }
+
+    const key = isFileAttachmentType(attachment)
+      ? attachment.fileId
+      : attachment.contentFragmentId;
+    if (merged.has(key)) {
+      continue;
+    }
+    merged.set(key, { ...attachment, isInProjectContext: true });
+  }
+
+  return Array.from(merged.values());
 }
 
 /**
@@ -153,6 +217,79 @@ export async function addFileToProject(
       space,
       file
     );
+
+  if (fragmentRes.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_error",
+      message: fragmentRes.error.message,
+    });
+  }
+
+  return new Ok(fragmentRes.value);
+}
+
+/**
+ * Ensures a latest `content_fragments` row for a content node reference in the project
+ * space. Validates node access via Core (same path as conversation content nodes). Does not
+ * upsert into the project Core data source (the node remains in its original space/view).
+ */
+export async function addContentNodeToProject(
+  auth: Authenticator,
+  {
+    contentFragment,
+    space,
+  }: {
+    contentFragment: ContentFragmentInputWithContentNode;
+    space: SpaceResource;
+  }
+): Promise<Result<ContentFragmentResource, DustError>> {
+  if (space.kind !== "project") {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "Space is not a project.",
+    });
+  }
+
+  const blobRes = await getContentFragmentBlob(auth, contentFragment);
+  if (blobRes.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: blobRes.error.message,
+    });
+  }
+
+  const blob = blobRes.value;
+  if (
+    blob.fileId !== null ||
+    blob.nodeId === null ||
+    blob.nodeDataSourceViewId === null ||
+    blob.nodeType === null
+  ) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_error",
+      message: "Expected content node fragment blob.",
+    });
+  }
+
+  const fragmentRes =
+    await ContentFragmentResource.upsertLatestProjectContentNodeFragment(
+      auth,
+      space,
+      {
+        title: blob.title,
+        contentType: blob.contentType,
+        sourceUrl: blob.sourceUrl,
+        textBytes: blob.textBytes,
+        nodeId: blob.nodeId,
+        nodeDataSourceViewId: blob.nodeDataSourceViewId,
+        nodeType: blob.nodeType,
+      }
+    );
+
   if (fragmentRes.isErr()) {
     return new Err({
       name: "dust_error",
