@@ -86,8 +86,7 @@ export const InputBar = React.memo(function InputBar({
   >([]);
 
   const {
-    selectedAgent,
-    setSelectedAgent,
+    getAndClearSelectedAgent,
     selectedSingleAgent,
     getAndClearPendingInputText,
     fileUploaderService,
