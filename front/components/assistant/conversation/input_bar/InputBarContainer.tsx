@@ -148,6 +148,7 @@ export interface InputBarContainerProps {
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
+  onResetSelections: () => void;
   onSkillDeselect: (skill: SkillType) => void;
   onSkillSelect: (skill: SkillType) => void;
   owner: WorkspaceType;
@@ -182,6 +183,7 @@ const InputBarContainer = ({
   onMCPServerViewSelect,
   onMCPServerViewDeselect,
   selectedMCPServerViews,
+  onResetSelections,
   onSkillSelect,
   onSkillDeselect,
   selectedSkills,
@@ -527,17 +529,15 @@ const InputBarContainer = ({
   });
 
   // When a user is mentioned in single-agent mode, deselect the agent and clear capabilities.
-  // Uses a ref so the editor listener always calls the latest closure without needing
-  // all the deselection callbacks/arrays as effect dependencies.
+  // Uses a ref so the editor listener (registered once in the useEffect below) always calls
+  // the latest closure without re-registering the listener on every render.
   const onEditorMentionsChangedRef = useRef((_userMentioned: boolean) => {});
 
   onEditorMentionsChangedRef.current = (userMentioned: boolean) => {
     shouldSuggestAgentRef.current = !(singleAgentInput && userMentioned);
     if (singleAgentInput && userMentioned) {
       setSelectedSingleAgent(null);
-      selectedMCPServerViews.forEach((sv) => onMCPServerViewDeselect(sv));
-      selectedSkills.forEach((s) => onSkillDeselect(s));
-      attachedNodes.forEach((n) => onNodeUnselect(n));
+      onResetSelections();
       fileUploaderService.resetUpload();
     }
   };
