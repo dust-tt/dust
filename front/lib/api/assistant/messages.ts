@@ -306,7 +306,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
   messages: MessageModel[],
   viewType: V,
-  outputItemContentOnlyForAgentMessageIds: Set<ModelId> | null = null
+  messagesWithToolOutputContent: Set<ModelId> | null = null
 ): Promise<
   Result<
     V extends "full" ? AgentMessageType[] : LightAgentMessageType[],
@@ -387,8 +387,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     // Otherwise, for full messages, we only include content for the actions that are in the optional outputItemContentOnlyForMessageIds.
     if (
       viewType === "light" ||
-      (outputItemContentOnlyForAgentMessageIds &&
-        !outputItemContentOnlyForAgentMessageIds.has(action.agentMessageId))
+      (messagesWithToolOutputContent &&
+        !messagesWithToolOutputContent.has(action.agentMessageId))
     ) {
       agentMCPActionsWithoutContent.push(action);
     } else {
@@ -692,7 +692,7 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
   conversation: ConversationResource,
   messages: MessageModel[],
   viewType: V,
-  outputItemContentOnlyForAgentMessageIds: Set<ModelId> | null = null
+  messagesWithToolOutputContent: Set<ModelId> | null = null
 ): Promise<
   Result<
     V extends "full"
@@ -711,7 +711,7 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
       auth,
       messages,
       viewType,
-      outputItemContentOnlyForAgentMessageIds
+      messagesWithToolOutputContent
     ),
     batchRenderContentFragment(auth, conversation.sId, messages),
   ]);
