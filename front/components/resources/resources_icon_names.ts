@@ -190,6 +190,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "CanvaLogo",
   "CommandLineIcon",
   "ConfluenceLogo",
+  "DatadogLogo",
   "DriveLogo",
   "FathomLogo",
   "FreshserviceLogo",
