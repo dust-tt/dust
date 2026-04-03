@@ -25,6 +25,7 @@ import {
 import { handleMetronomeSetupCheckout } from "@app/lib/metronome/checkout";
 import { createMetronomeCustomer } from "@app/lib/metronome/client";
 import { PlanModel } from "@app/lib/models/plan";
+import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   assertStripeSubscriptionIsValid,
@@ -687,10 +688,14 @@ async function handler(
               owner,
               subscription: subscriptionType,
             });
+            const isEnterprise = isEntreprisePlanPrefix(
+              subscriptionType.plan.code
+            );
             for (const adminEmail of adminEmails) {
               await sendAdminSubscriptionPaymentFailedEmail(
                 adminEmail,
-                portalUrl
+                portalUrl,
+                isEnterprise
               );
             }
           }
@@ -1342,13 +1347,7 @@ async function handler(
               );
               await matchingSubscription.markAsEnded("ended");
               break;
-            case "active":
-              logger.info(
-                { event },
-                "[Stripe Webhook] Received customer.subscription.deleted event with the subscription status = active. Ending the subscription and deleting some workspace data"
-              );
-              await matchingSubscription.markAsEnded("ended");
-
+            case "active": {
               const workspace = await WorkspaceResource.fetchByModelId(
                 matchingSubscription.workspaceId
               );
@@ -1356,6 +1355,30 @@ async function handler(
                 workspace,
                 "Workspace not found for trialing subscription."
               );
+
+              // Enterprise subscriptions should not be automatically scrubbed
+              // when Stripe cancels due to payment failure. Instead, we log
+              // a critical warning so the team can intervene manually.
+              if (isEntreprisePlanPrefix(matchingSubscription.getPlan().code)) {
+                logger.error(
+                  {
+                    event,
+                    panic: true,
+                    stripeError: true,
+                    workspaceId: workspace.sId,
+                    stripeSubscriptionId: stripeSubscription.id,
+                    planCode: matchingSubscription.getPlan().code,
+                  },
+                  "[Stripe Webhook] Enterprise subscription deleted by Stripe. Skipping automatic scrub — manual intervention required."
+                );
+                break;
+              }
+
+              logger.info(
+                { event },
+                "[Stripe Webhook] Received customer.subscription.deleted event with the subscription status = active. Ending the subscription and deleting some workspace data"
+              );
+              await matchingSubscription.markAsEnded("ended");
 
               const scheduleScrubRes =
                 await launchScheduleWorkspaceScrubWorkflow({
@@ -1380,6 +1403,7 @@ async function handler(
                 });
               }
               break;
+            }
             default:
               assertNever(matchingSubscription.status);
           }

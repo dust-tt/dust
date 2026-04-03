@@ -103,19 +103,34 @@ export async function sendReactivateSubscriptionEmail(
 
 export async function sendAdminSubscriptionPaymentFailedEmail(
   email: string,
-  customerPortailUrl: string | null
+  customerPortailUrl: string | null,
+  isEnterprise: boolean
 ): Promise<void> {
-  await sendEmailWithTemplate({
-    to: email,
-    from: config.getSupportEmailAddress(),
-    subject: `[Dust] Your payment has failed`,
-    body: `
+  if (isEnterprise) {
+    await sendEmailWithTemplate({
+      to: email,
+      from: config.getSupportEmailAddress(),
+      subject: `[Dust] A recent payment requires attention`,
+      body: `
+      <p>A recent payment for your Dust workspace could not be processed.</p>
+      <p>
+        Please reach out to your account manager to resolve this.
+      </p>
+      <p>Please reply to this email if you have any questions.</p>`,
+    });
+  } else {
+    await sendEmailWithTemplate({
+      to: email,
+      from: config.getSupportEmailAddress(),
+      subject: `[Dust] Your payment has failed`,
+      body: `
       <p>Your payment has failed. Please visit ${customerPortailUrl} to edit your payment information.</p>
       <p>
         Please note: your workspace will be downgraded after 3 failed payment retries. This will trigger the removal of any feature attached to the paid plan you were on, and the permanent deletion of connections and the data associated with them. Any agent that are linked to connections will also be removed.
       </p>
       <p>Please reply to this email if you have any questions.</p>`,
-  });
+    });
+  }
 }
 
 export async function sendAdminDataDeletionEmail({
