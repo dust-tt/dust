@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -13,6 +14,7 @@ const RESOURCE_KEYS = [
   "dataSource",
   "dataSourceView",
   "file",
+  "conversation",
 ] as const;
 
 type ResourceKey = (typeof RESOURCE_KEYS)[number];
@@ -23,6 +25,7 @@ type KeyToResource = {
   dataSource: DataSourceResource;
   dataSourceView: DataSourceViewResource;
   file: FileResource;
+  conversation: ConversationResource;
 };
 
 type ResourceMap<U extends ResourceKey> = {
@@ -40,6 +43,7 @@ type OptionsMap<U extends ResourceKey> = {
 
 // Resolvers must be in reverse order : last one is applied first.
 const resolvers = [
+  withConversationFromRoute,
   withFileFromRoute,
   withDataSourceViewFromRoute,
   withDataSourceFromRoute,
@@ -86,7 +90,8 @@ function hasPermission(
     | SpaceResource
     | DataSourceResource
     | DataSourceViewResource
-    | FileResource,
+    | FileResource
+    | ConversationResource,
   options:
     | {
         requireCanAdministrate?: boolean;
@@ -314,6 +319,70 @@ function withDataSourceFromRoute<T, A extends SessionOrKeyAuthType>(
         res,
         auth,
         { ...resources, space, dataSource },
+        options,
+        sessionOrKeyAuth
+      );
+    }
+
+    return handler(req, res, auth, resources, options, sessionOrKeyAuth);
+  };
+}
+
+/**
+ * for /w/[wId]/assistant/conversations/[cId]/... => check the conversation exists and
+ * is accessible to the authenticated user, then provide it to the handler.
+ *
+ * Security: ConversationResource.fetchById enforces both workspace isolation and
+ * space-based access control (requestedSpaceIds). Returning a generic 404 for both
+ * "not found" and "access restricted" is intentional — handlers that need to
+ * distinguish these cases (e.g. to show a specific UI error) should call
+ * ConversationResource.canAccess() themselves rather than using this wrapper.
+ */
+function withConversationFromRoute<T, A extends SessionOrKeyAuthType>(
+  handler: ResourceResolver<T, A>
+): ResourceResolver<T, A> {
+  return async (
+    req: NextApiRequest,
+    res: NextApiResponse<WithAPIErrorResponse<T>>,
+    auth: Authenticator,
+    resources: Partial<ResourceMap<ResourceKey>>,
+    options: Partial<OptionsMap<ResourceKey>>,
+    sessionOrKeyAuth: A
+  ) => {
+    const { cId } = req.query;
+
+    if (cId) {
+      if (typeof cId !== "string") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid path parameters.",
+          },
+        });
+      }
+
+      // fetchById enforces workspace isolation and space-based access control
+      // (requestedSpaceIds). Returns null for both "not found" and "no access".
+      const conversation = await ConversationResource.fetchById(auth, cId);
+      if (
+        !conversation ||
+        !hasPermission(auth, conversation, options.conversation)
+      ) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "conversation_not_found",
+            message: "The conversation you requested was not found.",
+          },
+        });
+      }
+
+      return handler(
+        req,
+        res,
+        auth,
+        { ...resources, conversation },
         options,
         sessionOrKeyAuth
       );

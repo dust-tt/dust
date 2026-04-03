@@ -51,14 +51,14 @@
  *       401:
  *         description: Unauthorized
  */
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import {
   cancelMessageGenerationEvent,
   gracefullyStopAgentLoop,
 } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -78,28 +78,9 @@ const PostMessageEventBodySchema = t.type({
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PostMessageEventResponseBody>>,
-  auth: Authenticator
+  auth: Authenticator,
+  { conversation }: { conversation: ConversationResource }
 ): Promise<void> {
-  if (!(typeof req.query.cId === "string")) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameters, `cId` (string) is required.",
-      },
-    });
-  }
-  const conversationId = req.query.cId;
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
-    );
-
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
-  }
-
   switch (req.method) {
     case "POST":
       const bodyValidation = PostMessageEventBodySchema.decode(req.body);
@@ -120,13 +101,13 @@ async function handler(
         case "cancel":
           await cancelMessageGenerationEvent(auth, {
             messageIds,
-            conversationId,
+            conversationId: conversation.sId,
           });
           break;
         case "gracefully_stop":
           await gracefullyStopAgentLoop(auth, {
             messageIds,
-            conversationId,
+            conversationId: conversation.sId,
           });
           break;
         default:
@@ -146,6 +127,7 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler, {
-  isStreaming: true,
-});
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, { conversation: {} }),
+  { isStreaming: true }
+);

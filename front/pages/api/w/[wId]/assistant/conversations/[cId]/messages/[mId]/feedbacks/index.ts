@@ -101,9 +101,10 @@ import {
   upsertMessageFeedback,
 } from "@app/lib/api/assistant/feedback";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { triggerAgentMessageFeedbackNotification } from "@app/lib/notifications/workflows/agent-message-feedback";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import { launchAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queue/client";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -125,19 +126,10 @@ async function handler(
       success: boolean;
     }>
   >,
-  auth: Authenticator
+  auth: Authenticator,
+  { conversation }: { conversation: ConversationResource }
 ): Promise<void> {
   const user = auth.getNonNullableUser();
-
-  if (!(typeof req.query.cId === "string")) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameters, `cId` (string) is required.",
-      },
-    });
-  }
 
   if (!(typeof req.query.mId === "string")) {
     return apiError(req, res, {
@@ -150,24 +142,8 @@ async function handler(
   }
 
   const messageId = req.query.mId;
-  const conversationId = req.query.cId;
 
-  const conversationResource = await ConversationResource.fetchById(
-    auth,
-    conversationId
-  );
-
-  if (!conversationResource) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "Conversation not found.",
-      },
-    });
-  }
-
-  const messageRes = await conversationResource.getMessageById(auth, messageId);
+  const messageRes = await conversation.getMessageById(auth, messageId);
 
   if (messageRes.isErr()) {
     return apiError(req, res, {
@@ -180,7 +156,7 @@ async function handler(
     });
   }
 
-  const conversation = conversationResource.toJSON();
+  const conversationJSON = conversation.toJSON();
 
   switch (req.method) {
     case "POST":
@@ -198,7 +174,7 @@ async function handler(
 
       const created = await upsertMessageFeedback(auth, {
         messageId,
-        conversation,
+        conversation: conversationJSON,
         user: user.toJSON(),
         thumbDirection: bodyValidation.right
           .thumbDirection as AgentMessageFeedbackDirection,
@@ -220,12 +196,12 @@ async function handler(
       await launchAgentMessageFeedbackWorkflow(auth, {
         message: {
           agentMessageId: messageId,
-          conversationId: conversation.sId,
+          conversationId: conversationJSON.sId,
         },
       });
 
       await triggerAgentMessageFeedbackNotification(auth, {
-        conversationId: conversation.sId,
+        conversationId: conversationJSON.sId,
         messageId,
         agentConfigurationId: created.value.agentConfigurationId,
         thumbDirection: bodyValidation.right
@@ -239,7 +215,7 @@ async function handler(
     case "DELETE":
       const deleted = await deleteMessageFeedback(auth, {
         messageId,
-        conversation,
+        conversation: conversationJSON,
         user: user.toJSON(),
       });
 
@@ -267,4 +243,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, { conversation: {} })
+);

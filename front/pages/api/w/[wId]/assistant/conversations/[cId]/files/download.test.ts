@@ -1,5 +1,7 @@
 import handler from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files/download";
-import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { RequestMethod } from "node-mocks-http";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -11,24 +13,6 @@ const { mockGetFileContentType, mockCreateReadStream } = vi.hoisted(() => ({
   }),
 }));
 
-vi.mock("@app/lib/api/auth_wrappers", async () => {
-  const actual = await vi.importActual("@app/lib/api/auth_wrappers");
-  return {
-    ...actual,
-    withSessionAuthenticationForWorkspace: (handler: any) => {
-      return async (req: any, res: any) => {
-        return handler(req, res, req.auth);
-      };
-    },
-  };
-});
-
-vi.mock("@app/lib/resources/conversation_resource", () => ({
-  ConversationResource: {
-    fetchById: vi.fn().mockResolvedValue({}),
-  },
-}));
-
 vi.mock("@app/lib/file_storage", () => ({
   getPrivateUploadBucket: () => ({
     getFileContentType: mockGetFileContentType,
@@ -38,18 +22,25 @@ vi.mock("@app/lib/file_storage", () => ({
   }),
 }));
 
-const WORKSPACE_SID = "ws_test123";
-const CONVERSATION_SID = "conv_abc";
-
 async function setupTest(method: RequestMethod = "POST") {
-  const { req, res } = await createPublicApiMockRequest({ method });
+  const { req, res, auth, workspace } = await createPrivateApiMockRequest({
+    method,
+  });
 
-  req.query = { wId: WORKSPACE_SID, cId: CONVERSATION_SID };
-  req.auth = {
-    getNonNullableWorkspace: () => ({ sId: WORKSPACE_SID }),
-  };
+  const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+    name: "Test Agent",
+    description: "Test Agent Description",
+  });
 
-  return { req, res };
+  const conversation = await ConversationFactory.create(auth, {
+    agentConfigurationId: agentConfig.sId,
+    messagesCreatedAt: [],
+  });
+
+  req.query.wId = workspace.sId;
+  req.query.cId = conversation.sId;
+
+  return { req, res, workspace, auth: auth, conversation };
 }
 
 describe("POST /api/w/[wId]/assistant/conversations/[cId]/files/download", () => {
@@ -58,7 +49,10 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/files/download", () =>
   });
 
   it("should return 405 for non-POST methods", async () => {
-    const { req, res } = await setupTest("GET");
+    const { req, res, workspace, conversation } = await setupTest("GET");
+    req.body = {
+      filePath: `w/${workspace.sId}/conversations/${conversation.sId}/files/report.pdf`,
+    };
 
     await handler(req, res);
 
@@ -76,9 +70,9 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/files/download", () =>
   });
 
   it("should return 403 for path traversal with '..'", async () => {
-    const { req, res } = await setupTest();
+    const { req, res, workspace, conversation } = await setupTest();
     req.body = {
-      filePath: `w/${WORKSPACE_SID}/conversations/${CONVERSATION_SID}/files/../../other/secret.txt`,
+      filePath: `w/${workspace.sId}/conversations/${conversation.sId}/files/../../other/secret.txt`,
     };
 
     await handler(req, res);
@@ -88,9 +82,9 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/files/download", () =>
   });
 
   it("should return 403 for path outside conversation scope", async () => {
-    const { req, res } = await setupTest();
+    const { req, res, workspace } = await setupTest();
     req.body = {
-      filePath: `w/${WORKSPACE_SID}/conversations/other_conv/files/secret.txt`,
+      filePath: `w/${workspace.sId}/conversations/other_conv/files/secret.txt`,
     };
 
     await handler(req, res);
@@ -100,9 +94,9 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/files/download", () =>
   });
 
   it("should return 403 for path targeting a different workspace", async () => {
-    const { req, res } = await setupTest();
+    const { req, res, conversation } = await setupTest();
     req.body = {
-      filePath: `w/other_workspace/conversations/${CONVERSATION_SID}/files/file.txt`,
+      filePath: `w/other_workspace/conversations/${conversation.sId}/files/file.txt`,
     };
 
     await handler(req, res);
@@ -112,26 +106,26 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/files/download", () =>
   });
 
   it("should normalize triple slashes before GCS access", async () => {
-    const { req, res } = await setupTest();
+    const { req, res, workspace, conversation } = await setupTest();
     // Triple slashes pass the old startsWith check and don't contain "..",
     // but without normalization the raw path is sent to GCS as-is which could
     // resolve to an unintended object.
     req.body = {
-      filePath: `w/${WORKSPACE_SID}/conversations/${CONVERSATION_SID}/files///report.pdf`,
+      filePath: `w/${workspace.sId}/conversations/${conversation.sId}/files///report.pdf`,
     };
 
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
     expect(mockGetFileContentType).toHaveBeenCalledWith(
-      `w/${WORKSPACE_SID}/conversations/${CONVERSATION_SID}/files/report.pdf`
+      `w/${workspace.sId}/conversations/${conversation.sId}/files/report.pdf`
     );
   });
 
   it("should succeed for a valid file path", async () => {
-    const { req, res } = await setupTest();
+    const { req, res, workspace, conversation } = await setupTest();
     req.body = {
-      filePath: `w/${WORKSPACE_SID}/conversations/${CONVERSATION_SID}/files/report.pdf`,
+      filePath: `w/${workspace.sId}/conversations/${conversation.sId}/files/report.pdf`,
     };
 
     await handler(req, res);
