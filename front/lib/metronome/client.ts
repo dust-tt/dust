@@ -327,11 +327,11 @@ export async function endMetronomeContract({
 }
 
 /**
- * Get the rate card aliases for a contract.
- * Retrieves the contract to get its rate_card_id, then retrieves the rate card
+ * Get the package aliases for a contract.
+ * Retrieves the contract to get its package_id, then retrieves the package
  * to get its aliases.
  */
-export async function getMetronomeContractRateCardAliases({
+export async function getMetronomeContractPackageAliases({
   metronomeCustomerId,
   metronomeContractId,
 }: {
@@ -344,23 +344,23 @@ export async function getMetronomeContractRateCardAliases({
       contract_id: metronomeContractId,
     });
 
-    const rateCardId = contractResponse.data.current.rate_card_id;
-    if (!rateCardId) {
+    const packageId = contractResponse.data.package_id;
+    if (!packageId) {
       return new Ok([]);
     }
 
-    const rateCardResponse = await getClient().v1.contracts.rateCards.retrieve({
-      id: rateCardId,
+    const packageResponse = await getClient().v1.packages.retrieve({
+      package_id: packageId,
     });
 
-    const aliases = rateCardResponse.data.aliases?.map((a) => a.name) ?? [];
+    const aliases = packageResponse.data.aliases?.map((a) => a.name) ?? [];
 
     return new Ok(aliases);
   } catch (err) {
     const error = normalizeError(err);
     logger.error(
       { error, metronomeCustomerId, metronomeContractId },
-      "[Metronome] Failed to get contract rate card aliases"
+      "[Metronome] Failed to get contract package aliases"
     );
     return new Err(error);
   }

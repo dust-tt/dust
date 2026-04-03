@@ -7,7 +7,7 @@ import {
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { getMetronomeContractRateCardAliases } from "@app/lib/metronome/client";
+import { getMetronomeContractPackageAliases } from "@app/lib/metronome/client";
 import {
   LEGACY_BUSINESS_39_PACKAGE_ALIAS,
   LEGACY_PRO_29_PACKAGE_ALIAS,
@@ -1231,7 +1231,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   ): Promise<boolean> {
     // Check Metronome-billed subscription.
     if (this.metronomeContractId && owner.metronomeCustomerId) {
-      const aliasesResult = await getMetronomeContractRateCardAliases({
+      const aliasesResult = await getMetronomeContractPackageAliases({
         metronomeCustomerId: owner.metronomeCustomerId,
         metronomeContractId: this.metronomeContractId,
       });
