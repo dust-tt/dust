@@ -113,11 +113,11 @@ export function ViewTriggerTable({
                         `Default (${DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT})`}
                     </PokeTableCell>
                   </PokeTableRow>
-                  {trigger.webhookSourceViewSId && (
+                  {trigger.webhookSourceViewId && (
                     <PokeTableRow>
                       <PokeTableHead>Webhook Source View</PokeTableHead>
                       <PokeTableCellWithCopy
-                        label={trigger.webhookSourceViewSId}
+                        label={trigger.webhookSourceViewId}
                       />
                     </PokeTableRow>
                   )}

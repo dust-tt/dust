@@ -121,7 +121,7 @@ export function AgentBuilderTriggersBlock({
     if (trigger.kind === "webhook") {
       webhookSourceView =
         accessibleWebhookSourceViews.find(
-          (view) => view.sId === trigger.webhookSourceViewSId
+          (view) => view.sId === trigger.webhookSourceViewId
         ) ?? null;
     }
 
@@ -200,7 +200,7 @@ export function AgentBuilderTriggersBlock({
         trigger={item.trigger}
         webhookSourceView={accessibleWebhookSourceViews.find((view) =>
           item.trigger.kind === "webhook"
-            ? view.sId === item.trigger.webhookSourceViewSId
+            ? view.sId === item.trigger.webhookSourceViewId
             : undefined
         )}
         onRemove={() => handleTriggerRemove(item.trigger, item.displayIndex)}

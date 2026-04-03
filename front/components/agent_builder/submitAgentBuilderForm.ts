@@ -278,7 +278,7 @@ async function processTriggers({
                 ...baseData,
                 executionPerDayLimitOverride:
                   trigger.executionPerDayLimitOverride,
-                webhookSourceViewSId: trigger.webhookSourceViewSId,
+                webhookSourceViewId: trigger.webhookSourceViewId,
               } as PatchTriggersRequestBody["triggers"][number];
             }
 
@@ -329,7 +329,7 @@ async function processTriggers({
                 ...baseData,
                 executionPerDayLimitOverride:
                   trigger.executionPerDayLimitOverride,
-                webhookSourceViewSId: trigger.webhookSourceViewSId,
+                webhookSourceViewId: trigger.webhookSourceViewId,
               } as PostTriggersRequestBody["triggers"][number];
             }
 

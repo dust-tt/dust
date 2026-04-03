@@ -381,7 +381,7 @@ export default function AgentBuilder({
         return;
       }
 
-      // For new agents (not editing or duplicating), use pendingAgentSId as agentConfigurationId
+      // For new agents (not editing or duplicating), use pendingAgentId as agentConfigurationId
       // For duplicating, pass null to create a new agent
       // For editing, pass the existing agent's sId
       const effectiveAgentConfigurationId = duplicateAgentId

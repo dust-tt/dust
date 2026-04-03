@@ -26,7 +26,7 @@ export type TriggerConfiguration =
       kind: "webhook";
       configuration: WebhookConfig;
       executionPerDayLimitOverride: number | null;
-      webhookSourceViewSId: string | null;
+      webhookSourceViewId: string | null;
       executionMode: TriggerExecutionMode | null;
     };
 
@@ -80,7 +80,7 @@ export const TriggerSchema = z.discriminatedUnion("kind", [
     customPrompt: z.string(),
     naturalLanguageDescription: z.string().nullable(),
     configuration: WebhookConfigSchema,
-    webhookSourceViewSId: z.string(),
+    webhookSourceViewId: z.string(),
     executionPerDayLimitOverride: z.number(),
     editor: z.number().optional(),
     status: TriggerStatusSchema.optional(),
@@ -109,7 +109,7 @@ export const FullTriggerSchema = z.discriminatedUnion("kind", [
     kind: z.literal("webhook"),
     configuration: WebhookConfigSchema,
     executionPerDayLimitOverride: z.number().nullable(),
-    webhookSourceViewSId: z.string().nullable(),
+    webhookSourceViewId: z.string().nullable(),
     executionMode: z.enum(["fair_use", "programmatic"]).nullable(),
   }),
 ]);
@@ -124,7 +124,7 @@ export function isValidTriggerKind(kind: string): kind is TriggerKind {
 
 export type WebhookTriggerType = TriggerType & {
   kind: "webhook";
-  webhookSourceViewSId: string;
+  webhookSourceViewId: string;
   executionMode: TriggerExecutionMode | null;
   executionPerDayLimitOverride: number | null;
 };

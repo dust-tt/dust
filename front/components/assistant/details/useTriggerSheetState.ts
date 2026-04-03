@@ -210,7 +210,7 @@ export function useTriggerSheetState({
             customPrompt: triggerData.customPrompt ?? "",
             naturalLanguageDescription: triggerData.naturalLanguageDescription,
             configuration: triggerData.configuration,
-            webhookSourceViewSId: triggerData.webhookSourceViewSId ?? "",
+            webhookSourceViewId: triggerData.webhookSourceViewId ?? "",
             executionPerDayLimitOverride:
               triggerData.executionPerDayLimitOverride ?? 0,
           };

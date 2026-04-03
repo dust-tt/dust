@@ -76,7 +76,7 @@ function triggerTypeToBuilderType(
         naturalLanguageDescription: trigger.naturalLanguageDescription,
         configuration: trigger.configuration,
         editor: trigger.editor,
-        webhookSourceViewSId: trigger.webhookSourceViewSId,
+        webhookSourceViewId: trigger.webhookSourceViewId,
         executionPerDayLimitOverride: trigger.executionPerDayLimitOverride,
         executionMode: trigger.executionMode,
       };
@@ -169,9 +169,9 @@ export function AgentDetailsSheet({
     (trigger: TriggerType) => {
       const builderTrigger = triggerTypeToBuilderType(trigger);
       const wsv =
-        trigger.kind === "webhook" && trigger.webhookSourceViewSId
+        trigger.kind === "webhook" && trigger.webhookSourceViewId
           ? (webhookSourceViews.find(
-              (v) => v.sId === trigger.webhookSourceViewSId
+              (v) => v.sId === trigger.webhookSourceViewId
             ) ?? null)
           : null;
       setTriggerEditMode({
