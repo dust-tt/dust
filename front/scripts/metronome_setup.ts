@@ -98,6 +98,10 @@ interface PackageDef {
   // Omit billing_provider + delivery_method for shadow packages (invoices generated but not delivered).
   billing_provider?: string;
   delivery_method?: string;
+  // KNOWN ISSUE: billing_anchor_date is accepted by the API but silently ignored.
+  // "Usage statement day: Contract start" must be set via the Metronome UI manually.
+  // Filed with Metronome support. When fixed, uncomment and recreate packages.
+  // billing_anchor_date?: "contract_start_date" | "first_billing_period";
 }
 
 // ---------------------------------------------------------------------------
@@ -132,10 +136,11 @@ const METRICS: MetricDef[] = [
       { name: "count", exists: true },
       { name: "is_programmatic_usage", in_values: ["true"] },
       { name: "tool_category", exists: true },
+      { name: "tool_group", exists: true },
     ],
     aggregation_type: "SUM",
     aggregation_key: "count",
-    group_keys: [["tool_category"]],
+    group_keys: [["tool_category", "tool_group"]],
   },
   {
     name: "Tool Invocations (User)",
@@ -144,10 +149,11 @@ const METRICS: MetricDef[] = [
       { name: "count", exists: true },
       { name: "is_programmatic_usage", in_values: ["false"] },
       { name: "tool_category", exists: true },
+      { name: "tool_group", exists: true },
     ],
     aggregation_type: "SUM",
     aggregation_key: "count",
-    group_keys: [["tool_category"]],
+    group_keys: [["tool_category", "tool_group"]],
   },
   {
     name: "Registered Users",
@@ -181,12 +187,34 @@ const METRICS: MetricDef[] = [
 ];
 
 const PRODUCTS: ProductDef[] = [
+  // Usage products
+  {
+    name: "AI Usage (User)",
+    type: "USAGE",
+    billable_metric_name: "LLM Provider Cost (User)",
+    quantity_conversion: { conversion_factor: 1000000, operation: "DIVIDE" },
+  },
   {
     name: "AI Usage (Programmatic)",
     type: "USAGE",
     billable_metric_name: "LLM Provider Cost (Programmatic)",
     quantity_conversion: { conversion_factor: 1000000, operation: "DIVIDE" },
   },
+  {
+    name: "Tool Usage (Programmatic)",
+    type: "USAGE",
+    billable_metric_name: "Tool Invocations (Programmatic)",
+    pricing_group_key: ["tool_category"],
+    presentation_group_key: ["tool_group"],
+  },
+  {
+    name: "Tool Usage (User)",
+    type: "USAGE",
+    billable_metric_name: "Tool Invocations (User)",
+    pricing_group_key: ["tool_category"],
+    presentation_group_key: ["tool_group"],
+  },
+  // Legacy products
   {
     name: "Seat Billing (Registered Users)",
     type: "USAGE",
@@ -206,6 +234,19 @@ const PRODUCTS: ProductDef[] = [
     name: "MAU Billing (10+)",
     type: "USAGE",
     billable_metric_name: "MAU (10+ messages)",
+  },
+  // FIXED products for credit grants — separate products for distinct invoice line items.
+  {
+    name: "Free Monthly Credits",
+    type: "FIXED",
+  },
+  {
+    name: "Prepaid Commit",
+    type: "FIXED",
+  },
+  {
+    name: "PAYG Overage",
+    type: "FIXED",
   },
 ];
 
@@ -306,6 +347,11 @@ const recreated = {
   rateCards: new Set<string>(),
 };
 
+// Skip manually created test objects — never archive them.
+function isTestObject(name: string): boolean {
+  return name.toLowerCase().startsWith("test");
+}
+
 // ---------------------------------------------------------------------------
 // Sync: Metrics
 // ---------------------------------------------------------------------------
@@ -318,6 +364,7 @@ async function syncMetrics(): Promise<void> {
     name: string;
     aggregation_key?: string;
     aggregation_type?: string;
+    group_keys?: string[][];
   }> = [];
   for await (const m of client.v1.billableMetrics.list()) {
     existing.push(m as (typeof existing)[number]);
@@ -327,7 +374,7 @@ async function syncMetrics(): Promise<void> {
   const desiredNames = new Set(METRICS.map((m) => m.name));
 
   for (const m of existing) {
-    if (!desiredNames.has(m.name)) {
+    if (!desiredNames.has(m.name) && !isTestObject(m.name)) {
       console.log(`  ⚠ Archiving stale metric: ${m.name} (${m.id})`);
       await client.v1.billableMetrics.archive({ id: m.id });
     }
@@ -335,11 +382,15 @@ async function syncMetrics(): Promise<void> {
 
   for (const desired of METRICS) {
     const ex = byName.get(desired.name);
+    const groupKeysMatch =
+      JSON.stringify(ex?.group_keys ?? []) ===
+      JSON.stringify(desired.group_keys ?? []);
     const configMatch =
       ex &&
       ex.aggregation_key === desired.aggregation_key &&
       ex.aggregation_type?.toLowerCase() ===
-        desired.aggregation_type.toLowerCase();
+        desired.aggregation_type.toLowerCase() &&
+      groupKeysMatch;
 
     if (ex && configMatch) {
       console.log(`  ✓ ${desired.name} — up to date (${ex.id})`);
@@ -475,7 +526,7 @@ async function syncProducts(): Promise<void> {
 
   for (const p of existing) {
     const name = p.current?.name ?? "";
-    if (!desiredNames.has(name)) {
+    if (!desiredNames.has(name) && !isTestObject(name)) {
       console.log(`  ⚠ Archiving stale product: ${name} (${p.id})`);
       try {
         await client.v1.contracts.products.archive({ product_id: p.id });
@@ -589,7 +640,7 @@ async function syncRateCards(): Promise<void> {
   const desiredNames = new Set(RATE_CARDS.map((r) => r.name));
 
   for (const r of existing) {
-    if (!desiredNames.has(r.name)) {
+    if (!desiredNames.has(r.name) && !isTestObject(r.name)) {
       console.log(`  ⚠ Archiving stale rate card: ${r.name} (${r.id})`);
       try {
         await client.v1.contracts.rateCards.archive({ id: r.id });
@@ -667,7 +718,7 @@ async function syncPackages(): Promise<void> {
   const desiredNames = new Set(PACKAGES.map((p) => p.name));
 
   for (const p of existing) {
-    if (!desiredNames.has(p.name)) {
+    if (!desiredNames.has(p.name) && !isTestObject(p.name)) {
       console.log(`  ⚠ Archiving stale package: ${p.name} (${p.id})`);
       try {
         await client.v1.packages.archive({ package_id: p.id });
