@@ -7,7 +7,7 @@ import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Button,
   ChatBubbleBottomCenterTextIcon,
-  Checkbox,
+  CheckBoxWithTextAndDescription,
   CheckIcon,
   ContentMessage,
   Input,
@@ -117,64 +117,49 @@ export function UserQuestionRequired({
     >
       {isTriggeredByCurrentUser ? (
         <>
-          <div className="flex flex-col gap-2">
-            {question.options.map((option, index) => (
-              <label
-                key={index}
-                className="flex cursor-pointer items-start gap-2 rounded-md border border-border p-2 hover:bg-muted dark:border-border-night dark:hover:bg-muted-night"
-              >
-                <Checkbox
-                  checked={selectedOptions.includes(index)}
-                  onCheckedChange={() => handleOptionToggle(index)}
-                />
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium">{option.label}</span>
-                  {option.description && (
-                    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                      {option.description}
-                    </span>
-                  )}
-                </div>
-              </label>
-            ))}
-            <label className="flex cursor-pointer items-start gap-2 rounded-md border border-border p-2 hover:bg-muted dark:border-border-night dark:hover:bg-muted-night">
-              <Checkbox
-                checked={showOtherInput}
-                onCheckedChange={() => handleOtherToggle()}
-              />
-              <span className="text-sm font-medium">Other</span>
-            </label>
-            {showOtherInput && (
-              <Input
-                placeholder="Type your answer..."
-                value={customResponse}
-                onChange={(e) => setCustomResponse(e.target.value)}
-                name="custom-response"
-              />
-            )}
-          </div>
-          {errorMessage && (
-            <div className="text-sm font-medium text-warning-800 dark:text-warning-800-night">
-              {errorMessage}
-            </div>
-          )}
-          <div className="flex justify-end">
-            <Button
-              label="Submit"
-              variant="highlight"
-              size="xs"
-              icon={CheckIcon}
-              disabled={isSubmitting || !hasSelection}
-              onClick={() => void handleSubmit()}
+          {question.options.map((option, index) => (
+            <CheckBoxWithTextAndDescription
+              key={index}
+              checked={selectedOptions.includes(index)}
+              onCheckedChange={() => handleOptionToggle(index)}
+              text={option.label}
+              description={option.description ?? ""}
             />
-          </div>
+          ))}
+          <CheckBoxWithTextAndDescription
+            checked={showOtherInput}
+            onCheckedChange={() => handleOtherToggle()}
+            text="Other"
+            description=""
+          />
+          {showOtherInput && (
+            <Input
+              placeholder="Type your answer..."
+              value={customResponse}
+              onChange={(e) => setCustomResponse(e.target.value)}
+              name="custom-response"
+            />
+          )}
+          {errorMessage && (
+            <ContentMessage variant="warning" size="sm">
+              {errorMessage}
+            </ContentMessage>
+          )}
+          <Button
+            label="Submit"
+            variant="highlight"
+            size="xs"
+            icon={CheckIcon}
+            disabled={isSubmitting || !hasSelection}
+            onClick={() => void handleSubmit()}
+          />
         </>
       ) : (
-        <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
+        <ContentMessage variant="info" size="sm">
           Waiting for{" "}
-          <span className="font-semibold">{triggeringUser?.fullName}</span> to
+          <span className="s-font-semibold">{triggeringUser?.fullName}</span> to
           answer.
-        </div>
+        </ContentMessage>
       )}
     </ContentMessage>
   );
