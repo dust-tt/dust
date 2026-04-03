@@ -32,6 +32,16 @@ export class BrowserMCPTransport implements Transport {
 
   private readonly handleBeforeUnload = () => {
     this.isClosing = true;
+    // Use sendBeacon for reliable delivery during page unload — fetch is not
+    // guaranteed to complete when the document is being torn down.
+    if (this.serverId) {
+      navigator.sendBeacon(
+        `/api/w/${this.workspaceId}/mcp/deregister`,
+        new Blob([JSON.stringify({ serverId: this.serverId })], {
+          type: "application/json",
+        })
+      );
+    }
   };
 
   constructor(

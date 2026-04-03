@@ -159,7 +159,7 @@ export async function getMCPServersMetadata(
   }: {
     serverIds: string[];
   }
-): Promise<(MCPServerRegistration | null)[]> {
+): Promise<Map<string, MCPServerRegistration | null>> {
   const userId = auth.getNonNullableUser().id.toString();
   const workspaceId = auth.getNonNullableWorkspace().sId;
 
@@ -174,14 +174,13 @@ export async function getMCPServersMetadata(
   return runOnRedis({ origin: "mcp_client_side_request" }, async (redis) => {
     const results = await redis.mGet(keys);
 
-    return results.map((result) => {
-      // Server existence is checked when posting a message. It's safe to ignore here.
-      if (!result) {
-        return null;
-      }
-
-      return JSON.parse(result);
-    });
+    return new Map(
+      serverIds.map((serverId, i) => {
+        const result = results[i];
+        // Server existence is checked when posting a message. It's safe to ignore here.
+        return [serverId, result ? JSON.parse(result) : null];
+      })
+    );
   });
 }
 
