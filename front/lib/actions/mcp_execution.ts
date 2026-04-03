@@ -56,6 +56,11 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { extname } from "path";
 import type { Logger } from "pino";
 
+const SNIPPET_EXEMPT_MCP_SERVERS: readonly string[] = [
+  "conversation_files",
+  "sandbox",
+];
+
 /**
  * Recursively sanitizes all string values in an object by removing null bytes and lone surrogates.
  * This prevents PostgreSQL errors when storing JSON with \u0000 characters.
@@ -185,7 +190,9 @@ export async function processToolResults(
           // them from being indexed in Qdrant, which would bloat the vector store for no benefit.
           if (
             computeTextByteSize(block.text) > FILE_OFFLOAD_TEXT_SIZE_BYTES &&
-            toolConfiguration.mcpServerName !== "conversation_files"
+            !SNIPPET_EXEMPT_MCP_SERVERS.includes(
+              toolConfiguration.mcpServerName
+            )
           ) {
             const fileName = `${toolConfiguration.mcpServerName}_${timestamp}_${idx}.txt`;
             const snippet =

@@ -60,4 +60,16 @@ describe("glob", () => {
     expect(stderr).toContain("Usage:");
     expect(stderr).toContain("--help");
   });
+
+  it("supports pagination with next offset footer", () => {
+    for (let i = 0; i < 10; i++) {
+      fs.writeFileSync(path.join(tempDir, `extra_${i}.txt`), "");
+    }
+    const { stdout, exitCode } = runBashFunction(
+      `glob "*.txt" --path "${tempDir}" --limit 3`,
+      tempDir
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("Next offset: 3");
+  });
 });

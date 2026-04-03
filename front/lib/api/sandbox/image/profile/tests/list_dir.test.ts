@@ -34,7 +34,7 @@ describe("list_dir", () => {
 
   it("respects depth parameter", () => {
     const { stdout, exitCode } = runBashFunction(
-      `list_dir "${tempDir}" 1`,
+      `list_dir "${tempDir}" --depth 1`,
       tempDir
     );
     expect(exitCode).toBe(0);
@@ -45,7 +45,7 @@ describe("list_dir", () => {
 
   it("caps depth at 5", () => {
     const { stdout, exitCode } = runBashFunction(
-      `list_dir "${tempDir}" 100`,
+      `list_dir "${tempDir}" --depth 100`,
       tempDir
     );
     expect(exitCode).toBe(0);
@@ -66,5 +66,55 @@ describe("list_dir", () => {
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Usage:");
     expect(stdout).toContain("list_dir [path]");
+  });
+
+  it("shows type suffixes for directories and files", () => {
+    const { stdout, exitCode } = runBashFunction(
+      `list_dir "${tempDir}" --depth 1`,
+      tempDir
+    );
+    expect(exitCode).toBe(0);
+    // Directories should end with /
+    expect(stdout).toMatch(/dir1\//);
+    // Files should not end with /
+    expect(stdout).toMatch(/file1\.txt(?!\/)/);
+  });
+
+  it("sorts output alphabetically", () => {
+    const { stdout, exitCode } = runBashFunction(
+      `list_dir "${tempDir}" --depth 1`,
+      tempDir
+    );
+    expect(exitCode).toBe(0);
+    const lines = stdout
+      .split("\n")
+      .filter((l: string) => l.trim() && !l.startsWith("["));
+    const sorted = [...lines].sort();
+    expect(lines).toEqual(sorted);
+  });
+
+  it("supports pagination with offset and limit", () => {
+    // Create many files
+    for (let i = 0; i < 10; i++) {
+      fs.writeFileSync(path.join(tempDir, `extra_${i}.txt`), "");
+    }
+    const { stdout: fullOutput } = runBashFunction(
+      `list_dir "${tempDir}" --depth 1`,
+      tempDir
+    );
+    const { stdout: page2 } = runBashFunction(
+      `list_dir "${tempDir}" --depth 1 --offset 5 --limit 3`,
+      tempDir
+    );
+    // Page 2 should have fewer entries than the full output
+    const fullLines = fullOutput
+      .split("\n")
+      .filter((l: string) => l.trim() && !l.startsWith("["));
+    const pageLines = page2
+      .split("\n")
+      .filter((l: string) => l.trim() && !l.startsWith("["));
+    expect(pageLines.length).toBeLessThanOrEqual(3);
+    expect(pageLines.length).toBeLessThan(fullLines.length);
+    expect(page2).toContain("Next offset: 8");
   });
 });

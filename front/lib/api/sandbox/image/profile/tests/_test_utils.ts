@@ -7,13 +7,14 @@ export const PROFILE_LOCAL_DIR = path.resolve(__dirname, "..");
 
 export function runBashFunction(
   funcCall: string,
-  cwd: string
+  cwd: string,
+  profile: "anthropic" | "openai" | "gemini" = "anthropic"
 ): {
   stdout: string;
   stderr: string;
   exitCode: number;
 } {
-  const profilePath = path.join(PROFILE_LOCAL_DIR, "common.sh");
+  const profilePath = path.join(PROFILE_LOCAL_DIR, `${profile}.sh`);
   const result = spawnSync(
     "bash",
     ["--norc", "-c", `source "${profilePath}" && ${funcCall}`],

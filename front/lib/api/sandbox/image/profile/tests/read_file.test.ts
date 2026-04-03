@@ -30,19 +30,20 @@ describe("read_file", () => {
     expect(stdout).toContain("5\tline5");
   });
 
-  it("reads range of lines", () => {
+  it("reads with offset and limit", () => {
+    // offset=2, limit=2 means lines 2-3
     const { stdout, exitCode } = runBashFunction(
-      `read_file "${tempDir}/test.txt" 2 4`,
+      `read_file "${tempDir}/test.txt" 2 2`,
       tempDir
     );
     expect(exitCode).toBe(0);
     expect(stdout).toContain("2\tline2");
-    expect(stdout).toContain("4\tline4");
-    expect(stdout).not.toContain("line1");
-    expect(stdout).not.toContain("line5");
+    expect(stdout).toContain("3\tline3");
+    expect(stdout).not.toContain("1\tline1");
+    expect(stdout).not.toContain("4\tline4");
   });
 
-  it("reads from start line to EOF", () => {
+  it("reads from offset to EOF when no limit given", () => {
     const { stdout, exitCode } = runBashFunction(
       `read_file "${tempDir}/test.txt" 3`,
       tempDir
@@ -50,7 +51,17 @@ describe("read_file", () => {
     expect(exitCode).toBe(0);
     expect(stdout).toContain("3\tline3");
     expect(stdout).toContain("5\tline5");
-    expect(stdout).not.toContain("line1");
+    expect(stdout).not.toContain("1\tline1");
+  });
+
+  it("outputs header with line range and total", () => {
+    const { stdout, exitCode } = runBashFunction(
+      `read_file "${tempDir}/test.txt"`,
+      tempDir
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("[File:");
+    expect(stdout).toContain("of 5]");
   });
 
   it("errors on missing path", () => {
@@ -80,5 +91,45 @@ describe("read_file", () => {
     expect(exitCode).toBe(1);
     expect(stderr).toContain("Usage:");
     expect(stderr).toContain("--help");
+  });
+
+  it("detects binary files", () => {
+    const binaryPath = path.join(tempDir, "binary.bin");
+    const buf = Buffer.alloc(100);
+    buf[50] = 0; // null byte
+    buf.write("some text", 0);
+    fs.writeFileSync(binaryPath, buf);
+
+    const { stderr, exitCode } = runBashFunction(
+      `read_file "${binaryPath}"`,
+      tempDir
+    );
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("binary file detected");
+  });
+
+  it("supports gemini start/end semantics", () => {
+    const { stdout, exitCode } = runBashFunction(
+      `read_file "${tempDir}/test.txt" 2 4`,
+      tempDir,
+      "gemini"
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("2\tline2");
+    expect(stdout).toContain("4\tline4");
+    expect(stdout).not.toContain("1\tline1");
+    expect(stdout).not.toContain("5\tline5");
+  });
+
+  it("counts a non-empty file without a trailing newline correctly", () => {
+    const filePath = path.join(tempDir, "no-trailing-newline.txt");
+    fs.writeFileSync(filePath, "lonely line");
+    const { stdout, exitCode } = runBashFunction(
+      `read_file "${filePath}"`,
+      tempDir
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("of 1]");
+    expect(stdout).toContain("1\tlonely line");
   });
 });
