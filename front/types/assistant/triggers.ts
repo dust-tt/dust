@@ -64,28 +64,58 @@ export function isValidTriggerOrigin(origin: string): origin is TriggerOrigin {
 
 const TriggerStatusSchema = z.enum(TRIGGER_STATUSES);
 
-export const TriggerSchema = z.discriminatedUnion("kind", [
-  z.object({
-    name: z.string(),
-    kind: z.literal("schedule"),
-    customPrompt: z.string(),
-    naturalLanguageDescription: z.string().nullable(),
-    configuration: ScheduleConfigSchema,
-    editor: z.number().optional(),
-    status: TriggerStatusSchema.optional(),
-  }),
-  z.object({
-    name: z.string(),
-    kind: z.literal("webhook"),
-    customPrompt: z.string(),
-    naturalLanguageDescription: z.string().nullable(),
-    configuration: WebhookConfigSchema,
-    webhookSourceViewId: z.string(),
-    executionPerDayLimitOverride: z.number(),
-    editor: z.number().optional(),
-    status: TriggerStatusSchema.optional(),
-  }),
-]);
+// Backward compatibility: accept webhookSourceViewSId and normalize to webhookSourceViewId.
+// Can be removed once all clients send webhookSourceViewId.
+function isWebhookInputWithLegacySId(input: unknown): input is Record<
+  string,
+  unknown
+> & {
+  kind: "webhook";
+  webhookSourceViewSId: unknown;
+} {
+  return (
+    typeof input === "object" &&
+    input !== null &&
+    "kind" in input &&
+    (input as Record<string, unknown>).kind === "webhook" &&
+    "webhookSourceViewSId" in input &&
+    !("webhookSourceViewId" in input)
+  );
+}
+
+function normalizeTriggerInput(input: unknown): unknown {
+  if (isWebhookInputWithLegacySId(input)) {
+    const { webhookSourceViewSId, ...rest } = input;
+    return { ...rest, webhookSourceViewId: webhookSourceViewSId };
+  }
+  return input;
+}
+
+export const TriggerSchema = z.preprocess(
+  normalizeTriggerInput,
+  z.discriminatedUnion("kind", [
+    z.object({
+      name: z.string(),
+      kind: z.literal("schedule"),
+      customPrompt: z.string(),
+      naturalLanguageDescription: z.string().nullable(),
+      configuration: ScheduleConfigSchema,
+      editor: z.number().optional(),
+      status: TriggerStatusSchema.optional(),
+    }),
+    z.object({
+      name: z.string(),
+      kind: z.literal("webhook"),
+      customPrompt: z.string(),
+      naturalLanguageDescription: z.string().nullable(),
+      configuration: WebhookConfigSchema,
+      webhookSourceViewId: z.string(),
+      executionPerDayLimitOverride: z.number(),
+      editor: z.number().optional(),
+      status: TriggerStatusSchema.optional(),
+    }),
+  ])
+);
 
 const TriggerBaseSchema = z.object({
   id: z.number(),
