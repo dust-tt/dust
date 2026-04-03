@@ -92,7 +92,7 @@ Type + DB schema change, no runtime behavior.
 - Add `UserMessagePromotedEvent` type in `front/types/assistant/conversation.ts`.
 - Add to `ConversationEvents` union in `front/lib/api/assistant/streaming/types.ts`.
 
-### - [ ] PR 3.2 — Pending path in `postUserMessage`
+### - [x] PR 3.2 — Pending path in `postUserMessage`
 
 Behind `enable_steering` feature flag:
 
