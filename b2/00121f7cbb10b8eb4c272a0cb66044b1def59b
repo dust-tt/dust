@@ -1,0 +1,39 @@
+front/pages/api/w/[wId]/subscriptions/index.ts
+  068bbc100a060eab 4,97-99,107
+front/lib/metronome/types.ts
+  068bbc100a060eab 8-17
+front/lib/resources/subscription_resource.ts
+  068bbc100a060eab 9-10,12-15,34,125-130,152-168,170-186,188-205,883,887,889-892,895-898,900-901,913,915-922,924-929,934,1232-1235,1237-1238,1240-1241,1244-1247
+front/lib/metronome/client.ts
+  068bbc100a060eab 95-97,146,150,160,173-180,200,206,233,329-335,337-338,340-343,345-352,354-361,363-368
+front/lib/error.ts
+  068bbc100a060eab 57-62
+front/pages/api/stripe/webhook.ts
+  068bbc100a060eab 25,194-231
+front/lib/metronome/checkout.ts
+  068bbc100a060eab 1-81,83-88,90-92,94-123
+front/pages/api/w/[wId]/subscriptions/index.test.ts
+  068bbc100a060eab 1,9-10,14,17-19,97-121
+front/lib/plans/stripe.ts
+  068bbc100a060eab 269-311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "b200121f7cbb10b8eb4c272a0cb66044b1def59b",
+  "prompts": {
+    "068bbc100a060eab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ca0ebdb-9a62-4038-94b7-8a530c09bf58",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Alexandre Pinon",
+      "messages": [],
+      "total_additions": 1052,
+      "total_deletions": 587,
+      "accepted_lines": 425,
+      "overriden_lines": 22
+    }
+  }
+}
