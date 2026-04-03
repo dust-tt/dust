@@ -6,7 +6,7 @@ import React, { useCallback, useState } from "react";
 const faviconVariants = cva("", {
   variants: {
     size: {
-      sm: "s-w-4 s-h-4",
+      sm: "s-w-3 s-h-3",
       md: "s-w-5 s-h-5",
       lg: "s-w-6 s-h-6",
     },
