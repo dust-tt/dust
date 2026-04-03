@@ -35,7 +35,7 @@ export const Playground: Story = {
   args: {
     size: "md",
     variant: "mono",
-    speed: 1,
+    speed: 0.4,
   },
 };
 
