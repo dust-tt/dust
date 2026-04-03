@@ -36,7 +36,6 @@ import type { DataSourceViewSelectionConfigurations } from "@app/types/data_sour
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { isBuilder } from "@app/types/user";
 import type { UserType, WorkspaceType } from "@app/types/user";
 
 function processDataSourceConfigurations(
@@ -557,7 +556,7 @@ export async function submitAgentBuilderForm({
     // unlink them from the previous agent and link them to this one.
     // Make the call even if slackChannels is empty, since if the user deselects all channels,
     // the call need to be made to unlink them.
-    if (slackProvider && areSlackChannelsChanged && isBuilder(owner)) {
+    if (slackProvider && areSlackChannelsChanged) {
       const autoRespondWithoutMention =
         slackChannels.length > 0
           ? slackChannels[0].autoRespondWithoutMention

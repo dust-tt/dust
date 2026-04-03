@@ -158,6 +158,10 @@ export default function AgentBuilder({
     });
 
   const slackProvider = useMemo(() => {
+    if (!isBuilder(owner)) {
+      return null;
+    }
+
     const slackBotProvider = supportedDataSourceViews.find(
       (dsv) => dsv.dataSource.connectorProvider === "slack_bot"
     );
@@ -169,7 +173,7 @@ export default function AgentBuilder({
       (dsv) => dsv.dataSource.connectorProvider === "slack"
     );
     return slackProvider ? "slack" : null;
-  }, [supportedDataSourceViews]);
+  }, [supportedDataSourceViews, owner]);
 
   const processedActions = useMemo(() => {
     return processActionsFromStorage(actions ?? emptyArray());
