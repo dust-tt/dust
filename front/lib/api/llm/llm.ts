@@ -504,7 +504,8 @@ export abstract class LLM<TPayload = unknown> {
           await run.recordTokenUsage(
             this.authenticator,
             event.content,
-            this.modelId
+            this.modelId,
+            { isBatch: true }
           );
         }
       }

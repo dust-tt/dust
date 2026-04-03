@@ -270,6 +270,7 @@ export class RunResource extends BaseResource<RunModel> {
           cachedTokens,
           cacheCreationTokens,
           costMicroUsd,
+          isBatch,
         }) => ({
           runId: this.id,
           workspaceId: this.workspaceId,
@@ -280,6 +281,7 @@ export class RunResource extends BaseResource<RunModel> {
           cachedTokens,
           cacheCreationTokens: cacheCreationTokens ?? null,
           costMicroUsd,
+          isBatch,
         })
       )
     );
@@ -327,7 +329,8 @@ export class RunResource extends BaseResource<RunModel> {
   async recordTokenUsage(
     auth: Authenticator,
     usage: TokenUsage,
-    modelId: ModelIdType
+    modelId: ModelIdType,
+    { isBatch = false }: { isBatch?: boolean } = {}
   ) {
     const modelConfig = getModelConfigByModelId(modelId);
 
@@ -336,13 +339,19 @@ export class RunResource extends BaseResource<RunModel> {
       return;
     }
 
-    const usageCostMicroUsd = computeTokensCostForUsageInMicroUsd({
+    const BATCH_DISCOUNT_FACTOR = 0.5;
+
+    let usageCostMicroUsd = computeTokensCostForUsageInMicroUsd({
       modelId: modelConfig.modelId,
       promptTokens: usage.inputTokens,
       completionTokens: usage.outputTokens,
       cachedTokens: usage.cachedTokens ?? null,
       cacheCreationTokens: usage.cacheCreationTokens ?? null,
     });
+
+    if (isBatch) {
+      usageCostMicroUsd = Math.round(usageCostMicroUsd * BATCH_DISCOUNT_FACTOR);
+    }
 
     return this.recordRunUsage(auth, [
       {
@@ -353,6 +362,7 @@ export class RunResource extends BaseResource<RunModel> {
         promptTokens: usage.inputTokens,
         providerId: modelConfig.providerId,
         costMicroUsd: usageCostMicroUsd,
+        isBatch,
       },
     ]);
   }
@@ -373,6 +383,7 @@ export class RunResource extends BaseResource<RunModel> {
       cachedTokens: usage.cachedTokens,
       cacheCreationTokens: usage.cacheCreationTokens,
       costMicroUsd: usage.costMicroUsd,
+      isBatch: usage.isBatch,
     }));
   }
 }
@@ -395,4 +406,5 @@ export interface RunUsageType {
   // Optional: tokens spent writing to cache (e.g., Anthropic cache creation)
   cacheCreationTokens?: number | null;
   costMicroUsd: number;
+  isBatch: boolean;
 }
