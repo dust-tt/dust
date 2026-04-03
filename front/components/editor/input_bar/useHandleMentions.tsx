@@ -38,7 +38,12 @@ const useHandleMentions = (
     if (agentMention) {
       setSelectedSingleAgent(agentMention);
     }
-  }, [singleAgentInput, stickyMentions, setSelectedSingleAgent, draftAgentRestoredRef]);
+  }, [
+    singleAgentInput,
+    stickyMentions,
+    setSelectedSingleAgent,
+    draftAgentRestoredRef,
+  ]);
 
   useEffect(() => {
     if (!stickyMentions || stickyMentions.length === 0) {
