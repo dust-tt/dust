@@ -492,6 +492,7 @@ export async function createMetronomeCommit({
           type: "PREPAID",
           product_id: productId,
           name: name ?? "Commit purchase",
+          applicable_product_tags: ["usage"],
           access_schedule: {
             schedule_items: [
               {
