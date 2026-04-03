@@ -20,10 +20,10 @@ import {
 } from "@app/types/shared/utils/time_frame";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
+import { Client, isFullDataSource, isFullPage } from "@notionhq/client";
 import type {
   CreateCommentParameters,
-  QueryDatabaseParameters,
+  QueryDataSourceParameters,
   RichTextItemResponse,
 } from "@notionhq/client/build/src/api-endpoints";
 import { APIResponseError } from "@notionhq/client/build/src/errors";
@@ -74,10 +74,6 @@ export function createNotionTools(
       { query, type, relativeTimeFrame },
       { authInfo }: ToolHandlerExtra
     ) => {
-      if (!agentLoopContext?.runContext) {
-        return new Err(new MCPError("Agent loop run context is required"));
-      }
-
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return new Ok(makePersonalAuthenticationError("notion").content);
@@ -88,7 +84,7 @@ export function createNotionTools(
         query,
         filter: {
           property: "object",
-          value: type,
+          value: type === "database" ? "data_source" : type,
         },
         page_size: NOTION_SEARCH_ACTION_NUM_RESULTS,
       });
@@ -102,7 +98,7 @@ export function createNotionTools(
         const timestampInMs = timeFrameFromNow(timeFrame);
         const date = new Date(timestampInMs);
         results = rawResults.results.filter((result) => {
-          if (isFullPage(result) || isFullDatabase(result)) {
+          if (isFullPage(result) || isFullDataSource(result)) {
             const lastEditedTime = parseISO(result.last_edited_time);
             return lastEditedTime > date;
           }
@@ -118,12 +114,15 @@ export function createNotionTools(
           },
         ]);
       } else {
-        const { citationsOffset } = agentLoopContext.runContext.stepContext;
+        const citationsOffset =
+          agentLoopContext?.runContext?.stepContext.citationsOffset ?? 0;
 
-        const refs = getRefs().slice(
-          citationsOffset,
-          citationsOffset + NOTION_SEARCH_ACTION_NUM_RESULTS
-        );
+        const refs = agentLoopContext?.runContext?.stepContext.citationsOffset
+          ? getRefs().slice(
+              citationsOffset,
+              citationsOffset + NOTION_SEARCH_ACTION_NUM_RESULTS
+            )
+          : [];
 
         const resultResources = results.map((result) => {
           if (isFullPage(result)) {
@@ -167,7 +166,7 @@ export function createNotionTools(
                 provider: "notion",
               },
             } satisfies SearchResultResourceType;
-          } else if (isFullDatabase(result)) {
+          } else if (isFullDataSource(result)) {
             const title = result.title[0]?.plain_text ?? "Untitled Database";
             const description = result.description
               ?.map((d) => d?.plain_text)
@@ -219,7 +218,7 @@ export function createNotionTools(
 
     retrieve_database_schema: async ({ databaseId }, { authInfo }) => {
       return withNotionClient(
-        (notion) => notion.databases.retrieve({ database_id: databaseId }),
+        (notion) => notion.dataSources.retrieve({ data_source_id: databaseId }),
         authInfo
       );
     },
@@ -230,9 +229,9 @@ export function createNotionTools(
     ) => {
       return withNotionClient(
         (notion) =>
-          notion.databases.query({
-            database_id: databaseId,
-            filter: filter as QueryDatabaseParameters["filter"],
+          notion.dataSources.query({
+            data_source_id: databaseId,
+            filter: filter as QueryDataSourceParameters["filter"],
             sorts,
             start_cursor,
             page_size,
@@ -247,9 +246,9 @@ export function createNotionTools(
     ) => {
       return withNotionClient(
         (notion) =>
-          notion.databases.query({
-            database_id: databaseId,
-            filter: filter as QueryDatabaseParameters["filter"],
+          notion.dataSources.query({
+            data_source_id: databaseId,
+            filter: filter as QueryDataSourceParameters["filter"],
             sorts,
             start_cursor,
             page_size,
@@ -287,7 +286,13 @@ export function createNotionTools(
     ) => {
       return withNotionClient(
         (notion) =>
-          notion.databases.create({ parent, title, properties, icon, cover }),
+          notion.databases.create({
+            parent,
+            title,
+            initial_data_source: { properties },
+            icon,
+            cover,
+          }),
         authInfo
       );
     },
@@ -393,7 +398,10 @@ export function createNotionTools(
     ) => {
       return withNotionClient(
         (notion) =>
-          notion.databases.update({ database_id: databaseId, properties }),
+          notion.dataSources.update({
+            data_source_id: databaseId,
+            properties,
+          }),
         authInfo
       );
     },

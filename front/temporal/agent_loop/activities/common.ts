@@ -1,7 +1,5 @@
-import {
-  fetchMessageInConversation,
-  getCompletionDuration,
-} from "@app/lib/api/assistant/messages";
+import { updateAgentMessageWithFinalStatus } from "@app/lib/api/assistant/conversation";
+import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/lib/api/assistant/streaming/types";
@@ -48,75 +46,82 @@ const DEEP_CONVERSATION_FLUSH_INTERVAL_MS = 1000;
  */
 export async function updateAgentMessageDBAndMemory(
   auth: Authenticator,
-  {
-    agentMessage,
-    update,
-  }: {
-    agentMessage: AgentMessageType;
-    update:
-      | {
-          type: "status";
-          status: "succeeded" | "cancelled";
-        }
-      | {
-          type: "error";
-          error: ToolErrorEvent["error"];
-        }
-      | {
-          type: "runIds";
-          runIds: string[];
-        }
-      | {
-          type: "modelInteractionDurationMs";
-          modelInteractionDurationMs: number;
-        }
-      | {
-          type: "prunedContext";
-          prunedContext: true;
-        };
-  }
+  args:
+    | {
+        agentMessage: AgentMessageType;
+        conversation: ConversationWithoutContentType;
+        update:
+          | {
+              type: "status";
+              status: "succeeded" | "cancelled" | "gracefully_stopped";
+            }
+          | {
+              type: "error";
+              error: ToolErrorEvent["error"];
+            };
+      }
+    | {
+        agentMessage: AgentMessageType;
+        update:
+          | {
+              type: "runIds";
+              runIds: string[];
+            }
+          | {
+              type: "modelInteractionDurationMs";
+              modelInteractionDurationMs: number;
+            }
+          | {
+              type: "prunedContext";
+              prunedContext: true;
+            };
+      }
 ): Promise<void> {
-  const updateType = update.type;
+  const { agentMessage } = args;
   const where: WhereOptions<InferAttributes<AgentMessageModel>> = {
     id: agentMessage.agentMessageId,
     workspaceId: auth.getNonNullableWorkspace().id,
   };
 
-  switch (updateType) {
-    case "error":
-      {
-        const completedAt = new Date();
-        await AgentMessageModel.update(
-          {
+  // Terminal status updates go through the advisory-locked updateAgentMessageWithFinalStatus.
+  if ("conversation" in args) {
+    const { conversation, update } = args;
+    switch (update.type) {
+      case "error":
+        {
+          const result = await updateAgentMessageWithFinalStatus(auth, {
+            conversation,
+            agentMessage,
             status: "failed",
-            completedAt,
-            errorCode: update.error.code,
-            errorMessage: update.error.message,
-            errorMetadata: update.error.metadata,
-          },
-          { where }
-        );
-        agentMessage.status = "failed";
-        agentMessage.completedTs = completedAt.getTime();
-        agentMessage.error = update.error;
-      }
-      break;
+            error: update.error,
+          });
+          agentMessage.status = result.status;
+          agentMessage.completedTs = result.completedTs;
+          agentMessage.error = update.error;
+        }
+        break;
 
-    case "status":
-      {
-        const completedAt = new Date();
-        await AgentMessageModel.update(
-          {
+      case "status":
+        {
+          const result = await updateAgentMessageWithFinalStatus(auth, {
+            conversation,
+            agentMessage,
             status: update.status,
-            completedAt,
-          },
-          { where }
-        );
-        agentMessage.status = update.status;
-        agentMessage.completedTs = completedAt.getTime();
-      }
-      break;
+          });
+          agentMessage.status = result.status;
+          agentMessage.completedTs = result.completedTs;
+        }
+        break;
 
+      default:
+        assertNever(update);
+    }
+    return;
+  }
+
+  // Non-terminal metadata updates — no lock needed.
+  const { update } = args;
+  switch (update.type) {
     case "modelInteractionDurationMs":
       {
         const roundedModelInteractionDurationMs = Math.round(
@@ -170,7 +175,7 @@ export async function updateAgentMessageDBAndMemory(
       break;
 
     default:
-      assertNever(updateType);
+      assertNever(update);
   }
 }
 
@@ -178,14 +183,17 @@ export async function markAgentMessageAsFailed(
   auth: Authenticator,
   {
     agentMessage,
+    conversation,
     error,
   }: {
     agentMessage: AgentMessageType;
+    conversation: ConversationWithoutContentType;
     error: ToolErrorEvent["error"];
   }
 ): Promise<void> {
   await updateAgentMessageDBAndMemory(auth, {
     agentMessage,
+    conversation,
     update: {
       type: "error",
       error,
@@ -238,6 +246,7 @@ export async function processEventForDatabase(
       // Store error in database.
       await markAgentMessageAsFailed(auth, {
         agentMessage,
+        conversation,
         error: event.error,
       });
 
@@ -269,6 +278,7 @@ export async function processEventForDatabase(
     case "tool_error":
       await markAgentMessageAsFailed(auth, {
         agentMessage,
+        conversation,
         error: event.error,
       });
 
@@ -282,6 +292,7 @@ export async function processEventForDatabase(
       // Store cancellation in database.
       await updateAgentMessageDBAndMemory(auth, {
         agentMessage,
+        conversation,
         update: {
           type: "status",
           status: "cancelled",
@@ -289,14 +300,19 @@ export async function processEventForDatabase(
       });
       break;
 
+    case "agent_message_gracefully_stopped":
     case "agent_message_success":
       await Promise.all([
-        // Store success in database. runIds are already merged above.
+        // Store terminal status in database behind advisory lock.
         updateAgentMessageDBAndMemory(auth, {
           agentMessage,
+          conversation,
           update: {
             type: "status",
-            status: "succeeded",
+            status:
+              event.type === "agent_message_gracefully_stopped"
+                ? "gracefully_stopped"
+                : "succeeded",
           },
         }),
         // Mark the conversation as updated
@@ -317,7 +333,10 @@ async function processEventForUnreadState(
   {
     event,
     conversation,
-  }: { event: AgentMessageEvents; conversation: ConversationWithoutContentType }
+  }: {
+    event: AgentMessageEvents;
+    conversation: ConversationWithoutContentType;
+  }
 ) {
   // If the event is a done event, we want to mark the conversation as unread for all participants.
   if (TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(event.type)) {
@@ -433,29 +452,28 @@ export async function notifyWorkflowError(
   const auth = authResult.value;
 
   // Use lighter fetchConversationWithoutContent
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
-    );
-  if (conversationRes.isErr()) {
-    if (conversationRes.error.type === "conversation_not_found") {
-      return;
-    }
-
-    throw new Error(`Conversation not found: ${conversationId}`);
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+  if (!conversation) {
+    return;
   }
-  const conversation = conversationRes.value;
 
   // Fetch the agent message using the proper API function
-  const messageRow = await fetchMessageInConversation(
+  const messageRes = await conversation.getMessageById(
     auth,
-    conversation,
     agentMessageId,
     agentMessageVersion
   );
 
-  if (!messageRow?.agentMessage) {
+  if (messageRes.isErr()) {
+    throw new Error(`Agent message not found: ${agentMessageId}`);
+  }
+
+  const messageRow = messageRes.value;
+
+  if (!messageRow.agentMessage) {
     throw new Error(`Agent message not found: ${agentMessageId}`);
   }
 
@@ -485,6 +503,7 @@ export async function notifyWorkflowError(
     completedTs: messageRow.agentMessage.completedAt?.getTime() ?? null,
     sId: messageRow.sId,
     type: "agent_message",
+    branchId: messageRow.branchSId,
     visibility: messageRow.visibility,
     version: messageRow.version,
 
@@ -515,7 +534,7 @@ export async function notifyWorkflowError(
   await updateResourceAndPublishEvent(auth, {
     event: errorEvent,
     agentMessage,
-    conversation,
+    conversation: conversation.toJSON(),
     step: 0, // Workflow-level error, not tied to a specific step
   });
 }
@@ -581,5 +600,56 @@ export async function finalizeCancellation(
       conversationId: conversation.sId,
     },
     "Agent generation cancelled"
+  );
+}
+
+/**
+ * Activity executed after a graceful stop signal. The current step completed normally so all
+ * content is already flushed — we just need to emit the terminal event.
+ */
+export async function finalizeGracefulStop(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs
+): Promise<void> {
+  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
+  if (runAgentDataRes.isErr()) {
+    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      logger.info(
+        {
+          conversationId: agentLoopArgs.conversationId,
+          agentMessageId: agentLoopArgs.agentMessageId,
+        },
+        "Message or conversation was deleted, exiting"
+      );
+      return;
+    }
+    throw new Error(
+      `Failed to get run agent data: ${runAgentDataRes.error.message}`
+    );
+  }
+  const { auth, agentConfiguration, agentMessage, conversation } =
+    runAgentDataRes.value;
+
+  const step = _.maxBy(agentMessage.contents, "step")?.step ?? 0;
+
+  await updateResourceAndPublishEvent(auth, {
+    event: {
+      type: "agent_message_gracefully_stopped",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      message: agentMessage,
+      runIds: [],
+    },
+    agentMessage,
+    conversation,
+    step,
+  });
+  logger.info(
+    {
+      agentMessageId: agentMessage.sId,
+      conversationId: conversation.sId,
+    },
+    "Agent generation gracefully stopped"
   );
 }

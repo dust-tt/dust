@@ -12,7 +12,7 @@ export const isEnabledForWorkspace = async (
 
   // If the server has a restriction, check if the restrictions are met.
   if (mcpServer.isRestricted) {
-    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    const featureFlags = await getFeatureFlags(auth);
     const plan = auth.getNonNullablePlan();
     const isDeepDiveDisabled = await isDeepDiveDisabledByAdmin(auth);
 

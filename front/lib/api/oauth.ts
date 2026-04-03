@@ -1,3 +1,7 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import type {
   BaseOAuthStrategyProvider,
@@ -215,6 +219,17 @@ export async function createConnectionAndGetSetupUrl(
 
   const connection = cRes.value.connection;
 
+  // No req available in this library function — context defaults to auth.clientIp().
+  void emitAuditLogEvent({
+    auth,
+    action: "oauth.initiated",
+    targets: [buildAuditLogTarget("workspace", auth.getNonNullableWorkspace())],
+    metadata: {
+      provider: String(provider),
+      connectionId: connection.connection_id,
+    },
+  });
+
   return new Ok(
     providerStrategy.setupUri({
       connection,
@@ -227,6 +242,7 @@ export async function createConnectionAndGetSetupUrl(
 }
 
 export async function finalizeConnection(
+  auth: Authenticator | null,
   provider: OAuthProvider,
   query: ParsedUrlQuery
 ): Promise<Result<OAuthConnectionType, OAuthError>> {
@@ -293,6 +309,26 @@ export async function finalizeConnection(
         message: res.error.message,
       });
     }
+  }
+
+  if (auth && auth.workspace()) {
+    // No req available in this library function — context defaults to auth.clientIp().
+    void emitAuditLogEvent({
+      auth,
+      action: "oauth.authorized",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      ],
+      metadata: {
+        provider: String(provider),
+        connectionId,
+      },
+    });
+  } else {
+    logger.warn(
+      { provider, connectionId },
+      "oauth.authorized: skipping audit log — no Authenticator available"
+    );
   }
 
   return new Ok(cRes.value.connection);

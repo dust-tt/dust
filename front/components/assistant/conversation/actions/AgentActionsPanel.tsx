@@ -1,15 +1,18 @@
+import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/actions/AgentActionsPanelHeader";
 import { AgentActionSummary } from "@app/components/assistant/conversation/actions/AgentActionsPanelSummary";
 import { PanelAgentStep } from "@app/components/assistant/conversation/actions/PanelAgentStep";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import {
+  parseDataAsMessageIdAndActionId,
+  useConversationSidePanelContext,
+} from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import type { MessageTemporaryState } from "@app/components/assistant/conversation/types";
 import { getIcon } from "@app/components/resources/resources_icons";
 import {
   useAgentMessageSkills,
   useAgentMessageTools,
   useConversationMessage,
 } from "@app/hooks/conversations";
-import { useAgentMessageStreamLegacy } from "@app/hooks/useAgentMessageStreamLegacy";
-import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -21,14 +24,16 @@ import {
   isAgentTextContent,
 } from "@app/types/assistant/agent_message_content";
 import type {
+  AgentMessageStatus,
   AgentMessageType,
   ConversationWithoutContentType,
   ParsedContentItem,
 } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Chip, Spinner } from "@dust-tt/sparkle";
+import { Chip, Spinner, XMarkIcon } from "@dust-tt/sparkle";
+
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface AgentActionsPanelProps {
   conversation: ConversationWithoutContentType;
@@ -39,7 +44,8 @@ interface AgentActionsPanelContentProps {
   conversation: ConversationWithoutContentType | null;
   owner: LightWorkspaceType;
   fullAgentMessage: AgentMessageType;
-  messageId: string;
+  virtuosoMsg?: MessageTemporaryState | null;
+  closeIcon: React.ComponentType<{}>;
   closePanel: () => void;
   mutateMessage: () => void;
 }
@@ -48,11 +54,16 @@ function AgentActionsPanelContent({
   conversation,
   owner,
   fullAgentMessage,
-  messageId,
+  virtuosoMsg,
+  closeIcon,
   closePanel,
   mutateMessage,
 }: AgentActionsPanelContentProps) {
+  const messageId = fullAgentMessage.sId;
   const [currentStreamingStep, setCurrentStreamingStep] = useState(1);
+  const [successActionIds, setSuccessActionIds] = useState<string[]>([]);
+  const [lastMessageStreamStatus, setLastMessageStreamStatus] =
+    useState<AgentMessageStatus | null>(null);
 
   const { skills, mutateSkills } = useAgentMessageSkills({
     conversation,
@@ -66,42 +77,63 @@ function AgentActionsPanelContent({
     agentConfigurationId: fullAgentMessage.configuration.sId,
   });
 
-  const { messageStreamState, shouldStream, isFreshMountWithContent } =
-    useAgentMessageStreamLegacy({
-      message: getLightAgentMessageFromAgentMessage(fullAgentMessage),
-      conversationId: conversation?.sId ?? null,
-      owner,
-      mutateMessage,
-      onEventCallback: useCallback(
-        (eventStr: string) => {
-          const eventPayload = JSON.parse(eventStr);
+  // The message from Virtuoso doesn't contain the contents array and only actions if it's has been streamed.
+  // So if it's not in a "created" status, we focus on the fullAgentMessage from the backend call.
+  const rawMessageStreamState =
+    virtuosoMsg && virtuosoMsg.sId === messageId ? virtuosoMsg : null;
 
-          if (currentStreamingStep !== eventPayload.data.step + 1) {
-            setCurrentStreamingStep(eventPayload.data.step + 1);
-          }
-        },
-        [currentStreamingStep]
-      ),
-      streamId: `actions-panel-${messageId}`,
-      useFullChainOfThought: true,
-    });
+  // Make it null to ignore it in the rendering and consider only the fullAgentMessage from the backend call.
+  const messageStreamState =
+    rawMessageStreamState?.status === "created" ? rawMessageStreamState : null;
 
   useEffect(() => {
-    if (
-      fullAgentMessage.type !== "agent_message" ||
-      !fullAgentMessage.chainOfThought
-    ) {
+    if (!rawMessageStreamState) {
       return;
     }
 
-    if (fullAgentMessage.status === "created") {
-      // eslint-disable-next-line react-hooks/immutability
-      isFreshMountWithContent.current = true;
-    } else if (fullAgentMessage.status === "succeeded") {
-      void mutateSkills();
-      void mutateTools();
+    const currentMaxStep = Math.max(
+      currentStreamingStep,
+      Math.max(...rawMessageStreamState.actions.map((a) => a.step)) + 1
+    );
+
+    // Check if we moved to a new step.
+    if (currentMaxStep > currentStreamingStep) {
+      setCurrentStreamingStep(currentMaxStep);
     }
-  }, [fullAgentMessage, isFreshMountWithContent, mutateSkills, mutateTools]);
+
+    // Check if any new actions have been completed.
+    const prevCompletedActionsCount = successActionIds.length;
+    const newCompletedActionsCount = rawMessageStreamState.actions.filter(
+      (a) => a.status === "succeeded"
+    ).length;
+    if (newCompletedActionsCount > prevCompletedActionsCount) {
+      setSuccessActionIds(
+        rawMessageStreamState.actions
+          .filter((a) => a.status === "succeeded")
+          .map((a) => a.sId)
+      );
+      mutateMessage();
+      return;
+    }
+
+    if (lastMessageStreamStatus === rawMessageStreamState.status) {
+      return;
+    }
+
+    // The message status changed, upate everything.
+    setLastMessageStreamStatus(rawMessageStreamState?.status ?? null);
+    void mutateMessage();
+    void mutateSkills();
+    void mutateTools();
+  }, [
+    rawMessageStreamState,
+    currentStreamingStep,
+    successActionIds,
+    lastMessageStreamStatus,
+    mutateMessage,
+    mutateSkills,
+    mutateTools,
+  ]);
 
   const [steps, setSteps] = useState<Record<number, ParsedContentItem[]>>({});
 
@@ -196,17 +228,16 @@ function AgentActionsPanelContent({
   });
 
   useEffect(() => {
-    if (messageStreamState.message?.chainOfThought) {
+    if (messageStreamState?.chainOfThought) {
       lastChainOfThoughtRef.current = {
         step: currentStreamingStep,
-        content: messageStreamState.message.chainOfThought,
+        content: messageStreamState.chainOfThought,
       };
     }
-  }, [messageStreamState.message?.chainOfThought, currentStreamingStep]);
+  }, [messageStreamState?.chainOfThought, currentStreamingStep]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
-    if (!shouldStream) {
+    if (!messageStreamState) {
       return;
     }
 
@@ -221,7 +252,7 @@ function AgentActionsPanelContent({
         behavior: "smooth",
       });
     }
-  }, [fullAgentMessage, messageStreamState, shouldStream]);
+  }, [messageStreamState]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
@@ -241,30 +272,12 @@ function AgentActionsPanelContent({
       el.scrollHeight - el.clientHeight <= el.scrollTop + threshold;
   };
 
-  const agentMessageToRender = (() => {
-    switch (fullAgentMessage.status) {
-      case "succeeded":
-      case "failed":
-        return fullAgentMessage;
-      case "cancelled":
-        if (messageStreamState.message.status === "created") {
-          return {
-            ...messageStreamState.message,
-            status: "cancelled" as const,
-          };
-        }
-        return messageStreamState.message;
-      case "created":
-        return messageStreamState.message;
-      default:
-        return fullAgentMessage;
-    }
-  })();
-
-  const streamActionProgress = messageStreamState?.actionProgress ?? new Map();
+  const streamActionProgress =
+    messageStreamState?.streaming.actionProgress ?? new Map();
   return (
     <div className="flex h-full flex-col bg-background dark:bg-background-night">
       <AgentActionsPanelHeader
+        closeIcon={closeIcon}
         title="Breakdown of the tools used"
         onClose={closePanel}
       />
@@ -289,17 +302,13 @@ function AgentActionsPanelContent({
                   entries={entries}
                   streamActionProgress={streamActionProgress}
                   owner={owner}
-                  messageStatus={
-                    agentMessageToRender?.type === "agent_message"
-                      ? agentMessageToRender.status
-                      : "succeeded"
-                  }
+                  messageStatus={fullAgentMessage.status}
                 />
               );
             })}
           {/* Show current streaming step with live updates. */}
-          {shouldStream &&
-            messageStreamState.agentState !== "done" &&
+          {messageStreamState &&
+            messageStreamState.streaming.agentState !== "done" &&
             !steps[currentStreamingStep] && (
               <PanelAgentStep
                 stepNumber={currentStreamingStep}
@@ -308,10 +317,12 @@ function AgentActionsPanelContent({
                     ? lastChainOfThoughtRef.current.content
                     : "Thinking..."
                 }
-                isStreaming={messageStreamState.agentState === "thinking"}
+                isStreaming={
+                  messageStreamState.streaming.agentState === "thinking"
+                }
                 streamingActions={
-                  messageStreamState.agentState === "acting"
-                    ? messageStreamState.message.actions.filter((action) => {
+                  messageStreamState.streaming.agentState === "acting"
+                    ? messageStreamState.actions.filter((action) => {
                         // Only show actions not yet in any completed step.
                         return !Object.values(steps || {}).some(
                           (entries: ParsedContentItem[]) =>
@@ -330,9 +341,9 @@ function AgentActionsPanelContent({
                 messageStatus="created"
               />
             )}
-          {!shouldStream && (
+          {!messageStreamState && (
             <AgentActionSummary
-              agentMessageToRender={agentMessageToRender}
+              agentMessageToRender={fullAgentMessage}
               nbSteps={nbSteps}
             />
           )}
@@ -367,12 +378,21 @@ function AgentActionsPanelContent({
   );
 }
 
-export function AgentActionsPanel({
+export function AgentActionsPanelForMessage({
   conversation,
   owner,
-}: AgentActionsPanelProps) {
-  const { onPanelClosed, data: messageId } = useConversationSidePanelContext();
-
+  messageId,
+  virtuosoMsg,
+  targetActionId,
+  closeIcon = XMarkIcon,
+  onClose,
+}: AgentActionsPanelProps & {
+  messageId: string;
+  virtuosoMsg: MessageTemporaryState | null;
+  targetActionId?: string;
+  closeIcon?: React.ComponentType<{}>;
+  onClose: () => void;
+}) {
   const {
     message: fullAgentMessage,
     isMessageLoading,
@@ -380,7 +400,7 @@ export function AgentActionsPanel({
   } = useConversationMessage({
     conversationId: conversation.sId,
     workspaceId: owner.sId,
-    messageId: messageId ?? null,
+    messageId,
   });
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -395,17 +415,12 @@ export function AgentActionsPanel({
     }
   }, [fullAgentMessage]);
 
-  useEffect(() => {
-    if (!messageId) {
-      onPanelClosed();
-    }
-  }, [messageId, onPanelClosed]);
-
   if (isMessageLoading) {
     return (
       <AgentActionsPanelHeader
         title="Breakdown of the tools used"
-        onClose={onPanelClosed}
+        closeIcon={closeIcon}
+        onClose={onClose}
       >
         <div className="flex items-center justify-center">
           <Spinner variant="color" />
@@ -414,21 +429,45 @@ export function AgentActionsPanel({
     );
   }
 
-  if (
-    !messageId ||
-    !fullAgentMessage ||
-    fullAgentMessage.type !== "agent_message"
-  ) {
+  if (!fullAgentMessage || fullAgentMessage.type !== "agent_message") {
     return (
       <AgentActionsPanelHeader
         title="Breakdown of the tools used"
-        onClose={onPanelClosed}
+        closeIcon={closeIcon}
+        onClose={onClose}
       >
         <div className="flex items-center justify-center">
           <span className="text-muted-foreground">Nothing to display.</span>
         </div>
       </AgentActionsPanelHeader>
     );
+  }
+
+  // Single action detail view when an action is targeted from inline activity.
+  if (targetActionId) {
+    const action = fullAgentMessage.actions.find(
+      (a) => a.sId === targetActionId
+    );
+    if (action) {
+      return (
+        <div className="flex h-full flex-col bg-background dark:bg-background-night">
+          <AgentActionsPanelHeader
+            title="Tool detail"
+            closeIcon={closeIcon}
+            onClose={onClose}
+          />
+          <div className="flex-1 overflow-y-auto p-4 pb-12">
+            <MCPActionDetails
+              displayContext="sidebar"
+              action={action}
+              lastNotification={null}
+              owner={owner}
+              messageStatus={fullAgentMessage.status}
+            />
+          </div>
+        </div>
+      );
+    }
   }
 
   // Use key to force remount when the message changes for proper state reset.
@@ -438,9 +477,38 @@ export function AgentActionsPanel({
       conversation={conversation}
       owner={owner}
       fullAgentMessage={fullAgentMessage}
-      messageId={messageId}
-      closePanel={onPanelClosed}
+      virtuosoMsg={virtuosoMsg}
+      closeIcon={closeIcon}
+      closePanel={onClose}
       mutateMessage={mutateMessage}
+    />
+  );
+}
+
+export function AgentActionsPanel({
+  conversation,
+  owner,
+}: AgentActionsPanelProps) {
+  const {
+    onPanelClosed,
+    virtuosoMsg,
+    data: rawData,
+  } = useConversationSidePanelContext();
+
+  const { messageId, actionId } = parseDataAsMessageIdAndActionId(rawData);
+
+  if (!messageId) {
+    return null;
+  }
+
+  return (
+    <AgentActionsPanelForMessage
+      conversation={conversation}
+      owner={owner}
+      messageId={messageId}
+      virtuosoMsg={virtuosoMsg}
+      targetActionId={actionId}
+      onClose={onPanelClosed}
     />
   );
 }

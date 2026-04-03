@@ -1,5 +1,6 @@
 import { clientFetch } from "@app/lib/egress/client";
 import type { FetcherFn, FetcherWithBodyFn } from "@app/lib/swr/fetcher";
+import logger from "@app/logger/logger";
 
 export class APIError extends Error {
   type: string;
@@ -35,15 +36,13 @@ export const resHandler = async (res: Response) => {
     }
     errorMessage = error?.message ?? JSON.stringify(error);
   } catch (e) {
-    console.error("Error parsing response: ", e);
+    logger.error({ err: e }, "Error parsing response.");
     errorMessage = await res.text();
   }
 
-  console.error(
-    "Error returned by the front API: ",
-    res.status,
-    res.headers,
-    errorMessage
+  logger.error(
+    { status: res.status, errorMessage },
+    "Error returned by the front API."
   );
   throw new APIError(errorType, errorMessage);
 };

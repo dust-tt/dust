@@ -213,7 +213,7 @@ export class TmuxAdapter implements MultiplexerAdapter {
       // Single unified logs window
       lines.push(
         "# Create unified logs window",
-        `tmux new-window -t "$SESSION_NAME" -n "logs"`,
+        `tmux new-window -t "$SESSION_NAME" -n "logs" -c "$WORKTREE_PATH"`,
         `tmux send-keys -t "$SESSION_NAME:logs" "dust-hive logs ${shellQuote(envName)} -i" Enter`,
         ""
       );
@@ -223,7 +223,7 @@ export class TmuxAdapter implements MultiplexerAdapter {
         const tabName = TAB_NAMES[service];
         lines.push(
           `# Create ${service} logs window`,
-          `tmux new-window -t "$SESSION_NAME" -n ${shellQuote(tabName)}`,
+          `tmux new-window -t "$SESSION_NAME" -n ${shellQuote(tabName)} -c "$WORKTREE_PATH"`,
           `tmux send-keys -t "$SESSION_NAME:${tabName}" "dust-hive logs ${shellQuote(envName)} ${shellQuote(service)} -f" Enter`,
           ""
         );

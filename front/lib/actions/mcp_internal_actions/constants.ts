@@ -1,14 +1,9 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import {
-  DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL,
   type MCPToolStakeLevelType,
   RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
-import { CHROME_TOOLS_METADATA } from "@app/lib/actions/mcp_client_side/metadata";
-import type {
-  ClientToolMeta,
-  ServerMetadata,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/agent_management/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import {
@@ -18,6 +13,7 @@ import {
 import { AGENT_SIDEKICK_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_agent_state/metadata";
 import { AGENT_SIDEKICK_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
+import { ASK_USER_QUESTION_SERVER } from "@app/lib/api/actions/servers/ask_user_question/metadata";
 import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
@@ -31,6 +27,7 @@ import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/m
 import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
 import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
 import { GMAIL_SERVER } from "@app/lib/api/actions/servers/gmail/metadata";
+import { GONG_SERVER } from "@app/lib/api/actions/servers/gong/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { GOOGLE_DRIVE_SERVER } from "@app/lib/api/actions/servers/google_drive/metadata";
 import { GOOGLE_SHEETS_SERVER } from "@app/lib/api/actions/servers/google_sheets/metadata";
@@ -41,6 +38,7 @@ import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/m
 import { INTERACTIVE_CONTENT_SERVER } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
 import { JIT_TESTING_SERVER } from "@app/lib/api/actions/servers/jit_testing/metadata";
+import { LUMA_SERVER } from "@app/lib/api/actions/servers/luma/metadata";
 import { MICROSOFT_DRIVE_SERVER } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
 import { MICROSOFT_EXCEL_SERVER } from "@app/lib/api/actions/servers/microsoft_excel/metadata";
 import { MICROSOFT_TEAMS_SERVER } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
@@ -50,6 +48,7 @@ import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
 import { OPENAI_USAGE_SERVER } from "@app/lib/api/actions/servers/openai_usage/metadata";
 import { OUTLOOK_CALENDAR_SERVER } from "@app/lib/api/actions/servers/outlook/calendar_metadata";
 import { OUTLOOK_MAIL_SERVER } from "@app/lib/api/actions/servers/outlook/mail_metadata";
+import { POKE_SERVER } from "@app/lib/api/actions/servers/poke/metadata";
 import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/primitive_types_debugger/metadata";
 import { PRODUCTBOARD_SERVER } from "@app/lib/api/actions/servers/productboard/metadata";
 import { PROJECT_CONVERSATION_SERVER } from "@app/lib/api/actions/servers/project_conversation/metadata";
@@ -155,6 +154,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "freshservice",
   "github",
   "gmail",
+  "gong",
   "google_calendar",
   "google_drive",
   "google_sheets",
@@ -165,6 +165,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "interactive_content",
   "slideshow",
   "jira",
+  "luma",
   "microsoft_drive",
   "microsoft_excel",
   "microsoft_teams",
@@ -202,8 +203,10 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "skill_management",
   "schedules_management",
   "project_manager",
+  "poke",
   "project_conversation",
   "sandbox",
+  "ask_user_question",
 ] as const;
 
 export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
@@ -213,8 +216,7 @@ export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
 
 // Whether the server is available by default in the global space.
 // Hidden servers are available by default in the global space but are not visible in the assistant builder.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const MCP_SERVER_AVAILABILITY = [
+export const MCP_SERVER_AVAILABILITY = [
   "manual",
   "auto",
   "auto_hidden_builder",
@@ -300,6 +302,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
+    availableInDirectExecution: false,
     metadata: INCLUDE_DATA_SERVER,
   },
   run_dust_app: {
@@ -359,7 +362,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !isAvailable;
     },
     isPreview: false,
-    tools_arguments_requiring_approval: undefined,
+    tools_arguments_requiring_approval: {
+      create_object: ["objectName"],
+      update_object: ["objectName"],
+    },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: SALESFORCE_SERVER,
@@ -536,10 +542,9 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: {
       ...SLIDESHOW_SERVER,
+      // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
       serverInfo: {
         ...SLIDESHOW_SERVER.serverInfo,
-        // TBD if turned into a global skill or not.
-        // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
         instructions: SLIDESHOW_INSTRUCTIONS,
       },
     },
@@ -588,7 +593,7 @@ export const INTERNAL_MCP_SERVERS = {
     id: 34,
     availability: "auto",
     allowMultipleInstances: false,
-    isRestricted: undefined,
+    isRestricted: ({ plan }) => plan.isByok,
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
@@ -611,20 +616,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    metadata: {
-      ...MICROSOFT_DRIVE_SERVER,
-      serverInfo: {
-        ...MICROSOFT_DRIVE_SERVER.serverInfo,
-        authorization: {
-          provider: "microsoft_tools" as const,
-          supported_use_cases: ["personal_actions"] as const,
-          scope:
-            "User.Read Files.ReadWrite.All Sites.Read.All ExternalItem.Read.All offline_access" as const,
-        },
-        documentationUrl:
-          "https://docs.dust.tt/docs/microsoft-drive-tool-setup",
-      },
-    },
+    metadata: MICROSOFT_DRIVE_SERVER,
   },
   microsoft_teams: {
     id: 36,
@@ -646,26 +638,13 @@ export const INTERNAL_MCP_SERVERS = {
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    metadata: {
-      ...MICROSOFT_TEAMS_SERVER,
-      serverInfo: {
-        ...MICROSOFT_TEAMS_SERVER.serverInfo,
-        authorization: {
-          provider: "microsoft_tools" as const,
-          supported_use_cases: ["personal_actions"] as const,
-          scope:
-            "User.Read User.ReadBasic.All Team.ReadBasic.All Channel.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send offline_access" as const,
-        },
-        documentationUrl:
-          "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
-      },
-    },
+    metadata: MICROSOFT_TEAMS_SERVER,
   },
   sound_studio: {
     id: 37,
     availability: "manual",
     allowMultipleInstances: false,
-    isRestricted: undefined,
+    isRestricted: ({ plan }) => plan.isByok,
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
@@ -681,18 +660,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    metadata: {
-      ...MICROSOFT_EXCEL_SERVER,
-      serverInfo: {
-        ...MICROSOFT_EXCEL_SERVER.serverInfo,
-        authorization: {
-          provider: "microsoft_tools" as const,
-          supported_use_cases: ["personal_actions"] as const,
-          scope:
-            "User.Read Files.ReadWrite.All Sites.Read.All offline_access" as const,
-        },
-      },
-    },
+    metadata: MICROSOFT_EXCEL_SERVER,
   },
   http_client: {
     id: 39,
@@ -830,6 +798,20 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: STATUSPAGE_SERVER,
   },
+  luma: {
+    id: 51,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("luma_tool");
+    },
+    isPreview: true,
+    requiresBearerToken: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: LUMA_SERVER,
+  },
   fathom: {
     id: 50,
     availability: "manual",
@@ -840,6 +822,19 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: FATHOM_SERVER,
+  },
+  gong: {
+    id: 52,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("gong_tool");
+    },
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: GONG_SERVER,
   },
   primitive_types_debugger: {
     id: 1004,
@@ -863,6 +858,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
+    availableInDirectExecution: false,
     metadata: SEARCH_SERVER,
   },
   run_agent: {
@@ -885,6 +881,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    availableInDirectExecution: false,
     metadata: QUERY_TABLES_V2_SERVER,
   },
   data_sources_file_system: {
@@ -922,6 +919,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    availableInDirectExecution: false,
     metadata: DATA_WAREHOUSES_SERVER,
   },
   toolsets: {
@@ -992,6 +990,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    availableInDirectExecution: false,
     metadata: SKILL_MANAGEMENT_SERVER,
   },
   schedules_management: {
@@ -1003,6 +1002,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    availableInDirectExecution: false,
     metadata: SCHEDULES_MANAGEMENT_SERVER,
   },
   project_manager: {
@@ -1023,9 +1023,7 @@ export const INTERNAL_MCP_SERVERS = {
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("agent_builder_copilot");
-    },
+    isRestricted: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1036,9 +1034,7 @@ export const INTERNAL_MCP_SERVERS = {
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("agent_builder_copilot");
-    },
+    isRestricted: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1046,7 +1042,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   sandbox: {
     id: 1024,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: true,
     isRestricted: ({ featureFlags }) => {
@@ -1056,6 +1052,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: 120000, // 2 minutes for command execution
+    availableInDirectExecution: false,
   },
   project_conversation: {
     id: 1025,
@@ -1081,19 +1078,33 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: USER_MENTIONS_SERVER,
   },
+  poke: {
+    id: 1027,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => !featureFlags.includes("poke_mcp"),
+    isPreview: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: POKE_SERVER,
+  },
+  ask_user_question: {
+    id: 1028,
+    availability: "auto",
+    allowMultipleInstances: false,
+    isPreview: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("ask_user_question_tool");
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: ASK_USER_QUESTION_SERVER,
+  },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
   [K in InternalMCPServerNameType]: InternalMCPServerEntryBase<K>;
-};
-
-// Hardcoded stakes per client-side server (keyed by base server ID)
-export const CLIENT_SIDE_MCP_TOOL_METADATA: Record<
-  string,
-  Record<string, ClientToolMeta>
-> = {
-  "mcp-client-side:chrome_extension_client": Object.fromEntries(
-    Object.entries(CHROME_TOOLS_METADATA).map(([name, meta]) => [name, meta])
-  ),
 };
 
 type InternalMCPServerEntryCommon = {
@@ -1115,6 +1126,9 @@ type InternalMCPServerEntryCommon = {
   tools_retry_policies: Record<string, MCPToolRetryPolicyType> | undefined;
   timeoutMs: number | undefined;
   requiresBearerToken?: boolean;
+  // When false, the server is hidden from direct execution contexts (e.g. sandbox CLI).
+  // Defaults to true.
+  availableInDirectExecution?: boolean;
 };
 
 type InternalMCPServerEntryWithMetadata<K extends InternalMCPServerNameType> =
@@ -1272,39 +1286,6 @@ export function getInternalMCPServerToolStakes(
   return server.metadata.tools_stakes;
 }
 
-export function getClientSideToolStake(
-  serverId: string,
-  toolName: string
-): MCPToolStakeLevelType {
-  const toolStake = CLIENT_SIDE_MCP_TOOL_METADATA[serverId]?.[toolName]?.stake;
-  if (toolStake) {
-    return toolStake;
-  }
-  return DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL;
-}
-
-export function getClientSideToolArgumentsRequiringApproval(
-  serverId: string,
-  toolName: string
-): string[] | undefined {
-  const toolArgsRequiringApproval =
-    CLIENT_SIDE_MCP_TOOL_METADATA[serverId]?.[toolName]
-      .argumentsRequiringApproval;
-  return toolArgsRequiringApproval;
-}
-
-export function getClientSideToolDisplayLabels(
-  serverId: string,
-  toolName: string
-): ToolDisplayLabels | null {
-  const toolDisplayLabels =
-    CLIENT_SIDE_MCP_TOOL_METADATA[serverId]?.[toolName]?.displayLabels;
-  if (toolDisplayLabels) {
-    return toolDisplayLabels;
-  }
-  return null;
-}
-
 // TODO(2026-01-27 MCP): improve typing once all servers are migrated to the metadata pattern.
 // Goal is to tie the tool name to the server name.
 export function getInternalMCPServerToolDisplayLabels(
@@ -1376,4 +1357,11 @@ export function getInternalMCPServerMetadata(
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
 
   return server.metadata;
+}
+
+export function isInternalMCPServerAvailableInDirectExecution(
+  name: InternalMCPServerNameType
+): boolean {
+  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+  return server.availableInDirectExecution !== false;
 }

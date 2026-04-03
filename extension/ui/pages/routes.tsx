@@ -25,8 +25,10 @@ export const routes = [
         path: "/w/:wId/conversation/space/:spaceId",
         element: <ProjectMainPage />,
       },
-      // Keep catch-all route last. This will handle both root path and /conversations/:conversationId
-      // Since we catch all, we will need to manually handle the conversationId in the MainPage component.
+      {
+        path: "/w/:wId/conversation/:cId",
+        element: <MainPage />,
+      },
       {
         path: "*",
         element: <MainPage />,

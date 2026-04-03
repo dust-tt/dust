@@ -8,19 +8,24 @@ import type { AgentMCPActionType } from "@app/types/actions";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ConversationWithoutContentType,
+  InlineActivityStep,
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
+  LightMessageType,
   UserMessageOrigin,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
-import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
+import {
+  isLightAgentMessageWithActionsType,
+  isUserMessageTypeWithContentFragments,
+} from "@app/types/assistant/conversation";
+
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { ButlerSuggestionPublicType } from "@app/types/conversation_butler_suggestion";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import uniq from "lodash/uniq";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -46,6 +51,7 @@ export type MessageTemporaryState = LightAgentMessageWithActionsType & {
     lastUpdated: Date;
     actionProgress: ActionProgressState;
     useFullChainOfThought: boolean;
+    inlineActivitySteps: InlineActivityStep[];
   };
 };
 
@@ -65,6 +71,7 @@ export type VirtuosoMessage =
 export type VirtuosoMessageListContext = {
   owner: LightWorkspaceType;
   user: UserType;
+  isOnboardingConversation: boolean;
   handleSubmit: (
     input: string,
     mentions: RichMention[],
@@ -94,6 +101,21 @@ export type VirtuosoMessageListContext = {
   isProjectRestricted?: boolean;
   projectSpaceId?: string;
   projectSpaceName?: string;
+  branchIdToApprove?: string;
+  setBranchIdToApprove?: (branchId: string | null) => void;
+};
+
+export const areSameRankAndBranch = (
+  a: VirtuosoMessage,
+  b: VirtuosoMessage
+): boolean => {
+  return a.rank === b.rank && a.branchId === b.branchId;
+};
+
+export const getPredicateForRankAndBranch = (
+  m: VirtuosoMessage
+): ((m: VirtuosoMessage) => boolean) => {
+  return (m2: VirtuosoMessage) => areSameRankAndBranch(m, m2);
 };
 
 export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {
@@ -109,6 +131,7 @@ export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
     (isUserMessage(message) &&
       (message.context.origin === "onboarding_conversation" ||
         message.context.origin === "project_kickoff" ||
+        message.context.origin === "reinforced_agent_notification" ||
         isSidekickBootstrapMessage(message))) ||
     isHandoverUserMessage(message)
   );
@@ -138,6 +161,7 @@ export const makeInitialMessageStreamState = (
     streaming: {
       actionProgress: new Map(),
       agentState: message.status === "created" ? "thinking" : "done",
+      inlineActivitySteps: message.activitySteps ?? [],
       isRetrying: false,
       lastUpdated: new Date(),
       useFullChainOfThought: false,
@@ -145,11 +169,17 @@ export const makeInitialMessageStreamState = (
   };
 };
 
-export const hasHumansInteracting = (messages: VirtuosoMessage[]) =>
-  uniq(messages.filter(isUserMessage).map((m) => m.user?.sId)).length >= 2;
-
 export const isSidekickBootstrapMessage = (
   message: UserMessageTypeWithContentFragments
 ): boolean => {
   return message.context.origin === "agent_sidekick" && message.rank === 0;
 };
+
+export const convertLightMessageTypeToVirtuosoMessages = (
+  messages: LightMessageType[]
+) =>
+  messages.map((message) =>
+    isUserMessageTypeWithContentFragments(message)
+      ? message
+      : makeInitialMessageStreamState(message)
+  );

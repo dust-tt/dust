@@ -6,8 +6,9 @@ import { MODELS } from "@app/lib/api/llm/tests/models";
 import type { ResponseChecker } from "@app/lib/api/llm/tests/types";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { isModelProviderId } from "@app/types/assistant/models/providers";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -262,8 +263,9 @@ describe.skipIf(!RUN_LLM_BATCH_TEST || modelsWithBatchSupport.length === 0)(
         "$name",
         async ({ conversations }) => {
           const mockedAuth = createMockAuthenticator();
-          const credentials =
-            await ProviderCredentialResource.getCredentials(mockedAuth);
+          const credentials = await getLlmCredentials(mockedAuth, {
+            skipEmbeddingApiKeyRequirement: true,
+          });
           const llm = await getLLM(mockedAuth, {
             modelId: modelId as ModelIdType,
             bypassFeatureFlag: true,
@@ -287,9 +289,7 @@ describe.skipIf(!RUN_LLM_BATCH_TEST || modelsWithBatchSupport.length === 0)(
           // Poll until the batch is done (up to the test timeout).
           let status = await llm.getBatchStatus(batchId);
           while (status === "computing") {
-            await new Promise((resolve) =>
-              setTimeout(resolve, POLL_INTERVAL_MS)
-            );
+            await setTimeoutAsync(POLL_INTERVAL_MS);
             status = await llm.getBatchStatus(batchId);
           }
 
@@ -299,13 +299,14 @@ describe.skipIf(!RUN_LLM_BATCH_TEST || modelsWithBatchSupport.length === 0)(
           expect(result.size).toBe(batchMap.size);
 
           for (const { id, expectedInResponse } of conversations) {
-            const events = result.get(id);
+            const entry = result.get(id);
             expect(
-              events,
+              entry,
               `Expected results for conversation ${id}`
             ).toBeDefined();
-            if (events) {
-              checkResponse(id, events, expectedInResponse);
+            if (entry) {
+              expect(entry.dustRunId).toBeDefined();
+              checkResponse(id, entry.events, expectedInResponse);
             }
           }
         },

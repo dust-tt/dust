@@ -1,4 +1,6 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { addFileToProject } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -36,7 +38,7 @@ async function handler(
     });
   }
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  const featureFlags = await getFeatureFlags(auth);
   if (!featureFlags.includes("projects")) {
     return apiError(req, res, {
       status_code: 403,
@@ -144,7 +146,11 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
-      await file.moveFrameToSpace(auth, { projectId });
+      await addFileToProject(auth, {
+        file,
+        space,
+        sourceConversationId: file.useCaseMetadata?.conversationId,
+      });
 
       return res.status(200).json({
         file: file.toJSONWithMetadata(auth),

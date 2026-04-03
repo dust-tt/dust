@@ -1,4 +1,5 @@
 import { detectSkillsFromGitHubRepo } from "@app/lib/api/skills/detection/github/detect_skills";
+import { initGitHubRepoClient } from "@app/lib/api/skills/detection/github/github_api";
 import { makeScript } from "@app/scripts/helpers";
 
 // TODO(2026-02-25 aubin): move to a poke plugin or a CLI command if ends up being needed for debugging.
@@ -16,7 +17,16 @@ makeScript(
     },
   },
   async ({ repoUrl, accessToken }, logger) => {
-    const result = await detectSkillsFromGitHubRepo({ repoUrl, accessToken });
+    const clientResult = initGitHubRepoClient({ repoUrl, accessToken });
+    if (clientResult.isErr()) {
+      logger.error(
+        { error: clientResult.error },
+        `Invalid URL: ${clientResult.error.message}`
+      );
+      return;
+    }
+
+    const result = await detectSkillsFromGitHubRepo(clientResult.value);
 
     if (result.isErr()) {
       logger.error(

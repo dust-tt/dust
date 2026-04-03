@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import {
   getAgentConfiguration,
   updateAgentPermissions,
@@ -9,44 +10,42 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { UserType } from "@app/types/user";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
+import { UserSchema } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-// Changed schema to accept optional add/remove lists
-export const PatchAgentEditorsRequestBodySchema = t.intersection([
-  t.type({}),
-  t.partial({
-    addEditorIds: t.array(t.string),
-    removeEditorIds: t.array(t.string),
-  }),
-  // Refinement to ensure at least one of the arrays exists and is not empty
-  t.refinement(
-    t.type({
-      // Use t.type inside refinement for better type checking
-      addEditorIds: t.union([t.array(t.string), t.undefined]),
-      removeEditorIds: t.union([t.array(t.string), t.undefined]),
-    }),
+export const PatchAgentEditorsRequestBodySchema = z
+  .object({
+    addEditorIds: z.array(z.string()).optional(),
+    removeEditorIds: z.array(z.string()).optional(),
+  })
+  .refine(
     (body) =>
       (body.addEditorIds instanceof Array && body.addEditorIds.length > 0) ||
       (body.removeEditorIds instanceof Array &&
         body.removeEditorIds.length > 0),
-    "Either addEditorIds or removeEditorIds must be provided and contain at least one ID."
-  ),
-]);
-export type PatchAgentEditorsRequestBody = t.TypeOf<
+    {
+      message:
+        "Either addEditorIds or removeEditorIds must be provided and contain at least one ID.",
+    }
+  );
+export type PatchAgentEditorsRequestBody = z.infer<
   typeof PatchAgentEditorsRequestBodySchema
 >;
 
-export interface GetAgentEditorsResponseBody {
-  editors: UserType[];
-}
+export const GetAgentEditorsResponseBodySchema = z.object({
+  editors: z.array(UserSchema),
+});
+export type GetAgentEditorsResponseBody = z.infer<
+  typeof GetAgentEditorsResponseBodySchema
+>;
 
-export interface PatchAgentEditorsResponseBody {
-  editors: UserType[];
-}
+export const PatchAgentEditorsResponseBodySchema = z.object({
+  editors: z.array(UserSchema),
+});
+export type PatchAgentEditorsResponseBody = z.infer<
+  typeof PatchAgentEditorsResponseBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,
@@ -147,21 +146,20 @@ async function handler(
         });
       }
 
-      const bodyValidation = PatchAgentEditorsRequestBodySchema.decode(
+      const bodyValidation = PatchAgentEditorsRequestBodySchema.safeParse(
         req.body
       );
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${bodyValidation.error.message}`,
           },
         });
       }
 
-      const { addEditorIds = [], removeEditorIds = [] } = bodyValidation.right;
+      const { addEditorIds = [], removeEditorIds = [] } = bodyValidation.data;
 
       const usersToAdd = await UserResource.fetchByIds(addEditorIds);
       const usersToRemove = await UserResource.fetchByIds(removeEditorIds);

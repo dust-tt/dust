@@ -1,3 +1,9 @@
+/** @ignoreswagger */
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   deleteWorkOSOrganizationDSyncConnection,
@@ -116,6 +122,16 @@ async function handler(
           },
         });
       }
+
+      void emitAuditLogEvent({
+        auth,
+        action: "dsync.connection_deleted",
+        targets: [buildAuditLogTarget("workspace", workspace)],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          directoryType: activeDirectory.type,
+        },
+      });
 
       res.status(204).end();
       return;

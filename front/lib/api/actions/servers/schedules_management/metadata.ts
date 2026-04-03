@@ -68,6 +68,7 @@ type SchedulesManagementToolKey =
   keyof typeof SCHEDULES_MANAGEMENT_TOOLS_METADATA;
 
 export const SCHEDULES_MANAGEMENT_SERVER = {
+  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "schedules_management" as const,
     version: "1.0.0",
@@ -75,11 +76,7 @@ export const SCHEDULES_MANAGEMENT_SERVER = {
     authorization: null,
     icon: "ActionTimeIcon" as const,
     documentationUrl: null,
-    // Predates the introduction of the rule, would require extensive work to
-    // improve, already widely adopted.
-
     instructions:
-      // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
       "Schedules are user-specific: each user can only view and manage their own schedules. " +
       "When a schedule triggers, it runs this agent with the specified prompt. " +
       "Limit: 20 schedule creations per user per day.",

@@ -1,7 +1,7 @@
 import { DataSourceViewSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { ViewDataSourceViewTable } from "@app/components/poke/data_source_views/view";
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeDataSourceViewDetails } from "@app/poke/swr/data_source_view_details";
@@ -12,7 +12,7 @@ import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 export function SpaceDataSourceViewPage() {
   const owner = useWorkspace();
-  useSetPokePageTitle(`${owner.name} - Data Source View`);
+  useDocumentTitle(`Poke - ${owner.name} - Data Source View`);
 
   const dsvId = useRequiredPathParam("dsvId");
   const {

@@ -1,7 +1,7 @@
 import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
+import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
@@ -285,7 +285,7 @@ export function ManageAgentsPage() {
         <Custom404 />
       ) : (
         <>
-          <AgentDetails
+          <AgentDetailsSheet
             owner={owner}
             user={user}
             agentId={detailedAgentId}

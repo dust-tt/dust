@@ -1,5 +1,101 @@
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/feedbacks:
+ *   post:
+ *     summary: Submit message feedback
+ *     description: Create or update feedback (thumbs up/down) for a specific agent message.
+ *     tags:
+ *       - Private Messages
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: mId
+ *         required: true
+ *         description: ID of the message
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - thumbDirection
+ *             properties:
+ *               thumbDirection:
+ *                 type: string
+ *                 enum: [up, down]
+ *               feedbackContent:
+ *                 type: string
+ *                 nullable: true
+ *               isConversationShared:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Successfully submitted feedback
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       401:
+ *         description: Unauthorized
+ *   delete:
+ *     summary: Delete message feedback
+ *     description: Remove the authenticated user's feedback for a specific agent message.
+ *     tags:
+ *       - Private Messages
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: mId
+ *         required: true
+ *         description: ID of the message
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully deleted feedback
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       401:
+ *         description: Unauthorized
+ */
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import {
   deleteMessageFeedback,
   upsertMessageFeedback,
@@ -43,19 +139,6 @@ async function handler(
     });
   }
 
-  const conversationId = req.query.cId;
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
-    );
-
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
-  }
-
-  const conversation = conversationRes.value;
-
   if (!(typeof req.query.mId === "string")) {
     return apiError(req, res, {
       status_code: 400,
@@ -67,6 +150,37 @@ async function handler(
   }
 
   const messageId = req.query.mId;
+  const conversationId = req.query.cId;
+
+  const conversationResource = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+
+  if (!conversationResource) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "Conversation not found.",
+      },
+    });
+  }
+
+  const messageRes = await conversationResource.getMessageById(auth, messageId);
+
+  if (messageRes.isErr()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "message_not_found",
+        message:
+          "The message you're trying to give feedback to does not exist or is not accessible.",
+      },
+    });
+  }
+
+  const conversation = conversationResource.toJSON();
 
   switch (req.method) {
     case "POST":

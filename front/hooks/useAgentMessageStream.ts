@@ -11,9 +11,13 @@ import {
   isRunAgentChainOfThoughtProgressOutput,
   isRunAgentGenerationTokensProgressOutput,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import type { LightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
+import type {
+  InlineActivityStep,
+  LightAgentMessageWithActionsType,
+} from "@app/types/assistant/conversation";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { VirtuosoMessageListMethods } from "@virtuoso.dev/message-list";
@@ -140,6 +144,28 @@ export function updateProgress(
     },
   };
 }
+
+/**
+ * Append a thinking step to the inline activity steps if the content
+ * is new (not a duplicate of the last thinking step).
+ */
+function appendThinkingStep(
+  steps: InlineActivityStep[],
+  cotContent: string,
+  id: string
+): InlineActivityStep[] {
+  for (let i = steps.length - 1; i >= 0; i--) {
+    const step = steps[i];
+    if (step.type === "thinking") {
+      if (step.content === cotContent) {
+        return steps;
+      }
+      break;
+    }
+  }
+  return [...steps, { type: "thinking", content: cotContent, id }];
+}
+
 interface UseAgentMessageStreamParams {
   agentMessage: MessageTemporaryState;
   conversationId: string | null;
@@ -178,6 +204,8 @@ export function useAgentMessageStream({
 
   const chainOfThought = useRef(agentMessage.chainOfThought ?? "");
   const content = useRef(agentMessage.content ?? "");
+  // Tracks whether response token generation has started, to flush CoT once.
+  const writingStarted = useRef(false);
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
@@ -210,6 +238,7 @@ export function useAgentMessageStream({
           // end of the stream to the client. So we just return.
           return;
 
+        case "tool_ask_user_question":
         case "tool_personal_auth_required":
         case "tool_file_auth_required":
         case "tool_approve_execution":
@@ -235,6 +264,33 @@ export function useAgentMessageStream({
             classification === "tokens" ||
             classification === "chain_of_thought"
           ) {
+            // First "tokens" event means thinking → writing: flush pending CoT once.
+            if (
+              classification === "tokens" &&
+              !writingStarted.current &&
+              chainOfThought.current
+            ) {
+              writingStarted.current = true;
+              const cotToFlush = chainOfThought.current;
+              chainOfThought.current = "";
+              methods.data.map((m) => {
+                if (!isMessageTemporayState(m) || m.sId !== sId) {
+                  return m;
+                }
+                return {
+                  ...m,
+                  streaming: {
+                    ...m.streaming,
+                    inlineActivitySteps: appendThinkingStep(
+                      m.streaming.inlineActivitySteps,
+                      cotToFlush,
+                      `thinking-pretokens-${Date.now()}`
+                    ),
+                  },
+                };
+              });
+            }
+
             if (classification === "tokens") {
               content.current += generationTokens.text;
             } else if (classification === "chain_of_thought") {
@@ -251,39 +307,70 @@ export function useAgentMessageStream({
 
         case "agent_action_success":
           const action = eventPayload.data.action;
-          methods.data.map((m) =>
-            isMessageTemporayState(m) && m.sId === sId
-              ? {
-                  ...updateMessageWithAction(m, action),
-                  streaming: {
-                    ...m.streaming,
-                    agentState: "thinking",
-                    // Clean up progress for this specific action.
-                    actionProgress: new Map(
-                      Array.from(m.streaming.actionProgress.entries()).filter(
-                        ([id]) => id !== action.id
-                      )
-                    ),
+          methods.data.map((m) => {
+            if (!isMessageTemporayState(m) || m.sId !== sId) {
+              return m;
+            }
+            // Add the completed action to inline activity steps.
+            const alreadyCaptured = m.streaming.inlineActivitySteps.some(
+              (s) => s.id === `action-${action.id}`
+            );
+            const steps = alreadyCaptured
+              ? m.streaming.inlineActivitySteps
+              : [
+                  ...m.streaming.inlineActivitySteps,
+                  {
+                    type: "action" as const,
+                    label: getActionOneLineLabel(action),
+                    id: `action-${action.id}`,
+                    actionId: action.sId,
+                    internalMCPServerName: action.internalMCPServerName,
                   },
-                }
-              : m
-          );
+                ];
+            return {
+              ...updateMessageWithAction(m, action),
+              streaming: {
+                ...m.streaming,
+                agentState: "thinking",
+                inlineActivitySteps: steps,
+                // Clean up progress for this specific action.
+                actionProgress: new Map(
+                  Array.from(m.streaming.actionProgress.entries()).filter(
+                    ([id]) => id !== action.id
+                  )
+                ),
+              },
+            };
+          });
 
           break;
 
         case "tool_params":
           const toolParams = eventPayload.data;
-          methods.data.map((m) =>
-            isMessageTemporayState(m) && m.sId === sId
-              ? {
-                  ...updateMessageWithAction(m, toolParams.action),
-                  streaming: {
-                    ...m.streaming,
-                    agentState: "acting",
-                  },
-                }
-              : m
-          );
+          writingStarted.current = false;
+          // Snapshot CoT before it gets cleared by updateMessageWithAction.
+          const cotAtToolParams = chainOfThought.current;
+          chainOfThought.current = "";
+          methods.data.map((m) => {
+            if (!isMessageTemporayState(m) || m.sId !== sId) {
+              return m;
+            }
+            const steps = cotAtToolParams
+              ? appendThinkingStep(
+                  m.streaming.inlineActivitySteps,
+                  cotAtToolParams,
+                  `thinking-${Date.now()}`
+                )
+              : m.streaming.inlineActivitySteps;
+            return {
+              ...updateMessageWithAction(m, toolParams.action),
+              streaming: {
+                ...m.streaming,
+                agentState: "acting",
+                inlineActivitySteps: steps,
+              },
+            };
+          });
           break;
 
         case "tool_notification":
@@ -298,19 +385,30 @@ export function useAgentMessageStream({
         case "tool_error":
         case "agent_error":
           const error = eventPayload.data.error;
-          methods.data.map((m) =>
-            isMessageTemporayState(m) && m.sId === sId
-              ? {
-                  ...m,
-                  status: "failed",
-                  error: error,
-                  streaming: {
-                    ...m.streaming,
-                    agentState: "done",
-                  },
-                }
-              : m
-          );
+          const cotAtError = chainOfThought.current;
+          chainOfThought.current = "";
+          methods.data.map((m) => {
+            if (!isMessageTemporayState(m) || m.sId !== sId) {
+              return m;
+            }
+            const steps = cotAtError
+              ? appendThinkingStep(
+                  m.streaming.inlineActivitySteps,
+                  cotAtError,
+                  `thinking-error-${Date.now()}`
+                )
+              : m.streaming.inlineActivitySteps;
+            return {
+              ...m,
+              status: "failed",
+              error: error,
+              streaming: {
+                ...m.streaming,
+                agentState: "done",
+                inlineActivitySteps: steps,
+              },
+            };
+          });
           break;
 
         case "agent_context_pruned":
@@ -339,24 +437,35 @@ export function useAgentMessageStream({
           );
           break;
 
-        case "agent_message_success":
+        case "agent_message_gracefully_stopped":
+        case "agent_message_success": {
           const messageSuccess = eventPayload.data;
-          methods.data.map((m) =>
-            isMessageTemporayState(m) && m.sId === sId
-              ? {
-                  ...m,
-                  ...getLightAgentMessageFromAgentMessage(
-                    messageSuccess.message
-                  ),
-                  status: "succeeded",
-                  streaming: {
-                    ...m.streaming,
-                    agentState: "done",
-                  },
-                }
-              : m
-          );
+          // Safety net: flush any remaining CoT not yet captured.
+          const cotAtSuccess = chainOfThought.current;
+          chainOfThought.current = "";
+          methods.data.map((m) => {
+            if (!isMessageTemporayState(m) || m.sId !== sId) {
+              return m;
+            }
+            const steps = cotAtSuccess
+              ? appendThinkingStep(
+                  m.streaming.inlineActivitySteps,
+                  cotAtSuccess,
+                  `thinking-final-${Date.now()}`
+                )
+              : m.streaming.inlineActivitySteps;
+            return {
+              ...m,
+              ...getLightAgentMessageFromAgentMessage(messageSuccess.message),
+              streaming: {
+                ...m.streaming,
+                agentState: "done",
+                inlineActivitySteps: steps,
+              },
+            };
+          });
           break;
+        }
 
         default:
           assertNeverAndIgnore(eventType);
@@ -369,11 +478,17 @@ export function useAgentMessageStream({
     [customOnEventCallback, methods, sId]
   );
 
-  useEventSource(buildEventSourceURL, onEventCallback, streamId, {
-    isReadyToConsumeStream: shouldStream,
-  });
+  const { isError } = useEventSource(
+    buildEventSourceURL,
+    onEventCallback,
+    streamId,
+    {
+      isReadyToConsumeStream: shouldStream,
+    }
+  );
 
   return {
+    streamError: isError,
     shouldStream,
     isFreshMountWithContent,
   };

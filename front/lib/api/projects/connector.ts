@@ -10,13 +10,16 @@ import {
   fetchProjectDataSourceView,
   getProjectConversationsDatasourceName,
 } from "@app/lib/api/projects/data_sources";
+import {
+  getLlmCredentials,
+  MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+} from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
 import { isConnectorProviderAssistantDefaultSelected } from "@app/lib/connector_providers";
 import { executeWithLock } from "@app/lib/lock";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { getProjectRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
@@ -24,9 +27,11 @@ import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embed
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { CoreAPI, EMBEDDING_CONFIGS } from "@app/types/core/core_api";
 import { DEFAULT_QDRANT_CLUSTER } from "@app/types/core/data_source";
+import type { LLMCredentialsType } from "@app/types/provider_credential";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
@@ -131,8 +136,16 @@ export async function createDataSourceAndConnectorForProject(
         coreProjectId = dustProject.value.project.project_id.toString();
 
         // Create Core API data source
-        const credentials =
-          await ProviderCredentialResource.getCredentials(auth);
+        let credentials: LLMCredentialsType;
+        try {
+          credentials = await getLlmCredentials(auth);
+        } catch (err) {
+          logger.error(
+            { error: normalizeError(err) },
+            "Failed to get LLM credentials to create data source and connector"
+          );
+          return new Err(new Error(MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE));
+        }
 
         const dustDataSource = await coreAPI.createDataSource({
           projectId: coreProjectId,

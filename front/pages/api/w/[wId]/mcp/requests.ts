@@ -1,6 +1,8 @@
+/** @ignoreswagger */
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import { getMCPEventsForServer } from "@app/lib/api/assistant/mcp_events";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { initSSEResponse } from "@app/lib/api/sse";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -70,12 +72,7 @@ async function handler(
     });
   }
 
-  res.writeHead(200, {
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive",
-  });
-  res.flushHeaders();
+  initSSEResponse(res);
 
   // Create an AbortController to handle client disconnection.
   const controller = new AbortController();

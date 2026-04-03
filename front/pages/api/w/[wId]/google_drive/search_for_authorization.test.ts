@@ -103,18 +103,17 @@ vi.mock("@app/lib/providers/google_drive/utils", () => ({
 }));
 
 async function setupTest() {
-  const { req, res, workspace, authenticator } =
-    await createPrivateApiMockRequest({
-      role: "user",
-      method: "POST",
-    });
+  const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+    role: "user",
+    method: "POST",
+  });
 
   req.query.wId = workspace.sId;
 
   // Default rate limiter to allow requests
   vi.mocked(rateLimiter).mockResolvedValue(60);
 
-  return { req, res, workspace, authenticator };
+  return { req, res, workspace, auth };
 }
 
 describe("POST /api/w/[wId]/google_drive/search_for_authorization", () => {
@@ -165,14 +164,14 @@ describe("POST /api/w/[wId]/google_drive/search_for_authorization", () => {
   });
 
   it("should return 403 for invalid connection ownership", async () => {
-    const { req, res, authenticator } = await setupTest();
+    const { req, res, auth } = await setupTest();
 
     mockGetAccessToken.mockResolvedValue(
       new Ok(
         createMockAccessTokenResponse({
           provider: "google_drive",
           workspaceId: "different_workspace_id",
-          userId: authenticator.user()?.sId ?? "",
+          userId: auth.user()?.sId ?? "",
         })
       )
     );
@@ -191,9 +190,9 @@ describe("POST /api/w/[wId]/google_drive/search_for_authorization", () => {
   });
 
   it("should return 403 for wrong provider", async () => {
-    const { req, res, workspace, authenticator } = await setupTest();
+    const { req, res, workspace, auth } = await setupTest();
 
-    const userId = authenticator.user()?.sId ?? "";
+    const userId = auth.user()?.sId ?? "";
 
     mockGetAccessToken.mockResolvedValue(
       new Ok(
@@ -229,11 +228,11 @@ describe("POST /api/w/[wId]/google_drive/search_for_authorization", () => {
   });
 
   it("should return 429 when rate limited", async () => {
-    const { req, res, workspace, authenticator } = await setupTest();
+    const { req, res, workspace, auth } = await setupTest();
 
     vi.mocked(rateLimiter).mockResolvedValue(0);
 
-    const userId = authenticator.user()?.sId ?? "";
+    const userId = auth.user()?.sId ?? "";
 
     mockGetAccessToken.mockResolvedValue(
       new Ok(
@@ -266,9 +265,9 @@ describe("POST /api/w/[wId]/google_drive/search_for_authorization", () => {
   });
 
   it("should return empty array when no matches", async () => {
-    const { req, res, workspace, authenticator } = await setupTest();
+    const { req, res, workspace, auth } = await setupTest();
 
-    const userId = authenticator.user()?.sId ?? "";
+    const userId = auth.user()?.sId ?? "";
 
     mockGetAccessToken.mockResolvedValue(
       new Ok(
@@ -306,9 +305,9 @@ describe("POST /api/w/[wId]/google_drive/search_for_authorization", () => {
   });
 
   it("should return formatted results on success", async () => {
-    const { req, res, workspace, authenticator } = await setupTest();
+    const { req, res, workspace, auth } = await setupTest();
 
-    const userId = authenticator.user()?.sId ?? "";
+    const userId = auth.user()?.sId ?? "";
 
     mockGetAccessToken.mockResolvedValue(
       new Ok(
@@ -371,9 +370,9 @@ describe("POST /api/w/[wId]/google_drive/search_for_authorization", () => {
   });
 
   it("should return 500 when failed to get access token", async () => {
-    const { req, res, workspace, authenticator } = await setupTest();
+    const { req, res, workspace, auth } = await setupTest();
 
-    const userId = authenticator.user()?.sId ?? "";
+    const userId = auth.user()?.sId ?? "";
 
     mockGetAccessToken
       .mockResolvedValueOnce(
@@ -409,9 +408,9 @@ describe("POST /api/w/[wId]/google_drive/search_for_authorization", () => {
   });
 
   it("should return 500 when Google Drive API fails", async () => {
-    const { req, res, workspace, authenticator } = await setupTest();
+    const { req, res, workspace, auth } = await setupTest();
 
-    const userId = authenticator.user()?.sId ?? "";
+    const userId = auth.user()?.sId ?? "";
 
     mockGetAccessToken.mockResolvedValue(
       new Ok(

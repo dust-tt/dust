@@ -14,6 +14,7 @@ interface LLMTraceContextBase {
   operationType:
     | "agent_builder_description_suggestion"
     | "butler_analyze_conversation"
+    | "project_todo_analyze_conversation"
     | "agent_builder_emoji_suggestion"
     | "agent_builder_instruction_suggestion"
     | "agent_builder_name_suggestion"
@@ -106,7 +107,7 @@ interface LLMTraceMetadata {
   capturedBytes?: number;
   durationMs: number;
   endTimestamp?: string;
-  modelId: ModelIdType;
+  modelId: ModelIdType | "unknown";
   startTimestamp: string;
   timeToFirstEventMs?: number;
   /** Reason for truncation if applicable */
@@ -120,7 +121,7 @@ export interface LLMTrace {
   /** Unique identifier for this trace (format: llm_${uuid}) */
   context: LLMTraceContext;
   error?: LLMTraceError;
-  input: LLMTraceInput;
+  input?: LLMTraceInput;
   metadata: LLMTraceMetadata;
   output?: LLMTraceOutput;
   traceId: string;

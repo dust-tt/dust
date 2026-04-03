@@ -9,7 +9,15 @@ on:
         options:
           - chrome:production
           - chrome:release
+          - firefox:production
+          - firefox:release
           - front:production
+        required: true
+  workflow_call:
+    inputs:
+      target:
+        description: "Package target to build"
+        type: string
         required: true
 
 concurrency:
@@ -29,7 +37,7 @@ jobs:
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
         with:
-          node-version: "22.22.0"
+          node-version: "24.14.0"
           build-sdks: "true"
           build-sparkle: "true"
 
@@ -43,9 +51,6 @@ jobs:
           NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
           DATADOG_CLIENT_TOKEN: ${{ secrets.DD_CLIENT_TOKEN }}
           DATADOG_SERVICE: extension
-          WORKOS_CLIENT_ID: ${{ secrets.WORKOS_CLIENT_ID }}
-          DUST_US_URL: ${{ secrets.DUST_US_URL }}
-          DUST_EU_URL: ${{ secrets.DUST_EU_URL }}
           COMMIT_HASH: ${{ steps.short_sha.outputs.short_sha }}
         run: |
           set -a
@@ -54,8 +59,13 @@ jobs:
           set +a
           npm run package:${{ inputs.target }}
 
+      - name: Resolve artifact name
+        id: artifact
+        working-directory: extension/packages
+        run: echo "name=$(basename *.zip .zip)-${{ steps.short_sha.outputs.short_sha }}" >> $GITHUB_OUTPUT
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: extension-${{ inputs.target }}-${{ steps.short_sha.outputs.short_sha }}
-          path: extension/build/
+          name: ${{ steps.artifact.outputs.name }}
+          path: extension/platforms/${{ contains(inputs.target, 'chrome') && 'chrome' || contains(inputs.target, 'firefox') && 'firefox' || 'front' }}/build/

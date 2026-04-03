@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import {
   archiveAgentConfiguration,
   getAgentConfiguration,
@@ -9,18 +10,24 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { apiError } from "@app/logger/withlogging";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types/api/internal/agent_configuration";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { AgentConfigurationSchema } from "@app/types/assistant/agent";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-export type GetAgentConfigurationResponseBody = {
-  agentConfiguration: AgentConfigurationType;
-};
-export type DeleteAgentConfigurationResponseBody = {
-  success: boolean;
-};
+export const GetAgentConfigurationResponseBodySchema = z.object({
+  agentConfiguration: AgentConfigurationSchema,
+});
+export type GetAgentConfigurationResponseBody = z.infer<
+  typeof GetAgentConfigurationResponseBodySchema
+>;
+
+export const DeleteAgentConfigurationResponseBodySchema = z.object({
+  success: z.boolean(),
+});
+export type DeleteAgentConfigurationResponseBody = z.infer<
+  typeof DeleteAgentConfigurationResponseBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,
@@ -61,14 +68,13 @@ async function handler(
 
     case "PATCH":
       const bodyValidation =
-        PostOrPatchAgentConfigurationRequestBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+        PostOrPatchAgentConfigurationRequestBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${bodyValidation.error.message}`,
           },
         });
       }
@@ -102,7 +108,7 @@ async function handler(
 
       const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
         auth,
-        assistant: bodyValidation.right.assistant,
+        assistant: bodyValidation.data.assistant,
         agentConfigurationId: req.query.aId as string,
       });
 

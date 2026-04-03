@@ -1,7 +1,5 @@
-import { getMaximalVersionAgentStepContent } from "@app/lib/api/assistant/configuration/steps";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
-import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageModel,
   ConversationModel,
@@ -11,7 +9,9 @@ import {
   UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { REINFORCEMENT_METADATA_KEYS } from "@app/lib/reinforced_agent/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
   createResourcePermissionsFromSpacesWithMap,
@@ -59,7 +59,6 @@ export type FetchConversationOptions = {
 
 interface UserParticipation {
   actionRequired: boolean;
-  lastReadAt: Date | null;
   updated: number;
 }
 
@@ -74,8 +73,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static model: ModelStaticWorkspaceAware<ConversationModel> =
     ConversationModel;
 
-  // User-specific participation fields (populated when conversations are listed for a user).
+  // User-specific fields (populated when conversations are listed for a user).
   private userParticipation?: UserParticipation;
+  private userLastReadAt: Date | null = null;
 
   constructor(
     model: ModelStaticWorkspaceAware<ConversationModel>,
@@ -83,6 +83,29 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     private readonly _space: SpaceResource | null
   ) {
     super(ConversationModel, blob);
+  }
+
+  static async fetchByModelIds(
+    auth: Authenticator,
+    ids: ModelId[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<ConversationResource[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    const conversations = await this.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+        id: ids,
+      } as WhereOptions<ConversationModel>,
+      transaction,
+    });
+
+    // Note: no permission filtering here. Callers must ensure the auth is allowed.
+    return conversations.map((c) => new this(this.model, c.get(), null));
   }
 
   get space(): SpaceResource | null {
@@ -303,26 +326,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       attributes: ["actionRequired", "conversationId", "updatedAt"],
     });
 
-    const conversationReads = await UserConversationReadsModel.findAll({
-      where: {
-        conversationId: {
-          [Op.in]: participations.map((p) => p.conversationId),
-        },
-        workspaceId: auth.getNonNullableWorkspace().id,
-        userId: user.id,
-      },
-    });
-
-    const conversationReadMap = new Map<number, Date>(
-      conversationReads.map((read) => [read.conversationId, read.lastReadAt])
-    );
-
     return new Map(
       participations.map((p) => [
         p.conversationId,
         {
           actionRequired: p.actionRequired,
-          lastReadAt: conversationReadMap.get(p.conversationId) ?? null,
           updated: p.updatedAt.getTime(),
         },
       ])
@@ -349,7 +357,25 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
-  private static async enrichWithParticipation(
+  private static async enrichWithReadState(
+    auth: Authenticator,
+    conversations: ConversationResource[]
+  ): Promise<void> {
+    if (conversations.length === 0 || !auth.user()) {
+      return;
+    }
+
+    const readMap = await this.fetchReadMapForUser(
+      auth,
+      conversations.map((c) => c.id)
+    );
+
+    conversations.forEach((c) => {
+      c.userLastReadAt = readMap.get(c.id) ?? null;
+    });
+  }
+
+  private static async enrichWithParticipationAndReadState(
     auth: Authenticator,
     conversations: ConversationResource[]
   ): Promise<void> {
@@ -369,6 +395,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         c.userParticipation = participation;
       }
     });
+
+    await this.enrichWithReadState(auth, conversations);
   }
 
   static async fetchByIds(
@@ -391,6 +419,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const res = await this.fetchByIds(auth, [sId], options);
 
     return res.length > 0 ? res[0] : null;
+  }
+
+  static async fetchByIdsWithReadState(auth: Authenticator, sIds: string[]) {
+    const conversations = await this.fetchByIds(auth, sIds);
+    await this.enrichWithReadState(auth, conversations);
+    return conversations;
   }
 
   static async canAccess(
@@ -578,7 +612,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       cutoffDate: Date;
     },
     options?: FetchConversationOptions
-  ): Promise<string[]> {
+  ): Promise<ConversationResource[]> {
     // Find all conversations that:
     // 1. Were created before the cutoff date.
     // 2. Have at least one message from the specified agent.
@@ -617,7 +651,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     // Step 2: Filter conversations by creation date.
     const conversationIds = messageWithAgent.map((m) => m.conversationId);
-    const conversations = await this.baseFetchWithAuthorization(auth, options, {
+    return this.baseFetchWithAuthorization(auth, options, {
       where: {
         id: {
           [Op.in]: conversationIds,
@@ -627,8 +661,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
       },
     });
-
-    return conversations.map((c) => c.sId);
   }
 
   /**
@@ -686,6 +718,118 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
 
     return conversations.map((c) => c.sId);
+  }
+
+  /**
+   * Returns the agent sIds that have at least one agent message with
+   * createdAt >= cutoffDate. With excludeHumanOutOfTheLoop, removes conversations where
+   * triggerId IS NOT NULL and no user messages are present.
+   */
+  static async listIdsOfAgentsWithRecentConversations(
+    auth: Authenticator,
+    {
+      agentSIds,
+      cutoffDate,
+      excludeHumanOutOfTheLoop = false,
+    }: {
+      agentSIds: string[];
+      cutoffDate: Date;
+      excludeHumanOutOfTheLoop?: boolean;
+    }
+  ): Promise<string[]> {
+    if (agentSIds.length === 0) {
+      return [];
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Step 1: start from agent_messages with the time window filter.
+    const participations = await AgentMessageModel.findAll({
+      attributes: ["agentConfigurationId"],
+      where: {
+        workspaceId,
+        agentConfigurationId: { [Op.in]: agentSIds },
+        createdAt: { [Op.gte]: cutoffDate },
+      },
+      include: [
+        {
+          model: MessageModel,
+          as: "message",
+          required: true,
+          attributes: ["conversationId"],
+        },
+      ],
+    });
+
+    if (participations.length === 0) {
+      return [];
+    }
+
+    let qualifyingConvIds: Set<number>;
+
+    if (!excludeHumanOutOfTheLoop) {
+      qualifyingConvIds = new Set(
+        participations.map((p) => p.message!.conversationId)
+      );
+    } else {
+      const conversationIds = [
+        ...new Set(participations.map((p) => p.message!.conversationId)),
+      ];
+      const candidateConversations = await ConversationModel.findAll({
+        attributes: ["id", "triggerId"],
+        where: {
+          workspaceId,
+          id: { [Op.in]: conversationIds },
+        },
+        raw: true,
+      });
+
+      if (candidateConversations.length === 0) {
+        return [];
+      }
+
+      // Non-triggered conversations are always human-initiated; triggered ones
+      // only qualify if a human has also replied.
+      const nonTriggeredIds = candidateConversations
+        .filter((c) => c.triggerId === null)
+        .map((c) => c.id);
+      const triggeredIds = candidateConversations
+        .filter((c) => c.triggerId !== null)
+        .map((c) => c.id);
+
+      if (triggeredIds.length === 0) {
+        qualifyingConvIds = new Set(nonTriggeredIds);
+      } else {
+        const triggeredConvsWithUserMessages = await MessageModel.findAll({
+          attributes: [
+            [
+              Sequelize.fn("DISTINCT", Sequelize.col("conversationId")),
+              "conversationId",
+            ],
+          ],
+          where: { workspaceId, conversationId: { [Op.in]: triggeredIds } },
+          include: [
+            {
+              model: UserMessageModel,
+              as: "userMessage",
+              required: true,
+              attributes: [],
+            },
+          ],
+          raw: true,
+        });
+        qualifyingConvIds = new Set([
+          ...nonTriggeredIds,
+          ...triggeredConvsWithUserMessages.map((m) => m.conversationId),
+        ]);
+      }
+    }
+
+    return uniq(
+      participations
+        .filter((p) => qualifyingConvIds.has(p.message!.conversationId))
+        .map((p) => p.agentConfigurationId)
+    );
   }
 
   static async fetchConversationWithoutContent(
@@ -776,6 +920,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     });
 
+    await this.enrichWithReadState(auth, conversations);
+
     // Sort by participation updated time descending.
     return conversations.sort(
       (a, b) =>
@@ -861,6 +1007,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     });
 
+    await this.enrichWithReadState(auth, resultConversations);
+
     const lastConversation =
       resultConversations[resultConversations.length - 1];
     const lastValue = lastConversation
@@ -889,17 +1037,19 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return this.fetchPrivateConversationsPaginated(auth, { pagination });
   }
 
-  static async listSpaceUnreadConversationsForUser(
+  static async listSpaceUnreadConversationsAndActivityForUser(
     auth: Authenticator,
     spaceIds: number[]
   ): Promise<{
     unreadConversations: ConversationResource[];
     nonParticipantUnreadConversations: ConversationResource[];
+    lastUserActivityBySpace: Map<number, Date>;
   }> {
     if (spaceIds.length === 0) {
       return {
         unreadConversations: [],
         nonParticipantUnreadConversations: [],
+        lastUserActivityBySpace: new Map(),
       };
     }
     const conversations = await this.baseFetchWithAuthorization(
@@ -914,35 +1064,20 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
 
     if (conversations.length === 0) {
-      return { unreadConversations: [], nonParticipantUnreadConversations: [] };
+      return {
+        unreadConversations: [],
+        nonParticipantUnreadConversations: [],
+        lastUserActivityBySpace: new Map(),
+      };
     }
 
     const participationMap = await this.fetchParticipationMapForUser(
       auth,
       conversations.map((c) => c.id)
     );
-    const conversationIds = new Set(Array.from(participationMap.keys()));
+    const participantConversationIds = new Set(participationMap.keys());
 
-    const nonParticipantConversations = conversations.filter(
-      (c) => !conversationIds.has(c.id)
-    );
-
-    if (
-      conversationIds.size === 0 &&
-      nonParticipantConversations.length === 0
-    ) {
-      return {
-        unreadConversations: [],
-        nonParticipantUnreadConversations: [],
-      };
-    }
-
-    const readMap = await this.fetchReadMapForUser(
-      auth,
-      nonParticipantConversations.map((c) => c.id)
-    );
-
-    // Attach participation data to resources.
+    // Attach participation data and read state to all resources.
     conversations.forEach((c) => {
       const participation = participationMap.get(c.id);
       if (participation) {
@@ -950,35 +1085,43 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     });
 
+    await this.enrichWithReadState(auth, conversations);
+
     // These conversations are used to display the unread count in the sidebar.
     // We do not count conversations the user does not participate in.
-    const unreadConversations = conversations.filter((c) => {
-      const participation = c.userParticipation;
-      if (!participation) {
-        return false;
-      }
-      if (participation.lastReadAt === null) {
-        return true;
-      }
-      if (c.updatedAt > participation.lastReadAt) {
-        return true;
-      }
-      return false;
-    });
+    const unreadConversations = conversations.filter(
+      (c) =>
+        c.userParticipation &&
+        (c.userLastReadAt === null || c.updatedAt > c.userLastReadAt)
+    );
 
-    const nonParticipantUnreadConversations =
-      nonParticipantConversations.filter((c) => {
-        const lastReadAt = readMap.get(c.id);
-        if (!lastReadAt) {
-          return true;
-        }
-        if (c.updatedAt > lastReadAt) {
-          return true;
-        }
-        return false;
-      });
+    const nonParticipantUnreadConversations = conversations.filter(
+      (c) =>
+        !participantConversationIds.has(c.id) &&
+        (c.userLastReadAt === null || c.updatedAt > c.userLastReadAt)
+    );
 
-    return { unreadConversations, nonParticipantUnreadConversations };
+    const lastUserActivityBySpace = new Map<number, Date>();
+
+    for (const conversation of conversations) {
+      const spaceModelId = conversation.space?.id;
+      if (!spaceModelId) {
+        continue;
+      }
+      const lastReadAt = conversation.userLastReadAt;
+      if (lastReadAt) {
+        const current = lastUserActivityBySpace.get(spaceModelId);
+        if (!current || lastReadAt > current) {
+          lastUserActivityBySpace.set(spaceModelId, lastReadAt);
+        }
+      }
+    }
+
+    return {
+      unreadConversations,
+      nonParticipantUnreadConversations,
+      lastUserActivityBySpace,
+    };
   }
 
   static async getSpaceUnreadConversationIds(
@@ -1046,7 +1189,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       order: [["updatedAt", "DESC"]],
     });
 
-    await this.enrichWithParticipation(auth, conversations);
+    await this.enrichWithParticipationAndReadState(auth, conversations);
 
     return conversations;
   }
@@ -1115,7 +1258,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       resultConversations = conversations.slice(0, pagination.limit);
     }
 
-    await this.enrichWithParticipation(auth, resultConversations);
+    await this.enrichWithParticipationAndReadState(auth, resultConversations);
 
     const lastConversation =
       resultConversations[resultConversations.length - 1];
@@ -1200,6 +1343,55 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         };
       })
     );
+  }
+
+  static async listReinforcementConversations(
+    auth: Authenticator,
+    agentConfigurationId: string
+  ): Promise<ConversationWithoutContentType[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const conversations = await ConversationModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        [Op.and]: [
+          where(
+            fn(
+              "jsonb_extract_path_text",
+              col("metadata"),
+              REINFORCEMENT_METADATA_KEYS.reinforcedAgent
+            ),
+            "true"
+          ),
+          where(
+            fn(
+              "jsonb_extract_path_text",
+              col("metadata"),
+              REINFORCEMENT_METADATA_KEYS.reinforcedAgentConfigurationId
+            ),
+            agentConfigurationId
+          ),
+        ],
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return conversations.map((c) => ({
+      id: c.id,
+      created: c.createdAt.getTime(),
+      updated: c.updatedAt.getTime(),
+      sId: c.sId,
+      title: c.title,
+      triggerId: ConversationResource.triggerIdToSId(c.triggerId, workspace.id),
+      actionRequired: false,
+      unread: false,
+      lastReadMs: Date.now(),
+      hasError: c.hasError,
+      requestedSpaceIds: c.requestedSpaceIds.map(String),
+      spaceId: null,
+      depth: c.depth,
+      metadata: c.metadata,
+    }));
   }
 
   static async markAsActionRequired(
@@ -1484,13 +1676,29 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   async getMessageById(
     auth: Authenticator,
-    messageId: string
+    messageId: string,
+    version?: number
+  ): Promise<Result<MessageModel, Error>> {
+    return ConversationResource.getMessageByIdInConversation(
+      auth,
+      this.toJSON(),
+      messageId,
+      version
+    );
+  }
+
+  static async getMessageByIdInConversation(
+    auth: Authenticator,
+    conversation: ConversationWithoutContentType,
+    messageId: string,
+    version?: number
   ): Promise<Result<MessageModel, Error>> {
     const message = await MessageModel.findOne({
       where: {
-        conversationId: this.id,
+        conversationId: conversation.id,
         workspaceId: auth.getNonNullableWorkspace().id,
         sId: messageId,
+        ...(version ? { version } : {}),
       },
       include: [
         {
@@ -1508,6 +1716,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     if (!message) {
       return new Err(new Error("Message not found"));
+    }
+
+    if (message.branchSId) {
+      const branch = await ConversationBranchResource.fetchById(
+        auth,
+        message.branchSId
+      );
+      if (!branch || !branch.canRead(auth)) {
+        return new Err(new Error("Message not found"));
+      }
     }
 
     return new Ok(message);
@@ -1641,13 +1859,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           model: AgentMessageModel,
           as: "agentMessage",
           required: false,
-          include: [
-            {
-              model: AgentStepContentModel,
-              as: "agentStepContents",
-              required: false,
-            },
-          ],
         },
         // We skip ContentFragmentResource here for efficiency reasons (retrieving contentFragments
         // along with messages in one query). Only once we move to a MessageResource will we be able
@@ -1659,16 +1870,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
       ],
     });
-
-    // Filter to only keep the step content with the maximum version for each step and index combination.
-    for (const message of messages) {
-      if (message.agentMessage && message.agentMessage.agentStepContents) {
-        message.agentMessage.agentStepContents =
-          getMaximalVersionAgentStepContent(
-            message.agentMessage.agentStepContents
-          );
-      }
-    }
 
     return {
       hasMore,
@@ -2200,14 +2401,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   toJSON(): ConversationWithoutContentType {
-    // If conversation is fetched for a user, use the participation data.
-    const participation = this.userParticipation ?? {
-      actionRequired: false,
-      lastReadAt: null,
-    };
-
     return {
-      actionRequired: participation.actionRequired,
+      actionRequired: this.userParticipation?.actionRequired ?? false,
       created: this.createdAt.getTime(),
       updated: this.updatedAt.getTime(),
       spaceId: this.space?.sId ?? null,
@@ -2220,9 +2415,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       sId: this.sId,
       title: this.title,
       unread:
-        participation.lastReadAt === null ||
-        (!!this.updatedAt && this.updatedAt > participation.lastReadAt),
-      lastReadMs: participation.lastReadAt?.getTime() ?? null,
+        this.userLastReadAt === null ||
+        (!!this.updatedAt && this.updatedAt > this.userLastReadAt),
+      lastReadMs: this.userLastReadAt?.getTime() ?? null,
       depth: this.depth,
       metadata: this.metadata,
     };

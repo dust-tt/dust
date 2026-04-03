@@ -1,4 +1,4 @@
-import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
+import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getSuggestedTemplatesForQuery } from "@app/lib/api/assistant/template_suggestion";
 import { Authenticator } from "@app/lib/auth";

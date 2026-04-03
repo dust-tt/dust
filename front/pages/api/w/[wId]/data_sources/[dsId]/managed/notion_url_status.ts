@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -76,7 +77,7 @@ async function handler(
     });
   }
 
-  const flags = await getFeatureFlags(owner);
+  const flags = await getFeatureFlags(auth);
   if (!flags.includes("advanced_notion_management")) {
     return apiError(req, res, {
       status_code: 403,

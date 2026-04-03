@@ -87,11 +87,11 @@ function filteredBucketToPoint(bucket: FilteredDateBucket): ToolUsagePoint {
 
 export async function fetchToolUsageMetrics(
   baseQuery: estypes.QueryDslQueryContainer,
-  serverName: string | null
+  serverName: string | null,
+  timezone: string = "UTC"
 ): Promise<Result<ToolUsagePoint[], Error>> {
   // When serverName is provided, filter the nested tools_used aggregation
   // When null, aggregate across all tools
-
   const nestedAggs: Record<string, estypes.AggregationsAggregationContainer> =
     serverName
       ? {
@@ -125,7 +125,7 @@ export async function fetchToolUsageMetrics(
       date_histogram: {
         field: "timestamp",
         calendar_interval: "day",
-        time_zone: "UTC",
+        time_zone: timezone,
       },
       aggs: {
         tools_nested: {

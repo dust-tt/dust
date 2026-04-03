@@ -59,22 +59,32 @@ export function PluginForm({
       Object.entries(manifest.args).map(([key, arg]) => {
         switch (arg.type) {
           case "text":
-            return [key, ""];
+            return [
+              key,
+              arg.async && asyncArgs?.[key] !== undefined
+                ? (asyncArgs[key] as string)
+                : "",
+            ];
           case "string":
-            return [key, ""];
+            return [
+              key,
+              arg.async && asyncArgs?.[key] !== undefined
+                ? (asyncArgs[key] as string)
+                : "",
+            ];
           case "number":
             return [
               key,
               arg.async && asyncArgs?.[key] !== undefined
                 ? (asyncArgs[key] as number)
-                : 0,
+                : (arg.default ?? 0),
             ];
           case "boolean":
             return [
               key,
               arg.async && asyncArgs?.[key] !== undefined
                 ? (asyncArgs[key] as boolean)
-                : false,
+                : (arg.default ?? false),
             ];
           case "enum":
             return [

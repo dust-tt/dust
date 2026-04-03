@@ -1,7 +1,7 @@
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
-} from "@app/components/resources/resources_icons";
+} from "@app/components/resources/resources_icon_names";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type {
   LightMCPToolConfigurationType,
@@ -42,6 +42,10 @@ export function getRetryPolicyFromToolConfiguration(
       DEFAULT_MCP_TOOL_RETRY_POLICY;
 }
 
+// Schemas are in mcp_schemas.ts to avoid pulling zod + heavy dependencies
+// into the Temporal workflow sandbox.
+// Import schemas from "@app/lib/api/mcp_schemas" directly.
+
 export type ToolDisplayLabels = {
   running: string; // e.g. "Searching data"
   done: string; // e.g. "Search data"
@@ -55,24 +59,6 @@ export type MCPToolType = {
   // Mandatory for internal MCP servers (enforced via ServerMetadata type).
   displayLabels?: ToolDisplayLabels;
 };
-
-export type MCPToolWithAvailabilityType = MCPToolType & {
-  availability: MCPServerAvailability;
-};
-
-export type WithStakeLevelType<T> = T & {
-  stakeLevel: MCPToolStakeLevelType;
-};
-
-export type ServerSideMCPToolTypeWithStakeAndRetryPolicy =
-  WithStakeLevelType<MCPToolWithAvailabilityType> & {
-    toolServerId: string;
-    timeoutMs?: number;
-    retryPolicy: MCPToolRetryPolicyType;
-  };
-
-export type ClientSideMCPToolTypeWithStakeLevel =
-  WithStakeLevelType<MCPToolWithAvailabilityType>;
 
 export type MCPServerType = {
   // This will be part of the MCP server metadata at the protocol level.
@@ -94,23 +80,13 @@ export type MCPServerType = {
   customHeaders?: Record<string, string> | null;
 };
 
-export type RemoteMCPServerType = MCPServerType & {
-  url?: string;
-  lastSyncAt?: Date | null;
-  lastError?: string | null;
-  icon: CustomResourceIconType | InternalAllowedIconType;
-  // Always manual and allow multiple instances.
-  availability: "manual";
-  allowMultipleInstances: true;
-};
-
 export type MCPServerViewTypeType = "remote" | "internal";
 
 export interface MCPServerViewType {
   id: ModelId;
   sId: string;
-  name: string | null; // Can be null if the user did not set a custom name.
-  description: string | null; // Can be null if the user did not set a custom description.
+  name: string | null;
+  description: string | null;
   createdAt: number;
   updatedAt: number;
   spaceId: string;
@@ -124,6 +100,36 @@ export interface MCPServerViewType {
     enabled: boolean;
   }[];
 }
+
+export type MCPToolWithAvailabilityType = MCPToolType & {
+  availability: MCPServerAvailability;
+};
+
+export type WithStakeLevelType<T> = T & {
+  stakeLevel: MCPToolStakeLevelType;
+};
+
+export type ServerSideMCPToolTypeWithStakeAndRetryPolicy =
+  WithStakeLevelType<MCPToolWithAvailabilityType> & {
+    toolServerId: string;
+    timeoutMs?: number;
+    retryPolicy: MCPToolRetryPolicyType;
+  };
+
+export type ClientSideMCPToolTypeWithStakeLevel =
+  WithStakeLevelType<MCPToolWithAvailabilityType> & {
+    argumentsRequiringApproval?: string[];
+  };
+
+export type RemoteMCPServerType = MCPServerType & {
+  url?: string;
+  lastSyncAt?: Date | null;
+  lastError?: string | null;
+  icon: CustomResourceIconType | InternalAllowedIconType;
+  // Always manual and allow multiple instances.
+  availability: "manual";
+  allowMultipleInstances: true;
+};
 
 export type MCPServerDefinitionType = Omit<
   MCPServerType,

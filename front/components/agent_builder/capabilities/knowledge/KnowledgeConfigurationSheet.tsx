@@ -4,6 +4,7 @@ import {
   CAPABILITY_CONFIGS,
   getInitialPageId,
   getKnowledgeDefaultValues,
+  getKnowledgeLookupMethodLabel,
 } from "@app/components/agent_builder/capabilities/knowledge/utils";
 import {
   generateUniqueActionName,
@@ -294,7 +295,10 @@ function KnowledgeConfigurationSheetContent({
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (mcpServerView && !isEditing) {
-      const processingMethodName = getMcpServerViewDisplayName(mcpServerView);
+      const processingMethodName = getKnowledgeLookupMethodLabel(
+        mcpServerView.server.name,
+        getMcpServerViewDisplayName(mcpServerView)
+      );
       const currentName = getValues("name");
       if (currentName !== processingMethodName) {
         setValue("name", processingMethodName, {
@@ -391,11 +395,9 @@ function KnowledgeConfigurationSheetContent({
     },
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      title: config?.configPageTitle || "Configure Knowledge",
+      title: config?.configPageTitle ?? "Configure Knowledge",
       description:
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        config?.configPageDescription ||
+        config?.configPageDescription ??
         "Select knowledge type and configure settings",
       icon: config
         ? () => <Avatar icon={config.icon} size="md" className="mr-2" />

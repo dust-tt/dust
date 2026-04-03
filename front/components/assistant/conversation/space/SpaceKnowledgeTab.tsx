@@ -348,7 +348,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
 
           {!hasFiles ? (
             <EmptyCTA
-              message="No knowledge files in this room yet."
+              message="No knowledge added to this project yet."
               action={
                 <EmptyCTAButton
                   icon={ArrowUpOnSquareIcon}

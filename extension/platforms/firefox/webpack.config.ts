@@ -1,0 +1,268 @@
+import { execSync } from "child_process";
+import CopyPlugin from "copy-webpack-plugin";
+import Dotenv from "dotenv-webpack";
+import fs from "fs";
+import HtmlWebpackPlugin from "html-webpack-plugin";
+import path from "path";
+import TerserPlugin from "terser-webpack-plugin";
+import { promisify } from "util";
+import type { Configuration } from "webpack";
+import webpack from "webpack";
+import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
+import ExtReloader from "webpack-ext-reloader";
+import WebpackBar from "webpackbar";
+import ZipPlugin from "zip-webpack-plugin";
+
+import type { Environment } from "../../config/env";
+
+const rootDir = path.resolve(__dirname);
+
+const resolvePath = (...segments: string[]) =>
+  path.resolve(rootDir, ...segments);
+
+const readFileAsync = promisify(fs.readFile).bind(fs) as (
+  path: string
+) => Promise<string>;
+
+// Get git commit hash
+const getCommitHash = () => {
+  try {
+    return execSync("git rev-parse --short HEAD").toString().trim();
+  } catch (e) {
+    console.error(e);
+    return "development";
+  }
+};
+
+export const getConfig = async ({
+  env,
+  shouldBuild,
+}: {
+  env: Environment;
+  shouldBuild: "none" | "prod" | "analyze";
+}): Promise<Configuration> => {
+  const isDevelopment = env === "development";
+  const packageJson = JSON.parse(
+    fs.readFileSync(path.resolve(__dirname, "../../package.json"), "utf8")
+  );
+  const version = packageJson.version;
+
+  if (!isDevelopment && !process.env.DATADOG_CLIENT_TOKEN) {
+    throw new Error(
+      "❌ DATADOG_CLIENT_TOKEN=[Firefox extension logs collection token] must be set when building for production or release.\n" +
+        "The token can be found on https://app.datadoghq.eu/organization-settings/client-tokens"
+    );
+  }
+  const baseManifestPath = resolvePath("./manifests/manifest.base.json");
+  const envManifestPath = resolvePath(`./manifests/manifest.${env}.json`);
+
+  const baseManifest = JSON.parse(await readFileAsync(baseManifestPath));
+  const envManifest = JSON.parse(await readFileAsync(envManifestPath));
+  const mergedManifest = { ...baseManifest, ...envManifest };
+  const manifestVersion = mergedManifest.version;
+
+  if (manifestVersion !== version) {
+    throw new Error(
+      `❌ Manifest version (${manifestVersion}) does not match package version (${version})`
+    );
+  }
+
+  const buildDirPath = resolvePath("./build");
+
+  const packageDirPath =
+    shouldBuild === "prod" ? resolvePath("../../packages") : null;
+
+  return {
+    mode: isDevelopment ? "development" : "production",
+    node: false,
+    optimization: {
+      minimize: !isDevelopment,
+      minimizer: [
+        new TerserPlugin({
+          extractComments: false,
+          terserOptions: {
+            output: {
+              ascii_only: true,
+            },
+          },
+        }),
+      ],
+      concatenateModules: shouldBuild !== "analyze",
+      splitChunks: {
+        chunks: (chunk) => chunk.name === "main",
+        maxSize: 5 * 1024 * 1024, // 5MB — Firefox's 5MB limit
+        minSize: 50 * 1024,
+        cacheGroups: {
+          vendors: {
+            test: /[\\/]node_modules[\\/]/,
+            name: "vendors",
+            chunks: (chunk) => chunk.name === "main",
+            priority: 10,
+          },
+        },
+      },
+    },
+    performance: false,
+    devtool: isDevelopment ? "inline-source-map" : undefined,
+    entry: {
+      main: resolvePath("./main.tsx"),
+      background: resolvePath("./background.ts"),
+      page: resolvePath("./../../shared/page.ts"),
+    },
+    output: {
+      path: buildDirPath,
+      filename: "[name].js",
+      chunkFilename: "[id].chunk.js",
+    },
+    resolve: {
+      extensions: [".js", ".json", ".mjs", ".jsx", ".ts", ".tsx"],
+      alias: {
+        "@extension": path.resolve(__dirname, "../../"),
+        "@app/logger/logger": path.resolve(
+          __dirname,
+          "../../../front/logger/datadogLogger.ts"
+        ),
+        "@app/lib/platform": path.resolve(__dirname, "../../shared/platform"),
+        "@app": path.resolve(__dirname, "../../../front"),
+        redis: false,
+      },
+      fallback: {
+        url: false,
+        stream: require.resolve("stream-browserify"),
+        buffer: require.resolve("buffer/"),
+        path: false,
+        fs: false,
+        crypto: false,
+        events: false,
+        net: false,
+        redis: false,
+        zlib: false,
+        assert: require.resolve("assert"),
+        http: require.resolve("stream-http"),
+        https: require.resolve("https-browserify"),
+      },
+    },
+    module: {
+      rules: [
+        {
+          test: /\.css$/,
+          use: [
+            "style-loader",
+            "css-loader",
+            {
+              loader: "postcss-loader",
+              options: {
+                postcssOptions: {
+                  config: resolvePath("../../config/postcss.config.js"),
+                },
+              },
+            },
+          ],
+        },
+        {
+          test: /\.tsx?$/,
+          use: {
+            loader: "ts-loader",
+            options: {
+              configFile: resolvePath("../../tsconfig.json"),
+              transpileOnly: true,
+            },
+          },
+          exclude: /node_modules/,
+        },
+      ],
+    },
+    plugins: [
+      new webpack.DefinePlugin({
+        global: "globalThis",
+      }),
+      new WebpackBar({
+        name: `DustExt Firefox [${env}]`,
+        color: "#FF7139",
+      }),
+      new webpack.EnvironmentPlugin({
+        BUILD_DATE: process.env.COMMIT_HASH || Math.floor(Date.now() / 1000),
+        COMMIT_HASH: process.env.COMMIT_HASH || getCommitHash(),
+        DATADOG_CLIENT_TOKEN: process.env.DATADOG_CLIENT_TOKEN || "",
+        DATADOG_ENV: isDevelopment ? "dev" : "prod",
+        DUST_EXTENSION_VERSION: `firefox-${version}`,
+        NEXT_PUBLIC_DUST_APP_URL: process.env.NEXT_PUBLIC_DUST_APP_URL || "",
+        NEXT_PUBLIC_DUST_CLIENT_FACING_URL:
+          process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL || "",
+        NEXT_PUBLIC_NOVU_API_URL: process.env.NEXT_PUBLIC_NOVU_API_URL || "",
+        NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER:
+          process.env.NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER || "",
+        NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL:
+          process.env.NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL || "",
+        NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY:
+          process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY || "",
+        VIZ_PUBLIC_URL: process.env.VIZ_PUBLIC_URL || "",
+      }),
+      new webpack.ProvidePlugin({
+        Buffer: ["buffer", "Buffer"],
+      }),
+      new Dotenv({
+        path: isDevelopment
+          ? resolvePath("../../.env.development")
+          : resolvePath("../../.env.production"),
+      }),
+      new CopyPlugin({
+        patterns: [
+          {
+            from: baseManifestPath,
+            transform: (content) => {
+              const finalManifest = {
+                ...JSON.parse(content.toString()),
+                ...envManifest,
+              };
+              return Buffer.from(JSON.stringify(finalManifest, null, 2));
+            },
+            to: path.join(buildDirPath, "manifest.json"),
+          },
+          {
+            from: resolvePath("../../ui/request-mic.html"),
+            to: path.join(buildDirPath, "request-mic.html"),
+          },
+          {
+            from: resolvePath("../../ui/request-mic.js"),
+            to: path.join(buildDirPath, "request-mic.js"),
+          },
+          {
+            context: resolvePath("../../ui/images"),
+            from: "**/*.png",
+            to: path.resolve(buildDirPath, "images"),
+          },
+        ],
+      }),
+      new HtmlWebpackPlugin({
+        template: resolvePath("../../ui/main.html"),
+        filename: "main.html",
+        chunks: ["main"],
+        inject: "body",
+        scriptLoading: "blocking",
+      }),
+      new webpack.BannerPlugin({
+        banner: "\ufeff", // UTF-8 BOM
+        raw: true,
+      }),
+      ...(shouldBuild === "analyze" ? [new BundleAnalyzerPlugin()] : []),
+      packageDirPath
+        ? new ZipPlugin({
+            path: packageDirPath,
+            filename: `Dust_Extension_Firefox.${env}.v${version}.zip`,
+          })
+        : null,
+      isDevelopment
+        ? // @ts-expect-error (it's working)
+          new ExtReloader({
+            port: 9080,
+            reloadPage: true,
+            entries: {
+              contentScript: "main",
+              background: "background",
+            },
+          })
+        : null,
+    ].filter(Boolean),
+  };
+};

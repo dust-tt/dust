@@ -1,3 +1,8 @@
+/** @ignoreswagger */
+import {
+  buildAuditLogTarget,
+  emitAuditLogEventDirect,
+} from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import { makeEnterpriseConnectionInitiateLoginUrl } from "@app/lib/api/enterprise_connection";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
@@ -14,6 +19,7 @@ import { createOrUpdateUser, fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import { readAnonymousIdFromCookies } from "@app/lib/utils/anonymous_id";
 import type { UTMParams } from "@app/lib/utils/utm";
 import { extractUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
@@ -47,6 +53,10 @@ async function handler(
 
   // Extract UTM params to preserve through login redirects
   const utmParams = extractUTMParams(req.query);
+
+  // Read the persistent anonymous device ID to stitch pre-signup events.
+  const anonymousId =
+    readAnonymousIdFromCookies(req.headers.cookie) ?? undefined;
 
   // Use the workspaceId from the query if it exists, otherwise use the workspaceId from the workos session.
   const targetWorkspaceId = typeof wId === "string" ? wId : workspaceId;
@@ -99,6 +109,7 @@ async function handler(
       lastLoginAt: user.lastLoginAt?.getTime() ?? null,
     },
     utmParams,
+    anonymousId,
     userCreated,
   });
 
@@ -263,6 +274,32 @@ async function handler(
   };
 
   await user.recordLoginActivity();
+
+  if (targetWorkspace) {
+    const forwarded = req.headers["x-forwarded-for"];
+    const ip = forwarded
+      ? (Array.isArray(forwarded) ? forwarded[0] : forwarded)
+          .split(",")[0]
+          .trim()
+      : req.socket?.remoteAddress;
+    void emitAuditLogEventDirect({
+      workspace: targetWorkspace,
+      action: "user.login",
+      actor: {
+        type: "user",
+        id: user.sId,
+        name: user.name,
+      },
+      targets: [
+        buildAuditLogTarget("user", { sId: user.sId, name: user.name }),
+      ],
+      context: { location: ip ?? "internal" },
+      metadata: {
+        isSSO: String(session.isSSO),
+        authenticationMethod: session.authenticationMethod ?? "unknown",
+      },
+    });
+  }
 
   // Mark first use for provisioned membership when user accesses a workspace.
   if (targetWorkspace) {

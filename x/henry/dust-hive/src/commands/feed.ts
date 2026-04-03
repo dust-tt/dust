@@ -83,7 +83,7 @@ export async function feedCommand(
   }
 
   // Get front directory path
-  const worktreePath = getWorktreeDir(env.name);
+  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
   const frontPath = path.join(worktreePath, "front");
 
   // Get list of available scenarios
@@ -136,6 +136,8 @@ export async function feedCommand(
       stdout: "inherit",
       stderr: "inherit",
       stdin: "inherit",
+      // NODE_ENV=development enables pino-pretty for readable log output.
+      env: { ...process.env, NODE_ENV: "development" },
     });
 
     const exitCode = await proc.exited;

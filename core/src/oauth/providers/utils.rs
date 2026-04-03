@@ -8,7 +8,7 @@ use reqwest::RequestBuilder;
 use std::io::prelude::*;
 use std::time::Duration;
 use tokio::time::timeout;
-use tracing::error;
+use tracing::{error, info};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProviderHttpRequestError {
@@ -30,6 +30,7 @@ pub async fn execute_request(
     provider: ConnectionProvider,
     req: RequestBuilder,
 ) -> Result<serde_json::Value, ProviderHttpRequestError> {
+    let start = std::time::Instant::now();
     let now = utils::now_secs();
 
     let timeout_secs = provider_timeout_seconds(provider);
@@ -84,6 +85,12 @@ pub async fn execute_request(
             anyhow::anyhow!("Empty response body").into(),
         ));
     }
+
+    info!(
+        provider = ?provider,
+        elapsed_ms = start.elapsed().as_millis(),
+        "OAuth provider token request succeeded"
+    );
 
     // Check content_type to determine parsing strategy
     // OAuth 2.0 spec allows token endpoints to return either JSON or form-encoded

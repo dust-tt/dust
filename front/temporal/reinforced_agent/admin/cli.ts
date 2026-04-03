@@ -1,22 +1,21 @@
-import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import {
-  launchReinforcedAgentWorkflow,
+  launchAllReinforcedAgentWorkspaceCrons,
+  launchReinforcedAgentWorkspaceCron,
   startReinforcedAgentForAgentWorkflow,
   startReinforcedAgentWorkspaceWorkflow,
-  stopReinforcedAgentWorkflow,
+  stopAllReinforcedAgentWorkspaceCrons,
+  stopReinforcedAgentWorkspaceCron,
 } from "@app/temporal/reinforced_agent/client";
-import { QUEUE_NAME } from "@app/temporal/reinforced_agent/config";
-import { runSignal } from "@app/temporal/reinforced_agent/signals";
-import { reinforcedAgentWorkflow } from "@app/temporal/reinforced_agent/workflows";
 import parseArgs from "minimist";
 
 function usage() {
   console.error(`Usage:
-  start                                                              Start the cron workflow
-  stop                                                               Stop the cron workflow
-  run-now                                                            Trigger the top-level workflow immediately
-  run-workspace --workspace-id <sId> [--batch]                       Run for a specific workspace (--batch defaults to false)
-  run-agent --workspace-id <sId> --agent-id <sId> [--batch]         Run for a specific agent (--batch defaults to false)`);
+  start                                                                          Start cron workflows for all flagged workspaces
+  stop                                                                           Stop cron workflows for all flagged workspaces
+  start-workspace --workspace-id <sId>                                          Start the cron workflow for a specific workspace
+  stop-workspace --workspace-id <sId>                                           Stop the cron workflow for a specific workspace
+  run-workspace --workspace-id <sId> [--batch]                                  Run once for a specific workspace (--batch defaults to false)
+  run-agent --workspace-id <sId> --agent-id <sId> [--batch] [--days <n>]       Run for a specific agent (--batch defaults to false, --days defaults to 1)`);
 }
 
 const main = async () => {
@@ -30,18 +29,31 @@ const main = async () => {
 
   switch (command) {
     case "start":
-      await launchReinforcedAgentWorkflow();
+      await launchAllReinforcedAgentWorkspaceCrons();
       return;
     case "stop":
-      await stopReinforcedAgentWorkflow({ stopReason: "Stopped via CLI" });
+      await stopAllReinforcedAgentWorkspaceCrons();
       return;
-    case "run-now": {
-      const client = await getTemporalClientForFrontNamespace();
-      await client.workflow.signalWithStart(reinforcedAgentWorkflow, {
-        workflowId: "reinforced-agent-workflow",
-        taskQueue: QUEUE_NAME,
-        signal: runSignal,
-        signalArgs: undefined,
+    case "start-workspace": {
+      const workspaceId = argv["workspace-id"];
+      if (!workspaceId) {
+        console.error("Error: --workspace-id is required");
+        usage();
+        process.exit(1);
+      }
+      await launchReinforcedAgentWorkspaceCron({ workspaceId });
+      return;
+    }
+    case "stop-workspace": {
+      const workspaceId = argv["workspace-id"];
+      if (!workspaceId) {
+        console.error("Error: --workspace-id is required");
+        usage();
+        process.exit(1);
+      }
+      await stopReinforcedAgentWorkspaceCron({
+        workspaceId,
+        stopReason: "Stopped via CLI",
       });
       return;
     }
@@ -66,10 +78,13 @@ const main = async () => {
         usage();
         process.exit(1);
       }
+      const conversationLookbackDays =
+        argv["days"] !== undefined ? Number(argv["days"]) : 1;
       await startReinforcedAgentForAgentWorkflow({
         workspaceId,
         agentConfigurationId: agentId,
         useBatchMode: argv["batch"],
+        conversationLookbackDays,
       });
       return;
     }

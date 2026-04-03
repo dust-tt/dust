@@ -1,3 +1,4 @@
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
@@ -15,13 +16,16 @@ import type {
 } from "./agent";
 import type { MentionType, RichMention } from "./mentions";
 
-export type MessageVisibility = "visible" | "deleted";
+export type MessageVisibility = "visible" | "deleted" | "pending";
 
 export type ConversationMessageReactions = {
   messageId: string;
   reactions: MessageReactionType[];
 }[];
 
+/**
+ * @swaggerschema PrivateReaction (swagger_private_schemas.ts)
+ */
 export type MessageReactionType = {
   emoji: string;
   users: {
@@ -74,7 +78,8 @@ export type ClientMessageOrigin =
   | "web"
   | "project_kickoff"
   | "extension"
-  | "agent_sidekick";
+  | "agent_sidekick"
+  | "reinforced_agent_notification";
 
 export type UserMessageOrigin =
   // "api" is Custom API usage, while e.g. extension, gsheets and many other origins
@@ -103,8 +108,13 @@ export type UserMessageOrigin =
   // (to be created).
   | "onboarding_conversation"
   // for internal use, for the butler in projects
-  | "project_butler";
+  | "project_butler"
+  // for internal use, for reinforced agent batch LLM operations
+  | "reinforcement";
 
+/**
+ * @swaggerschema Context (swagger_schemas.ts), PrivateUserMessageContext (swagger_private_schemas.ts)
+ */
 export type UserMessageContext = {
   username: string;
   fullName: string | null;
@@ -125,6 +135,9 @@ export type AgenticMessageData = {
   originMessageId: string;
 };
 
+/**
+ * @swaggerschema PrivateRichMentionWithStatus (swagger_private_schemas.ts)
+ */
 export type RichMentionWithStatus =
   | (RichMention & {
       dismissed: boolean;
@@ -142,6 +155,9 @@ export type RichMentionWithStatus =
       status: "agent_restricted_by_space_usage";
     });
 
+/**
+ * @swaggerschema PrivateUserMessage (swagger_private_schemas.ts)
+ */
 export type UserMessageType = {
   id: ModelId;
   created: number;
@@ -150,6 +166,7 @@ export type UserMessageType = {
   visibility: MessageVisibility;
   version: number;
   rank: number;
+  branchId: string | null;
   user: UserType | null;
   mentions: MentionType[];
   richMentions: RichMentionWithStatus[];
@@ -187,11 +204,13 @@ export type AgentMessageStatus =
   | "created"
   | "succeeded"
   | "failed"
-  | "cancelled";
+  | "cancelled"
+  | "gracefully_stopped";
 
 export const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
   "succeeded",
   "cancelled",
+  "gracefully_stopped",
 ];
 
 export interface CitationType {
@@ -214,6 +233,7 @@ export type BaseAgentMessageType = {
   sId: string;
   version: number;
   rank: number;
+  branchId: string | null;
   created: number;
   completedTs: number | null;
   parentMessageId: string;
@@ -229,10 +249,23 @@ export type BaseAgentMessageType = {
   prunedContext?: boolean;
 };
 
+export type InlineActivityStep =
+  | { type: "thinking"; content: string; id: string }
+  | {
+      type: "action";
+      label: string;
+      id: string;
+      actionId: string;
+      internalMCPServerName: InternalMCPServerNameType | null;
+    };
+
 export type ParsedContentItem =
   | { kind: "reasoning"; content: string }
   | { kind: "action"; action: AgentMCPActionWithOutputType };
 
+/**
+ * @swaggerschema PrivateAgentMessage (swagger_private_schemas.ts)
+ */
 export type AgentMessageType = BaseAgentMessageType & {
   id: ModelId;
   agentMessageId: ModelId;
@@ -250,6 +283,9 @@ export type AgentMessageTypeWithoutMentions = Omit<
   "richMentions"
 >;
 
+/**
+ * @swaggerschema PrivateLightAgentMessage (swagger_private_schemas.ts)
+ */
 export type LightAgentMessageType = BaseAgentMessageType & {
   configuration: {
     sId: string;
@@ -260,6 +296,7 @@ export type LightAgentMessageType = BaseAgentMessageType & {
   };
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
+  activitySteps: InlineActivityStep[];
 };
 
 // This type represents the agent message we can reconstruct by accumulating streaming events
@@ -302,6 +339,8 @@ export type ConversationMetadata = Record<string, unknown>;
 
 /**
  * A lighter version of Conversation without the content (for menu display).
+ *
+ * @swaggerschema PrivateConversation (swagger_private_schemas.ts)
  */
 export type ConversationWithoutContentType = {
   id: ModelId;
@@ -325,6 +364,8 @@ export type ConversationWithoutContentType = {
 /**
  * content [][] structure is intended to allow retries (of agent messages) or edits (of user
  * messages).
+ *
+ * @swaggerschema Conversation (swagger_schemas.ts), PrivateFullConversation (swagger_private_schemas.ts)
  */
 export type ConversationType = ConversationWithoutContentType & {
   owner: WorkspaceType;
@@ -343,6 +384,14 @@ export type LightConversationType = ConversationWithoutContentType & {
   branchId: string | null;
   content: (LightAgentMessageType | UserMessageTypeWithContentFragments)[];
 };
+
+export function isLightConversationType(
+  conversation: ConversationType | LightConversationType
+): conversation is LightConversationType {
+  // Content is not an array of arrays of messages, it's an array of messages.
+  // Just check that the item 0 is not an
+  return "content" in conversation && !Array.isArray(conversation.content[0]);
+}
 
 export const isProjectConversation = <T extends ConversationWithoutContentType>(
   conversation: T
@@ -418,6 +467,13 @@ export type UserMessageNewEvent = {
   created: number;
   messageId: string;
   message: UserMessageTypeWithContentFragments;
+};
+
+// Event sent when a pending user message is promoted to visible from pending.
+export type UserMessagePromotedEvent = {
+  type: "user_message_promoted";
+  created: number;
+  messageId: string;
 };
 
 // Event sent when the user message is created.

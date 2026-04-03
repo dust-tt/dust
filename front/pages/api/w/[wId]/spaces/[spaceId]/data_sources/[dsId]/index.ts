@@ -1,10 +1,16 @@
+/** @ignoreswagger */
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isRemoteDatabase } from "@app/lib/data_sources";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { DataSourceType } from "@app/types/data_source";
@@ -28,19 +34,11 @@ async function handler(
     WithAPIErrorResponse<PatchSpaceDataSourceResponseBody | void>
   >,
   auth: Authenticator,
-  { space }: { space: SpaceResource }
+  {
+    space,
+    dataSource,
+  }: { space: SpaceResource; dataSource: DataSourceResource }
 ): Promise<void> {
-  const { dsId } = req.query;
-  if (typeof dsId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
-
   if (space.isSystem() && !space.canAdministrate(auth)) {
     return apiError(req, res, {
       status_code: 400,
@@ -57,17 +55,6 @@ async function handler(
         type: "data_source_auth_error",
         message:
           "Only the users that are `builders` for the current workspace can update a data source.",
-      },
-    });
-  }
-
-  const dataSource = await DataSourceResource.fetchById(auth, dsId);
-  if (!dataSource || dataSource.space.sId !== space.sId) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
       },
     });
   }
@@ -100,6 +87,20 @@ async function handler(
       const { description } = bodyValidation.right;
 
       await dataSource.setDescription(description);
+
+      void emitAuditLogEvent({
+        auth,
+        action: "datasource.updated",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("data_source", dataSource),
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          dataSourceName: dataSource.name,
+          field: Object.keys(bodyValidation.right).join(","),
+        },
+      });
 
       return res.status(200).json({
         dataSource: dataSource.toJSON(),
@@ -151,6 +152,21 @@ async function handler(
         });
       }
 
+      void emitAuditLogEvent({
+        auth,
+        action: "datasource.deleted",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("data_source", dataSource),
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          dataSourceName: dataSource.name,
+          provider: dataSource.connectorProvider ?? "folder",
+          spaceId: space.sId,
+        },
+      });
+
       res.status(204).end();
       return;
     }
@@ -170,5 +186,6 @@ async function handler(
 export default withSessionAuthenticationForWorkspace(
   withResourceFetchingFromRoute(handler, {
     space: { requireCanReadOrAdministrate: true },
+    dataSource: {},
   })
 );

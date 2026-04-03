@@ -148,7 +148,7 @@ export const ENTERPRISE_N30_PAYMENTS_DAYS = 30;
 // At the time of writing, this is only used for Credit Purchase self-serve flow
 export const MAX_PRO_INVOICE_ATTEMPTS_BEFORE_VOIDED = 3;
 
-type SupportedPaymentMethod = (typeof SUPPORTED_PAYMENT_METHODS)[number];
+export type SupportedPaymentMethod = (typeof SUPPORTED_PAYMENT_METHODS)[number];
 
 /**
  * Calls the Stripe API to create a pro plan checkout session for a given workspace.
@@ -157,15 +157,17 @@ type SupportedPaymentMethod = (typeof SUPPORTED_PAYMENT_METHODS)[number];
  * The `auth` role is not checked, because we allow anyone (even if not logged in or not part of the WS)
  * to go through the checkout process.
  */
-export const createProPlanCheckoutSession = async ({
+export const createStripeSubscriptionCheckoutSession = async ({
   allowedPaymentMethods = ["card"],
   billingPeriod,
+  metronomePackageAlias,
   owner,
   planCode,
   user,
 }: {
   allowedPaymentMethods?: SupportedPaymentMethod[];
   billingPeriod: BillingPeriod;
+  metronomePackageAlias?: string;
   owner: WorkspaceType;
   planCode: string;
   user: UserType;
@@ -232,6 +234,7 @@ export const createProPlanCheckoutSession = async ({
     metadata: {
       planCode: planCode,
       userId: `${user.id}`,
+      ...(metronomePackageAlias ? { metronomePackageAlias } : {}),
     },
     line_items: [
       {
@@ -246,6 +249,57 @@ export const createProPlanCheckoutSession = async ({
     automatic_tax: {
       enabled: true,
     },
+    tax_id_collection: {
+      enabled: true,
+    },
+    success_url: `${config.getAppUrl()}/w/${owner.sId}/subscription/payment_processing?type=succeeded&session_id={CHECKOUT_SESSION_ID}&plan_code=${planCode}`,
+    cancel_url: `${config.getAppUrl()}/w/${owner.sId}/subscription?type=cancelled`,
+    consent_collection: {
+      terms_of_service: "required",
+    },
+    custom_text: {
+      terms_of_service_acceptance: {
+        message:
+          "I have read and accept the [Master Services Agreement](https://dust-tt.notion.site/Master-Services-Agreement-2bdcf30156db4a40bcb20d27b0b1bd4e?pvs=4) and [Data Processing Addendum](https://www.notion.so/dust-tt/Data-Processing-Addendum-466528e861e34f08949428e06eecd5f4?pvs=4).",
+      },
+    },
+  });
+
+  return session.url;
+};
+
+/**
+ * Creates a Stripe Checkout session in "setup" mode for Metronome-billed workspaces.
+ * This captures the payment method without creating a Stripe subscription.
+ * After checkout, the webhook provisions a Metronome customer + contract.
+ */
+export const createMetronomeSetupCheckoutSession = async ({
+  allowedPaymentMethods = ["card"],
+  metronomePackageAlias,
+  owner,
+  planCode,
+  user,
+}: {
+  allowedPaymentMethods?: SupportedPaymentMethod[];
+  metronomePackageAlias: string;
+  owner: WorkspaceType;
+  planCode: string;
+  user: UserType;
+}): Promise<string | null> => {
+  const stripe = getStripeClient();
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "setup",
+    client_reference_id: owner.sId,
+    customer_email: user.email,
+    customer_creation: "always",
+    payment_method_types: allowedPaymentMethods,
+    metadata: {
+      planCode,
+      userId: `${user.id}`,
+      metronomePackageAlias,
+    },
+    billing_address_collection: "auto",
     tax_id_collection: {
       enabled: true,
     },
@@ -713,17 +767,23 @@ type InvoiceLineItem = {
   couponId?: string;
 };
 
+export type CustomerFacingInvoiceInfo = {
+  purchaseOrderId?: string;
+};
+
 async function makeInvoice({
   stripeSubscription,
   metadata,
   lineItem,
   idempotencyKey,
+  customerFacingInfo,
   ...collectionParams
 }: {
   stripeSubscription: Stripe.Subscription;
   metadata: Record<string, string>;
   lineItem: InvoiceLineItem;
   idempotencyKey?: string;
+  customerFacingInfo?: CustomerFacingInvoiceInfo;
 } & InvoiceCollectionParams): Promise<
   Result<
     Stripe.Invoice,
@@ -742,6 +802,9 @@ async function makeInvoice({
     automatic_tax: {
       enabled: true,
     },
+    custom_fields: customerFacingInfo?.purchaseOrderId
+      ? [{ name: "Purchase Order", value: customerFacingInfo.purchaseOrderId }]
+      : undefined,
   };
 
   switch (collectionParams.collectionMethod) {
@@ -908,11 +971,13 @@ export async function makeCreditPurchaseOneOffInvoice({
   stripeSubscriptionId,
   amountMicroUsd,
   couponId,
+  customerFacingInfo,
   ...collectionParams
 }: {
   stripeSubscriptionId: string;
   amountMicroUsd: number;
   couponId?: string;
+  customerFacingInfo?: CustomerFacingInvoiceInfo;
 } & InvoiceCollectionParams): Promise<
   Result<Stripe.Invoice, { error_message: string }>
 > {
@@ -938,6 +1003,7 @@ export async function makeCreditPurchaseOneOffInvoice({
       description: `Programmatic usage credit: $${amountDollars.toFixed(2)}`,
       couponId,
     },
+    customerFacingInfo,
     ...collectionParams,
   });
 }

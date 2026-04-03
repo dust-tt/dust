@@ -3,6 +3,7 @@
  */
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -22,11 +23,24 @@ import {
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
-
 import type { Result } from "../shared/result";
 import { Err, Ok } from "../shared/result";
 import { isGlobalAgentId } from "./assistant";
 import { ConversationError } from "./conversation";
+
+function isReinforcedAgentNotificationMetadata(
+  value: unknown
+): value is { agentName: string; agentConfigurationId: string } {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  return (
+    "agentName" in value &&
+    typeof value.agentName === "string" &&
+    "agentConfigurationId" in value &&
+    typeof value.agentConfigurationId === "string"
+  );
+}
 
 /**
  * Error types for getAgentLoopData that indicate soft-deleted resources.
@@ -71,11 +85,18 @@ export type ConversationCaching =
 async function getConversationForAgentLoop(
   auth: Authenticator,
   conversationId: string,
+  conversationBranchId: string | null,
   // These params are only used for cache key uniqueness.
   _workspaceId: string,
   _unicitySuffix: string
 ): Promise<ConversationType> {
-  const res = await getConversation(auth, conversationId);
+  const res = await getConversation(
+    auth,
+    conversationId,
+    false,
+    conversationBranchId,
+    PREVIOUS_INTERACTIONS_TO_PRESERVE + 1 // X previous + the last one
+  );
   if (res.isErr()) {
     throw res.error;
   }
@@ -85,8 +106,8 @@ async function getConversationForAgentLoop(
 function getCachedGetConversation(ttlMs: number) {
   return cacheWithRedis(
     getConversationForAgentLoop,
-    (_auth, conversationId, workspaceId, unicitySuffix) =>
-      `${workspaceId}:${conversationId}:${unicitySuffix}`,
+    (_auth, conversationId, conversationBranchId, workspaceId, unicitySuffix) =>
+      `${workspaceId}:${conversationId}:${conversationBranchId}:${unicitySuffix}`,
     {
       ttlMs,
       useDistributedLock: true,
@@ -99,6 +120,7 @@ export type AgentLoopArgs = {
   agentMessageVersion: number;
   conversationId: string;
   conversationTitle: string | null;
+  conversationBranchId: string | null;
 
   // Note that the original user message may not be the same as the parent message as agent might mention other agents.
   userMessageId: string;
@@ -180,6 +202,7 @@ export async function getAgentLoopDataWithAuth(
     agentMessageVersion,
     caching,
     conversationId,
+    conversationBranchId,
     userMessageId,
     userMessageVersion,
   } = agentLoopArgs;
@@ -191,6 +214,7 @@ export async function getAgentLoopDataWithAuth(
       conversation = await cachedGetConversation(
         auth,
         conversationId,
+        conversationBranchId,
         auth.getNonNullableWorkspace().sId,
         caching.unicitySuffix
       );
@@ -215,7 +239,13 @@ export async function getAgentLoopDataWithAuth(
       throw error;
     }
   } else {
-    const conversationRes = await getConversation(auth, conversationId);
+    const conversationRes = await getConversation(
+      auth,
+      conversationId,
+      false,
+      conversationBranchId,
+      PREVIOUS_INTERACTIONS_TO_PRESERVE + 1 // X previous + the last one
+    );
     if (conversationRes.isErr()) {
       if (conversationRes.error.type === "conversation_not_found") {
         // Check if the conversation was soft-deleted.
@@ -283,11 +313,19 @@ export async function getAgentLoopDataWithAuth(
 
   const agentId = agentMessage.configuration.sId;
 
+  const reinforcedMeta = conversation.metadata?.reinforcedAgentNotification;
+  const reinforcedAgentNotification = isReinforcedAgentNotificationMetadata(
+    reinforcedMeta
+  )
+    ? reinforcedMeta
+    : undefined;
+
   const globalAgentContext: GlobalAgentContext = {
     userMessageRank: userMessage.rank,
     sidekickIsNewAgentFromScratch:
       conversation.metadata?.sidekickIsNewAgentFromScratch === true ||
       undefined,
+    reinforcedAgentNotification,
   };
 
   // As the agent configuration is never supposed to change during a loop, we can cache it for a long time.

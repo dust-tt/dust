@@ -1,9 +1,10 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { isWebsite } from "@app/lib/data_sources";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -32,41 +33,11 @@ async function handler(
     >
   >,
   auth: Authenticator,
-  { space }: { space: SpaceResource }
+  {
+    space,
+    dataSource,
+  }: { space: SpaceResource; dataSource: DataSourceResource }
 ): Promise<void> {
-  const { dsId } = req.query;
-  if (typeof dsId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
-
-  const dataSource = await DataSourceResource.fetchById(auth, dsId);
-  if (!dataSource || dataSource.space.sId !== space.sId) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  if (!dataSource.canRead(auth)) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message:
-          "Only the users that have `read` permission for the current space can access a data source configuration.",
-      },
-    });
-  }
-
   // Only Slack & Webcrawler connectors have configurations. SlackConfiguration can only be updated
   // from a Poke route. So these routes are currently only for Webcrawler connectors.
   if (!dataSource.connectorId || !isWebsite(dataSource)) {
@@ -175,5 +146,8 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, { space: { requireCanRead: true } })
+  withResourceFetchingFromRoute(handler, {
+    space: { requireCanRead: true },
+    dataSource: { requireCanRead: true },
+  })
 );

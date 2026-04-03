@@ -3,6 +3,7 @@ import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
+import type { AgentMessagePhase } from "@app/types/assistant/agent_message_content";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import flatMap from "lodash/flatMap";
 import type {
@@ -72,7 +73,7 @@ function reasoningDelta(delta: string, metadata: LLMClientMetadata): LLMEvent {
 
 function responseOutputToEvent(
   responseOutput: ResponseOutputText | ResponseOutputRefusal,
-  metadata: LLMClientMetadata
+  metadata: LLMClientMetadata & { phase?: AgentMessagePhase }
 ): LLMEvent {
   switch (responseOutput.type) {
     case "output_text":
@@ -103,10 +104,14 @@ function itemToEvents(
   metadata: LLMClientMetadata
 ): LLMEvent[] {
   switch (item.type) {
-    case "message":
+    case "message": {
       return item.content.map((responseOutput) =>
-        responseOutputToEvent(responseOutput, metadata)
+        responseOutputToEvent(responseOutput, {
+          ...metadata,
+          phase: item.phase ?? undefined,
+        })
       );
+    }
     case "function_call": {
       return [
         {
@@ -234,6 +239,22 @@ function toEvents({
 
       return [reasoningDelta("\n\n", metadata)];
     }
+    case "response.output_item.added":
+      if (event.item.type !== "function_call") {
+        return [];
+      }
+
+      return [
+        {
+          type: "tool_call_started",
+          content: {
+            id: event.item.call_id,
+            index: event.output_index,
+            name: event.item.name,
+          },
+          metadata,
+        },
+      ];
     case "response.function_call_arguments.delta":
       return [{ type: "tool_call_delta", metadata }];
     default:

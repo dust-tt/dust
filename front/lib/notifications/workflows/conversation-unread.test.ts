@@ -31,7 +31,7 @@ import {
 } from "@app/types/notification_preferences";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock Novu client for notification sending tests
 vi.mock(import("../../../lib/notifications"), async (importOriginal) => {
@@ -59,7 +59,7 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 
 describe("conversation-unread workflow business logic", () => {
-  // This ensures all origis are tested as it is a record
+  // This ensures all origins are tested as it is a record
   const userMessageOriginRecord: Record<UserMessageOrigin, boolean> = {
     web: true,
     extension: true,
@@ -85,6 +85,8 @@ describe("conversation-unread workflow business logic", () => {
     triggered: false,
     triggered_programmatic: false,
     zendesk: false,
+    reinforced_agent_notification: false,
+    reinforcement: false,
   };
   describe("shouldSendNotificationForAgentAnswer", () => {
     it.each(
@@ -319,6 +321,7 @@ describe("conversation-unread workflow business logic", () => {
     let user: UserResource;
     let auth: Authenticator;
     let conversationId: string;
+    let conversation: ConversationResource | null;
     let messageId: string;
 
     beforeEach(async () => {
@@ -332,33 +335,25 @@ describe("conversation-unread workflow business logic", () => {
         name: "Test Agent",
         description: "Test",
       });
-      const conversation = await ConversationFactory.create(auth, {
+      const conversationType = await ConversationFactory.create(auth, {
         agentConfigurationId: agent.sId,
         messagesCreatedAt: [new Date()],
       });
-      conversationId = conversation.sId;
+      conversationId = conversationType.sId;
 
       // Get the actual message ID from the conversation
-      const conversationResource = await ConversationResource.fetchById(
-        auth,
-        conversationId
-      );
-      if (!conversationResource) {
+      conversation = await ConversationResource.fetchById(auth, conversationId);
+      if (!conversation) {
         throw new Error("Conversation should exist");
       }
-      const messages = await conversationResource.fetchMessagesForPage(auth, {
+
+      const messages = await conversation.fetchMessagesForPage(auth, {
         limit: 10,
       });
       if (messages.messages.length === 0) {
         throw new Error("Conversation should have messages");
       }
       messageId = messages.messages[0].sId;
-    });
-
-    afterEach(async () => {
-      if (conversationId) {
-        await destroyConversation(auth, { conversationId });
-      }
     });
 
     const createPayload = () => ({
@@ -368,7 +363,10 @@ describe("conversation-unread workflow business logic", () => {
     });
 
     it("should return true when conversation is deleted", async () => {
-      await destroyConversation(auth, { conversationId });
+      if (!conversation) {
+        throw new Error("Conversation should exist");
+      }
+      await destroyConversation(auth, { conversation });
       const result = await shouldSkipConversation({
         subscriberId: user.sId,
         payload: {
@@ -477,12 +475,6 @@ describe("conversation-unread workflow business logic", () => {
         throw new Error("Conversation should have messages");
       }
       messageId = messages.messages[0].sId;
-    });
-
-    afterEach(async () => {
-      if (conversationId) {
-        await destroyConversation(auth, { conversationId });
-      }
     });
 
     it("should return Ok when no participants with unread messages", async () => {
@@ -808,14 +800,6 @@ describe("getEmailSummary", () => {
     );
 
     vi.clearAllMocks();
-  });
-
-  afterEach(async () => {
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-    await destroyConversation(auth, { conversationId: conversation.sId });
   });
 
   it("should return retention policy message for conversations with retention policy", async () => {

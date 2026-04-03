@@ -84,6 +84,16 @@ const Help: FC = () => {
       </Box>
       <Box marginLeft={2}>
         <Text>
+          <Text bold>-t, --with-tools</Text> Enable file system tools in
+          non-interactive mode (requires OAuth, use with -m).{" "}
+          <Text bold color="yellow">
+            WARNING: automatically approves ALL tool executions without
+            prompting, including file edits and shell commands.
+          </Text>
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
           <Text bold>-c, --conversationId</Text> Conversation ID (use with
           --agent and --message, or with --messageId)
         </Text>

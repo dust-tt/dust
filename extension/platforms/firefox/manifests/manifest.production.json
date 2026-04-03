@@ -1,0 +1,20 @@
+{
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "dust-dev@dust.tt",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": [
+          "personallyIdentifyingInfo",
+          "authenticationInfo"
+        ],
+        "optional": [
+          "technicalAndInteraction"
+        ]
+      }
+    }
+  },
+ "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://browser-intake-datadoghq.eu https://dust.tt/ https://eu.dust.tt/ https://*.novu.co wss://*.novu.co data:; frame-src https://viz.dust.tt https://eu.viz.dust.tt"
+  }
+}

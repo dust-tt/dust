@@ -2,6 +2,8 @@ import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_acti
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { z } from "zod";
 
+export const MAX_BROWSE_URLS = 16;
+
 export const SearchInputSchema = z.object({
   query: z
     .string()
@@ -111,11 +113,11 @@ export function isWebsearchInputType(
 }
 
 export const WebbrowseInputSchema = z.object({
-  urls: z.string().array().describe("List of urls to browse"),
-  format: z
-    .enum(["markdown", "html"])
-    .optional()
-    .describe("Format to return content: 'markdown' (default) or 'html'."),
+  urls: z
+    .string()
+    .array()
+    .max(MAX_BROWSE_URLS)
+    .describe(`List of urls to browse (max: ${MAX_BROWSE_URLS})`),
   screenshotMode: z
     .enum(["none", "viewport", "fullPage"])
     .optional()

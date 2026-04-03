@@ -8,13 +8,14 @@ import handler from "./project_metadata";
 
 describe("GET /api/w/[wId]/spaces/[spaceId]/project_metadata", () => {
   it("returns metadata for project spaces", async () => {
-    const { req, res, workspace, authenticator } =
-      await createPrivateApiMockRequest({ role: "admin" });
+    const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
 
     const projectSpace = await SpaceFactory.project(workspace);
     req.query.spaceId = projectSpace.sId;
 
-    await ProjectMetadataResource.makeNew(authenticator, projectSpace, {
+    await ProjectMetadataResource.makeNew(auth, projectSpace, {
       description: "Test description",
     });
 

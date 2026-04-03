@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -77,8 +78,7 @@ async function handler(
         }
       }
 
-      const owner = auth.getNonNullableWorkspace();
-      const flags = await getFeatureFlags(owner);
+      const flags = await getFeatureFlags(auth);
       if (!flags.includes("labs_mcp_actions_dashboard")) {
         return apiError(req, res, {
           status_code: 404,

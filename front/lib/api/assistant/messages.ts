@@ -1,3 +1,4 @@
+import { contentsToActivitySteps } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getMessagesReactions } from "@app/lib/api/assistant/reaction";
@@ -7,7 +8,6 @@ import {
   getCoTDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
 import {
-  AgentMessageModel,
   MentionModel,
   MessageModel,
   UserMessageModel,
@@ -26,7 +26,6 @@ import type {
 } from "@app/types/assistant/agent_message_content";
 import type {
   AgentMessageType,
-  ConversationWithoutContentType,
   LegacyLightMessageType,
   LightAgentMessageType,
   LightMessageType,
@@ -274,6 +273,7 @@ async function batchRenderUserMessages(
       visibility: message.visibility,
       version: message.version,
       rank: message.rank,
+      branchId: message.branchSId,
       created: message.createdAt.getTime(),
       user: user ?? null,
       mentions,
@@ -305,7 +305,8 @@ async function batchRenderUserMessages(
 async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
   messages: MessageModel[],
-  viewType: V
+  viewType: V,
+  messagesWithToolOutputContent: Set<ModelId> | null = null
 ): Promise<
   Result<
     V extends "full" ? AgentMessageType[] : LightAgentMessageType[],
@@ -370,18 +371,55 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     );
   }
 
-  const agentMCPActions = await AgentMCPActionResource.fetchByStepContents(
+  const allAgentMCPActions = await AgentMCPActionResource.fetchByStepContents(
     auth,
     {
       stepContents,
       latestVersionsOnly: true,
     }
   );
-  const actionsWithOutputs =
-    await AgentMCPActionResource.enrichActionsWithOutputItems(
-      auth,
-      agentMCPActions
-    );
+
+  let agentMCPActionsWithContent: AgentMCPActionResource[] = [];
+  let agentMCPActionsWithoutContent: AgentMCPActionResource[] = [];
+
+  for (const action of allAgentMCPActions) {
+    // Light messages always exclude content for all actions.
+    // Otherwise, for full messages, we only include content for the actions that are in the optional outputItemContentOnlyForMessageIds.
+    if (
+      viewType === "light" ||
+      (messagesWithToolOutputContent &&
+        !messagesWithToolOutputContent.has(action.agentMessageId))
+    ) {
+      agentMCPActionsWithoutContent.push(action);
+    } else {
+      agentMCPActionsWithContent.push(action);
+    }
+  }
+
+  const [actionsWithOutputs, actionsWithoutOutputs] = await Promise.all([
+    AgentMCPActionResource.enrichActionsWithOutputItems(auth, {
+      actions: agentMCPActionsWithContent,
+      ignoreContent: false,
+    }),
+    AgentMCPActionResource.enrichActionsWithOutputItems(auth, {
+      actions: agentMCPActionsWithoutContent,
+      ignoreContent: true,
+    }),
+  ]);
+
+  const actionsByAgentMessageId: Record<
+    number,
+    AgentMCPActionWithOutputType[]
+  > = [...actionsWithOutputs, ...actionsWithoutOutputs].reduce(
+    (acc, a) => {
+      if (!acc[a.agentMessageId]) {
+        acc[a.agentMessageId] = [];
+      }
+      acc[a.agentMessageId].push(a);
+      return acc;
+    },
+    {} as Record<number, AgentMCPActionWithOutputType[]>
+  );
 
   const stepContentsByMessageId: Record<string, AgentStepContentResource[]> =
     stepContents.reduce(
@@ -414,9 +452,9 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
       const agentMessage = message.agentMessage;
 
-      const actions = actionsWithOutputs
-        .filter((a) => a.agentMessageId === agentMessage.id)
-        .sort((a, b) => a.step - b.step);
+      const actions = (actionsByAgentMessageId[agentMessage.id] ?? []).sort(
+        (a, b) => a.step - b.step
+      );
 
       const agentConfiguration = agentConfigurationsById.get(
         agentMessage.agentConfigurationId
@@ -583,6 +621,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         visibility: message.visibility,
         version: message.version,
         rank: message.rank,
+        branchId: message.branchSId,
         parentMessageId: parentMessage.sId,
         parentAgentMessageId: parentAgentMessage?.sId ?? null,
         status: agentMessage.status,
@@ -607,7 +646,16 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       if (viewType === "full") {
         return new Ok(m);
       } else {
-        return new Ok(getLightAgentMessageFromAgentMessage(m));
+        const activitySteps = await contentsToActivitySteps(
+          agentStepContents,
+          actions,
+          agentConfiguration,
+          message.sId
+        );
+        return new Ok({
+          ...getLightAgentMessageFromAgentMessage(m),
+          activitySteps,
+        });
       }
     })
   );
@@ -643,7 +691,8 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
   conversation: ConversationResource,
   messages: MessageModel[],
-  viewType: V
+  viewType: V,
+  messagesWithToolOutputContent: Set<ModelId> | null = null
 ): Promise<
   Result<
     V extends "full"
@@ -658,7 +707,12 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
 > {
   const [userMessages, agentMessagesRes, contentFragments] = await Promise.all([
     batchRenderUserMessages(auth, messages),
-    batchRenderAgentMessages(auth, messages, viewType),
+    batchRenderAgentMessages(
+      auth,
+      messages,
+      viewType,
+      messagesWithToolOutputContent
+    ),
     batchRenderContentFragment(auth, conversation.sId, messages),
   ]);
 
@@ -784,33 +838,5 @@ export async function fetchConversationMessages<V extends MessageVariant>(
       : V extends "light"
         ? LightMessageType[]
         : never,
-  });
-}
-
-export async function fetchMessageInConversation(
-  auth: Authenticator,
-  conversation: ConversationWithoutContentType,
-  messageId: string,
-  version?: number
-) {
-  return MessageModel.findOne({
-    where: {
-      conversationId: conversation.id,
-      sId: messageId,
-      workspaceId: auth.getNonNullableWorkspace()?.id,
-      ...(version ? { version } : {}),
-    },
-    include: [
-      {
-        model: UserMessageModel,
-        as: "userMessage",
-        required: false,
-      },
-      {
-        model: AgentMessageModel,
-        as: "agentMessage",
-        required: false,
-      },
-    ],
   });
 }

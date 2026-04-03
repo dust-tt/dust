@@ -11,6 +11,7 @@ import {
 } from "@app/lib/actions/mcp_execution";
 import type {
   MCPApproveExecutionEvent,
+  ToolAskUserQuestionEvent,
   ToolEarlyExitEvent,
   ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
@@ -60,7 +61,8 @@ export async function* runToolWithStreaming(
   | ToolNotificationEvent
   | ToolFileAuthRequiredEvent
   | ToolPersonalAuthRequiredEvent
-  | ToolEarlyExitEvent,
+  | ToolEarlyExitEvent
+  | ToolAskUserQuestionEvent,
   void
 > {
   const owner = auth.getNonNullableWorkspace();

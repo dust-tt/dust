@@ -355,6 +355,22 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "Same as dust-ant but with high reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED,
+        name: "dust-ant-medium-omitted",
+        description:
+          "Same as dust-ant-medium but with omitted reasoning summaries.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED,
+        name: "dust-ant-high-omitted",
+        description:
+          "Same as dust-ant-high but with omitted reasoning summaries.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_KIMI:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_KIMI,
@@ -432,6 +448,30 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "An agent with context on your company data.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_HIGH,
+        name: "dust-high",
+        description:
+          "An agent with context on your company data, with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_OMITTED:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_OMITTED,
+        name: "dust-omitted",
+        description:
+          "An agent with context on your company data, with omitted reasoning summaries.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_HIGH_OMITTED:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_HIGH_OMITTED,
+        name: "dust-high-omitted",
+        description:
+          "An agent with context on your company data, with high reasoning effort and omitted reasoning summaries.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DEEP_DIVE:
       return {
         sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
@@ -469,6 +509,14 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.SIDEKICK,
         name: "Sidekick",
         description: "An agent that suggests improvements for another agent.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.REINFORCEMENT:
+      return {
+        sId: GLOBAL_AGENTS_SID.REINFORCEMENT,
+        name: "Reinforcement",
+        description:
+          "Internal agent used as a placeholder for reinforcement conversations.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.NOOP:

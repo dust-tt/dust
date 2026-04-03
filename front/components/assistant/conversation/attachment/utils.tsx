@@ -85,7 +85,7 @@ export const IconForAttachmentCitation = ({
 
   if (provider === "webcrawler") {
     return (
-      <div className="flex h-6 w-6 items-center justify-center">
+      <div className="flex h-3 w-3 items-center justify-center">
         <FaviconIcon size={size} websiteUrl={sourceUrl} />
       </div>
     );

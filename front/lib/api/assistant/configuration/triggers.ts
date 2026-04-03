@@ -1,5 +1,6 @@
 import { getCronTimezoneGeneration } from "@app/lib/api/assistant/configuration/triggers/cron_timezone";
 import type { Authenticator } from "@app/lib/auth";
+import type { ScheduleConfig } from "@app/types/assistant/triggers";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -24,17 +25,71 @@ export const TOO_FREQUENT_MESSAGE =
 const CRON_REGEXP =
   /^((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*(\/\d+)?|\?|[A-Z]{3}(-[A-Z]{3})?) ?){5,7})|(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)$/;
 
-export async function generateCronRule(
+function validateIntervalConfig(config: {
+  intervalDays: number;
+  dayOfWeek: number | null;
+  hour: number;
+  minute: number;
+  timezone: string;
+}): Result<void, Error> {
+  if (config.intervalDays <= 0 || !Number.isInteger(config.intervalDays)) {
+    return new Err(
+      new Error("Invalid interval: intervalDays must be a positive integer.")
+    );
+  }
+  if (
+    config.dayOfWeek !== null &&
+    (config.dayOfWeek < 0 || config.dayOfWeek > 6)
+  ) {
+    return new Err(
+      new Error("Invalid interval: dayOfWeek must be 0-6 or null.")
+    );
+  }
+  if (config.hour < 0 || config.hour > 23) {
+    return new Err(new Error("Invalid interval: hour must be 0-23."));
+  }
+  if (config.minute < 0 || config.minute > 59) {
+    return new Err(new Error("Invalid interval: minute must be 0-59."));
+  }
+  if (!isValidIANATimezone(config.timezone)) {
+    return new Err(new Error(INVALID_TIMEZONE_MESSAGE));
+  }
+  return new Ok(undefined);
+}
+
+export async function generateScheduleRule(
   auth: Authenticator,
   inputs: { naturalDescription: string; defaultTimezone: string }
-): Promise<Result<{ cron: string; timezone: string }, Error>> {
+): Promise<Result<ScheduleConfig, Error>> {
   const res = await getCronTimezoneGeneration(auth, inputs);
 
   if (res.isErr()) {
     return res;
   }
 
-  const { cron: cronRule, timezone } = res.value;
+  const config = res.value;
+
+  if (config.type === "interval") {
+    // Safety net: if intervalDays is 7 with a dayOfWeek, convert to weekly cron.
+    if (config.intervalDays === 7 && config.dayOfWeek !== null) {
+      const cronRule = `${config.minute} ${config.hour} * * ${config.dayOfWeek}`;
+      return new Ok({
+        type: "cron",
+        cron: cronRule,
+        timezone: config.timezone,
+      });
+    }
+
+    const validationResult = validateIntervalConfig(config);
+    if (validationResult.isErr()) {
+      return validationResult;
+    }
+
+    return new Ok(config);
+  }
+
+  // Cron validation (existing logic).
+  const { cron: cronRule, timezone } = config;
 
   if (
     !cronRule ||
@@ -52,5 +107,5 @@ export async function generateCronRule(
     return new Err(new Error(INVALID_TIMEZONE_MESSAGE));
   }
 
-  return new Ok({ cron: cronRule, timezone });
+  return new Ok({ type: "cron", cron: cronRule, timezone });
 }

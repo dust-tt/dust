@@ -1,8 +1,9 @@
 import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
+import logger from "@app/logger/logger";
 import type { WorkspaceType } from "@app/types/user";
-import { registerAllTools } from "@extension/platforms/chrome/tools";
 import type { CaptureService } from "@extension/shared/services/capture";
 import { McpService } from "@extension/shared/services/mcp";
+import { registerAllTools } from "@extension/shared/tools";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 /**
@@ -45,7 +46,7 @@ export class ChromeMcpService extends McpService {
 
       return server;
     } catch (error) {
-      console.error("Error creating MCP server:", error);
+      logger.error({ err: error }, "Error creating MCP server.");
       return null;
     }
   }
@@ -66,7 +67,7 @@ export class ChromeMcpService extends McpService {
 
       const transport = new BrowserMCPTransport(
         owner.sId,
-        "chrome-extension-client",
+        "dust-chrome-extension",
         (serverId) => {
           this.serverId = serverId;
           onServerIdReceived(serverId);
@@ -78,7 +79,7 @@ export class ChromeMcpService extends McpService {
       this.server = server;
       this.transport = transport;
     } catch (error) {
-      console.error("Failed to connect MCP server:", error);
+      logger.error({ err: error }, "Failed to connect MCP server.");
       throw error;
     }
   }
@@ -100,7 +101,7 @@ export class ChromeMcpService extends McpService {
       await this.connectServer(server, owner, onServerIdReceived);
       return { server: this.server, serverId: this.serverId };
     } catch (error) {
-      console.error("Error getting or creating MCP server:", error);
+      logger.error({ err: error }, "Error getting or creating MCP server.");
       return { server: null, serverId: undefined };
     }
   }

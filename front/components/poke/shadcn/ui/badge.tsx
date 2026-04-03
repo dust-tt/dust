@@ -33,4 +33,4 @@ function Badge({ className, variant, ...props }: BadgeProps) {
   );
 }
 
-export { badgeVariants, Badge as PokeBadge };
+export { Badge as PokeBadge, badgeVariants };

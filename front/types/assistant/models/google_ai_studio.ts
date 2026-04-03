@@ -4,6 +4,8 @@ export const GEMINI_2_5_FLASH_MODEL_ID = "gemini-2.5-flash" as const;
 export const GEMINI_2_5_FLASH_LITE_MODEL_ID = "gemini-2.5-flash-lite" as const;
 export const GEMINI_3_PRO_IMAGE_MODEL_ID =
   "gemini-3-pro-image-preview" as const;
+export const GEMINI_3_1_FLASH_IMAGE_MODEL_ID =
+  "gemini-3.1-flash-image-preview" as const;
 export const GEMINI_2_5_PRO_MODEL_ID = "gemini-2.5-pro" as const;
 export const GEMINI_3_PRO_MODEL_ID = "gemini-3-pro-preview" as const;
 export const GEMINI_3_1_PRO_MODEL_ID = "gemini-3.1-pro-preview" as const;
@@ -29,6 +31,7 @@ export const GEMINI_2_5_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   useNativeLightReasoning: true,
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
+  supportsBatchProcessing: true,
 };
 export const GEMINI_2_5_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
@@ -50,6 +53,7 @@ export const GEMINI_2_5_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   useNativeLightReasoning: true,
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
+  supportsBatchProcessing: true,
 };
 export const GEMINI_2_5_PRO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
@@ -71,6 +75,7 @@ export const GEMINI_2_5_PRO_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   useNativeLightReasoning: true,
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
+  supportsBatchProcessing: true,
 };
 export const GEMINI_3_PRO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
@@ -93,6 +98,7 @@ export const GEMINI_3_PRO_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   useNativeLightReasoning: true,
+  supportsBatchProcessing: true,
 };
 export const GEMINI_3_1_PRO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
@@ -115,6 +121,7 @@ export const GEMINI_3_1_PRO_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   useNativeLightReasoning: true,
+  supportsBatchProcessing: true,
 };
 export const GEMINI_3_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
@@ -136,4 +143,5 @@ export const GEMINI_3_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   useNativeLightReasoning: true,
+  supportsBatchProcessing: true,
 };

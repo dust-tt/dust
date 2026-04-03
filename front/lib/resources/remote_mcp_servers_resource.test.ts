@@ -7,6 +7,30 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { describe, expect, it } from "vitest";
 
+describe("RemoteMCPServerResource.updateUrl", () => {
+  it("updates the URL of a remote MCP server", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    await SpaceFactory.system(workspace);
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      url: "https://old.example.com/mcp",
+      name: "Test Server",
+    });
+
+    expect(server.url).toBe("https://old.example.com/mcp");
+
+    const result = await server.updateUrl(auth, "https://new.example.com/mcp");
+    expect(result.isOk()).toBe(true);
+
+    const refreshed = (await RemoteMCPServerResource.findByPk(
+      auth,
+      server.id
+    ))!;
+    expect(refreshed.url).toBe("https://new.example.com/mcp");
+  });
+});
+
 describe("RemoteMCPServerResource.updateMetadata", () => {
   it("deletes stale tool metadata when cachedTools are updated", async () => {
     const workspace = await WorkspaceFactory.basic();

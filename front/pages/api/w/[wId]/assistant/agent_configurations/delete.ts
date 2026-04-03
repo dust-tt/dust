@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import {
   archiveAgentConfiguration,
   getAgentConfigurations,
@@ -6,17 +7,18 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-export type PostAgentConfigurationArchiveResponseBody = {
-  archived: number;
-};
+export const PostAgentConfigurationArchiveResponseBodySchema = z.object({
+  archived: z.number(),
+});
+export type PostAgentConfigurationArchiveResponseBody = z.infer<
+  typeof PostAgentConfigurationArchiveResponseBodySchema
+>;
 
-export const PostAgentConfigurationArchive = t.type({
-  agentConfigurationIds: t.array(t.string),
+export const PostAgentConfigurationArchive = z.object({
+  agentConfigurationIds: z.array(z.string()),
 });
 
 async function handler(
@@ -28,20 +30,18 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "POST":
-      const bodyValidation = PostAgentConfigurationArchive.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+      const bodyValidation = PostAgentConfigurationArchive.safeParse(req.body);
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${bodyValidation.error.message}`,
           },
         });
       }
 
-      const { agentConfigurationIds } = bodyValidation.right;
+      const { agentConfigurationIds } = bodyValidation.data;
 
       const agentConfigurations = await getAgentConfigurations(auth, {
         agentIds: agentConfigurationIds,

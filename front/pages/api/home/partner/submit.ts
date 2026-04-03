@@ -1,9 +1,7 @@
+/** @ignoreswagger */
 import { TrackingParamsSchema } from "@app/lib/api/hubspot/contactFormSchema";
 import { submitToHubSpotPartnerForm } from "@app/lib/api/hubspot/hubspot";
-import type {
-  PartnerFormData,
-  PartnerSubmitResponse,
-} from "@app/lib/api/hubspot/partnerFormSchema";
+import type { PartnerSubmitResponse } from "@app/lib/api/hubspot/partnerFormSchema";
 import { PartnerFormSchema } from "@app/lib/api/hubspot/partnerFormSchema";
 import { extractDomain, hasValidMxRecords } from "@app/lib/utils/email";
 import logger from "@app/logger/logger";
@@ -31,7 +29,7 @@ export default async function handler(
     });
   }
 
-  const formData: PartnerFormData = parseResult.data;
+  const formData = parseResult.data;
   const tracking = TrackingParamsSchema.parse(req.body.tracking ?? {});
   const { pageUri: rawPageUri, pageName: rawPageName } = req.body;
   const pageUri = isString(rawPageUri) ? rawPageUri : "";

@@ -53,7 +53,9 @@ export function ReplySection({
             )}
           </>
         ) : unreadCount === 0 ? (
-          <span className="s-heading-xs">{replyCount} Replies</span>
+          <span className="s-heading-xs">
+            {replyCount} {replyCount === 1 ? "Reply" : "Replies"}
+          </span>
         ) : unreadCount === replyCount ? (
           <span className="s-heading-xs s-text-highlight">
             {unreadCount} Unread
@@ -64,7 +66,10 @@ export function ReplySection({
               {unreadCount} Unread
             </span>
             {replyCount > 0 && (
-              <span className="s-heading-xs"> ({replyCount} replies).</span>
+              <span className="s-heading-xs">
+                {" "}
+                ({replyCount} {replyCount === 1 ? "reply" : "replies"}).
+              </span>
             )}
           </>
         )}{" "}
@@ -164,13 +169,15 @@ export function ConversationListItem({
       <div className="s-mb-0.5 s-flex s-min-w-0 s-grow s-flex-col s-gap-1">
         <div className="s-heading-sm s-flex s-w-full s-items-center s-justify-between s-gap-2 s-text-foreground dark:s-text-foreground-night">
           <div className="s-flex s-min-w-0 s-gap-2 s-truncate">
-            {creator && <span className="s-shrink-0">{creator.fullName}</span>}
-            <span className="s-min-w-0 s-truncate s-text-muted-foreground dark:s-text-muted-foreground-night">
-              {conversation.title}
-            </span>
+            <span className="s-min-w-0 s-truncate">{conversation.title}</span>
+            {creator && (
+              <span className="s-shrink-0  s-text-muted-foreground dark:s-text-muted-foreground-night">
+                {creator.fullName}
+              </span>
+            )}
           </div>
           <div className="s-flex s-items-center s-gap-2 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-            <span className="s-font-normal">{time}</span>
+            <span className="s-font-normal s-shrink-0">{time}</span>
           </div>
         </div>
         {conversation.description && (

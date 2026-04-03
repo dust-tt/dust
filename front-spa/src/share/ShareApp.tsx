@@ -1,3 +1,4 @@
+import { PostHogTracker } from "@dust-tt/front/components/app/PostHogTracker";
 import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBoundary";
 import { SharedFilePage } from "@dust-tt/front/components/pages/share/SharedFilePage";
 import { SharedFramePage } from "@dust-tt/front/components/pages/share/SharedFramePage";
@@ -36,9 +37,11 @@ export default function ShareApp() {
   return (
     <RegionProvider>
       <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
-        <ErrorBoundary fallback={<GlobalErrorFallback />}>
-          <RouterProvider router={router} />
-        </ErrorBoundary>
+        <PostHogTracker>
+          <ErrorBoundary fallback={<GlobalErrorFallback />}>
+            <RouterProvider router={router} />
+          </ErrorBoundary>
+        </PostHogTracker>
       </FetcherProvider>
     </RegionProvider>
   );

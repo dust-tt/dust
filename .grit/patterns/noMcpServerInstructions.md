@@ -11,12 +11,7 @@ Tools should be self-explanatory and avoid coupling instructions.
 ```grit
 language js
 
-`serverInfo: { $props }` where {
-    $props <: contains `instructions: $val` where {
-        $val <: not `null`,
-        $val => `MCP_INSTRUCTIONS_FORBIDDEN`
-    }
-}
+mcp_server_non_null_instructions() => `MCP_INSTRUCTIONS_FORBIDDEN`
 ```
 
 ## Should flag non-null instructions
@@ -31,9 +26,7 @@ const server = {
 
 ```typescript
 const server = {
-  serverInfo: {
-    instructions: MCP_INSTRUCTIONS_FORBIDDEN,
-  },
+  MCP_INSTRUCTIONS_FORBIDDEN,
 };
 ```
 

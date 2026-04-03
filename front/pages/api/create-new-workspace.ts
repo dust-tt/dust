@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { createAndLogMembership } from "@app/lib/api/signup";
 import type { SessionWithUser } from "@app/lib/iam/provider";

@@ -368,12 +368,8 @@ export function GongOptionComponent({
 
   return (
     <div className="flex flex-col space-y-4 py-2">
-      <ContentMessage
-        title="All Gong data will sync automatically once you save"
-        size="lg"
-      >
-        Syncing will start once you save a participant filter selection.
-        Relevant Gong resources will then sync automatically. Selecting items
+      <ContentMessage title="All Gong data will sync automatically" size="lg">
+        All your Gong resources will sync automatically. Selecting items
         individually is not available.
       </ContentMessage>
 

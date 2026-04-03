@@ -4,6 +4,7 @@ import config from "@app/lib/api/config";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
+  emptyArray,
   getErrorFromResponse,
   useFetcher,
   useSWRWithDefaults,
@@ -14,7 +15,11 @@ import type {
 } from "@app/pages/api/w/[wId]/data_sources/[dsId]/files";
 import type { ShareFileResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]/share";
 import type { DataSourceViewType } from "@app/types/data_source_view";
-import type { FileShareScope, FileTypeWithMetadata } from "@app/types/files";
+import type {
+  FileShareScope,
+  FileTypeWithMetadata,
+  SharingGrantType,
+} from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher, SWRConfiguration } from "swr";
 
@@ -37,6 +42,24 @@ export const getFileViewUrl = (
   owner: LightWorkspaceType,
   fileId: string | null | undefined
 ) => `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view`;
+
+export async function downloadSandboxFile(
+  owner: LightWorkspaceType,
+  conversationId: string,
+  filePath: string
+): Promise<Response> {
+  const url = `${config.getApiBaseUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/files/download`;
+  const res = await clientFetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ filePath }),
+  });
+  if (!res.ok) {
+    const errorData = await getErrorFromResponse(res);
+    throw new Error(errorData.message);
+  }
+  return res;
+}
 
 export function useFileProcessedContent({
   owner,
@@ -154,7 +177,7 @@ export function useFileMetadata({
       : `/api/w/${owner.sId}/files/${fileId}/metadata`
     : null;
 
-  const { data, error, mutate } = useSWRWithDefaults(
+  const { data, error, mutateRegardlessOfQueryParams } = useSWRWithDefaults(
     swrKey,
     fileMetadataFetcher
   );
@@ -163,7 +186,7 @@ export function useFileMetadata({
     fileMetadata: data,
     isFileMetadataLoading: !error && !data,
     isFileMetadataError: error,
-    mutateFileMetadata: mutate,
+    mutateFileMetadata: mutateRegardlessOfQueryParams,
   };
 }
 
@@ -279,5 +302,75 @@ export function useShareInteractiveContentFile({
     isFileShareLoading: !error && !data,
     isFileShareError: error,
     mutateFileShare: mutate,
+  };
+}
+
+export function useSharingGrants({
+  fileId,
+  owner,
+  disabled,
+}: {
+  fileId: string;
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const sendNotification = useSendNotification();
+
+  const grantsFetcher: Fetcher<{ grants: SharingGrantType[] }> = fetcher;
+
+  const swrKey = `/api/w/${owner.sId}/files/${fileId}/share/grants`;
+
+  const { data, error, mutate } = useSWRWithDefaults(swrKey, grantsFetcher, {
+    disabled,
+  });
+
+  const doAddGrants = async (emails: string[]) => {
+    const res = await clientFetch(swrKey, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emails }),
+    });
+
+    if (!res.ok) {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Failed to send invites.",
+        description: `Error: ${errorData.message}`,
+      });
+      return null;
+    }
+
+    await mutate();
+    return (await res.json()) as { grants: SharingGrantType[] };
+  };
+
+  const doRevokeGrant = async (grantId: number) => {
+    const res = await clientFetch(swrKey, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ grantId }),
+    });
+
+    if (!res.ok) {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Failed to revoke access.",
+        description: `Error: ${errorData.message}`,
+      });
+      return false;
+    }
+
+    await mutate();
+    return true;
+  };
+
+  return {
+    grants: data?.grants ?? emptyArray(),
+    isGrantsLoading: disabled ? false : !error && !data,
+    doAddGrants,
+    doRevokeGrant,
   };
 }

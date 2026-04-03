@@ -279,6 +279,53 @@ Example:
 /api/w/[wId]/resource/[sId]
 ```
 
+## AUDIT LOGGING
+
+### [AUDIT1] Every state-changing operation on a security-sensitive resource MUST emit an audit log event
+
+- Use `void emitAuditLogEvent({ auth, action, targets, context?, metadata? })` for user-initiated actions where an `Authenticator` is available
+- Use `void emitAuditLogEventDirect({ workspace, action, actor, targets, context, metadata? })` for system-initiated actions (Temporal activities, webhooks, login/logout) where no `Authenticator` exists
+- Never `await` the emit call; always fire-and-forget with `void`
+- Audit log failures must never break the main operation (the emit functions handle this internally)
+
+### [AUDIT2] Always prefer the real human actor over "system"
+
+- If a human configured the automation (trigger, API key), use that human as the actor via `Authenticator.fromUserIdAndWorkspaceId(userId, workspaceId)`
+- Only use `Authenticator.internalAdminForWorkspace(workspaceId)` or `emitAuditLogEventDirect` with a system actor for genuinely external events (SCIM sync, WorkOS webhooks, login failures without workspace context)
+
+### [AUDIT3] Every new audit action requires three artifacts
+
+- A JSON schema file at `front/admin/audit_log_schemas/<action>.json`
+- The action string added to the `AuditAction` union type in `front/lib/api/audit/workos_audit.ts`
+- A `void emitAuditLogEvent(...)` or `void emitAuditLogEventDirect(...)` call at the mutation site
+- See `runbooks/NEW_AUDIT_EVENT.md` for the step-by-step checklist
+
+### [AUDIT4] Place the emit call AFTER the mutation succeeds, not before
+
+- The audit log records what happened, not what was attempted
+- Exception: `user.login_failed` and similar failure events are emitted on the failure path
+
+### [AUDIT5] Metadata values must be strings
+
+- WorkOS SDK expects all metadata values as strings. Convert numbers and booleans with `String(value)`
+- Schema files use `"string"` as the value type (e.g., `"role": "string"`)
+
+### [AUDIT6] Always include `getAuditLogContext(auth, req)` as the `context` parameter when a `NextApiRequest` is available
+
+- This captures the client IP from `x-forwarded-for` headers
+- In Temporal activities or non-HTTP contexts, omit `context` (defaults to `auth.clientIp() ?? "internal"`) or pass `{ location: "internal" }` for direct emit
+
+### [AUDIT7] Targets always include the workspace as the first target
+
+- Use `buildWorkspaceTarget(auth.getNonNullableWorkspace())` or `buildWorkspaceTarget(workspace)`
+- Additional targets follow: `{ type: "user", id: user.sId, name: user.fullName() }`, `{ type: "api_key", id: key.sId }`, etc.
+
+### [AUDIT8] Action names follow `<resource>.<verb>` dot notation
+
+- Resource is singular, lowercase: `user`, `api_key`, `membership`, `scim`
+- Verb is past tense or descriptive: `created`, `revoked`, `role_updated`, `login_failed`
+- Consistency matters: check existing `AuditAction` values before inventing new names
+
 ## ERROR
 
 ### [ERR1] Do not rely on throw + catch
@@ -439,13 +486,17 @@ class Conversation extends Model { }
 class ConversationModel extends Model { }
 ```
 
-### [BACK12] Endpoint backward compatibility
+### [BACK12] No breaking changes in API endpoints
 
-When updating an existing endpoint and its expected payload, ensure backward compatibility with
-clients. Schemas must be append-only, we never remove fields, and when adding a new field, it must
-be optional and accept `undefined` as a value even if the latest client code always sends a value.
+**Public API (`pages/api/v1/`):** Breaking changes are never allowed. External consumers depend on
+a stable contract. Schemas must be append-only: never remove fields. When adding a new field, it
+must be optional and accept `undefined` as a value even if the latest client code always sends a
+value.
 
-This prevents breaking clients who are still running an older version.
+**Private API (`pages/api/`):** Breaking changes are acceptable only after enough time has passed
+to be confident that no old clients are still deployed. Until then, follow the same backward
+compatibility rules as the public API. When introducing a breaking change, first deploy the
+updated client code, wait for all old clients to cycle out, then clean up the old contract.
 
 Example:
 
@@ -463,38 +514,7 @@ interface UpdateResourceBody {
 }
 ```
 
-### [BACK13] Foreign key must be indexed
-
-When adding a foreign key `B.a` on table `B` to a deletable object from table `A` (pretty much all
-objects in the context of scrubbing a workspace) make sure to add an index on `B.a` to avoid table
-scans when deleting objects from table `A`.
-
-```
-AgentMCPActionModel.belongsTo(AgentMessageModel, {
-  foreignKey: { name: "agentMessageId", allowNull: false },
-  as: "agentMessage",
-});
-
-AgentMessageModel.hasMany(AgentMCPActionModel, {
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
-
-// Must be accompanied above in the model definition by index:
-
-{
-  fields: ["agentMessageId"],
-  concurrently: true,
-}
-```
-
-### [BACK14] No breaking changes in PRIVATE API endpoints
-
-Breaking changes in PRIVATE API endpoints are prohibited. The PRIVATE API serves multiple clients
-(web app, browser extensions, etc.) that may be running different versions. Breaking
-changes can cause crashes or data corruption for users who haven't updated to the latest version.
-
-All changes to PRIVATE API endpoints must be backward compatible. Follow these steps based on the
-type of change:
+Follow these steps based on the type of change:
 
 **1. Deleting an endpoint:**
 
@@ -536,6 +556,60 @@ type of change:
   - Do NOT remove enum values immediately
   - First: Update all client code to stop relying on the removed value
   - Stop returning the enum value from backend only after a period of time
+
+### [BACK13] Foreign key must be indexed
+
+When adding a foreign key `B.a` on table `B` to a deletable object from table `A` (pretty much all
+objects in the context of scrubbing a workspace) make sure to add an index on `B.a` to avoid table
+scans when deleting objects from table `A`.
+
+```
+AgentMCPActionModel.belongsTo(AgentMessageModel, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+  as: "agentMessage",
+});
+
+AgentMessageModel.hasMany(AgentMCPActionModel, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+// Must be accompanied above in the model definition by index:
+
+{
+  fields: ["agentMessageId"],
+  concurrently: true,
+}
+```
+
+### [BACK14] Keep Swagger documentation in sync with API schema changes
+
+Any change to the schema of a public or private API endpoint — including deeply nested objects in
+request or response bodies — must be reflected in the existing Swagger documentation. This applies
+to adding, removing, or modifying fields at any level of nesting.
+
+In particular, check and update the following files when modifying API schemas:
+
+- `pages/api/swagger_private_schemas.ts` for private API shared schemas
+- `pages/api/v1/w/[wId]/swagger_schemas.ts` for public API shared schemas
+- The `@swagger` annotation in the endpoint file itself
+
+Every endpoint must have either `@swagger` (with proper documentation) or `@ignoreswagger`
+(for internal/undocumented endpoints). This is enforced by the `lint:swagger-annotations` check.
+
+TypeScript types that map to a swagger schema must carry a `@swaggerschema` annotation pointing
+to the corresponding schema name and file. When modifying a type with this annotation, always
+update the referenced swagger schema to match.
+
+Example:
+
+```
+/**
+ * @swaggerschema PrivateUser (swagger_private_schemas.ts)
+ */
+export type UserTypeWithWorkspaces = UserType & {
+  workspaces: WorkspaceType[];
+};
+```
 
 ## MCP
 

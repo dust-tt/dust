@@ -1,15 +1,14 @@
 import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { InputBarContextProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { Button, MenuIcon } from "@dust-tt/sparkle";
-import type { AttachSelectionMessage } from "@extension/platforms/chrome/messages";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
-import { useFileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
+import { sendGetSessionInfoMessage } from "@extension/shared/messages";
+import { ExtensionInputBarProvider } from "@extension/ui/components/conversation/ExtensionInputBarProvider";
 import { useContext, useEffect, useMemo, useState } from "react";
 
 interface ConversationContainerProps {
@@ -20,6 +19,21 @@ interface ConversationContainerProps {
   conversation?: ConversationWithoutContentType;
   serverId?: string;
 }
+
+const SUGGESTIONS = {
+  formHelper: {
+    id: "form_helper",
+    title: "Fill forms with Dust extension",
+    description:
+      "No more copy-pasting. Fill out forms directly from your agents.",
+  },
+  multiTab: {
+    id: "multi_tab",
+    title: "Bring any tab into your conversation",
+    description:
+      "Ask an agent to read, summarize, or act on any of your open tabs.",
+  },
+} as const;
 
 export const ConversationContainer = ({
   workspace,
@@ -32,58 +46,63 @@ export const ConversationContainer = ({
   const platform = usePlatform();
   const { currentPanel } = useConversationSidePanelContext();
   const { setSidebarOpen } = useContext(SidebarContext);
-  const fileUploaderService = useFileUploaderService(
-    platform.capture,
-    conversationId
-  );
-
-  const captureActions = platform.useCaptureActions(
-    workspace,
-    fileUploaderService.uploadContentTab,
-    fileUploaderService.isCapturing
-  );
 
   const clientSideMCPServerIds = useMemo(
     () => (serverId ? [serverId] : undefined),
     [serverId]
   );
 
-  // Reset fileBlobs when conversationId changes.
-  // We intentionally avoid using a key prop as it would remount
-  // the entire page subtree just to reset a single array.
-  const [prevConversationId, setPrevConversationId] = useState(conversationId);
-  if (conversationId !== prevConversationId) {
-    setPrevConversationId(conversationId);
-    fileUploaderService.resetUpload();
-  }
+  const [suggestion, setSuggestion] = useState<
+    | {
+        id: string;
+        title: string;
+        description: string;
+      }
+    | undefined
+  >(undefined);
+
+  const handleDismissSuggestion = async (id: string) => {
+    const dismissed = await platform.storage.get<string[]>(
+      "dismissedSuggestions"
+    );
+    const updated = [...(dismissed ?? []), id];
+    await platform.storage.set("dismissedSuggestions", updated);
+    setSuggestion(undefined);
+  };
 
   useEffect(() => {
-    void platform.messaging?.sendMessage({
-      type: "INPUT_BAR_STATUS",
-      available: true,
-    });
-
-    const cleanup = platform.messaging?.addMessageListener(
-      (message: AttachSelectionMessage) => {
-        if (message.type === "EXT_ATTACH_TAB") {
-          void fileUploaderService.uploadContentTab(message);
-        }
-      }
-    );
-
-    return () => {
-      void platform.messaging?.sendMessage({
-        type: "INPUT_BAR_STATUS",
-        available: false,
-      });
-      cleanup?.();
+    const isSuggestionDismissed = async (id: string): Promise<boolean> => {
+      const dismissed = await platform.storage.get<string[]>(
+        "dismissedSuggestions"
+      );
+      return (dismissed ?? []).includes(id);
     };
-  }, [platform.messaging, fileUploaderService.uploadContentTab]);
+
+    void sendGetSessionInfoMessage()
+      .then(async (response) => {
+        if (
+          response.currentTabHasForm &&
+          !(await isSuggestionDismissed(SUGGESTIONS.formHelper.id))
+        ) {
+          setSuggestion(SUGGESTIONS.formHelper);
+          return;
+        }
+        if (
+          response.tabsCount > 2 &&
+          !(await isSuggestionDismissed(SUGGESTIONS.multiTab.id))
+        ) {
+          setSuggestion(SUGGESTIONS.multiTab);
+        }
+      })
+      .catch(() => {
+        // Ignore errors, this is just an optional suggestion.
+      });
+  }, []);
 
   return (
-    <InputBarContextProvider
-      captureActions={captureActions}
-      fileUploaderService={fileUploaderService}
+    <ExtensionInputBarProvider
+      workspace={workspace}
+      conversationId={conversationId}
     >
       <div className={currentPanel ? "hidden" : "flex flex-col h-full w-full"}>
         <ConversationContainerVirtuoso
@@ -92,6 +111,8 @@ export const ConversationContainer = ({
           subscription={subscription}
           conversationId={conversationId}
           clientSideMCPServerIds={clientSideMCPServerIds}
+          suggestion={suggestion}
+          onDismissSuggestion={handleDismissSuggestion}
         />
       </div>
       {conversation && currentPanel && (
@@ -111,6 +132,6 @@ export const ConversationContainer = ({
           />
         </div>
       )}
-    </InputBarContextProvider>
+    </ExtensionInputBarProvider>
   );
 };

@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import type { HandleMembershipInvitationResult } from "@app/lib/api/invitation";
 import { handleMembershipInvitations } from "@app/lib/api/invitation";

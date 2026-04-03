@@ -10,25 +10,6 @@ delete colors.trueGray;
 delete colors.coolGray;
 delete colors.blueGray;
 
-const safeColorsArray = [
-  "gray",
-  "green",
-  "rose",
-  "golden",
-  "blue",
-  "primary",
-  "highlight",
-  "success",
-  "warning",
-  "info",
-  "emerald",
-  "lime",
-  "orange",
-  "pink",
-  "red",
-  "violet",
-];
-
 // Get all color names from Tailwind's default palette, excluding special colors
 const colorNames = Object.keys(colors).filter(
   (color) =>
@@ -200,40 +181,6 @@ Object.assign(colors, {
   amber: customColors.golden,
   sky: customColors.blue,
 });
-
-const safeColorlist = safeColorsArray.flatMap((color) => [
-  // Include 50 shade
-  `s-bg-${color}-50`,
-  // Whitelist all bg colors from shade 100 to 900
-  ...Array.from({ length: 9 }, (_, i) => `s-bg-${color}-${(i + 1) * 100}`),
-  // Include 950 shade
-  `s-bg-${color}-950`,
-  // Include muted shade
-  `s-bg-${color}-muted`,
-  // Add night mode variants
-  `dark:s-bg-${color}-50-night`,
-  ...Array.from(
-    { length: 9 },
-    (_, i) => `dark:s-bg-${color}-${(i + 1) * 100}-night`
-  ),
-  `dark:s-bg-${color}-950-night`,
-  `s-border-${color}-100`,
-  `s-border-${color}-200`,
-  `s-border-${color}-300`,
-  // Add night mode variants
-  `dark:s-border-${color}-100-night`,
-  `dark:s-border-${color}-200-night`,
-  `dark:s-border-${color}-300-night`,
-  `s-text-${color}-500`,
-  `s-text-${color}-800`,
-  `s-text-${color}-900`,
-  `s-text-${color}-950`,
-  // Add night mode variants
-  `dark:s-text-${color}-500-night`,
-  `dark:s-text-${color}-800-night`,
-  `dark:s-text-${color}-900-night`,
-  `dark:s-text-${color}-950-night`,
-]);
 
 module.exports = {
   future: {
@@ -647,6 +594,10 @@ module.exports = {
             night: colors.rose[500],
           },
         },
+        hover: {
+          DEFAULT: colors.gray[100],
+          night: colors.gray[800],
+        },
         muted: {
           DEFAULT: colors.gray[50],
           night: colors.gray[950],
@@ -1016,7 +967,11 @@ module.exports = {
   prefix: "s-",
   content: ["./src/**/*.{html,js,ts,jsx,tsx}"],
   safelist: [
-    ...safeColorlist,
+    // Avatar bg classes are constructed dynamically.
+    {
+      pattern:
+        /^s-bg-(gray|blue|violet|pink|red|orange|golden|lime|emerald)-(100|200|300|400|500|600|700|800)$/,
+    },
     "s-grid-rows-2",
     "s-grid-rows-3",
     "s-grid-rows-4",

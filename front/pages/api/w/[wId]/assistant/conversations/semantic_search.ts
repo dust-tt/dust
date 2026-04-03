@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { searchProjectConversations } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
@@ -81,7 +82,7 @@ async function handler(
 
   const spaceIdToName = new Map(projectSpaces.map((s) => [s.sId, s.name]));
 
-  const conversations = await ConversationResource.fetchByIds(
+  const conversations = await ConversationResource.fetchByIdsWithReadState(
     auth,
     filteredResults.map((r) => r.conversationId)
   );

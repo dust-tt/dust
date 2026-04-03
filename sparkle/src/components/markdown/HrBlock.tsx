@@ -10,7 +10,7 @@ interface HrBlockProps {
 
 export const HrBlock = memo(
   (_props: HrBlockProps) => (
-    <div className="s-my-6 s-border-b s-border-primary-150 dark:s-border-primary-150-night" />
+    <div className="s-my-4 s-border-b s-border-primary-150 dark:s-border-primary-150-night" />
   ),
   (prev, next) => sameNodePosition(prev.node, next.node)
 );

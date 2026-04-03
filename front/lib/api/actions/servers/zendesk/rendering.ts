@@ -213,6 +213,16 @@ export function renderTicketComments(
       ? `${author.name} (${author.email ?? "Unknown email"})`
       : `Unknown User (ID: ${comment.author_id})`;
     lines.push(`\n[${date}] ${authorLabel}:\n${body}`);
+
+    const nonDeletedAttachments = (comment.attachments ?? []).filter(
+      (a) => !a.deleted
+    );
+    if (nonDeletedAttachments.length > 0) {
+      lines.push("  Attachments:");
+      for (const att of nonDeletedAttachments) {
+        lines.push(`  - ${att.file_name} (${att.content_type})`);
+      }
+    }
   }
 
   return lines.join("\n");

@@ -49,6 +49,8 @@ jobs:
           postgresql user: test
           postgresql password: test
           postgresql port: 5433
+      - name: Install Sandbox
+        run: sudo apt-get update && sudo apt-get install -y ripgrep fd-find sd
       - name: Run Tests
         working-directory: front
         env:
@@ -83,3 +85,23 @@ jobs:
         env:
           FRONT_DATABASE_URI: "postgres://fake:fake@localhost:5432/fake"
         run: npm run build:temporal-bundles
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          node-version: "22.22.0"
+      - name: Lint test filenames
+        run: npm -w front run lint:test-filenames
+      - name: Lint swagger annotations
+        run: npm -w front run lint:swagger-annotations
+      - name: Check swagger.json is up to date
+        working-directory: front
+        run: |
+          npx next-swagger-doc-cli swagger.json
+          if ! git diff --exit-code public/swagger.json; then
+            echo "Error: public/swagger.json is out of date. Run 'npm run docs' in front/ and commit the result."
+            exit 1
+          fi

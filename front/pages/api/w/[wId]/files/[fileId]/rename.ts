@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -42,7 +43,7 @@ async function handler(
 
   // Check feature flag for project_context files
   if (file.useCase === "project_context") {
-    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    const featureFlags = await getFeatureFlags(auth);
     if (!featureFlags.includes("projects")) {
       return apiError(req, res, {
         status_code: 500,

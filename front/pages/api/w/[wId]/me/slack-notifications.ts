@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -27,9 +28,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const featureFlags = await getFeatureFlags(
-        auth.getNonNullableWorkspace()
-      );
+      const featureFlags = await getFeatureFlags(auth);
 
       const isFeatureEnabled = featureFlags.includes(
         "conversations_slack_notifications"

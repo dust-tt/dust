@@ -41,10 +41,12 @@ import {
   GoogleSpreadsheetLogo,
   GranolaLogo,
   GuruLogo,
+  HexLogo,
   HubspotLogo,
   IntercomLogo,
   JiraLogo,
   LinearLogo,
+  LumaLogo,
   MicrosoftExcelLogo,
   MicrosoftLogo,
   MicrosoftOutlookLogo,
@@ -53,6 +55,7 @@ import {
   MondayLogo,
   NotionLogo,
   OpenaiLogo,
+  PowerBiLogo,
   ProductboardLogo,
   PuzzleIcon,
   SalesforceLogo,
@@ -72,6 +75,25 @@ import {
   ZendeskLogo,
 } from "@dust-tt/sparkle";
 import type { ComponentProps, ComponentType } from "react";
+
+// Re-export icon names, types, and type guards from the sparkle-free module so
+// that existing imports from this file continue to work.
+export type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/components/resources/resources_icon_names";
+export {
+  CUSTOM_RESOURCE_ALLOWED,
+  INTERNAL_ALLOWED_ICONS,
+  isCustomResourceIconType,
+  isInternalAllowedIcon,
+} from "@app/components/resources/resources_icon_names";
+
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/components/resources/resources_icon_names";
+import { isCustomResourceIconType } from "@app/components/resources/resources_icon_names";
 
 interface ResourceAvatarProps extends ComponentProps<typeof Avatar> {}
 
@@ -95,7 +117,10 @@ export function ResourceAvatar({
   );
 }
 
-export const CUSTOM_RESOURCE_ALLOWED = Object.keys(ActionIcons);
+// Compile-time check: ensure CUSTOM_RESOURCE_ALLOWED matches ActionIcons keys.
+// If ActionIcons gains or loses a key, this assignment will fail to compile.
+const _customCheck: Record<CustomResourceIconType, unknown> = ActionIcons;
+void _customCheck;
 
 export const InternalActionIcons = {
   ActionAtomIcon,
@@ -139,10 +164,12 @@ export const InternalActionIcons = {
   GoogleSpreadsheetLogo,
   GranolaLogo,
   GuruLogo,
+  HexLogo,
   HubspotLogo,
   IntercomLogo,
   JiraLogo,
   LinearLogo,
+  LumaLogo,
   MicrosoftExcelLogo,
   MicrosoftLogo,
   MicrosoftOutlookLogo,
@@ -151,6 +178,7 @@ export const InternalActionIcons = {
   MondayLogo,
   NotionLogo,
   OpenaiLogo,
+  PowerBiLogo,
   ProductboardLogo,
   PuzzleIcon,
   SalesforceLogo,
@@ -168,21 +196,10 @@ export const InternalActionIcons = {
   ZendeskLogo,
 };
 
-export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);
-
-export type CustomResourceIconType = keyof typeof ActionIcons;
-
-export const isCustomResourceIconType = (
-  icon: string
-): icon is CustomResourceIconType =>
-  CUSTOM_RESOURCE_ALLOWED.includes(icon as CustomResourceIconType);
-
-export type InternalAllowedIconType = keyof typeof InternalActionIcons;
-
-export const isInternalAllowedIcon = (
-  icon: string
-): icon is InternalAllowedIconType =>
-  INTERNAL_ALLOWED_ICONS.includes(icon as InternalAllowedIconType);
+// Compile-time check: ensure INTERNAL_ALLOWED_ICONS matches InternalActionIcons keys.
+const _internalCheck: Record<InternalAllowedIconType, unknown> =
+  InternalActionIcons;
+void _internalCheck;
 
 export const getAvatarFromIcon = (
   icon: InternalAllowedIconType | CustomResourceIconType,

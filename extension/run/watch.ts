@@ -4,11 +4,13 @@ import webpack from "webpack";
 import WebpackDevServer from "webpack-dev-server";
 
 import { getConfig as getChromeConfig } from "../platforms/chrome/webpack.config";
+import { getConfig as getFirefoxConfig } from "../platforms/firefox/webpack.config";
 import { getConfig as getFrontConfig } from "../platforms/front/webpack.config";
 
 const configPerPlatform: Record<PlatformType, any> = {
   chrome: getChromeConfig,
   front: getFrontConfig,
+  firefox: getFirefoxConfig,
 };
 
 async function main() {
@@ -29,7 +31,7 @@ async function main() {
     const server = new WebpackDevServer(config.devServer, compiler);
     await server.start();
   } else {
-    compiler.watch({ ignored: /node_modules/ }, async (err, res) => {
+    compiler.watch({ ignored: ["**/node_modules"] }, async (err, res) => {
       if (err) {
         console.error(err);
       }

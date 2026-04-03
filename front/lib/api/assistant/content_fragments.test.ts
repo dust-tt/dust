@@ -1,5 +1,5 @@
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type {
   ConversationType,
   UserMessageType,
@@ -20,6 +20,7 @@ function createMockContentFragment(
     visibility: "visible",
     version: 0,
     rank,
+    branchId: null,
     sourceUrl: null,
     title,
     contentType: "text/plain",
@@ -41,6 +42,7 @@ function createMockContentFragment(
     sourceProvider: null,
     sourceIcon: null,
     isInProjectContext: false,
+    hidden: false,
   };
 }
 
@@ -54,6 +56,7 @@ function createMockUserMessage(rank: number): UserMessageType {
     visibility: "visible",
     version: 0,
     rank,
+    branchId: null,
     user: null,
     mentions: [],
     richMentions: [],
@@ -77,6 +80,7 @@ function createMockAgentMessage(rank: number) {
     sId: generateRandomModelSId(),
     version: 0,
     rank,
+    branchId: null,
     created: Date.now(),
     completedTs: null,
     parentMessageId: null,

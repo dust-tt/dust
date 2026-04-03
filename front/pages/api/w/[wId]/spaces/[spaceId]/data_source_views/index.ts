@@ -1,3 +1,109 @@
+/**
+ * @swagger
+ * /api/w/{wId}/spaces/{spaceId}/data_source_views:
+ *   get:
+ *     summary: List data source views
+ *     description: Returns all data source views in a specific space.
+ *     tags:
+ *       - Private Spaces
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: spaceId
+ *         required: true
+ *         description: ID of the space
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: category
+ *         required: false
+ *         description: Filter by data source view category
+ *         schema:
+ *           type: string
+ *           enum: [managed, folder, website, apps]
+ *       - in: query
+ *         name: withDetails
+ *         required: false
+ *         description: Include usage and connector details (requires category)
+ *         schema:
+ *           type: string
+ *           enum: ["true"]
+ *       - in: query
+ *         name: includeEditedBy
+ *         required: false
+ *         description: Include editedByUser information
+ *         schema:
+ *           type: string
+ *           enum: ["true"]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 dataSourceViews:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/PrivateDataSourceView'
+ *       401:
+ *         description: Unauthorized
+ *   post:
+ *     summary: Create a data source view
+ *     description: Creates a new data source view in a specific space.
+ *     tags:
+ *       - Private Spaces
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: spaceId
+ *         required: true
+ *         description: ID of the space
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - dataSourceId
+ *             properties:
+ *               dataSourceId:
+ *                 type: string
+ *               parentsIn:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       201:
+ *         description: Successfully created data source view
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 dataSourceView:
+ *                   $ref: '#/components/schemas/PrivateDataSourceView'
+ *       401:
+ *         description: Unauthorized
+ */
 import type { DataSourcesUsageByAgent } from "@app/lib/api/agent_data_sources";
 import {
   getDataSourcesUsageByCategory,

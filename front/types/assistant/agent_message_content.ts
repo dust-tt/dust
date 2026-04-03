@@ -3,9 +3,18 @@ import type { FunctionCallType } from "@app/types/assistant/generation";
 import type { ModelId } from "../shared/model_id";
 import type { ModelProviderIdType } from "./models/types";
 
+export type AgentMessagePhase = (typeof AGENT_MESSAGE_PHASES)[number];
+export const AGENT_MESSAGE_PHASES = ["commentary", "final_answer"] as const;
+export function isAgentMessagePhase(value: string): value is AgentMessagePhase {
+  return AGENT_MESSAGE_PHASES.includes(value as AgentMessagePhase);
+}
+
 export type AgentTextContentType = {
   type: "text_content";
   value: string;
+  metadata?: {
+    phase?: AgentMessagePhase;
+  };
 };
 
 export type AgentReasoningContentType = {

@@ -18,6 +18,10 @@ import assert from "assert";
 import { hash as blake3 } from "blake3";
 import { extname } from "path";
 
+export function hashFileContent(content: Buffer): string {
+  return blake3(content).toString("hex");
+}
+
 export async function formatCodeContentForUpsert(
   dataSourceConfig: DataSourceConfig,
   sourceUrl: string,
@@ -91,7 +95,7 @@ export async function upsertCodeFile({
   // Read file content from GCS.
   const content = await gcsManager.downloadFile(gcsPath);
 
-  const contentHash = blake3(content).toString("hex");
+  const contentHash = hashFileContent(content);
 
   // Construct source URL.
   const sourceUrl = `${getRepoUrl(repoLogin, repoName)}/blob/${defaultBranch}/${relativePath}`;

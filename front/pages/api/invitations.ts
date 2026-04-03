@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import { fetchInvitationsFromOtherRegion } from "@app/lib/api/regions/lookup";

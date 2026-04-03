@@ -1,5 +1,6 @@
 import type { AgentActionRunningEvents } from "@app/lib/actions/mcp";
 import type {
+  ToolAskUserQuestionEvent,
   ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
@@ -9,6 +10,7 @@ import type {
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentMessageDoneEvent,
+  AgentMessageGracefullyStoppedEvent,
   AgentMessageSuccessEvent,
   ToolErrorEvent,
 } from "@app/types/assistant/agent";
@@ -19,6 +21,7 @@ import type {
   ButlerThinkingEvent,
   ConversationTitleEvent,
   UserMessageNewEvent,
+  UserMessagePromotedEvent,
 } from "@app/types/assistant/conversation";
 import type { GenerationTokensEvent } from "@app/types/assistant/generation";
 
@@ -28,9 +31,11 @@ export type AgentMessageEvents =
   | AgentContextPrunedEvent
   | AgentErrorEvent
   | AgentGenerationCancelledEvent
+  | AgentMessageGracefullyStoppedEvent
   | AgentMessageSuccessEvent
   | GenerationTokensEvent
   | ToolErrorEvent
+  | ToolAskUserQuestionEvent
   | ToolFileAuthRequiredEvent
   | ToolPersonalAuthRequiredEvent;
 
@@ -41,11 +46,13 @@ export type ConversationEvents =
   | ConversationTitleEvent
   | AgentMessageNewEvent
   | UserMessageNewEvent
+  | UserMessagePromotedEvent
   | AgentMessageDoneEvent;
 
 export const TERMINAL_AGENT_MESSAGE_EVENT_TYPES: AgentMessageEvents["type"][] =
   [
     "agent_message_success",
+    "agent_message_gracefully_stopped",
     "agent_generation_cancelled",
     "agent_error",
     "tool_error",

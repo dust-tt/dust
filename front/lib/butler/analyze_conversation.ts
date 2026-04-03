@@ -3,6 +3,7 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
+import { getFastestWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import {
   getAllEvaluators,
@@ -16,7 +17,6 @@ import type {
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationButlerSuggestionResource } from "@app/lib/resources/conversation_butler_suggestion_resource";
 import logger from "@app/logger/logger";
-import { getFastestWhitelistedModel } from "@app/types/assistant/assistant";
 import type {
   ButlerDoneEvent,
   ButlerSuggestionCreatedEvent,
@@ -168,6 +168,16 @@ async function runEvaluator(
   if (conv.messages.length === 0) {
     return null;
   }
+
+  // Inject the evaluator prompt as a trailing user message so the conversation
+  // never ends with an assistant message. Some providers (e.g. Mistral) reject
+  // requests where the last message has the assistant role.
+  // The prompt being duplicated (system + user) is fine — it reinforces the instruction and is semantically correct since the evaluator prompt is the "question" being asked
+  conv.messages.push({
+    role: "user",
+    name: "butler",
+    content: [{ type: "text", text: "prompt" }],
+  });
 
   const res = await runMultiActionsAgent(
     auth,
@@ -321,7 +331,7 @@ export async function analyzeConversation(
   });
 
   try {
-    const model = getFastestWhitelistedModel(owner);
+    const model = await getFastestWhitelistedModel(auth);
     if (!model) {
       logger.warn(
         { conversationId: conversation.id, workspaceId: owner.sId },

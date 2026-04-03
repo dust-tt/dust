@@ -1,16 +1,19 @@
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
-import { JOB_FIELD_PATH } from "@app/lib/api/actions/servers/ashby/helpers";
 import type {
   AshbyCandidate,
+  AshbyCandidateInfo,
   AshbyCandidateNote,
   AshbyFeedbackSubmission,
   AshbyJob,
+  AshbyJobInfo,
   AshbyJobPosting,
+  AshbyOfferInfo,
   AshbyReferralFormInfo,
   AshbyReportSynchronousResponse,
 } from "@app/lib/api/actions/servers/ashby/types";
 import { toCsv } from "@app/lib/api/csv";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+
+export const JOB_FIELD_PATH = "_systemfield.job";
 
 function renderCandidate(candidate: AshbyCandidate): string {
   const lines = [`ID: ${candidate.id}`, `Name: ${candidate.name}`];
@@ -27,19 +30,13 @@ export function renderCandidateList(candidates: AshbyCandidate[]): string {
 }
 
 export async function renderReport(
-  responseResults: NonNullable<AshbyReportSynchronousResponse["results"]>,
+  responseResults: Extract<
+    NonNullable<AshbyReportSynchronousResponse>,
+    { status: "complete" }
+  >,
   { reportId }: { reportId: string }
 ): Promise<CallToolResult["content"]> {
-  const { reportData, status } = responseResults;
-
-  if (status !== "complete") {
-    return [
-      {
-        type: "text" as const,
-        text: `Generation of report ${reportId} is not complete (status: ${status}).`,
-      },
-    ];
-  }
+  const { reportData } = responseResults;
 
   if (reportData.data.length === 0) {
     return [
@@ -184,7 +181,7 @@ function renderSingleNote(note: AshbyCandidateNote): string {
 
   lines.push(`**Created at:** ${new Date(note.createdAt).toISOString()}`);
   lines.push("");
-  lines.push(note.content);
+  lines.push(note.content ?? "Empty note");
 
   return lines.join("\n");
 }
@@ -278,6 +275,159 @@ export function renderReferralForm(
       }
 
       lines.push("");
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function formatFieldValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "N/A";
+  }
+  if (typeof value === "object") {
+    // Handle currency objects like { currencyCode: "USD", value: 100000 }
+    const obj = value as Record<string, unknown>;
+    if ("currencyCode" in obj && "value" in obj) {
+      return `${obj.value} ${obj.currencyCode}`;
+    }
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
+export function renderHireData({
+  candidateInfo,
+  offerInfo,
+  jobInfo,
+  applicationId,
+}: {
+  candidateInfo: AshbyCandidateInfo;
+  offerInfo: AshbyOfferInfo | null;
+  jobInfo: AshbyJobInfo | undefined;
+  applicationId: string;
+}): string {
+  const lines: string[] = ["# Hire Data Summary", ""];
+
+  // Candidate Information
+  lines.push("## Candidate Information");
+  lines.push("");
+
+  if (candidateInfo.firstName) {
+    lines.push(`**First Name:** ${candidateInfo.firstName}`);
+  }
+  if (candidateInfo.lastName) {
+    lines.push(`**Last Name:** ${candidateInfo.lastName}`);
+  }
+
+  if (candidateInfo.primaryEmailAddress) {
+    lines.push(`**Email:** ${candidateInfo.primaryEmailAddress.value}`);
+  }
+  if (candidateInfo.primaryPhoneNumber) {
+    lines.push(`**Phone:** ${candidateInfo.primaryPhoneNumber.value}`);
+  }
+
+  if (candidateInfo.location?.country) {
+    lines.push(`**Country:** ${candidateInfo.location.country}`);
+  }
+  if (candidateInfo.location?.region) {
+    lines.push(`**Region:** ${candidateInfo.location.region}`);
+  }
+  if (candidateInfo.location?.city) {
+    lines.push(`**City:** ${candidateInfo.location.city}`);
+  }
+
+  if (candidateInfo.customFields && candidateInfo.customFields.length > 0) {
+    lines.push("");
+    lines.push("### Candidate Custom Fields");
+    for (const field of candidateInfo.customFields) {
+      const title = field.title ?? field.id ?? "Unknown";
+      lines.push(`**${title}:** ${formatFieldValue(field.value)}`);
+    }
+  }
+
+  lines.push("");
+
+  // Job Information
+  lines.push("## Job Information");
+  lines.push("");
+
+  if (jobInfo) {
+    lines.push(`**Job Title:** ${jobInfo.title}`);
+    lines.push(`**Job ID:** ${jobInfo.id}`);
+    lines.push(`**Job Status:** ${jobInfo.status}`);
+    if (jobInfo.departmentName) {
+      lines.push(`**Department:** ${jobInfo.departmentName}`);
+    }
+    if (jobInfo.teamName) {
+      lines.push(`**Team:** ${jobInfo.teamName}`);
+    }
+    if (jobInfo.locationName) {
+      lines.push(`**Job Location:** ${jobInfo.locationName}`);
+    }
+
+    if (jobInfo.customFields && jobInfo.customFields.length > 0) {
+      lines.push("");
+      lines.push("### Job Custom Fields");
+      for (const field of jobInfo.customFields) {
+        const title = field.title ?? field.id ?? "Unknown";
+        lines.push(`**${title}:** ${formatFieldValue(field.value)}`);
+      }
+    }
+  } else {
+    lines.push("*Job information not available.*");
+  }
+
+  lines.push("");
+
+  // Application Information
+  lines.push("## Application");
+  lines.push("");
+  lines.push(`**Application ID:** ${applicationId}`);
+  lines.push(`**Status:** Hired`);
+  lines.push("");
+
+  // Offer Information
+  lines.push("## Offer Details");
+  lines.push("");
+
+  if (!offerInfo) {
+    lines.push("*No offers found for this application.*");
+  } else {
+    lines.push(`**Offer ID:** ${offerInfo.id}`);
+    if (offerInfo.offerStatus) {
+      lines.push(`**Offer Status:** ${offerInfo.offerStatus}`);
+    }
+    if (offerInfo.acceptanceStatus) {
+      lines.push(`**Acceptance Status:** ${offerInfo.acceptanceStatus}`);
+    }
+    if (offerInfo.decidedAt) {
+      lines.push(`**Decided At:** ${offerInfo.decidedAt}`);
+    }
+
+    const version = offerInfo.latestVersion;
+    if (version) {
+      if (version.startDate) {
+        lines.push(`**Start Date:** ${version.startDate}`);
+      }
+      if (version.salary) {
+        lines.push(
+          `**Salary:** ${version.salary.value} ${version.salary.currencyCode}`
+        );
+      }
+
+      if (version.customFields && version.customFields.length > 0) {
+        lines.push("");
+        lines.push("### Offer Custom Fields");
+        lines.push("");
+        for (const field of version.customFields) {
+          const title = field.title ?? field.id ?? "Unknown Field";
+          const displayValue = Array.isArray(field.valueLabel)
+            ? field.valueLabel.join(", ")
+            : (field.valueLabel ?? field.value);
+          lines.push(`**${title}:** ${formatFieldValue(displayValue)}`);
+        }
+      }
     }
   }
 

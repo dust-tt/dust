@@ -29,10 +29,7 @@ import {
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
-import {
-  fetchMessageInConversation,
-  getCompletionDuration,
-} from "@app/lib/api/assistant/messages";
+import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import {
   createSkillKnowledgeDataWarehouseServer,
   createSkillKnowledgeFileSystemServer,
@@ -41,10 +38,15 @@ import {
 } from "@app/lib/api/assistant/skill_actions";
 import { getLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
-import { getUserFacingLLMErrorMessage } from "@app/lib/api/llm/types/errors";
+import {
+  getByokUserFacingLLMErrorMessage,
+  getUserFacingLLMErrorMessage,
+} from "@app/lib/api/llm/types/errors";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
+import type { DurationRecorder } from "@app/lib/duration_recorder";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -52,17 +54,19 @@ import {
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import {
   updateAgentMessageDBAndMemory,
   updateResourceAndPublishEvent,
 } from "@app/temporal/agent_loop/activities/common";
+import { METRICS } from "@app/temporal/agent_loop/activities/instrumentation";
 import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
@@ -70,6 +74,7 @@ import type { AgentActionsEvent } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { isTextContent } from "@app/types/assistant/generation";
+import { isByokProviderId } from "@app/types/assistant/models/providers";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -104,11 +109,13 @@ export async function runModel(
     runIds,
     step,
     functionCallStepContentIds,
+    durationRecorder,
   }: {
     runAgentData: AgentLoopExecutionData;
     runIds: string[];
     step: number;
     functionCallStepContentIds: Record<string, ModelId>;
+    durationRecorder: DurationRecorder;
   }
 ): Promise<{
   actions: AgentActionsEvent["actions"];
@@ -493,7 +500,9 @@ export async function runModel(
     workspaceId: conversation.owner.sId,
   };
 
-  const credentials = await ProviderCredentialResource.getCredentials(auth);
+  const credentials = await getLlmCredentials(auth, {
+    skipEmbeddingApiKeyRequirement: true,
+  });
 
   const llm = await getLLM(auth, {
     credentials,
@@ -503,6 +512,7 @@ export async function runModel(
     responseFormat: agentConfiguration.model.responseFormat,
     metaData: agentConfiguration.model.metaData,
     context: traceContext,
+    omittedThinking: agentConfiguration.omittedThinking,
     // Custom trace input: show only the last user message instead of full conversation.
     getTraceInput: (conv) => {
       const lastUserMessage = conv.messages.findLast(
@@ -575,6 +585,8 @@ export async function runModel(
     });
   }
 
+  durationRecorder.record(METRICS.TIME_TO_PROVIDER_CALL);
+
   const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
     modelConversationRes,
     conversation,
@@ -604,13 +616,29 @@ export async function runModel(
         const errorDustRunId = llm?.getTraceId();
         const currentAttempt = Context.current().info.attempt;
         const isLastAttempt = currentAttempt >= RUN_MODEL_MAX_RETRIES;
+        const plan = auth.getNonNullablePlan();
+
+        if (
+          plan.isByok &&
+          isByokProviderId(model.providerId) &&
+          (type === "authentication_error" || type === "permission_error")
+        ) {
+          await ProviderCredentialResource.markAsUnhealthy(auth, {
+            providerId: model.providerId,
+          });
+        }
+
+        const errorMessage =
+          plan.isByok && isByokProviderId(model.providerId)
+            ? getByokUserFacingLLMErrorMessage(type, metadata)
+            : getUserFacingLLMErrorMessage(type, metadata);
 
         if (!isRetryable || isLastAttempt) {
           // Non-retryable errors or last retry attempt: surface error to user.
           await publishAgentError(
             {
               code: "multi_actions_error",
-              message: getUserFacingLLMErrorMessage(type, metadata),
+              message: errorMessage,
               metadata: null,
             },
             errorDustRunId
@@ -619,9 +647,7 @@ export async function runModel(
         }
 
         // Throw to let Temporal handle the retry via its retry policy.
-        throw new Error(
-          `LLM error (${type}): ${getUserFacingLLMErrorMessage(type, metadata)}`
-        );
+        throw new Error(`LLM error (${type}): ${errorMessage}`);
       }
       case "shouldReturnNull":
         return null;
@@ -639,13 +665,26 @@ export async function runModel(
   // It is possible that temporal requested activity cancellation but the
   // activity has not yet received the signal. In that case, the agent message
   // row would have status to cancelled (done via finalizeCancellationActivity).
-  const message = await fetchMessageInConversation(
+  const messageRes = await ConversationResource.getMessageByIdInConversation(
     auth,
     conversation,
     agentMessage.sId,
     agentMessage.version
   );
-  if (message?.agentMessage?.status === "cancelled") {
+
+  if (messageRes.isErr()) {
+    logger.info("Agent message not found, stopping");
+    return null;
+  }
+
+  const messageRow = messageRes.value;
+
+  if (!messageRow.agentMessage) {
+    logger.info("Agent message not found, stopping");
+    return null;
+  }
+
+  if (messageRow.agentMessage.status === "cancelled") {
     logger.info("Agent message cancelled, stopping");
     return null;
   }

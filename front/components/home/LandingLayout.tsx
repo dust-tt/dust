@@ -6,6 +6,7 @@ import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
 import { OpenDustButton } from "@app/components/home/OpenDustButton";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
 import UTMButton from "@app/components/UTMButton";
+import { useStripUtmParams } from "@app/hooks/useStripUtmParams";
 import {
   DUST_COOKIES_ACCEPTED,
   DUST_HAS_SESSION,
@@ -17,6 +18,7 @@ import { useGeolocation } from "@app/lib/swr/geo";
 import { useLandingAuthContext } from "@app/lib/swr/website";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames, getFaviconPath } from "@app/lib/utils";
+import { getOrCreateAnonymousId } from "@app/lib/utils/anonymous_id";
 import { appendUTMParams } from "@app/lib/utils/utm";
 import { Button, cn, DustLogo } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
@@ -47,6 +49,8 @@ export default function LandingLayout({
     hideNavigation,
     fullWidth,
   } = pageProps;
+
+  useStripUtmParams();
 
   const [cookies, setCookie] = useCookies(
     [DUST_COOKIES_ACCEPTED, DUST_HAS_SESSION],
@@ -118,7 +122,7 @@ export default function LandingLayout({
       // For non-GDPR countries (like US), show banner and set cookies to auto
       setShowCookieBanner(true);
       setHasAcceptedCookies(true); // Enable cookies immediately for non-GDPR
-      // Note: We don't set the cookie value here, letting the user choose to accept/reject
+      getOrCreateAnonymousId();
     } else {
       // For GDPR countries, just show the banner
       setShowCookieBanner(true);

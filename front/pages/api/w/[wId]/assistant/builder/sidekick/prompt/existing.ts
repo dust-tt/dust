@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
@@ -5,6 +6,7 @@ import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overvie
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -16,45 +18,68 @@ const FEEDBACK_LIMIT = 50;
 const OLDER_FEEDBACK_LIMIT = 10;
 const OLDER_FEEDBACK_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000; // 3 months
 const INSIGHTS_DAYS = 30;
+const MAX_PENDING_SUGGESTIONS_IN_FIRST_MESSAGE = 20;
 
 function buildFirstMessage({
   feedbackMarkdown,
   insightsMarkdown,
-  hasReinforcementSuggestions,
+  pendingSuggestions,
 }: {
   feedbackMarkdown: string | null;
   insightsMarkdown: string | null;
-  hasReinforcementSuggestions: boolean;
+  pendingSuggestions: Array<{ sId: string; kind: string; source: string }>;
 }): string {
   const dataSections = [feedbackMarkdown, insightsMarkdown]
     .filter(Boolean)
     .join("\n\n");
 
+  const hasReinforcementSuggestions = pendingSuggestions.some(
+    (s) => s.source === "reinforcement"
+  );
   const reinforcementGuidance = hasReinforcementSuggestions
     ? `\n- Start by telling the user: "A background analysis has identified some possible improvements for your agent."`
+    : "";
+
+  const reinforcementSuggestions = pendingSuggestions.filter(
+    (s) => s.source === "reinforcement"
+  );
+  const sidekickSuggestions = pendingSuggestions.filter(
+    (s) => s.source === "sidekick"
+  );
+  const suggestionsToShow =
+    reinforcementSuggestions.length > 0
+      ? reinforcementSuggestions
+      : sidekickSuggestions;
+  const suggestionDirectives =
+    suggestionsToShow.length > 0 &&
+    suggestionsToShow
+      .map((s) => `:agent_suggestion[]{sId=${s.sId} kind=${s.kind}}`)
+      .join("\n");
+
+  const pendingSuggestionsSection = suggestionDirectives
+    ? `
+<pending_suggestions>
+Output these directives verbatim so the suggestion cards render:
+${suggestionDirectives}
+</pending_suggestions>`
     : "";
 
   return `<dust_system>
 This is an existing agent.
 
-## STEP 1: Gather context
-Call \`get_agent_config\` to retrieve the current agent configuration and any pending suggestions.
-
-## STEP 2: Opening message
-Based only on the information provided in <existing_agent_data_section> and the \`get_agent_config\` result:${reinforcementGuidance}
-- If reinforced suggestions exist (source="reinforcement"), highlight them
+## Opening message
+Do NOT call \`get_agent_config\` in this first message. Based only on the information provided in <existing_agent_data_section>: ${reinforcementGuidance}
+- If pending suggestions exist (see <pending_suggestions> below), output their directives to render them as cards.
 - If negative feedback patterns exist in the current agent version, mention it as the top issue. Feedback from previous versions are provided for reference, but should not be mentioned in the opening message.
-- If pending suggestions exist from \`get_agent_config\`, output their directives to render them as cards:
-  CRITICAL: For each suggestion, output: \`:agent_suggestion[]{sId=<sId> kind=<kind>}\`
 
 In addition, ask the user if you should suggest additional improvements or if there is something specific they'd like to work on.
-Keep the first message to 1–2 sentences (plus any suggestion cards). Response must fit in the sidekick panel without scrolling.
+Keep the first message to 1–2 sentences (plus any suggestion cards from <pending_suggestions>). Response must fit in the sidekick panel without scrolling.
 Do not make assumptions about the users's intent. Given that this is an existing agent, the user is likely to be asking for specific improvements or to work on a specific issue.
 
 <existing_agent_data_section>
 ${dataSections ? `\n${dataSections}\n` : ""}
 </existing_agent_data_section>
-
+${pendingSuggestionsSection}
 </dust_system>`;
 }
 
@@ -211,18 +236,20 @@ async function handler(
         });
       }
 
-      const [feedbackMarkdown, insightsMarkdown, reinforcementSuggestions] =
+      const [feedbackMarkdown, insightsMarkdown, pendingSuggestions] =
         await Promise.all([
           fetchFeedbackMarkdown(auth, agentConfigurationId),
           fetchInsightsMarkdown(auth, agentConfigurationId),
-          AgentSuggestionResource.listByAgentConfigurationId(
-            auth,
-            agentConfigurationId,
-            {
-              states: ["pending"],
-              sources: ["reinforcement"],
-              limit: 1,
-            }
+          hasFeatureFlag(auth, "reinforced_agents").then((hasFlag) =>
+            AgentSuggestionResource.listByAgentConfigurationId(
+              auth,
+              agentConfigurationId,
+              {
+                states: ["pending"],
+                sources: hasFlag ? undefined : ["sidekick"],
+                limit: MAX_PENDING_SUGGESTIONS_IN_FIRST_MESSAGE,
+              }
+            )
           ),
         ]);
 
@@ -230,7 +257,11 @@ async function handler(
         buildFirstMessage({
           feedbackMarkdown,
           insightsMarkdown,
-          hasReinforcementSuggestions: reinforcementSuggestions.length > 0,
+          pendingSuggestions: pendingSuggestions.map((s) => ({
+            sId: s.sId,
+            kind: s.kind,
+            source: s.source,
+          })),
         })
       );
     }

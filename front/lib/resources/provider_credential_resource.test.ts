@@ -1,8 +1,58 @@
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { ProviderCredentialFactory } from "@app/tests/utils/ProviderCredentialFactory";
-import { Ok } from "@app/types/shared/result";
-import { describe, expect, it, vi } from "vitest";
+import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const inMemoryCache = vi.hoisted(() => new Map<string, string>());
+
+vi.mock("@app/lib/api/redis", () => ({
+  getRedisCacheClient: vi.fn().mockImplementation(() =>
+    Promise.resolve({
+      del: vi.fn().mockImplementation((keyOrKeys: string | string[]) => {
+        const keys = Array.isArray(keyOrKeys) ? keyOrKeys : [keyOrKeys];
+        keys.forEach((key) => inMemoryCache.delete(key));
+        return Promise.resolve(keys.length);
+      }),
+    })
+  ),
+}));
+
+vi.mock("@app/lib/utils/cache", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/lib/utils/cache")>();
+  return {
+    ...actual,
+    cacheWithRedis: vi
+      .fn()
+      .mockImplementation(
+        <T, Args extends unknown[]>(
+          fn: CacheableFunction<JsonSerializable<T>, Args>,
+          resolver: (...args: Args) => string
+        ) => {
+          return async (...args: Args): Promise<JsonSerializable<T>> => {
+            const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+            const cached = inMemoryCache.get(key);
+            if (cached) {
+              return JSON.parse(cached) as JsonSerializable<T>;
+            }
+            const result = await fn(...args);
+            inMemoryCache.set(key, JSON.stringify(result));
+            return result;
+          };
+        }
+      ),
+    invalidateCacheWithRedis: vi
+      .fn()
+      .mockImplementation(
+        <T, Args extends unknown[]>(
+          fn: CacheableFunction<JsonSerializable<T>, Args>,
+          resolver: (...args: Args) => string
+        ) => {
+          return async (...args: Args): Promise<void> => {
+            const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+            inMemoryCache.delete(key);
+          };
+        }
+      ),
+  };
+});
 
 const mockGetCredentials = vi.fn();
 
@@ -13,19 +63,37 @@ vi.mock("@app/types/oauth/oauth_api", async (importOriginal) => {
     OAuthAPI: vi.fn().mockImplementation(function () {
       return {
         getCredentials: mockGetCredentials,
+        deleteCredentials: vi.fn().mockResolvedValue(new Ok(undefined)),
       };
     }),
   };
 });
 
+import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { ProviderCredentialFactory } from "@app/tests/utils/ProviderCredentialFactory";
+import { Ok } from "@app/types/shared/result";
+
+function getCacheKey(workspaceId: number): string {
+  return `cacheWithRedis-_baseFetchUncached-provider_credentials:workspaceId:${workspaceId}`;
+}
+
 describe("ProviderCredentialResource", () => {
+  beforeEach(() => {
+    mockGetCredentials.mockClear();
+    mockGetCredentials.mockResolvedValue(
+      new Ok({ credential: { content: { api_key: "sk-test" } } })
+    );
+    inMemoryCache.clear();
+  });
+
   describe("listByWorkspace", () => {
     it("throws when plan does not have isByok enabled", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
       await expect(
         ProviderCredentialResource.listByWorkspace(authenticator)
-      ).rejects.toThrow("BYOK is not enabled");
+      ).rejects.toThrow("BYOK must be enabled");
     });
 
     it("returns empty array when no credentials exist", async () => {
@@ -34,10 +102,10 @@ describe("ProviderCredentialResource", () => {
         isByok: true,
       });
 
-      const credentials =
+      const result =
         await ProviderCredentialResource.listByWorkspace(authenticator);
 
-      expect(credentials).toEqual([]);
+      expect(result).toEqual([]);
     });
 
     it("returns all credentials for the workspace", async () => {
@@ -46,15 +114,18 @@ describe("ProviderCredentialResource", () => {
         isByok: true,
       });
       const workspace = authenticator.getNonNullableWorkspace();
+      // Authenticator init populates the cache (empty) via fetchByokProvidersHealth; clear it so
+      // credentials created below are visible on first listByWorkspace call.
+      inMemoryCache.clear();
 
       await ProviderCredentialFactory.basic(workspace, "openai");
       await ProviderCredentialFactory.basic(workspace, "anthropic");
 
-      const credentials =
+      const result =
         await ProviderCredentialResource.listByWorkspace(authenticator);
 
-      expect(credentials).toHaveLength(2);
-      expect(credentials.map((c) => c.providerId).sort()).toEqual([
+      expect(result).toHaveLength(2);
+      expect(result.map((c) => c.providerId).sort()).toEqual([
         "anthropic",
         "openai",
       ]);
@@ -68,11 +139,13 @@ describe("ProviderCredentialResource", () => {
         isByok: true,
       });
       const workspace = authenticator.getNonNullableWorkspace();
+      inMemoryCache.clear();
       await ProviderCredentialFactory.basic(workspace, "openai");
 
-      const [credential] =
+      const result =
         await ProviderCredentialResource.listByWorkspace(authenticator);
 
+      const [credential] = result;
       const json = credential.toJSON();
 
       expect(json.sId).toMatch(/^pcr_/);
@@ -93,11 +166,14 @@ describe("ProviderCredentialResource", () => {
         isByok: true,
       });
       const workspace = authenticator.getNonNullableWorkspace();
+      inMemoryCache.clear();
 
       await ProviderCredentialFactory.basic(workspace, "openai");
 
-      const [credential] =
+      const result =
         await ProviderCredentialResource.listByWorkspace(authenticator);
+
+      const [credential] = result;
       await credential.delete(authenticator);
 
       const remaining =
@@ -125,103 +201,105 @@ describe("ProviderCredentialResource", () => {
     });
   });
 
-  describe("getCredentials", () => {
-    it("returns Dust-managed LLM credentials for non-BYOK workspaces", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-
-      const credentials =
-        await ProviderCredentialResource.getCredentials(authenticator);
-
-      expect(credentials).toEqual({
-        ANTHROPIC_API_KEY: "",
-        AZURE_OPENAI_API_KEY: "",
-        AZURE_OPENAI_ENDPOINT: "",
-        MISTRAL_API_KEY: "",
-        OPENAI_API_KEY: "",
-        OPENAI_BASE_URL: "",
-        OPENAI_USE_EU_ENDPOINT: "false",
-        TEXTSYNTH_API_KEY: "",
-        GOOGLE_AI_STUDIO_API_KEY: "",
-        TOGETHERAI_API_KEY: "",
-        DEEPSEEK_API_KEY: "",
-        FIREWORKS_API_KEY: "",
-        XAI_API_KEY: "",
-      });
-    });
-
-    it("returns mapped credentials for BYOK workspace with multiple providers", async () => {
+  describe("baseFetch caching", () => {
+    it("populates cache on first call", async () => {
       const { authenticator } = await createResourceTest({
         role: "admin",
         isByok: true,
       });
       const workspace = authenticator.getNonNullableWorkspace();
+      const cacheKey = getCacheKey(workspace.id);
+      inMemoryCache.clear();
 
-      await ProviderCredentialFactory.basic(workspace, "openai");
-      await ProviderCredentialFactory.basic(workspace, "anthropic");
+      expect(inMemoryCache.has(cacheKey)).toBe(false);
 
-      mockGetCredentials.mockImplementation(
-        ({ credentialsId }: { credentialsId: string }) => {
-          if (credentialsId === "cred-openai") {
-            return new Ok({
-              credential: {
-                content: {
-                  api_key: "sk-openai-test",
-                  base_url: "https://custom.openai.com",
-                },
-              },
-            });
-          }
-          if (credentialsId === "cred-anthropic") {
-            return new Ok({
-              credential: { content: { api_key: "sk-anthropic-test" } },
-            });
-          }
-          throw new Error(`Unexpected credentialsId: ${credentialsId}`);
-        }
-      );
+      await ProviderCredentialResource.listByWorkspace(authenticator);
 
-      const credentials =
-        await ProviderCredentialResource.getCredentials(authenticator);
-
-      expect(credentials).toEqual({
-        OPENAI_API_KEY: "sk-openai-test",
-        OPENAI_BASE_URL: "https://custom.openai.com",
-        ANTHROPIC_API_KEY: "sk-anthropic-test",
-        OPENAI_USE_EU_ENDPOINT: "false",
-      });
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
     });
 
-    it("returns empty credentials for BYOK workspace with no providers", async () => {
-      const { authenticator } = await createResourceTest({
-        role: "admin",
-        isByok: true,
-      });
-
-      const credentials =
-        await ProviderCredentialResource.getCredentials(authenticator);
-
-      expect(credentials).toEqual({});
-    });
-
-    it("throws when OAuth fetch fails for a provider", async () => {
+    it("serves from cache on second call", async () => {
       const { authenticator } = await createResourceTest({
         role: "admin",
         isByok: true,
       });
       const workspace = authenticator.getNonNullableWorkspace();
+      inMemoryCache.clear();
 
       await ProviderCredentialFactory.basic(workspace, "openai");
 
-      mockGetCredentials.mockResolvedValue({
-        isErr: () => true,
-        error: { message: "OAuth service unavailable" },
-      });
+      const result1 =
+        await ProviderCredentialResource.listByWorkspace(authenticator);
+      const result2 =
+        await ProviderCredentialResource.listByWorkspace(authenticator);
 
-      await expect(
-        ProviderCredentialResource.getCredentials(authenticator)
-      ).rejects.toThrow(
-        "Failed to fetch OAuth credentials for provider openai"
+      expect(result1.map((r) => r.toJSON())).toEqual(
+        result2.map((r) => r.toJSON())
       );
+      // OAuthAPI should only be called once (for the first fetch)
+      expect(mockGetCredentials).toHaveBeenCalledTimes(1);
+    });
+
+    it("invalidates cache after delete", async () => {
+      const { authenticator } = await createResourceTest({
+        role: "admin",
+        isByok: true,
+      });
+      const workspace = authenticator.getNonNullableWorkspace();
+      const cacheKey = getCacheKey(workspace.id);
+      inMemoryCache.clear();
+
+      await ProviderCredentialFactory.basic(workspace, "openai");
+
+      await ProviderCredentialResource.listByWorkspace(authenticator);
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
+
+      const [credential] =
+        await ProviderCredentialResource.listByWorkspace(authenticator);
+      await credential.delete(authenticator);
+
+      expect(inMemoryCache.has(cacheKey)).toBe(false);
+    });
+
+    it("invalidates cache after deleteAllForWorkspace", async () => {
+      const { authenticator } = await createResourceTest({
+        role: "admin",
+        isByok: true,
+      });
+      const workspace = authenticator.getNonNullableWorkspace();
+      const cacheKey = getCacheKey(workspace.id);
+
+      await ProviderCredentialFactory.basic(workspace, "openai");
+
+      await ProviderCredentialResource.listByWorkspace(authenticator);
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
+
+      await ProviderCredentialResource.deleteAllForWorkspace(authenticator);
+
+      expect(inMemoryCache.has(cacheKey)).toBe(false);
+    });
+
+    it("returns fresh data after cache invalidation", async () => {
+      const { authenticator } = await createResourceTest({
+        role: "admin",
+        isByok: true,
+      });
+      const workspace = authenticator.getNonNullableWorkspace();
+      inMemoryCache.clear();
+
+      await ProviderCredentialFactory.basic(workspace, "openai");
+
+      const result1 =
+        await ProviderCredentialResource.listByWorkspace(authenticator);
+      expect(result1).toHaveLength(1);
+
+      // Delete and verify cache is invalidated
+      await result1[0].delete(authenticator);
+
+      // Next call should hit DB again and return empty
+      const result2 =
+        await ProviderCredentialResource.listByWorkspace(authenticator);
+      expect(result2).toHaveLength(0);
     });
   });
 });

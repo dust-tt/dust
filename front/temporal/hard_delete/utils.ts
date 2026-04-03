@@ -35,3 +35,18 @@ export function getPendingAgentsDeletionCutoffDate(): Date {
 
   return cutoffDate;
 }
+
+/**
+ * Purge synthetic agent suggestions logic.
+ */
+
+export const SYNTHETIC_SUGGESTIONS_RETENTION_DAYS = 14;
+
+export function getSyntheticSuggestionsDeletionCutoffDate(): Date {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(
+    cutoffDate.getDate() - SYNTHETIC_SUGGESTIONS_RETENTION_DAYS
+  );
+
+  return cutoffDate;
+}

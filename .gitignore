@@ -2,6 +2,7 @@
 *.sqlite
 .DS_Store
 .idea
+.air
 test.ts
 .env.local
 .env.agent.local
@@ -27,6 +28,9 @@ mprocs.log
 AGENTS.local.md
 CLAUDE.local.md
 node_modules
+
+# dust-hive worktrees
+.hives/
 
 # Direnv
 .direnv/

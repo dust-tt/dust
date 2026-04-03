@@ -2,10 +2,14 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AshbyClient } from "@app/lib/api/actions/servers/ashby/client";
-import { getAshbyClient } from "@app/lib/api/actions/servers/ashby/client";
+import {
+  AshbyAPIError,
+  getAshbyClient,
+} from "@app/lib/api/actions/servers/ashby/client";
 import {
   assertCandidateNotHired,
   diagnoseFieldSubmissions,
+  findHiredApplication,
   findUniqueCandidate,
   resolveAshbyUser,
   resolveFieldSubmissions,
@@ -18,12 +22,16 @@ import {
 import {
   renderCandidateList,
   renderCandidateNotes,
+  renderHireData,
   renderInterviewFeedbackRecap,
   renderJobPostingList,
   renderReferralForm,
   renderReport,
 } from "@app/lib/api/actions/servers/ashby/rendering";
-import type { AshbyFeedbackSubmission } from "@app/lib/api/actions/servers/ashby/types";
+import type {
+  AshbyFeedbackSubmission,
+  AshbyJobInfo,
+} from "@app/lib/api/actions/servers/ashby/types";
 import { Err, Ok } from "@app/types/shared/result";
 import sanitizeHtml from "sanitize-html";
 import { validate as validateUuid } from "uuid";
@@ -43,7 +51,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       );
     }
 
-    const clientResult = await getAshbyClient(extra);
+    const clientResult = getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
     }
@@ -57,9 +65,9 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       );
     }
 
-    const response = result.value;
+    const candidates = result.value;
 
-    if (!response.results || response.results.length === 0) {
+    if (!candidates || candidates.length === 0) {
       return new Ok([
         {
           type: "text" as const,
@@ -68,7 +76,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       ]);
     }
 
-    const candidatesText = renderCandidateList(response.results);
+    const candidatesText = renderCandidateList(candidates);
     const searchParams = [
       email ? `email: ${email}` : null,
       name ? `name: ${name}` : null,
@@ -76,9 +84,9 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       .filter(Boolean)
       .join(", ");
 
-    const resultText = `Found ${response.results.length} candidate(s) matching search (${searchParams}):\n\n${candidatesText}`;
+    const resultText = `Found ${candidates.length} candidate(s) matching search (${searchParams}):\n\n${candidatesText}`;
 
-    if (response.results.length === DEFAULT_SEARCH_LIMIT) {
+    if (candidates.length === DEFAULT_SEARCH_LIMIT) {
       return new Ok([
         {
           type: "text" as const,
@@ -99,7 +107,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
   },
 
   get_report_data: async ({ reportUrl }, extra) => {
-    const clientResult = await getAshbyClient(extra);
+    const clientResult = getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
     }
@@ -133,14 +141,22 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       );
     }
 
-    const response = result.value;
+    const results = result.value;
 
-    const { success, results } = response;
-
-    if (!success || !results) {
+    if (!results) {
       return new Err(
         new MCPError(
-          `Report retrieval failed: ${response.results?.failureReason ?? "Unknown error"}`
+          "Report retrieval failed: unknown error, the ID extracted from the URL may not map to " +
+            "an existing report. Dashboards and saved views are not supported."
+        )
+      );
+    }
+
+    if (results.status !== "complete") {
+      return new Err(
+        new MCPError(
+          `Report retrieval failed: ${results.failureReason ?? "unknown error"} ` +
+            `(status: ${results.status})`
         )
       );
     }
@@ -151,7 +167,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
   },
 
   get_interview_feedback: async ({ email, name }, extra) => {
-    const clientResult = await getAshbyClient(extra);
+    const clientResult = getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
     }
@@ -238,7 +254,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
   },
 
   get_candidate_notes: async ({ email, name }, extra) => {
-    const clientResult = await getAshbyClient(extra);
+    const clientResult = getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
     }
@@ -300,7 +316,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
   },
 
   create_candidate_note: async ({ email, name, noteContent }, extra) => {
-    const clientResult = await getAshbyClient(extra);
+    const clientResult = getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
     }
@@ -334,12 +350,6 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       );
     }
 
-    if (!noteResult.value.success) {
-      return new Err(
-        new MCPError("Failed to create note on candidate profile.")
-      );
-    }
-
     return new Ok([
       {
         type: "text" as const,
@@ -348,13 +358,13 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
           (candidate.primaryEmailAddress?.value
             ? `(${candidate.primaryEmailAddress?.value}) `
             : "") +
-          `profile.\n\nNote ID: ${noteResult.value.results.id}`,
+          `profile.\n\nNote ID: ${noteResult.value.id}`,
       },
     ]);
   },
 
   [GET_REFERRAL_FORM_TOOL_NAME]: async (_, extra) => {
-    const clientResult = await getAshbyClient(extra);
+    const clientResult = getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
     }
@@ -373,12 +383,6 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       );
     }
 
-    if (!formResult.value.success) {
-      return new Err(
-        new MCPError("Failed to retrieve referral form from Ashby.")
-      );
-    }
-
     const jobsResult = await client.listJobs();
     if (jobsResult.isErr()) {
       return new Err(
@@ -391,9 +395,115 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     return new Ok([
       {
         type: "text" as const,
-        text: renderReferralForm(formResult.value.results, {
+        text: renderReferralForm(formResult.value, {
           jobs: jobsResult.value,
         }),
+      },
+    ]);
+  },
+
+  get_hire_data: async ({ email, name }, extra) => {
+    const clientResult = getAshbyClient(extra);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+
+    const client = clientResult.value;
+
+    const candidateResult = await findUniqueCandidate(client, { email, name });
+    if (candidateResult.isErr()) {
+      return new Err(candidateResult.error);
+    }
+
+    const candidate = candidateResult.value;
+
+    // Find the hired application.
+    const hiredAppResult = await findHiredApplication(client, candidate);
+    if (hiredAppResult.isErr()) {
+      return hiredAppResult;
+    }
+
+    const { applicationId, jobId } = hiredAppResult.value;
+
+    // Fetch detailed candidate info.
+    const candidateInfoResult = await client.getCandidateInfo({
+      id: candidate.id,
+    });
+    if (candidateInfoResult.isErr() || !candidateInfoResult.value) {
+      return new Err(
+        new MCPError(
+          "Failed to retrieve candidate info: " +
+            (candidateInfoResult.isErr()
+              ? candidateInfoResult.error.message
+              : "no result")
+        )
+      );
+    }
+
+    const candidateInfo = candidateInfoResult.value;
+
+    // Fetch offers for the hired application.
+    const offersResult = await client.listOffers({ applicationId });
+    if (offersResult.isErr()) {
+      return new Err(
+        new MCPError(`Failed to list offers: ${offersResult.error.message}`, {
+          cause: offersResult.error,
+        })
+      );
+    }
+
+    // Pick the latest offer by latestVersion.createdAt.
+    const latestOffer = offersResult.value.reduce((latest, offer) => {
+      const latestCreatedAt = latest?.latestVersion?.createdAt ?? "";
+      const offerCreatedAt = offer.latestVersion?.createdAt ?? "";
+      return offerCreatedAt > latestCreatedAt ? offer : latest;
+    }, offersResult.value[0] ?? null);
+
+    // Fetch detailed offer info for the latest offer.
+    let offerInfo = null;
+    if (latestOffer) {
+      const offerInfoResult = await client.getOfferInfo({
+        offerId: latestOffer.id,
+      });
+      if (offerInfoResult.isErr()) {
+        return new Err(
+          new MCPError(
+            `Failed to get offer info for offer ${latestOffer.id}: ${offerInfoResult.error.message}`,
+            { cause: offerInfoResult.error }
+          )
+        );
+      }
+      offerInfo = offerInfoResult.value ?? null;
+    }
+
+    // Fetch job info if we have a jobId.
+    let jobInfo: AshbyJobInfo | undefined;
+    if (jobId) {
+      const jobInfoResult = await client.getJobInfo({ id: jobId });
+      if (jobInfoResult.isErr()) {
+        return new Err(
+          new MCPError(
+            `Failed to get job info: ${jobInfoResult.error.message}`,
+            {
+              cause: jobInfoResult.error,
+            }
+          )
+        );
+      }
+      jobInfo = jobInfoResult.value;
+    }
+
+    const text = renderHireData({
+      candidateInfo,
+      offerInfo,
+      jobInfo,
+      applicationId,
+    });
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text,
       },
     ]);
   },
@@ -418,11 +528,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       );
     }
 
-    if (!result.value.success) {
-      return new Err(new MCPError("Failed to list job postings from Ashby."));
-    }
-
-    const postings = result.value.results;
+    const postings = result.value;
 
     if (postings.length === 0) {
       return new Ok([
@@ -481,13 +587,13 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       );
     }
 
-    if (!infoResult.value.success || !infoResult.value.results) {
+    if (!infoResult.value) {
       return new Err(
         new MCPError("Failed to fetch job posting info from Ashby.")
       );
     }
 
-    const previousPosting = infoResult.value.results;
+    const previousPosting = infoResult.value;
 
     const updateResult = await client.updateJobPosting({
       jobPostingId,
@@ -508,13 +614,9 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       );
     }
 
-    if (!updateResult.value.success || !updateResult.value.results) {
-      const errorMessage =
-        updateResult.value.errorInfo?.message ??
-        updateResult.value.errors?.join(", ") ??
-        "Unknown error";
+    if (!updateResult.value) {
       return new Err(
-        new MCPError(`Failed to update job posting: ${errorMessage}`)
+        new MCPError("Failed to update job posting: no result returned.")
       );
     }
 
@@ -529,8 +631,8 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     const lines = [
       `Successfully updated job posting ${updatedFields}.`,
       "",
-      `Job Posting ID: ${updateResult.value.results.id}`,
-      `Title: ${updateResult.value.results.title}`,
+      `Job Posting ID: ${updateResult.value.id}`,
+      `Title: ${updateResult.value.title}`,
     ];
 
     if (previousPosting.descriptionHtml) {
@@ -546,7 +648,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
   },
 
   [CREATE_REFERRAL_TOOL_NAME]: async ({ fieldSubmissions }, extra) => {
-    const clientResult = await getAshbyClient(extra);
+    const clientResult = getAshbyClient(extra);
     if (clientResult.isErr()) {
       return clientResult;
     }
@@ -572,13 +674,7 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       );
     }
 
-    if (!formResult.value.success) {
-      return new Err(
-        new MCPError("Failed to retrieve referral form from Ashby.")
-      );
-    }
-
-    const form = formResult.value.results;
+    const form = formResult.value;
 
     const jobsResult = await client.listJobs();
     if (jobsResult.isErr()) {
@@ -605,25 +701,12 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
     });
 
     if (referralResult.isErr()) {
-      return new Err(
-        new MCPError(
-          `Failed to create referral: ${referralResult.error.message}`,
-          {
-            cause: referralResult.error,
-          }
-        )
-      );
-    }
-
-    if (!referralResult.value.success || !referralResult.value.results) {
-      const errorCode = referralResult.value.errorInfo?.code;
-      const errorMessage =
-        referralResult.value.errorInfo?.message ??
-        referralResult.value.errors?.join(", ") ??
-        "Unknown error";
-
-      // They have a catch all error `invalid_input`.
-      if (errorCode === "invalid_input") {
+      const { error } = referralResult;
+      // They have a catch-all error `invalid_input` - run field diagnosis to help the model fix it.
+      if (
+        error instanceof AshbyAPIError &&
+        error.errorInfo?.code === "invalid_input"
+      ) {
         const diagnosis = diagnoseFieldSubmissions(
           form,
           submissionsResult.value,
@@ -636,9 +719,16 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
           )
         );
       }
-
       return new Err(
-        new MCPError(`Failed to create referral: ${errorMessage}`)
+        new MCPError(`Failed to create referral: ${error.message}`, {
+          cause: error,
+        })
+      );
+    }
+
+    if (!referralResult.value) {
+      return new Err(
+        new MCPError("Failed to create referral: no result returned.")
       );
     }
 
@@ -648,8 +738,8 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
         text:
           `Successfully created referral.\n\n` +
           `Credited to: ${ashbyUser.firstName} ${ashbyUser.lastName} (${ashbyUser.email})\n` +
-          `Referral ID: ${referralResult.value.results.id}\n` +
-          `Status: ${referralResult.value.results.status}`,
+          `Referral ID: ${referralResult.value.id}\n` +
+          `Status: ${referralResult.value.status}`,
       },
     ]);
   },

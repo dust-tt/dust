@@ -7,7 +7,11 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { GetTriggersResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers";
+import type {
+  GetTriggersResponseBody,
+  PatchTriggersRequestBody,
+  PostTriggersRequestBody,
+} from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers";
 import type { GetSubscribersResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers/[tId]/subscribers";
 import type {
   PostTextAsCronRuleRequestBody,
@@ -19,6 +23,7 @@ import type {
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/webhook_filter_generator";
 import type { GetUserTriggersResponseBody } from "@app/pages/api/w/[wId]/me/triggers";
 import type { GetTriggerEstimationResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]/trigger-estimation";
+import type { ScheduleConfig } from "@app/types/assistant/triggers";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
@@ -113,9 +118,7 @@ export function useDeleteTrigger({
         } else {
           return false;
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
+      } catch {
         return false;
       }
     },
@@ -123,6 +126,142 @@ export function useDeleteTrigger({
   );
 
   return deleteTrigger;
+}
+
+export function useCreateTrigger({
+  workspaceId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateTriggers } = useAgentTriggers({
+    workspaceId,
+    agentConfigurationId,
+    disabled: true,
+  });
+
+  const createTrigger = useCallback(
+    async (
+      triggerData: PostTriggersRequestBody["triggers"][number]
+    ): Promise<boolean> => {
+      try {
+        const response = await clientFetch(
+          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ triggers: [triggerData] }),
+          }
+        );
+
+        if (response.ok) {
+          sendNotification({
+            type: "success",
+            title: "Trigger created",
+            description: `The trigger "${triggerData.name}" has been created.`,
+          });
+          void mutateTriggers();
+          return true;
+        } else {
+          const errorData = await getErrorFromResponse(response);
+          sendNotification({
+            type: "error",
+            title: "Failed to create trigger",
+            description: `Error: ${errorData.message}`,
+          });
+          return false;
+        }
+      } catch {
+        sendNotification({
+          type: "error",
+          title: "Failed to create trigger",
+          description: "An unexpected error occurred. Please try again.",
+        });
+        return false;
+      }
+    },
+    [workspaceId, agentConfigurationId, sendNotification, mutateTriggers]
+  );
+
+  return createTrigger;
+}
+
+export function useUpdateTrigger({
+  workspaceId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateTriggers } = useAgentTriggers({
+    workspaceId,
+    agentConfigurationId,
+    disabled: true,
+  });
+
+  const updateTrigger = useCallback(
+    async (
+      triggerData: PatchTriggersRequestBody["triggers"][number]
+    ): Promise<boolean> => {
+      try {
+        const response = await clientFetch(
+          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ triggers: [triggerData] }),
+          }
+        );
+
+        if (response.ok) {
+          sendNotification({
+            type: "success",
+            title: "Trigger updated",
+            description: `The trigger "${triggerData.name}" has been updated.`,
+          });
+          void mutateTriggers();
+          return true;
+        } else {
+          const errorData = await getErrorFromResponse(response);
+          sendNotification({
+            type: "error",
+            title: "Failed to update trigger",
+            description: `Error: ${errorData.message}`,
+          });
+          return false;
+        }
+      } catch {
+        sendNotification({
+          type: "error",
+          title: "Failed to update trigger",
+          description: "An unexpected error occurred. Please try again.",
+        });
+        return false;
+      }
+    },
+    [workspaceId, agentConfigurationId, sendNotification, mutateTriggers]
+  );
+
+  return updateTrigger;
+}
+
+function responseToScheduleConfig(
+  r: PostTextAsCronRuleResponseBody
+): ScheduleConfig {
+  if (r.type === "interval") {
+    return {
+      type: "interval",
+      intervalDays: r.intervalDays,
+      dayOfWeek: r.dayOfWeek,
+      hour: r.hour,
+      minute: r.minute,
+      timezone: r.timezone,
+    };
+  }
+  return { type: "cron", cron: r.cronRule, timezone: r.timezone };
 }
 
 export function useTextAsCronRule({
@@ -139,10 +278,13 @@ export function useTextAsCronRule({
           `/api/w/${workspace.sId}/assistant/agent_configurations/text_as_cron_rule`,
           {
             method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
             body: JSON.stringify({
               naturalDescription,
               defaultTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            } as PostTextAsCronRuleRequestBody),
+            } satisfies PostTextAsCronRuleRequestBody),
             signal,
           }
         );
@@ -150,7 +292,7 @@ export function useTextAsCronRule({
         return new Err(normalizeError(e));
       }
 
-      return new Ok({ cron: r.cronRule, timezone: r.timezone });
+      return new Ok(responseToScheduleConfig(r));
     },
     [workspace, fetcher]
   );
@@ -180,6 +322,9 @@ export function useWebhookFilterGenerator({
         `/api/w/${workspace.sId}/assistant/agent_configurations/webhook_filter_generator`,
         {
           method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({
             naturalDescription,
             event,
@@ -278,9 +423,7 @@ export function useAddTriggerSubscriber({
           });
           return false;
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
+      } catch {
         sendNotification({
           type: "error",
           title: "Failed to subscribe",
@@ -356,9 +499,7 @@ export function useRemoveTriggerSubscriber({
           });
           return false;
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
+      } catch {
         sendNotification({
           type: "error",
           title: "Failed to unsubscribe",
@@ -422,7 +563,7 @@ export function useTriggerEstimation({
   );
 
   return {
-    estimation: (data as GetTriggerEstimationResponseBody | undefined) ?? null,
+    estimation: data ?? null,
     isEstimationLoading: !!webhookSourceId && !error && !data,
     isEstimationError: error,
     isEstimationValidating: isValidating,

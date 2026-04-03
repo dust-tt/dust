@@ -26,7 +26,7 @@ const KNOWLEDGE_CATEGORIES = ["managed", "folder", "website"] as const;
 
 // Suggestion tool schemas
 
-const InstructionsSuggestionSchema = z.object({
+export const InstructionsSuggestionSchema = z.object({
   analysis: z
     .string()
     .optional()
@@ -44,12 +44,12 @@ const InstructionsSuggestionSchema = z.object({
     .describe("The type of modification to perform on the target block"),
 });
 
-const ToolsSuggestionSchema = z.object({
+export const ToolsSuggestionSchema = z.object({
   action: z.enum(["add", "remove"]).describe("The action to perform"),
   toolId: z.string().describe("The tool/server identifier"),
 });
 
-const SkillsSuggestionSchema = z.object({
+export const SkillsSuggestionSchema = z.object({
   action: z.enum(["add", "remove"]).describe("The action to perform"),
   skillId: z.string().describe("The skill identifier"),
 });

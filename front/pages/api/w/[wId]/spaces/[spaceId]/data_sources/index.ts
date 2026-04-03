@@ -1,3 +1,9 @@
+/** @ignoreswagger */
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import {
@@ -5,6 +11,10 @@ import {
   registerSlackWebhookRouterEntry,
 } from "@app/lib/api/data_sources";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
+import {
+  getLlmCredentials,
+  MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+} from "@app/lib/api/provider_credentials";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags, getOrCreateSystemApiKey } from "@app/lib/auth";
@@ -18,7 +28,6 @@ import {
 } from "@app/lib/connector_providers";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
@@ -37,7 +46,9 @@ import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { PlanType } from "@app/types/plan";
+import type { LLMCredentialsType } from "@app/types/provider_credential";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { ioTsParsePayload } from "@app/types/shared/utils/iots_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { isLeft } from "fp-ts/lib/Either";
@@ -188,6 +199,21 @@ async function handler(
 
         const dataSourceView = r.value;
 
+        void emitAuditLogEvent({
+          auth,
+          action: "datasource.created",
+          targets: [
+            buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+            buildAuditLogTarget("data_source", dataSourceView.dataSource),
+          ],
+          context: getAuditLogContext(auth, req),
+          metadata: {
+            dataSourceName: dataSourceView.dataSource.name,
+            provider: "folder",
+            spaceId: space.sId,
+          },
+        });
+
         return res.status(201).json({
           dataSource: dataSourceView.dataSource.toJSON(),
           dataSourceView: dataSourceView.toJSON(),
@@ -242,7 +268,7 @@ const handleDataSourceWithProvider = async ({
     });
   }
 
-  const featureFlags = await getFeatureFlags(owner);
+  const featureFlags = await getFeatureFlags(auth);
 
   // Checking that the provider is allowed for the workspace plan
   const isDataSourceAllowedInPlan = isConnectorProviderAllowedForPlan(
@@ -376,7 +402,22 @@ const handleDataSourceWithProvider = async ({
     });
   }
 
-  const credentials = await ProviderCredentialResource.getCredentials(auth);
+  let credentials: LLMCredentialsType;
+  try {
+    credentials = await getLlmCredentials(auth);
+  } catch (err) {
+    logger.error(
+      { error: normalizeError(err) },
+      "Failed to get LLM credentials to create data source"
+    );
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+      },
+    });
+  }
 
   const dustDataSource = await coreAPI.createDataSource({
     projectId: dustProject.value.project.project_id.toString(),
@@ -581,6 +622,21 @@ const handleDataSourceWithProvider = async ({
       });
     }
   }
+
+  void emitAuditLogEvent({
+    auth,
+    action: "datasource.created",
+    targets: [
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      buildAuditLogTarget("data_source", dataSource),
+    ],
+    context: getAuditLogContext(auth, req),
+    metadata: {
+      dataSourceName: dataSource.name,
+      provider: provider,
+      spaceId: space.sId,
+    },
+  });
 
   res.status(201).json({
     dataSource: dataSource.toJSON(),

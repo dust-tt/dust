@@ -10,7 +10,12 @@ import {
   MAX_PENDING_SUB_AGENT_SUGGESTIONS,
   MAX_PENDING_TOOLS_SUGGESTIONS,
 } from "@app/lib/api/actions/servers/agent_sidekick_context/constants";
-import { AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
+import {
+  AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA,
+  type InstructionsSuggestionSchema,
+  type SkillsSuggestionSchema,
+  type ToolsSuggestionSchema,
+} from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_sidekick_helpers";
 import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
@@ -26,12 +31,13 @@ import {
   getTemplatesForSidekick,
 } from "@app/lib/api/assistant/sidekick_templates";
 import config from "@app/lib/api/config";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -53,11 +59,13 @@ import { isContentFragmentType } from "@app/types/content_fragment";
 import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import { CoreAPI } from "@app/types/core/core_api";
 import { isJobType } from "@app/types/job_type";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type {
+  AgentSuggestionSource,
   AgentSuggestionState,
   KnowledgeSuggestionType,
   SubAgentSuggestionType,
@@ -70,6 +78,7 @@ import {
   isSubAgentSuggestion,
   isToolsSuggestion,
 } from "@app/types/suggestions/agent_suggestion";
+import { JSDOM } from "jsdom";
 
 const SIDEKICK_KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
   "managed",
@@ -178,6 +187,348 @@ async function markDuplicateSuggestionsAsOutdated(
   return remaining;
 }
 
+type InstructionSuggestionInput = z.infer<typeof InstructionsSuggestionSchema>;
+
+/**
+ * Returns the number of top-level HTML elements in the given HTML string
+ */
+function countTopLevelBlocks(html: string): number {
+  const dom = new JSDOM(`<body>${html}</body>`);
+  return dom.window.document.body.children.length;
+}
+
+/**
+ * Shared logic for creating instruction suggestions. Used by both the
+ * suggest_prompt_edits MCP handler and reinforced agent analysis.
+ */
+export async function createInstructionSuggestions({
+  auth,
+  agentConfigurationId,
+  suggestions,
+  source,
+  conversation,
+}: {
+  auth: Authenticator;
+  agentConfigurationId: string;
+  suggestions: InstructionSuggestionInput[];
+  source: AgentSuggestionSource;
+  conversation?: ConversationResource;
+}): Promise<
+  Result<{ sId: string; kind: string; targetBlockId: string }[], string>
+> {
+  // Reject batches where multiple suggestions target the same block.
+  const targetBlockIds = suggestions.map((s) => s.targetBlockId);
+  const uniqueTargetBlockIds = new Set(targetBlockIds);
+  if (uniqueTargetBlockIds.size !== targetBlockIds.length) {
+    return new Err(
+      "Multiple suggestions target the same block ID. Use a single suggestion per block." +
+        `For full rewrites, target '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}' instead.`
+    );
+  }
+
+  // Check pending suggestion limit before proceeding.
+  const pendingInstructions =
+    await AgentSuggestionResource.listByAgentConfigurationId(
+      auth,
+      agentConfigurationId,
+      { states: ["pending"], kind: "instructions" }
+    );
+
+  const limitCheck = canAddPendingSuggestions({
+    kind: "instructions",
+    newPendingCount: suggestions.length,
+    currentPendingCount: pendingInstructions.length,
+  });
+  if (!limitCheck.allowed) {
+    return new Err(limitCheck.errorMessage);
+  }
+
+  // Fetch the latest version of the agent configuration (full variant needed
+  // for instructionsHtml used in conflict pruning).
+  const agentConfiguration = await getAgentConfiguration(auth, {
+    agentId: agentConfigurationId,
+    variant: "full",
+  });
+
+  if (!agentConfiguration) {
+    return new Err(`Agent configuration not found: ${agentConfigurationId}`);
+  }
+
+  // Reject non-root suggestions that contain multiple top-level blocks.
+  for (const suggestion of suggestions) {
+    if (suggestion.targetBlockId !== INSTRUCTIONS_ROOT_TARGET_BLOCK_ID) {
+      const blockCount = countTopLevelBlocks(suggestion.content);
+      if (blockCount > 1) {
+        return new Err(
+          `Suggestion for block "${suggestion.targetBlockId}" contains ${blockCount} top-level elements but replace only supports 1. ` +
+            `Keep it within a single tag, or use targetBlockId '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}' if the change requires multiple blocks.`
+        );
+      }
+    }
+  }
+
+  const createdSuggestions: {
+    sId: string;
+    kind: string;
+    targetBlockId: string;
+  }[] = [];
+
+  for (const suggestion of suggestions) {
+    const { analysis, ...suggestionData } = suggestion;
+    const created = await AgentSuggestionResource.createSuggestionForAgent(
+      auth,
+      agentConfiguration,
+      {
+        kind: "instructions",
+        suggestion: suggestionData,
+        analysis: analysis ?? null,
+        state: "pending",
+        source,
+        conversationId: conversation?.id ?? null,
+      }
+    );
+
+    createdSuggestions.push({
+      sId: created.sId,
+      kind: created.kind,
+      targetBlockId: suggestionData.targetBlockId,
+    });
+  }
+
+  await pruneConflictingInstructionSuggestions(
+    auth,
+    agentConfiguration,
+    createdSuggestions
+  );
+
+  return new Ok(createdSuggestions);
+}
+
+type ToolsSuggestionInput = z.infer<typeof ToolsSuggestionSchema> & {
+  analysis?: string;
+};
+
+/**
+ * Shared logic for creating tools suggestions. Used by both the
+ * suggest_tools MCP handler and reinforced agent analysis.
+ */
+export async function createToolsSuggestions({
+  auth,
+  agentConfigurationId,
+  suggestions,
+  source,
+  conversation,
+}: {
+  auth: Authenticator;
+  agentConfigurationId: string;
+  suggestions: ToolsSuggestionInput[];
+  source: AgentSuggestionSource;
+  conversation?: ConversationResource;
+}): Promise<Result<{ sId: string; kind: string }[], string>> {
+  // Reject batches where multiple suggestions target the same tool.
+  const suggestionToolIds = suggestions.map((s) => s.toolId);
+  const uniqueToolIds = new Set(suggestionToolIds);
+  if (uniqueToolIds.size !== suggestionToolIds.length) {
+    const duplicates = [
+      ...new Set(
+        suggestionToolIds.filter((id, i) => suggestionToolIds.indexOf(id) !== i)
+      ),
+    ];
+    return new Err(
+      `Multiple suggestions target the same tool ID: ${duplicates.join(", ")}. Use a single suggestion per tool.`
+    );
+  }
+
+  // Validate that all tool IDs exist and are accessible.
+  const tools = await MCPServerViewResource.fetchByIds(auth, suggestionToolIds);
+  const foundToolIds = new Set(tools.map((t) => t.sId));
+  const missingToolIds = suggestionToolIds.filter(
+    (id) => !foundToolIds.has(id)
+  );
+  if (missingToolIds.length > 0) {
+    return new Err(
+      `The following tool ID(s) are invalid or not accessible: ${missingToolIds.join(", ")}. ` +
+        `Check <workspace_context> for valid tool IDs.`
+    );
+  }
+
+  // Reject knowledge tools — they should be suggested via suggest_knowledge.
+  const knowledgeTools = tools.filter((t) => {
+    const json = t.toJSON();
+    return json !== null && isToolWithKnowledge(json);
+  });
+  if (knowledgeTools.length > 0) {
+    const knowledgeToolNames = knowledgeTools
+      .map((t) => `${t.sId} (${t.toJSON()?.server.name ?? "unknown"})`)
+      .join(", ");
+    return new Err(
+      `The following ID(s) are knowledge tools, not regular tools: ${knowledgeToolNames}. ` +
+        `Use \`suggest_knowledge\` instead of \`suggest_tools\` for data source, table, or data warehouse tools.`
+    );
+  }
+
+  // Fetch pending suggestions and mark duplicates (same toolId) as outdated.
+  const pendingSuggestions =
+    await AgentSuggestionResource.listByAgentConfigurationId(
+      auth,
+      agentConfigurationId,
+      { states: ["pending"], kind: "tools" }
+    );
+
+  const remainingPending = await markDuplicateSuggestionsAsOutdated(
+    auth,
+    pendingSuggestions,
+    (s) =>
+      isToolsSuggestion(s.suggestion) && uniqueToolIds.has(s.suggestion.toolId)
+  );
+
+  const limitCheck = canAddPendingSuggestions({
+    kind: "tools",
+    newPendingCount: suggestions.length,
+    currentPendingCount: remainingPending.length,
+  });
+  if (!limitCheck.allowed) {
+    return new Err(limitCheck.errorMessage);
+  }
+
+  const agentConfiguration = await getAgentConfiguration(auth, {
+    agentId: agentConfigurationId,
+    variant: "light",
+  });
+
+  if (!agentConfiguration) {
+    return new Err(`Agent configuration not found: ${agentConfigurationId}`);
+  }
+
+  const createdSuggestions: { sId: string; kind: string }[] = [];
+
+  for (const { action, toolId, analysis } of suggestions) {
+    const suggestion: ToolsSuggestionType = { action, toolId };
+    const created = await AgentSuggestionResource.createSuggestionForAgent(
+      auth,
+      agentConfiguration,
+      {
+        kind: "tools",
+        suggestion,
+        analysis: analysis ?? null,
+        state: "pending",
+        source,
+        conversationId: conversation?.id ?? null,
+      }
+    );
+
+    createdSuggestions.push({ sId: created.sId, kind: created.kind });
+  }
+
+  return new Ok(createdSuggestions);
+}
+
+type SkillsSuggestionInput = z.infer<typeof SkillsSuggestionSchema> & {
+  analysis?: string;
+};
+
+/**
+ * Shared logic for creating skills suggestions. Used by both the
+ * suggest_skills MCP handler and reinforced agent analysis.
+ */
+export async function createSkillsSuggestions({
+  auth,
+  agentConfigurationId,
+  suggestions,
+  source,
+  conversation,
+}: {
+  auth: Authenticator;
+  agentConfigurationId: string;
+  suggestions: SkillsSuggestionInput[];
+  source: AgentSuggestionSource;
+  conversation?: ConversationResource;
+}): Promise<Result<{ sId: string; kind: string }[], string>> {
+  // Reject batches where multiple suggestions target the same skill.
+  const suggestionSkillIds = suggestions.map((s) => s.skillId);
+  const uniqueSkillIds = new Set(suggestionSkillIds);
+  if (uniqueSkillIds.size !== suggestionSkillIds.length) {
+    const duplicates = [
+      ...new Set(
+        suggestionSkillIds.filter(
+          (id, i) => suggestionSkillIds.indexOf(id) !== i
+        )
+      ),
+    ];
+    return new Err(
+      `Multiple suggestions target the same skill ID: ${duplicates.join(", ")}. Use a single suggestion per skill.`
+    );
+  }
+
+  // Validate that all skill IDs exist and are accessible.
+  const skills = await SkillResource.fetchByIds(auth, suggestionSkillIds);
+  const foundSkillIds = new Set(skills.map((s) => s.sId));
+  const missingSkillIds = suggestionSkillIds.filter(
+    (id) => !foundSkillIds.has(id)
+  );
+  if (missingSkillIds.length > 0) {
+    return new Err(
+      `The following skill ID(s) are invalid or not accessible: ${missingSkillIds.join(", ")}. ` +
+        `Check <workspace_context> for valid skill IDs.`
+    );
+  }
+
+  // Fetch pending suggestions and mark duplicates (same skillId) as outdated.
+  const pendingSuggestions =
+    await AgentSuggestionResource.listByAgentConfigurationId(
+      auth,
+      agentConfigurationId,
+      { states: ["pending"], kind: "skills" }
+    );
+
+  const remainingPending = await markDuplicateSuggestionsAsOutdated(
+    auth,
+    pendingSuggestions,
+    (s) =>
+      isSkillsSuggestion(s.suggestion) &&
+      uniqueSkillIds.has(s.suggestion.skillId)
+  );
+
+  const limitCheck = canAddPendingSuggestions({
+    kind: "skills",
+    newPendingCount: suggestions.length,
+    currentPendingCount: remainingPending.length,
+  });
+  if (!limitCheck.allowed) {
+    return new Err(limitCheck.errorMessage);
+  }
+
+  const agentConfiguration = await getAgentConfiguration(auth, {
+    agentId: agentConfigurationId,
+    variant: "light",
+  });
+
+  if (!agentConfiguration) {
+    return new Err(`Agent configuration not found: ${agentConfigurationId}`);
+  }
+
+  const createdSuggestions: { sId: string; kind: string }[] = [];
+
+  for (const { action, skillId, analysis } of suggestions) {
+    const created = await AgentSuggestionResource.createSuggestionForAgent(
+      auth,
+      agentConfiguration,
+      {
+        kind: "skills",
+        suggestion: { action, skillId },
+        analysis: analysis ?? null,
+        state: "pending",
+        source,
+        conversationId: conversation?.id ?? null,
+      }
+    );
+
+    createdSuggestions.push({ sId: created.sId, kind: created.kind });
+  }
+
+  return new Ok(createdSuggestions);
+}
+
 import {
   formatAvailableModels,
   formatAvailableSkills,
@@ -188,6 +539,7 @@ import {
   listAvailableSkills,
   listAvailableTools,
 } from "@app/lib/api/assistant/workspace_capabilities";
+import type { z } from "zod";
 
 /**
  * Lists all knowledge data source views across all spaces the user has access to.
@@ -617,98 +969,36 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    // Reject batches where multiple suggestions target the same block.
-    const targetBlockIds = params.suggestions.map((s) => s.targetBlockId);
-    const uniqueTargetBlockIds = new Set(targetBlockIds);
-    if (uniqueTargetBlockIds.size !== targetBlockIds.length) {
+    try {
+      const result = await createInstructionSuggestions({
+        auth,
+        agentConfigurationId,
+        suggestions: params.suggestions,
+        source: "sidekick",
+      });
+
+      if (result.isErr()) {
+        return new Err(new MCPError(result.error, { tracked: false }));
+      }
+
+      const directives = result.value.map(
+        (s) => `:agent_suggestion[]{sId=${s.sId} kind=${s.kind}}`
+      );
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: directives.join("\n\n"),
+        },
+      ]);
+    } catch (error) {
       return new Err(
         new MCPError(
-          "Multiple suggestions target the same block ID. Use a single suggestion per block." +
-            `For full rewrites, target '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}' instead.`,
+          `Failed to create suggestion: ${normalizeError(error).message}`,
           { tracked: false }
         )
       );
     }
-
-    // Check pending suggestion limit before proceeding.
-    const pendingInstructions =
-      await AgentSuggestionResource.listByAgentConfigurationId(
-        auth,
-        agentConfigurationId,
-        { states: ["pending"], kind: "instructions" }
-      );
-
-    const limitCheck = canAddPendingSuggestions({
-      kind: "instructions",
-      newPendingCount: params.suggestions.length,
-      currentPendingCount: pendingInstructions.length,
-    });
-    if (!limitCheck.allowed) {
-      return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
-    }
-
-    // Fetch the latest version of the agent configuration (full variant needed
-    // for instructionsHtml used in conflict pruning).
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: agentConfigurationId,
-      variant: "full",
-    });
-
-    if (!agentConfiguration) {
-      return new Err(
-        new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
-          tracked: false,
-        })
-      );
-    }
-
-    const createdSuggestions: { sId: string; targetBlockId: string }[] = [];
-    const directives: string[] = [];
-
-    for (const suggestion of params.suggestions) {
-      try {
-        const { analysis, ...suggestionData } = suggestion;
-        const created = await AgentSuggestionResource.createSuggestionForAgent(
-          auth,
-          agentConfiguration,
-          {
-            kind: "instructions",
-            suggestion: suggestionData,
-            analysis: analysis ?? null,
-            state: "pending",
-            source: "sidekick",
-          }
-        );
-
-        createdSuggestions.push({
-          sId: created.sId,
-          targetBlockId: suggestionData.targetBlockId,
-        });
-        directives.push(
-          `:agent_suggestion[]{sId=${created.sId} kind=${created.kind}}`
-        );
-      } catch (error) {
-        return new Err(
-          new MCPError(
-            `Failed to create suggestion: ${normalizeError(error).message}`,
-            { tracked: false }
-          )
-        );
-      }
-    }
-
-    await pruneConflictingInstructionSuggestions(
-      auth,
-      agentConfiguration,
-      createdSuggestions
-    );
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text: directives.join("\n\n"),
-      },
-    ]);
   },
 
   suggest_tools: async (params, { auth, agentLoopContext }) => {
@@ -724,130 +1014,36 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    // Reject batches where multiple suggestions target the same tool.
-    const toolIds = params.suggestions.map((s) => s.toolId);
-    const uniqueToolIds = new Set(toolIds);
-    if (uniqueToolIds.size !== toolIds.length) {
-      const duplicates = [
-        ...new Set(toolIds.filter((id, i) => toolIds.indexOf(id) !== i)),
-      ];
-      return new Err(
-        new MCPError(
-          `Multiple suggestions target the same tool ID: ${duplicates.join(", ")}. Use a single suggestion per tool.`,
-          { tracked: false }
-        )
-      );
-    }
-
-    // Validate that all tool IDs exist and are accessible.
-    const tools = await MCPServerViewResource.fetchByIds(auth, toolIds);
-    const foundToolIds = new Set(tools.map((t) => t.sId));
-    const missingToolIds = toolIds.filter((id) => !foundToolIds.has(id));
-    if (missingToolIds.length > 0) {
-      return new Err(
-        new MCPError(
-          `The following tool ID(s) are invalid or not accessible: ${missingToolIds.join(", ")}. ` +
-            `Check <workspace_context> for valid tool IDs.`,
-          { tracked: false }
-        )
-      );
-    }
-
-    // Reject knowledge tools — they should be suggested via suggest_knowledge.
-    const knowledgeTools = tools.filter((t) => {
-      const json = t.toJSON();
-      return json !== null && isToolWithKnowledge(json);
-    });
-    if (knowledgeTools.length > 0) {
-      const knowledgeToolNames = knowledgeTools
-        .map((t) => `${t.sId} (${t.toJSON()?.server.name ?? "unknown"})`)
-        .join(", ");
-      return new Err(
-        new MCPError(
-          `The following ID(s) are knowledge tools, not regular tools: ${knowledgeToolNames}. ` +
-            `Use \`suggest_knowledge\` instead of \`suggest_tools\` for data source, table, or data warehouse tools.`,
-          { tracked: false }
-        )
-      );
-    }
-
-    // Fetch pending suggestions and mark duplicates (same toolId) as outdated.
-    const pendingSuggestions =
-      await AgentSuggestionResource.listByAgentConfigurationId(
+    try {
+      const result = await createToolsSuggestions({
         auth,
         agentConfigurationId,
-        { states: ["pending"], kind: "tools" }
-      );
+        suggestions: params.suggestions,
+        source: "sidekick",
+      });
 
-    const remainingPending = await markDuplicateSuggestionsAsOutdated(
-      auth,
-      pendingSuggestions,
-      (s) =>
-        isToolsSuggestion(s.suggestion) &&
-        uniqueToolIds.has(s.suggestion.toolId)
-    );
-
-    // Check pending suggestion limit after marking duplicates as outdated.
-    const limitCheck = canAddPendingSuggestions({
-      kind: "tools",
-      newPendingCount: params.suggestions.length,
-      currentPendingCount: remainingPending.length,
-    });
-    if (!limitCheck.allowed) {
-      return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
-    }
-
-    // Fetch the latest version of the agent configuration.
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: agentConfigurationId,
-      variant: "light",
-    });
-
-    if (!agentConfiguration) {
-      return new Err(
-        new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
-          tracked: false,
-        })
-      );
-    }
-
-    const directives: string[] = [];
-
-    for (const { action, toolId, analysis } of params.suggestions) {
-      try {
-        const suggestion: ToolsSuggestionType = { action, toolId };
-        const createdSuggestion =
-          await AgentSuggestionResource.createSuggestionForAgent(
-            auth,
-            agentConfiguration,
-            {
-              kind: "tools",
-              suggestion,
-              analysis: analysis ?? null,
-              state: "pending",
-              source: "sidekick",
-            }
-          );
-
-        directives.push(
-          `:agent_suggestion[]{sId=${createdSuggestion.sId} kind=${createdSuggestion.kind}}`
-        );
-      } catch (error) {
-        return new Err(
-          new MCPError(
-            `Failed to create suggestion: ${normalizeError(error).message}`,
-            { tracked: false }
-          )
-        );
+      if (result.isErr()) {
+        return new Err(new MCPError(result.error, { tracked: false }));
       }
-    }
 
-    return new Ok([
-      {
-        type: "text" as const,
-        text: directives.join("\n\n"),
-      },
-    ]);
+      const directives = result.value.map(
+        (s) => `:agent_suggestion[]{sId=${s.sId} kind=${s.kind}}`
+      );
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: directives.join("\n\n"),
+        },
+      ]);
+    } catch (error) {
+      return new Err(
+        new MCPError(
+          `Failed to create suggestion: ${normalizeError(error).message}`,
+          { tracked: false }
+        )
+      );
+    }
   },
 
   suggest_sub_agent: async (params, { auth, agentLoopContext }) => {
@@ -985,111 +1181,36 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    // Reject batches where multiple suggestions target the same skill.
-    const skillIds = params.suggestions.map((s) => s.skillId);
-    const uniqueSkillIds = new Set(skillIds);
-    if (uniqueSkillIds.size !== skillIds.length) {
-      const duplicates = [
-        ...new Set(skillIds.filter((id, i) => skillIds.indexOf(id) !== i)),
-      ];
-      return new Err(
-        new MCPError(
-          `Multiple suggestions target the same skill ID: ${duplicates.join(", ")}. Use a single suggestion per skill.`,
-          { tracked: false }
-        )
-      );
-    }
-
-    // Validate that all skill IDs exist and are accessible.
-    const skills = await SkillResource.fetchByIds(auth, skillIds);
-    const foundSkillIds = new Set(skills.map((s) => s.sId));
-    const missingSkillIds = skillIds.filter((id) => !foundSkillIds.has(id));
-    if (missingSkillIds.length > 0) {
-      return new Err(
-        new MCPError(
-          `The following skill ID(s) are invalid or not accessible: ${missingSkillIds.join(", ")}. ` +
-            `Check <workspace_context> for valid skill IDs.`,
-          { tracked: false }
-        )
-      );
-    }
-
-    // Fetch pending suggestions and mark duplicates (same skillId) as outdated.
-    const pendingSuggestions =
-      await AgentSuggestionResource.listByAgentConfigurationId(
+    try {
+      const result = await createSkillsSuggestions({
         auth,
         agentConfigurationId,
-        { states: ["pending"], kind: "skills" }
-      );
+        suggestions: params.suggestions,
+        source: "sidekick",
+      });
 
-    const remainingPending = await markDuplicateSuggestionsAsOutdated(
-      auth,
-      pendingSuggestions,
-      (s) =>
-        isSkillsSuggestion(s.suggestion) &&
-        uniqueSkillIds.has(s.suggestion.skillId)
-    );
-
-    // Check pending suggestion limit after marking duplicates as outdated.
-    const limitCheck = canAddPendingSuggestions({
-      kind: "skills",
-      newPendingCount: params.suggestions.length,
-      currentPendingCount: remainingPending.length,
-    });
-    if (!limitCheck.allowed) {
-      return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
-    }
-
-    // Fetch the latest version of the agent configuration.
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: agentConfigurationId,
-      variant: "light",
-    });
-
-    if (!agentConfiguration) {
-      return new Err(
-        new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
-          tracked: false,
-        })
-      );
-    }
-
-    const directives: string[] = [];
-
-    for (const { action, skillId, analysis } of params.suggestions) {
-      try {
-        const createdSuggestion =
-          await AgentSuggestionResource.createSuggestionForAgent(
-            auth,
-            agentConfiguration,
-            {
-              kind: "skills",
-              suggestion: { action, skillId },
-              analysis: analysis ?? null,
-              state: "pending",
-              source: "sidekick",
-            }
-          );
-
-        directives.push(
-          `:agent_suggestion[]{sId=${createdSuggestion.sId} kind=${createdSuggestion.kind}}`
-        );
-      } catch (error) {
-        return new Err(
-          new MCPError(
-            `Failed to create suggestion: ${normalizeError(error).message}`,
-            { tracked: false }
-          )
-        );
+      if (result.isErr()) {
+        return new Err(new MCPError(result.error, { tracked: false }));
       }
-    }
 
-    return new Ok([
-      {
-        type: "text" as const,
-        text: directives.join("\n\n"),
-      },
-    ]);
+      const directives = result.value.map(
+        (s) => `:agent_suggestion[]{sId=${s.sId} kind=${s.kind}}`
+      );
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: directives.join("\n\n"),
+        },
+      ]);
+    } catch (error) {
+      return new Err(
+        new MCPError(
+          `Failed to create suggestion: ${normalizeError(error).message}`,
+          { tracked: false }
+        )
+      );
+    }
   },
 
   suggest_model: async (params, { auth, agentLoopContext }) => {
@@ -1198,7 +1319,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     );
 
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-    const credentials = await ProviderCredentialResource.getCredentials(auth);
+    const credentials = await getLlmCredentials(auth);
     const searchResults = await coreAPI.bulkSearchDataSources(
       query,
       topK,

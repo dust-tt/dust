@@ -8,7 +8,9 @@ import { cn } from "@sparkle/lib";
 import { cva } from "class-variance-authority";
 import React, { memo } from "react";
 
-export const ulBlockVariants = cva(["s-list-disc s-pb-2 s-pl-6"]);
+export const ulBlockVariants = cva([
+  "s-list-disc s-pb-2 s-pl-6 s-flex s-flex-col s-gap-1",
+]);
 
 interface UlBlockProps {
   children: React.ReactNode;
@@ -27,7 +29,9 @@ export const UlBlock = memo(
 );
 UlBlock.displayName = "UlBlock";
 
-export const olBlockVariants = cva(["s-list-decimal s-pb-2 s-pl-6"]);
+export const olBlockVariants = cva([
+  "s-list-decimal s-pb-2 s-pl-6 s-flex s-flex-col s-gap-1",
+]);
 
 interface OlBlockProps {
   children: React.ReactNode;

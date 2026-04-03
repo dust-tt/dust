@@ -1,5 +1,5 @@
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
@@ -18,7 +18,7 @@ type HttpMethod = "GET" | "POST";
 
 export function NotionRequestsPage() {
   const owner = useWorkspace();
-  useSetPokePageTitle(`${owner.name} - Notion Requests`);
+  useDocumentTitle(`Poke - ${owner.name} - Notion Requests`);
 
   const dsId = useRequiredPathParam("dsId");
   const { isDark } = useTheme();

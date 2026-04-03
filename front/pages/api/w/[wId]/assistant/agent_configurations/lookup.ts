@@ -1,20 +1,20 @@
+/** @ignoreswagger */
 import { getAgentSIdFromName } from "@app/lib/api/assistant/configuration/helpers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-const GetLookupRequestSchema = t.type({
-  handle: t.string,
+const GetLookupRequestSchema = z.object({
+  handle: z.string(),
 });
 
-type GetLookupResponseBody = {
-  sId: string;
-};
+const GetLookupResponseBodySchema = z.object({
+  sId: z.string(),
+});
+type GetLookupResponseBody = z.infer<typeof GetLookupResponseBodySchema>;
 
 async function handler(
   req: NextApiRequest,
@@ -23,20 +23,18 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      const bodyValidation = GetLookupRequestSchema.decode(req.query);
+      const bodyValidation = GetLookupRequestSchema.safeParse(req.query);
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${bodyValidation.error.message}`,
           },
         });
       }
-      const sId = await getAgentSIdFromName(auth, bodyValidation.right.handle);
+      const sId = await getAgentSIdFromName(auth, bodyValidation.data.handle);
       if (!sId) {
         return apiError(req, res, {
           status_code: 404,

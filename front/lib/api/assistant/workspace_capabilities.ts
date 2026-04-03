@@ -1,11 +1,11 @@
-import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
+import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
   isToolWithKnowledge,
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { isModelCustomAvailableAndWhitelisted } from "@app/lib/assistant";
+import { filterCustomAvailableAndWhitelistedModels } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -39,13 +39,13 @@ export interface AvailableSkill {
 export async function getAvailableModelsForWorkspace(
   auth: Authenticator
 ): Promise<ModelConfigurationType[]> {
-  const owner = auth.getNonNullableWorkspace();
-  const plan = auth.plan();
-  const featureFlags = await getFeatureFlags(owner);
+  const featureFlags = await getFeatureFlags(auth);
 
   const allUsedModels = [...USED_MODEL_CONFIGS, ...CUSTOM_MODEL_CONFIGS];
-  return allUsedModels.filter((m) =>
-    isModelCustomAvailableAndWhitelisted(m, featureFlags, plan, owner)
+  return filterCustomAvailableAndWhitelistedModels(
+    allUsedModels,
+    featureFlags,
+    auth
   );
 }
 

@@ -6,6 +6,7 @@ use base64::{engine::general_purpose::URL_SAFE, Engine};
 use elasticsearch::{
     auth::Credentials,
     http::transport::{SingleNodeConnectionPool, TransportBuilder},
+    params::Conflicts,
     DeleteByQueryParts, DeleteParts, Elasticsearch, IndexParts, SearchParts,
 };
 use elasticsearch_dsl::{
@@ -557,6 +558,7 @@ impl SearchStore for ElasticsearchSearchStore {
         let response = self
             .client
             .delete_by_query(DeleteByQueryParts::Index(&[DATA_SOURCE_NODE_INDEX_NAME]))
+            .conflicts(Conflicts::Proceed)
             .body(json!({
                 "query": {
                     "term": { "data_source_id": data_source.data_source_id() }
@@ -565,13 +567,31 @@ impl SearchStore for ElasticsearchSearchStore {
             .send()
             .await?;
 
-        if !response.status_code().is_success() {
-            let error = response.json::<serde_json::Value>().await?;
+        let status_code = response.status_code();
+        let body = response.json::<serde_json::Value>().await?;
+
+        if !status_code.is_success() {
             return Err(anyhow::anyhow!(
                 "Failed to delete data source nodes {}",
-                error
+                body
             ));
         }
+
+        if let Some(failures) = body["failures"].as_array() {
+            if !failures.is_empty() {
+                return Err(anyhow::anyhow!(
+                    "Failed to delete data source nodes {}",
+                    body
+                ));
+            }
+        }
+
+        info!(
+            data_source_internal_id = data_source.internal_id(),
+            deleted_node_count = body["deleted"].as_i64().unwrap_or(0),
+            version_conflicts = body["version_conflicts"].as_i64().unwrap_or(0),
+            "[ElasticsearchSearchStore] Deleted data source nodes"
+        );
 
         // Then, delete the data source document.
         self.delete_document(data_source).await

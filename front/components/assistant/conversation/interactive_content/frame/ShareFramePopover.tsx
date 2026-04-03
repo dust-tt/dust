@@ -29,7 +29,7 @@ const scopeOptions = [
   {
     icon: UserGroupIcon,
     label: WORKSPACE_LABEL,
-    value: "workspace" as const,
+    value: "workspace_and_emails" as const,
   },
   {
     icon: GlobeAltIcon,
@@ -102,8 +102,9 @@ export function ShareFramePopover({
   const [isOpen, setIsOpen] = React.useState(false);
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const [isUpdatingShare, setIsUpdatingShare] = React.useState(false);
-  const [selectedScope, setSelectedScope] =
-    React.useState<FileShareScope>("workspace");
+  const [selectedScope, setSelectedScope] = React.useState<FileShareScope>(
+    "workspace_and_emails"
+  );
 
   const isPublicSharingForbidden =
     owner.metadata?.allowContentCreationFileSharing === false;

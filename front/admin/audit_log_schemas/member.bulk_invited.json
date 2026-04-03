@@ -1,0 +1,13 @@
+{
+  "action": "member.bulk_invited",
+  "targets": [
+    {
+      "type": "workspace"
+    }
+  ],
+  "metadata": {
+    "invitedEmails": "string",
+    "count": "string",
+    "source": "string"
+  }
+}

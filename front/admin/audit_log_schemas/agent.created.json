@@ -1,0 +1,16 @@
+{
+  "action": "agent.created",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "agent"
+    }
+  ],
+  "metadata": {
+    "agentName": "string",
+    "scope": "string",
+    "model": "string"
+  }
+}

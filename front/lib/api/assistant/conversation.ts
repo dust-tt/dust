@@ -1,4 +1,7 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+
+import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
+import type { StepContext } from "@app/lib/actions/types";
 import {
   getAgentConfiguration,
   getAgentConfigurations,
@@ -16,7 +19,7 @@ import {
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
-
+import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR_WINDOW_SECONDS,
@@ -33,14 +36,24 @@ import {
   publishAgentMessagesEvents,
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
+import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
-import { isModelAvailable } from "@app/lib/assistant";
+import { isModelAvailable, isProviderWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import { extractFromString } from "@app/lib/mentions/format";
+import { extractFromString, serializeMention } from "@app/lib/mentions/format";
+import {
+  AgentMCPActionModel,
+  AgentMCPActionOutputItemModel,
+} from "@app/lib/models/agent/actions/mcp";
+import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageModel,
   ConversationModel,
@@ -56,14 +69,14 @@ import { ConversationBranchResource } from "@app/lib/resources/conversation_bran
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import {
-  generateRandomModelSId,
-  getResourceIdFromSId,
-} from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import {
   getTimeframeSecondsFromLiteral,
@@ -77,16 +90,25 @@ import {
   launchOrSignalButlerWorkflow,
   signalButlerComplete,
 } from "@app/temporal/butler/client";
+import {
+  launchOrSignalProjectTodoWorkflow,
+  signalProjectTodoComplete,
+} from "@app/temporal/project_todo/client";
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
 } from "@app/types/api/internal/assistant";
 import { isContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  LightAgentConfigurationType,
+  ToolErrorEvent,
+} from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   AgenticMessageData,
   AgentMessageType,
   AgentMessageTypeWithoutMentions,
+  CitationType,
   ConversationMetadata,
   ConversationType,
   ConversationVisibility,
@@ -107,7 +129,6 @@ import {
   isUserMention,
   toMentionType,
 } from "@app/types/assistant/mentions";
-import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type {
   ContentFragmentContextType,
   ContentFragmentType,
@@ -120,13 +141,24 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { md5 } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
+import uniq from "lodash/uniq";
 import type { NextApiRequest } from "next";
 import type { Transaction } from "sequelize";
 import { col } from "sequelize";
 
 // Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
 const PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE = 3;
+
+/** Citations and generated files aggregated from source MCP output items (e.g. branch merge). */
+export type CitationsAndFilesFromOutputItemsType = {
+  citationsAllocated: number;
+  outputItems: Array<{
+    fileId: ModelId | null;
+    citations: Record<string, CitationType> | null;
+  }>;
+};
 
 /**
  * Conversation Creation, update and deletion
@@ -294,6 +326,16 @@ export async function getConversationMessageType(
     return null;
   }
 
+  if (message.branchSId) {
+    const branch = await ConversationBranchResource.fetchById(
+      auth,
+      message.branchSId
+    );
+    if (!branch || !branch.canRead(auth)) {
+      return null;
+    }
+  }
+
   if (message.userMessageId) {
     return "user_message";
   }
@@ -330,39 +372,6 @@ export async function getMessageConversationId(
     conversationId: messageRow?.conversation?.sId ?? null,
     messageId: messageRow?.sId ?? null,
   };
-}
-
-export async function getLastUserMessage(
-  auth: Authenticator,
-  conversation: ConversationWithoutContentType
-): Promise<Result<string, Error>> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const message = await MessageModel.findOne({
-    where: {
-      workspaceId: owner.id,
-      conversationId: conversation.id,
-    },
-    order: [
-      ["rank", "DESC"],
-      ["version", "ASC"],
-    ],
-    include: [
-      {
-        model: UserMessageModel,
-        as: "userMessage",
-        required: false,
-      },
-    ],
-  });
-
-  const content = message?.userMessage?.content;
-  if (!content) {
-    return new Err(
-      new Error("Error suggesting agents: no content found in conversation.")
-    );
-  }
-  return new Ok(content);
 }
 
 /**
@@ -503,6 +512,8 @@ export function isUserMessageContextValid(
     case "onboarding_conversation":
     case "agent_sidekick":
     case "project_kickoff":
+    case "reinforced_agent_notification":
+    case "reinforcement":
     case "web":
       return false;
     default:
@@ -556,7 +567,7 @@ export async function postUserMessage(
     });
   }
 
-  const featureFlags = await getFeatureFlags(owner);
+  const featureFlags = await getFeatureFlags(auth);
   const isPartOfProject = isProjectConversation(conversation);
 
   if (isPartOfProject) {
@@ -612,8 +623,37 @@ export async function postUserMessage(
     })(),
   ]);
 
-  const agentConfigurations = removeNulls(results[0]);
+  let agentConfigurations = removeNulls(results[0]);
   let shouldCreateBranch = false;
+
+  // Check if no mentions, in that case, we might automatically append an @dust mention.
+  if (
+    mentions.length === 0 &&
+    (context.origin === "web" || context.origin === "extension")
+  ) {
+    const hasOtherHumans =
+      uniq(
+        conversation.content
+          .map((versions) => versions[versions.length - 1])
+          .filter(isUserMessageType)
+          .filter((m) => m.user?.sId && m.user.sId !== auth.user()?.sId)
+      ).length >= 1;
+
+    if (!hasOtherHumans) {
+      // Check if the global @dust agent is active for this workspace.
+      const dustAgent = await getAgentConfiguration(auth, {
+        agentId: GLOBAL_AGENTS_SID.DUST,
+        variant: "extra_light",
+      });
+
+      if (dustAgent && dustAgent.status === "active") {
+        agentConfigurations.push(dustAgent);
+        const dustMention: MentionType = { configurationId: dustAgent.sId };
+        mentions.push(dustMention);
+        content = `${serializeMention({ id: dustAgent.sId, type: "agent", label: dustAgent.name })} ${content}`;
+      }
+    }
+  }
 
   for (const agentConfig of agentConfigurations) {
     if (!canAccessAgent(agentConfig)) {
@@ -627,7 +667,11 @@ export async function postUserMessage(
       });
     }
 
-    if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
+    const isProviderEnabled = isProviderWhitelisted(
+      auth,
+      agentConfig.model.providerId
+    );
+    if (!isProviderEnabled) {
       // Stop processing if any agent uses a disabled provider.
       return new Err({
         status_code: 400,
@@ -674,6 +718,8 @@ export async function postUserMessage(
     // connection pool, resulting in a deadlock.
     await getConversationRankVersionLock(auth, conversation, t);
 
+    let nextMessageRank: number | undefined;
+
     // We will do best effort to create a branch, but there a several conditions that we will not create a branch.
     // - User is null, cannot create branch without a user, should never happen, but we will log an error and continue.
     // - Message has user mentions, we don't support multiple users in a branch yet.
@@ -692,27 +738,32 @@ export async function postUserMessage(
         logger.info(
           "Conversation has no content, cannot create branch as the start of the conversation."
         );
-      } else if (
-        conversation.content[conversation.content.length - 1].length === 0
-      ) {
-        logger.error(
-          "Last message in conversation has no content, cannot create branch."
-        );
       } else {
-        const branch = await ConversationBranchResource.makeNew(
-          auth,
-          {
-            conversationId: conversation.id,
-            previousMessageId:
-              conversation.content[conversation.content.length - 1].at(-1)!.id,
-            state: "open",
-            userId: user.id,
-          },
-          t
-        );
+        // Get the last message in the conversation.
+        const previousMessage =
+          conversation.content[conversation.content.length - 1].at(-1);
+        if (!previousMessage) {
+          logger.error(
+            "Last message in conversation has no content, cannot create branch."
+          );
+        } else {
+          // Create a new branch for the conversation.
+          const branch = await ConversationBranchResource.makeNew(
+            auth,
+            {
+              conversationId: conversation.id,
+              previousMessageId: previousMessage.id,
+              state: "open",
+              userId: user.id,
+            },
+            t
+          );
 
-        // Update the conversation with the new branch id so the rest of the functions will operate on the branch.
-        conversation.branchId = branch.sId;
+          // Update the conversation with the new branch id so the rest of the functions will operate on the branch.
+          conversation.branchId = branch.sId;
+          // Set the next message rank to the rank of the previous message plus one.
+          nextMessageRank = previousMessage.rank + 1;
+        }
       }
     }
 
@@ -727,7 +778,7 @@ export async function postUserMessage(
       );
     }
 
-    let nextMessageRank =
+    nextMessageRank ??=
       ((await MessageModel.max<number | null, MessageModel>("rank", {
         where: {
           workspaceId: owner.id,
@@ -792,11 +843,13 @@ export async function postUserMessage(
 
     await ConversationResource.markAsUpdated(auth, { conversation, t });
 
-    // Mark the conversation as read for the current user.
-    await ConversationResource.markAsReadForAuthUser(auth, {
-      conversation,
-      transaction: t,
-    });
+    if (!doNotAssociateUser) {
+      // Mark the conversation as read for the current user.
+      await ConversationResource.markAsReadForAuthUser(auth, {
+        conversation,
+        transaction: t,
+      });
+    }
 
     return {
       userMessage,
@@ -839,6 +892,23 @@ export async function postUserMessage(
     agentMessages,
   });
 
+  // Emit agent.executed for each agent being invoked.
+  for (const agentMessage of agentMessages) {
+    void emitAuditLogEvent({
+      auth,
+      action: "agent.executed",
+      targets: [
+        buildAuditLogTarget("workspace", conversation.owner),
+        buildAuditLogTarget("agent", agentMessage.configuration),
+      ],
+      metadata: {
+        conversationId: conversation.sId,
+        agentName: agentMessage.configuration.name,
+        origin: context.origin,
+      },
+    });
+  }
+
   // Run agent loop workflows after the transaction commits, to ensure messages are persisted.
   if (agentMessages.length > 0) {
     await runAgentLoopWorkflow({
@@ -868,20 +938,31 @@ export async function postUserMessage(
       : Promise.resolve(undefined),
   ]);
 
-  if (featureFlags.includes("conversation_butler") && isPartOfProject) {
-    // Fire-and-forget: butler failures must not block message posting.
-    void launchOrSignalButlerWorkflow({
+  if (isPartOfProject) {
+    const projectTodoAndConversationButlerParams = {
       authType: auth.toJSON(),
+      spaceId: conversation.spaceId,
       conversationId: conversation.sId,
       messageId: userMessage.sId,
-    });
+    };
 
-    if (agentMessages.length === 0) {
-      void signalButlerComplete({
-        authType: auth.toJSON(),
-        conversationId: conversation.sId,
-        messageId: userMessage.sId,
-      });
+    if (featureFlags.includes("project_todo")) {
+      void launchOrSignalProjectTodoWorkflow(
+        projectTodoAndConversationButlerParams
+      );
+
+      if (agentMessages.length === 0) {
+        void signalProjectTodoComplete(projectTodoAndConversationButlerParams);
+      }
+    }
+
+    if (featureFlags.includes("conversation_butler")) {
+      // Fire-and-forget: butler failures must not block message posting.
+      void launchOrSignalButlerWorkflow(projectTodoAndConversationButlerParams);
+
+      if (agentMessages.length === 0) {
+        void signalButlerComplete(projectTodoAndConversationButlerParams);
+      }
     }
   }
 
@@ -995,7 +1076,11 @@ export async function editUserMessage(
       });
     }
 
-    if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
+    const isProviderEnabled = isProviderWhitelisted(
+      auth,
+      agentConfig.model.providerId
+    );
+    if (!isProviderEnabled) {
       // Stop processing if any agent uses a disabled provider.
       return new Err({
         status_code: 400,
@@ -1059,7 +1144,6 @@ export async function editUserMessage(
       const userMessageWithoutMentions = await createUserMessage(auth, {
         conversation,
         content,
-
         metadata: {
           type: "edit",
           message,
@@ -1198,24 +1282,32 @@ export async function editUserMessage(
     agentMessages
   );
 
-  const featureFlags = await getFeatureFlags(owner);
-  if (
-    featureFlags.includes("conversation_butler") &&
-    isProjectConversation(conversation)
-  ) {
-    // Fire-and-forget: butler failures must not block message editing.
-    void launchOrSignalButlerWorkflow({
+  const featureFlags = await getFeatureFlags(auth);
+  if (isProjectConversation(conversation)) {
+    const projectTodoAndConversationButlerParams = {
       authType: auth.toJSON(),
+      spaceId: conversation.spaceId,
       conversationId: conversation.sId,
       messageId: userMessage.sId,
-    });
+    };
 
-    if (agentMessages.length === 0) {
-      void signalButlerComplete({
-        authType: auth.toJSON(),
-        conversationId: conversation.sId,
-        messageId: userMessage.sId,
-      });
+    if (featureFlags.includes("project_todo")) {
+      void launchOrSignalProjectTodoWorkflow(
+        projectTodoAndConversationButlerParams
+      );
+
+      if (agentMessages.length === 0) {
+        void signalProjectTodoComplete(projectTodoAndConversationButlerParams);
+      }
+    }
+
+    if (featureFlags.includes("conversation_butler")) {
+      // Fire-and-forget: butler failures must not block message editing.
+      void launchOrSignalButlerWorkflow(projectTodoAndConversationButlerParams);
+
+      if (agentMessages.length === 0) {
+        void signalButlerComplete(projectTodoAndConversationButlerParams);
+      }
     }
   }
 
@@ -1233,7 +1325,7 @@ export async function handleAgentMessage(
     conversation,
     agentMessage,
   }: {
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     agentMessage: AgentMessageTypeWithoutMentions;
   }
 ) {
@@ -1270,6 +1362,227 @@ export async function handleAgentMessage(
   }
 }
 
+export async function createAgentMessageFromText(
+  auth: Authenticator,
+  {
+    conversation,
+    parentId,
+    rank,
+    content,
+    agentConfiguration,
+    skipToolsValidation = true,
+    citationsAndFilesFromOutputItems,
+  }: {
+    conversation: ConversationType;
+    parentId: ModelId;
+    rank: number;
+    content: string;
+    agentConfiguration: { sId: string; version: number };
+    skipToolsValidation?: boolean;
+    citationsAndFilesFromOutputItems?: CitationsAndFilesFromOutputItemsType;
+  }
+): Promise<{
+  messageId: ModelId;
+  messageSId: string;
+  agentMessageId: ModelId;
+}> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const created = await withTransaction(async (t) => {
+    const agentMessageRow = await AgentMessageModel.create(
+      {
+        status: "succeeded",
+        agentConfigurationId: agentConfiguration.sId,
+        agentConfigurationVersion: agentConfiguration.version,
+        workspaceId: owner.id,
+        skipToolsValidation,
+        runIds: null,
+        completedAt: new Date(),
+        modelInteractionDurationMs: 0,
+        prunedContext: false,
+        errorCode: null,
+        errorMessage: null,
+        errorMetadata: null,
+      },
+      { transaction: t }
+    );
+
+    const messageRow = await MessageModel.create(
+      {
+        sId: generateRandomModelSId(),
+        rank,
+        conversationId: conversation.id,
+        branchId: conversation.branchId
+          ? getResourceIdFromSId(conversation.branchId)
+          : null,
+        parentId,
+        agentMessageId: agentMessageRow.id,
+        workspaceId: owner.id,
+      },
+      { transaction: t }
+    );
+
+    await AgentStepContentModel.create(
+      {
+        workspaceId: owner.id,
+        agentMessageId: agentMessageRow.id,
+        step: 0,
+        index: 0,
+        version: 0,
+        type: "text_content",
+        value: { type: "text_content", value: content },
+      },
+      { transaction: t }
+    );
+
+    if (citationsAndFilesFromOutputItems) {
+      const { citationsAllocated, outputItems } =
+        citationsAndFilesFromOutputItems;
+
+      const functionCallStepContent = await AgentStepContentModel.create(
+        {
+          workspaceId: owner.id,
+          agentMessageId: agentMessageRow.id,
+          step: 0,
+          index: 1,
+          version: 0,
+          type: "function_call",
+          value: {
+            type: "function_call",
+            value: {
+              id: `merged_output_${messageRow.id}`,
+              name: "merged_output",
+              arguments: "{}",
+            },
+          },
+        },
+        { transaction: t }
+      );
+
+      const createdAction = await AgentMCPActionModel.create(
+        {
+          workspaceId: owner.id,
+          mcpServerConfigurationId: "",
+          version: 0,
+          agentMessageId: agentMessageRow.id,
+          stepContentId: functionCallStepContent.id,
+          status: "succeeded",
+          citationsAllocated,
+          augmentedInputs: {},
+          toolConfiguration: {} as LightMCPToolConfigurationType,
+          stepContext: {} as StepContext,
+          executionDurationMs: null,
+        },
+        { transaction: t }
+      );
+
+      if (outputItems.length > 0) {
+        const syntheticMcpOutputContent: CallToolResult["content"][number] = {
+          type: "text",
+          text: "",
+        };
+        await AgentMCPActionOutputItemModel.bulkCreate(
+          outputItems.map((oi) => ({
+            workspaceId: owner.id,
+            agentMCPActionId: createdAction.id,
+            content: syntheticMcpOutputContent,
+            contentGcsPath: null,
+            fileId: oi.fileId,
+            citations: oi.citations,
+          })),
+          { transaction: t }
+        );
+      }
+    }
+
+    return {
+      messageId: messageRow.id,
+      messageSId: messageRow.sId,
+      agentMessageId: agentMessageRow.id,
+    };
+  });
+
+  const conversationResource = await ConversationResource.fetchById(
+    auth,
+    conversation.sId
+  );
+  if (!conversationResource) {
+    logger.error(
+      {
+        workspaceId: owner.sId,
+        conversationSId: conversation.sId,
+        messageSId: created.messageSId,
+      },
+      "createAgentMessageFromText: conversation not found for event publish."
+    );
+    return created;
+  }
+
+  const messageRow = await MessageModel.findOne({
+    where: { id: created.messageId, workspaceId: owner.id },
+    include: [
+      {
+        model: AgentMessageModel,
+        as: "agentMessage",
+        required: true,
+      },
+    ],
+  });
+
+  if (!messageRow?.agentMessage) {
+    logger.error(
+      {
+        workspaceId: owner.sId,
+        conversationSId: conversation.sId,
+        messageSId: created.messageSId,
+      },
+      "createAgentMessageFromText: message row missing for batch render."
+    );
+    return created;
+  }
+
+  const renderedRes = await batchRenderMessages(
+    auth,
+    conversationResource,
+    [messageRow],
+    "full"
+  );
+
+  if (renderedRes.isErr()) {
+    logger.error(
+      {
+        workspaceId: owner.sId,
+        conversationSId: conversation.sId,
+        messageSId: created.messageSId,
+        error: renderedRes.error,
+      },
+      "createAgentMessageFromText: batchRenderMessages failed."
+    );
+    return created;
+  }
+
+  const agentMessage = renderedRes.value.find(
+    (m): m is AgentMessageType =>
+      isAgentMessageType(m) && m.sId === created.messageSId
+  );
+
+  if (!agentMessage) {
+    logger.error(
+      {
+        workspaceId: owner.sId,
+        conversationSId: conversation.sId,
+        messageSId: created.messageSId,
+      },
+      "createAgentMessageFromText: rendered agent message not found."
+    );
+    return created;
+  }
+
+  await publishAgentMessagesEvents(conversation, [agentMessage]);
+
+  return created;
+}
+
 // This method is in charge of re-running an agent interaction (generating a new
 // AgentMessage as a result)
 export async function retryAgentMessage(
@@ -1282,8 +1595,6 @@ export async function retryAgentMessage(
     message: AgentMessageType;
   }
 ): Promise<Result<AgentMessageType, APIErrorWithStatusCode>> {
-  const owner = auth.getNonNullableWorkspace();
-
   // Find the parent user message to get the original context for rate limiting.
   // This ensures retries are counted with the same origin (web vs programmatic) as the original.
   const parentUserMessage = conversation.content
@@ -1472,6 +1783,7 @@ export async function retryAgentMessage(
       agentMessageVersion: agentMessage.version,
       conversationId: conversation.sId,
       conversationTitle: conversation.title,
+      conversationBranchId: conversation.branchId,
       userMessageId: userMessage.sId,
       userMessageVersion: userMessage.version,
       userMessageOrigin: userMessage.context.origin,
@@ -1479,17 +1791,25 @@ export async function retryAgentMessage(
     startStep: 0,
   });
 
-  const featureFlags = await getFeatureFlags(owner);
-  if (
-    featureFlags.includes("conversation_butler") &&
-    isProjectConversation(conversation)
-  ) {
-    // Fire-and-forget: butler failures must not block retries.
-    void launchOrSignalButlerWorkflow({
+  const featureFlags = await getFeatureFlags(auth);
+  if (isProjectConversation(conversation)) {
+    const projectTodoAndConversationButlerParams = {
       authType: auth.toJSON(),
+      spaceId: conversation.spaceId,
       conversationId: conversation.sId,
       messageId: agentMessage.sId,
-    });
+    };
+
+    if (featureFlags.includes("project_todo")) {
+      void launchOrSignalProjectTodoWorkflow(
+        projectTodoAndConversationButlerParams
+      );
+    }
+
+    if (featureFlags.includes("conversation_butler")) {
+      // Fire-and-forget: butler failures must not block retries.
+      void launchOrSignalButlerWorkflow(projectTodoAndConversationButlerParams);
+    }
   }
 
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
@@ -1639,22 +1959,27 @@ export async function postNewContentFragment(
     message: messageRow,
   });
 
-  const featureFlags = await getFeatureFlags(owner);
-  if (
-    featureFlags.includes("conversation_butler") &&
-    isProjectConversation(conversation)
-  ) {
-    // Fire-and-forget: butler failures must not block content fragment posting.
-    void launchOrSignalButlerWorkflow({
+  const featureFlags = await getFeatureFlags(auth);
+  if (isProjectConversation(conversation)) {
+    const projectTodoAndConversationButlerParams = {
       authType: auth.toJSON(),
+      spaceId: conversation.spaceId,
       conversationId: conversation.sId,
       messageId,
-    });
-    void signalButlerComplete({
-      authType: auth.toJSON(),
-      conversationId: conversation.sId,
-      messageId,
-    });
+    };
+
+    if (featureFlags.includes("project_todo")) {
+      void launchOrSignalProjectTodoWorkflow(
+        projectTodoAndConversationButlerParams
+      );
+      void signalProjectTodoComplete(projectTodoAndConversationButlerParams);
+    }
+
+    if (featureFlags.includes("conversation_butler")) {
+      // Fire-and-forget: butler failures must not block content fragment posting.
+      void launchOrSignalButlerWorkflow(projectTodoAndConversationButlerParams);
+      void signalButlerComplete(projectTodoAndConversationButlerParams);
+    }
   }
 
   return new Ok(render);
@@ -1827,6 +2152,11 @@ async function checkMessagesLimit(
     context: UserMessageContext;
   }
 ): Promise<Result<void, APIErrorWithStatusCode>> {
+  // Skip rate limiting for system-initiated messages (e.g. reinforced agent workflows).
+  if (!auth.user() && !auth.key() && auth.authMethod() === "internal") {
+    return new Ok(undefined);
+  }
+
   const messageLimit = await isMessagesLimitReached(auth, {
     mentions,
     context,
@@ -2098,4 +2428,90 @@ async function isMessagesLimitReached(
     isLimitReached,
     limitType: isLimitReached ? "plan_message_limit_exceeded" : null,
   };
+}
+
+export async function isConversationEventAllowedForAuth(
+  auth: Authenticator,
+  {
+    event,
+  }: {
+    event: ConversationEvents;
+  }
+): Promise<boolean> {
+  const type = event.type;
+  switch (type) {
+    case "user_message_new":
+    case "agent_message_new":
+      if (event.message.branchId) {
+        // It's okay to fetch the branch here because theses events are only sent once per message.
+        const branch = await ConversationBranchResource.fetchById(
+          auth,
+          event.message.branchId
+        );
+        return !!branch && branch.canRead(auth);
+      }
+      return true;
+    case "agent_message_done":
+    case "butler_suggestion_created":
+    case "butler_done":
+    case "butler_thinking":
+    case "conversation_title":
+    case "user_message_promoted":
+      return true;
+    default:
+      assertNever(type);
+  }
+}
+
+/**
+ * Finalize an agent message terminal status behind the conversation advisory lock.
+ *
+ * This ensures the status transition is serialized against other conversation operations (e.g.
+ * postUserMessage's pending path in the future).
+ */
+export async function updateAgentMessageWithFinalStatus(
+  auth: Authenticator,
+  {
+    conversation,
+    agentMessage,
+    status,
+    error,
+  }: {
+    conversation: ConversationWithoutContentType;
+    agentMessage: AgentMessageType;
+    status: "succeeded" | "cancelled" | "failed" | "gracefully_stopped";
+    error?: ToolErrorEvent["error"];
+  }
+): Promise<{
+  completedTs: number;
+  status: "succeeded" | "cancelled" | "failed" | "gracefully_stopped";
+}> {
+  const completedAt = new Date();
+
+  await withTransaction(async (t) => {
+    await getConversationRankVersionLock(auth, conversation, t);
+
+    await AgentMessageModel.update(
+      {
+        status,
+        completedAt,
+        ...(error
+          ? {
+              errorCode: error.code,
+              errorMessage: error.message,
+              errorMetadata: error.metadata,
+            }
+          : {}),
+      },
+      {
+        where: {
+          id: agentMessage.agentMessageId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        transaction: t,
+      }
+    );
+  });
+
+  return { completedTs: completedAt.getTime(), status };
 }

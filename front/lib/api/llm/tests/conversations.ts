@@ -10,11 +10,11 @@ import type {
   TestConfig,
   TestConversation,
 } from "@app/lib/api/llm/tests/types";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { Authenticator } from "@app/lib/auth";
 import { SubscriptionModel } from "@app/lib/models/plan";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import type {
   ModelConversationTypeMultiActions,
@@ -44,6 +44,7 @@ export function createMockAuthenticator(): Authenticator {
       endDate: null,
       planId: -1,
       stripeSubscriptionId: null,
+      metronomeContractId: null,
       requestCancelAt: null,
       workspaceId: -1,
       createdAt: new Date(),
@@ -335,7 +336,9 @@ export const runConversation = async (
   config: TestConfig
 ): Promise<void> => {
   const mockAuth = createMockAuthenticator();
-  const credentials = await ProviderCredentialResource.getCredentials(mockAuth);
+  const credentials = await getLlmCredentials(mockAuth, {
+    skipEmbeddingApiKeyRequirement: true,
+  });
   const llm = await getLLM(mockAuth, {
     credentials,
     modelId: config.modelId,

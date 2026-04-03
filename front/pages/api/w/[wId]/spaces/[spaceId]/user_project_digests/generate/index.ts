@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -24,15 +25,13 @@ export async function handler(
   auth: Authenticator,
   { space }: { space: SpaceResource }
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(owner);
-  if (!featureFlags.includes("project_butler")) {
+  const featureFlags = await getFeatureFlags(auth);
+  if (!featureFlags.includes("project_todo")) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "feature_flag_not_found",
-        message:
-          "The project butler feature is not enabled for this workspace.",
+        message: "The project todo feature is not enabled for this workspace.",
       },
     });
   }

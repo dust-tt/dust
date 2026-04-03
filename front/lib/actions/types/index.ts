@@ -9,29 +9,70 @@ import type {
   ConversationType,
 } from "@app/types/assistant/conversation";
 import type { AllSupportedFileContentType } from "@app/types/files";
+import { z } from "zod";
 
-export type FileAuthorizationInfo = {
-  fileId: string;
-  fileName: string;
-  connectionId: string;
-  mimeType: string;
-};
+const FileAuthorizationInfoSchema = z.object({
+  fileId: z.string(),
+  fileName: z.string(),
+  connectionId: z.string(),
+  mimeType: z.string(),
+});
+
+export type FileAuthorizationInfo = z.infer<typeof FileAuthorizationInfoSchema>;
 
 export function isFileAuthorizationInfo(
   value: unknown
 ): value is FileAuthorizationInfo {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "fileId" in value &&
-    typeof (value as Record<string, unknown>).fileId === "string" &&
-    "fileName" in value &&
-    typeof (value as Record<string, unknown>).fileName === "string" &&
-    "connectionId" in value &&
-    typeof (value as Record<string, unknown>).connectionId === "string" &&
-    "mimeType" in value &&
-    typeof (value as Record<string, unknown>).mimeType === "string"
-  );
+  return FileAuthorizationInfoSchema.safeParse(value).success;
+}
+
+const UserQuestionOptionSchema = z.object({
+  label: z
+    .string()
+    .describe(
+      "Concise choice text, 1-5 words. " +
+        "Recommended option should include '(Recommended)'."
+    ),
+  description: z.string().nullable().describe("Explanation of this option."),
+});
+
+export const UserQuestionSchema = z.object({
+  question: z
+    .string()
+    .describe("The question text. Should be clear and specific."),
+  options: z
+    .array(UserQuestionOptionSchema)
+    .describe("The available choices (2 to 4 options)."),
+  multiSelect: z
+    .boolean()
+    .describe(
+      "Whether the user can select multiple options for this question."
+    ),
+});
+
+export type UserQuestion = z.infer<typeof UserQuestionSchema>;
+
+export const UserQuestionAnswerSchema = z.object({
+  selectedOptions: z.array(z.number()),
+  customResponse: z.string().optional(),
+});
+
+export type UserQuestionAnswer = z.infer<typeof UserQuestionAnswerSchema>;
+
+const UserQuestionResumeStateSchema = z.object({
+  type: z.literal("user_question"),
+  question: UserQuestionSchema,
+  answer: UserQuestionAnswerSchema.optional(),
+});
+
+export type UserQuestionResumeState = z.infer<
+  typeof UserQuestionResumeStateSchema
+>;
+
+export function isUserQuestionResumeState(
+  value: unknown
+): value is UserQuestionResumeState {
+  return UserQuestionResumeStateSchema.safeParse(value).success;
 }
 
 export type StepContext = {
@@ -48,10 +89,10 @@ export type ActionGeneratedFileType = {
   title: string;
   contentType: AllSupportedFileContentType;
   snippet: string | null;
-  hidden?: boolean;
   createdAt?: number;
   updatedAt?: number;
   isInProjectContext?: boolean;
+  hidden?: boolean;
 };
 
 export type AgentLoopRunContextType = {

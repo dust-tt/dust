@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import {
   getAgentConfiguration,
   restoreAgentConfiguration,
@@ -6,11 +7,16 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-export type RestoreAgentConfigurationResponseBody = {
-  success: true;
-};
+export const RestoreAgentConfigurationResponseBodySchema = z.object({
+  success: z.literal(true),
+});
+export type RestoreAgentConfigurationResponseBody = z.infer<
+  typeof RestoreAgentConfigurationResponseBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,
@@ -43,7 +49,30 @@ async function handler(
         agentConfiguration.sId
       );
 
-      if (!restoredResult.isOk() || !restoredResult.value.restored) {
+      if (restoredResult.isErr()) {
+        switch (restoredResult.error.code) {
+          case "name_conflict":
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: restoredResult.error.message,
+              },
+            });
+          case "internal_error":
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: "Could not restore the agent configuration.",
+              },
+            });
+          default:
+            assertNever(restoredResult.error.code);
+        }
+      }
+
+      if (!restoredResult.value.restored) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {

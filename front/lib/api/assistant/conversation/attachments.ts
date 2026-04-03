@@ -26,6 +26,12 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
 
+export type AttachmentCreator = {
+  type: "agent" | "user";
+  name: string;
+  pictureUrl: string;
+};
+
 export type BaseConversationAttachmentType = {
   title: string;
   contentType: SupportedContentFragmentType;
@@ -36,6 +42,8 @@ export type BaseConversationAttachmentType = {
   isSearchable: boolean;
   isQueryable: boolean;
   isInProjectContext: boolean;
+  creator: AttachmentCreator | null;
+  hidden: boolean; // Do not show this attachment to the user.
 };
 
 export type FileAttachmentType = BaseConversationAttachmentType & {
@@ -128,6 +136,14 @@ export function getAttachmentFromContentNodeContentFragment(
   const isSearchable =
     isSearchableContentType(cf.contentType) && !isUnmaterializedTable;
 
+  const creator: AttachmentCreator | null = cf.context.fullName
+    ? {
+        type: "user",
+        name: cf.context.fullName,
+        pictureUrl: cf.context.profilePictureUrl ?? "",
+      }
+    : null;
+
   const baseAttachment: BaseConversationAttachmentType = {
     title: cf.title,
     contentType: cf.contentType,
@@ -140,6 +156,8 @@ export function getAttachmentFromContentNodeContentFragment(
     isQueryable,
     isSearchable,
     isInProjectContext: false, // For now, content nodes can only be from the conversation, not the project. To be revisited if/when we allow connected data in the projects.
+    hidden: false, // For now, content nodes are not hidden from the user.
+    creator,
   };
 
   return {
@@ -174,6 +192,14 @@ export function getAttachmentFromFileContentFragment(
   const isQueryable = canDoJIT && isQueryableContentType(cf.contentType);
   const isIncludable = isConversationIncludableFileContentType(cf.contentType);
   const isSearchable = canDoJIT && isSearchableContentType(cf.contentType);
+  const creator: AttachmentCreator | null = cf.context.fullName
+    ? {
+        type: "user",
+        name: cf.context.fullName,
+        pictureUrl: cf.context.profilePictureUrl ?? "",
+      }
+    : null;
+
   const baseAttachment: BaseConversationAttachmentType = {
     title: cf.title,
     contentType: cf.contentType,
@@ -191,6 +217,8 @@ export function getAttachmentFromFileContentFragment(
     isQueryable,
     isSearchable,
     isInProjectContext: cf.isInProjectContext,
+    hidden: cf.hidden,
+    creator,
   };
 
   return {
@@ -201,7 +229,7 @@ export function getAttachmentFromFileContentFragment(
   };
 }
 
-export function getAttachmentFromFile({
+export function makeFileAttachment({
   fileId,
   source,
   createdAt,
@@ -210,6 +238,8 @@ export function getAttachmentFromFile({
   title,
   snippet,
   isInProjectContext,
+  hideFromUser,
+  creator = null,
 }: {
   fileId: string;
   source: "agent" | "user" | null;
@@ -219,6 +249,8 @@ export function getAttachmentFromFile({
   title: string;
   snippet: string | null;
   isInProjectContext: boolean;
+  hideFromUser: boolean;
+  creator?: AttachmentCreator | null;
 }): FileAttachmentType {
   const canDoJIT = snippet !== null;
   const isIncludable = isConversationIncludableFileContentType(contentType);
@@ -240,6 +272,8 @@ export function getAttachmentFromFile({
     isQueryable,
     isSearchable,
     isInProjectContext,
+    hidden: hideFromUser,
+    creator,
   };
 }
 

@@ -6,6 +6,8 @@ import {
 } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
+import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import { useWorkspaceContextOrigin } from "@app/lib/swr/workspaces";
 import { Cell, Pie, PieChart, Tooltip } from "recharts";
 
@@ -34,6 +36,15 @@ export function WorkspaceSourceChart({
     colorClassName: getSourceColor(d.origin),
   }));
 
+  const csvDownload = useDownloadCsv({
+    url: `/api/w/${workspaceId}/analytics/source-export?days=${period}`,
+    filename: `dust_sources_last_${period}_days.csv`,
+    disabled:
+      isContextOriginLoading || isContextOriginError || data.length === 0,
+  });
+
+  const controls = <CsvDownloadButton {...csvDownload} />;
+
   return (
     <ChartContainer
       title="Source"
@@ -47,6 +58,7 @@ export function WorkspaceSourceChart({
       }
       height={CHART_HEIGHT}
       legendItems={legendItems}
+      additionalControls={controls}
     >
       <PieChart>
         <Tooltip

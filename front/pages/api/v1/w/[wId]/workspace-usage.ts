@@ -1,21 +1,15 @@
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import {
-  getAssistantsUsageData,
-  getBuildersUsageData,
-  getFeedbackUsageData,
-  getMessageUsageData,
-  getUserUsageData,
-} from "@app/lib/workspace_usage";
+import { getConversationsDataRetention } from "@app/lib/data_retention";
+import { fetchUsageData } from "@app/lib/workspace_usage";
+import { getWorkspaceUsageRetentionErrorMessage } from "@app/lib/workspace_usage_retention";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { WorkspaceType } from "@app/types/user";
 import type {
   GetWorkspaceUsageRequestType,
   GetWorkspaceUsageResponseType,
-  UsageTableType,
 } from "@dust-tt/client";
 import { GetWorkspaceUsageRequestSchema } from "@dust-tt/client";
 import { parse as parseCSV } from "csv-parse/sync";
@@ -118,7 +112,7 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
-  const flags = await getFeatureFlags(owner);
+  const flags = await getFeatureFlags(auth);
   if (!flags.includes("usage_data_api")) {
     return apiError(req, res, {
       status_code: 403,
@@ -158,6 +152,21 @@ async function handler(
       }
 
       const { endDate, startDate } = resolveDates(query);
+      const conversationsRetentionDays =
+        await getConversationsDataRetention(auth);
+      const retentionErrorMessage = getWorkspaceUsageRetentionErrorMessage({
+        startDate,
+        retentionDays: conversationsRetentionDays,
+      });
+      if (retentionErrorMessage) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: retentionErrorMessage,
+          },
+        });
+      }
       const data = await fetchUsageData({
         table: query.table,
         start: startDate,
@@ -253,63 +262,6 @@ function resolveDates(query: GetWorkspaceUsageRequestType) {
       };
     default:
       assertNever(query);
-  }
-}
-
-async function fetchUsageData({
-  table,
-  start,
-  end,
-  workspace,
-  includeInactive = false,
-}: {
-  table: UsageTableType;
-  start: Date;
-  end: Date;
-  workspace: WorkspaceType;
-  includeInactive?: boolean;
-}): Promise<Partial<Record<UsageTableType, string>>> {
-  switch (table) {
-    case "users":
-      return {
-        users: await getUserUsageData(start, end, workspace, {
-          includeInactive,
-        }),
-      };
-    case "assistant_messages":
-      return {
-        assistant_messages: await getMessageUsageData(start, end, workspace),
-      };
-    case "builders":
-      return { builders: await getBuildersUsageData(start, end, workspace) };
-    case "assistants":
-      return {
-        assistants: await getAssistantsUsageData(start, end, workspace, {
-          includeInactive,
-        }),
-      };
-    case "feedback":
-      return {
-        feedback: await getFeedbackUsageData(start, end, workspace),
-      };
-    case "all":
-      const [users, assistant_messages, builders, assistants, feedback] =
-        await Promise.all([
-          getUserUsageData(start, end, workspace, { includeInactive }),
-          getMessageUsageData(start, end, workspace),
-          getBuildersUsageData(start, end, workspace),
-          getAssistantsUsageData(start, end, workspace, { includeInactive }),
-          getFeedbackUsageData(start, end, workspace),
-        ]);
-      return {
-        users,
-        assistant_messages,
-        builders,
-        assistants,
-        feedback,
-      };
-    default:
-      return {};
   }
 }
 

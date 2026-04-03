@@ -2,11 +2,12 @@
 
 import {
   calculateContentSize,
-  getMaxSize,
-  isValidContentSize,
+  getRemoteContentMaxSize,
+  isWithinRemoteContentLimit,
 } from "@app/lib/actions/action_output_limits";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
+  DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL,
   DEFAULT_MCP_REQUEST_TIMEOUT_MS,
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
@@ -26,11 +27,12 @@ import {
   MCPServerPersonalAuthenticationRequiredError,
   MCPServerRequiresAdminAuthenticationError,
 } from "@app/lib/actions/mcp_authentication";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import {
+  getServerTypeAndIdFromSId,
+  isMcpTimeoutError,
+} from "@app/lib/actions/mcp_helper";
 import {
   getAvailabilityOfInternalMCPServerById,
-  getClientSideToolArgumentsRequiringApproval,
-  getClientSideToolStake,
   getInternalMCPServerNameAndWorkspaceId,
   getInternalMCPServerToolStakes,
   INTERNAL_MCP_SERVERS,
@@ -50,6 +52,7 @@ import type {
 import {
   connectToMCPServer,
   extractMetadataFromTools,
+  getDustToolMeta,
   isConnectViaClientSideMCPServer,
   isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
@@ -82,7 +85,7 @@ import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_conne
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
@@ -97,7 +100,6 @@ import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import {
   CallToolResultSchema,
-  McpError,
   ProgressNotificationSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { Context, heartbeat } from "@temporalio/activity";
@@ -224,6 +226,7 @@ function makeServerSideMCPToolConfigurations(
     secretName: config.secretName,
     dustProject: config.dustProject,
     ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
+    ...(tool.displayLabels && { displayLabels: tool.displayLabels }),
     argumentsRequiringApproval: toolsArgumentsRequiringApproval?.[tool.name],
   }));
 }
@@ -232,6 +235,8 @@ function makeClientSideMCPToolConfigurations(
   config: ClientSideMCPServerConfigurationType,
   tools: ClientSideMCPToolTypeWithStakeLevel[]
 ): ClientSideMCPToolConfigurationType[] {
+  const toolServerId = getBaseServerId(config.clientSideMcpServerId);
+
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
     type: "mcp_configuration",
@@ -249,16 +254,14 @@ function makeClientSideMCPToolConfigurations(
     permission: tool.stakeLevel,
     // Use the base serverId (without suffix) to ensure tools are shared across all instances
     // of the same server name, allowing for consistent tool behavior.
-    toolServerId: getBaseServerId(config.clientSideMcpServerId),
+    toolServerId,
     icon: config.icon,
-    argumentsRequiringApproval: getClientSideToolArgumentsRequiringApproval(
-      config.clientSideMcpServerId,
-      tool.name
-    ),
+    argumentsRequiringApproval: tool.argumentsRequiringApproval,
+    displayLabels: tool.displayLabels,
   }));
 }
 
-function generateContentMetadata(content: CallToolResult["content"]): {
+function generateRemoteContentMetadata(content: CallToolResult["content"]): {
   type: "text" | "image" | "resource" | "audio" | "resource_link";
   byteSize: number;
   maxSize: number;
@@ -266,7 +269,7 @@ function generateContentMetadata(content: CallToolResult["content"]): {
   const result = [];
   for (const item of content) {
     const byteSize = calculateContentSize(item);
-    const maxSize = getMaxSize(item);
+    const maxSize = getRemoteContentMaxSize(item);
 
     result.push({ type: item.type, byteSize, maxSize });
 
@@ -550,10 +553,9 @@ export async function* tryCallMCPTool(
     }
 
     if (serverType === "remote") {
-      const isValid = isValidContentSize(content);
-
+      const isValid = isWithinRemoteContentLimit(content);
       if (!isValid) {
-        const contentMetadata = generateContentMetadata(content);
+        const contentMetadata = generateRemoteContentMetadata(content);
         logger.info(
           { contentMetadata, isValid },
           "Information on MCP tool result"
@@ -603,8 +605,7 @@ export async function* tryCallMCPTool(
       "Exception calling MCP tool in tryCallMCPTool()"
     );
 
-    const isMCPTimeoutError =
-      error instanceof McpError && error.code === -32001;
+    const isMCPTimeoutError = isMcpTimeoutError(error);
 
     if (isMCPTimeoutError) {
       // If the tool should not be retried on interrupt, the error is returned
@@ -692,6 +693,7 @@ function makeServerSideMCPConnectionParams(
     type: "mcpServerId",
     mcpServerId: mcpServerView.mcpServerId,
     oAuthUseCase: mcpServerView.oAuthUseCase,
+    oauthScope: mcpServerView.oauthScope,
   };
 }
 
@@ -910,6 +912,7 @@ export async function tryListMCPTools(
           new Error(
             `An error occurred while listing the available tools for ${action.name}. ` +
               "Tools from this server are not available for this message. " +
+              `Reason: ${normalizeError(toolsAndInstructionsRes.error).message}. ` +
               "Inform the user of this issue."
           )
         );
@@ -1047,20 +1050,26 @@ async function listToolsForClientSideMCPServer(
   let allTools: ClientSideMCPToolTypeWithStakeLevel[] = [];
   let nextPageCursor;
 
-  const serverId = getBaseServerId(config.clientSideMcpServerId);
-
   // Fetch all tools, handling pagination if supported by the MCP server.
   do {
     const { tools, nextCursor } = await mcpClient.listTools();
 
     nextPageCursor = nextCursor;
+    const dustMetaByTool = new Map(
+      tools.map((t) => [t.name, getDustToolMeta(t._meta)])
+    );
     allTools = [
       ...allTools,
-      ...extractMetadataFromTools(tools).map((tool) => ({
-        ...tool,
-        availability: "manual" as const,
-        stakeLevel: getClientSideToolStake(serverId, tool.name),
-      })),
+      ...extractMetadataFromTools(tools).map((tool) => {
+        const dustMeta = dustMetaByTool.get(tool.name);
+        return {
+          ...tool,
+          availability: "manual" as const,
+          stakeLevel:
+            dustMeta?.stake ?? DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL,
+          argumentsRequiringApproval: dustMeta?.argumentsRequiringApproval,
+        };
+      }),
     ];
   } while (nextPageCursor);
 

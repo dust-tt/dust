@@ -1,8 +1,14 @@
 import { SkillBuilderIconSection } from "@app/components/skill_builder/SkillBuilderIconSection";
+import { SkillBuilderIsDefaultSection } from "@app/components/skill_builder/SkillBuilderIsDefaultSection";
 import { SkillBuilderNameSection } from "@app/components/skill_builder/SkillBuilderNameSection";
 import { SkillBuilderUserFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderUserFacingDescriptionSection";
 import { SkillEditorsSheet } from "@app/components/skill_builder/SkillEditorsSheet";
-import { Label } from "@dust-tt/sparkle";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  Label,
+} from "@dust-tt/sparkle";
 
 export function SkillBuilderSettingsSection() {
   return (
@@ -25,6 +31,14 @@ export function SkillBuilderSettingsSection() {
           <SkillEditorsSheet />
         </div>
       </div>
+      <Collapsible defaultOpen>
+        <CollapsibleTrigger variant="secondary">Advanced</CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="pt-3">
+            <SkillBuilderIsDefaultSection />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }

@@ -1,6 +1,7 @@
+/** @ignoreswagger */
 import { isCustomResourceIconType } from "@app/components/resources/resources_icons";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/constants";
 import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
-import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import {
   allowsMultipleInstancesOfInternalMCPServerByName,
   getInternalMCPServerInfo,
@@ -81,6 +82,7 @@ const PostQueryParamsSchema = t.union([
       t.undefined,
     ]),
     viewName: t.union([t.string, t.undefined]),
+    oauthScope: t.union([t.string, t.undefined]),
   }),
 ]);
 
@@ -417,6 +419,7 @@ async function handler(
               name,
               useCase: body.useCase ?? null,
               viewName,
+              oauthScope: body.oauthScope ?? null,
             });
 
           if (body.connectionId) {

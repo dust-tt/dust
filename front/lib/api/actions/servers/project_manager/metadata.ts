@@ -31,7 +31,7 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe(
-          "MIME type (default: text/plain, or inherited from sourceFileId if provided)"
+          "MIME type (default: inferred from file extension, e.g. text/markdown for .md files, or text/plain if unknown. Inherited from sourceFileId if provided)"
         ),
       dustProject:
         ConfigurableToolInputSchemas[
@@ -148,6 +148,7 @@ const PROJECT_MANAGER_INSTRUCTIONS =
   "After adding or updating files, always list the file names you changed in your response so the user knows exactly what was modified.";
 
 export const PROJECT_MANAGER_SERVER = {
+  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "project_manager",
     version: "1.0.0",
@@ -156,9 +157,6 @@ export const PROJECT_MANAGER_SERVER = {
     icon: "ActionDocumentTextIcon",
     authorization: null,
     documentationUrl: null,
-    // These instructions do not belong on the server, they should either be bundled on the
-    // instructions since always added programmatically or bundled in a skill.
-    // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
     instructions: PROJECT_MANAGER_INSTRUCTIONS,
   },
   tools: Object.values(PROJECT_MANAGER_TOOLS_METADATA).map((t) => ({

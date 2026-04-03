@@ -39,10 +39,25 @@ const agentSettingsSchema = z.object({
   tags: z.array(tagSchema),
 });
 
-const scheduleConfigSchema = z.object({
+const cronScheduleConfigSchema = z.object({
+  type: z.literal("cron").optional(),
   cron: z.string(),
   timezone: z.string(),
 });
+
+const intervalScheduleConfigSchema = z.object({
+  type: z.literal("interval"),
+  intervalDays: z.number(),
+  dayOfWeek: z.number().nullable(),
+  hour: z.number(),
+  minute: z.number(),
+  timezone: z.string(),
+});
+
+const scheduleConfigSchema = z.union([
+  cronScheduleConfigSchema,
+  intervalScheduleConfigSchema,
+]);
 
 const webhookConfigSchema = z.object({
   includePayload: z.boolean(),
@@ -62,7 +77,7 @@ const webhookTriggerSchema = z.object({
   naturalLanguageDescription: z.string().nullable(),
   configuration: webhookConfigSchema,
   editor: z.number().nullable(),
-  webhookSourceViewSId: z.string().nullable().optional(),
+  webhookSourceViewId: z.string().nullable().optional(),
   editorName: z.string().optional(),
   executionPerDayLimitOverride: z.number().nullable(),
   executionMode: z.enum(["fair_use", "programmatic"]).nullable(),

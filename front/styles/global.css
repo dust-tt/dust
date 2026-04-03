@@ -1,8 +1,6 @@
 @import "./fonts.css";
 
 @tailwind base;
-@tailwind components;
-@tailwind utilities;
 
 @layer base {
   html {
@@ -132,6 +130,24 @@ body {
   }
   100% {
     background-position: -200% center;
+  }
+}
+
+@keyframes grow-down {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 

@@ -1,5 +1,5 @@
 import { WebhookSourceModel } from "@app/lib/models/agent/triggers/webhook_source";
-import { generateSecureSecret } from "@app/lib/resources/string_ids";
+import { generateSecureSecret } from "@app/lib/resources/string_ids_server";
 import { makeScript } from "@app/scripts/helpers";
 
 // Migration script to set urlSecret for webhook sources that have null urlSecret values.

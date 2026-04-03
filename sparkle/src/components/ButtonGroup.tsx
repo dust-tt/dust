@@ -81,15 +81,17 @@ interface ButtonGroupDropdownProps {
   trigger: React.ReactElement;
   items: DropdownMenuItemProps[];
   align?: "start" | "center" | "end";
+  onOpenChange?: (open: boolean) => void;
 }
 
 function ButtonGroupDropdown({
   trigger,
   items,
   align = "center",
+  onOpenChange,
 }: ButtonGroupDropdownProps) {
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
       <DropdownMenuContent align={align}>
         {items.map((item, index) => (

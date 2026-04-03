@@ -12,7 +12,7 @@ import { hash as blake3 } from "blake3";
 import crypto from "crypto";
 import flatMap from "lodash/flatMap";
 
-function newId(): string {
+export function newId(): string {
   const uuid = crypto.randomUUID();
   return blake3(uuid).toString("hex");
 }
@@ -20,6 +20,25 @@ function newId(): string {
 type StateContainer = {
   thinkingSignature?: string;
 };
+
+export async function responseToLLMEvents({
+  response,
+  metadata,
+}: {
+  response: GenerateContentResponse;
+  metadata: LLMClientMetadata;
+}): Promise<LLMEvent[]> {
+  const events: LLMEvent[] = [];
+  for await (const event of streamLLMEvents({
+    generateContentResponses: (async function* () {
+      yield response;
+    })(),
+    metadata,
+  })) {
+    events.push(event);
+  }
+  return events;
+}
 
 export async function* streamLLMEvents({
   generateContentResponses,

@@ -30,7 +30,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 const MICRO_USD_PER_DOLLAR = 1_000_000;
@@ -49,6 +49,15 @@ export default function EnterpriseUpgradeDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [portalContainer, setPortalContainer] = useState<
+    HTMLElement | undefined
+  >(undefined);
+
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      setPortalContainer(document.body);
+    }
+  }, []);
 
   const { plans } = usePokePlans();
   const router = useAppRouter();
@@ -166,6 +175,7 @@ export default function EnterpriseUpgradeDialog({
                       control={form.control}
                       name="planCode"
                       title="Enterprise Plan"
+                      mountPortalContainer={portalContainer}
                       options={plans
                         .filter((plan) => isEntreprisePlanPrefix(plan.code))
                         .map((plan) => ({

@@ -27,7 +27,6 @@ import {
   Template as E2BTemplate,
 } from "e2b";
 import * as fs from "fs";
-import * as os from "os";
 import * as path from "path";
 
 export type DockerRegistryFactory = (imageRef: string) => TemplateBuilder;
@@ -60,13 +59,23 @@ class ContentMaterializer {
   private tempDir: string | null = null;
   private fileCount = 0;
 
-  materializeToPath(getContent: ContentGenerator): string {
+  materializeToPath(
+    getContent: ContentGenerator,
+    destFileName: string
+  ): string {
     if (!this.tempDir) {
-      this.tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "sandbox-build-"));
+      // Create temp dir relative to this module (E2B resolves paths from __dirname).
+      const uniqueId = `sandbox-build-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      this.tempDir = path.join(__dirname, uniqueId);
+      fs.mkdirSync(this.tempDir, { recursive: true });
     }
-    const tempFile = path.join(this.tempDir, `content-${this.fileCount++}`);
+    // Use a subdirectory per file so E2B's directory-based copy works correctly.
+    const contentDir = path.join(this.tempDir, `content-${this.fileCount++}`);
+    fs.mkdirSync(contentDir, { recursive: true });
+    const fileName = path.basename(destFileName);
+    const tempFile = path.join(contentDir, fileName);
     fs.writeFileSync(tempFile, getContent());
-    return tempFile;
+    return path.relative(__dirname, contentDir);
   }
 
   cleanup(): void {
@@ -93,29 +102,9 @@ class E2BTemplateBuilder {
 
   static fromSandboxImage(
     image: SandboxImage,
-    options?: { dockerRegistryFactory?: DockerRegistryFactory }
+    options: { dockerRegistryFactory: DockerRegistryFactory }
   ): E2BTemplateBuilder {
-    const baseImage = image.baseImage;
-    let builder: TemplateBuilder;
-
-    switch (baseImage.type) {
-      case "sandbox":
-        builder = E2BTemplate().fromTemplate(
-          formatSandboxImageId(baseImage.id)
-        );
-        break;
-      case "docker":
-        if (!options?.dockerRegistryFactory) {
-          throw new Error(
-            "dockerRegistryFactory is required for docker images"
-          );
-        }
-        builder = options.dockerRegistryFactory(baseImage.imageRef);
-        break;
-      default:
-        return assertNever(baseImage);
-    }
-
+    const builder = options.dockerRegistryFactory(image.baseImage.imageRef);
     const e2bBuilder = new E2BTemplateBuilder(builder);
 
     for (const op of image.operations) {
@@ -128,22 +117,36 @@ class E2BTemplateBuilder {
   private applyOperation(op: Operation): void {
     switch (op.type) {
       case "run":
-        this.builder = this.builder.runCmd(op.command);
+        if (op.user) {
+          this.builder = this.builder.runCmd(op.command, { user: op.user });
+        } else {
+          this.builder = this.builder.runCmd(op.command);
+        }
         break;
 
       case "copy":
         if (op.src.type === "path") {
-          this.builder = this.builder.copy(op.src.path, op.dest);
+          this.builder = this.builder.copy(op.src.path, op.dest, {
+            user: op.user,
+          });
         } else {
-          const tempPath = this.materializer.materializeToPath(
-            op.src.getContent
+          // E2B copy works with directories, so we create a temp dir containing
+          // a file with the destination's filename, then copy to dest's parent.
+          const tempDir = this.materializer.materializeToPath(
+            op.src.getContent,
+            op.dest
           );
-          this.builder = this.builder.copy(tempPath, op.dest);
+          const destDir = path.dirname(op.dest);
+          this.builder = this.builder.copy(tempDir, destDir, { user: op.user });
         }
         break;
 
       case "workdir":
         this.builder = this.builder.setWorkdir(op.path);
+        break;
+
+      case "user":
+        this.builder = this.builder.setUser(op.user);
         break;
 
       case "env":
@@ -257,9 +260,15 @@ export async function buildSandboxImage(
     "Building E2B sandbox image"
   );
 
+  if (!buildConfig?.dockerRegistryFactory) {
+    return new Err(
+      new Error("dockerRegistryFactory is required to build sandbox images")
+    );
+  }
+
   try {
     const e2bBuilder = E2BTemplateBuilder.fromSandboxImage(image, {
-      dockerRegistryFactory: buildConfig?.dockerRegistryFactory,
+      dockerRegistryFactory: buildConfig.dockerRegistryFactory,
     });
 
     const result = await e2bBuilder.build(imageId, {

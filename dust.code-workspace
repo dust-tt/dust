@@ -1,26 +1,6 @@
 {
   "folders": [
     {
-      "name": "core",
-      "path": "core",
-      "settings": {
-        "rust-analyzer.checkOnSave.enable": true,
-        "rust-analyzer.checkOnSave.command": "clippy",
-        "rust-analyzer.cargo.buildScripts.enable": true,
-        "rust-analyzer.cargo.allFeatures": true,
-        "rust-analyzer.procMacro.enable": true,
-        "rust-analyzer.inlayHints.typeHints.enable": true,
-        "rust-analyzer.inlayHints.parameterHints.enable": true,
-        "rust-analyzer.inlayHints.chainingHints.enable": true,
-        "rust-analyzer.completion.autoimport.enable": true,
-        "rust-analyzer.imports.granularity.group": "module",
-        "rust-analyzer.imports.prefix": "crate",
-        "files.watcherExclude": {
-          "**/target/**": true
-        }
-      }
-    },
-    {
       "name": "sdks",
       "path": "sdks/js",
       "settings": {

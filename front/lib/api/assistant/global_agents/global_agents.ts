@@ -18,7 +18,9 @@ import {
 import {
   _getDustAntGlobalAgent,
   _getDustAntHighGlobalAgent,
+  _getDustAntHighOmittedGlobalAgent,
   _getDustAntMediumGlobalAgent,
+  _getDustAntMediumOmittedGlobalAgent,
   _getDustEdgeGlobalAgent,
   _getDustGlmGlobalAgent,
   _getDustGlmHighGlobalAgent,
@@ -26,6 +28,8 @@ import {
   _getDustGlobalAgent,
   _getDustGoogGlobalAgent,
   _getDustGoogMediumGlobalAgent,
+  _getDustHighGlobalAgent,
+  _getDustHighOmittedGlobalAgent,
   _getDustKimiGlobalAgent,
   _getDustKimiHighGlobalAgent,
   _getDustKimiMediumGlobalAgent,
@@ -38,10 +42,12 @@ import {
   _getDustOaiGlobalAgent,
   _getDustOaiHighGlobalAgent,
   _getDustOaiMediumGlobalAgent,
+  _getDustOmittedGlobalAgent,
   _getDustQuickGlobalAgent,
   _getDustQuickMediumGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
+import { _getReinforcementGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/reinforcement";
 import { _getSidekickGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/sidekick";
 import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
@@ -83,6 +89,7 @@ import {
   getDataSourcesAndWorkspaceIdForGlobalAgents,
   getMCPServerViewsForGlobalAgents,
 } from "@app/lib/api/assistant/global_agents/tools";
+import { isProviderWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
@@ -97,7 +104,6 @@ import {
   isGlobalAgentId,
 } from "@app/types/assistant/assistant";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
-import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import { isDevelopment } from "@app/types/shared/env";
 
 // Exhaustive map of flags for each global agent. This is used to control which agents inject
@@ -114,6 +120,24 @@ const GLOBAL_AGENT_FLAGS: Record<
   }
 > = {
   [GLOBAL_AGENTS_SID.DUST]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_OMITTED]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_HIGH_OMITTED]: {
     injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
@@ -180,6 +204,18 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_ANT_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED]: {
     injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
@@ -292,6 +328,12 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsToolsets: false,
     injectsUserContext: true,
     injectsWorkspaceContext: true,
+  },
+  [GLOBAL_AGENTS_SID.REINFORCEMENT]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.SLACK]: {
     injectsMemory: false,
@@ -503,6 +545,7 @@ function getGlobalAgent({
   mcpServerViews,
   sidekickContext,
   hasDeepDive,
+  hasSandbox,
   globalAgentContext,
 }: {
   auth: Authenticator;
@@ -512,6 +555,7 @@ function getGlobalAgent({
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   sidekickContext: SidekickContext | null;
   hasDeepDive: boolean;
+  hasSandbox: boolean;
   globalAgentContext?: GlobalAgentContext;
 }): AgentConfigurationType | null {
   const settings =
@@ -521,7 +565,10 @@ function getGlobalAgent({
 
   switch (sId) {
     case GLOBAL_AGENTS_SID.HELPER:
-      agentConfiguration = _getHelperGlobalAgent({ auth, mcpServerViews });
+      agentConfiguration = _getHelperGlobalAgent({
+        auth,
+        mcpServerViews,
+      });
       break;
     case GLOBAL_AGENTS_SID.GPT35_TURBO:
       agentConfiguration = _getGPT35TurboGlobalAgent({
@@ -714,6 +761,34 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        globalAgentContext,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_HIGH:
+      agentConfiguration = _getDustHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        globalAgentContext,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_OMITTED:
+      agentConfiguration = _getDustOmittedGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        globalAgentContext,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_HIGH_OMITTED:
+      agentConfiguration = _getDustHighOmittedGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        globalAgentContext,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_EDGE:
@@ -742,6 +817,22 @@ function getGlobalAgent({
       break;
     case GLOBAL_AGENTS_SID.DUST_ANT_HIGH:
       agentConfiguration = _getDustAntHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED:
+      agentConfiguration = _getDustAntMediumOmittedGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED:
+      agentConfiguration = _getDustAntHighOmittedGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
         mcpServerViews,
@@ -905,6 +996,7 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
+        hasSandbox,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_TASK:
@@ -929,6 +1021,9 @@ function getGlobalAgent({
         mcpServerViews,
         globalAgentContext,
       });
+      break;
+    case GLOBAL_AGENTS_SID.REINFORCEMENT:
+      agentConfiguration = _getReinforcementGlobalAgent();
       break;
     case GLOBAL_AGENTS_SID.NOOP:
       // we want only to have it in development
@@ -1015,9 +1110,12 @@ export async function getGlobalAgents(
     Object.values(GLOBAL_AGENTS_SID)
       .filter((sId) => !RETIRED_GLOBAL_AGENTS_SID.includes(sId))
       // We only want to fetch sidekick global agents if explicitly requested.
-      .filter((sId) => sId !== GLOBAL_AGENTS_SID.SIDEKICK);
+      .filter((sId) => sId !== GLOBAL_AGENTS_SID.SIDEKICK)
+      // The reinforcement agent is never called directly, it is only used as a
+      // placeholder when building reinforcement conversations.
+      .filter((sId) => sId !== GLOBAL_AGENTS_SID.REINFORCEMENT);
 
-  const flags = await getFeatureFlags(owner);
+  const flags = await getFeatureFlags(auth);
 
   if (!flags.includes("openai_o1_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
@@ -1038,9 +1136,14 @@ export async function getGlobalAgents(
     );
   }
   const DUST_INTERNAL_AGENTS = [
+    GLOBAL_AGENTS_SID.DUST_HIGH,
+    GLOBAL_AGENTS_SID.DUST_OMITTED,
+    GLOBAL_AGENTS_SID.DUST_HIGH_OMITTED,
     GLOBAL_AGENTS_SID.DUST_ANT,
     GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_ANT_HIGH,
+    GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED,
+    GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED,
     GLOBAL_AGENTS_SID.DUST_EDGE,
     GLOBAL_AGENTS_SID.DUST_KIMI,
     GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM,
@@ -1078,12 +1181,6 @@ export async function getGlobalAgents(
         sId !== GLOBAL_AGENTS_SID.DUST_NEXT_HIGH
     );
   }
-  if (!flags.includes("agent_builder_copilot")) {
-    agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.SIDEKICK
-    );
-  }
-
   const sidekickContext =
     variant === "full"
       ? await buildSidekickContext(auth, agentsIdsToFetch)
@@ -1100,6 +1197,7 @@ export async function getGlobalAgents(
       mcpServerViews,
       sidekickContext,
       hasDeepDive: !isDeepDiveDisabled,
+      hasSandbox: flags.includes("sandbox_tools"),
       globalAgentContext: options?.globalAgentContext,
     })
   );
@@ -1110,7 +1208,7 @@ export async function getGlobalAgents(
     if (
       agentFetcherResult &&
       agentFetcherResult.scope === "global" &&
-      isProviderWhitelisted(owner, agentFetcherResult.model.providerId)
+      isProviderWhitelisted(auth, agentFetcherResult.model.providerId)
     ) {
       globalAgents.push(agentFetcherResult);
     }

@@ -1,7 +1,9 @@
 import { ConfirmContext } from "@app/components/Confirm";
+import { AuditLogsSection } from "@app/components/workspace/AuditLogsSection";
 import UserProvisioning from "@app/components/workspace/DirectorySync";
 import SSOConnection from "@app/components/workspace/SSOConnection";
 import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   useRemoveWorkspaceDomain,
   useWorkspaceDomains,
@@ -42,6 +44,8 @@ export default function WorkspaceAccessPanel({
   const { addDomainLink, domains, isDomainsLoading } = useWorkspaceDomains({
     owner,
   });
+  const { hasFeature } = useFeatureFlags();
+  const showAuditLogs = plan.isAuditLogsAllowed || hasFeature("audit_logs");
 
   return (
     <div className="flex flex-col gap-6">
@@ -64,6 +68,8 @@ export default function WorkspaceAccessPanel({
       {plan.limits.users.isSCIMAllowed && (
         <UserProvisioning owner={owner} plan={plan} />
       )}
+      {showAuditLogs && <Separator />}
+      {showAuditLogs && <AuditLogsSection owner={owner} />}
     </div>
   );
 }

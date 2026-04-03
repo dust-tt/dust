@@ -1,6 +1,10 @@
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useTextAsCronRule } from "@app/lib/swr/agent_triggers";
+import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
+import { getNextOccurrences } from "@app/lib/utils/schedule_next_occurrences";
+import type { ScheduleConfig } from "@app/types/assistant/triggers";
+import { isCronScheduleConfig } from "@app/types/assistant/triggers";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -9,14 +13,18 @@ import {
   ContentMessage,
   ContentMessageInline,
   DotIcon,
+  Icon,
+  InformationCircleIcon,
   Label,
   TextArea,
+  Tooltip,
 } from "@dust-tt/sparkle";
-import cronstrue from "cronstrue";
 import type React from "react";
 import { useMemo, useState } from "react";
-import { useController, useFormContext, useWatch } from "react-hook-form";
 
+import { useController, useFormContext } from "react-hook-form";
+
+const NEXT_OCCURRENCES_COUNT = 5;
 const MIN_DESCRIPTION_LENGTH = 10;
 
 function formatTimezone(timezone: string): string {
@@ -68,7 +76,12 @@ export function ScheduleEditionScheduler({
     },
   } = useController({ control, name: "schedule.naturalLanguageDescription" });
 
-  const cron = useWatch({ control, name: "schedule.cron" });
+  const {
+    field: { value: cron, onChange: onCronChange },
+  } = useController({ control, name: "schedule.cron" });
+  const {
+    field: { value: scheduleType, onChange: onScheduleTypeChange },
+  } = useController({ control, name: "schedule.scheduleType" });
   const { error: cronError } = getFieldState("schedule.cron", formState);
   const { error: timezoneError } = getFieldState(
     "schedule.timezone",
@@ -82,6 +95,9 @@ export function ScheduleEditionScheduler({
   const [generatedTimezone, setGeneratedTimezone] = useState<string | null>(
     null
   );
+  const [generatedConfig, setGeneratedConfig] = useState<ScheduleConfig | null>(
+    null
+  );
 
   const textAsCronRule = useTextAsCronRule({ workspace: owner });
 
@@ -91,25 +107,57 @@ export function ScheduleEditionScheduler({
         return;
       }
 
-      setValue("schedule.cron", "");
+      onCronChange("");
+      onScheduleTypeChange("cron");
       const result = await textAsCronRule(txt, signal);
 
-      // If the request was not aborted, we can update the form
+      // If the request was not aborted, we can update the form.
       if (!signal.aborted) {
         if (result.isOk()) {
-          setValue("schedule.cron", result.value.cron);
-          setValue("schedule.timezone", result.value.timezone);
-          setGeneratedTimezone(result.value.timezone);
+          const config = result.value;
+          setGeneratedConfig(config);
+
+          if (isCronScheduleConfig(config)) {
+            onScheduleTypeChange("cron");
+            onCronChange(config.cron);
+            setValue("schedule.timezone", config.timezone);
+          } else {
+            onScheduleTypeChange("interval");
+            setValue("schedule.intervalDays", config.intervalDays);
+            setValue("schedule.dayOfWeek", config.dayOfWeek);
+            setValue("schedule.hour", config.hour);
+            setValue("schedule.minute", config.minute);
+            setValue("schedule.timezone", config.timezone);
+          }
+          setGeneratedTimezone(config.timezone);
           setGenerationStatus("idle");
         } else {
           setGenerationStatus("error");
           setCronErrorMessage(extractErrorMessage(result.error));
           setGeneratedTimezone(null);
+          setGeneratedConfig(null);
         }
       }
     },
     { delayMs: 500 }
   );
+
+  const {
+    field: { value: timezone },
+  } = useController({ control, name: "schedule.timezone" });
+
+  // Resolved schedule config, shared between description and next occurrences.
+  const resolvedConfig = useMemo((): ScheduleConfig | null => {
+    if (generationStatus !== "idle") {
+      return null;
+    }
+    const hasSchedule =
+      scheduleType === "interval" ? !!generatedConfig : !!cron;
+    if (!hasSchedule) {
+      return null;
+    }
+    return generatedConfig ?? { cron, timezone };
+  }, [generationStatus, scheduleType, generatedConfig, cron, timezone]);
 
   const cronDescription = useMemo(() => {
     switch (generationStatus) {
@@ -117,27 +165,27 @@ export function ScheduleEditionScheduler({
         return "Generating schedule...";
       case "error":
         return cronErrorMessage;
-      case "idle":
-        if (!cron) {
+      case "idle": {
+        if (!resolvedConfig) {
           return undefined;
         }
-        try {
-          const cronDesc = cronstrue.toString(cron);
-          if (generatedTimezone) {
-            return `${cronDesc}, in ${formatTimezone(generatedTimezone)} timezone.`;
-          }
-          return cronDesc;
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-        } catch (error) {
-          // eslint-disable-next-line react-hooks/set-state-in-render
-          setGenerationStatus("error");
+        const desc = describeScheduleConfig(resolvedConfig);
+        if (generatedTimezone) {
+          return `${desc}, in ${formatTimezone(generatedTimezone)} timezone.`;
         }
-        break;
+        return desc;
+      }
       default:
         assertNever(generationStatus);
     }
-  }, [generationStatus, cron, generatedTimezone, cronErrorMessage]);
+  }, [generationStatus, resolvedConfig, generatedTimezone, cronErrorMessage]);
+
+  const nextOccurrences = useMemo(() => {
+    if (!resolvedConfig) {
+      return [];
+    }
+    return getNextOccurrences(resolvedConfig, NEXT_OCCURRENCES_COUNT);
+  }, [resolvedConfig]);
 
   const handleNaturalDescriptionChange = (
     e: React.ChangeEvent<HTMLTextAreaElement>
@@ -178,7 +226,38 @@ export function ScheduleEditionScheduler({
               ) : (
                 <>
                   <ArrowRightIcon className="mt-0.5 h-4 w-4 shrink-0 self-start" />
-                  <p>{cronDescription}</p>
+                  <div className="flex flex-1 items-center justify-between">
+                    <p>{cronDescription}</p>
+                    {nextOccurrences.length > 0 && (
+                      <Tooltip
+                        label={
+                          <div className="flex flex-col gap-0.5 text-xs">
+                            <span className="font-semibold">
+                              Next 5 occurrences
+                            </span>
+                            {nextOccurrences.map((date, index) => (
+                              <span key={index}>
+                                {date.toLocaleDateString("en-US", {
+                                  weekday: "long",
+                                  month: "long",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            ))}
+                          </div>
+                        }
+                        trigger={
+                          <Icon
+                            visual={InformationCircleIcon}
+                            size="xs"
+                            className="shrink-0 text-faint dark:text-faint-night"
+                          />
+                        }
+                      />
+                    )}
+                  </div>
                 </>
               )}
             </div>

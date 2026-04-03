@@ -9,7 +9,9 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
+import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { SpaceType } from "@app/types/space";
@@ -40,6 +42,16 @@ export function SkillInfoTab({
 }: SkillInfoTabProps) {
   const [knowledgeItems, setKnowledgeItems] = useState<KnowledgeItem[]>([]);
   const { hasFeature } = useFeatureFlags();
+
+  const showDiscoverableSkills = skill.sId === "discover_skills";
+
+  const { skills: discoverableSkills, isSkillsLoading: isDiscoverableLoading } =
+    useSkills({
+      owner,
+      status: "active",
+      isDefault: true,
+      disabled: !showDiscoverableSkills,
+    });
 
   const shouldLoadSpaces = skill.requestedSpaceIds.length > 0;
   const { spaces: spacesFromHook, isSpacesLoading } = useSpaces({
@@ -81,6 +93,7 @@ export function SkillInfoTab({
     knowledgeItems.length > 0 ||
     (hasFeature("sandbox_tools") && skill.fileAttachments.length > 0) ||
     sortedMCPServerViews.length > 0 ||
+    showDiscoverableSkills ||
     shouldLoadSpaces;
 
   return (
@@ -161,6 +174,38 @@ export function SkillInfoTab({
               />
             ))}
           </div>
+        </div>
+      )}
+
+      {showDiscoverableSkills && (
+        <div className="flex flex-col gap-4">
+          <div className="heading-lg text-foreground dark:text-foreground-night">
+            Discoverable Skills
+          </div>
+          {isDiscoverableLoading ? (
+            <div className="flex flex-row items-center gap-2">
+              <Spinner size="xs" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {discoverableSkills.map((s) => {
+                const SkillAvatar = getSkillAvatarIcon(s.icon);
+                return (
+                  <Tooltip
+                    key={s.sId}
+                    label={s.userFacingDescription}
+                    trigger={
+                      <div className="flex flex-row items-center gap-2">
+                        <SkillAvatar size="xs" />
+                        <div className="truncate">{s.name}</div>
+                      </div>
+                    }
+                    tooltipTriggerAsChild
+                  />
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

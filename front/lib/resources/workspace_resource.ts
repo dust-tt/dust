@@ -4,6 +4,10 @@ import {
   removeWorkOSOrganizationDomainFromOrganization,
 } from "@app/lib/api/workos/organization_primitives";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  CONVERSATIONS_RETENTION_MIN_DAYS,
+  isValidConversationsRetentionDays,
+} from "@app/lib/conversations_retention";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
@@ -28,7 +32,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isStringArray } from "@app/types/shared/utils/general";
-import type { WorkspaceSegmentationType } from "@app/types/user";
+import type {
+  WorkspaceSegmentationType,
+  WorkspaceSharingPolicy,
+} from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
 import type {
   Attributes,
@@ -60,7 +67,9 @@ type CachedWorkspaceData = {
   whiteListedProviders: ModelProviderIdType[] | null;
   defaultEmbeddingProvider: EmbeddingProviderIdType | null;
   metadata: Record<string, string | number | boolean | object> | null;
+  sharingPolicy: WorkspaceSharingPolicy;
   conversationsRetentionDays: number | null;
+  metronomeCustomerId: string | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -187,7 +196,9 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       whiteListedProviders: whiteListedProviders,
       defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
       metadata: workspace.metadata,
+      sharingPolicy: workspace.sharingPolicy,
       conversationsRetentionDays: workspace.conversationsRetentionDays,
+      metronomeCustomerId: workspace.metronomeCustomerId ?? null,
       createdAt: workspace.createdAt.getTime(),
       updatedAt: workspace.updatedAt.getTime(),
     };
@@ -205,6 +216,14 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     WorkspaceResource.workspaceCacheKeyResolver
   );
 
+  /**
+   * Public cache invalidation — for use in scripts where the fire-and-forget
+   * invalidation in update() may not complete before process.exit().
+   */
+  static async invalidateCache(sId: string): Promise<void> {
+    await this.invalidateWorkspaceCache(sId);
+  }
+
   private static fromCachedData(data: CachedWorkspaceData): WorkspaceResource {
     const blob: Attributes<WorkspaceModel> = {
       id: data.id,
@@ -217,7 +236,9 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       whiteListedProviders: data.whiteListedProviders,
       defaultEmbeddingProvider: data.defaultEmbeddingProvider,
       metadata: data.metadata,
+      sharingPolicy: data.sharingPolicy,
       conversationsRetentionDays: data.conversationsRetentionDays,
+      metronomeCustomerId: data.metronomeCustomerId ?? null,
       createdAt: new Date(data.createdAt),
       updatedAt: new Date(data.updatedAt),
     };
@@ -228,6 +249,18 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     blob: Partial<Attributes<WorkspaceModel>>,
     transaction?: Transaction
   ): Promise<[affectedCount: number]> {
+    // Dual write: keep sharingPolicy in sync when metadata.allowContentCreationFileSharing changes.
+    // TODO(2026-03-19: Frame sharing) Remove dual write once reads switch to sharingPolicy.
+    if (blob.metadata && "allowContentCreationFileSharing" in blob.metadata) {
+      const newPolicy =
+        blob.metadata.allowContentCreationFileSharing === false
+          ? "workspace_and_emails"
+          : "all_scopes";
+      if (newPolicy !== this.sharingPolicy) {
+        blob.sharingPolicy = newPolicy;
+      }
+    }
+
     const result = await super.update(blob, transaction);
     const sId = this.sId;
     invalidateCacheAfterCommit(transaction, () =>
@@ -417,6 +450,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         | "defaultEmbeddingProvider"
         | "workOSOrganizationId"
         | "metadata"
+        | "sharingPolicy"
       >
     >
   ) {
@@ -628,6 +662,15 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return this.updateByModelIdAndCheckExistence(id, { metadata });
   }
 
+  static async updateMetronomeCustomerId(
+    id: ModelId,
+    metronomeCustomerId: string
+  ): Promise<Result<void, Error>> {
+    return this.updateByModelIdAndCheckExistence(id, {
+      metronomeCustomerId,
+    });
+  }
+
   async updateConversationKillSwitch({
     conversationId,
     operation,
@@ -799,7 +842,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
    */
 
   get canShareInteractiveContentPublicly(): boolean {
-    return this.blob.metadata?.allowContentCreationFileSharing !== false;
+    return this.sharingPolicy === "all_scopes";
   }
 
   async delete(
@@ -831,6 +874,21 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     id: ModelId,
     updateValues: Partial<Attributes<WorkspaceModel>>
   ): Promise<Result<void, Error>> {
+    if (updateValues.conversationsRetentionDays !== undefined) {
+      const retentionDays = updateValues.conversationsRetentionDays;
+
+      if (
+        retentionDays !== null &&
+        !isValidConversationsRetentionDays(retentionDays)
+      ) {
+        return new Err(
+          new Error(
+            `Conversation retention must be -1 or >= ${CONVERSATIONS_RETENTION_MIN_DAYS} days.`
+          )
+        );
+      }
+    }
+
     const workspace = await this.model.findOne({
       where: { id },
     });

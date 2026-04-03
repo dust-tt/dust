@@ -17,13 +17,16 @@ export function getBaseUrl(): string {
 }
 
 // Pluggable default RequestInit resolver (e.g. credentials/headers per context).
-let defaultInitResolver: (() => RequestInit) | null = null;
+// The resolver may be async (e.g. to call getAccessToken() which refreshes expired tokens).
+let defaultInitResolver: (() => Promise<RequestInit>) | null = null;
 
-export function setDefaultInitResolver(fn: (() => RequestInit) | null): void {
+export function setDefaultInitResolver(
+  fn: (() => Promise<RequestInit>) | null
+): void {
   defaultInitResolver = fn;
 }
 
-export function getDefaultInit(): RequestInit | null {
+export function getDefaultInit(): Promise<RequestInit> | null {
   return defaultInitResolver?.() ?? null;
 }
 
@@ -76,9 +79,6 @@ const config = {
       EnvironmentConfig.getOptionalEnvVariable("DUST_AUTH_REDIRECT_BASE_URL") ??
       config.getApiBaseUrl()
     );
-  },
-  getDustApiAudience: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_API_AUDIENCE");
   },
   getDustInviteTokenSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_INVITE_TOKEN_SECRET");
@@ -453,6 +453,11 @@ const config = {
   getEmailWebhookSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("EMAIL_WEBHOOK_SECRET");
   },
+  getSendgridParseWebhookPublicKey: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "SENDGRID_PARSE_WEBHOOK_PUBLIC_KEY"
+    );
+  },
   getProductionDustWorkspaceId: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
       "PRODUCTION_DUST_WORKSPACE_ID"
@@ -485,6 +490,9 @@ const config = {
       domain: EnvironmentConfig.getOptionalEnvVariable("E2B_DOMAIN"),
     };
   },
+  getDatadogApiKey: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DD_API_KEY");
+  },
   getSandboxGcpArtifactServiceAccountPath: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
       "SBX_GCP_ARTIFACT_SERVICE_ACCOUNT"
@@ -494,6 +502,24 @@ const config = {
     return EnvironmentConfig.getOptionalEnvVariable(
       "SBX_GCP_ARTIFACT_REGISTRY"
     );
+  },
+  getGoogleCloudProjectId: (): string => {
+    return EnvironmentConfig.getEnvVariable("GOOGLE_CLOUD_PROJECT_ID");
+  },
+  // Novu notifications.
+  getNovuSecretKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("NOVU_SECRET_KEY");
+  },
+  getNovuApiUrl: (): string => {
+    // Using process.env here to make sure the function is usable on the client side.
+    if (!process.env.NEXT_PUBLIC_NOVU_API_URL) {
+      throw new Error("NEXT_PUBLIC_NOVU_API_URL is not set");
+    }
+    return process.env.NEXT_PUBLIC_NOVU_API_URL;
+  },
+  // Metronome billing.
+  getMetronomeApiKey: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("METRONOME_API_KEY");
   },
 };
 

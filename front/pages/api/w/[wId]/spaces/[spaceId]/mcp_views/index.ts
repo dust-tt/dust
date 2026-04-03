@@ -1,4 +1,7 @@
+/** @ignoreswagger */
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { sendMCPGlobalSharingReconfigurationEmail } from "@app/lib/api/email";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   listWorkspaceConnectedMCPServerIds,
@@ -6,11 +9,17 @@ import {
   withWorkspaceConnectionRequirement,
 } from "@app/lib/api/mcp_oauth_prerequisites";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
+import { getActiveAdminEmails } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceKind } from "@app/types/space";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -41,6 +50,74 @@ const PostQueryParamsSchema = t.type({
 });
 
 export type PostMCPServersQueryParams = t.TypeOf<typeof PostQueryParamsSchema>;
+
+async function notifyWorkspaceAdminsAboutAffectedAgents(
+  auth: Authenticator,
+  {
+    toolName,
+    agentNames,
+  }: {
+    toolName: string;
+    agentNames: string[];
+  }
+): Promise<Result<void, Error>> {
+  if (agentNames.length === 0) {
+    return new Ok(undefined);
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  try {
+    const adminEmails = await getActiveAdminEmails(auth);
+
+    const results = await concurrentExecutor(
+      adminEmails,
+      async (email) =>
+        sendMCPGlobalSharingReconfigurationEmail({
+          email,
+          workspaceName: workspace.name,
+          toolName,
+          agentNames,
+        }),
+      { concurrency: 8 }
+    );
+
+    const failedEmails = results.flatMap((result, index) =>
+      result.isErr() ? [adminEmails[index]] : []
+    );
+
+    if (failedEmails.length === 0) {
+      return new Ok(undefined);
+    }
+
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        toolName,
+        agentNames,
+        failedEmails,
+      },
+      "Failed to send MCP global sharing reconfiguration emails"
+    );
+
+    return new Err(
+      new Error("Failed to send MCP global sharing reconfiguration emails")
+    );
+  } catch (error) {
+    const normalizedError = normalizeError(error);
+
+    logger.error(
+      {
+        error: normalizedError,
+        workspaceId: workspace.sId,
+        toolName,
+        agentNames,
+      },
+      "Failed to notify workspace admins about MCP global sharing impact"
+    );
+
+    return new Err(normalizedError);
+  }
+}
 
 async function handler(
   req: NextApiRequest,
@@ -189,10 +266,22 @@ async function handler(
         });
       }
 
-      const serverView = await MCPServerViewResource.create(auth, {
-        systemView,
-        space,
-      });
+      const { view: serverView, affectedAgents } =
+        await MCPServerViewResource.create(auth, {
+          systemView,
+          space,
+        });
+      const affectedAgentNames =
+        affectedAgents?.map((agent) => agent.name) ?? [];
+
+      if (space.kind === "global" && affectedAgentNames.length > 0) {
+        const toolName = getMcpServerViewDisplayName(systemView.toJSON());
+
+        await notifyWorkspaceAdminsAboutAffectedAgents(auth, {
+          toolName,
+          agentNames: affectedAgentNames,
+        });
+      }
 
       return res.status(200).json({
         success: true,

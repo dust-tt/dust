@@ -1,6 +1,6 @@
 import { ViewMCPServerViewTable } from "@app/components/poke/mcp_server_views/view";
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
@@ -9,7 +9,7 @@ import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 export function MCPServerViewPage() {
   const owner = useWorkspace();
-  useSetPokePageTitle(`${owner.name} - MCP Server View`);
+  useDocumentTitle(`Poke - ${owner.name} - MCP Server View`);
 
   const svId = useRequiredPathParam("svId");
   const {

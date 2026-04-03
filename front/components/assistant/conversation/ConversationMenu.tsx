@@ -13,6 +13,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useClientType } from "@app/lib/context/clientType";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -145,16 +146,21 @@ export function ConversationMenu({
   openDetailsInNewTab,
 }: ConversationMenuProps) {
   const { user } = useAuth();
-  const { hasFeature } = useFeatureFlags();
+  const { hasFeature, featureFlags } = useFeatureFlags();
   const confirm = useContext(ConfirmContext);
+
+  const clientType = useClientType();
 
   const router = useAppRouter();
 
+  const isRestrictedFromAgentCreation =
+    featureFlags.includes("disallow_agent_creation_to_users") &&
+    !isBuilder(owner);
   const canTurnIntoAgent =
-    hasFeature("agent_builder_shrink_wrap") &&
     !!conversation &&
     !!user &&
-    isBuilder(owner);
+    !isRestrictedFromAgentCreation &&
+    clientType !== "extension";
   const sendNotification = useSendNotification();
 
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
@@ -311,7 +317,7 @@ export function ConversationMenu({
         ) : (
           <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
         )}
-        <DropdownMenuContent>
+        <DropdownMenuContent onFocusOutside={(e) => e.preventDefault()}>
           <DropdownMenuItem
             label="Rename conversation"
             onClick={() => setShowRenameDialog(true)}
@@ -415,11 +421,11 @@ export function ConversationMenu({
           )}
           {canTurnIntoAgent && (
             <DropdownMenuItem
-              label="Shrinkwrap"
+              label="Convert to agent"
               icon={SidekickIcon}
               onClick={async () => {
                 const confirmed = await confirm({
-                  title: "Shrinkwrap",
+                  title: "Shrink-wrap",
                   message:
                     "This will open the agent builder and launch Sidekick on this conversation so you can turn it into an agent.",
                   validateLabel: "Continue",

@@ -72,12 +72,7 @@ describe("GET /api/w/[wId]/files/[fileId]/signed-url", () => {
   });
 
   it("should return 404 when file has no useCaseMetadata", async () => {
-    const {
-      authenticator: auth,
-      req,
-      res,
-      user,
-    } = await createPrivateApiMockRequest({
+    const { auth, req, res, user } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
     });
@@ -110,7 +105,7 @@ describe("GET /api/w/[wId]/files/[fileId]/signed-url", () => {
 
   it("should return 404 when user is not a member of the file's space", async () => {
     const {
-      authenticator: auth,
+      auth: auth,
       req,
       res,
       workspace,
@@ -155,7 +150,7 @@ describe("GET /api/w/[wId]/files/[fileId]/signed-url", () => {
     const {
       req,
       res,
-      authenticator: auth,
+      auth: auth,
       user,
       globalSpace,
     } = await createPrivateApiMockRequest({
@@ -192,7 +187,7 @@ describe("GET /api/w/[wId]/files/[fileId]/signed-url", () => {
     const {
       req,
       res,
-      authenticator: auth,
+      auth: auth,
       user,
       globalSpace,
     } = await createPrivateApiMockRequest({

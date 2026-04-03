@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getDataSources } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
@@ -32,8 +33,7 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-  const flags = await getFeatureFlags(owner);
+  const flags = await getFeatureFlags(auth);
 
   if (!flags.includes("labs_transcripts")) {
     return apiError(req, res, {

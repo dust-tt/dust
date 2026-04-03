@@ -1,3 +1,7 @@
+import {
+  isInternalMCPServerAvailableInDirectExecution,
+  isInternalMCPServerName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -19,6 +23,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 interface GetSandboxToolsResponseType {
   serverViews: MCPServerViewType[];
 }
+
+/**
+ * @ignoreswagger
+ * internal endpoint
+ */
 
 async function handler(
   req: NextApiRequest,
@@ -106,7 +115,16 @@ async function handler(
 
       const { server, light } = req.query;
 
-      let serverViews = views.map((view) => view.toJSON());
+      let serverViews = views
+        .map((view) => view.toJSON())
+        // Filter out internal servers not available in direct execution.
+        .filter((sv) => {
+          const name = sv.server.name;
+          if (isInternalMCPServerName(name)) {
+            return isInternalMCPServerAvailableInDirectExecution(name);
+          }
+          return true;
+        });
 
       // Filter by server name if requested.
       if (isString(server)) {

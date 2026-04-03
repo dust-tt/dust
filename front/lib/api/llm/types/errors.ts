@@ -65,7 +65,10 @@ export function categorizeLLMError(
       ? error.status
       : undefined;
 
-  if (errorMessage === "terminated") {
+  if (
+    errorMessage.includes("terminated") ||
+    errorMessage.includes("other side closed")
+  ) {
     return {
       type: "terminated_error",
       message: `Terminated error for ${metadata.clientId}/${metadata.modelId}. ${normalized.message}`,
@@ -243,6 +246,29 @@ const USERFACING_CLIENT_ID: Record<ModelProviderIdType, string> = {
 };
 
 /**
+ * Returns BYOK-specific user-friendly error messages for errors that require
+ * workspace administrator intervention. Falls back to the generic message for
+ * error types that do not require intervention.
+ */
+export const getByokUserFacingLLMErrorMessage = (
+  type: LLMErrorType,
+  lLMClientMetadata: LLMClientMetadata
+): string => {
+  const userFacingProvider: string =
+    USERFACING_CLIENT_ID[lLMClientMetadata.clientId];
+  switch (type) {
+    case "authentication_error":
+      return `Your workspace's ${userFacingProvider} credentials are invalid. Please contact your workspace administrator to update them.`;
+    case "permission_error":
+      return `Your workspace's ${userFacingProvider} credentials do not have access to the requested model. Please contact your workspace administrator.`;
+    case "rate_limit_error":
+      return `Your workspace's ${userFacingProvider} usage limits have been exceeded. Please contact your workspace administrator.`;
+    default:
+      return getUserFacingLLMErrorMessage(type, lLMClientMetadata);
+  }
+};
+
+/**
  * Returns LLM error types to user-friendly error messages.
  */
 export const getUserFacingLLMErrorMessage = (
@@ -294,7 +320,7 @@ export const getUserFacingLLMErrorMessage = (
       return "The request timed out. Please try again.";
     }
     case "server_error": {
-      return `${userFacingProvider} encountered an internal error. Please try again.`;
+      return `The AI provider (${userFacingProvider}) ran into an issue. Please try again in a moment.`;
     }
     case "stream_error": {
       return `Connection interrupted while receiving the response. Please try again.`;

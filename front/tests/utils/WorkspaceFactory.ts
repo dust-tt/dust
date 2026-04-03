@@ -6,30 +6,41 @@ import {
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import type { WorkspaceType } from "@app/types/user";
 import { faker } from "@faker-js/faker";
 import { expect } from "vitest";
 
+interface WorkspaceOverrides {
+  whiteListedProviders?: ModelProviderIdType[] | null;
+}
+
 export class WorkspaceFactory {
-  static async basic(): Promise<WorkspaceType> {
-    return this.create(PRO_PLAN_SEAT_29_CODE);
+  static async basic(overrides?: WorkspaceOverrides): Promise<WorkspaceType> {
+    return this.create(PRO_PLAN_SEAT_29_CODE, overrides);
   }
 
-  static async byok(): Promise<WorkspaceType> {
-    return this.create(FREE_BYOK_PLAN_CODE);
+  static async byok(overrides?: WorkspaceOverrides): Promise<WorkspaceType> {
+    return this.create(FREE_BYOK_PLAN_CODE, overrides);
   }
 
   // Plans are seeded by the DB init script (admin/db.ts) to avoid deadlocks
   // from concurrent upserts in parallel test workers.
-  private static async create(planCode: string): Promise<WorkspaceType> {
+  private static async create(
+    planCode: string,
+    overrides?: WorkspaceOverrides
+  ): Promise<WorkspaceType> {
     const workspace = await WorkspaceModel.create({
       sId: generateRandomModelSId(),
       name: faker.company.name(),
       description: `[DEBUG] ${expect.getState().currentTestName}\n\n${faker.company.catchPhrase()}`,
       workOSOrganizationId: faker.string.alpha(10),
+      ...(overrides?.whiteListedProviders !== undefined && {
+        whiteListedProviders: overrides.whiteListedProviders,
+      }),
     });
 
     const plan = await PlanModel.findOne({ where: { code: planCode } });

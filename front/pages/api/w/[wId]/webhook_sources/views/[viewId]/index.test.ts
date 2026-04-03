@@ -13,7 +13,7 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "GET"
 ) {
-  const { req, res, workspace, authenticator, systemSpace, globalSpace } =
+  const { req, res, workspace, auth, systemSpace, globalSpace } =
     await createPrivateApiMockRequest({
       role,
       method,
@@ -22,7 +22,7 @@ async function setupTest(
   // Set up common query parameters
   req.query.wId = workspace.sId;
 
-  return { req, res, workspace, auth: authenticator, systemSpace, globalSpace };
+  return { req, res, workspace, auth, systemSpace, globalSpace };
 }
 
 describe("GET /api/w/[wId]/webhook_sources/views/[viewId]", () => {

@@ -1,3 +1,7 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -67,6 +71,20 @@ export const deleteDataSourcePlugin = createPlugin({
         new Error(`Failed to delete data source: ${delRes.error.message}`)
       );
     }
+
+    void emitAuditLogEvent({
+      auth,
+      action: "datasource.deleted_admin",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("data_source", dataSource),
+      ],
+      metadata: {
+        dataSourceName: dataSource.name,
+        provider: dataSource.connectorProvider ?? "folder",
+        deletedBy: auth.getNonNullableUser().email,
+      },
+    });
 
     return new Ok({
       display: "text",

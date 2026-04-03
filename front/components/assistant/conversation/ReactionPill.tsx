@@ -33,6 +33,7 @@ export function ReactionPill({
     <Tooltip
       label={tooltipLabel}
       side="top"
+      tooltipTriggerAsChild
       trigger={
         <Button
           label={`${emoji} ${count}`}

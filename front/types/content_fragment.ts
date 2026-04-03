@@ -46,6 +46,7 @@ export type BaseContentFragmentType = {
   visibility: MessageVisibility;
   version: number;
   rank: number;
+  branchId: string | null;
   sourceUrl: string | null;
   title: string;
   contentType: SupportedContentFragmentType;
@@ -87,6 +88,7 @@ export type FileContentFragmentType = BaseContentFragmentType & {
         sourceProvider: string | null;
         sourceIcon: string | null;
         isInProjectContext: boolean;
+        hidden: boolean;
       }
     | {
         expiredReason: ContentFragmentExpiredReason;
@@ -98,9 +100,13 @@ export type FileContentFragmentType = BaseContentFragmentType & {
         sourceProvider: null;
         sourceIcon: null;
         isInProjectContext: null;
+        hidden: boolean;
       }
   );
 
+/**
+ * @swaggerschema ContentFragment (swagger_schemas.ts), PrivateContentFragment (swagger_private_schemas.ts)
+ */
 export type ContentFragmentType =
   | FileContentFragmentType
   | ContentNodeContentFragmentType;

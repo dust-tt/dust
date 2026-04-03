@@ -175,16 +175,28 @@ describe("WorkspaceResource", () => {
   });
 
   describe("updateConversationsRetention", () => {
+    it("should reject values below the minimum retention", async () => {
+      const result = await WorkspaceResource.updateConversationsRetention(
+        workspace.id,
+        59
+      );
+
+      expect(result.isErr()).toBe(true);
+
+      const updated = await WorkspaceResource.fetchById(workspace.sId);
+      expect(updated?.conversationsRetentionDays).toBeNull();
+    });
+
     it("should set retention days value", async () => {
       const result = await WorkspaceResource.updateConversationsRetention(
         workspace.id,
-        30
+        60
       );
 
       expect(result.isOk()).toBe(true);
 
       const updated = await WorkspaceResource.fetchById(workspace.sId);
-      expect(updated?.conversationsRetentionDays).toBe(30);
+      expect(updated?.conversationsRetentionDays).toBe(60);
     });
 
     it("should convert -1 to null", async () => {
@@ -198,6 +210,20 @@ describe("WorkspaceResource", () => {
       );
 
       expect(result.isOk()).toBe(true);
+
+      const updated = await WorkspaceResource.fetchById(workspace.sId);
+      expect(updated?.conversationsRetentionDays).toBeNull();
+    });
+
+    it("should reject values below the minimum retention through generic updates", async () => {
+      const result = await WorkspaceResource.updateByModelIdAndCheckExistence(
+        workspace.id,
+        {
+          conversationsRetentionDays: 59,
+        }
+      );
+
+      expect(result.isErr()).toBe(true);
 
       const updated = await WorkspaceResource.fetchById(workspace.sId);
       expect(updated?.conversationsRetentionDays).toBeNull();
@@ -241,6 +267,7 @@ describe("WorkspaceResource", () => {
       const resource = await WorkspaceResource.fetchById(workspace.sId);
 
       expect(resource?.canShareInteractiveContentPublicly).toBe(true);
+      expect(resource?.sharingPolicy).toBe("all_scopes");
     });
 
     it("should return false when metadata.allowContentCreationFileSharing is false", async () => {
@@ -251,6 +278,7 @@ describe("WorkspaceResource", () => {
       const resource = await WorkspaceResource.fetchById(workspace.sId);
 
       expect(resource?.canShareInteractiveContentPublicly).toBe(false);
+      expect(resource?.sharingPolicy).toBe("workspace_and_emails");
     });
 
     it("should return true when metadata.allowContentCreationFileSharing is true", async () => {
@@ -261,6 +289,20 @@ describe("WorkspaceResource", () => {
       const resource = await WorkspaceResource.fetchById(workspace.sId);
 
       expect(resource?.canShareInteractiveContentPublicly).toBe(true);
+      expect(resource?.sharingPolicy).toBe("all_scopes");
+    });
+
+    it("should not change sharingPolicy when updating unrelated metadata", async () => {
+      await WorkspaceResource.updateMetadata(workspace.id, {
+        allowContentCreationFileSharing: false,
+      });
+      await WorkspaceResource.updateMetadata(workspace.id, {
+        allowVoiceTranscription: true,
+      });
+
+      const resource = await WorkspaceResource.fetchById(workspace.sId);
+
+      expect(resource?.sharingPolicy).toBe("workspace_and_emails");
     });
   });
 

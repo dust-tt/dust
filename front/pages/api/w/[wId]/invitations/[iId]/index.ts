@@ -1,3 +1,9 @@
+/** @ignoreswagger */
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
@@ -75,8 +81,49 @@ async function handler(
       }
       const body = bodyValidation.right;
 
+      const previousStatus = invitation.status;
+      const previousRole = invitation.initialRole;
+
       await invitation.updateStatus(body.status);
       await invitation.updateRole(body.initialRole);
+
+      if (body.status === "revoked" && previousStatus !== "revoked") {
+        void emitAuditLogEvent({
+          auth,
+          action: "invitation.revoked",
+          targets: [
+            buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+            buildAuditLogTarget("invitation", {
+              sId: invitation.sId,
+              name: invitation.inviteEmail,
+            }),
+          ],
+          context: getAuditLogContext(auth, req),
+          metadata: {
+            invitedEmail: invitation.inviteEmail,
+          },
+        });
+      }
+
+      if (body.initialRole !== previousRole) {
+        void emitAuditLogEvent({
+          auth,
+          action: "invitation.role_updated",
+          targets: [
+            buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+            buildAuditLogTarget("invitation", {
+              sId: invitation.sId,
+              name: invitation.inviteEmail,
+            }),
+          ],
+          context: getAuditLogContext(auth, req),
+          metadata: {
+            invitedEmail: invitation.inviteEmail,
+            previousRole: String(previousRole),
+            newRole: String(body.initialRole),
+          },
+        });
+      }
 
       res.status(200).json({
         invitation: invitation.toJSON(),

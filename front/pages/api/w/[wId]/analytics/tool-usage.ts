@@ -1,7 +1,11 @@
+/** @ignoreswagger */
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import type { ToolUsagePoint } from "@app/lib/api/assistant/observability/tool_usage";
 import { fetchToolUsageMetrics } from "@app/lib/api/assistant/observability/tool_usage";
-import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import {
+  buildAgentAnalyticsBaseQuery,
+  timezoneSchema,
+} from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -13,6 +17,7 @@ import { z } from "zod";
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
   serverName: z.string().optional(),
+  timezone: timezoneSchema,
 });
 
 export type GetWorkspaceToolUsageResponse = {
@@ -36,10 +41,15 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { days: queryDays, serverName: queryServerName } = req.query;
+      const {
+        days: queryDays,
+        serverName: queryServerName,
+        timezone: queryTimezone,
+      } = req.query;
       const q = QuerySchema.safeParse({
         days: queryDays,
         serverName: isString(queryServerName) ? queryServerName : undefined,
+        timezone: queryTimezone,
       });
       if (!q.success) {
         return apiError(req, res, {
@@ -51,7 +61,7 @@ async function handler(
         });
       }
 
-      const { days, serverName } = q.data;
+      const { days, serverName, timezone } = q.data;
       const owner = auth.getNonNullableWorkspace();
 
       const baseQuery = buildAgentAnalyticsBaseQuery({
@@ -61,7 +71,8 @@ async function handler(
 
       const usageResult = await fetchToolUsageMetrics(
         baseQuery,
-        serverName ?? null
+        serverName ?? null,
+        timezone
       );
 
       if (usageResult.isErr()) {

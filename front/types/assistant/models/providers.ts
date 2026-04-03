@@ -1,7 +1,9 @@
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import type {
+  ByokModelProviderIdType,
+  ModelProviderIdType,
+} from "@app/types/assistant/models/types";
 import { ioTsEnum } from "@app/types/shared/utils/iots_utils";
-
-import type { WorkspaceType } from "../../user";
+import { z } from "zod";
 
 /**
  * PROVIDER IDS
@@ -18,6 +20,12 @@ export const MODEL_PROVIDER_IDS = [
   "xai",
   "noop",
 ] as const;
+
+export const BYOK_MODEL_PROVIDER_IDS = [
+  "anthropic",
+  "openai",
+  "google_ai_studio",
+] as const satisfies ModelProviderIdType[];
 
 export function getProviderDisplayName(
   providerId: ModelProviderIdType
@@ -51,14 +59,8 @@ export const isModelProviderId = (
   MODEL_PROVIDER_IDS.includes(providerId as ModelProviderIdType);
 export const ModelProviderIdCodec =
   ioTsEnum<(typeof MODEL_PROVIDER_IDS)[number]>(MODEL_PROVIDER_IDS);
-export function isProviderWhitelisted(
-  owner: WorkspaceType,
+export const ModelProviderIdSchema = z.enum(MODEL_PROVIDER_IDS);
+export const isByokProviderId = (
   providerId: ModelProviderIdType
-) {
-  // noop never sees user data, so we always treat it as whitelisted
-  if (providerId === "noop") {
-    return true;
-  }
-  const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
-  return whiteListedProviders.includes(providerId);
-}
+): providerId is ByokModelProviderIdType =>
+  BYOK_MODEL_PROVIDER_IDS.includes(providerId as ByokModelProviderIdType);

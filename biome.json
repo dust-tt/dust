@@ -1,16 +1,17 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.0/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.4.8/schema.json",
   "root": true,
   "plugins": [
-    "./biome-plugins/noRawSql.grit",
-    "./biome-plugins/noBulkLodash.grit",
-    "./biome-plugins/noDirectSparkleNotification.grit",
-    "./biome-plugins/noUnverifiedWorkspaceBypass.grit",
-    "./biome-plugins/noMcpServerInstructions.grit",
-    "./biome-plugins/enforceClientTypesInPublicApi.grit",
-    "./biome-plugins/nextjsPageComponentNaming.grit",
-    "./biome-plugins/nextjsNoDataFetchingInGetssp.grit",
-    "./biome-plugins/tooLongIndexName.grit"
+    "./.grit/patterns/noRawSql.grit",
+    "./.grit/patterns/noBulkLodash.grit",
+    "./.grit/patterns/noDirectSparkleNotification.grit",
+    "./.grit/patterns/noUnverifiedWorkspaceBypass.grit",
+    "./.grit/patterns/noMcpServerInstructions.grit",
+    "./.grit/patterns/enforceClientTypesInPublicApi.grit",
+    "./.grit/patterns/nextjsPageComponentNaming.grit",
+    "./.grit/patterns/nextjsNoDataFetchingInGetssp.grit",
+    "./.grit/patterns/tooLongIndexName.grit",
+    "./.grit/patterns/noClientDeepImports.grit"
   ],
   "vcs": {
     "enabled": true,
@@ -81,12 +82,12 @@
   },
   "overrides": [
     {
-      "includes": ["**", "!front/pages/**"],
-      "plugins": ["./biome-plugins/noNextImports.grit"]
+      "includes": ["**", "!front/pages/**", "!front/lib/api/sse.ts"],
+      "plugins": ["./.grit/patterns/noNextImports.grit"]
     },
     {
       "includes": ["front/**/*.tsx", "front-spa/**/*.tsx"],
-      "plugins": ["./biome-plugins/noSparkleClassInFront.grit"]
+      "plugins": ["./.grit/patterns/noSparkleClassInFront.grit"]
     },
     {
       "includes": ["cli/dust-cli/**", "sparkle/**"],

@@ -11,13 +11,7 @@ Flags models whose name is >= 40 chars where auto-generated index names are like
 ```grit
 language js
 
-`$_.init($schema, { $options })` where {
-    $options <: contains `indexes: [ $_ ]`,
-    $options <: contains `modelName: $name` where {
-        $name <: r".{42,}",
-        $name => `TOO_LONG_MODEL_NAME_FLAGGED`
-    }
-}
+too_long_index_name() => `TOO_LONG_MODEL_NAME_FLAGGED`
 ```
 
 ## Should flag model with very long name
@@ -36,7 +30,7 @@ Model.init(
 Model.init(
   {},
   {
-    modelName: TOO_LONG_MODEL_NAME_FLAGGED,
+    TOO_LONG_MODEL_NAME_FLAGGED,
     indexes: [{ fields: ["field1", "field2"] }],
   }
 );

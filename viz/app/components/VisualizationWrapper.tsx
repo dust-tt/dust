@@ -484,6 +484,10 @@ function isOriginAllowed(origin: string, allowedOrigins: string[]): boolean {
       const suffix = allowed.slice("https://*".length); // e.g. ".preview.dust.tt"
       return origin.startsWith("https://") && origin.endsWith(suffix);
     }
+    // Firefox Internal UUID is not stable, so we allow all moz-extension:// origins.
+    if (allowed === "moz-extension://*") {
+      return origin.startsWith("moz-extension://");
+    }
     return origin === allowed;
   });
 }

@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -5,37 +6,35 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { TagType } from "@app/types/tag";
+import { TagSchema } from "@app/types/tag";
 import { isBuilder } from "@app/types/user";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-// Changed schema to accept optional add/remove lists
-export const PatchAgentTagsRequestBodySchema = t.intersection([
-  t.partial({
-    addTagIds: t.array(t.string),
-    removeTagIds: t.array(t.string),
-  }),
-  t.refinement(
-    t.partial({
-      addTagIds: t.array(t.string),
-      removeTagIds: t.array(t.string),
-    }),
+export const PatchAgentTagsRequestBodySchema = z
+  .object({
+    addTagIds: z.array(z.string()).optional(),
+    removeTagIds: z.array(z.string()).optional(),
+  })
+  .refine(
     (body) =>
       (body.addTagIds?.length ?? 0) > 0 || (body.removeTagIds?.length ?? 0) > 0,
-    "Either addTagIds or removeTagIds must be provided and contain at least one ID."
-  ),
-]);
+    {
+      message:
+        "Either addTagIds or removeTagIds must be provided and contain at least one ID.",
+    }
+  );
 
-export type PatchAgentTagsRequestBody = t.TypeOf<
+export type PatchAgentTagsRequestBody = z.infer<
   typeof PatchAgentTagsRequestBodySchema
 >;
 
-export interface PatchAgentTagsResponseBody {
-  tags: TagType[];
-}
+export const PatchAgentTagsResponseBodySchema = z.object({
+  tags: z.array(TagSchema),
+});
+export type PatchAgentTagsResponseBody = z.infer<
+  typeof PatchAgentTagsResponseBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,
@@ -71,19 +70,20 @@ async function handler(
         });
       }
 
-      const bodyValidation = PatchAgentTagsRequestBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = PatchAgentTagsRequestBodySchema.safeParse(
+        req.body
+      );
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${bodyValidation.error.message}`,
           },
         });
       }
 
-      const { addTagIds = [], removeTagIds = [] } = bodyValidation.right;
+      const { addTagIds = [], removeTagIds = [] } = bodyValidation.data;
 
       const tagsToAdd = await TagResource.fetchByIds(auth, addTagIds);
       const tagsToRemove = await TagResource.fetchByIds(auth, removeTagIds);

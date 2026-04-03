@@ -11,7 +11,10 @@ import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_lo
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
 import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { makeAgentLoopConversationTitleWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
-import { cancelAgentLoopSignal } from "@app/temporal/agent_loop/signals";
+import {
+  cancelAgentLoopSignal,
+  gracefullyStopAgentLoopSignal,
+} from "@app/temporal/agent_loop/signals";
 import type { AgentLoopInstrumentationSinks } from "@app/temporal/agent_loop/sinks";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import type {
@@ -104,6 +107,7 @@ const { ensureConversationTitleActivity } = proxyActivities<
 
 const {
   finalizeSuccessfulAgentLoopActivity,
+  finalizeGracefullyStoppedAgentLoopActivity,
   finalizeCancelledAgentLoopActivity,
   finalizeErroredAgentLoopActivity,
 } = proxyActivities<typeof finalizeActivities>({
@@ -140,6 +144,14 @@ export async function agentLoopWorkflow({
   setHandler(cancelAgentLoopSignal, () => {
     cancelRequested = true;
     executionScope.cancel();
+  });
+
+  // Graceful stop: let the current step finish, then exit the loop at the next step boundary.
+  // Unlike cancellation, in-flight activities are not killed.
+  let gracefulStopRequested = false;
+
+  setHandler(gracefullyStopAgentLoopSignal, () => {
+    gracefulStopRequested = true;
   });
 
   try {
@@ -188,9 +200,9 @@ export async function agentLoopWorkflow({
           stepStartTime
         );
 
-        // After the first step completes, launch title generation in the background.
-        // We wait until the first step so the agent has at least one response in the database,
-        // otherwise the title model would only see the user's question without context.
+        // After the first step completes, launch title generation in the background. We wait until
+        // the first step so the agent has at least one response in the database, otherwise the
+        // title model would only see the user's question without context.
         if (i === startStep && !agentLoopArgs.conversationTitle) {
           try {
             childWorkflowHandle = await startChild(
@@ -212,7 +224,7 @@ export async function agentLoopWorkflow({
           }
         }
 
-        if (!shouldContinue) {
+        if (!shouldContinue || gracefulStopRequested) {
           break;
         }
       }
@@ -229,7 +241,14 @@ export async function agentLoopWorkflow({
       );
 
       await CancellationScope.nonCancellable(async () => {
-        await finalizeSuccessfulAgentLoopActivity(authType, agentLoopArgs);
+        if (gracefulStopRequested) {
+          await finalizeGracefullyStoppedAgentLoopActivity(
+            authType,
+            agentLoopArgs
+          );
+        } else {
+          await finalizeSuccessfulAgentLoopActivity(authType, agentLoopArgs);
+        }
       });
 
       if (childWorkflowHandle) {
@@ -244,9 +263,9 @@ export async function agentLoopWorkflow({
       if (cancelRequested) {
         return finalizeCancelledAgentLoopActivity(authType, agentLoopArgs);
       }
-      // Error objects don't survive JSON serialization across the workflow→activity
-      // boundary (Error.message is not enumerable), so we extract the relevant
-      // fields into a plain object before passing to the activity.
+      // Error objects don't survive JSON serialization across the workflow→activity boundary
+      // (Error.message is not enumerable), so we extract the relevant fields into a plain object
+      // before passing to the activity.
       await finalizeErroredAgentLoopActivity(authType, agentLoopArgs, {
         message: workflowError.message,
         name: workflowError.name,

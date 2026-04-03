@@ -1,29 +1,30 @@
-import { AgentYAMLConverter } from "@app/lib/agent_yaml_converter/converter";
+/** @ignoreswagger */
+import { importAgentConfigurationFromYAMLString } from "@app/lib/api/assistant/configuration/yaml_import";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { apiError } from "@app/logger/withlogging";
-import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { AgentConfigurationSchema } from "@app/types/assistant/agent";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import uniqueId from "lodash/uniqueId";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-const PostAgentConfigurationFromYAMLRequestBodySchema = t.type({
-  yamlContent: t.string,
+const PostAgentConfigurationFromYAMLRequestBodySchema = z.object({
+  yamlContent: z.string(),
 });
 
-export type PostAgentConfigurationFromYAMLRequestBody = t.TypeOf<
+export type PostAgentConfigurationFromYAMLRequestBody = z.infer<
   typeof PostAgentConfigurationFromYAMLRequestBodySchema
 >;
 
-export type PostAgentConfigurationFromYAMLResponseBody = {
-  agentConfiguration: AgentConfigurationType;
-  skippedActions?: { name: string; reason: string }[];
-};
+export const PostAgentConfigurationFromYAMLResponseBodySchema = z.object({
+  agentConfiguration: AgentConfigurationSchema,
+  skippedActions: z
+    .array(z.object({ name: z.string(), reason: z.string() }))
+    .optional(),
+});
+export type PostAgentConfigurationFromYAMLResponseBody = z.infer<
+  typeof PostAgentConfigurationFromYAMLResponseBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,
@@ -42,121 +43,32 @@ async function handler(
     });
   }
 
-  const isSaveAgentConfigurationsEnabled =
-    await KillSwitchResource.isKillSwitchEnabledCached(
-      "save_agent_configurations"
-    );
-  if (isSaveAgentConfigurationsEnabled) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "app_auth_error",
-        message:
-          "Saving agent configurations is temporarily disabled, try again later.",
-      },
-    });
-  }
-
-  const bodyValidation = PostAgentConfigurationFromYAMLRequestBodySchema.decode(
-    req.body
-  );
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+  const bodyValidation =
+    PostAgentConfigurationFromYAMLRequestBodySchema.safeParse(req.body);
+  if (!bodyValidation.success) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Invalid request body: ${pathError}`,
+        message: `Invalid request body: ${bodyValidation.error.message}`,
       },
     });
   }
 
-  const { yamlContent } = bodyValidation.right;
-
-  const yamlConfigResult = AgentYAMLConverter.fromYAMLString(yamlContent);
-  if (yamlConfigResult.isErr()) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Invalid YAML format: ${yamlConfigResult.error.message}`,
-      },
-    });
-  }
-
-  const yamlConfig = yamlConfigResult.value;
-
-  const mcpConfigurationsResult =
-    await AgentYAMLConverter.convertYAMLActionsToMCPConfigurations(
-      auth,
-      yamlConfig.toolset
-    );
-
-  if (mcpConfigurationsResult.isErr()) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Error converting YAML actions: ${mcpConfigurationsResult.error.message}`,
-      },
-    });
-  }
-
-  const { configurations: mcpConfigurations, skipped: skippedActions } =
-    mcpConfigurationsResult.value;
-
-  const agent = {
-    name: yamlConfig.agent.handle,
-    description: yamlConfig.agent.description,
-    instructions: yamlConfig.instructions,
-    pictureUrl: yamlConfig.agent.avatar_url ?? "",
-    status: "active" as const,
-    scope: yamlConfig.agent.scope,
-    model: {
-      modelId: yamlConfig.generation_settings.model_id,
-      providerId: yamlConfig.generation_settings.provider_id,
-      temperature: yamlConfig.generation_settings.temperature,
-      reasoningEffort: yamlConfig.generation_settings.reasoning_effort,
-      responseFormat: yamlConfig.generation_settings.response_format,
-    },
-    maxStepsPerRun: yamlConfig.agent.max_steps_per_run,
-    actions: mcpConfigurations,
-    templateId: null,
-    tags: yamlConfig.tags.map((tag) => ({
-      sId: uniqueId(),
-      name: tag.name,
-      kind: tag.kind,
-    })),
-    editors: yamlConfig.editors.map((editor) => ({
-      sId: editor.user_id,
-    })),
-    skills: (yamlConfig.skills ?? []).map((skill) => ({
-      sId: skill.sId,
-    })),
-    additionalRequestedSpaceIds: [],
-  };
-
-  const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
+  const result = await importAgentConfigurationFromYAMLString(
     auth,
-    assistant: agent,
-  });
+    bodyValidation.data.yamlContent
+  );
 
-  if (agentConfigurationRes.isErr()) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "assistant_saving_error",
-        message: `Error creating agent: ${agentConfigurationRes.error.message}`,
-      },
-    });
+  if (result.isErr()) {
+    return apiError(req, res, result.error);
   }
+
+  const { agentConfiguration, skippedActions } = result.value;
 
   return res.status(200).json({
-    agentConfiguration: agentConfigurationRes.value,
-    skippedActions: skippedActions.map(({ action, reason }) => ({
-      name: action.name,
-      reason,
-    })),
+    agentConfiguration,
+    skippedActions,
   });
 }
 

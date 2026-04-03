@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { COMMIT_HASH } from "@app/lib/commit-hash";
 import { isInShutdown } from "@app/lib/shutdown_signal";
 import { getStatsDClient } from "@app/lib/utils/statsd";

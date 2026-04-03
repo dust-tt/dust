@@ -170,11 +170,83 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
         .describe(
           "The ID of the parent message to reply to (optional, creates a threaded reply). Only supported for channels."
         ),
+      mentions: z
+        .array(
+          z.object({
+            id: z
+              .number()
+              .int()
+              .describe(
+                'Zero-based index matching the id attribute in the corresponding <at id="N"> tag in messageContent.'
+              ),
+            mentionText: z
+              .string()
+              .describe(
+                'Display name used inside the <at> tag (e.g. <at id="0">Display Name</at>).'
+              ),
+            userAadId: z
+              .string()
+              .describe("AAD object ID of the user to mention."),
+          })
+        )
+        .optional()
+        .describe(
+          'List of @mentions. Each entry must have a corresponding <at id="N">Name</at> tag in messageContent.'
+        ),
     },
     stake: "medium",
     displayLabels: {
       running: "Posting Teams message",
       done: "Post Teams message",
+    },
+  },
+  list_meetings: {
+    description:
+      "List online meetings from the authenticated user's calendar within a date range. Returns meeting details including subject, organizer, attendees, times, and meeting ID. The meeting ID can be used with get_transcript_content to retrieve meeting transcripts. Supports filtering by subject and participant. Supports pagination to retrieve all results.",
+    schema: {
+      fromDate: z
+        .string()
+        .describe(
+          "ISO 8601 date string for the start of the date range (e.g., '2024-01-01T00:00:00Z')."
+        ),
+      toDate: z
+        .string()
+        .describe(
+          "ISO 8601 date string for the end of the date range (e.g., '2024-12-31T23:59:59Z')."
+        ),
+      subjectFilter: z
+        .string()
+        .optional()
+        .describe(
+          "Filter meetings by subject (case-insensitive partial match)."
+        ),
+      participantFilter: z
+        .string()
+        .optional()
+        .describe(
+          "Filter meetings by participant name or email (case-insensitive partial match on organizer or attendees)."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing Teams meetings",
+      done: "List Teams meetings",
+    },
+  },
+  get_transcript_content: {
+    description:
+      "Get the transcript content of a Microsoft Teams online meeting. Requires the join URL of the meeting (obtained from list_meetings). Returns the transcript text if available.",
+    schema: {
+      joinUrl: z
+        .string()
+        .describe(
+          "The join URL of the online meeting. Use list_meetings to get this value."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Fetching meeting transcript",
+      done: "Fetch meeting transcript",
     },
   },
 });
@@ -186,10 +258,85 @@ export const MICROSOFT_TEAMS_SERVER = {
     description: "Microsoft Teams for searching and posting messages.",
     icon: "MicrosoftTeamsLogo",
     authorization: {
-      provider: "microsoft",
+      provider: "microsoft_tools",
       supported_use_cases: ["personal_actions"],
+      scope:
+        "User.Read User.ReadBasic.All Team.ReadBasic.All Channel.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send OnlineMeetings.Read OnlineMeetingTranscript.Read.All offline_access",
+      availableScopes: [
+        {
+          value: "Chat.Read",
+          label: "Read chats",
+          description: "Read messages in direct and group chats.",
+          required: true,
+        },
+        {
+          value: "Chat.ReadWrite",
+          label: "Send chat messages",
+          description: "Send messages in direct and group chats.",
+        },
+        {
+          value: "ChatMessage.Read",
+          label: "Search chat messages",
+          description: "Search for messages across all chats.",
+        },
+        {
+          value: "ChatMessage.Send",
+          label: "Send messages via chat API",
+          description: "Send messages using the chat message API.",
+        },
+        {
+          value: "ChannelMessage.Read.All",
+          label: "Read channel messages",
+          description: "Read and search messages in Teams channels.",
+        },
+        {
+          value: "ChannelMessage.Send",
+          label: "Send channel messages",
+          description: "Post messages to Teams channels.",
+        },
+        {
+          value: "Team.ReadBasic.All",
+          label: "Read teams",
+          description: "List teams the user has joined.",
+          required: true,
+        },
+        {
+          value: "Channel.ReadBasic.All",
+          label: "Read channels",
+          description: "List channels within teams.",
+          required: true,
+        },
+        {
+          value: "User.ReadBasic.All",
+          label: "Read user directory",
+          description: "List and search users in the organization.",
+        },
+        {
+          value: "OnlineMeetings.Read",
+          label: "Read online meetings",
+          description: "Read online meeting details to access transcripts.",
+        },
+        {
+          value: "OnlineMeetingTranscript.Read.All",
+          label: "Read meeting transcripts",
+          description:
+            "Read transcripts of online meetings the user has access to.",
+        },
+        {
+          value: "User.Read",
+          label: "Read user profile",
+          description: "Read basic profile information of the signed-in user.",
+          required: true,
+        },
+        {
+          value: "offline_access",
+          label: "Offline access",
+          description: "Maintain access without requiring re-authentication.",
+          required: true,
+        },
+      ],
     },
-    documentationUrl: null,
+    documentationUrl: "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
     instructions: null,
   },
   tools: Object.values(MICROSOFT_TEAMS_TOOLS_METADATA).map((t) => ({

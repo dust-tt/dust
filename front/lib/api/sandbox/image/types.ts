@@ -14,12 +14,27 @@ export function formatSandboxImageId(id: SandboxImageId): string {
 }
 
 // ---------------------------------------------------------------------------
+// Tool Runtime & Profile
+// ---------------------------------------------------------------------------
+
+export const TOOL_RUNTIMES = ["system", "python", "node"] as const;
+export type ToolRuntime = (typeof TOOL_RUNTIMES)[number];
+
+export const TOOL_PROFILES = ["openai", "anthropic", "gemini"] as const;
+export type ToolProfile = (typeof TOOL_PROFILES)[number];
+
+// ---------------------------------------------------------------------------
 // Tool Entry
 // ---------------------------------------------------------------------------
 
 export interface ToolEntry {
   readonly name: string;
+  readonly version?: string;
   readonly description: string;
+  readonly usage?: string;
+  readonly returns?: string;
+  readonly runtime: ToolRuntime;
+  readonly profile?: ToolProfile;
 }
 
 // ---------------------------------------------------------------------------
@@ -35,9 +50,15 @@ export type CopySource =
   | { readonly type: "content"; readonly getContent: ContentGenerator };
 
 export type Operation =
-  | { readonly type: "run"; readonly command: string }
-  | { readonly type: "copy"; readonly src: CopySource; readonly dest: string }
+  | { readonly type: "run"; readonly command: string; readonly user?: string }
+  | {
+      readonly type: "copy";
+      readonly src: CopySource;
+      readonly dest: string;
+      readonly user?: string;
+    }
   | { readonly type: "workdir"; readonly path: string }
+  | { readonly type: "user"; readonly user: string }
   | {
       readonly type: "env";
       readonly vars: Readonly<Record<string, string>>;
@@ -68,14 +89,11 @@ export const ALLOWLIST_NETWORK_POLICY: NetworkPolicy = {
   mode: "deny_all",
   allowlist: [
     "storage.googleapis.com",
+    "dust.tt",
     "*.dust.tt",
-    "pypi.org",
-    "registry.npmjs.org",
-    "github.com",
-    "static.rust-lang.org",
-    "crates.io",
-    "static.crates.io",
-    "index.crates.io",
+    // Datadog EU — sandbox telemetry
+    "http-intake.logs.datadoghq.eu",
+    "api.datadoghq.eu",
   ],
 };
 
@@ -83,16 +101,35 @@ export const ALLOWLIST_NETWORK_POLICY: NetworkPolicy = {
 // Tool Manifest
 // ---------------------------------------------------------------------------
 
+export interface ManifestToolEntry {
+  readonly name: string;
+  readonly version?: string;
+  readonly description: string;
+  readonly usage?: string;
+  readonly returns?: string;
+}
+
 export interface ToolManifest {
   readonly version: "1.0";
   readonly generatedAt: string;
-  readonly tools: readonly ToolEntry[];
+  readonly tools: Readonly<
+    Partial<Record<ToolRuntime, readonly ManifestToolEntry[]>>
+  >;
 }
+
+// ---------------------------------------------------------------------------
+// Capabilities
+// ---------------------------------------------------------------------------
+
+/**
+ * Declarative tags describing what a sandbox template supports.
+ * The Docker image must actually have the corresponding tooling installed. The capability tag tells
+ * orchestration it is safe to attempt the feature.
+ */
+export type SandboxCapability = "gcsfuse";
 
 // ---------------------------------------------------------------------------
 // Base Image
 // ---------------------------------------------------------------------------
 
-export type BaseImage =
-  | { readonly type: "sandbox"; readonly id: SandboxImageId }
-  | { readonly type: "docker"; readonly imageRef: string };
+export type BaseImage = { readonly type: "docker"; readonly imageRef: string };

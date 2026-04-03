@@ -1,10 +1,8 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
+import { getFastestWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import { getSmallWhitelistedModel } from "@app/types/assistant/assistant";
-import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
-import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -83,16 +81,11 @@ export async function getSuggestedAgentsForContent(
 ): Promise<Result<LightAgentConfigurationType[], Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  let model = getSmallWhitelistedModel(owner);
+  const model = getFastestWhitelistedModel(auth);
   if (!model) {
     return new Err(
       new Error("Error suggesting agents: failed to find a whitelisted model.")
     );
-  }
-
-  // TODO(daphne): See if we can put Flash 2 as the default model.
-  if (isProviderWhitelisted(owner, "google_ai_studio")) {
-    model = GEMINI_2_5_FLASH_MODEL_CONFIG;
   }
 
   const formattedAgents = JSON.stringify(

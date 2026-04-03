@@ -10,6 +10,7 @@ import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type {
   LLMParameters,
+  LLMStreamMetadata,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
@@ -26,6 +27,7 @@ import {
   streamLLMEvents,
 } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 import { APIError, OpenAI, toFile } from "openai";
@@ -85,12 +87,15 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
     });
   }
 
-  private buildRequestPayload({
-    conversation,
-    prompt,
-    specifications,
-    forceToolCall,
-  }: LLMStreamParameters): ResponseCreateParamsBase {
+  private buildRequestPayload(
+    {
+      conversation,
+      prompt,
+      specifications,
+      forceToolCall,
+    }: LLMStreamParameters,
+    metadata?: LLMStreamMetadata
+  ): ResponseCreateParamsBase {
     const promptText = systemPromptToText(prompt);
     const reasoning = toReasoning(this.modelId, this.reasoningEffort);
 
@@ -106,14 +111,16 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
       // Only models supporting reasoning can do encrypted content for reasoning.
       include: reasoning !== null ? ["reasoning.encrypted_content"] : [],
       tool_choice: toToolOption(specifications, forceToolCall),
+      ...(metadata ? { prompt_cache_key: metadata.conversationId } : {}),
     };
   }
 
   protected buildStreamRequestPayload(
-    streamParameters: LLMStreamParameters
+    streamParameters: LLMStreamParameters,
+    metadata: LLMStreamMetadata
   ): ResponseCreateParamsStreaming {
     return {
-      ...this.buildRequestPayload(streamParameters),
+      ...this.buildRequestPayload(streamParameters, metadata),
       stream: true,
     };
   }
@@ -137,13 +144,15 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
    * Sends a batch of conversations to be processed asynchronously.
    * OpenAi requires to upload a JSONL file with the conversations to run.
    */
-  override async sendBatchProcessing(
+  protected override async internalSendBatchProcessing(
     conversations: Map<string, LLMStreamParameters>
   ): Promise<string> {
     const lines = Array.from(conversations.entries()).map(
       ([customId, streamParams]) => {
         const body = {
-          ...this.buildRequestPayload(streamParams),
+          ...this.buildRequestPayload(streamParams, {
+            conversationId: customId,
+          }),
           stream: false,
         };
         return JSON.stringify({
@@ -189,13 +198,19 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
       case "expired":
       case "cancelling":
       case "cancelled":
+        logger.warn(
+          { batchId, status: batch.status, provider: "openai" },
+          "LLM Batch has been aborted"
+        );
         return "aborted";
       default:
         assertNever(batch.status);
     }
   }
 
-  override async getBatchResult(batchId: string): Promise<BatchResult> {
+  protected override async internalGetBatchResult(
+    batchId: string
+  ): Promise<BatchResult> {
     const batch = await this.client.batches.retrieve(batchId);
 
     if (!batch.output_file_id) {
@@ -215,9 +230,9 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
 
       const parsed = openAIBatchOutputLineSchema.safeParse(JSON.parse(trimmed));
       if (!parsed.success) {
-        throw new Error(
-          `Failed to parse OpenAI batch output line: ${parsed.error.message}`
-        );
+        const message = `Failed to parse OpenAI batch output line: ${parsed.error.message}`;
+        logger.warn({ batchId, provider: "openai" }, message);
+        throw new Error(message);
       }
 
       const { custom_id, response, error } = parsed.data;

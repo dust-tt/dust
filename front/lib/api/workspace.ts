@@ -189,6 +189,17 @@ export async function getMembers(
   };
 }
 
+export async function getActiveAdminEmails(
+  auth: Authenticator
+): Promise<string[]> {
+  const { members } = await getMembers(auth, {
+    roles: ["admin"],
+    activeOnly: true,
+  });
+
+  return Array.from(new Set(members.map((member) => member.email)));
+}
+
 export async function searchMembers(
   auth: Authenticator,
   options: {

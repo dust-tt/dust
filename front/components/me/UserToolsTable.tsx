@@ -15,7 +15,7 @@ import { useSpaces } from "@app/lib/swr/spaces";
 import { useDeleteMetadata, useUserApprovals } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Chip, DataTable, Label, SearchInput, Spinner } from "@dust-tt/sparkle";
+import { Chip, DataTable, SearchInput, Spinner } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import keyBy from "lodash/keyBy";
 import { useCallback, useMemo, useState } from "react";
@@ -214,11 +214,11 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
           sorting={[{ id: "name", desc: false }]}
         />
       ) : (
-        <Label>
+        <p className="py-8 text-center text-muted-foreground">
           {searchQuery
             ? "No matching tools found"
             : "You don't have any tool-specific settings yet."}
-        </Label>
+        </p>
       )}
     </>
   );

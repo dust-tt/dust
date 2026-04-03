@@ -23,12 +23,15 @@ procs:
 
   oauth:
     cwd: "<CONFIG_DIR>/../core"
-    shell: "bacon oauth"
+    shell: "RUST_BACKTRACE=1 bacon oauth"
 
   sparkle:
     cwd: "<CONFIG_DIR>/../sparkle"
     shell: |
       set -euo pipefail
+      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+      nvm use
       echo "Node $(node --version)"
       npm run watch
 
@@ -36,6 +39,9 @@ procs:
     cwd: "<CONFIG_DIR>/../sdks/js"
     shell: |
       set -euo pipefail
+      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+      nvm use
       echo "Node $(node --version)"
       ./admin/dev.sh
 

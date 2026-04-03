@@ -13,10 +13,16 @@ export type MessageWithTokens = ModelMessageTypeMultiActions & {
   tokenCount: number;
 };
 
-export type InteractionWithTokens = {
-  messages: MessageWithTokens[];
+export type MinimalMessageType = {
+  role: string;
+};
+
+export type Interaction<T extends MinimalMessageType> = {
+  messages: T[];
   prunedContext?: boolean;
 };
+
+export type InteractionWithTokens = Interaction<MessageWithTokens>;
 
 /**
  * Prunes all tool results in an interaction.

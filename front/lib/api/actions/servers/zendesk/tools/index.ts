@@ -13,13 +13,24 @@ import {
   renderTicketFields,
   renderTicketMetrics,
 } from "@app/lib/api/actions/servers/zendesk/rendering";
-import type { ZendeskUser } from "@app/lib/api/actions/servers/zendesk/types";
+import type {
+  ZendeskTicketComment,
+  ZendeskUser,
+} from "@app/lib/api/actions/servers/zendesk/types";
+import { processAndStoreFile } from "@app/lib/api/files/processing";
+import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
+import {
+  ensureFileSize,
+  fileSizeToHumanReadable,
+  isSupportedFileContentType,
+} from "@app/types/files";
+import { Err, Ok } from "@app/types/shared/result";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 const ZENDESK_TAG_MAX_LENGTH = 255;
 const ZENDESK_TAG_REGEX = /^[a-z0-9_\-/]+$/;
-
-import { Err, Ok } from "@app/types/shared/result";
 
 function isTrackedError(error: Error): boolean {
   return !(error instanceof ZendeskApiError && error.isInvalidInput);
@@ -27,8 +38,8 @@ function isTrackedError(error: Error): boolean {
 
 const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
   get_ticket: async (
-    { ticketId, includeMetrics, includeConversation },
-    { authInfo }
+    { ticketId, includeMetrics, includeConversation, includeAttachments },
+    { authInfo, auth }
   ) => {
     const clientResult = getZendeskClient(authInfo);
     if (clientResult.isErr()) {
@@ -69,8 +80,15 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
       ticketText += "\n" + renderTicketMetrics(metricsResult.value);
     }
 
-    if (includeConversation) {
-      const commentsResult = await client.getTicketComments(ticketId);
+    // Fetch comments when conversation or attachments are requested.
+    const needComments = includeConversation || includeAttachments;
+    let comments: ZendeskTicketComment[] = [];
+    let users: ZendeskUser[] = [];
+
+    if (needComments) {
+      const commentsResult = await client.getTicketComments(ticketId, {
+        includeInlineImages: includeAttachments,
+      });
 
       if (commentsResult.isErr()) {
         return new Err(
@@ -81,12 +99,11 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
         );
       }
 
-      const comments = commentsResult.value;
+      comments = commentsResult.value;
       const authorIds = Array.from(
         new Set(comments.map((comment) => comment.author_id))
       );
 
-      let users: ZendeskUser[] = [];
       if (authorIds.length > 0) {
         const usersResult = await client.getUsersByIds(authorIds);
         if (usersResult.isErr()) {
@@ -100,16 +117,114 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
           users = usersResult.value;
         }
       }
+    }
 
+    if (includeConversation) {
       ticketText += renderTicketComments(comments, users);
     }
 
-    return new Ok([
-      {
-        type: "text" as const,
-        text: ticketText,
-      },
-    ]);
+    const contentBlocks: CallToolResult["content"] = [
+      { type: "text" as const, text: ticketText },
+    ];
+
+    if (includeAttachments) {
+      const allAttachments = comments.flatMap((c) =>
+        (c.attachments ?? []).filter((a) => !a.deleted)
+      );
+
+      for (const attachment of allAttachments) {
+        const contentType = attachment.content_type;
+
+        if (!isSupportedFileContentType(contentType)) {
+          contentBlocks.push({
+            type: "text" as const,
+            text: `\n--- Attachment: ${attachment.file_name} ---\nUnsupported file type (${contentType}), skipped.`,
+          });
+          continue;
+        }
+
+        if (!ensureFileSize(contentType, attachment.size)) {
+          contentBlocks.push({
+            type: "text" as const,
+            text:
+              `\n--- Attachment: ${attachment.file_name} ---\n` +
+              `File too large (${fileSizeToHumanReadable(attachment.size)}), skipped.`,
+          });
+          continue;
+        }
+
+        const fetchResult = await client.fetchAttachment(
+          attachment.content_url
+        );
+        if (fetchResult.isErr()) {
+          logger.error(
+            {
+              attachmentId: attachment.id,
+              filename: attachment.file_name,
+              error: fetchResult.error.message,
+            },
+            "[Zendesk] Failed to fetch attachment"
+          );
+          contentBlocks.push({
+            type: "text" as const,
+            text: `\n--- Attachment: ${attachment.file_name} ---\nFailed to download attachment.`,
+          });
+          continue;
+        }
+        const { body, contentLength } = fetchResult.value;
+
+        const file = await FileResource.makeNew({
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: auth.user()?.id ?? null,
+          contentType,
+          fileName: attachment.file_name,
+          fileSize: contentLength ?? attachment.size,
+          useCase: "conversation",
+          useCaseMetadata: {},
+        });
+
+        const processResult = await processAndStoreFile(auth, {
+          file,
+          content: {
+            type: "readable",
+            value: body,
+          },
+        });
+
+        if (processResult.isErr()) {
+          logger.error(
+            {
+              attachmentId: attachment.id,
+              filename: attachment.file_name,
+              error: processResult.error,
+            },
+            "[Zendesk] Failed to process attachment"
+          );
+          contentBlocks.push({
+            type: "text" as const,
+            text: `\n--- Attachment: ${attachment.file_name} ---\nFailed to process attachment.`,
+          });
+          continue;
+        }
+
+        const storedFile = processResult.value;
+        const fileResource = {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+          fileId: storedFile.sId,
+          contentType,
+          title: attachment.file_name,
+          text: `Attachment: ${attachment.file_name}`,
+          snippet: storedFile.snippet,
+          uri: storedFile.getPublicUrl(auth),
+        };
+        contentBlocks.push({
+          type: "resource" as const,
+          resource: fileResource,
+        });
+      }
+    }
+
+    return new Ok(contentBlocks);
   },
 
   search_tickets: async ({ query, sortBy, sortOrder }, { authInfo }) => {

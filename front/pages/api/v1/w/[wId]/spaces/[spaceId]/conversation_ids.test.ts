@@ -1,4 +1,3 @@
-import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -182,10 +181,6 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/conversation_ids", () => {
     expect(data.conversationIds.length).toBeGreaterThanOrEqual(2);
     expect(data.conversationIds).toContain(convo1.sId);
     expect(data.conversationIds).toContain(convo2.sId);
-
-    // Cleanup
-    await destroyConversation(adminAuth, { conversationId: convo1.sId });
-    await destroyConversation(adminAuth, { conversationId: convo2.sId });
   });
 
   it("should exclude deleted conversations", async () => {
@@ -243,10 +238,6 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/conversation_ids", () => {
     expect(Array.isArray(data.conversationIds)).toBe(true);
     expect(data.conversationIds).toContain(convo1.sId);
     expect(data.conversationIds).not.toContain(convo2.sId); // Deleted conversation should be excluded
-
-    // Cleanup
-    await destroyConversation(adminAuth, { conversationId: convo1.sId });
-    await destroyConversation(adminAuth, { conversationId: convo2.sId });
   });
 
   it("should return empty array for space with no conversations", async () => {
@@ -293,7 +284,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/conversation_ids", () => {
       name: "Test Agent",
     });
 
-    const convo = await ConversationFactory.create(adminAuth, {
+    await ConversationFactory.create(adminAuth, {
       agentConfigurationId: agent.sId,
       requestedSpaceIds: [space.id],
       spaceId: space.id,
@@ -317,8 +308,5 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/conversation_ids", () => {
 
     // Verify no conversation objects are present
     expect(data.conversations).toBeUndefined();
-
-    // Cleanup
-    await destroyConversation(adminAuth, { conversationId: convo.sId });
   });
 });

@@ -129,6 +129,11 @@ export function useWorkspaceAnalytics({
   };
 }
 
+export const BROWSER_TIMEZONE =
+  typeof window !== "undefined"
+    ? Intl.DateTimeFormat().resolvedOptions().timeZone
+    : "UTC";
+
 export function useWorkspaceUsageMetrics({
   workspaceId,
   days = DEFAULT_PERIOD_DAYS,
@@ -142,7 +147,7 @@ export function useWorkspaceUsageMetrics({
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceUsageMetricsResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/analytics/usage-metrics?days=${days}&interval=${interval}`;
+  const key = `/api/w/${workspaceId}/analytics/usage-metrics?days=${days}&interval=${interval}&timezone=${encodeURIComponent(BROWSER_TIMEZONE)}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,
@@ -168,7 +173,7 @@ export function useWorkspaceActiveUsersMetrics({
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceActiveUsersResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/analytics/active-users?days=${days}`;
+  const key = `/api/w/${workspaceId}/analytics/active-users?days=${days}&timezone=${encodeURIComponent(BROWSER_TIMEZONE)}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,
@@ -248,7 +253,10 @@ export function useWorkspaceToolUsage({
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceToolUsageResponse> = fetcher;
-  const params = new URLSearchParams({ days: String(days) });
+  const params = new URLSearchParams({
+    days: String(days),
+    timezone: BROWSER_TIMEZONE,
+  });
   if (serverName) {
     params.set("serverName", serverName);
   }
@@ -306,7 +314,10 @@ export function useWorkspaceSkillUsage({
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetWorkspaceSkillUsageResponse> = fetcher;
-  const params = new URLSearchParams({ days: String(days) });
+  const params = new URLSearchParams({
+    days: String(days),
+    timezone: BROWSER_TIMEZONE,
+  });
   if (skillName) {
     params.set("skillName", skillName);
   }
@@ -615,6 +626,9 @@ export function useWorkspaceSeatsCount({
   };
 }
 
+export const workspaceAuthContextUrl = (workspaceId: string) =>
+  `/api/w/${workspaceId}/auth-context`;
+
 interface UseAuthContextResult<T> {
   authContext: T | undefined;
   isAuthenticated: boolean;
@@ -644,7 +658,7 @@ export function useAuthContext(
   const regionContext = useRegionContext();
 
   const url = workspaceId
-    ? `/api/w/${workspaceId}/auth-context`
+    ? workspaceAuthContextUrl(workspaceId)
     : `/api/auth-context`;
 
   const authContextFetcher: Fetcher<

@@ -524,6 +524,7 @@ async function handler(
           },
         });
       }
+
       const conversations =
         await ConversationResource.listPrivateConversationsForUser(auth);
       res.status(200).json({

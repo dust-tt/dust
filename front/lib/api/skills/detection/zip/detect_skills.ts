@@ -3,11 +3,11 @@ import {
   findSkillDirectories,
   parseSkillMarkdown,
 } from "@app/lib/api/skills/detection/parsing";
-import type { DetectedSkill } from "@app/lib/api/skills/detection/types";
 import { stripCommonZipPrefix } from "@app/lib/api/skills/detection/zip/parsing";
 import type {
+  ZipDetectedSkill,
+  ZipDetectedSkillAttachment,
   ZipEntry,
-  ZipSkillDetectionError,
 } from "@app/lib/api/skills/detection/zip/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -15,7 +15,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import AdmZip from "adm-zip";
 
-const MAX_ZIP_SIZE_BYTES = 5 * 1024 * 1024;
+export const MAX_ZIP_SIZE_BYTES = 5 * 1024 * 1024;
 // Total uncompressed size limit (prevents issues with small zip but
 // super large uncompressed data).
 const MAX_DECOMPRESSED_SIZE_BYTES = 10 * 1024 * 1024;
@@ -25,15 +25,14 @@ const MAX_DECOMPRESSED_SIZE_BYTES = 10 * 1024 * 1024;
  */
 function extractZipEntries(
   zipBuffer: Buffer
-): Result<{ entries: ZipEntry[]; zip: AdmZip }, ZipSkillDetectionError> {
+): Result<{ entries: ZipEntry[]; zip: AdmZip }, Error> {
   let zip: AdmZip;
   try {
     zip = new AdmZip(zipBuffer);
   } catch (err) {
-    return new Err({
-      type: "invalid_zip",
-      message: `Failed to open ZIP: ${normalizeError(err).message}`,
-    });
+    return new Err(
+      new Error(`Failed to open ZIP: ${normalizeError(err).message}`)
+    );
   }
 
   const admEntries = zip.getEntries();
@@ -53,33 +52,30 @@ function extractZipEntries(
 function readZipFileContent(
   zip: AdmZip,
   originalPath: string
-): Result<string, ZipSkillDetectionError> {
+): Result<string, Error> {
   const entry = zip.getEntry(originalPath);
   if (!entry) {
-    return new Err({
-      type: "invalid_zip",
-      message: `Entry not found in ZIP: "${originalPath}"`,
-    });
+    return new Err(new Error(`Entry not found in ZIP: "${originalPath}"`));
   }
   const buffer = entry.getData();
+
   return new Ok(buffer.toString("utf-8"));
 }
 
 /**
- * Detects Agent Skills (https://agentskills.io/specification) in a ZIP archive
- * by scanning for SKILL.md files. Same logic as the GitHub detection but
- * operating on a ZIP buffer instead of the GitHub API.
+ * Validates zip size limits and extracts entries + the AdmZip instance.
+ * Shared between detection and attachment reading.
  */
-export function detectSkillsFromZip({
-  zipBuffer,
-}: {
-  zipBuffer: Buffer;
-}): Result<DetectedSkill[], ZipSkillDetectionError> {
+function openAndValidateZip(
+  zipBuffer: Buffer
+): Result<{ entries: ZipEntry[]; zip: AdmZip }, Error> {
   if (zipBuffer.length > MAX_ZIP_SIZE_BYTES) {
-    return new Err({
-      type: "invalid_zip",
-      message: `ZIP file too large (${Math.round(zipBuffer.length / 1024 / 1024)} MB). Maximum allowed size is ${MAX_ZIP_SIZE_BYTES / 1024 / 1024} MB.`,
-    });
+    return new Err(
+      new Error(
+        `ZIP file too large (${Math.round(zipBuffer.length / 1024 / 1024)} MB). ` +
+          `Maximum allowed size is ${MAX_ZIP_SIZE_BYTES / 1024 / 1024} MB.`
+      )
+    );
   }
 
   const extractResult = extractZipEntries(zipBuffer);
@@ -94,13 +90,33 @@ export function detectSkillsFromZip({
   }
   if (totalDecompressedSizeBytes > MAX_DECOMPRESSED_SIZE_BYTES) {
     const sizeMb = Math.round(totalDecompressedSizeBytes / 1024 / 1024);
-    return new Err({
-      type: "invalid_zip",
-      message:
+    return new Err(
+      new Error(
         `Total decompressed size too large (${sizeMb} MB). ` +
-        `Maximum allowed is ${MAX_DECOMPRESSED_SIZE_BYTES / 1024 / 1024} MB.`,
-    });
+          `Maximum allowed is ${MAX_DECOMPRESSED_SIZE_BYTES / 1024 / 1024} MB.`
+      )
+    );
   }
+
+  return new Ok({ entries: rawEntries, zip });
+}
+
+/**
+ * Detects Agent Skills (https://agentskills.io/specification) in a ZIP archive
+ * by scanning for SKILL.md files. Returns ZipDetectedSkill[] where each
+ * attachment carries an `originalEntryName` (the raw zip path before prefix
+ * stripping), analogous to the `sha` in GitHubDetectedSkillAttachment.
+ */
+export function detectSkillsFromZip({
+  zipBuffer,
+}: {
+  zipBuffer: Buffer;
+}): Result<ZipDetectedSkill[], Error> {
+  const openResult = openAndValidateZip(zipBuffer);
+  if (openResult.isErr()) {
+    return openResult;
+  }
+  const { entries: rawEntries, zip } = openResult.value;
 
   const entries = stripCommonZipPrefix(rawEntries);
   // Map stripped path -> entry (preserves originalEntryName) for adm-zip lookup.
@@ -111,14 +127,14 @@ export function detectSkillsFromZip({
 
   const fileEntries = entries
     .filter((e) => !e.isDirectory)
-    .map((e) => ({ path: e.path, isFile: true, sizeBytes: e.sizeBytes }));
+    .map((e) => ({ path: e.path, sizeBytes: e.sizeBytes }));
 
   const skillDirs = findSkillDirectories(fileEntries);
   if (skillDirs.length === 0) {
     return new Ok([]);
   }
 
-  const allSkills: DetectedSkill[] = [];
+  const allSkills: ZipDetectedSkill[] = [];
 
   for (const skillDir of skillDirs) {
     const skillMdEntry = entryByPath.get(skillDir.skillMdPath);
@@ -139,14 +155,48 @@ export function detectSkillsFromZip({
     }
 
     const parsed = parseSkillMarkdown(contentResult.value);
+
+    // Enrich each attachment with originalEntryName so the import flow can
+    // extract content without re-parsing the zip structure.
+    const baseAttachments = collectAttachments(fileEntries, skillDir);
+    const attachments: ZipDetectedSkillAttachment[] = baseAttachments.map(
+      (a) => ({
+        ...a,
+        originalEntryName: entryByPath.get(a.path)?.originalEntryName ?? a.path,
+      })
+    );
+
     allSkills.push({
       name: parsed.name,
       skillMdPath: skillDir.skillMdPath,
       description: parsed.description,
       instructions: parsed.instructions,
-      attachments: collectAttachments(fileEntries, skillDir),
+      attachments,
     });
   }
 
   return new Ok(allSkills.filter((s) => s.name.length > 0));
+}
+
+/**
+ * Returns a reader function that reads a zip entry's raw bytes by
+ * originalEntryName. Open this once per buffer; pass it to the import flow
+ * to extract attachment content without re-parsing the zip structure.
+ */
+export function createZipAttachmentReader(
+  zipBuffer: Buffer
+): Result<(originalEntryName: string) => Result<Buffer, Error>, Error> {
+  const openResult = openAndValidateZip(zipBuffer);
+  if (openResult.isErr()) {
+    return openResult;
+  }
+  const { zip } = openResult.value;
+
+  return new Ok((originalEntryName: string): Result<Buffer, Error> => {
+    const entry = zip.getEntry(originalEntryName);
+    if (!entry) {
+      return new Err(new Error(`ZIP entry not found: "${originalEntryName}"`));
+    }
+    return new Ok(entry.getData());
+  });
 }

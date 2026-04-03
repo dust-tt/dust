@@ -1,7 +1,7 @@
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { SkillOverviewTable } from "@app/components/poke/skills/SkillOverviewTable";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
@@ -21,7 +21,7 @@ import { JsonViewer } from "@textea/json-viewer";
 
 export function SkillDetailsPage() {
   const owner = useWorkspace();
-  useSetPokePageTitle(`${owner.name} - Skill`);
+  useDocumentTitle(`Poke - ${owner.name} - Skill`);
 
   const sId = useRequiredPathParam("sId");
   const { isDark } = useTheme();

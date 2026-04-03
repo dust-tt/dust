@@ -112,8 +112,13 @@ export const FEEDBACK_DISTRIBUTION_LEGEND = [
   { key: "negative", label: "Negative" },
 ] as const;
 
-export const USER_MESSAGE_ORIGIN_LABELS: Record<
+export type AnalyticsVisibleOrigin = Exclude<
   UserMessageOrigin,
+  "reinforced_agent_notification" | "reinforcement"
+>;
+
+export const USER_MESSAGE_ORIGIN_LABELS: Record<
+  AnalyticsVisibleOrigin,
   { label: string; color: string }
 > = {
   web: { label: "Conversation", color: buildColorClass("blue", 500) },

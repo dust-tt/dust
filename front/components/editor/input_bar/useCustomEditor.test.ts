@@ -18,6 +18,8 @@ describe("buildEditorExtensions", () => {
           whiteListedProviders: null,
           defaultEmbeddingProvider: null,
           metadata: null,
+          metronomeCustomerId: null,
+          sharingPolicy: "all_scopes",
         } satisfies WorkspaceType,
         conversationId: "cId",
         onInlineText: () => {},

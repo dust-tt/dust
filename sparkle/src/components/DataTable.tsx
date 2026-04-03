@@ -1278,29 +1278,36 @@ DataTable.Caption = function Caption({
   );
 };
 
-export function createSelectionColumn<TData>(): ColumnDef<TData> {
+interface SelectionColumnOptions {
+  hideSelectAll?: boolean;
+}
+
+export function createSelectionColumn<TData>({
+  hideSelectAll = false,
+}: SelectionColumnOptions = {}): ColumnDef<TData> {
   return {
     id: "select",
     enableSorting: false,
     enableHiding: false,
-    header: ({ table }) => (
-      <Checkbox
-        size="xs"
-        checked={
-          table.getIsAllRowsSelected()
-            ? true
-            : table.getIsSomeRowsSelected()
-              ? "partial"
-              : false
-        }
-        onCheckedChange={(state) => {
-          if (state === "indeterminate") {
-            return;
+    header: ({ table }) =>
+      !hideSelectAll ? (
+        <Checkbox
+          size="xs"
+          checked={
+            table.getIsAllRowsSelected()
+              ? true
+              : table.getIsSomeRowsSelected()
+                ? "partial"
+                : false
           }
-          table.toggleAllRowsSelected(state);
-        }}
-      />
-    ),
+          onCheckedChange={(state) => {
+            if (state === "indeterminate") {
+              return;
+            }
+            table.toggleAllRowsSelected(state);
+          }}
+        />
+      ) : null,
     cell: ({ row }) => (
       <div className="s-flex s-h-full s-w-full s-items-center">
         <Checkbox

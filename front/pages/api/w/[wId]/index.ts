@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { updateWorkOSOrganizationName } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
@@ -61,6 +62,10 @@ const WorkspaceVoiceTranscriptionUpdateBodySchema = t.type({
   allowVoiceTranscription: t.boolean,
 });
 
+const WorkspaceEmailAgentsUpdateBodySchema = t.type({
+  allowEmailAgents: t.boolean,
+});
+
 const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceAllowedDomainUpdateBodySchema,
   WorkspaceBatchDomainUpdateBodySchema,
@@ -70,6 +75,7 @@ const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceWorkOSUpdateBodySchema,
   WorkspaceInteractiveContentSharingUpdateBodySchema,
   WorkspaceVoiceTranscriptionUpdateBodySchema,
+  WorkspaceEmailAgentsUpdateBodySchema,
 ]);
 
 async function handler(
@@ -168,15 +174,25 @@ async function handler(
         await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;
 
-        // if public sharing is disabled, downgrade share scope of all public files to workspace
+        // if public sharing is disabled, downgrade share scope of all public files
         if (!body.allowContentCreationFileSharing) {
-          await FileResource.revokePublicSharingInWorkspace(auth);
+          await FileResource.revokePublicSharingInWorkspace(auth, {
+            newPolicy: "workspace_and_emails",
+          });
         }
       } else if ("allowVoiceTranscription" in body) {
         const previousMetadata = owner.metadata ?? {};
         const newMetadata = {
           ...previousMetadata,
           allowVoiceTranscription: body.allowVoiceTranscription,
+        };
+        await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+        owner.metadata = newMetadata;
+      } else if ("allowEmailAgents" in body) {
+        const previousMetadata = owner.metadata ?? {};
+        const newMetadata = {
+          ...previousMetadata,
+          allowEmailAgents: body.allowEmailAgents,
         };
         await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;

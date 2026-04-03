@@ -11,6 +11,7 @@ export const NOTIFICATION_DELAY_OPTIONS = [
   "30_minutes",
   "1_hour",
   "daily",
+  "weekly",
 ] as const;
 
 export type NotificationPreferencesDelay =
@@ -18,31 +19,26 @@ export type NotificationPreferencesDelay =
 
 type NotificationDelayAmountConfig = {
   amount: number;
-  unit: "minutes" | "hours" | "days";
+  unit: "minutes" | "hours" | "days" | "weeks";
 };
-
-type NotificationDelayCronConfig = { cron: string };
-
-type NotificationDelayConfig =
-  | NotificationDelayAmountConfig
-  | NotificationDelayCronConfig;
 
 /**
  * Maps delay option keys to their time configurations.
  */
 export const NOTIFICATION_PREFERENCES_DELAYS: Record<
   NotificationPreferencesDelay,
-  NotificationDelayConfig
+  NotificationDelayAmountConfig
 > = {
   "5_minutes": { amount: 5, unit: "minutes" },
   "15_minutes": { amount: 15, unit: "minutes" },
   "30_minutes": { amount: 30, unit: "minutes" },
   "1_hour": { amount: 1, unit: "hours" },
-  daily: { cron: "0 6 * * *" }, // Every day at 6am
+  daily: { amount: 1, unit: "days" },
+  weekly: { amount: 1, unit: "weeks" },
 };
 
 export const DEFAULT_NOTIFICATION_DELAY: NotificationPreferencesDelay =
-  isDevelopment() ? "5_minutes" : "1_hour";
+  isDevelopment() ? "5_minutes" : "weekly";
 
 export const isNotificationPreferencesDelay = (
   value: unknown
@@ -121,8 +117,16 @@ export const PROJECT_ADDED_AS_MEMBER_TRIGGER_ID =
   "project-added-as-member" as const;
 export const PROJECT_NEW_CONVERSATION_TRIGGER_ID =
   "project-new-conversation" as const;
+export const AGENT_SUGGESTIONS_READY_TRIGGER_ID =
+  "agent-suggestions-ready" as const;
+export const PROVIDER_CREDENTIALS_HEALTH_UPDATED_TRIGGER_ID =
+  "provider-credentials-health-updated" as const;
+export const PROVIDER_CREDENTIALS_HEALTH_UPDATED_TAG =
+  "provider-credentials-health" as const;
 
 export type WorkflowTriggerId =
   | typeof CONVERSATION_UNREAD_TRIGGER_ID
   | typeof PROJECT_ADDED_AS_MEMBER_TRIGGER_ID
-  | typeof PROJECT_NEW_CONVERSATION_TRIGGER_ID;
+  | typeof PROJECT_NEW_CONVERSATION_TRIGGER_ID
+  | typeof AGENT_SUGGESTIONS_READY_TRIGGER_ID
+  | typeof PROVIDER_CREDENTIALS_HEALTH_UPDATED_TRIGGER_ID;

@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import type { DataSourceViewCategory } from "./api/public/spaces";
 import type { ContentNodeWithParent } from "./connectors/connectors_api";
 import type {
@@ -8,6 +10,9 @@ import type {
 import type { ModelId } from "./shared/model_id";
 import type { EditedByUser } from "./user";
 
+/**
+ * @swaggerschema DatasourceView (swagger_schemas.ts), PrivateDataSourceView (swagger_private_schemas.ts)
+ */
 export interface DataSourceViewType {
   category: DataSourceViewCategory;
   createdAt: number;
@@ -45,12 +50,17 @@ export type DataSourceViewSelectionConfiguration = {
   tagsFilter: TagsFilter;
 };
 
-export type TagsFilterMode = "custom" | "auto";
-export type TagsFilter = {
-  in: string[];
-  not: string[];
-  mode: TagsFilterMode;
-} | null;
+const TAGS_FILTER_MODES = ["custom", "auto"] as const;
+export type TagsFilterMode = (typeof TAGS_FILTER_MODES)[number];
+
+export const TagsFilterSchema = z
+  .object({
+    in: z.array(z.string()),
+    not: z.array(z.string()),
+    mode: z.enum(TAGS_FILTER_MODES),
+  })
+  .nullable();
+export type TagsFilter = z.infer<typeof TagsFilterSchema>;
 
 export function defaultSelectionConfiguration(
   dataSourceView: DataSourceViewType

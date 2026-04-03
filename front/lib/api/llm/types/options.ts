@@ -105,6 +105,7 @@ export type LLMParameters = {
   responseFormat?: string | null;
   metaData?: Record<string, unknown>;
   temperature?: number | null;
+  omittedThinking?: boolean;
 } & LLMTraceCustomization;
 
 export type LLMParameterOverwrites = Partial<
@@ -128,4 +129,14 @@ export interface LLMStreamParameters {
    * tools defined in the `specifications` array.
    */
   forceToolCall?: ForceToolCall;
+  omittedThinking?: boolean;
 }
+
+export interface LLMStreamMetadata {
+  conversationId: string;
+}
+
+export type LLMParametersWithoutConversation = Omit<
+  LLMStreamParameters,
+  "conversation"
+>;

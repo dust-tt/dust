@@ -2,18 +2,20 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import {
-  getLargeWhitelistedModel,
-  getSmallWhitelistedModel,
-} from "@app/types/assistant/assistant";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
 import {
-  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_4_6_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
-import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import type { UserType, WorkspaceType } from "@app/types/user";
+import { GEMINI_3_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
+import { MISTRAL_LARGE_MODEL_ID } from "@app/types/assistant/models/mistral";
+import { GPT_5_4_MODEL_ID } from "@app/types/assistant/models/openai";
+import type {
+  ModelConfigurationType,
+  ModelIdType,
+} from "@app/types/assistant/models/types";
+import { GROK_4_MODEL_ID } from "@app/types/assistant/models/xai";
+import type { UserType } from "@app/types/user";
 import uniqueId from "lodash/uniqueId";
 
 /**
@@ -59,28 +61,44 @@ export function transformAgentConfigurationToFormData(
   };
 }
 
+const PREFERRED_LARGE_MODEL_IDS: ModelIdType[] = [
+  CLAUDE_SONNET_4_6_MODEL_ID,
+  GPT_5_4_MODEL_ID,
+  GEMINI_3_PRO_MODEL_ID,
+  MISTRAL_LARGE_MODEL_ID,
+  GROK_4_MODEL_ID,
+];
+
+/**
+ * Returns the best available model from the user's allowed models, matching
+ * against a preferred order. Falls back to any large model, then any model,
+ * then a hardcoded default.
+ */
+export function getDefaultModel(
+  availableModels: ModelConfigurationType[]
+): ModelConfigurationType {
+  for (const modelId of PREFERRED_LARGE_MODEL_IDS) {
+    const model = availableModels.find((m) => m.modelId === modelId);
+    if (model) {
+      return model;
+    }
+  }
+
+  const fallbackModel =
+    availableModels.find((m) => m.largeModel) ??
+    availableModels.find((m) => !m.largeModel);
+
+  return fallbackModel ?? CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
+}
+
 export function getDefaultAgentFormData({
   user,
-  owner,
-  hasSidekick,
 }: {
   user: UserType;
-  owner: WorkspaceType;
-  hasSidekick?: boolean;
 }): AgentBuilderFormData {
-  const preferredModel = hasSidekick
-    ? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG
-    : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
-  const fallbackModel = hasSidekick
-    ? getSmallWhitelistedModel(owner)
-    : getLargeWhitelistedModel(owner);
-
-  // We use the preferred model unless the provider is deactivated for the workspace but we have a fallback model.
-  // (We have no fallback model if all providers are deactivated which can be done in the workspace settings).
-  const modelConfiguration =
-    !isProviderWhitelisted(owner, preferredModel.providerId) && fallbackModel
-      ? fallbackModel
-      : preferredModel;
+  // Static fallback — overridden by the useEffect in AgentBuilder once available
+  // models are loaded.
+  const defaultModel = CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
 
   return {
     agentSettings: {
@@ -96,11 +114,11 @@ export function getDefaultAgentFormData({
     instructions: "",
     generationSettings: {
       modelSettings: {
-        modelId: modelConfiguration.modelId,
-        providerId: modelConfiguration.providerId,
+        modelId: defaultModel.modelId,
+        providerId: defaultModel.providerId,
       },
       temperature: 0.7,
-      reasoningEffort: modelConfiguration.defaultReasoningEffort,
+      reasoningEffort: defaultModel.defaultReasoningEffort,
       responseFormat: undefined,
     },
     actions: [],
@@ -119,32 +137,16 @@ export function getDefaultAgentFormData({
  */
 export function transformTemplateToFormData(
   template: FetchAgentTemplateResponse,
-  user: UserType,
-  owner: WorkspaceType,
-  hasFeature: (flag: WhitelistableFeature | null | undefined) => boolean
+  user: UserType
 ): AgentBuilderFormData {
-  const hasSidekickAccess =
-    hasFeature("agent_builder_copilot") &&
-    (owner.role === "admin" ||
-      (hasFeature("agent_builder_copilot_builders") &&
-        owner.role === "builder"));
   const defaultFormData = getDefaultAgentFormData({
     user,
-    owner,
-    hasSidekick: hasSidekickAccess,
   });
 
   return {
     ...defaultFormData,
-    // Don't constrain sidekick with preset instructions when the user has sidekick access.
-    instructions: hasSidekickAccess
-      ? defaultFormData.instructions
-      : (template.presetInstructions ?? defaultFormData.instructions),
     agentSettings: {
       ...defaultFormData.agentSettings,
-      name: hasSidekickAccess
-        ? defaultFormData.agentSettings.name
-        : (template.handle ?? defaultFormData.agentSettings.name),
       description:
         template.userFacingDescription ??
         defaultFormData.agentSettings.description,

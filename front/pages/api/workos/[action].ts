@@ -1,3 +1,119 @@
+/**
+ * @swagger
+ * /api/workos/login:
+ *   get:
+ *     summary: Initiate WorkOS login
+ *     description: Redirects to WorkOS AuthKit for authentication. Supports PKCE flow for extensions.
+ *     tags:
+ *       - Private Authentication
+ *     security: []
+ *     parameters:
+ *       - in: query
+ *         name: redirect_uri
+ *         required: false
+ *         description: Custom redirect URI (used by extensions for PKCE flow)
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: code_challenge
+ *         required: false
+ *         description: PKCE code challenge
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: code_challenge_method
+ *         required: false
+ *         description: PKCE code challenge method (S256)
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Login page HTML
+ *       302:
+ *         description: Redirect to WorkOS authorization URL
+ *       400:
+ *         description: Bad request
+ * /api/workos/authenticate:
+ *   post:
+ *     summary: Exchange code or refresh token
+ *     description: Exchanges an authorization code or refresh token for access tokens via WorkOS.
+ *     tags:
+ *       - Private Authentication
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               code:
+ *                 type: string
+ *               grant_type:
+ *                 type: string
+ *                 enum: [refresh_token]
+ *               refresh_token:
+ *                 type: string
+ *               code_verifier:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Authentication result with tokens
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 accessToken:
+ *                   type: string
+ *                 refreshToken:
+ *                   type: string
+ *                 user:
+ *                   type: object
+ *                 expiresIn:
+ *                   type: integer
+ *                   description: Token expiry in seconds
+ *                 expirationDate:
+ *                   type: integer
+ *                   description: Token expiry date in milliseconds
+ *       400:
+ *         description: Invalid request
+ * /api/workos/revoke-session:
+ *   post:
+ *     summary: Revoke a session
+ *     description: Revokes a WorkOS session by session ID. Used by the Chrome extension for logout.
+ *     tags:
+ *       - Private Authentication
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - session_id
+ *             properties:
+ *               session_id:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Session revoked successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       400:
+ *         description: Invalid session_id
+ */
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  emitAuditLogEventDirect,
+} from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import {
@@ -8,15 +124,20 @@ import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { isOrganizationSelectionRequiredError } from "@app/lib/api/workos/types";
 import type { SessionCookie } from "@app/lib/api/workos/user";
-import { getSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { DUST_HAS_SESSION } from "@app/lib/cookies";
+import { fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { getClientIp } from "@app/lib/utils/request";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { extractUTMParams } from "@app/lib/utils/utm";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
 import { isDevelopment } from "@app/types/shared/env";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { validateRelativePath } from "@app/types/shared/utils/url_utils";
 import { GenericServerException, OauthException } from "@workos-inc/node";
@@ -106,7 +227,6 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       : null;
     // Extract UTM params from query to preserve through OAuth flow
     const utmParams = extractUTMParams(req.query);
-
     const state = {
       ...(sanitizedReturnTo ? { returnTo: sanitizedReturnTo } : {}),
       ...(organizationIdToUse ? { organizationId: organizationIdToUse } : {}),
@@ -162,7 +282,15 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
           refreshToken: refresh_token,
           clientId: config.getWorkOSClientId(),
         });
-      return res.status(200).json(result);
+
+      const jwtPayload = JSON.parse(
+        Buffer.from(result.accessToken.split(".")[1], "base64").toString()
+      );
+
+      return res.status(200).json({
+        ...result,
+        expirationDate: jwtPayload.exp * 1000,
+      });
     } catch (error) {
       if (error instanceof OauthException) {
         return res
@@ -198,7 +326,11 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
       ? jwtPayload.exp - Math.floor(Date.now() / 1000)
       : undefined;
 
-    return res.status(200).json({ ...authResult, expiresIn });
+    return res.status(200).json({
+      ...authResult,
+      expiresIn,
+      expirationDate: jwtPayload.exp * 1000,
+    });
   } catch (error) {
     if (error instanceof OauthException) {
       return res
@@ -273,6 +405,8 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     ? JSON.parse(Buffer.from(state, "base64").toString("utf-8"))
     : {};
 
+  let callbackWorkspaceId: string | undefined;
+
   try {
     const {
       user,
@@ -301,6 +435,8 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
         multiRegionsConfig.getCurrentRegion(),
       workspaceId: decodedPayload["https://dust.tt/workspaceId"],
     };
+
+    callbackWorkspaceId = sessionCookie.workspaceId;
 
     const sealedCookie = await sealData(sessionCookie, {
       password: config.getWorkOSCookiePassword(),
@@ -396,8 +532,9 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       const targetRegionInfo = multiRegionsConfig.getOtherRegionInfo();
       const params = new URLSearchParams();
 
-      // Use sanitizedReturnTo if available, otherwise default to "/"
-      const returnTo = sanitizedReturnTo ?? "/";
+      // Use sanitizedReturnTo if available, otherwise default to "/api/login"
+      // so that the target region creates the user in its database.
+      const returnTo = sanitizedReturnTo ?? "/api/login";
 
       params.set("returnTo", returnTo);
       if (organizationId) {
@@ -459,6 +596,30 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     redirectTo(res, appendUtmToUrl("/api/login"));
   } catch (error) {
     logger.error({ error }, "Error during WorkOS callback");
+
+    // Emit user.login_failed if workspace context is available.
+    // Login failures without a workspace context are not audit-logged — WorkOS captures those.
+    if (callbackWorkspaceId) {
+      const loginFailedAuth =
+        await Authenticator.internalAdminForWorkspace(callbackWorkspaceId);
+      void emitAuditLogEvent({
+        auth: loginFailedAuth,
+        action: "user.login_failed",
+        targets: [
+          buildAuditLogTarget(
+            "workspace",
+            loginFailedAuth.getNonNullableWorkspace()
+          ),
+        ],
+        metadata: {
+          reason: normalizeError(error).message,
+          authenticationMethod: "workos",
+        },
+      });
+    }
+    // Login failures without a workspace context are not audit-logged.
+    // WorkOS captures these on their side.
+
     getStatsDClient().increment("login.callback.error", 1);
     redirectTo(res, `/login-error?type=workos-callback`);
   }
@@ -468,6 +629,30 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   const session = await getSession(req, res);
 
   if (session && session.type === "workos") {
+    // Emit audit log before revoking the session.
+    if (session.workspaceId) {
+      const workspace = await WorkspaceResource.fetchById(session.workspaceId);
+      if (workspace) {
+        const user = await fetchUserFromSession(session);
+        void emitAuditLogEventDirect({
+          workspace: renderLightWorkspaceType({ workspace }),
+          action: "user.logout",
+          actor: {
+            type: "user",
+            id: user?.sId ?? "unknown",
+            name: user?.name ?? session.user.name,
+          },
+          targets: [
+            buildAuditLogTarget("user", {
+              sId: user?.sId ?? "unknown",
+              name: user?.name ?? session.user.name,
+            }),
+          ],
+          context: { location: getClientIp(req) },
+        });
+      }
+    }
+
     // Logout from WorkOS
     try {
       await getWorkOS().userManagement.revokeSession({

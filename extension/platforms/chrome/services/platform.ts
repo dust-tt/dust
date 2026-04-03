@@ -1,8 +1,8 @@
-import { ChromeAuthService } from "@extension/platforms/chrome/services/auth";
-import { ChromeBrowserMessagingService } from "@extension/platforms/chrome/services/browser_messaging";
-import { ChromeCaptureService } from "@extension/platforms/chrome/services/capture";
 import { ChromeMcpService } from "@extension/platforms/chrome/services/mcp";
-import { ChromeStorageService } from "@extension/platforms/chrome/services/storage";
+import { ChromeFirefoxAuthService } from "@extension/shared/services/browser_auth";
+import { ChromeFirefoxCaptureService } from "@extension/shared/services/browser_capture";
+import { ChromeFirefoxBrowserMessagingService } from "@extension/shared/services/browser_messaging";
+import { ChromeFirefoxStorageService } from "@extension/shared/services/browser_storage";
 import { PlatformService } from "@extension/shared/services/platform";
 
 export interface PendingUpdate {
@@ -12,19 +12,23 @@ export interface PendingUpdate {
 
 export class ChromePlatformService extends PlatformService {
   constructor() {
-    const messaging = new ChromeBrowserMessagingService();
-    const captureService = new ChromeCaptureService();
+    const messaging = new ChromeFirefoxBrowserMessagingService();
+    const captureService = new ChromeFirefoxCaptureService();
     const mcpService = new ChromeMcpService();
     mcpService.setCaptureService(captureService);
 
     super(
       "chrome",
-      ChromeAuthService,
-      new ChromeStorageService(),
+      ChromeFirefoxAuthService,
+      new ChromeFirefoxStorageService(),
       captureService,
       messaging,
       mcpService
     );
+  }
+
+  captureVisibleTab(): Promise<string> {
+    return chrome.tabs.captureVisibleTab();
   }
 
   // Chrome specific helpers.

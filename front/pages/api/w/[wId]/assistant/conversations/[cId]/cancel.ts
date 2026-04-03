@@ -1,10 +1,67 @@
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/cancel:
+ *   post:
+ *     summary: Cancel message generation
+ *     description: Cancels the generation of messages in a conversation.
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - action
+ *               - messageIds
+ *             properties:
+ *               action:
+ *                 type: string
+ *                 enum: [cancel, gracefully_stop]
+ *               messageIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       401:
+ *         description: Unauthorized
+ */
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { cancelMessageGenerationEvent } from "@app/lib/api/assistant/pubsub";
+import {
+  cancelMessageGenerationEvent,
+  gracefullyStopAgentLoop,
+} from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -14,7 +71,7 @@ export type PostMessageEventResponseBody = {
   success: true;
 };
 const PostMessageEventBodySchema = t.type({
-  action: t.literal("cancel"),
+  action: t.union([t.literal("cancel"), t.literal("gracefully_stop")]),
   messageIds: t.array(t.string),
 });
 
@@ -57,10 +114,25 @@ async function handler(
           },
         });
       }
-      await cancelMessageGenerationEvent(auth, {
-        messageIds: bodyValidation.right.messageIds,
-        conversationId,
-      });
+      const { action, messageIds } = bodyValidation.right;
+
+      switch (action) {
+        case "cancel":
+          await cancelMessageGenerationEvent(auth, {
+            messageIds,
+            conversationId,
+          });
+          break;
+        case "gracefully_stop":
+          await gracefullyStopAgentLoop(auth, {
+            messageIds,
+            conversationId,
+          });
+          break;
+        default:
+          assertNever(action);
+      }
+
       return res.status(200).json({ success: true });
 
     default:

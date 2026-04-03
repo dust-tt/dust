@@ -36,6 +36,8 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   agent_sidekick: "user",
   project_butler: "user",
   project_kickoff: "user",
+  reinforced_agent_notification: "user",
+  reinforcement: "user",
 };
 
 export const USER_USAGE_ORIGINS = Object.keys(

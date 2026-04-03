@@ -1,15 +1,16 @@
 // This endpoint is redirected (307) to /api/sse/v1/w/[wId]/assistant/conversations/[cId]/events
 // via middleware. The /api/sse/ prefix allows the ingress to route SSE traffic to front-sse pods.
 
+import { isConversationEventAllowedForAuth } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getConversationEvents } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { initSSEResponse } from "@app/lib/api/sse";
 import { addBackwardCompatibleAgentMessageFields } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { ConversationEventType } from "@dust-tt/client";
@@ -101,12 +102,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      res.writeHead(200, {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      });
-      res.flushHeaders();
+      initSSEResponse(res);
 
       // Create an AbortController to handle client disconnection
       const controller = new AbortController();
@@ -126,8 +122,21 @@ async function handler(
       let backpressureCount = 0;
 
       for await (const event of eventStream) {
-        // Butler suggestions are internal events, not exposed via the public API.
-        if (event.data.type === "butler_suggestion_created") {
+        // Butler suggestions and internal events are not exposed via the public API.
+        if (
+          event.data.type === "butler_suggestion_created" ||
+          event.data.type === "butler_done" ||
+          event.data.type === "butler_thinking" ||
+          event.data.type === "user_message_promoted"
+        ) {
+          continue;
+        }
+
+        // Some events are targetted toward a specific user.
+        const isAllowed = await isConversationEventAllowedForAuth(auth, {
+          event: event.data,
+        });
+        if (!isAllowed) {
           continue;
         }
 

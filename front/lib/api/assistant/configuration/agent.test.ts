@@ -10,7 +10,7 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -47,6 +47,7 @@ describe("createAgentConfiguration with pending agent", () => {
       requestedSpaceIds: [],
       tags: [],
       editors: [user.toJSON()],
+      authorId: user.id,
     });
 
     expect(result.isOk()).toBe(true);
@@ -91,6 +92,7 @@ describe("createAgentConfiguration with pending agent", () => {
       requestedSpaceIds: [],
       tags: [],
       editors: [user.toJSON()],
+      authorId: user.id,
     });
 
     expect(result.isOk()).toBe(true);
@@ -140,6 +142,7 @@ describe("createAgentConfiguration with pending agent", () => {
       requestedSpaceIds: [],
       tags: [],
       editors: [user.toJSON()],
+      authorId: user.id,
     });
 
     expect(result.isErr()).toBe(true);
@@ -177,6 +180,7 @@ describe("createAgentConfiguration with pending agent", () => {
       requestedSpaceIds: [],
       tags: [],
       editors: [user.toJSON()],
+      authorId: user.id,
     });
 
     expect(result.isOk()).toBe(true);
@@ -232,6 +236,7 @@ describe("createAgentConfiguration with pending agent", () => {
       requestedSpaceIds: [],
       tags: [],
       editors: [user.toJSON()],
+      authorId: user.id,
     });
 
     expect(result.isOk()).toBe(true);

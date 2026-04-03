@@ -1,3 +1,120 @@
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/agent_configurations:
+ *   get:
+ *     summary: List agent configurations
+ *     description: Returns all agent configurations in the workspace.
+ *     tags:
+ *       - Private Agents
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: view
+ *         required: false
+ *         description: Filter agents by view
+ *         schema:
+ *           type: string
+ *           enum: [all, list, favorites, published, admin_internal, global, workspace]
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         description: Maximum number of results to return
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: withUsage
+ *         required: false
+ *         description: Include usage statistics
+ *         schema:
+ *           type: string
+ *           enum: ["true"]
+ *       - in: query
+ *         name: withAuthors
+ *         required: false
+ *         description: Include recent authors
+ *         schema:
+ *           type: string
+ *           enum: ["true"]
+ *       - in: query
+ *         name: withFeedbacks
+ *         required: false
+ *         description: Include feedback counts
+ *         schema:
+ *           type: string
+ *           enum: ["true"]
+ *       - in: query
+ *         name: withEditors
+ *         required: false
+ *         description: Include editors list
+ *         schema:
+ *           type: string
+ *           enum: ["true"]
+ *       - in: query
+ *         name: sort
+ *         required: false
+ *         description: Sort order
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 agentConfigurations:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/PrivateLightAgentConfiguration'
+ *       401:
+ *         description: Unauthorized
+ *   post:
+ *     summary: Create an agent configuration
+ *     description: Creates a new agent configuration in the workspace.
+ *     tags:
+ *       - Private Agents
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - assistant
+ *             properties:
+ *               assistant:
+ *                 type: object
+ *                 description: Agent configuration to create
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 agentConfiguration:
+ *                   $ref: '#/components/schemas/PrivateLightAgentConfiguration'
+ *       401:
+ *         description: Unauthorized
+ */
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type {
   MCPServerConfigurationType,
@@ -33,27 +150,32 @@ import {
   GetAgentConfigurationsQuerySchema,
   PostOrPatchAgentConfigurationRequestBodySchema,
 } from "@app/types/api/internal/agent_configuration";
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-} from "@app/types/assistant/agent";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { LightAgentConfigurationSchema } from "@app/types/assistant/agent";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import keyBy from "lodash/keyBy";
 import omit from "lodash/omit";
 import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-export type GetAgentConfigurationsResponseBody = {
-  agentConfigurations: LightAgentConfigurationType[];
-};
-export type PostAgentConfigurationResponseBody = {
-  agentConfiguration: LightAgentConfigurationType;
-};
+export const GetAgentConfigurationsResponseBodySchema = z.object({
+  agentConfigurations: z.array(LightAgentConfigurationSchema),
+});
+export type GetAgentConfigurationsResponseBody = z.infer<
+  typeof GetAgentConfigurationsResponseBodySchema
+>;
+
+export const PostAgentConfigurationResponseBodySchema = z.object({
+  agentConfiguration: LightAgentConfigurationSchema,
+});
+export type PostAgentConfigurationResponseBody = z.infer<
+  typeof PostAgentConfigurationResponseBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,
@@ -71,20 +193,19 @@ async function handler(
   switch (req.method) {
     case "GET":
       // extract the view from the query parameters
-      const queryValidation = GetAgentConfigurationsQuerySchema.decode({
+      const queryValidation = GetAgentConfigurationsQuerySchema.safeParse({
         ...req.query,
         limit:
           typeof req.query.limit === "string"
             ? parseInt(req.query.limit, 10)
             : undefined,
       });
-      if (isLeft(queryValidation)) {
-        const pathError = reporter.formatValidationErrors(queryValidation.left);
+      if (!queryValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid query parameters: ${pathError}`,
+            message: `Invalid query parameters: ${queryValidation.error.message}`,
           },
         });
       }
@@ -97,7 +218,7 @@ async function handler(
         withFeedbacks,
         withEditors,
         sort,
-      } = queryValidation.right;
+      } = queryValidation.data;
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       let viewParam = view ? view : "all";
       // @ts-expect-error: added for backwards compatibility
@@ -215,21 +336,20 @@ async function handler(
         });
       }
       const bodyValidation =
-        PostOrPatchAgentConfigurationRequestBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+        PostOrPatchAgentConfigurationRequestBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${bodyValidation.error.message}`,
           },
         });
       }
 
       const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
         auth,
-        assistant: bodyValidation.right.assistant,
+        assistant: bodyValidation.data.assistant,
       });
 
       if (agentConfigurationRes.isErr()) {
@@ -270,10 +390,12 @@ export async function createOrUpgradeAgentConfiguration({
   auth,
   assistant,
   agentConfigurationId,
+  authorId,
 }: {
   auth: Authenticator;
   assistant: PostOrPatchAgentConfigurationRequestBody["assistant"];
   agentConfigurationId?: string;
+  authorId?: ModelId;
 }): Promise<Result<AgentConfigurationType, Error>> {
   const { actions } = assistant;
 
@@ -369,6 +491,13 @@ export async function createOrUpgradeAgentConfiguration({
     );
   }
 
+  const resolvedAuthorId = authorId ?? auth.user()?.id;
+  if (!resolvedAuthorId) {
+    return new Err(
+      new Error("An author must be provided when no user is authenticated.")
+    );
+  }
+
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name: assistant.name,
     description: assistant.description,
@@ -383,6 +512,7 @@ export async function createOrUpgradeAgentConfiguration({
     requestedSpaceIds: allRequestedSpaceIds,
     tags: assistant.tags,
     editors,
+    authorId: resolvedAuthorId,
   });
 
   if (agentConfigurationRes.isErr()) {

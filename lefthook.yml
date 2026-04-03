@@ -13,7 +13,7 @@
 #   LEFTHOOK_EXCLUDE=ggshield-scan,package-lock-check git commit -m "message"
 #
 # Skip only linting/type-checking (front and connectors):
-#   LEFTHOOK_EXCLUDE=front-lint-test-filenames,front-typecheck,front-circular,front-docs-check,biome-format,front-biome-lint,connectors-lint-test-filenames,connectors-typecheck,connectors-biome-lint git commit -m "message"
+#   LEFTHOOK_EXCLUDE=front-lint-test-filenames,front-lint-swagger-annotations,front-typecheck,front-circular,front-docs-check,biome-format,front-biome-lint,connectors-lint-test-filenames,connectors-typecheck,connectors-biome-lint git commit -m "message"
 #
 # Skip only a project:
 #   LEFTHOOK_EXCLUDE=front git commit -m "message"
@@ -72,6 +72,12 @@ pre-commit:
       root: front/
       run: npm run lint:test-filenames
 
+    front-lint-swagger-annotations:
+      tags: front
+      glob: "front/pages/api/v1/**/*.ts"
+      root: front/
+      run: npm run lint:swagger-annotations
+
     front-typecheck:
       tags: front
       glob: "*.{js,jsx,ts,tsx}"
@@ -109,8 +115,6 @@ pre-commit:
 
     # Biome checks (all JS/TS files in monorepo)
     biome:
-      glob: "*.{js,jsx,ts,tsx,css,scss,md}"
-      # Rust projects' .md files are not covered by biome.
-      exclude: "{core,cli/dust-sandbox}/**"
+      glob: "*.{js,jsx,ts,tsx,css,scss}"
       run: npm run biome:lefthook -- {staged_files}
       stage_fixed: true

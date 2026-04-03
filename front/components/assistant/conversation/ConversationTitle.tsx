@@ -1,8 +1,8 @@
-import { ConversationAttachmentsPopover } from "@app/components/assistant/conversation/ConversationAttachmentsPopover";
 import {
   ConversationMenu,
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversation } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
@@ -13,7 +13,13 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getProjectRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types/user";
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
-import { ArrowLeftIcon, Breadcrumbs, Button, MoreIcon } from "@dust-tt/sparkle";
+import {
+  ArrowLeftIcon,
+  AttachmentIcon,
+  Breadcrumbs,
+  Button,
+  MoreIcon,
+} from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { EditConversationTitleDialog } from "./EditConversationTitleDialog";
@@ -21,6 +27,7 @@ import { EditConversationTitleDialog } from "./EditConversationTitleDialog";
 export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const activeConversationId = useActiveConversationId();
   const { user } = useAuth();
+  const { openPanel } = useConversationSidePanelContext();
   const { conversation } = useConversation({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
@@ -92,9 +99,12 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
           currentTitle={currentTitle}
         />
         <div className="flex items-center gap-2">
-          <ConversationAttachmentsPopover
-            conversation={conversation}
-            owner={owner}
+          <Button
+            size="sm"
+            label="Files"
+            icon={AttachmentIcon}
+            variant="ghost"
+            onClick={() => openPanel({ type: "files" })}
           />
           <ConversationMenu
             activeConversationId={activeConversationId}

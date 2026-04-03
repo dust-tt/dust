@@ -66,7 +66,7 @@ import {
   isSearchInputType,
   isWebsearchInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
-import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
+import { MCP_SPECIFICATION } from "@app/lib/actions/utils_ui";
 import {
   AGENT_MEMORY_COMPACT_TOOL_NAME,
   AGENT_MEMORY_EDIT_TOOL_NAME,
@@ -112,7 +112,12 @@ export interface MCPActionDetailsProps {
   action: AgentMCPActionWithOutputType;
   owner: LightWorkspaceType;
   lastNotification: ProgressNotificationContentType | null;
-  messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
+  messageStatus?:
+    | "created"
+    | "succeeded"
+    | "failed"
+    | "cancelled"
+    | "gracefully_stopped";
   displayContext: ActionDetailsDisplayContext;
 }
 
@@ -464,7 +469,7 @@ export function GenericActionDetails({
               <span className="heading-base">Generated Files</span>
               <div className="flex flex-wrap gap-2">
                 {action.generatedFiles
-                  .filter((file) => !file.hidden)
+                  .filter((f) => !f.hidden)
                   .map((file) => {
                     if (isSupportedImageContentType(file.contentType)) {
                       return (

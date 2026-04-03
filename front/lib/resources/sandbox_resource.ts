@@ -1,8 +1,14 @@
+import config from "@app/lib/api/config";
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
+import {
+  recordLifecycleOperation,
+  recordStateDuration,
+} from "@app/lib/api/sandbox/instrumentation";
 import type {
   ExecOptions,
   ExecResult,
+  FileEntry,
   SandboxProvider,
 } from "@app/lib/api/sandbox/provider";
 import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
@@ -10,6 +16,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -22,13 +29,16 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { Op } from "sequelize";
+import streamConsumers from "stream/consumers";
 
 interface EnsureSandboxResult {
-  sandbox: SandboxResource;
   freshlyCreated: boolean;
+  sandbox: SandboxResource;
+  wokeFromSleep: boolean;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -70,14 +80,20 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     },
     { transaction }: { transaction?: Transaction } = {}
   ) {
+    const now = new Date();
     const sandbox = await this.model.create(
       {
         ...blob,
         workspaceId: auth.getNonNullableWorkspace().id,
-        lastActivityAt: new Date(),
+        lastActivityAt: now,
+        statusChangedAt: now,
       },
       { transaction }
     );
+
+    recordLifecycleOperation("create", {
+      workspaceSId: auth.getNonNullableWorkspace().sId,
+    });
 
     return new this(this.model, sandbox.get());
   }
@@ -99,7 +115,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   }
 
   /**
-   * Return conversation sIds that have a sandbox with the given `status` and
+   * Return conversation sIds and workspace ModelIds for sandboxes with the given `status`
    * whose `lastActivityAt` is older than `olderThanMs`. Used by the reaper
    * workflow to identify candidates for sleep/destroy.
    *
@@ -109,7 +125,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     status: SandboxStatus;
     olderThanMs: number;
     limit: number;
-  }): Promise<string[]> {
+  }): Promise<Array<{ conversationId: string; workspaceModelId: ModelId }>> {
     const rows = await this.model.findAll({
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
@@ -122,7 +138,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       include: [
         {
           model: ConversationModel,
-          attributes: ["sId"],
+          attributes: ["sId", "workspaceId"],
           required: true,
         },
       ],
@@ -130,7 +146,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       limit: opts.limit,
     });
 
-    return rows.map((r) => r.conversation.sId);
+    return rows.map((r) => ({
+      conversationId: r.conversation.sId,
+      workspaceModelId: r.conversation.workspaceId,
+    }));
   }
 
   /**
@@ -178,13 +197,30 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   }
 
   async updateStatus(
-    status: SandboxStatus,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<[affectedCount: number]> {
-    if (this.status === status) {
-      return [0];
+    newStatus: SandboxStatus,
+    opts?: {
+      ctx?: { workspaceSId: string };
+      transaction?: Transaction;
     }
-    return this.update({ status }, transaction);
+  ): Promise<void> {
+    const previousStatus = this.status;
+
+    if (previousStatus === newStatus) {
+      return;
+    }
+
+    if (opts?.ctx && this.statusChangedAt) {
+      const durationMs = Date.now() - this.statusChangedAt.getTime();
+      recordStateDuration(previousStatus, durationMs, opts.ctx);
+    }
+
+    await this.update(
+      {
+        status: newStatus,
+        statusChangedAt: new Date(),
+      },
+      opts?.transaction
+    );
   }
 
   async updateLastActivityAt({
@@ -228,7 +264,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       }
 
       if (sandbox.status !== "deleted") {
-        const result = await provider.destroy(sandbox.providerId);
+        const tracingOpts = {
+          workspaceSId: auth.getNonNullableWorkspace().sId,
+        };
+        const result = await provider.destroy(sandbox.providerId, tracingOpts);
         if (result.isErr() && !(result.error instanceof SandboxNotFoundError)) {
           logger.error(
             { sandbox: sandbox.toLogJSON(), error: result.error.message },
@@ -281,6 +320,8 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     );
 
     return this.withLifecycleLock(conversation.sId, async (provider) => {
+      const ctx = { workspaceSId: auth.getNonNullableWorkspace().sId };
+      const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
       const existing = await SandboxResource.fetchByConversationId(
         auth,
         conversation.sId
@@ -291,8 +332,21 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         if (imageResult.isErr()) {
           return imageResult;
         }
+
+        const createConfig = imageResult.value.toCreateConfig();
+
         const createResult = await provider.create(
-          imageResult.value.toCreateConfig()
+          {
+            ...createConfig,
+            envVars: {
+              ...createConfig.envVars,
+              DD_API_KEY: config.getDatadogApiKey() ?? "",
+              DD_HOST: "http-intake.logs.datadoghq.eu",
+              CONVERSATION_ID: conversation.sId,
+              WORKSPACE_ID: auth.getNonNullableWorkspace().sId,
+            },
+          },
+          tracingOpts
         );
         if (createResult.isErr()) {
           return createResult;
@@ -304,23 +358,40 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           status: "running",
         });
 
+        const startTelemetry = await provider.exec(
+          createResult.value.providerId,
+          "systemd-cat -t fluent-bit /opt/fluent-bit/bin/fluent-bit -c /etc/fluent-bit/fluent-bit.conf &",
+          undefined,
+          tracingOpts
+        );
+        if (startTelemetry.isErr()) {
+          logger.warn(
+            { error: startTelemetry.error.message },
+            "Failed to start fluent-bit telemetry"
+          );
+        }
+
         logger.info(
           { sandbox: sandbox.toLogJSON() },
           "Created new sandbox for conversation"
         );
 
-        return new Ok({ sandbox, freshlyCreated: true });
+        return new Ok({ sandbox, freshlyCreated: true, wokeFromSleep: false });
       }
 
       const { status } = existing;
       let freshlyCreated = false;
+      let wokeFromSleep = false;
 
       switch (status) {
         case "running":
           break;
 
         case "sleeping": {
-          const wakeResult = await provider.wake(existing.providerId);
+          const wakeResult = await provider.wake(
+            existing.providerId,
+            tracingOpts
+          );
           if (wakeResult.isErr()) {
             // The sandbox may have been killed by the provider (e.g. lifetime
             // expired). Fall through to recreation instead of propagating the
@@ -333,10 +404,8 @@ export class SandboxResource extends BaseResource<SandboxModel> {
               "Failed to wake sandbox — will recreate"
             );
           } else {
-            logger.info(
-              { sandbox: existing.toLogJSON() },
-              "Woke sleeping sandbox"
-            );
+            wokeFromSleep = true;
+
             break;
           }
         }
@@ -347,14 +416,41 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           if (imageResult.isErr()) {
             return imageResult;
           }
+
+          const createConfig = imageResult.value.toCreateConfig();
+
           const createResult = await provider.create(
-            imageResult.value.toCreateConfig()
+            {
+              ...createConfig,
+              envVars: {
+                ...createConfig.envVars,
+                DD_API_KEY: config.getDatadogApiKey() ?? "",
+                DD_HOST: "http-intake.logs.datadoghq.eu",
+                CONVERSATION_ID: conversation.sId,
+                WORKSPACE_ID: auth.getNonNullableWorkspace().sId,
+              },
+            },
+            tracingOpts
           );
           if (createResult.isErr()) {
             return createResult;
           }
           await existing.update({ providerId: createResult.value.providerId });
           freshlyCreated = true;
+
+          const startTelemetry = await provider.exec(
+            createResult.value.providerId,
+            "systemd-cat -t fluent-bit /opt/fluent-bit/bin/fluent-bit -c /etc/fluent-bit/fluent-bit.conf &",
+            undefined,
+            tracingOpts
+          );
+          if (startTelemetry.isErr()) {
+            logger.warn(
+              { error: startTelemetry.error.message },
+              "Failed to start fluent-bit telemetry"
+            );
+          }
+
           logger.info(
             {
               sandbox: existing.toLogJSON(),
@@ -369,9 +465,16 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           assertNever(status);
       }
 
-      await existing.updateStatus("running");
+      await existing.updateStatus("running", { ctx });
       await existing.updateLastActivityAt();
-      return new Ok({ sandbox: existing, freshlyCreated });
+
+      if (wokeFromSleep) {
+        recordLifecycleOperation("wake", ctx);
+      } else if (freshlyCreated) {
+        recordLifecycleOperation("create", ctx);
+      }
+
+      return new Ok({ sandbox: existing, freshlyCreated, wokeFromSleep });
     });
   }
 
@@ -383,6 +486,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * / WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
    */
   static async dangerouslySleepIfRunning(
+    auth: Authenticator,
     conversationId: string
   ): Promise<Result<void, Error>> {
     return this.withLifecycleLock(conversationId, async (provider) => {
@@ -392,20 +496,24 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return new Ok(undefined);
       }
 
-      const result = await provider.sleep(sandbox.providerId);
+      const ctx = { workspaceSId: auth.getNonNullableWorkspace().sId };
+      const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
+
+      const result = await provider.sleep(sandbox.providerId, tracingOpts);
       if (result.isErr()) {
         if (result.error instanceof SandboxNotFoundError) {
           logger.info(
             { sandbox: sandbox.toLogJSON() },
             "Sandbox not found at provider during sleep — marking deleted."
           );
-          await sandbox.updateStatus("deleted");
+          await sandbox.updateStatus("deleted", { ctx });
           return new Ok(undefined);
         }
         return result;
       }
 
-      await sandbox.updateStatus("sleeping");
+      await sandbox.updateStatus("sleeping", { ctx });
+      recordLifecycleOperation("sleep", ctx);
       logger.info({ sandbox: sandbox.toLogJSON() }, "Sandbox put to sleep.");
       return new Ok(undefined);
     });
@@ -420,6 +528,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * / WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
    */
   static async dangerouslyDestroyIfSleeping(
+    auth: Authenticator,
     conversationId: string
   ): Promise<Result<void, Error>> {
     return this.withLifecycleLock(conversationId, async (provider) => {
@@ -429,20 +538,24 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return new Ok(undefined);
       }
 
-      const result = await provider.destroy(sandbox.providerId);
+      const ctx = { workspaceSId: auth.getNonNullableWorkspace().sId };
+      const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
+
+      const result = await provider.destroy(sandbox.providerId, tracingOpts);
       if (result.isErr()) {
         if (result.error instanceof SandboxNotFoundError) {
           logger.info(
             { sandbox: sandbox.toLogJSON() },
             "Sandbox not found at provider during destroy — marking deleted."
           );
-          await sandbox.updateStatus("deleted");
+          await sandbox.updateStatus("deleted", { ctx });
           return new Ok(undefined);
         }
         return result;
       }
 
-      await sandbox.updateStatus("deleted");
+      await sandbox.updateStatus("deleted", { ctx });
+      recordLifecycleOperation("destroy", ctx);
       logger.info({ sandbox: sandbox.toLogJSON() }, "Sandbox destroyed.");
       return new Ok(undefined);
     });
@@ -461,7 +574,13 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       return new Err(new Error("Sandbox provider not configured."));
     }
 
-    const result = await provider.exec(this.providerId, command, opts);
+    const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
+    const result = await provider.exec(
+      this.providerId,
+      command,
+      opts,
+      tracingOpts
+    );
 
     if (result.isErr() && result.error instanceof SandboxNotFoundError) {
       logger.error(
@@ -472,6 +591,104 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     }
 
     return result;
+  }
+
+  /**
+   * List files in a directory on this sandbox.
+   */
+  async listFiles(
+    auth: Authenticator,
+    path: string,
+    opts?: { recursive?: boolean }
+  ): Promise<Result<FileEntry[], Error>> {
+    const provider = getSandboxProvider();
+    if (!provider) {
+      return new Err(new Error("Sandbox provider not configured."));
+    }
+
+    try {
+      const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
+      const entries = await provider.listFiles(
+        this.providerId,
+        path,
+        opts,
+        tracingOpts
+      );
+      return new Ok(entries);
+    } catch (err) {
+      if (err instanceof SandboxNotFoundError) {
+        logger.error(
+          { sandbox: this.toLogJSON() },
+          "Sandbox not found at provider during listFiles — marking as deleted"
+        );
+        await this.updateStatus("deleted");
+      }
+      return new Err(normalizeError(err));
+    }
+  }
+
+  /**
+   * Write a file to the sandbox filesystem.
+   */
+  private async writeFile(
+    auth: Authenticator,
+    path: string,
+    data: ArrayBuffer
+  ): Promise<Result<void, Error>> {
+    const provider = getSandboxProvider();
+    if (!provider) {
+      return new Err(new Error("Sandbox provider not configured."));
+    }
+
+    const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
+    const result = await provider.writeFile(
+      this.providerId,
+      path,
+      data,
+      tracingOpts
+    );
+
+    if (result.isErr() && result.error instanceof SandboxNotFoundError) {
+      logger.error(
+        { sandbox: this.toLogJSON() },
+        "Sandbox not found at provider during writeFile — marking as deleted"
+      );
+      await this.updateStatus("deleted");
+    }
+
+    return result;
+  }
+
+  /**
+   * Load a skill's file attachments onto this sandbox.
+   * Files are written under /skills/{skillName}/{fileName}.
+   */
+  async loadSkillFiles(
+    auth: Authenticator,
+    skill: SkillResource
+  ): Promise<Result<{ loadedPaths: string[] }, Error>> {
+    const fileAttachments = skill.getFileAttachments();
+    if (fileAttachments.length === 0) {
+      return new Ok({ loadedPaths: [] });
+    }
+
+    const loadedPaths: string[] = [];
+
+    for (const file of fileAttachments) {
+      const targetPath = `/skills/${skill.name}/${file.fileName}`;
+
+      const readStream = file.getReadStream({ auth, version: "original" });
+      const data = await streamConsumers.arrayBuffer(readStream);
+
+      const writeResult = await this.writeFile(auth, targetPath, data);
+      if (writeResult.isErr()) {
+        return writeResult;
+      }
+
+      loadedPaths.push(targetPath);
+    }
+
+    return new Ok({ loadedPaths });
   }
 
   toLogJSON() {

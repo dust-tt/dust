@@ -9,9 +9,9 @@ import { describe, expect, it } from "vitest";
 
 describe("MCPServerConnectionResource", () => {
   describe("findByMCPServer", () => {
-    it("should return error for non-related authenticator trying to access personal connection", async () => {
+    it("should return error for non-related auth trying to access personal connection", async () => {
       // Create first workspace and its connection
-      const { workspace: workspace1, authenticator: authenticator1 } =
+      const { workspace: workspace1, auth: authenticator1 } =
         await createPrivateApiMockRequest({
           method: "GET",
         });
@@ -23,10 +23,9 @@ describe("MCPServerConnectionResource", () => {
       );
 
       // Create second workspace and try to access connection1
-      const { authenticator: authenticator2 } =
-        await createPrivateApiMockRequest({
-          method: "GET",
-        });
+      const { auth: authenticator2 } = await createPrivateApiMockRequest({
+        method: "GET",
+      });
 
       const result = await MCPServerConnectionResource.findByMCPServer(
         authenticator2,
@@ -43,7 +42,7 @@ describe("MCPServerConnectionResource", () => {
     });
 
     it("should allow any workspace member to access workspace connection", async () => {
-      const { workspace, authenticator: adminAuthenticator } =
+      const { workspace, auth: adminAuthenticator } =
         await createPrivateApiMockRequest({
           method: "GET",
           role: "admin",
@@ -83,8 +82,8 @@ describe("MCPServerConnectionResource", () => {
       }
     });
 
-    it("should only allow related authenticator to access personal connection", async () => {
-      const { workspace, authenticator: authenticator1 } =
+    it("should only allow related auth to access personal connection", async () => {
+      const { workspace, auth: authenticator1 } =
         await createPrivateApiMockRequest({
           method: "GET",
         });

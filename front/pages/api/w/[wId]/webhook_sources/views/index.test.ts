@@ -13,11 +13,10 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "GET"
 ) {
-  const { req, res, workspace, authenticator } =
-    await createPrivateApiMockRequest({
-      role,
-      method,
-    });
+  const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+    role,
+    method,
+  });
 
   const adminAuth = await Authenticator.internalAdminForWorkspace(
     workspace.sId
@@ -27,15 +26,12 @@ async function setupTest(
   // Set up common query parameters
   req.query.wId = workspace.sId;
 
-  return { req, res, workspace, authenticator };
+  return { req, res, workspace, auth };
 }
 
 describe("GET /api/w/[wId]/webhook_sources/views", () => {
   it("should return all webhook source views from specified spaces", async () => {
-    const { req, res, workspace, authenticator } = await setupTest(
-      "admin",
-      "GET"
-    );
+    const { req, res, workspace, auth } = await setupTest("admin", "GET");
 
     // Create webhook sources and views
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
@@ -47,7 +43,7 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
     });
 
     // Get the existing spaces
-    const spaces = await SpaceResource.listWorkspaceSpaces(authenticator);
+    const spaces = await SpaceResource.listWorkspaceSpaces(auth);
     const globalSpace = spaces.find((s) => s.kind === "global");
     if (!globalSpace) {
       throw new Error("Global space not found");
@@ -93,10 +89,7 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
   });
 
   it("should return views from multiple spaces when multiple spaceIds provided", async () => {
-    const { req, res, workspace, authenticator } = await setupTest(
-      "admin",
-      "GET"
-    );
+    const { req, res, workspace, auth } = await setupTest("admin", "GET");
 
     // Create webhook source
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
@@ -105,7 +98,7 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
     });
 
     // Get existing spaces
-    const spaces = await SpaceResource.listWorkspaceSpaces(authenticator);
+    const spaces = await SpaceResource.listWorkspaceSpaces(auth);
     const globalSpace = spaces.find((s) => s.kind === "global");
     const systemSpace = spaces.find((s) => s.kind === "system");
 
@@ -185,17 +178,14 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
   });
 
   it("should work for user role when accessing spaces they have access to", async () => {
-    const { req, res, workspace, authenticator } = await setupTest(
-      "user",
-      "GET"
-    );
+    const { req, res, workspace, auth } = await setupTest("user", "GET");
 
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
     await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
 
-    const spaces = await SpaceResource.listWorkspaceSpaces(authenticator);
+    const spaces = await SpaceResource.listWorkspaceSpaces(auth);
     const globalSpace = spaces.find((s) => s.kind === "global");
     if (!globalSpace) {
       throw new Error("Global space not found");
@@ -215,17 +205,14 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
   });
 
   it("should work for builder role when accessing spaces they have access to", async () => {
-    const { req, res, workspace, authenticator } = await setupTest(
-      "builder",
-      "GET"
-    );
+    const { req, res, workspace, auth } = await setupTest("builder", "GET");
 
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
     await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
 
-    const spaces = await SpaceResource.listWorkspaceSpaces(authenticator);
+    const spaces = await SpaceResource.listWorkspaceSpaces(auth);
     const globalSpace = spaces.find((s) => s.kind === "global");
     if (!globalSpace) {
       throw new Error("Global space not found");
@@ -245,10 +232,7 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
   });
 
   it("should only return views from spaces the user has access to", async () => {
-    const { req, res, workspace, authenticator } = await setupTest(
-      "admin",
-      "GET"
-    );
+    const { req, res, workspace, auth } = await setupTest("admin", "GET");
 
     // Create webhook source
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
@@ -257,7 +241,7 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
     });
 
     // Get spaces
-    const spaces = await SpaceResource.listWorkspaceSpaces(authenticator);
+    const spaces = await SpaceResource.listWorkspaceSpaces(auth);
     const globalSpace = spaces.find((s) => s.kind === "global");
 
     if (!globalSpace) {
@@ -289,9 +273,9 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
 
 describe("Method Support /api/w/[wId]/webhook_sources/views", () => {
   it("should return 405 for POST method", async () => {
-    const { req, res, authenticator } = await setupTest("admin", "POST");
+    const { req, res, auth } = await setupTest("admin", "POST");
 
-    const spaces = await SpaceResource.listWorkspaceSpaces(authenticator);
+    const spaces = await SpaceResource.listWorkspaceSpaces(auth);
     const globalSpace = spaces.find((s) => s.kind === "global");
     if (!globalSpace) {
       throw new Error("Global space not found");
@@ -311,9 +295,9 @@ describe("Method Support /api/w/[wId]/webhook_sources/views", () => {
   });
 
   it("should return 405 for PUT method", async () => {
-    const { req, res, authenticator } = await setupTest("admin", "PUT");
+    const { req, res, auth } = await setupTest("admin", "PUT");
 
-    const spaces = await SpaceResource.listWorkspaceSpaces(authenticator);
+    const spaces = await SpaceResource.listWorkspaceSpaces(auth);
     const globalSpace = spaces.find((s) => s.kind === "global");
     if (!globalSpace) {
       throw new Error("Global space not found");
@@ -333,9 +317,9 @@ describe("Method Support /api/w/[wId]/webhook_sources/views", () => {
   });
 
   it("should return 405 for DELETE method", async () => {
-    const { req, res, authenticator } = await setupTest("admin", "DELETE");
+    const { req, res, auth } = await setupTest("admin", "DELETE");
 
-    const spaces = await SpaceResource.listWorkspaceSpaces(authenticator);
+    const spaces = await SpaceResource.listWorkspaceSpaces(auth);
     const globalSpace = spaces.find((s) => s.kind === "global");
     if (!globalSpace) {
       throw new Error("Global space not found");

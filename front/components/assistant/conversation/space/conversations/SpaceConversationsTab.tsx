@@ -3,7 +3,6 @@ import { ProjectKickoffButton } from "@app/components/assistant/conversation/spa
 import { SpaceConversationListItem } from "@app/components/assistant/conversation/space/conversations/SpaceConversationListItem";
 import { SpaceConversationsActions } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsActions";
 import { SpaceLoadingConversationListItem } from "@app/components/assistant/conversation/space/conversations/SpaceLoadingConversationListItem";
-import { SpaceUserProjectDigest } from "@app/components/assistant/conversation/space/conversations/SpaceUserProjectDigest";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
@@ -11,7 +10,6 @@ import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
 import { useSpaceUnreadConversationIds } from "@app/hooks/conversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSearchConversations } from "@app/hooks/useSearchConversations";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { GetSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
@@ -75,7 +73,6 @@ export function SpaceConversationsTab({
   onOpenMembersPanel,
 }: SpaceConversationsTabProps) {
   const { isEditor: isProjectEditor } = spaceInfo;
-  const { hasFeature } = useFeatureFlags();
   const router = useAppRouter();
   const hasHistory = useMemo(() => conversations.length > 0, [conversations]);
 
@@ -162,15 +159,6 @@ export function SpaceConversationsTab({
               />
             )}
           </div>
-
-          {hasFeature("project_butler") && (
-            <SpaceUserProjectDigest
-              owner={owner}
-              space={spaceInfo}
-              hasConversations={hasHistory}
-              unreadCount={unreadConversationIds.length}
-            />
-          )}
 
           {/* Suggestions for empty rooms */}
           {!hasHistory && !isConversationsLoading && (

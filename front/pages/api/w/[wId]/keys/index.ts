@@ -1,3 +1,9 @@
+/** @ignoreswagger */
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -24,6 +30,7 @@ export type PostKeysResponseBody = {
 const CreateKeyPostBodySchema = t.type({
   name: t.string,
   group_id: t.union([t.string, t.undefined]),
+  group_ids: t.union([t.array(t.string), t.undefined]),
   monthly_cap_micro_usd: t.union([t.number, t.null, t.undefined]),
 });
 
@@ -70,7 +77,8 @@ async function handler(
         });
       }
 
-      const { name, group_id, monthly_cap_micro_usd } = bodyValidation.right;
+      const { name, group_id, group_ids, monthly_cap_micro_usd } =
+        bodyValidation.right;
       const trimmedName = name.trim();
 
       if (trimmedName.length === 0) {
@@ -112,18 +120,43 @@ async function handler(
         });
       }
 
-      const group = group_id
-        ? await GroupResource.fetchById(auth, group_id)
-        : await GroupResource.fetchWorkspaceGlobalGroup(auth);
-
-      if (group.isErr()) {
+      // Resolve groups: prefer group_ids (new), fall back to group_id (retro-compatibility).
+      const globalGroupRes =
+        await GroupResource.fetchWorkspaceGlobalGroup(auth);
+      if (globalGroupRes.isErr()) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
             type: "group_not_found",
-            message: "Invalid group",
+            message: "Global group not found",
           },
         });
+      }
+      const globalGroup = globalGroupRes.value;
+
+      const resolvedGroups: GroupResource[] = [globalGroup];
+
+      const additionalGroupIds = group_ids
+        ? group_ids.filter((gId) => gId !== globalGroup.sId)
+        : group_id && group_id !== globalGroup.sId
+          ? [group_id]
+          : [];
+
+      if (additionalGroupIds.length > 0) {
+        const groupsRes = await GroupResource.fetchByIds(
+          auth,
+          additionalGroupIds
+        );
+        if (groupsRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "group_not_found",
+              message: "Invalid group",
+            },
+          });
+        }
+        resolvedGroups.push(...groupsRes.value);
       }
 
       const rateLimitKey = `api_key_creation_${owner.sId}`;
@@ -156,8 +189,24 @@ async function handler(
           role: "builder",
           monthlyCapMicroUsd: monthly_cap_micro_usd ?? null,
         },
-        group.value
+        resolvedGroups
       );
+
+      void emitAuditLogEvent({
+        auth,
+        action: "api_key.created",
+        targets: [
+          buildAuditLogTarget("workspace", owner),
+          buildAuditLogTarget("api_key", {
+            sId: String(key.id),
+            name: trimmedName,
+          }),
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          groupIds: resolvedGroups.map((g) => g.sId).join(","),
+        },
+      });
 
       res.status(201).json({
         key: key.toJSON(),

@@ -16,6 +16,11 @@ import {
   PUBLISHING_RESTRICTIONS,
 } from "@app/lib/api/assistant/publishing_restrictions";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
@@ -44,7 +49,7 @@ import {
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -131,6 +136,7 @@ export async function createPendingAgentConfiguration(
 
     const group = await GroupResource.makeNewAgentEditorsGroup(auth, agent, {
       transaction: t,
+      authorId: user.id,
     });
     await auth.refresh({ transaction: t });
     if (!group.canWrite(auth)) {
@@ -420,6 +426,7 @@ export async function createAgentConfiguration(
     requestedSpaceIds,
     tags,
     editors,
+    authorId,
     reinforcement,
   }: {
     name: string;
@@ -435,6 +442,7 @@ export async function createAgentConfiguration(
     requestedSpaceIds: number[];
     tags: TagType[];
     editors: UserType[];
+    authorId: ModelId;
     reinforcement?: AgentReinforcementMode;
   },
   transaction?: Transaction
@@ -442,11 +450,6 @@ export async function createAgentConfiguration(
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  const user = auth.user();
-  if (!user) {
-    throw new Error("Unexpected `auth` without `user`.");
   }
 
   const isValidPictureUrl =
@@ -524,6 +527,7 @@ export async function createAgentConfiguration(
               "authorId",
               "workspaceId",
               "createdAt",
+              "reinforcement",
             ],
             order: [["version", "DESC"]],
             transaction: t,
@@ -533,7 +537,7 @@ export async function createAgentConfiguration(
             where: {
               workspaceId: owner.id,
               agentConfiguration: agentConfigurationId,
-              userId: user.id,
+              userId: authorId,
             },
             transaction: t,
           }),
@@ -545,7 +549,7 @@ export async function createAgentConfiguration(
           // Handle pending agent: update in place (don't bump version, preserve id for FK relationships)
           // Otherwise: archive old versions and bump version
           if (existingAgent.status === "pending") {
-            if (existingAgent.authorId === user.id) {
+            if (existingAgent.authorId === authorId) {
               const timeToCreationMs =
                 Date.now() - existingAgent.createdAt.getTime();
               logger.info(
@@ -603,11 +607,12 @@ export async function createAgentConfiguration(
             reasoningEffort: model.reasoningEffort,
             maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
             pictureUrl,
-            authorId: user.id,
+            authorId,
             templateId: template?.id,
             requestedSpaceIds: requestedSpaceIds,
             responseFormat: model.responseFormat,
-            reinforcement: reinforcement ?? "auto",
+            reinforcement:
+              reinforcement ?? existingAgent.reinforcement ?? "auto",
           },
           {
             where: {
@@ -648,11 +653,12 @@ export async function createAgentConfiguration(
             maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
             pictureUrl,
             workspaceId: owner.id,
-            authorId: user.id,
+            authorId,
             templateId: template?.id,
             requestedSpaceIds: requestedSpaceIds,
             responseFormat: model.responseFormat,
-            reinforcement: reinforcement ?? "auto",
+            reinforcement:
+              reinforcement ?? existingAgent?.reinforcement ?? "auto",
           },
           {
             transaction: t,
@@ -698,14 +704,14 @@ export async function createAgentConfiguration(
         }
 
         assert(
-          editors.some((e) => e.sId === auth.user()?.sId) || isAdmin(owner),
-          "Unexpected: current user must be in editor group or admin"
+          editors.some((e) => e.id === authorId) || isAdmin(owner),
+          "Unexpected: author must be in editor group or admin"
         );
         if (!existingAgent) {
           const group = await GroupResource.makeNewAgentEditorsGroup(
             auth,
             agentConfigurationInstance,
-            { transaction: t }
+            { transaction: t, authorId }
           );
           await auth.refresh({ transaction: t });
           // No need to check on permission here since it was done a few lines above.
@@ -743,7 +749,7 @@ export async function createAgentConfiguration(
             }
           }
 
-          if (!group.canWrite(auth)) {
+          if (!group.canWrite(auth) && auth.user()) {
             logger.error(
               {
                 workspaceId: owner.sId,
@@ -849,6 +855,25 @@ export async function createAgentConfiguration(
       }
     }
 
+    if (agentConfiguration.status === "active") {
+      const isCreate =
+        !agentConfigurationId || agentConfiguration.version === 0;
+      void emitAuditLogEvent({
+        auth,
+        action: isCreate ? "agent.created" : "agent.updated",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("agent", agentConfiguration),
+        ],
+        context: getAuditLogContext(auth),
+        metadata: {
+          agentName: agentConfiguration.name,
+          scope: scope,
+          model: `${model.providerId}/${model.modelId}`,
+        },
+      });
+    }
+
     return new Ok(agentConfiguration);
   } catch (error) {
     if (error instanceof UniqueConstraintError) {
@@ -948,6 +973,7 @@ export async function createGenericAgentConfiguration(
     requestedSpaceIds: [],
     tags: [],
     editors: [user.toJSON()], // Only the current user as editor
+    authorId: user.id,
   });
 
   if (result.isErr()) {
@@ -1244,6 +1270,19 @@ export async function archiveAgentConfiguration(
     if (editorGroupRes.isOk()) {
       await editorGroupRes.value.suspendMembers(auth);
     }
+
+    void emitAuditLogEvent({
+      auth,
+      action: "agent.archived",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("agent", agentConfig),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        agentName: agentConfig.name,
+      },
+    });
   }
 
   const affectedCount = updated[0];
@@ -1253,7 +1292,9 @@ export async function archiveAgentConfiguration(
 export async function restoreAgentConfiguration(
   auth: Authenticator,
   agentConfigurationId: string
-): Promise<Result<{ restored: boolean }, Error>> {
+): Promise<
+  Result<{ restored: boolean }, DustError<"name_conflict" | "internal_error">>
+> {
   const owner = auth.getNonNullableWorkspace();
 
   const latestConfig = await AgentConfigurationModel.findOne({
@@ -1265,10 +1306,32 @@ export async function restoreAgentConfiguration(
     limit: 1,
   });
   if (!latestConfig) {
-    return new Err(new Error("Could not find agent configuration"));
+    return new Err(
+      new DustError("internal_error", "Could not find agent configuration")
+    );
   }
   if (latestConfig.status !== "archived") {
-    return new Err(new Error("Agent configuration is not archived"));
+    return new Err(
+      new DustError("internal_error", "Agent configuration is not archived")
+    );
+  }
+
+  // Check for an active agent with the same name to avoid a unique constraint violation on
+  // (workspaceId, name) during the update.
+  const existingActive = await AgentConfigurationModel.findOne({
+    where: {
+      workspaceId: owner.id,
+      name: latestConfig.name,
+      status: "active",
+    },
+  });
+  if (existingActive) {
+    return new Err(
+      new DustError(
+        "name_conflict",
+        `Cannot restore: an active agent named "${latestConfig.name}" already exists.`
+      )
+    );
   }
 
   const updated = await AgentConfigurationModel.update(
@@ -1326,6 +1389,21 @@ export async function restoreAgentConfiguration(
         );
       }
     }
+  }
+
+  if (updated[0] > 0) {
+    void emitAuditLogEvent({
+      auth,
+      action: "agent.restored",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("agent", latestConfig),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        agentName: latestConfig.name,
+      },
+    });
   }
 
   return new Ok({ restored: updated[0] > 0 });
@@ -1591,7 +1669,7 @@ async function canPublishAgent(auth: Authenticator): Promise<{
   canPublish: boolean;
   message: string | null;
 }> {
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  const featureFlags = await getFeatureFlags(auth);
   const level = getPublishingRestrictionLevel(featureFlags);
   if (!level || canPublishForAuth(auth, level)) {
     return { canPublish: true, message: null };
@@ -1632,6 +1710,21 @@ export async function updateAgentConfigurationScope(
       },
     }
   );
+
+  void emitAuditLogEvent({
+    auth,
+    action: "agent.scope_changed",
+    targets: [
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      buildAuditLogTarget("agent", agentConfig),
+    ],
+    context: getAuditLogContext(auth),
+    metadata: {
+      agentName: agentConfig.name,
+      previousScope: previousScope,
+      newScope: scope,
+    },
+  });
 
   // When scope changes from visible to hidden, disable triggers for non-editors.
   // Non-editors will no longer have access to the hidden agent.
@@ -1707,4 +1800,21 @@ export async function filterAgentsByRequestedSpaces(
   );
 
   return allowedBySpaceIds;
+}
+
+export async function updateAgentReinforcementMode(
+  auth: Authenticator,
+  agentSId: string,
+  reinforcement: AgentReinforcementMode
+): Promise<void> {
+  await AgentConfigurationModel.update(
+    { reinforcement },
+    {
+      where: {
+        sId: agentSId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        status: "active",
+      },
+    }
+  );
 }

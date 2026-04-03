@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSwagger } from "next-swagger-doc";
 
 const swaggerHandler = withSwagger({
@@ -8,6 +9,6 @@ const swaggerHandler = withSwagger({
       version: "0.1.0",
     },
   },
-  apiFolder: "pages/api",
+  apiFolder: "pages/api/v1",
 });
 export default swaggerHandler();

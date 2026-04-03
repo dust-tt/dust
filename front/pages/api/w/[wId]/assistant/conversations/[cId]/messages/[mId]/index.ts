@@ -1,22 +1,110 @@
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}:
+ *   get:
+ *     summary: Get a message
+ *     description: Retrieve a specific message by its ID within a conversation.
+ *     tags:
+ *       - Private Messages
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: mId
+ *         required: true
+ *         description: ID of the message
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   oneOf:
+ *                     - $ref: '#/components/schemas/PrivateUserMessage'
+ *                     - $ref: '#/components/schemas/PrivateAgentMessage'
+ *                     - $ref: '#/components/schemas/PrivateContentFragment'
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Message or conversation not found
+ *   delete:
+ *     summary: Delete a message
+ *     description: Soft-delete a user or agent message from a conversation.
+ *     tags:
+ *       - Private Messages
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: mId
+ *         required: true
+ *         description: ID of the message
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully deleted message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Message or conversation not found
+ */
 import {
   softDeleteAgentMessage,
   softDeleteUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import {
-  batchRenderMessages,
-  fetchMessageInConversation,
-} from "@app/lib/api/assistant/messages";
+import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { MessageType } from "@app/types/assistant/conversation";
+import type {
+  LightMessageType,
+  MessageType,
+} from "@app/types/assistant/conversation";
 import {
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -24,11 +112,17 @@ export type FetchConversationMessageResponse = {
   message: MessageType;
 };
 
+export type FetchConversationMessageResponseLight = {
+  message: LightMessageType;
+};
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      FetchConversationMessageResponse | { success: boolean }
+      | FetchConversationMessageResponse
+      | FetchConversationMessageResponseLight
+      | { success: boolean }
     >
   >,
   auth: Authenticator
@@ -55,42 +149,43 @@ async function handler(
     });
   }
 
+  const conversation = await ConversationResource.fetchById(auth, cId);
+
+  if (!conversation) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "Conversation not found",
+      },
+    });
+  }
+
+  const messageRes = await conversation.getMessageById(auth, mId);
+
+  if (messageRes.isErr()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "message_not_found",
+        message: "Message not found.",
+      },
+    });
+  }
+
+  const message = messageRes.value;
+
+  const branchId = message.branchSId ?? null;
+
   switch (req.method) {
     case "GET": {
-      const conversation = await ConversationResource.fetchById(auth, cId);
-
-      if (!conversation) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "conversation_not_found",
-            message: "Conversation not found",
-          },
-        });
-      }
-
-      // Verify the message exists.
-      const message = await fetchMessageInConversation(
-        auth,
-        conversation.toJSON(),
-        mId
-      );
-
-      if (!message) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "message_not_found",
-            message: "Message not found.",
-          },
-        });
-      }
+      const viewType = req.query.viewType === "light" ? "light" : "full";
 
       const renderedMessages = await batchRenderMessages(
         auth,
         conversation,
         [message],
-        "full"
+        viewType
       );
 
       if (renderedMessages.isErr()) {
@@ -103,36 +198,27 @@ async function handler(
         });
       }
 
-      res.status(200).json({ message: renderedMessages.value[0] });
+      switch (viewType) {
+        case "light": {
+          res
+            .status(200)
+            .json({ message: renderedMessages.value[0] as LightMessageType });
+          return;
+        }
+        case "full": {
+          res
+            .status(200)
+            .json({ message: renderedMessages.value[0] as MessageType });
+          return;
+        }
+        default:
+          assertNever(viewType);
+      }
+
       return;
     }
 
     case "DELETE": {
-      const conversation = await ConversationResource.fetchById(auth, cId);
-
-      if (!conversation) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "conversation_not_found",
-            message: "Conversation not found",
-          },
-        });
-      }
-
-      const messageRes = await conversation.getMessageById(auth, mId);
-
-      if (messageRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "message_not_found",
-            message: "The message you're trying to delete does not exist.",
-          },
-        });
-      }
-      const message = messageRes.value;
-
       if (!message.userMessage && !message.agentMessage) {
         return apiError(req, res, {
           status_code: 404,
@@ -142,6 +228,25 @@ async function handler(
           },
         });
       }
+
+      const conversationRes = await getConversation(
+        auth,
+        conversation.sId,
+        false,
+        branchId
+      );
+
+      if (conversationRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Unable to get the conversation.",
+          },
+        });
+      }
+
+      const fullConversation = conversationRes.value;
 
       const renderRes = await batchRenderMessages(
         auth,
@@ -160,20 +265,6 @@ async function handler(
       }
 
       const renderedMessage = renderRes.value[0];
-
-      const conversationRes = await getConversation(auth, conversation.sId);
-
-      if (conversationRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Unable to get the conversation.",
-          },
-        });
-      }
-
-      const fullConversation = conversationRes.value;
 
       if (isUserMessageType(renderedMessage)) {
         const deleteResult = await softDeleteUserMessage(auth, {

@@ -17,13 +17,18 @@ import logger from "@app/logger/logger";
 import { launchAgentMessageAnalytics } from "@app/temporal/agent_loop/activities/analytics";
 import {
   finalizeCancellation,
+  finalizeGracefulStop,
   notifyWorkflowError,
 } from "@app/temporal/agent_loop/activities/common";
 import { handleMentions } from "@app/temporal/agent_loop/activities/mentions";
 import { conversationUnreadNotificationActivity } from "@app/temporal/agent_loop/activities/notification";
 import { snapshotAgentMessageSkills } from "@app/temporal/agent_loop/activities/snapshot_skills";
-import { launchTrackProgrammaticUsage } from "@app/temporal/agent_loop/activities/usage_tracking";
+import {
+  launchEmitMetronomeUsageEvents,
+  launchTrackProgrammaticUsage,
+} from "@app/temporal/agent_loop/activities/usage_tracking";
 import { signalButlerComplete } from "@app/temporal/butler/client";
+import { signalProjectTodoComplete } from "@app/temporal/project_todo/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
 /**
@@ -92,10 +97,14 @@ export async function finalizeSuccessfulAgentLoopActivity(
   }
 
   const auth = authResult.value;
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  const featureFlags = await getFeatureFlags(auth);
 
   let shouldSignalButler = false;
-  if (featureFlags.includes("conversation_butler")) {
+  let shouldSignalTodo = false;
+  if (
+    featureFlags.includes("conversation_butler") ||
+    featureFlags.includes("project_todo")
+  ) {
     const conversation = await ConversationResource.fetchById(
       auth,
       agentLoopArgs.conversationId
@@ -107,6 +116,7 @@ export async function finalizeSuccessfulAgentLoopActivity(
     snapshotAgentMessageSkills(authType, agentLoopArgs),
     launchAgentMessageAnalytics(authType, agentLoopArgs),
     launchTrackProgrammaticUsage(authType, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(authType, agentLoopArgs),
     conversationUnreadNotificationActivity(authType, agentLoopArgs),
     handleMentions(authType, agentLoopArgs),
     sendEmailReplyOnCompletion(authType, agentLoopArgs),
@@ -120,6 +130,36 @@ export async function finalizeSuccessfulAgentLoopActivity(
     shouldSignalButler
       ? linkButlerSuggestionResult(auth, agentLoopArgs)
       : Promise.resolve(),
+    shouldSignalTodo
+      ? signalProjectTodoComplete({
+          authType,
+          conversationId: agentLoopArgs.conversationId,
+          messageId: agentLoopArgs.agentMessageId,
+        })
+      : Promise.resolve(),
+  ]);
+}
+
+/**
+ * Graceful stop mirrors the successful path: content is valid, all side-effects (analytics,
+ * notifications, etc.) should run. We're not running email response nor project related signals
+ * since the work is not finished per se since it was gracefully stopped and the intent of the user
+ * is to steer or continue with something else.
+ */
+export async function finalizeGracefullyStoppedAgentLoopActivity(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs
+): Promise<void> {
+  await finalizeGracefulStop(authType, agentLoopArgs);
+
+  await Promise.all([
+    snapshotAgentMessageSkills(authType, agentLoopArgs),
+    launchAgentMessageAnalytics(authType, agentLoopArgs),
+    launchTrackProgrammaticUsage(authType, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(authType, agentLoopArgs),
+
+    conversationUnreadNotificationActivity(authType, agentLoopArgs),
+    handleMentions(authType, agentLoopArgs),
   ]);
 }
 
@@ -133,6 +173,7 @@ export async function finalizeCancelledAgentLoopActivity(
     snapshotAgentMessageSkills(authType, agentLoopArgs),
     launchAgentMessageAnalytics(authType, agentLoopArgs),
     launchTrackProgrammaticUsage(authType, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(authType, agentLoopArgs),
     sendEmailReplyOnError(
       authType,
       agentLoopArgs,
@@ -152,6 +193,7 @@ export async function finalizeErroredAgentLoopActivity(
     snapshotAgentMessageSkills(authType, agentLoopArgs),
     launchAgentMessageAnalytics(authType, agentLoopArgs),
     launchTrackProgrammaticUsage(authType, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(authType, agentLoopArgs),
     sendEmailReplyOnError(
       authType,
       agentLoopArgs,

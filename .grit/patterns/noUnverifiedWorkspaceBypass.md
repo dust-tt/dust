@@ -11,7 +11,7 @@ Developers must ensure a preceding comment starting with `WORKSPACE_ISOLATION_BY
 ```grit
 language js
 
-`dangerouslyBypassWorkspaceIsolationSecurity: true` => `WORKSPACE_BYPASS_FLAGGED`
+unverified_workspace_bypass() => `WORKSPACE_BYPASS_FLAGGED`
 ```
 
 ## Should flag workspace bypass

@@ -1,3 +1,4 @@
+import { OAuthScopeCustomizationDialog } from "@app/components/actions/mcp/create/OAuthScopeCustomizationDialog";
 import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
 import {
   ProviderAuthNote,
@@ -36,7 +37,7 @@ import type {
   RefAttributes,
   RefObject,
 } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 export const OAUTH_USE_CASE_TO_LABEL: Record<MCPOAuthUseCase, string> = {
@@ -91,6 +92,12 @@ interface MCPServerAuthConnectionProps {
   // OAuth credential inputs. The parent resolves the component (e.g. via a
   // registry) and passes it here — no provider-specific logic in this file.
   staticCredentialConfig?: StaticCredentialConfig;
+  // Admin-selected scopes. Only provided when authorization.availableScopes is
+  // set and the parent manages scope selection in form state.
+  selectedScopes?: string[];
+  onSelectedScopesChange?: (scopes: string[]) => void;
+  // Used to render provider-specific setup instructions for generic providers
+  serverId?: number;
 }
 
 export function MCPServerAuthConnection({
@@ -98,6 +105,9 @@ export function MCPServerAuthConnection({
   authorization,
   documentationUrl,
   staticCredentialConfig,
+  selectedScopes,
+  onSelectedScopesChange,
+  serverId,
 }: MCPServerAuthConnectionProps) {
   const { setValue, control } = useFormContext<MCPServerOAuthFormValues>();
 
@@ -187,6 +197,27 @@ export function MCPServerAuthConnection({
   // The parent resolves the form component and includes it in the config.
   const StaticFormComp = staticCredentialConfig?.FormComponent ?? null;
 
+  const [isScopeDialogOpen, setIsScopeDialogOpen] = useState(false);
+
+  const availableScopes = authorization.availableScopes;
+  const canCustomizeScopes =
+    !!availableScopes && !!onSelectedScopesChange && !!selectedScopes;
+
+  const optionalScopeCount = useMemo(
+    () => (availableScopes ?? []).filter((s) => !s.required).length,
+    [availableScopes]
+  );
+
+  const disabledScopeCount = useMemo(
+    () =>
+      canCustomizeScopes
+        ? (availableScopes ?? []).filter(
+            (s) => !s.required && !selectedScopes.includes(s.value)
+          ).length
+        : 0,
+    [availableScopes, canCustomizeScopes, selectedScopes]
+  );
+
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="w-full space-y-4">
@@ -224,7 +255,30 @@ export function MCPServerAuthConnection({
           inputs={inputs}
           authCredentials={authCredentials}
           onCredentialChange={handleCredentialChange}
+          serverId={serverId}
         />
+      )}
+
+      {canCustomizeScopes && (
+        <div className="w-full">
+          <Button
+            variant="outline"
+            size="sm"
+            label={
+              disabledScopeCount > 0
+                ? `Customize scopes (${optionalScopeCount - disabledScopeCount}/${optionalScopeCount} optional enabled)`
+                : "Customize scopes"
+            }
+            onClick={() => setIsScopeDialogOpen(true)}
+          />
+          <OAuthScopeCustomizationDialog
+            isOpen={isScopeDialogOpen}
+            onClose={() => setIsScopeDialogOpen(false)}
+            availableScopes={availableScopes}
+            selectedScopes={selectedScopes}
+            onConfirm={onSelectedScopesChange}
+          />
+        </div>
       )}
 
       {documentationUrl && (
@@ -246,6 +300,7 @@ interface OAuthCredentialFieldsProps {
   inputs: OAuthCredentialInputs | null;
   authCredentials: OAuthCredentials | null;
   onCredentialChange: (key: string, value: string) => void;
+  serverId?: number;
 }
 
 function OAuthCredentialFields({
@@ -254,12 +309,14 @@ function OAuthCredentialFields({
   inputs,
   authCredentials,
   onCredentialChange,
+  serverId,
 }: OAuthCredentialFieldsProps) {
   return (
     <>
       <ProviderSetupInstructions
         provider={authorization.provider}
         useCase={useCase}
+        serverId={serverId}
       />
 
       {inputs && (

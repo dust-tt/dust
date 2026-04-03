@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "Dust",
+  "version": "0.1.4",
+  "description": "Get more done, faster, with the power of your agents at your fingertips.",
+  "icons": {
+    "16": "images/dust16.png",
+    "32": "images/dust32.png",
+    "48": "images/dust48.png",
+    "128": "images/dust128.png"
+  },
+  "background": {
+    "scripts": ["background.js"],
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Dust ⇧⌘E"
+  },
+  "commands": {
+    "_execute_sidebar_action": {
+      "suggested_key": {
+        "default": "Ctrl + Shift + E",
+        "mac": "Command + Shift + E"
+      }
+    }
+  },
+  "sidebar_action": {
+    "default_panel": "main.html",
+    "default_title": "Dust",
+    "open_at_install": true,
+    "default_icon": {
+      "16": "images/dust16.png",
+      "32": "images/dust32.png"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["page.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "permissions": [
+    "identity",
+    "storage",
+    "tabs",
+    "scripting",
+    "contextMenus"
+  ],
+  "optional_permissions":["notifications"],
+  "host_permissions": ["<all_urls>"]
+}

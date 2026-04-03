@@ -2,15 +2,21 @@ import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
   DEFAULT_MCP_ACTION_NAME,
   DEFAULT_MCP_ACTION_VERSION,
+  DEFAULT_MCP_SERVER_ICON,
+  MCP_TOOL_STAKE_LEVELS,
+  type MCPToolStakeLevelType,
 } from "@app/lib/actions/constants";
 import {
   getConnectionForMCPServer,
+  getMCPServerAdminAuthenticationReason,
   MCPServerPersonalAuthenticationRequiredError,
   MCPServerRequiresAdminAuthenticationError,
 } from "@app/lib/actions/mcp_authentication";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
+import {
+  getServerTypeAndIdFromSId,
+  isMcpTimeoutError,
+} from "@app/lib/actions/mcp_helper";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import {
   getInternalMCPServerInfo,
@@ -23,7 +29,11 @@ import {
 } from "@app/lib/actions/mcp_oauth_provider";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
-import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
+import type {
+  MCPServerType,
+  MCPToolType,
+  ToolDisplayLabels,
+} from "@app/lib/api/mcp";
 import { invalidateOAuthConnectionAccessTokenCache } from "@app/lib/api/oauth_access_token";
 import { isHostUnderVerifiedDomain } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
@@ -50,7 +60,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import { McpError, type Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 25_000;
@@ -71,6 +81,9 @@ interface ConnectViaMCPServerId {
   type: "mcpServerId";
   mcpServerId: string;
   oAuthUseCase: MCPOAuthUseCase | null;
+  // Admin-configured scope restriction stored on the MCP server view. When set,
+  // this overrides the hardcoded metadata scope for personal connection prompts.
+  oauthScope?: string | null;
 }
 
 export function isConnectViaMCPServerId(
@@ -282,7 +295,8 @@ async function resolveRemoteServerOAuthToken(
           new MCPServerRequiresAdminAuthenticationError(
             mcpServerId,
             provider,
-            scope
+            scope,
+            "setup"
           )
         );
       }
@@ -299,7 +313,8 @@ async function resolveRemoteServerOAuthToken(
         new MCPServerRequiresAdminAuthenticationError(
           mcpServerId,
           provider,
-          scope
+          scope,
+          getMCPServerAdminAuthenticationReason(c.error)
         )
       );
     default:
@@ -446,10 +461,13 @@ export async function connectToMCPServer(
                     oAuthUseCase: params.oAuthUseCase,
                     error: c.error,
                   },
-                  "Internal server requires workspace authentication but no connection found"
+                  "Internal server workspace authentication failed"
                 );
 
-                const scope = serverInfo.authorization.scope;
+                // Use the admin-configured scope restriction if set, otherwise
+                // fall back to the full scope from server metadata.
+                const scope =
+                  params.oauthScope ?? serverInfo.authorization.scope;
 
                 if (params.oAuthUseCase === "personal_actions") {
                   // Check if admin connection exists for the server.
@@ -468,7 +486,8 @@ export async function connectToMCPServer(
                       new MCPServerRequiresAdminAuthenticationError(
                         params.mcpServerId,
                         serverInfo.authorization.provider,
-                        scope
+                        scope,
+                        "setup"
                       )
                     );
                   }
@@ -480,12 +499,13 @@ export async function connectToMCPServer(
                     )
                   );
                 } else if (params.oAuthUseCase === "platform_actions") {
-                  // Workspace connection required — admin must set up or reconnect.
+                  // Workspace connection required — distinguish missing setup from a broken token.
                   return new Err(
                     new MCPServerRequiresAdminAuthenticationError(
                       params.mcpServerId,
                       serverInfo.authorization.provider,
-                      scope
+                      scope,
+                      getMCPServerAdminAuthenticationReason(c.error)
                     )
                   );
                 } else {
@@ -568,7 +588,8 @@ export async function connectToMCPServer(
                 new MCPServerRequiresAdminAuthenticationError(
                   params.mcpServerId,
                   remoteMCPServer.authorization.provider,
-                  scope
+                  scope,
+                  "reconnect"
                 )
               );
             }
@@ -651,13 +672,20 @@ export async function connectToMCPServer(
           timeout: CLIENT_SIDE_CONNECT_TIMEOUT_MS,
         });
       } catch (e: unknown) {
-        logger.error(
+        const isTimeout = isMcpTimeoutError(e);
+
+        logger[isTimeout ? "warn" : "error"](
           {
             connectionType,
             workspaceId: auth.getNonNullableWorkspace().sId,
+            mcpServerId: params.mcpServerId,
+            isTimeout,
+            errorCode: e instanceof McpError ? e.code : undefined,
             error: e,
           },
-          "Error establishing connection to client side MCP server"
+          isTimeout
+            ? "Client-side MCP server timed out (browser likely disconnected)"
+            : "Error establishing connection to client-side MCP server"
         );
 
         return new Err(
@@ -718,14 +746,69 @@ async function connectToRemoteMCPServer(
   }
 }
 
+export type DustToolMeta = {
+  stake?: MCPToolStakeLevelType;
+  displayLabels?: ToolDisplayLabels;
+  argumentsRequiringApproval?: string[];
+};
+
+function isValidStake(value: unknown): value is MCPToolStakeLevelType {
+  return (
+    typeof value === "string" &&
+    MCP_TOOL_STAKE_LEVELS.includes(value as MCPToolStakeLevelType)
+  );
+}
+
+function isValidDisplayLabels(value: unknown): value is ToolDisplayLabels {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "running" in value &&
+    "done" in value &&
+    typeof (value as ToolDisplayLabels).running === "string" &&
+    typeof (value as ToolDisplayLabels).done === "string"
+  );
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((v) => typeof v === "string");
+}
+
+export function getDustToolMeta(
+  _meta: Record<string, unknown> | undefined
+): DustToolMeta | undefined {
+  if (!_meta || typeof _meta.dust !== "object" || _meta.dust === null) {
+    return undefined;
+  }
+
+  const dust = _meta.dust as Record<string, unknown>;
+  const result: DustToolMeta = {};
+
+  if (isValidStake(dust.stake)) {
+    result.stake = dust.stake;
+  }
+  if (isValidDisplayLabels(dust.displayLabels)) {
+    result.displayLabels = dust.displayLabels;
+  }
+  if (isStringArray(dust.argumentsRequiringApproval)) {
+    result.argumentsRequiringApproval = dust.argumentsRequiringApproval;
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
 export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
-  return tools.map(({ name, description, inputSchema }) => {
+  return tools.map(({ name, description, inputSchema, _meta }) => {
+    const dustMeta = getDustToolMeta(_meta);
     return {
       name,
       description: description ?? "",
       // TODO: the types are slightly incompatible: we have an unknown as the values of `properties`
       //  whereas JSONSchema expects a JSONSchema7Definition.
       inputSchema: inputSchema as JSONSchema,
+      ...(dustMeta?.displayLabels
+        ? { displayLabels: dustMeta.displayLabels }
+        : {}),
     };
   });
 }

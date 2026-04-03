@@ -35,6 +35,7 @@ describe("AgentSuggestionResource", () => {
             type: "replace",
           },
           analysis: "Making the agent more helpful",
+          source: "reinforcement",
         }
       );
 
@@ -830,6 +831,142 @@ describe("AgentSuggestionResource", () => {
       const suggestionIds = suggestions.map((s) => s.sId);
       expect(suggestionIds).toContain(suggestion1.sId);
       expect(suggestionIds).toContain(suggestion2.sId);
+    });
+  });
+
+  describe("listByAgentConfigurationIds", () => {
+    it("returns empty array when agentIds is empty", async () => {
+      const suggestions =
+        await AgentSuggestionResource.listByAgentConfigurationIds(
+          authenticator,
+          [],
+          { states: ["pending"] }
+        );
+      expect(suggestions).toEqual([]);
+    });
+
+    it("aggregates pending suggestions across multiple agents", async () => {
+      const agent2 = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Second agent bulk list" }
+      );
+      const s1 = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        {
+          suggestion: {
+            content: "<p>one</p>",
+            targetBlockId: "b1",
+            type: "replace",
+          },
+        }
+      );
+      const s2 = await AgentSuggestionFactory.createTools(
+        authenticator,
+        agent2
+      );
+
+      const suggestions =
+        await AgentSuggestionResource.listByAgentConfigurationIds(
+          authenticator,
+          [agentConfiguration.sId, agent2.sId],
+          { states: ["pending"] }
+        );
+
+      expect(suggestions).toHaveLength(2);
+      expect(suggestions.map((s) => s.sId).sort()).toEqual(
+        [s1.sId, s2.sId].sort()
+      );
+    });
+
+    it("filters by state", async () => {
+      const pending = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        {
+          suggestion: {
+            content: "<p>pending</p>",
+            targetBlockId: "bp",
+            type: "replace",
+          },
+        }
+      );
+      const toApprove = await AgentSuggestionFactory.createTools(
+        authenticator,
+        agentConfiguration
+      );
+      await AgentSuggestionResource.bulkUpdateState(
+        authenticator,
+        [toApprove],
+        "approved"
+      );
+
+      const suggestions =
+        await AgentSuggestionResource.listByAgentConfigurationIds(
+          authenticator,
+          [agentConfiguration.sId],
+          { states: ["pending"] }
+        );
+
+      expect(suggestions.map((s) => s.sId)).toContain(pending.sId);
+      expect(suggestions.map((s) => s.sId)).not.toContain(toApprove.sId);
+    });
+
+    it("filters by createdAfter", async () => {
+      const recent = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration
+      );
+      const old = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration
+      );
+      await AgentSuggestionFactory.setCreatedAt(
+        old,
+        new Date(Date.now() - 40 * 24 * 60 * 60 * 1000)
+      );
+
+      const suggestions =
+        await AgentSuggestionResource.listByAgentConfigurationIds(
+          authenticator,
+          [agentConfiguration.sId],
+          {
+            states: ["pending"],
+            createdAfter: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+          }
+        );
+
+      expect(suggestions.map((s) => s.sId)).toContain(recent.sId);
+      expect(suggestions.map((s) => s.sId)).not.toContain(old.sId);
+    });
+
+    it("includes synthetic suggestions by default unlike listByAgentConfigurationId", async () => {
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { source: "synthetic" }
+      );
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { source: "sidekick" }
+      );
+
+      const bulk = await AgentSuggestionResource.listByAgentConfigurationIds(
+        authenticator,
+        [agentConfiguration.sId],
+        { states: ["pending"] }
+      );
+      expect(bulk).toHaveLength(2);
+
+      const singleAgent =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agentConfiguration.sId,
+          { states: ["pending"] }
+        );
+      expect(singleAgent).toHaveLength(1);
+      expect(singleAgent[0].source).toBe("sidekick");
     });
   });
 

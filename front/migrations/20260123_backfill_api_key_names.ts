@@ -1,7 +1,7 @@
 import { DEFAULT_SYSTEM_KEY_NAME } from "@app/lib/resources/key_resource";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {

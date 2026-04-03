@@ -36,7 +36,12 @@ class LLMStreamTimeoutError extends Error {
 // even when the source is slow to yield values.
 async function* withPeriodicHeartbeat<T>(
   stream: AsyncIterator<T>,
-  logContext?: { conversationId: string; step: number; modelId: ModelIdType }
+  logContext?: {
+    workspaceId: string;
+    conversationId: string;
+    step: number;
+    modelId: ModelIdType;
+  }
 ): AsyncGenerator<T> {
   let nextPromise = stream.next();
   let streamExhausted = false;
@@ -154,12 +159,17 @@ export async function getOutputFromLLMStream(
 ): Promise<GetOutputResponse> {
   const start = Date.now();
   let timeToFirstEvent: number | undefined = undefined;
-  const events = llm.stream({
-    conversation: modelConversationRes.value.modelConversation,
-    hasConditionalJITTools,
-    prompt,
-    specifications,
-  });
+  const events = llm.stream(
+    {
+      conversation: modelConversationRes.value.modelConversation,
+      hasConditionalJITTools,
+      prompt,
+      specifications,
+    },
+    {
+      conversationId: conversation.sId,
+    }
+  );
 
   const contents: Output["contents"] = [];
   const actions: Output["actions"] = [];
@@ -167,6 +177,7 @@ export async function getOutputFromLLMStream(
   let nativeChainOfThought = "";
 
   const logContext = {
+    workspaceId: conversation.owner.sId,
     conversationId: conversation.sId,
     step,
     modelId: model.modelId,
@@ -305,6 +316,7 @@ export async function getOutputFromLLMStream(
         contents.push({
           type: "text_content",
           value: event.content.text,
+          metadata: event.metadata,
         });
         generation += event.content.text;
       }

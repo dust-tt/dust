@@ -8,6 +8,10 @@ import {
   postNewContentFragment,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -194,6 +198,22 @@ export async function runTriggeredAgentsActivity({
       `Agent configuration with ID ${trigger.agentConfigurationId} not found in workspace ${auth.getNonNullableWorkspace().id}.`
     );
   }
+
+  void emitAuditLogEvent({
+    auth,
+    action: "trigger.fired",
+    targets: [
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      buildAuditLogTarget("trigger", {
+        sId: trigger.sId,
+        name: trigger.name ?? trigger.sId,
+      }),
+    ],
+    metadata: {
+      triggerType: trigger.kind,
+      agentId: trigger.agentConfigurationId,
+    },
+  });
 
   const useIndividualConversations = await shouldCreateIndividualConversations(
     auth,

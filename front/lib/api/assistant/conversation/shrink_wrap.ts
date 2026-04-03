@@ -13,6 +13,7 @@ import { isString } from "@app/types/shared/utils/general";
 // Build the output messages, truncating content per message.
 const MAX_CONTENT_CHARS_PER_MESSAGE = 2_000;
 const MAX_TOTAL_CONTENT_CHARS = 20_000;
+export const MAX_ACTION_DETAIL_CHARS = 500;
 
 /**
  * Minimal types for the shrink-wrap conversation formatter.
@@ -33,6 +34,7 @@ export interface ShrinkWrapAction {
   status: string;
   internalMCPServerName: string | null;
   params: Record<string, unknown>;
+  output?: string | null;
 }
 
 export interface ShrinkWrapAgentMessage {
@@ -52,6 +54,22 @@ export interface ShrinkWrapConversationData {
   sId: string;
   title: string | null;
   messages: ShrinkWrapMessage[];
+}
+
+/**
+ * Serialize MCP tool output (array of content blocks) into a plain text string.
+ * Extracts text from "text" content blocks; non-text blocks are ignored.
+ */
+function serializeActionOutput(
+  output: Array<{ type: string; text?: string }> | null
+): string | null {
+  if (!output) {
+    return null;
+  }
+  const texts = output
+    .filter((block) => block.type === "text" && isString(block.text))
+    .map((block) => block.text);
+  return texts.length > 0 ? texts.join("\n") : null;
 }
 
 function truncateContent(content: string | null): {
@@ -82,6 +100,8 @@ export function formatConversationForShrinkWrap(
     fromMessageIndex?: number;
     toMessageIndex?: number;
     feedbackByMessageId?: Map<string, ShrinkWrapFeedback[]>;
+    /** When true, include tool input (params) and output for each action. */
+    includeActionDetails?: boolean;
   }
 ): string {
   const messages = conversation.messages;
@@ -168,6 +188,23 @@ export function formatConversationForShrinkWrap(
           }
         }
         lines.push(actionLine);
+
+        if (options?.includeActionDetails) {
+          const paramsStr = JSON.stringify(action.params);
+          const truncatedParams =
+            paramsStr.length > MAX_ACTION_DETAIL_CHARS
+              ? paramsStr.slice(0, MAX_ACTION_DETAIL_CHARS) + "…"
+              : paramsStr;
+          lines.push(`  Input: ${truncatedParams}`);
+
+          if (action.output) {
+            const truncatedOutput =
+              action.output.length > MAX_ACTION_DETAIL_CHARS
+                ? action.output.slice(0, MAX_ACTION_DETAIL_CHARS) + "…"
+                : action.output;
+            lines.push(`  Output: ${truncatedOutput}`);
+          }
+        }
       }
       lines.push("");
     }
@@ -206,11 +243,14 @@ export async function getShrinkWrappedConversation(
     fromMessageIndex,
     toMessageIndex,
     includeFeedback,
+    includeActionDetails,
   }: {
     conversationId: string;
     fromMessageIndex?: number;
     toMessageIndex?: number;
     includeFeedback?: boolean;
+    /** When true, include tool input (params) and output for each action. */
+    includeActionDetails?: boolean;
   }
 ): Promise<
   Result<
@@ -237,8 +277,19 @@ export async function getShrinkWrappedConversation(
       continue;
     }
     const lastVersion = messageVersions[messageVersions.length - 1];
-    if (isUserMessageType(lastVersion) || isAgentMessageType(lastVersion)) {
+    if (isUserMessageType(lastVersion)) {
       flatMessages.push(lastVersion);
+    } else if (isAgentMessageType(lastVersion)) {
+      flatMessages.push({
+        ...lastVersion,
+        actions: lastVersion.actions.map((a) => ({
+          functionCallName: a.functionCallName,
+          status: a.status,
+          internalMCPServerName: a.internalMCPServerName,
+          params: a.params,
+          output: serializeActionOutput(a.output),
+        })),
+      });
     }
   }
 
@@ -289,6 +340,7 @@ export async function getShrinkWrappedConversation(
       fromMessageIndex,
       toMessageIndex,
       feedbackByMessageId: feedbackByMessageId,
+      includeActionDetails,
     }
   );
 

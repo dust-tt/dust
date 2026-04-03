@@ -2,11 +2,12 @@ import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/toke
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
+import { initSSEResponse } from "@app/lib/api/sse";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -89,6 +90,7 @@ function extractUsageFromExecutions(
             cachedTokens: cachedTokens ?? null,
             cacheCreationTokens: cacheCreationTokens ?? null,
             costMicroUsd: usageCostMicroUsd,
+            isBatch: false,
           });
         }
       }
@@ -282,12 +284,11 @@ async function handler(
       }
 
       // Fetch the feature flags for the owner of the run.
-      const keyWorkspaceFlags = await getFeatureFlags(owner);
+      const keyWorkspaceFlags = await getFeatureFlags(auth);
 
       let credentials: CredentialsType | null = null;
       if (useDustCredentials) {
-        const llmCredentials =
-          await ProviderCredentialResource.getCredentials(auth);
+        const llmCredentials = await getLlmCredentials(auth);
         // Dust managed credentials: system API key (packaged apps).
         credentials = {
           ...llmCredentials,
@@ -316,7 +317,7 @@ async function handler(
       }
 
       // Fetch the feature flags of the app's workspace.
-      const flags = await getFeatureFlags(owner);
+      const flags = await getFeatureFlags(auth);
       const storeBlocksResults = !flags.includes("disable_run_logs");
 
       logger.info(
@@ -362,11 +363,7 @@ async function handler(
       switch (runFlavor) {
         case "streaming":
           // Start SSE stream.
-          res.writeHead(200, {
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            Connection: "keep-alive",
-          });
+          initSSEResponse(res);
           break;
         case "blocking":
           // Blocking, nothing to do for now

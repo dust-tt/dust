@@ -1,222 +1,198 @@
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import { isSupportedModel } from "@app/types/assistant/assistant";
-import { ModelIdCodec } from "@app/types/assistant/models/models";
-import { ModelProviderIdCodec } from "@app/types/assistant/models/providers";
-import { ReasoningEffortCodec } from "@app/types/assistant/models/reasoning";
+import { ModelIdSchema } from "@app/types/assistant/models/models";
+import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
+import { ReasoningEffortSchema } from "@app/types/assistant/models/reasoning";
 import type { SupportedModel } from "@app/types/assistant/models/types";
-import { createRangeCodec } from "@app/types/shared/utils/iots_utils";
-import { TimeframeUnitCodec } from "@app/types/shared/utils/time_frame";
-import * as t from "io-ts";
+import { TimeframeUnitSchema } from "@app/types/shared/utils/time_frame";
 import type { JSONSchema7 } from "json-schema";
+import { z } from "zod";
 
-const LimitCodec = createRangeCodec(0, 100);
+const LimitSchema = z.number().min(0).max(100);
 
 // Get schema for the url query parameters: a view parameter with all the types
 // of AgentGetViewType
-export const GetAgentConfigurationsQuerySchema = t.type({
-  view: t.union([
-    t.literal("admin_internal"),
-    t.literal("all"),
-    t.literal("archived"),
-    t.literal("current_user"),
-    t.literal("global"),
-    t.literal("list"),
-    t.literal("manage"),
-    t.literal("published"),
-    t.literal("workspace"),
-    t.undefined,
-  ]),
-  withUsage: t.union([t.literal("true"), t.literal("false"), t.undefined]),
-  withAuthors: t.union([t.literal("true"), t.literal("false"), t.undefined]),
-  withEditors: t.union([t.literal("true"), t.literal("false"), t.undefined]),
-  withFeedbacks: t.union([t.literal("true"), t.literal("false"), t.undefined]),
-  limit: t.union([LimitCodec, t.undefined]),
-  sort: t.union([
-    t.literal("priority"),
-    t.literal("alphabetical"),
-    t.undefined,
-  ]),
+export const GetAgentConfigurationsQuerySchema = z.object({
+  view: z
+    .enum([
+      "admin_internal",
+      "all",
+      "archived",
+      "current_user",
+      "global",
+      "list",
+      "manage",
+      "published",
+      "workspace",
+    ])
+    .optional(),
+  withUsage: z.enum(["true", "false"]).optional(),
+  withAuthors: z.enum(["true", "false"]).optional(),
+  withEditors: z.enum(["true", "false"]).optional(),
+  withFeedbacks: z.enum(["true", "false"]).optional(),
+  limit: LimitSchema.optional(),
+  sort: z.enum(["priority", "alphabetical"]).optional(),
 });
 
-export const GetAgentConfigurationsHistoryQuerySchema = t.type({
-  limit: t.union([LimitCodec, t.undefined]),
+export const GetAgentConfigurationsHistoryQuerySchema = z.object({
+  limit: LimitSchema.optional(),
 });
 
 // Data sources
 
-const DataSourceFilterParentsCodec = t.union([
-  t.type({
-    in: t.union([t.array(t.string), t.null]),
-    not: t.union([t.array(t.string), t.null]),
-  }),
-  t.null,
-]);
+const DataSourceFilterParentsSchema = z
+  .object({
+    in: z.array(z.string()).nullable(),
+    not: z.array(z.string()).nullable(),
+  })
+  .nullable();
 
-const OptionalDataSourceFilterTagsCodec = t.partial({
-  tags: t.union([
-    t.type({
-      in: t.array(t.string),
-      not: t.array(t.string),
-      mode: t.union([t.literal("custom"), t.literal("auto")]),
-    }),
-    t.null,
-  ]),
+const DataSourceFilterTagsSchema = z
+  .object({
+    in: z.array(z.string()),
+    not: z.array(z.string()),
+    mode: z.enum(["custom", "auto"]),
+  })
+  .nullable()
+  .optional();
+
+const DataSourceFilterSchema = z.object({
+  parents: DataSourceFilterParentsSchema,
+  tags: DataSourceFilterTagsSchema,
 });
 
-const DataSourceFilterCodec = t.intersection([
-  t.type({ parents: DataSourceFilterParentsCodec }),
-  OptionalDataSourceFilterTagsCodec,
-]);
-
-const DataSourcesConfigurationsCodec = t.array(
-  t.type({
-    dataSourceViewId: t.string,
-    workspaceId: t.string,
-    filter: DataSourceFilterCodec,
+const DataSourcesConfigurationsSchema = z.array(
+  z.object({
+    dataSourceViewId: z.string(),
+    workspaceId: z.string(),
+    filter: DataSourceFilterSchema,
   })
 );
-export type DataSourcesConfigurationsCodecType = t.TypeOf<
-  typeof DataSourcesConfigurationsCodec
+export type DataSourcesConfigurationsCodecType = z.infer<
+  typeof DataSourcesConfigurationsSchema
 >;
 
 // Tables
 
-const TablesConfigurationsCodec = t.array(
-  t.type({
-    dataSourceViewId: t.string,
-    tableId: t.string,
-    workspaceId: t.string,
+const TablesConfigurationsSchema = z.array(
+  z.object({
+    dataSourceViewId: z.string(),
+    tableId: z.string(),
+    workspaceId: z.string(),
   })
 );
 
 // Projects
 
-const ProjectConfigurationCodec = t.type({
-  workspaceId: t.string,
-  projectId: t.string,
+const ProjectConfigurationSchema = z.object({
+  workspaceId: z.string(),
+  projectId: z.string(),
 });
 
 // Actions
 
-const DustAppRunActionConfigurationSchema = t.type({
-  type: t.literal("dust_app_run_configuration"),
-  appWorkspaceId: t.string,
-  appId: t.string,
+const DustAppRunActionConfigurationSchema = z.object({
+  type: z.literal("dust_app_run_configuration"),
+  appWorkspaceId: z.string(),
+  appId: z.string(),
 });
 
-const JsonSchemaCodec = new t.Type<JSONSchema7, unknown, unknown>(
-  "JsonSchema",
-  (u): u is JSONSchema7 => {
-    if (typeof u !== "object" || u === null) {
+const JsonSchemaSchema = z.custom<JSONSchema7>(
+  (val) => {
+    if (typeof val !== "object" || val === null) {
       return false;
     }
-    return validateJsonSchema(JSON.stringify(u)).isValid;
+    return validateJsonSchema(JSON.stringify(val)).isValid;
   },
-  (u, c) => {
-    if (typeof u !== "object" || u === null) {
-      return t.failure(u, c, "Invalid JSON schema");
-    }
-    const validation = validateJsonSchema(JSON.stringify(u));
-    return validation.isValid
-      ? t.success(u as JSONSchema7)
-      : t.failure(u, c, validation.error ?? "Invalid JSON schema");
-  },
-  t.identity
+  { message: "Invalid JSON schema" }
 );
 
-const MCPServerActionConfigurationSchema = t.type({
-  type: t.literal("mcp_server_configuration"),
-  mcpServerViewId: t.string,
-  name: t.string,
-  description: t.union([t.string, t.null]),
-  dataSources: t.union([t.null, DataSourcesConfigurationsCodec]),
-  tables: t.union([t.null, TablesConfigurationsCodec]),
-  childAgentId: t.union([t.null, t.string]),
-  timeFrame: t.union([
-    t.null,
-    t.type({
-      duration: t.number,
-      unit: TimeframeUnitCodec,
-    }),
-  ]),
-  jsonSchema: t.union([JsonSchemaCodec, t.null]),
-  additionalConfiguration: t.record(
-    t.string,
-    t.union([t.boolean, t.number, t.string, t.array(t.string), t.null])
+const MCPServerActionConfigurationSchema = z.object({
+  type: z.literal("mcp_server_configuration"),
+  mcpServerViewId: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  dataSources: DataSourcesConfigurationsSchema.nullable(),
+  tables: TablesConfigurationsSchema.nullable(),
+  childAgentId: z.string().nullable(),
+  timeFrame: z
+    .object({
+      duration: z.number(),
+      unit: TimeframeUnitSchema,
+    })
+    .nullable(),
+  jsonSchema: JsonSchemaSchema.nullable(),
+  additionalConfiguration: z.record(
+    z.string(),
+    z.union([
+      z.boolean(),
+      z.number(),
+      z.string(),
+      z.array(z.string()),
+      z.null(),
+    ])
   ),
-  dustAppConfiguration: t.union([DustAppRunActionConfigurationSchema, t.null]),
-  secretName: t.union([t.string, t.null]),
-  dustProject: t.union([t.null, ProjectConfigurationCodec]),
+  dustAppConfiguration: DustAppRunActionConfigurationSchema.nullable(),
+  secretName: z.string().nullable(),
+  dustProject: ProjectConfigurationSchema.nullable(),
 });
 
-const multiActionsCommonFields = {
-  name: t.union([t.string, t.null]),
-  description: t.union([t.string, t.null]),
-};
+const ModelConfigurationSchema = z
+  .object({
+    modelId: ModelIdSchema,
+    providerId: ModelProviderIdSchema,
+    temperature: z.number(),
+  })
+  .extend({
+    // TODO(2024-11-04 flav) Clean up this legacy type.
+    name: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
+    reasoningEffort: ReasoningEffortSchema.optional(),
+    responseFormat: z.string().optional(),
+  });
 
-const ModelConfigurationSchema = t.intersection([
-  t.type({
-    modelId: ModelIdCodec,
-    providerId: ModelProviderIdCodec,
-    temperature: t.number,
-  }),
-  // TODO(2024-11-04 flav) Clean up this legacy type.
-  t.partial(multiActionsCommonFields),
-  t.partial({
-    reasoningEffort: ReasoningEffortCodec,
-  }),
-  t.partial({ responseFormat: t.string }),
-]);
-const IsSupportedModelSchema = new t.Type<SupportedModel>(
-  "SupportedModel",
-  isSupportedModel,
-  (i, c) => (isSupportedModel(i) ? t.success(i) : t.failure(i, c)),
-  t.identity
+const IsSupportedModelSchema = z.custom<SupportedModel>(
+  (val) => isSupportedModel(val),
+  { message: "Unsupported model" }
 );
 
-const TagSchema = t.type({
-  sId: t.string,
-  name: t.string,
-  kind: t.union([t.literal("standard"), t.literal("protected")]),
+const TagSchema = z.object({
+  sId: z.string(),
+  name: z.string(),
+  kind: z.enum(["standard", "protected"]),
 });
 
-const EditorSchema = t.type({
-  sId: t.string,
+const EditorSchema = z.object({
+  sId: z.string(),
 });
 
-const SkillSchema = t.type({
-  sId: t.string,
+const SkillSchema = z.object({
+  sId: z.string(),
 });
 
-export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
-  assistant: t.intersection([
-    t.type({
-      name: t.string,
-      description: t.string,
-      instructions: t.union([t.string, t.null]),
-      pictureUrl: t.string,
-      status: t.union([
-        t.literal("active"),
-        t.literal("archived"),
-        t.literal("draft"),
-        t.literal("pending"),
-      ]),
-      scope: t.union([t.literal("hidden"), t.literal("visible")]),
-      model: t.intersection([ModelConfigurationSchema, IsSupportedModelSchema]),
-      actions: t.array(MCPServerActionConfigurationSchema),
-      templateId: t.union([t.string, t.null, t.undefined]),
-      tags: t.array(TagSchema),
-      editors: t.array(EditorSchema),
-    }),
-    t.partial({
+export const PostOrPatchAgentConfigurationRequestBodySchema = z.object({
+  assistant: z
+    .object({
+      name: z.string(),
+      description: z.string(),
+      instructions: z.string().nullable(),
+      pictureUrl: z.string(),
+      status: z.enum(["active", "archived", "draft", "pending"]),
+      scope: z.enum(["hidden", "visible"]),
+      model: ModelConfigurationSchema.and(IsSupportedModelSchema),
+      actions: z.array(MCPServerActionConfigurationSchema),
+      templateId: z.string().nullable().optional(),
+      tags: z.array(TagSchema),
+      editors: z.array(EditorSchema),
+    })
+    .extend({
       // temporary partial so opened windows can save without refreshing
-      skills: t.array(SkillSchema),
-      additionalRequestedSpaceIds: t.array(t.string),
-      instructionsHtml: t.union([t.string, t.null]),
+      skills: z.array(SkillSchema).optional(),
+      additionalRequestedSpaceIds: z.array(z.string()).optional(),
+      instructionsHtml: z.string().nullable().optional(),
     }),
-  ]),
 });
 
-export type PostOrPatchAgentConfigurationRequestBody = t.TypeOf<
+export type PostOrPatchAgentConfigurationRequestBody = z.infer<
   typeof PostOrPatchAgentConfigurationRequestBodySchema
 >;

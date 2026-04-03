@@ -23,13 +23,45 @@ function getClient(): PostHog | null {
 }
 
 export class PostHogServerSideTracking {
+  /**
+   * Alias an anonymous device ID to an identified user so that all pre-signup
+   * events captured with `dust_anonymous_id` are merged into the user's
+   * PostHog person profile.
+   */
+  static aliasAnonymousId({
+    anonymousId,
+    userId,
+  }: {
+    anonymousId: string;
+    userId: string;
+  }): void {
+    const client = getClient();
+    if (!client) {
+      return;
+    }
+
+    try {
+      client.alias({
+        distinctId: userId,
+        alias: anonymousId,
+      });
+    } catch (err) {
+      logger.error(
+        { userId, anonymousId, err },
+        "Failed to alias anonymous ID on PostHog"
+      );
+    }
+  }
+
   static trackSignup({
     user,
     utmParams,
+    anonymousId,
     userCreated,
   }: {
     user: UserType;
     utmParams?: UTMParams;
+    anonymousId?: string;
     userCreated?: boolean;
   }): void {
     const client = getClient();
@@ -38,6 +70,14 @@ export class PostHogServerSideTracking {
     }
 
     try {
+      // Stitch the anonymous device ID to the identified user.
+      if (anonymousId) {
+        PostHogServerSideTracking.aliasAnonymousId({
+          anonymousId,
+          userId: user.sId,
+        });
+      }
+
       const utmProperties: Record<string, string> = {};
       if (utmParams) {
         for (const [key, value] of Object.entries(utmParams)) {
@@ -47,14 +87,33 @@ export class PostHogServerSideTracking {
         }
       }
 
-      client.identify({
+      /* Set person properties and first-touch attribution via $set/$set_once.
+      We intentionally avoid client.identify() here because it generates a
+        server-side distinct_id that would create an extra "person".
+      The identify() call happens from the frontend (posthog-js)
+        which naturally merges the browser's anonymous distinct_id with user.sId.
+      */
+      const setProps: Record<string, string> = {
+        first_name: user.firstName,
+        last_name: user.lastName ?? "",
+        name: user.fullName,
+        ...(user.provider ? { provider: user.provider } : {}),
+        ...utmProperties,
+      };
+
+      const setOnceProps: Record<string, string> = {};
+      for (const [key, value] of Object.entries(utmProperties)) {
+        setOnceProps[`first_${key}`] = value;
+      }
+
+      client.capture({
         distinctId: user.sId,
+        event: "$set",
         properties: {
-          first_name: user.firstName,
-          last_name: user.lastName,
-          name: user.fullName,
-          provider: user.provider,
-          ...utmProperties,
+          $set: setProps,
+          ...(Object.keys(setOnceProps).length > 0
+            ? { $set_once: setOnceProps }
+            : {}),
         },
       });
 

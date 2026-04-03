@@ -4,6 +4,7 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import type {
   TeamsChannel,
   TeamsChat,
+  TeamsMeeting,
   TeamsMessage,
   TeamsUser,
 } from "@app/lib/api/actions/servers/microsoft/utils";
@@ -12,6 +13,7 @@ import { MICROSOFT_TEAMS_TOOLS_METADATA } from "@app/lib/api/actions/servers/mic
 import {
   renderChannels,
   renderChats,
+  renderMeetings,
   renderUsers,
 } from "@app/lib/api/actions/servers/microsoft_teams/microsoft_teams_rendering";
 import config from "@app/lib/api/config";
@@ -286,6 +288,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
       chatId,
       userIds,
       parentMessageId,
+      mentions,
     },
     { auth, authInfo, agentLoopContext }
   ) => {
@@ -434,12 +437,37 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
         finalContent = `${messageContent}<br/><br/>${footerMessage}`;
       }
 
-      const requestBody = {
+      // Allow <at id="N"> tags so Teams @mentions are preserved after sanitization.
+      const sanitizedContent = sanitizeHtml(finalContent, {
+        allowedTags: [...sanitizeHtml.defaults.allowedTags, "at"],
+        allowedAttributes: {
+          ...sanitizeHtml.defaults.allowedAttributes,
+          at: ["id"],
+        },
+      });
+
+      const requestBody: Record<string, unknown> = {
         body: {
           contentType: "html",
-          content: sanitizeHtml(finalContent),
+          content: sanitizedContent,
         },
       };
+
+      if (mentions && mentions.length > 0) {
+        requestBody.mentions = mentions.map(
+          ({ id, mentionText, userAadId }) => ({
+            id,
+            mentionText,
+            mentioned: {
+              user: {
+                id: userAadId,
+                displayName: mentionText,
+                userIdentityType: "aadUser",
+              },
+            },
+          })
+        );
+      }
 
       const response = await client.api(endpoint).post(requestBody);
 
@@ -461,6 +489,163 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
     } catch (err) {
       return new Err(
         new MCPError(normalizeError(err).message || "Failed to post message")
+      );
+    }
+  },
+
+  list_meetings: async (
+    { fromDate, toDate, subjectFilter, participantFilter },
+    { authInfo }
+  ) => {
+    const client = await getGraphClient(authInfo);
+    if (!client) {
+      return new Err(
+        new MCPError("Failed to authenticate with Microsoft Graph")
+      );
+    }
+
+    try {
+      let apiCall = client
+        .api("/me/calendarView")
+        .query({
+          startDateTime: fromDate,
+          endDateTime: toDate,
+        })
+        .select(
+          "id,subject,start,end,organizer,attendees,onlineMeeting,webLink,isOnlineMeeting"
+        )
+        .orderby("start/dateTime asc")
+        .top(10);
+
+      if (subjectFilter) {
+        apiCall = apiCall.filter(
+          `contains(subject, '${subjectFilter.replace(/'/g, "''")}')`
+        );
+      }
+
+      const response = await apiCall.get();
+
+      let meetings: TeamsMeeting[] = (
+        (response.value as TeamsMeeting[]) ?? []
+      ).filter((m) => m.isOnlineMeeting);
+
+      if (participantFilter) {
+        const query = participantFilter.toLowerCase();
+        meetings = meetings.filter((m) => {
+          const organizerMatch =
+            m.organizer?.emailAddress?.name?.toLowerCase().includes(query) ||
+            m.organizer?.emailAddress?.address?.toLowerCase().includes(query);
+          const attendeeMatch = m.attendees?.some(
+            (a) =>
+              a.emailAddress?.name?.toLowerCase().includes(query) ||
+              a.emailAddress?.address?.toLowerCase().includes(query)
+          );
+          return organizerMatch || attendeeMatch;
+        });
+      }
+
+      let result = renderMeetings(meetings);
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: result,
+        },
+      ]);
+    } catch (err) {
+      return new Err(
+        new MCPError(normalizeError(err).message || "Failed to list meetings")
+      );
+    }
+  },
+
+  get_transcript_content: async ({ joinUrl }, { authInfo }) => {
+    const client = await getGraphClient(authInfo);
+    if (!client) {
+      return new Err(
+        new MCPError("Failed to authenticate with Microsoft Graph")
+      );
+    }
+
+    try {
+      // Resolve the online meeting from its join URL.
+      const meetingResponse = await client
+        .api("/me/onlineMeetings")
+        .filter(`JoinWebUrl eq '${joinUrl}'`)
+        .get();
+
+      const onlineMeetings = meetingResponse.value ?? [];
+      if (onlineMeetings.length === 0) {
+        return new Err(
+          new MCPError(
+            "No online meeting found for this join URL. Ensure you are the organizer or a participant."
+          )
+        );
+      }
+
+      const meetingId = onlineMeetings[0].id;
+
+      // List transcripts for this meeting.
+      const transcriptsResponse = await client
+        .api(`/me/onlineMeetings/${meetingId}/transcripts`)
+        .get();
+
+      const transcripts = transcriptsResponse.value ?? [];
+      if (transcripts.length === 0) {
+        return new Ok([
+          {
+            type: "text" as const,
+            text: "No transcripts available for this meeting. Transcription may not have been enabled during the meeting.",
+          },
+        ]);
+      }
+
+      // Get the content of the most recent transcript in text format.
+      const transcriptId = transcripts[transcripts.length - 1].id;
+      const contentResponse = await client
+        .api(
+          `/me/onlineMeetings/${meetingId}/transcripts/${transcriptId}/content`
+        )
+        .query({ $format: "text/vtt" })
+        .responseType("text" as any)
+        .get();
+
+      let text: string;
+      if (typeof contentResponse === "string") {
+        text = contentResponse;
+      } else if (
+        contentResponse &&
+        typeof contentResponse.text === "function"
+      ) {
+        text = await contentResponse.text();
+      } else if (contentResponse instanceof ReadableStream) {
+        const reader = contentResponse.getReader();
+        const chunks: string[] = [];
+        const decoder = new TextDecoder();
+        let done = false;
+        while (!done) {
+          const result = await reader.read();
+          done = result.done;
+          if (result.value) {
+            chunks.push(decoder.decode(result.value, { stream: !done }));
+          }
+        }
+        text = chunks.join("");
+      } else {
+        text = String(contentResponse);
+      }
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text,
+        },
+      ]);
+    } catch (err) {
+      return new Err(
+        new MCPError(
+          normalizeError(err).message || "Failed to get transcript content"
+        )
       );
     }
   },

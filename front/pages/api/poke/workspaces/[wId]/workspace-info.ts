@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
@@ -24,6 +25,7 @@ export type PokeGetWorkspaceInfo = {
   activeSubscription: SubscriptionType;
   baseUrl: string;
   extensionConfig: ExtensionConfigurationType | null;
+  metronomeCustomerId: string | null;
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
   stripeSubscription: Stripe.Subscription | null;
   subscriptions: SubscriptionType[];
@@ -99,6 +101,7 @@ async function handler(
 
       return res.status(200).json({
         activeSubscription,
+        metronomeCustomerId: workspaceResource.metronomeCustomerId ?? null,
         stripeSubscription,
         subscriptions,
         whitelistableFeatures: WHITELISTABLE_FEATURES,

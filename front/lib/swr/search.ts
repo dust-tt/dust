@@ -63,7 +63,7 @@ export function useUnifiedSearch({
   const eventSourceRef = useRef<EventSourcePolyfill | null>(null);
 
   const loadPage = useCallback(
-    (cursor?: string | null, appendResults = false) => {
+    async (cursor?: string | null, appendResults = false) => {
       if (disabled) {
         setIsSearchLoading(false);
         setIsLoadingNextPage(false);
@@ -102,7 +102,7 @@ export function useUnifiedSearch({
       }
 
       const url = `/api/w/${owner.sId}/search?${params.toString()}`;
-      const eventSource = clientEventSource(url);
+      const eventSource = await clientEventSource(url);
       eventSourceRef.current = eventSource;
 
       eventSource.onopen = () => {

@@ -3,6 +3,7 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  Button,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -10,23 +11,22 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 interface DeleteAssistantsDialogProps {
   agentConfigurations: LightAgentConfigurationType[];
-  isOpen: boolean;
-  isPrivateAssistant?: boolean;
+  disabled: boolean;
   owner: LightWorkspaceType;
-  onClose: () => void;
   onSave: () => void;
 }
 
 export function DeleteAssistantsDialog({
   agentConfigurations,
-  isOpen,
+  disabled,
   owner,
-  onClose,
   onSave,
 }: DeleteAssistantsDialogProps) {
   const [isDeleting, setIsDeleting] = useState(false);
@@ -41,14 +41,16 @@ export function DeleteAssistantsDialog({
   );
 
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
-      }}
-    >
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button
+          size="xs"
+          variant="warning"
+          icon={TrashIcon}
+          label="Archive selection"
+          disabled={disabled}
+        />
+      </DialogTrigger>
       <DialogContent size="md" isAlertDialog>
         <DialogHeader hideButton>
           <DialogTitle>

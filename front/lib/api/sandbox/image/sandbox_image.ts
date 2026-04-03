@@ -10,6 +10,7 @@ import type {
   ManifestFormat,
   NetworkPolicy,
   Operation,
+  SandboxCapability,
   SandboxImageId,
   SandboxResources,
   ToolEntry,
@@ -32,6 +33,7 @@ interface SandboxImageState {
   network: NetworkPolicy;
   workdir: string;
   runEnv: Readonly<Record<string, string>>;
+  capabilities: ReadonlySet<SandboxCapability>;
   imageId?: SandboxImageId;
 }
 
@@ -44,6 +46,7 @@ export class SandboxImage {
   readonly workdir: string;
   readonly runEnv: Readonly<Record<string, string>>;
   readonly startupScript?: string;
+  readonly capabilities: ReadonlySet<SandboxCapability>;
   readonly imageId?: SandboxImageId;
 
   private constructor(state: SandboxImageState) {
@@ -54,6 +57,7 @@ export class SandboxImage {
     this.network = state.network;
     this.workdir = state.workdir;
     this.runEnv = state.runEnv;
+    this.capabilities = state.capabilities;
     this.imageId = state.imageId;
   }
 
@@ -66,20 +70,13 @@ export class SandboxImage {
       network: updates.network ?? this.network,
       workdir: updates.workdir ?? this.workdir,
       runEnv: updates.runEnv ?? this.runEnv,
+      capabilities: updates.capabilities ?? this.capabilities,
       imageId: updates.imageId ?? this.imageId,
     });
   }
 
-  static fromSandbox(id: SandboxImageId): SandboxImage {
-    return new SandboxImage({
-      baseImage: { type: "sandbox", id },
-      operations: [],
-      tools: [],
-      resources: DEFAULT_RESOURCES,
-      network: DEFAULT_NETWORK,
-      workdir: "/home/user",
-      runEnv: {},
-    });
+  static fromSandboxImage(image: SandboxImage): SandboxImage {
+    return image.clone({});
   }
 
   static fromDocker(imageRef: string): SandboxImage {
@@ -89,15 +86,28 @@ export class SandboxImage {
       tools: [],
       resources: DEFAULT_RESOURCES,
       network: DEFAULT_NETWORK,
-      workdir: "/home/user",
+      workdir: "", // No default, set via setWorkdir in registry
       runEnv: {},
+      capabilities: new Set(),
     });
   }
 
-  runCmd(command: string): SandboxImage {
+  runCmd(command: string, options?: { user?: string }): SandboxImage {
     const operation: Operation = {
       type: "run",
       command,
+      user: options?.user,
+    };
+
+    return this.clone({
+      operations: [...this.operations, operation],
+    });
+  }
+
+  setUser(user: string): SandboxImage {
+    const operation: Operation = {
+      type: "user",
+      user,
     };
 
     return this.clone({
@@ -124,9 +134,17 @@ export class SandboxImage {
     });
   }
 
-  copy(src: string, dest: string): SandboxImage;
-  copy(src: ContentGenerator, dest: string): SandboxImage;
-  copy(src: string | ContentGenerator, dest: string): SandboxImage {
+  copy(src: string, dest: string, options?: { user?: string }): SandboxImage;
+  copy(
+    src: ContentGenerator,
+    dest: string,
+    options?: { user?: string }
+  ): SandboxImage;
+  copy(
+    src: string | ContentGenerator,
+    dest: string,
+    options?: { user?: string }
+  ): SandboxImage {
     const srcValue: CopySource =
       typeof src === "string"
         ? { type: "path", path: src }
@@ -136,6 +154,7 @@ export class SandboxImage {
       type: "copy",
       src: srcValue,
       dest,
+      user: options?.user,
     };
 
     return this.clone({
@@ -172,6 +191,16 @@ export class SandboxImage {
     });
   }
 
+  withCapability(cap: SandboxCapability): SandboxImage {
+    const next = new Set(this.capabilities);
+    next.add(cap);
+    return this.clone({ capabilities: next });
+  }
+
+  hasCapability(cap: SandboxCapability): boolean {
+    return this.capabilities.has(cap);
+  }
+
   withResources(resources: SandboxResources): SandboxImage {
     return this.clone({ resources });
   }
@@ -195,7 +224,6 @@ export class SandboxImage {
     const destPath =
       options?.path ?? `${this.workdir}/tool-manifest.${extension}`;
 
-    // Capture tools at call time, generate content lazily
     const tools = this.tools;
     const getContent = (): string => {
       const manifest = createToolManifest(tools);

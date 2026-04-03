@@ -1,4 +1,7 @@
-import { updateParentsField } from "@connectors/connectors/google_drive/lib";
+import {
+  updateFolderMetadata,
+  updateParentsField,
+} from "@connectors/connectors/google_drive/lib";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import {
   deleteOneFile,
@@ -230,8 +233,17 @@ export async function incrementalSync(
         });
 
         const parents = parentGoogleIds.map((parent) => getInternalId(parent));
+        const moved =
+          localFolder && localFolder.parentId !== parentGoogleIds[1];
 
-        if (localFolder && localFolder.parentId !== parentGoogleIds[1]) {
+        // Drive change events do not tell us which folder field changed, so we
+        // refresh folder metadata on every seen folder change.
+        if (localFolder && moved) {
+          await localFolder.update({
+            name: driveFile.name,
+            mimeType: driveFile.mimeType,
+            lastSeenTs: new Date(),
+          });
           localLogger.info(
             {
               fileId: change.file.id,
@@ -248,6 +260,25 @@ export async function incrementalSync(
             await recurseUpdateParents(
               connector,
               localFolder,
+              parents,
+              localLogger
+            );
+          }
+        } else if (localFolder) {
+          if (localFolder.skipReason) {
+            await localFolder.update({
+              name: driveFile.name,
+              mimeType: driveFile.mimeType,
+              lastSeenTs: new Date(),
+            });
+            localLogger.info(
+              `Google Drive folder skipped with skip reason ${localFolder.skipReason}`
+            );
+          } else {
+            await updateFolderMetadata(
+              connector,
+              localFolder,
+              driveFile,
               parents,
               localLogger
             );
@@ -351,7 +382,9 @@ async function recurseUpdateParents(
     "Updating parents recursively"
   );
 
-  if (parentIds.includes(file.dustFileId)) {
+  // Move updates recurse from the moved folder itself, so `parentIds[0]` is
+  // the current node and only deeper repeats indicate a real parent cycle.
+  if (parentIds.slice(1).includes(file.dustFileId)) {
     logger.warn(
       {
         fileId: file.driveFileId,

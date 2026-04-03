@@ -7,7 +7,6 @@ import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import { GroupDataTable } from "@app/components/poke/groups/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { WorkspaceDatasourceRetrievalTreemapPluginChart } from "@app/components/poke/plugins/components/WorkspaceDatasourceRetrievalTreemapPluginChart";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import {
@@ -24,6 +23,7 @@ import {
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { WebhookSourceDataTable } from "@app/components/poke/webhook_sources/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
@@ -50,7 +50,7 @@ import {
 
 export function WorkspacePage() {
   const owner = useWorkspace();
-  useSetPokePageTitle(owner.name ?? "Workspace");
+  useDocumentTitle(`Poke - ${owner.name ?? "Workspace"}`);
   const { regionData } = usePokeRegion();
 
   const router = useAppRouter();
@@ -127,6 +127,7 @@ export function WorkspacePage() {
 
   const {
     activeSubscription,
+    metronomeCustomerId,
     stripeSubscription,
     subscriptions,
     whitelistableFeatures,
@@ -205,6 +206,7 @@ export function WorkspacePage() {
               <TabsContent value="workspace">
                 <WorkspaceInfoTable
                   owner={owner}
+                  metronomeCustomerId={metronomeCustomerId}
                   workspaceVerifiedDomains={workspaceVerifiedDomains}
                   workspaceCreationDay={workspaceCreationDay}
                   extensionConfig={extensionConfig}

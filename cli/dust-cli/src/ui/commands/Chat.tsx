@@ -121,7 +121,7 @@ function buildConversationItemsFromHistory(
 }
 
 const CliChat: FC<CliChatProps> = ({
-  sId: requestedSId,
+  sId: requestedAgentId,
   agentSearch,
   conversationId,
   autoAcceptEditsFlag,
@@ -688,7 +688,7 @@ const CliChat: FC<CliChatProps> = ({
   }, []);
 
   const handleConversationSelected = useCallback(
-    async (convSId: string) => {
+    async (convId: string) => {
       setConversationItems((prev) => [
         ...prev,
         {
@@ -711,14 +711,14 @@ const CliChat: FC<CliChatProps> = ({
       }
 
       const convRes = await dustClient.getConversation({
-        conversationId: convSId,
+        conversationId: convId,
       });
       if (convRes.isErr()) {
         setError(`Failed to load conversation: ${convRes.error.message}`);
         return;
       }
 
-      setCurrentConversationId(convSId);
+      setCurrentConversationId(convId);
       const items = buildConversationItemsFromHistory(convRes.value, {
         name: selectedAgent?.name ?? "dust",
         description: selectedAgent?.description ?? "",
@@ -856,7 +856,7 @@ const CliChat: FC<CliChatProps> = ({
 
   // Auto-select @dust agent when no agent/sId/search is specified
   useEffect(() => {
-    if (selectedAgent || requestedSId || agentSearch) {
+    if (selectedAgent || requestedAgentId || agentSearch) {
       return;
     }
     if (!allAgents || allAgents.length === 0) {
@@ -875,7 +875,7 @@ const CliChat: FC<CliChatProps> = ({
         },
       ]);
     }
-  }, [allAgents, selectedAgent, requestedSId, agentSearch]);
+  }, [allAgents, selectedAgent, requestedAgentId, agentSearch]);
 
   // Auto-initialize filesystem server when agent is selected.
   useEffect(() => {
@@ -1961,7 +1961,7 @@ const CliChat: FC<CliChatProps> = ({
 
   if (!selectedAgent && !agentSearch) {
     // If no --sId flag and no agent search, wait for auto-select to kick in
-    if (!requestedSId) {
+    if (!requestedAgentId) {
       return (
         <Box flexDirection="column">
           <Text color="green">Loading...</Text>
@@ -1972,7 +1972,7 @@ const CliChat: FC<CliChatProps> = ({
     return (
       <AgentSelector
         selectMultiple={false}
-        requestedSIds={requestedSId ? [requestedSId] : []}
+        requestedAgentIds={requestedAgentId ? [requestedAgentId] : []}
         onError={setError}
         onConfirm={async (agents) => {
           setSelectedAgent(agents[0]);

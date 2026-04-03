@@ -1,3 +1,6 @@
+export { getNovuClient } from "@app/lib/notifications/novu-client";
+
+import { getNovuClient } from "@app/lib/notifications/novu-client";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type {
@@ -13,7 +16,6 @@ import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
-import { Novu } from "@novu/api";
 import { NovuError } from "@novu/api/models/errors";
 import type { ChannelPreference } from "@novu/react";
 import { WebClient } from "@slack/web-api";
@@ -26,23 +28,6 @@ import { DataSourceResource } from "../resources/data_source_resource";
 import { UserMetadataModel } from "../resources/storage/models/user";
 
 export type NotificationAllowedTags = Array<"conversations" | "admin">;
-
-export const getNovuClient = async (): Promise<Novu> => {
-  if (!process.env.NOVU_SECRET_KEY) {
-    throw new Error("NOVU_SECRET_KEY is not set");
-  }
-
-  if (!process.env.NEXT_PUBLIC_NOVU_API_URL) {
-    throw new Error("NEXT_PUBLIC_NOVU_API_URL is not set");
-  }
-
-  const config = {
-    secretKey: process.env.NOVU_SECRET_KEY,
-    serverURL: process.env.NEXT_PUBLIC_NOVU_API_URL,
-  };
-
-  return new Novu(config);
-};
 
 export const getSubscriberHash = async (
   user: UserTypeWithWorkspaces
@@ -115,7 +100,7 @@ const isSlackNotificationsFeatureEnabled = async (
     subscriberId,
     workspaceId
   );
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  const featureFlags = await getFeatureFlags(auth);
 
   return featureFlags.includes("conversations_slack_notifications");
 };

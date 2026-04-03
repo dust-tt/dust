@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentSuggestionSource,
@@ -35,7 +36,7 @@ export class AgentSuggestionFactory {
         analysis:
           overrides.analysis ?? "Improved instructions for better coding help",
         state: overrides.state ?? "pending",
-        source: overrides.source ?? "reinforcement",
+        source: overrides.source ?? "sidekick",
       }
     );
   }
@@ -61,7 +62,7 @@ export class AgentSuggestionFactory {
         },
         analysis: overrides.analysis ?? "Added useful integration",
         state: overrides.state ?? "pending",
-        source: overrides.source ?? "reinforcement",
+        source: overrides.source ?? "sidekick",
       }
     );
   }
@@ -140,7 +141,23 @@ export class AgentSuggestionFactory {
         },
         analysis: overrides.analysis ?? "Suggested a more capable model",
         state: overrides.state ?? "pending",
-        source: overrides.source ?? "reinforcement",
+        source: overrides.source ?? "sidekick",
+      }
+    );
+  }
+
+  static async setCreatedAt(
+    suggestion: AgentSuggestionResource,
+    createdAt: Date
+  ): Promise<void> {
+    // biome-ignore lint/plugin/noRawSql: Raw SQL is the only reliable way to backdate timestamps in tests
+    await frontSequelize.query(
+      `UPDATE agent_suggestions SET "createdAt" = :createdAt, "updatedAt" = :createdAt WHERE id = :id`,
+      {
+        replacements: {
+          createdAt: createdAt.toISOString(),
+          id: suggestion.id,
+        },
       }
     );
   }

@@ -5,25 +5,13 @@
 
 import type {
   AppRouter,
-  HeadProps,
-  ImageProps,
   RouterEvents,
   RouterEventType,
-  ScriptProps,
   TransitionOptions,
   UrlObject,
 } from "@dust-tt/front/lib/platform/types";
 import { ReactRouterLinkWrapper } from "@spa/lib/ReactRouterLinkWrapper";
-import {
-  Children,
-  isValidElement,
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useBlocker,
   useLocation,
@@ -245,117 +233,7 @@ export function useAppRouter(): AppRouter {
   );
 }
 
-/**
- * Head component for SPA - manages document head elements
- * This is a simplified implementation that extracts title and link elements
- */
-export function Head({ children }: HeadProps) {
-  useEffect(() => {
-    const cleanupFns: (() => void)[] = [];
-
-    Children.forEach(children, (child) => {
-      if (!isValidElement(child)) {
-        return;
-      }
-
-      const props = child.props as Record<string, unknown>;
-
-      if (child.type === "title") {
-        const previousTitle = document.title;
-        document.title =
-          Children.toArray(props.children as ReactNode).join("") ?? "";
-        cleanupFns.push(() => {
-          document.title = previousTitle;
-        });
-      } else if (child.type === "link") {
-        const link = document.createElement("link");
-        Object.entries(props).forEach(([key, value]) => {
-          if (key !== "children" && value !== undefined) {
-            link.setAttribute(key, String(value));
-          }
-        });
-        document.head.appendChild(link);
-        cleanupFns.push(() => {
-          document.head.removeChild(link);
-        });
-      } else if (child.type === "meta") {
-        const meta = document.createElement("meta");
-        Object.entries(props).forEach(([key, value]) => {
-          if (key !== "children" && value !== undefined) {
-            meta.setAttribute(key, String(value));
-          }
-        });
-        document.head.appendChild(meta);
-        cleanupFns.push(() => {
-          document.head.removeChild(meta);
-        });
-      }
-    });
-
-    return () => {
-      cleanupFns.forEach((fn) => fn());
-    };
-  }, [children]);
-
-  return null;
-}
-
-/**
- * Script component for SPA - loads external scripts
- */
-export function Script({ id, src, children }: ScriptProps) {
-  useEffect(() => {
-    const script = document.createElement("script");
-
-    if (id) {
-      script.id = id;
-    }
-
-    if (src) {
-      script.src = src;
-      script.async = true;
-    } else if (children) {
-      script.textContent = children;
-    }
-
-    document.body.appendChild(script);
-
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, [id, src, children]);
-
-  return null;
-}
-
 export const LinkWrapper = ReactRouterLinkWrapper;
-
-/**
- * Image component for SPA - renders a standard img element
- * In Next.js this uses next/image for optimization, but in SPA we use a regular img
- */
-export function Image({
-  width,
-  height,
-  src,
-  alt,
-  className,
-  sizes,
-  priority: _priority,
-  ...rest
-}: ImageProps) {
-  return (
-    <img
-      width={width}
-      height={height}
-      src={src}
-      alt={alt}
-      className={className}
-      sizes={sizes}
-      {...rest}
-    />
-  );
-}
 
 /**
  * Hook to get page context (auth data) in SPA
@@ -446,4 +324,4 @@ export function useNavigationBlocker(
   }, [blocker]);
 }
 
-export type { AppRouter, HeadProps, ImageProps, ScriptProps };
+export type { AppRouter };

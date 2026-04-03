@@ -1,5 +1,8 @@
+/** @ignoreswagger */
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { finalizeConnection } from "@app/lib/api/oauth";
+import { Authenticator } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { OAuthConnectionType } from "@app/types/oauth/lib";
 import { isOAuthProvider } from "@app/types/oauth/lib";
@@ -9,7 +12,8 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<{ connection: OAuthConnectionType }>
-  >
+  >,
+  session: SessionWithUser
 ) {
   const provider = req.query.provider;
   if (!isOAuthProvider(provider)) {
@@ -17,7 +21,11 @@ async function handler(
     return;
   }
 
-  const cRes = await finalizeConnection(provider, req.query);
+  const auth = session.workspaceId
+    ? await Authenticator.fromSession(session, session.workspaceId)
+    : null;
+
+  const cRes = await finalizeConnection(auth, provider, req.query);
   if (!cRes.isOk()) {
     res.status(500).json({
       error: {

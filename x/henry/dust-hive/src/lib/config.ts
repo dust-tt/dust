@@ -1,12 +1,12 @@
 import { mkdir } from "node:fs/promises";
-import { CONFIG_ENV_PATH, DUST_HIVE_ENVS, DUST_HIVE_HOME, DUST_HIVE_WORKTREES } from "./paths";
+import { CONFIG_ENV_PATH, DUST_HIVE_ENVS, DUST_HIVE_HOME } from "./paths";
 
 // Ensure all required directories exist
 // Note: Multiplexer layout directories are created by the multiplexer adapter when needed
+// Note: Hives directory (.hives/) is created per-repo at worktree creation time
 export async function ensureDirectories(): Promise<void> {
   await mkdir(DUST_HIVE_HOME, { recursive: true });
   await mkdir(DUST_HIVE_ENVS, { recursive: true });
-  await mkdir(DUST_HIVE_WORKTREES, { recursive: true });
 }
 
 // Check if global config.env exists

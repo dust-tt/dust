@@ -131,6 +131,34 @@ export function MCPServerSettings({
           </div>
         </div>
       )}
+      {authorization?.availableScopes &&
+        authorization.availableScopes.length > 0 && (
+          <div className="space-y-2">
+            <div className="heading-base">Permissions</div>
+            <div className="flex flex-wrap gap-1.5">
+              {(() => {
+                const activeScopes = new Set(
+                  authorization.scope?.split(" ") ?? []
+                );
+                return authorization.availableScopes
+                  .filter(
+                    (s) =>
+                      activeScopes.has(s.value) ||
+                      (s.impliedBy !== undefined &&
+                        activeScopes.has(s.impliedBy))
+                  )
+                  .map((s) => (
+                    <Chip
+                      key={s.value}
+                      color="primary"
+                      size="sm"
+                      label={s.label}
+                    />
+                  ));
+              })()}
+            </div>
+          </div>
+        )}
     </>
   );
 }

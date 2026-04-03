@@ -9,17 +9,26 @@ import { SANDBOX_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox/met
 import config from "@app/lib/api/config";
 import { generateSandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
 import {
+  mountConversationFiles,
+  refreshGcsToken,
+} from "@app/lib/api/sandbox/gcs/mount";
+import {
   createToolManifest,
   getSandboxImage,
+  getToolsForProvider,
   toolManifestToJSON,
   toolManifestToYAML,
 } from "@app/lib/api/sandbox/image";
+import { wrapCommand } from "@app/lib/api/sandbox/image/profile";
+import { recordToolDuration } from "@app/lib/api/sandbox/instrumentation";
 import type { ExecResult } from "@app/lib/api/sandbox/provider";
+import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 
-const DEFAULT_WORKING_DIRECTORY = "/home/user";
+const DEFAULT_WORKING_DIRECTORY = "/home/agent";
 const DEFAULT_EXEC_TIMEOUT_MS = 60_000;
 const MAX_OUTPUT_LINES = 2_000;
 const MAX_OUTPUT_BYTES = 50_000;
@@ -95,7 +104,38 @@ export function createSandboxTools(
         return new Err(new MCPError(ensureResult.error.message));
       }
 
-      const { sandbox } = ensureResult.value;
+      const { sandbox, freshlyCreated, wokeFromSleep } = ensureResult.value;
+
+      // Mount GCS conversation files (fire-and-forget).
+      // On fresh creation or wake-from-sleep, /tmp is empty so we need a full mount.
+      // For already-running sandboxes we just refresh the token.
+      const imageResult = getSandboxImage(auth);
+      if (imageResult.isOk()) {
+        const image = imageResult.value;
+
+        void startTelemetry(auth, sandbox, conversation).catch((err) =>
+          logger.error({ err }, "Telemetry start failed (fire-and-forget)")
+        );
+
+        if (freshlyCreated || wokeFromSleep) {
+          void mountConversationFiles(auth, sandbox, conversation, image).catch(
+            (err) => logger.error({ err }, "GCS mount failed (fire-and-forget)")
+          );
+        } else {
+          void refreshGcsToken(auth, sandbox, conversation, image).catch(
+            (err) =>
+              logger.error(
+                { err },
+                "GCS token refresh failed (fire-and-forget)"
+              )
+          );
+        }
+      } else {
+        logger.error(
+          { err: imageResult.error },
+          "Failed to get sandbox image for GCS mount"
+        );
+      }
 
       const sandboxToken = generateSandboxExecToken(auth, {
         agentConfiguration,
@@ -104,14 +144,31 @@ export function createSandboxTools(
         expiryMs: DEFAULT_EXEC_TIMEOUT_MS,
       });
 
-      const execResult = await sandbox.exec(auth, command, {
+      const metricsCtx = { workspaceSId: auth.getNonNullableWorkspace().sId };
+      const startMs = performance.now();
+
+      const providerId = agentConfiguration.model.providerId;
+      const timeoutSec = timeoutMs ? Math.ceil(timeoutMs / 1000) : 60;
+      const wrappedCommand = wrapCommand(command, providerId, {
+        timeoutSec,
+      });
+
+      const execResult = await sandbox.exec(auth, wrappedCommand, {
         workingDirectory: workingDirectory ?? DEFAULT_WORKING_DIRECTORY,
-        timeoutMs: timeoutMs ?? DEFAULT_EXEC_TIMEOUT_MS,
         envVars: {
           DUST_SANDBOX_TOKEN: sandboxToken,
           DUST_API_URL: `${config.getClientFacingUrl()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
         },
       });
+
+      const durationMs = performance.now() - startMs;
+      recordToolDuration(
+        "bash",
+        durationMs,
+        metricsCtx,
+        execResult.isOk() ? "success" : "error"
+      );
+
       if (execResult.isErr()) {
         return new Err(new MCPError(execResult.error.message));
       }
@@ -120,12 +177,17 @@ export function createSandboxTools(
 
       return new Ok([{ type: "text" as const, text: output }]);
     },
-    describe_environment: async ({ format }, { auth }) => {
-      const sandboxImageResult = getSandboxImage(auth);
-      if (sandboxImageResult.isErr()) {
-        return new Err(new MCPError(sandboxImageResult.error.message));
+    describe_toolset: async ({ format }, { auth, agentLoopContext }) => {
+      const providerId =
+        agentLoopContext?.runContext?.agentConfiguration.model.providerId;
+      if (!providerId) {
+        return new Err(new MCPError("Missing model provider ID"));
       }
-      const manifest = createToolManifest(sandboxImageResult.value.tools);
+      const toolsResult = getToolsForProvider(auth, providerId);
+      if (toolsResult.isErr()) {
+        return new Err(new MCPError(toolsResult.error.message));
+      }
+      const manifest = createToolManifest(toolsResult.value);
       const output =
         format === "json"
           ? toolManifestToJSON(manifest)

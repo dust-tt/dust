@@ -1,5 +1,7 @@
+/** @ignoreswagger */
 import Anthropic from "@anthropic-ai/sdk";
 import config from "@app/lib/api/config";
+import { initSSEResponse } from "@app/lib/api/sse";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -248,12 +250,7 @@ export default async function handler(
     );
 
     // Set up SSE headers
-    res.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    });
-    res.flushHeaders();
+    initSSEResponse(res);
 
     // Create abort controller for client disconnect
     const controller = new AbortController();

@@ -12,15 +12,18 @@ import type { CallMCPToolResponseType } from "@dust-tt/client";
 import { CallMCPToolRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+/**
+ * @ignoreswagger
+ * internal endpoint
+ */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<CallMCPToolResponseType>>,
   auth: Authenticator,
   { space }: { space: SpaceResource }
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const featureFlags = await getFeatureFlags(owner);
+  const featureFlags = await getFeatureFlags(auth);
   if (!featureFlags.includes("sandbox_tools")) {
     return apiError(req, res, {
       status_code: 400,
@@ -119,11 +122,7 @@ async function handler(
           });
         }
 
-        const content: CallMCPToolResponseType["result"]["content"] =
-          result.content.map((block: { type: string; text?: string }) => ({
-            type: block.type,
-            ...("text" in block ? { text: block.text } : {}),
-          }));
+        const content = result.content;
 
         return res.status(200).json({
           success: true,

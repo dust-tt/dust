@@ -50,7 +50,9 @@ function makeWorkspace(
     defaultEmbeddingProvider: null,
     workOSOrganizationId: "org_123",
     metadata: null,
+    metronomeCustomerId: null,
     role: "admin",
+    sharingPolicy: "all_scopes",
     ...overrides,
   };
 }

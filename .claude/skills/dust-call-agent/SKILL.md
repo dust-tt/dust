@@ -17,4 +17,11 @@ Use `--projectName` or `--projectId` to create the conversation inside a specifi
 Use `-d` / `--details` to get detailed message information in the output (raw event stream, tool actions, and full agent message payload):
 `$ dust chat -a prea -d -m "what's the status of project X?"`
 
-If the tool errors because login is needed, ask the user to perform it manually.
+If the CLI errors because login is needed, ask the user to perform it manually.
+
+An agent may take long to answer. Avoid repeating an agent call if possible, especially if it timed out without a clear error, because:
+
+- the agent call may not be idempotent, e.g. when creating an issue, if the conversation on Dust has been started, repeating will create two issues;
+- multiple conversations are created in the user's Dust workspace, which bloats their conversation history.
+
+In general, wait for a clear answer. If you decide to time out, make no assumption on success or failure; report back to the user.

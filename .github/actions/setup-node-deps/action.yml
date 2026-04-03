@@ -25,6 +25,10 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
 
+    - name: Install correct npm version
+      shell: bash
+      run: npm install -g npm@11.11.0
+
     - name: Cache node_modules
       id: cache-node-modules
       uses: actions/cache@v3

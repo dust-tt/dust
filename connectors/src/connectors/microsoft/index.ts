@@ -38,11 +38,19 @@ import {
   launchMicrosoftIncrementalSyncWorkflow,
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/microsoft/temporal/client";
+import {
+  microsoftFullSyncWorkflowId,
+  microsoftGarbageCollectionWorkflowId,
+  microsoftIncrementalSyncWorkflowId,
+} from "@connectors/connectors/microsoft/temporal/workflows";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type { SelectedSiteMetadata } from "@connectors/lib/models/microsoft";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { syncSucceeded } from "@connectors/lib/sync_status";
-import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
+import {
+  terminateAllWorkflowsForConnectorId,
+  terminateWorkflow,
+} from "@connectors/lib/temporal";
 import logger, { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -566,6 +574,17 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }: {
     reason: string;
   }): Promise<Result<undefined, Error>> {
+    // Terminate known long-lived workflows by deterministic ID first to avoid
+    // relying solely on Temporal's eventually-consistent visibility query,
+    // which can miss workflows during a continueAsNew transition.
+    await terminateWorkflow(
+      microsoftIncrementalSyncWorkflowId(this.connectorId)
+    );
+    await terminateWorkflow(microsoftFullSyncWorkflowId(this.connectorId));
+    await terminateWorkflow(
+      microsoftGarbageCollectionWorkflowId(this.connectorId)
+    );
+    // Sweep for any remaining child/transient workflows via visibility query.
     await terminateAllWorkflowsForConnectorId({
       connectorId: this.connectorId,
       stopReason: reason,
@@ -724,8 +743,24 @@ export async function getMicrosoftConnectionData(connectionId: string) {
     connectionId,
   });
 
+  // AuthProvider is called on every Graph API request. We fetch the token
+  // inside the callback (rather than closing over tokenData.access_token) so
+  // that long-running operations like delta sync get a refreshed token when
+  // the original one expires. The underlying call is backed by a 5min
+  // in-memory cache, so this doesn't cause extra network requests.
   const client = Client.init({
-    authProvider: (done) => done(null, tokenData.access_token),
+    authProvider: async (done) => {
+      try {
+        const { access_token } = await getOAuthConnectionAccessTokenWithThrow({
+          logger,
+          provider: "microsoft",
+          connectionId,
+        });
+        done(null, access_token);
+      } catch (e) {
+        done(e, null);
+      }
+    },
   });
 
   return {

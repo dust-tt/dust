@@ -1,3 +1,9 @@
+import {
+  buildDustAidCookieString,
+  getRootCookieDomain,
+} from "@app/lib/utils/anonymous_id";
+import { posthog } from "posthog-js";
+
 // Marketing and UTM parameter keys to track across the application.
 export const MARKETING_PARAMS = [
   "utm_source",
@@ -9,6 +15,7 @@ export const MARKETING_PARAMS = [
   "fbclid",
   "msclkid",
   "li_fat_id",
+  "posthog_id",
 ] as const;
 
 export type UTMParams = Partial<
@@ -63,6 +70,9 @@ export function persistClickIdCookies(params: UTMParams): void {
     return;
   }
 
+  const domain = getRootCookieDomain();
+  const domainPart = domain ? `; domain=${domain}` : "";
+
   for (const key of CLICK_ID_KEYS) {
     const value = params[key];
     if (value) {
@@ -70,8 +80,24 @@ export function persistClickIdCookies(params: UTMParams): void {
       const expires = new Date(
         Date.now() + expiryDays * 24 * 60 * 60 * 1000
       ).toUTCString();
-      document.cookie = `_dust_${key}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax; Secure`;
+      document.cookie = `_dust_${key}=${encodeURIComponent(value)}; expires=${expires}; path=/${domainPart}; SameSite=Lax; Secure`;
     }
+  }
+}
+
+/**
+ * If the URL contains a `dust_aid` parameter (from email CTA links), set it as
+ * the `_dust_aid` cookie to re-establish the anonymous device ID on this device.
+ */
+export function persistDustAidFromURL(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const dustAid = params.get("dust_aid");
+  if (dustAid) {
+    document.cookie = buildDustAidCookieString(encodeURIComponent(dustAid));
   }
 }
 
@@ -81,13 +107,16 @@ export function persistUTMCookies(params: UTMParams): void {
     return;
   }
 
+  const domain = getRootCookieDomain();
+  const domainPart = domain ? `; domain=${domain}` : "";
+
   for (const key of UTM_KEYS) {
     const value = params[key];
     if (value) {
       const expires = new Date(
         Date.now() + UTM_COOKIE_EXPIRY_DAYS * 24 * 60 * 60 * 1000
       ).toUTCString();
-      document.cookie = `_dust_${key}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax; Secure`;
+      document.cookie = `_dust_${key}=${encodeURIComponent(value)}; expires=${expires}; path=/${domainPart}; SameSite=Lax; Secure`;
     }
   }
 }
@@ -151,6 +180,80 @@ export const getStoredUTMParams = (): UTMParams => {
   }
 };
 
+const LANDING_COOKIE = "_dust_landing";
+const LANDING_COOKIE_EXPIRY_DAYS = 30;
+
+interface LandingContext {
+  referrer: string | null;
+  host: string;
+  url: string;
+  pathname: string;
+}
+
+// Persist first-touch landing context in a single cross-subdomain cookie.
+// Survives the dust.tt -> signin -> app.dust.tt auth redirect flow.
+export function persistLandingContext(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (getStoredLandingContext()) {
+    return;
+  }
+
+  let referrer: string | null = null;
+  if (document.referrer) {
+    try {
+      const refHost = new URL(document.referrer).hostname;
+      if (refHost !== "localhost" && !refHost.endsWith(".dust.tt")) {
+        referrer = document.referrer;
+      }
+    } catch {
+      // Malformed referrer.
+    }
+  }
+
+  const context: LandingContext = {
+    referrer,
+    host: window.location.hostname,
+    url: window.location.href,
+    pathname: window.location.pathname,
+  };
+
+  const domain = getRootCookieDomain();
+  const domainPart = domain ? `; domain=${domain}` : "";
+  const expires = new Date(
+    Date.now() + LANDING_COOKIE_EXPIRY_DAYS * 24 * 60 * 60 * 1000
+  ).toUTCString();
+
+  document.cookie = `${LANDING_COOKIE}=${encodeURIComponent(JSON.stringify(context))}; expires=${expires}; path=/${domainPart}; SameSite=Lax; Secure`;
+}
+
+export function getStoredLandingContext(): LandingContext | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const prefix = `${LANDING_COOKIE}=`;
+  const cookie = document.cookie.split("; ").find((c) => c.startsWith(prefix));
+  if (!cookie) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(
+      decodeURIComponent(cookie.slice(prefix.length))
+    ) as LandingContext;
+  } catch {
+    return null;
+  }
+}
+
+// Convenience helper for call sites that only need the referrer.
+export function getStoredReferrer(): string | null {
+  return getStoredLandingContext()?.referrer ?? null;
+}
+
 // Append UTM parameters to URLs.
 export const appendUTMParams = (url: string, utmParams?: UTMParams): string => {
   if (typeof window === "undefined") {
@@ -158,6 +261,11 @@ export const appendUTMParams = (url: string, utmParams?: UTMParams): string => {
   }
 
   const params = utmParams ?? getStoredUTMParams();
+
+  const posthogId = posthog.get_distinct_id();
+  if (posthogId) {
+    params.posthog_id = posthogId;
+  }
 
   if (Object.keys(params).length === 0) {
     return url;

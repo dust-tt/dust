@@ -13,6 +13,15 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
     stage: "dust_only",
   },
+  ask_user_question_tool: {
+    description:
+      "Enable ask_user_question tool for agents to ask users questions",
+    stage: "dust_only",
+  },
+  audit_logs: {
+    description: "Enable audit log emission via WorkOS",
+    stage: "dust_only",
+  },
   custom_model_feature: {
     description: "Access to custom models loaded from external config",
     stage: "dust_only",
@@ -25,22 +34,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   notion_private_integration: {
     description: "Setup Notion private integration tokens",
     stage: "on_demand",
-  },
-  agent_to_yaml: {
-    description: "Export and Import agents to/from YAML format",
-    stage: "dust_only",
-  },
-  agent_builder_copilot: {
-    description: "Enable Sidekick in Agent Builder (admins only by default)",
-    stage: "dust_only",
-  },
-  agent_builder_copilot_builders: {
-    description: "Allow workspace builders to use Sidekick in Agent Builder",
-    stage: "dust_only",
-  },
-  agent_builder_shrink_wrap: {
-    description: "Enable 'Turn into agent' button on agent messages",
-    stage: "dust_only",
   },
   claude_4_opus_feature: {
     description: "Access to Claude 4 Opus model in the agent builder",
@@ -138,10 +131,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Salesforce MCP tool (activated by default on most plans, FF to override the plan config)",
     stage: "on_demand",
   },
-  salesforce_tool_write: {
-    description: "Salesforce MCP tool: write operations (update_object)",
-    stage: "on_demand",
-  },
   show_debug_tools: {
     description: "Display debug tools in the interface",
     stage: "dust_only",
@@ -206,17 +195,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to legacy Dust Apps (editor and associated tools)",
     stage: "on_demand",
   },
+  luma_tool: {
+    description: "Luma MCP tool for event management and guest tracking",
+    stage: "on_demand",
+  },
+  power_bi_mcp: {
+    description: "Power BI MCP tool for querying semantic models and DAX",
+    stage: "on_demand",
+  },
   discord_bot: {
     description:
       "Discord bot integration for workspace-level Discord integration",
-    stage: "dust_only",
-  },
-  email_agents: {
-    description: "Enable triggering and interacting with agents via email",
-    stage: "dust_only",
-  },
-  project_butler: {
-    description: "Enable user project digest generation in project spaces",
     stage: "dust_only",
   },
   projects: {
@@ -241,6 +230,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable conversation butler for automated conversation management",
     stage: "dust_only",
   },
+  project_todo: {
+    description: "Enable project todo tab (todos and what's new digest)",
+    stage: "dust_only",
+  },
   conversations_slack_notifications: {
     description: "Enable slack notifications",
     stage: "dust_only",
@@ -260,10 +253,33 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable reinforced agents: background analysis of conversations to suggest agent improvements",
     stage: "dust_only",
   },
-  discover_skills: {
-    description:
-      "Enable default skills discovery on global agents (do not enable for customers)",
+  collapsible_messages: {
+    description: "Enable collapsible messages in conversations",
     stage: "dust_only",
+  },
+  email_restricted_sharing: {
+    description:
+      "Enable email-restricted sharing for interactive content (Frames)",
+    stage: "dust_only",
+  },
+  poke_mcp: {
+    description: "Enable the Poke MCP server for cross-workspace data access.",
+    stage: "dust_only",
+  },
+  metronome_billing: {
+    description:
+      "Enable Metronome usage event emission (llm_usage, tool_use) for this workspace.",
+    stage: "dust_only",
+  },
+  gong_tool: {
+    description: "Gong MCP tool for sales conversation analytics",
+    stage: "dust_only",
+  },
+  use_dust_keys: {
+    description:
+      "Force BYOK workspaces to use Dust-managed keys instead of customer-provided keys",
+    // Not really on_demand but we want to be able to enable it for customers
+    stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

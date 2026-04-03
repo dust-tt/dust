@@ -24,7 +24,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 export default function FreePlanUpgradeDialog({
@@ -36,6 +36,15 @@ export default function FreePlanUpgradeDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [portalContainer, setPortalContainer] = useState<
+    HTMLElement | undefined
+  >(undefined);
+
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      setPortalContainer(document.body);
+    }
+  }, []);
 
   const { plans } = usePokePlans();
 
@@ -130,6 +139,7 @@ export default function FreePlanUpgradeDialog({
                       control={form.control}
                       name="planCode"
                       title="Free Plan"
+                      mountPortalContainer={portalContainer}
                       options={plans
                         .filter(
                           (plan) =>

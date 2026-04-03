@@ -7,7 +7,9 @@ import {
   isSandboxTokenPrefix,
 } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { getClientIp } from "@app/lib/utils/request";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type {
@@ -20,6 +22,13 @@ import { Err } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
 import { getUserEmailFromHeaders } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
+
+function setClientIpOnAuth(auth: Authenticator, req: NextApiRequest): void {
+  const ip = getClientIp(req);
+  if (ip !== "internal") {
+    auth.setClientIp(ip);
+  }
+}
 
 function getMaintenanceError(
   maintenance: string | number | true | object
@@ -273,6 +282,8 @@ export function withSessionAuthenticationForWorkspace<T>(
       // Session is either from cookies or synthesized from a bearer token by withLogging.
       const auth = await Authenticator.fromSession(session, wId);
 
+      setClientIpOnAuth(auth, req);
+
       if (opts.allowMissingWorkspace && (!auth.workspace() || !auth.plan())) {
         return handler(req, res, auth, session);
       }
@@ -381,6 +392,7 @@ export function withPublicAPIAuthentication<T>(
           return apiError(req, res, authRes.error);
         }
         const auth = authRes.value;
+        setClientIpOnAuth(auth, req);
 
         return handler(req, res, auth, null);
       }
@@ -416,6 +428,7 @@ export function withPublicAPIAuthentication<T>(
         }
 
         req.addResourceToLog?.(auth.getNonNullableUser());
+        setClientIpOnAuth(auth, req);
 
         return await handler(req, res, auth, null);
       }
@@ -487,6 +500,8 @@ export function withPublicAPIAuthentication<T>(
           monthlyCapMicroUsd: key.monthlyCapMicroUsd,
         });
       }
+      setClientIpOnAuth(workspaceAuth, req);
+
       return handler(req, res, workspaceAuth, null);
     },
     isStreaming
@@ -576,6 +591,8 @@ export async function getAuthForSharedEndpointWorkspaceMembersOnly(
   if (!auth.isUser()) {
     return null;
   }
+
+  setClientIpOnAuth(auth, req);
 
   return auth;
 }

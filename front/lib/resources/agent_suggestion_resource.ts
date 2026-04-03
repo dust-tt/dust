@@ -2,6 +2,7 @@ import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/age
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -46,15 +47,18 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
   readonly editorsGroupId: ModelId | null;
   readonly agentConfigurationSId: string;
+  readonly conversationSId: string | null;
   constructor(
     model: ModelStatic<AgentSuggestionModel>,
     blob: Attributes<AgentSuggestionModel>,
     editorsGroupId: ModelId | null,
-    agentConfigurationSId: string
+    agentConfigurationSId: string,
+    conversationId: string | null
   ) {
     super(AgentSuggestionModel, blob);
     this.editorsGroupId = editorsGroupId;
     this.agentConfigurationSId = agentConfigurationSId;
+    this.conversationSId = conversationId;
   }
 
   /**
@@ -147,7 +151,8 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       AgentSuggestionModel,
       suggestion.get(),
       editorsGroupId ?? null,
-      agentConfiguration.sId
+      agentConfiguration.sId,
+      null
     );
   }
 
@@ -168,6 +173,12 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
           model: AgentConfigurationModel,
           as: "agentConfiguration",
           required: true,
+        },
+        {
+          model: ConversationModel,
+          as: "conversation",
+          required: false,
+          attributes: ["sId"],
         },
       ],
       ...otherOptions,
@@ -201,7 +212,8 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
           AgentSuggestionModel,
           suggestion.get(),
           editorsGroupId,
-          agentConfig.sId
+          agentConfig.sId,
+          suggestion.conversation?.sId ?? null
         );
       })
     );
@@ -318,6 +330,35 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   }
 
   /**
+   * Bulk delete a list of suggestion resources.
+   * Requires super user permissions.
+   */
+  static async bulkDelete(
+    auth: Authenticator,
+    suggestions: AgentSuggestionResource[]
+  ): Promise<Result<number, Error>> {
+    if (!auth.isDustSuperUser()) {
+      return new Err(new Error("Only super users can bulk delete suggestions"));
+    }
+
+    if (suggestions.length === 0) {
+      return new Ok(0);
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+    const ids = suggestions.map((s) => s.id);
+
+    const deletedCount = await AgentSuggestionModel.destroy({
+      where: {
+        workspaceId: owner.id,
+        id: ids,
+      },
+    });
+
+    return new Ok(deletedCount);
+  }
+
+  /**
    * WARNING: This method deletes ALL suggestions for a workspace.
    * Only workspace admins can perform this operation.
    * This is intended for internal use only (e.g., workspace deletion workflows).
@@ -399,8 +440,36 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       analysis: this.analysis,
       state: this.state,
       source: this.source,
+      conversationId: this.conversationSId,
       ...suggestionData,
     };
+  }
+
+  /**
+   * Deletes all synthetic suggestions older than the given cutoff date.
+   * Requires admin permissions. Returns the number of deleted rows.
+   */
+  static async deleteExpiredSynthetic(
+    auth: Authenticator,
+    cutoffDate: Date,
+    { limit }: { limit?: number } = {}
+  ): Promise<number> {
+    if (!auth.isAdmin()) {
+      throw new Error(
+        "Only workspace admins can delete expired synthetic suggestions"
+      );
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+
+    return AgentSuggestionModel.destroy({
+      where: {
+        workspaceId: owner.id,
+        source: "synthetic",
+        createdAt: { [Op.lt]: cutoffDate },
+      },
+      limit,
+    });
   }
 
   /**
@@ -410,5 +479,59 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     auth: Authenticator
   ): Promise<AgentSuggestionResource[]> {
     return this.baseFetch(auth, {});
+  }
+
+  /**
+   * Lists suggestions across multiple agents identified by their sIds.
+   */
+  static async listByAgentConfigurationIds(
+    auth: Authenticator,
+    agentIds: string[],
+    filters?: {
+      states?: AgentSuggestionState[];
+      sources?: AgentSuggestionSource[];
+      kind?: AgentSuggestionKind;
+      limit?: number;
+      createdAfter?: Date;
+    }
+  ): Promise<AgentSuggestionResource[]> {
+    if (agentIds.length === 0) {
+      return [];
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+
+    const agentConfigs = await AgentConfigurationModel.findAll({
+      where: {
+        sId: { [Op.in]: agentIds },
+        workspaceId: owner.id,
+        status: "active",
+      },
+      attributes: ["id", "sId"],
+    });
+
+    if (agentConfigs.length === 0) {
+      return [];
+    }
+
+    const agentConfigIds = agentConfigs.map((ac) => ac.id);
+
+    const whereClause: WhereOptions<AgentSuggestionModel> = {
+      agentConfigurationId: agentConfigIds,
+      ...(filters?.states &&
+        filters.states.length > 0 && { state: filters.states }),
+      ...(filters?.sources &&
+        filters.sources.length > 0 && { source: filters.sources }),
+      ...(filters?.kind && { kind: filters.kind }),
+      ...(filters?.createdAfter && {
+        createdAt: { [Op.gte]: filters.createdAfter },
+      }),
+    };
+
+    return this.baseFetch(auth, {
+      where: whereClause,
+      order: [["createdAt", "DESC"]],
+      limit: filters?.limit,
+    });
   }
 }

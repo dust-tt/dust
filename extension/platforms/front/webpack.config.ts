@@ -6,6 +6,7 @@ import HtmlWebpackPlugin from "html-webpack-plugin";
 import path from "path";
 import TerserPlugin from "terser-webpack-plugin";
 import webpack from "webpack";
+import ZipPlugin from "zip-webpack-plugin";
 
 // Get git commit hash
 const getCommitHash = () => {
@@ -23,6 +24,12 @@ export const getConfig = ({ env }: { env: Environment }) => {
     fs.readFileSync(path.resolve(__dirname, "../../package.json"), "utf8")
   );
   const version = packageJson.version;
+
+  const packageDirPath = path.resolve(
+    path.resolve(__dirname),
+    "../../packages"
+  );
+
   return {
     mode: isDevelopment ? "development" : "production",
     entry: path.resolve(__dirname, "./main.tsx"),
@@ -81,6 +88,10 @@ export const getConfig = ({ env }: { env: Environment }) => {
       extensions: [".tsx", ".ts", ".js"],
       alias: {
         "@extension": path.resolve(__dirname, "../../"),
+        "@app/logger/logger": path.resolve(
+          __dirname,
+          "../../../front/logger/datadogLogger.ts"
+        ),
         "@app/lib/platform": path.resolve(__dirname, "../../shared/platform"),
         "@app": path.resolve(__dirname, "../../../front"),
       },
@@ -108,10 +119,7 @@ export const getConfig = ({ env }: { env: Environment }) => {
         COMMIT_HASH: process.env.COMMIT_HASH || getCommitHash(),
         DATADOG_CLIENT_TOKEN: process.env.DATADOG_CLIENT_TOKEN || "",
         DATADOG_ENV: isDevelopment ? "dev" : "prod",
-        DUST_EU_URL: process.env.DUST_EU_URL || "",
         DUST_EXTENSION_VERSION: `front-${version}`,
-        DUST_US_URL: process.env.DUST_US_URL || "",
-        FRONT_EXTENSION_URL: process.env.FRONT_EXTENSION_URL || "",
         NEXT_PUBLIC_DUST_APP_URL: process.env.NEXT_PUBLIC_DUST_APP_URL || "",
         NEXT_PUBLIC_NOVU_API_URL: process.env.NEXT_PUBLIC_NOVU_API_URL || "",
         NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER:
@@ -121,13 +129,18 @@ export const getConfig = ({ env }: { env: Environment }) => {
         NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY:
           process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY || "",
         VIZ_PUBLIC_URL: process.env.VIZ_PUBLIC_URL || "",
-        WORKOS_CLIENT_ID: process.env.WORKOS_CLIENT_ID || "",
       }),
       new Dotenv({
         path: isDevelopment
           ? path.resolve(__dirname, "../../.env.development")
           : path.resolve(__dirname, "../../.env.production"),
       }),
+      packageDirPath
+        ? new ZipPlugin({
+            path: packageDirPath,
+            filename: `Dust_Extension_Front.${env}.v${version}.zip`,
+          })
+        : null,
     ].filter(Boolean),
     devServer: {
       port: 3012,

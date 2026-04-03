@@ -1,6 +1,6 @@
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
-import { ImportSkillsDialog } from "@app/components/skills/ImportSkillsDialog";
+import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
+import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { SkillsTable } from "@app/components/skills/SkillsTable";
 import { SuggestedSkillsSection } from "@app/components/skills/SuggestedSkillsSection";
@@ -140,7 +140,18 @@ export function ManageSkillsPage() {
     return {
       active: sortedActiveSkills,
       editable_by_me: sortedActiveSkills.filter((s) => s.canWrite),
-      default: sortedActiveSkills.filter((s) => !s.relations.editors),
+      default: sortedActiveSkills
+        .filter((s) => s.isDefault || s.relations.editors === null)
+        .sort((a, b) => {
+          // Display first the skills that have no editor (Dust-managed ones).
+          const aNoEditors = a.relations.editors === null;
+          const bNoEditors = b.relations.editors === null;
+          if (aNoEditors !== bNoEditors) {
+            return aNoEditors ? -1 : 1;
+          }
+          // Fallback to a name sort.
+          return a.name.localeCompare(b.name);
+        }),
       archived: sortedArchivedSkills,
       search: activeSkills
         .filter((s) =>
@@ -227,7 +238,7 @@ export function ManageSkillsPage() {
         user={user}
         owner={owner}
       />
-      <AgentDetails
+      <AgentDetailsSheet
         owner={owner}
         user={user}
         agentId={agentId}

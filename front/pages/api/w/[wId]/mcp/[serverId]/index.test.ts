@@ -12,7 +12,7 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "GET"
 ) {
-  const { req, res, workspace, authenticator, systemSpace } =
+  const { req, res, workspace, auth, systemSpace } =
     await createPrivateApiMockRequest({
       role,
       method,
@@ -22,7 +22,7 @@ async function setupTest(
   req.query.wId = workspace.sId;
   req.query.spaceId = systemSpace.sId;
 
-  return { req, res, workspace, space: systemSpace, auth: authenticator };
+  return { req, res, workspace, space: systemSpace, auth };
 }
 
 describe("GET /api/w/[wId]/mcp/[serverId]", () => {

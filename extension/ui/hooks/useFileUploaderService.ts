@@ -110,13 +110,26 @@ export function useFileUploaderService(
             includeSelectionOnly
               ? `[selection] ${tabContent.title}`
               : `[text] ${tabContent.title}`,
-            "txt",
+            "md",
             existingTitles
           );
 
           if (tabContent && tabContent.content) {
-            const file = new File([tabContent.content], title, {
-              type: "text/plain",
+            const parts = [];
+            if (tabContent.title) {
+              parts.push(`Title: ${tabContent.title}`);
+            }
+            if (tabContent.url) {
+              parts.push(`URL: ${tabContent.url}`);
+            }
+            if (parts.length > 0) {
+              // Add a visual separator between metadata and content
+              parts.push("");
+            }
+            parts.push(tabContent.content);
+
+            const file = new File([parts.join("\n")], title, {
+              type: "text/markdown",
             });
 
             const fragments = await handleFilesUpload([file]);

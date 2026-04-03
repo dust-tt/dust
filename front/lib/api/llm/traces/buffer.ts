@@ -71,7 +71,8 @@ export class LLMTraceBuffer {
   constructor(
     private readonly traceId: LLMTraceId,
     private readonly workspaceId: string,
-    private readonly context: LLMTraceContext
+    private readonly context: LLMTraceContext,
+    private readonly modelId: ModelIdType | "unknown" = "unknown"
   ) {}
 
   /**
@@ -190,7 +191,7 @@ export class LLMTraceBuffer {
     }
 
     const tags = [
-      `model_id:${this.input?.modelId ?? "unknown"}`,
+      `model_id:${this.input?.modelId ?? this.modelId}`,
       `agent_configuration_id:${agentConfigurationId}`,
     ];
 
@@ -283,17 +284,13 @@ export class LLMTraceBuffer {
     startTimestamp: string;
     timeToFirstEventMs?: number;
   }): LLMTrace {
-    if (!this.input) {
-      throw new Error("Input must be set before creating trace");
-    }
-
     const trace: LLMTrace = {
       context: this.context,
-      input: this.input,
+      ...(this.input ? { input: this.input } : {}),
       metadata: {
         durationMs,
         endTimestamp,
-        modelId: this.input.modelId,
+        modelId: this.input?.modelId ?? this.modelId,
         startTimestamp,
         timeToFirstEventMs,
       },
@@ -396,7 +393,7 @@ export class LLMTraceBuffer {
           workspaceId: this.workspaceId,
           operationType: this.context.operationType,
           userId: this.context.userId,
-          modelId: this.input?.modelId,
+          modelId: this.input?.modelId ?? this.modelId,
           gcsPath: this.filePath,
           durationMs,
           hasError: !!this.endingError,

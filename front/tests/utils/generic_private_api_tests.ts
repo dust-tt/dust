@@ -102,9 +102,6 @@ export const createPrivateApiMockRequest = async ({
     globalSpace,
     systemGroup,
     systemSpace,
-    authenticator: await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    ),
+    auth: await Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId),
   };
 };

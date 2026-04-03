@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
@@ -11,12 +12,12 @@ import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -192,6 +193,7 @@ async function handler(
         sId: generateRandomModelSId("msg"),
         version: 0,
         rank: 0,
+        branchId: null,
         created: Date.now(),
         completedTs: null,
         parentMessageId: userMessage.sId,
@@ -314,7 +316,9 @@ async function handler(
       // Compute approximate prompt and tools token counts.
       let promptTokenCountApprox = 0;
       let toolsTokenCountApprox = 0;
-      const credentials = await ProviderCredentialResource.getCredentials(auth);
+      const credentials = await getLlmCredentials(auth, {
+        skipEmbeddingApiKeyRequirement: true,
+      });
       const tokenCountsRes = await tokenCountForTexts(
         [prompt, tools],
         model,

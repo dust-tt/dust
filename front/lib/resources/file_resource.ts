@@ -7,7 +7,15 @@ import {
   getConversationFilePath,
   makeProcessedMountFileName,
 } from "@app/lib/api/files/mount_path";
-import { hasProcessedVersion } from "@app/lib/api/files/processing";
+import {
+  getProcessedContentType,
+  hasProcessedVersion,
+} from "@app/lib/api/files/processing";
+import { fetchProjectDataSource } from "@app/lib/api/projects/data_sources";
+import {
+  getDefaultFrameShareScope,
+  sendFrameSharedEmail,
+} from "@app/lib/api/share/frame_sharing";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import {
@@ -17,16 +25,22 @@ import {
 } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
+  ExternalViewerSessionModel,
   FileModel,
   ShareableFileModel,
+  SharingGrantModel,
 } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { copyContent } from "@app/lib/utils/files";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { CoreAPI } from "@app/types/core/core_api";
 import type {
   FileShareScope,
   FileType,
@@ -34,6 +48,7 @@ import type {
   FileTypeWithUploadUrl,
   FileUseCase,
   FileUseCaseMetadata,
+  SharingGrantType,
 } from "@app/types/files";
 import {
   ALL_FILE_FORMATS,
@@ -45,7 +60,11 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type {
+  LightWorkspaceType,
+  UserType,
+  WorkspaceSharingPolicy,
+} from "@app/types/user";
 import type { File } from "@google-cloud/storage";
 import assert from "assert";
 import type {
@@ -182,6 +201,7 @@ export class FileResource extends BaseResource<FileModel> {
       {
         file: FileResource;
         shareScope: FileShareScope;
+        shareableFileId: ModelId;
         workspace: LightWorkspaceType;
       },
       DustError
@@ -252,7 +272,45 @@ export class FileResource extends BaseResource<FileModel> {
       file: fileRes,
       workspace: renderLightWorkspaceType({ workspace }),
       shareScope: shareableFile.shareScope,
+      shareableFileId: shareableFile.id,
     });
+  }
+
+  static async getActiveGrantForEmail(
+    workspace: LightWorkspaceType | WorkspaceResource,
+    {
+      email,
+      shareableFileId,
+    }: {
+      email: string;
+      shareableFileId: ModelId;
+    }
+  ): Promise<SharingGrantType | null> {
+    // Note: expiresAt is not enforced here because it cannot be set yet.
+    // When grant expiration is implemented, add query clause + index
+    // expiresAt: { [Op.or]: [null, { [Op.gt]: new Date() }] }
+    const grant = await SharingGrantModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        shareableFileId,
+        email: email.toLowerCase(),
+        revokedAt: null,
+      },
+    });
+
+    if (!grant) {
+      return null;
+    }
+
+    const usersById: Map<ModelId, UserResource> = new Map();
+    if (grant?.grantedBy) {
+      const user = await UserResource.fetchByModelId(grant.grantedBy);
+      if (user) {
+        usersById.set(grant.grantedBy, user);
+      }
+    }
+
+    return renderSharingGrant(grant, usersById);
   }
 
   static async unsafeFetchByIdInWorkspace(
@@ -299,18 +357,45 @@ export class FileResource extends BaseResource<FileModel> {
     return files.map((f) => new this(this.model, f.get()));
   }
 
-  static async deleteAllForWorkspace(auth: Authenticator) {
-    // Delete all shareable file records.
-    await this.shareableFileModel.destroy({
+  static async fetchByMountFilePaths(
+    auth: Authenticator,
+    mountFilePaths: string[]
+  ): Promise<FileResource[]> {
+    if (mountFilePaths.length === 0) {
+      return [];
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+    const files = await this.model.findAll({
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId: owner.id,
+        mountFilePath: { [Op.in]: mountFilePaths },
       },
     });
 
+    return files.map((f) => new this(this.model, f.get()));
+  }
+
+  static async deleteAllForWorkspace(auth: Authenticator) {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Delete external viewer sessions before shareable files (FK constraint).
+    await ExternalViewerSessionModel.destroy({
+      where: { workspaceId },
+    });
+
+    // Delete sharing grants before shareable files (FK constraint).
+    await SharingGrantModel.destroy({
+      where: { workspaceId },
+    });
+
+    // Delete all shareable file records.
+    await this.shareableFileModel.destroy({
+      where: { workspaceId },
+    });
+
     return this.model.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
+      where: { workspaceId },
     });
   }
 
@@ -349,6 +434,8 @@ export class FileResource extends BaseResource<FileModel> {
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
     try {
       if (this.isReady) {
+        await maybeDeleteCoreArtifactsForIndexedFile(auth, this);
+
         // Delete mount file copies if set.
         await this.deleteMountFileCopies();
 
@@ -364,6 +451,19 @@ export class FileResource extends BaseResource<FileModel> {
         await this.getBucketForVersion("public")
           .file(this.getCloudStoragePath(auth, "public"))
           .delete({ ignoreNotFound: true });
+
+        // Delete sharing grants before shareable file (FK constraint).
+        const shareableFile = await FileResource.shareableFileModel.findOne({
+          where: { fileId: this.id, workspaceId: this.workspaceId },
+        });
+        if (shareableFile) {
+          await SharingGrantModel.destroy({
+            where: {
+              shareableFileId: shareableFile.id,
+              workspaceId: this.workspaceId,
+            },
+          });
+        }
 
         // Delete the shareable file record.
         await FileResource.shareableFileModel.destroy({
@@ -422,11 +522,15 @@ export class FileResource extends BaseResource<FileModel> {
     const updateResult = await this.update({ status: "ready" });
 
     // For Interactive Content conversation files, automatically create a ShareableFileModel with
-    // default workspace scope.
+    // a default scope based on the workspace sharing policy.
     if (this.isInteractiveContent) {
+      const defaultScope = getDefaultFrameShareScope(
+        auth.getNonNullableWorkspace().sharingPolicy
+      );
+
       await FileResource.shareableFileModel.upsert({
         fileId: this.id,
-        shareScope: "workspace",
+        shareScope: defaultScope,
         sharedBy: this.userId ?? null,
         workspaceId: this.workspaceId,
         sharedAt: new Date(),
@@ -714,7 +818,6 @@ export class FileResource extends BaseResource<FileModel> {
       .file(this.getCloudStoragePath(auth, version))
       .createWriteStream({
         resumable: false,
-        gzip: true,
         contentType: overrideContentType ?? this.contentType,
       });
   }
@@ -895,13 +998,16 @@ export class FileResource extends BaseResource<FileModel> {
     const bucket = getPrivateUploadBucket();
 
     const srcOriginalPath = this.getCloudStoragePath(auth, "original");
-    await bucket.file(srcOriginalPath).copy(bucket.file(mountFilePath));
+    await bucket.copyFile(srcOriginalPath, mountFilePath);
 
     // Copy processed version only if this file type has real processing.
     if (this.getContentVersion() === "processed") {
       const srcProcessedPath = this.getCloudStoragePath(auth, "processed");
-      const processedMountPath = makeProcessedMountFileName(mountFilePath);
-      await bucket.file(srcProcessedPath).copy(bucket.file(processedMountPath));
+      const processedMountPath = makeProcessedMountFileName({
+        mountFilePath,
+        processedContentType: getProcessedContentType(this.contentType),
+      });
+      await bucket.copyFile(srcProcessedPath, processedMountPath);
     }
 
     await this.update({ mountFilePath });
@@ -924,7 +1030,10 @@ export class FileResource extends BaseResource<FileModel> {
     await bucket.delete(this.mountFilePath, { ignoreNotFound: true });
 
     // Only delete processed mount file if this file type has real processing.
-    const processedMountPath = makeProcessedMountFileName(this.mountFilePath);
+    const processedMountPath = makeProcessedMountFileName({
+      mountFilePath: this.mountFilePath,
+      processedContentType: getProcessedContentType(this.contentType),
+    });
     await bucket.delete(processedMountPath, { ignoreNotFound: true });
   }
 
@@ -948,28 +1057,26 @@ export class FileResource extends BaseResource<FileModel> {
     );
   }
 
-  /**
-   * Move a conversation frame file to a project (change use case to project_context).
-   * Preserves existing metadata and sets spaceId and sourceConversationId.
-   */
-  async moveFrameToSpace(
+  async updateUseCase(
     auth: Authenticator,
-    { projectId }: { projectId: string }
-  ): Promise<void> {
-    const existingMetadata = this.useCaseMetadata ?? {};
-    if (!this.isInteractiveContent || !existingMetadata.conversationId) {
-      throw new Error("File is not a conversation frame");
+    useCase: FileUseCase,
+    metadata: FileUseCaseMetadata
+  ) {
+    if (this.useCase === useCase) {
+      return;
     }
 
+    // Eg: for a conversation file, we need to cleanup the core artifacts.
+    await maybeDeleteCoreArtifactsForIndexedFile(auth, this);
+
+    const mergedMetadata: FileUseCaseMetadata = {
+      ...(this.useCaseMetadata ?? {}),
+      ...metadata,
+    };
+
     await this.update({
-      useCase: "project_context",
-      useCaseMetadata: {
-        ...existingMetadata,
-        spaceId: projectId,
-        // Remove conversationId to prevent confusion when accessing the file.
-        conversationId: undefined,
-        sourceConversationId: existingMetadata.conversationId,
-      },
+      useCase,
+      useCaseMetadata: mergedMetadata,
       userId: auth.getNonNullableUser().id ?? null,
     });
   }
@@ -1063,19 +1170,193 @@ export class FileResource extends BaseResource<FileModel> {
     return null;
   }
 
-  static async revokePublicSharingInWorkspace(auth: Authenticator) {
-    const workspaceId = auth.getNonNullableWorkspace().id;
+  static async revokePublicSharingInWorkspace(
+    auth: Authenticator,
+    { newPolicy }: { newPolicy: WorkspaceSharingPolicy }
+  ) {
+    const fallbackScope = getDefaultFrameShareScope(newPolicy);
+
     return FileResource.shareableFileModel.update(
       {
-        shareScope: "workspace",
+        shareScope: fallbackScope,
       },
       {
         where: {
-          workspaceId,
+          workspaceId: auth.getNonNullableWorkspace().id,
           shareScope: "public",
         },
       }
     );
+  }
+
+  // Sharing grants logic.
+
+  private async getShareableFileId(): Promise<ModelId> {
+    assert(
+      this.isInteractiveContent,
+      `Sharing grants are only supported for interactive content files (file: ${this.sId})`
+    );
+
+    const shareableFile = await FileResource.shareableFileModel.findOne({
+      where: { fileId: this.id, workspaceId: this.workspaceId },
+    });
+
+    assert(
+      shareableFile,
+      `ShareableFileModel record not found for file ${this.sId}`
+    );
+
+    return shareableFile.id;
+  }
+
+  async addSharingGrants(
+    auth: Authenticator,
+    { emails }: { emails: string[] }
+  ): Promise<SharingGrantType[]> {
+    assert(
+      this.isInteractiveContent,
+      "addSharingGrants requires interactive content file"
+    );
+    const user = auth.getNonNullableUser();
+    const shareableFileId = await this.getShareableFileId();
+
+    const normalizedEmails = emails.map((e) => e.toLowerCase().trim());
+
+    // Find existing active grants for these emails.
+    const existingGrants = await SharingGrantModel.findAll({
+      where: {
+        workspaceId: this.workspaceId,
+        shareableFileId,
+        email: { [Op.in]: normalizedEmails },
+        revokedAt: null,
+      },
+    });
+
+    const existingEmails = new Set(existingGrants.map((g) => g.email));
+
+    const newEmails = normalizedEmails.filter((e) => !existingEmails.has(e));
+
+    if (newEmails.length > 0) {
+      await SharingGrantModel.bulkCreate(
+        newEmails.map((email) => ({
+          workspaceId: this.workspaceId,
+          shareableFileId,
+          email,
+          grantedBy: user.id,
+          grantedAt: new Date(),
+        }))
+      );
+
+      const shareInfo = await this.getShareInfo();
+      if (shareInfo) {
+        const sharedByName = user.toJSON().fullName;
+        const frameUrl = shareInfo.shareUrl;
+        const shareToken = frameUrl.split("/").at(-1) ?? "";
+
+        // Fire-and-forget: don't block grant creation on email delivery.
+        // TODO: Consider moving email delivery to a dedicated worker/queue  to avoid unbounded
+        // parallelism and improve reliability/retry handling.
+        void Promise.all(
+          newEmails.map((email) =>
+            sendFrameSharedEmail({
+              to: email,
+              sharedByName,
+              frameUrl,
+              shareToken,
+            }).catch(() => {
+              // Silently ignore, email failures should not affect grant creation.
+              logger.info(
+                {
+                  email,
+                  fileId: this.sId,
+                  workspaceId: this.workspaceId,
+                },
+                "Failed to send sharing notification email"
+              );
+            })
+          )
+        );
+      }
+    }
+
+    return this.listActiveSharingGrants();
+  }
+
+  async revokeSharingGrant({
+    grantId,
+  }: {
+    grantId: ModelId;
+  }): Promise<Result<undefined, DustError>> {
+    assert(
+      this.isInteractiveContent,
+      "revokeSharingGrant requires interactive content file"
+    );
+    const shareableFileId = await this.getShareableFileId();
+
+    const grant = await SharingGrantModel.findOne({
+      where: {
+        id: grantId,
+        workspaceId: this.workspaceId,
+        shareableFileId,
+        revokedAt: null,
+      },
+    });
+
+    if (!grant) {
+      return new Err(
+        new DustError("file_not_found", "Sharing grant not found")
+      );
+    }
+
+    await grant.update({ revokedAt: new Date() });
+
+    return new Ok(undefined);
+  }
+
+  static async recordGrantView(
+    workspace: WorkspaceResource,
+    {
+      email,
+      shareableFileId,
+    }: {
+      email: string;
+      shareableFileId: ModelId;
+    }
+  ): Promise<void> {
+    await SharingGrantModel.update(
+      { lastViewedAt: new Date() },
+      {
+        where: {
+          shareableFileId,
+          email: email.toLowerCase(),
+          revokedAt: null,
+          workspaceId: workspace.id,
+        },
+      }
+    );
+  }
+
+  async listActiveSharingGrants(): Promise<SharingGrantType[]> {
+    assert(
+      this.isInteractiveContent,
+      "listActiveSharingGrants requires interactive content file"
+    );
+    const shareableFileId = await this.getShareableFileId();
+
+    const grants = await SharingGrantModel.findAll({
+      where: {
+        workspaceId: this.workspaceId,
+        shareableFileId,
+        revokedAt: null,
+      },
+      order: [["grantedAt", "DESC"]],
+    });
+
+    const userIds = removeNulls(grants.map((g) => g.grantedBy));
+    const users = await UserResource.fetchByModelIds(userIds);
+    const usersById = new Map(users.map((u) => [u.id, u]));
+
+    return grants.map((grant) => renderSharingGrant(grant, usersById));
   }
 
   // Serialization logic.
@@ -1224,4 +1505,159 @@ export class FileResource extends BaseResource<FileModel> {
       return new Err(normalizeError(error));
     }
   }
+}
+
+function isBenignCoreIndexedFileDeleteError(code: string): boolean {
+  return (
+    code === "data_source_document_not_found" || code === "table_not_found"
+  );
+}
+
+/**
+ * Best-effort: remove Core tables (including `generatedTables` and `file.sId`) and the
+ * document `file.sId` from the given data source. Wrong-type deletes return benign errors.
+ */
+async function deleteCoreFileArtifactsFromDataSource(
+  auth: Authenticator,
+  dataSource: DataSourceResource,
+  file: FileResource
+): Promise<void> {
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const projectId = dataSource.dustAPIProjectId;
+  const dataSourceId = dataSource.dustAPIDataSourceId;
+  const logCtx = {
+    workspaceId: auth.workspace()?.sId,
+    fileId: file.sId,
+    dataSourceSId: dataSource.sId,
+  };
+
+  const tableIds = new Set<string>([
+    ...(file.useCaseMetadata?.generatedTables ?? []),
+    file.sId,
+  ]);
+
+  for (const tableId of tableIds) {
+    const delTableRes = await coreAPI.deleteTable({
+      projectId,
+      dataSourceId,
+      tableId,
+    });
+    if (
+      delTableRes.isErr() &&
+      !isBenignCoreIndexedFileDeleteError(delTableRes.error.code)
+    ) {
+      logger.warn(
+        { ...logCtx, tableId, error: delTableRes.error },
+        "File delete: failed to remove table from Core data source."
+      );
+    }
+  }
+
+  const delDocRes = await coreAPI.deleteDataSourceDocument({
+    projectId,
+    dataSourceId,
+    documentId: file.sId,
+  });
+  if (
+    delDocRes.isErr() &&
+    !isBenignCoreIndexedFileDeleteError(delDocRes.error.code)
+  ) {
+    logger.warn(
+      { ...logCtx, error: delDocRes.error },
+      "File delete: failed to remove document from Core data source."
+    );
+  }
+}
+
+async function maybeDeleteCoreArtifactsForIndexedFile(
+  auth: Authenticator,
+  file: FileResource
+): Promise<void> {
+  if (file.useCase === "project_context") {
+    const spaceSId = file.useCaseMetadata?.spaceId;
+    if (!spaceSId) {
+      return;
+    }
+    const space = await SpaceResource.fetchById(auth, spaceSId);
+    if (!space) {
+      logger.warn(
+        {
+          workspaceId: auth.workspace()?.sId,
+          fileId: file.sId,
+          spaceSId,
+        },
+        "File delete: project space not found; skipping Core cleanup."
+      );
+      return;
+    }
+    const dsRes = await fetchProjectDataSource(auth, space);
+    if (dsRes.isErr()) {
+      logger.warn(
+        {
+          workspaceId: auth.workspace()?.sId,
+          fileId: file.sId,
+          spaceSId,
+          error: dsRes.error,
+        },
+        "File delete: project dust_project data source not found; skipping Core cleanup."
+      );
+      return;
+    }
+    await deleteCoreFileArtifactsFromDataSource(auth, dsRes.value, file);
+    return;
+  }
+
+  if (file.useCase === "conversation") {
+    const conversationSId = file.useCaseMetadata?.conversationId;
+    if (!conversationSId) {
+      return;
+    }
+    const cRes = await ConversationResource.fetchConversationWithoutContent(
+      auth,
+      conversationSId
+    );
+    if (cRes.isErr()) {
+      logger.warn(
+        {
+          workspaceId: auth.workspace()?.sId,
+          fileId: file.sId,
+          conversationSId,
+        },
+        "File delete: conversation not found; skipping Core cleanup."
+      );
+      return;
+    }
+    const dataSource = await DataSourceResource.fetchByConversation(
+      auth,
+      cRes.value
+    );
+    if (!dataSource) {
+      logger.warn(
+        {
+          workspaceId: auth.workspace()?.sId,
+          fileId: file.sId,
+          conversationSId,
+        },
+        "File delete: conversation data source not found; skipping Core cleanup."
+      );
+      return;
+    }
+    await deleteCoreFileArtifactsFromDataSource(auth, dataSource, file);
+  }
+}
+
+function renderSharingGrant(
+  grant: SharingGrantModel,
+  usersById: Map<ModelId, UserResource>
+): SharingGrantType {
+  const user = grant.grantedBy ? usersById.get(grant.grantedBy) : null;
+
+  return {
+    id: grant.id,
+    email: grant.email,
+    grantedAt: grant.grantedAt,
+    grantedBy: user?.toJSON() ?? null,
+    expiresAt: grant.expiresAt,
+    lastViewedAt: grant.lastViewedAt,
+  };
 }

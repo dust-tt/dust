@@ -1,4 +1,4 @@
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 
 export function DataSourceSearchPage() {
   const owner = useWorkspace();
-  useSetPokePageTitle(`${owner.name} - Search`);
+  useDocumentTitle(`Poke - ${owner.name} - Search`);
 
   const dsId = useRequiredPathParam("dsId");
   const [searchQuery, setSearchQuery] = useState("");

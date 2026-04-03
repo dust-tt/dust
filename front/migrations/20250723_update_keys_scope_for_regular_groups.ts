@@ -11,6 +11,7 @@ const updateKeyScopeForRegularGroups = async (execute: boolean) => {
   const keysToUpdate = await KeyModel.findAll({
     where: {
       isSystem: false,
+      // @ts-ignore -- Legacy migration: scope column was removed.
       scope: "default",
     },
     include: [
@@ -37,6 +38,7 @@ const updateKeyScopeForRegularGroups = async (execute: boolean) => {
     await concurrentExecutor(
       keysToUpdate,
       async (key) => {
+        // @ts-ignore -- Legacy migration: scope column was removed.
         await key.update({ scope: "restricted_group_only" });
         updated++;
 

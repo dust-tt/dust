@@ -3,9 +3,14 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type { EmbeddingProviderIdType } from "@app/types/assistant/models/types";
-import type { WorkspaceSegmentationType } from "@app/types/user";
+import type {
+  WorkspaceSegmentationType,
+  WorkspaceSharingPolicy,
+} from "@app/types/user";
 import type { CreationOptional, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
+
+const DEFAULT_SHARING_POLICY: WorkspaceSharingPolicy = "all_scopes";
 
 const modelProviders = [...MODEL_PROVIDER_IDS] as string[];
 // TODO(2025-10-16 flav) Move this away from the resource storage layer.
@@ -25,7 +30,9 @@ export class WorkspaceModel extends BaseModel<WorkspaceModel> {
   declare whiteListedProviders: ModelProviderIdType[] | null;
   declare defaultEmbeddingProvider: EmbeddingProviderIdType | null;
   declare metadata: Record<string, string | number | boolean | object> | null;
+  declare sharingPolicy: CreationOptional<WorkspaceSharingPolicy>;
   declare conversationsRetentionDays: number | null;
+  declare metronomeCustomerId: string | null;
 }
 WorkspaceModel.init(
   {
@@ -66,6 +73,11 @@ WorkspaceModel.init(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
+    metronomeCustomerId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
     whiteListedProviders: {
       type: DataTypes.ARRAY(DataTypes.STRING),
       defaultValue: null,
@@ -90,6 +102,11 @@ WorkspaceModel.init(
       type: DataTypes.JSONB,
       defaultValue: null,
       allowNull: true,
+    },
+    sharingPolicy: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: DEFAULT_SHARING_POLICY,
     },
   },
   {

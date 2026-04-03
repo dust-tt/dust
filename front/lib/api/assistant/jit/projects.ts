@@ -5,7 +5,7 @@ import { getProjectContextDataSourceView } from "@app/lib/api/assistant/jit/util
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isProjectConversation } from "@app/types/assistant/conversation";
@@ -19,7 +19,7 @@ export async function getProjectSearchServer(
   conversation: ConversationWithoutContentType
 ): Promise<ServerSideMCPServerConfigurationType | null> {
   const owner = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(owner);
+  const featureFlags = await getFeatureFlags(auth);
 
   if (
     !featureFlags.includes("projects") ||

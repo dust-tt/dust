@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { ioTsEnum } from "./iots_utils";
 
 export const TIME_FRAME_UNITS = [
@@ -9,6 +11,7 @@ export const TIME_FRAME_UNITS = [
 ] as const;
 export type TimeframeUnit = (typeof TIME_FRAME_UNITS)[number];
 export const TimeframeUnitCodec = ioTsEnum<TimeframeUnit>(TIME_FRAME_UNITS);
+export const TimeframeUnitSchema = z.enum(TIME_FRAME_UNITS);
 
 export type TimeFrame = {
   duration: number;

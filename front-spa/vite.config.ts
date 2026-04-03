@@ -1,7 +1,11 @@
 import react from "@vitejs/plugin-react";
+import { createRequire } from "module";
 import path from "path";
+import { visualizer } from "rollup-plugin-visualizer";
 import type { Plugin, PluginOption } from "vite";
 import { defineConfig, loadEnv } from "vite";
+
+const require = createRequire(import.meta.url);
 
 const apps = {
   app: {
@@ -43,60 +47,115 @@ const apps = {
 };
 
 // Virtual module plugin to stub out server-side only modules
-function stubModulesPlugin(): Plugin {
-  const stubs: Record<string, string> = {
-    // Stream: minimal stub for Node.js stream module
-    stream:
-      "export class Readable { pipe() { return this; } on() { return this; } once() { return this; } destroy() {} } export class Writable { write() { return true; } end() {} on() { return this; } once() { return this; } } export class Transform extends Readable {} export class Duplex extends Readable { write() { return true; } end() {} } export default { Readable, Writable, Transform, Duplex };",
-    // Buffer: minimal stub for Node.js Buffer
-    buffer:
-      "export const Buffer = { isBuffer: () => false, from: (x) => new Uint8Array(typeof x === 'string' ? [...x].map(c => c.charCodeAt(0)) : x), alloc: (n) => new Uint8Array(n) }; export default { Buffer };",
-    // Assert: minimal stub for Node.js assert module
-    assert:
-      "function assert(value, message) { if (!value) throw new Error(message || 'Assertion failed'); } assert.ok = assert; assert.strictEqual = (a, b, msg) => { if (a !== b) throw new Error(msg || `Expected ${a} to strictly equal ${b}`); }; assert.deepStrictEqual = assert.strictEqual; export default assert; export { assert };",
-    // Crypto: minimal stub for Node.js crypto module (server-only functions)
-    crypto:
-      "export const createHmac = () => { throw new Error('createHmac is not available in browser'); }; export const timingSafeEqual = () => { throw new Error('timingSafeEqual is not available in browser'); }; export default { createHmac, timingSafeEqual };",
-    // Child process: minimal stub for Node.js child_process module
-    child_process:
-      "export const execSync = () => { throw new Error('execSync is not available in browser'); }; export const exec = () => { throw new Error('exec is not available in browser'); }; export const spawn = () => { throw new Error('spawn is not available in browser'); }; export default { execSync, exec, spawn };",
-  };
+// Detects server-only imports leaking into the SPA bundle.
+// Fails the build if a Node.js builtin or server-only module is imported.
+function detectServerImportsPlugin(): Plugin {
+  const NODE_BUILTINS = new Set([
+    "assert",
+    "buffer",
+    "child_process",
+    "crypto",
+    "dns",
+    "fs",
+    "http",
+    "http2",
+    "https",
+    "net",
+    "os",
+    "path",
+    "stream",
+    "tls",
+    "worker_threads",
+    "zlib",
+  ]);
 
-  // Stubs for resolved file paths (after @dust-tt/front alias is applied)
-  const filePathStubs: Record<string, string> = {
-    // Logger
-    "logger/logger":
-      "const noop = () => {}; const logger = { info: noop, warn: noop, error: noop, debug: noop, trace: noop, fatal: noop, child: () => logger }; export default logger;",
-    // Text extraction
-    "types/shared/text_extraction/index":
-      "export const pagePrefixesPerMimeType = {}; export const isTextExtractionSupportedContentType = () => false; export class TextExtraction { constructor() {} fromStream() { throw new Error('Not available in browser'); } }",
-    // Structured data
-    "types/shared/utils/structured_data":
-      "export class InvalidStructuredDataHeaderError extends Error {} export const getSanitizedHeaders = () => { throw new Error('Not available in browser'); }; export const guessDelimiter = async () => undefined; export const parseAndStringifyCsv = async () => { throw new Error('Not available in browser'); };",
-  };
+  const SERVER_ONLY_PATTERNS = [
+    /\/front\/temporal\//,
+    /\/front\/lib\/resources\//,
+  ];
+
+  // Known exceptions that are tolerated.
+  // Each entry should have a comment explaining why it's allowed.
+  const ALLOWED = new Set([
+    // string_ids.ts is imported by many SPA files and lives in the server-only resources pattern.
+    // The blake3-dependent functions (generateRandomModelSId, generateSecureSecret) have been
+    // moved to string_ids_server.ts which is not imported from the SPA.
+    "front/lib/resources/string_ids.ts",
+    // run.ts uses fs/path for Dust app execution. Only imported transitively, never called in SPA.
+    "fs",
+    "path",
+    // Buffer is used by sdks/js (client.esm.js) for file download. Shimmed via globalThis.Buffer in HTML.
+    "buffer",
+  ]);
+
+  const violations = new Map<string, Set<string>>();
+
+  function addViolation(mod: string, importer: string | undefined) {
+    const importers = violations.get(mod) ?? new Set();
+    if (importer) {
+      importers.add(importer.replace(/.*\/front\//, "front/"));
+    }
+    violations.set(mod, importers);
+  }
+
+  // Runtime global shim for Node.js Buffer API used by sdks/js at runtime.
+  const bufferShim = `<script>
+      globalThis.Buffer = globalThis.Buffer || {
+        isBuffer: function () { return false; },
+        from: function (x) {
+          return new Uint8Array(
+            typeof x === "string"
+              ? Array.from(x).map(function (c) { return c.charCodeAt(0); })
+              : x
+          );
+        },
+        alloc: function (n) { return new Uint8Array(n); },
+      };
+    </script>`;
 
   return {
-    name: "stub-server-modules",
+    name: "detect-server-imports",
     enforce: "pre",
-    resolveId(id) {
-      if (id in stubs) {
-        return `\0virtual:${id}`;
+    transformIndexHtml(html) {
+      return html.replace("<head>", `<head>\n    ${bufferShim}`);
+    },
+    resolveId(id, importer) {
+      if (NODE_BUILTINS.has(id) || NODE_BUILTINS.has(id.replace("node:", ""))) {
+        addViolation(id, importer);
       }
       return null;
     },
-    load(id) {
-      // Handle virtual modules
-      if (id.startsWith("\0virtual:")) {
-        const moduleId = id.slice("\0virtual:".length);
-        return stubs[moduleId];
-      }
-      // Handle resolved file paths
-      for (const [pathSuffix, stub] of Object.entries(filePathStubs)) {
-        if (id.endsWith(pathSuffix + ".ts") || id.endsWith(pathSuffix)) {
-          return stub;
+    transform(_code, id) {
+      for (const pattern of SERVER_ONLY_PATTERNS) {
+        if (pattern.test(id)) {
+          addViolation(id.replace(/.*\/front\//, "front/"), undefined);
         }
       }
       return null;
+    },
+    buildEnd() {
+      const newViolations = new Map<string, Set<string>>();
+      for (const [mod, importers] of violations) {
+        if (!ALLOWED.has(mod)) {
+          newViolations.set(mod, importers);
+        }
+      }
+      if (newViolations.size > 0) {
+        const lines = [
+          `${newViolations.size} server-only module(s) detected in SPA build:`,
+        ];
+        for (const [mod, importers] of newViolations) {
+          const importerList = [...importers].join(", ");
+          lines.push(
+            `  ${mod}${importerList ? ` (imported by: ${importerList})` : ""}`
+          );
+        }
+        lines.push(
+          "Server-only code has leaked into the SPA. Split the offending file to separate server and client concerns.",
+          "If this is intentional, add the module to the ALLOWED set in detectServerImportsPlugin()."
+        );
+        this.error(lines.join("\n"));
+      }
     },
   };
 }
@@ -205,17 +264,39 @@ export default defineConfig(({ mode }) => {
   const enableReactScan =
     mode === "development" && env.VITE_REACT_SCAN === "true";
 
+  const enableAnalyzer = env.ANALYZE === "true";
+  type AnalyzerTemplate =
+    | "treemap"
+    | "sunburst"
+    | "network"
+    | "raw-data"
+    | "list";
+  const isAnalyzerTemplate = (value: string): value is AnalyzerTemplate =>
+    ["treemap", "sunburst", "network", "raw-data", "list"].includes(value);
+  const templateValue = env.ANALYZE_TEMPLATE ?? "treemap";
+  const analyzerTemplate: AnalyzerTemplate = isAnalyzerTemplate(templateValue)
+    ? templateValue
+    : "treemap";
+
   return {
     cacheDir: path.resolve(__dirname, ".vite"),
     base: basePath,
     root: path.resolve(__dirname, "."),
     publicDir: path.resolve(__dirname, "../front/public"),
     plugins: [
-      stubModulesPlugin(),
+      detectServerImportsPlugin(),
       serveHtmlPlugin(appDefinition),
       organizeMultiEntryOutputPlugin(appDefinition),
       reactScanPlugin(enableReactScan),
       react(),
+      enableAnalyzer &&
+        visualizer({
+          open: true,
+          filename: `dist/${appName}/stats.html`,
+          template: analyzerTemplate,
+          gzipSize: true,
+          brotliSize: true,
+        }),
     ].flat() as PluginOption[],
     define: {
       ...envVarDefines,
@@ -247,6 +328,14 @@ export default defineConfig(({ mode }) => {
           find: "@app/lib/platform",
           replacement: path.resolve(__dirname, "src/lib/platform.tsx"),
         },
+        // Logger: redirect server-side pino logger to browser-safe Datadog logger
+        {
+          find: "@app/logger/logger",
+          replacement: path.resolve(
+            __dirname,
+            "../front/logger/datadogLogger.ts"
+          ),
+        },
         // @app alias for front internal imports
         {
           find: "@app",
@@ -260,15 +349,14 @@ export default defineConfig(({ mode }) => {
         // Resolve SDK dependencies from root node_modules (hoisted by npm workspaces)
         {
           find: "eventsource-parser",
-          replacement: path.resolve(
-            __dirname,
-            "../node_modules/eventsource-parser"
+          replacement: path.dirname(
+            require.resolve("eventsource-parser/package.json")
           ),
         },
         // Handle zod and its subpath imports (e.g., zod/v3)
         {
           find: /^zod(\/.*)?$/,
-          replacement: path.resolve(__dirname, "../node_modules/zod$1"),
+          replacement: path.dirname(require.resolve("zod/package.json")) + "$1",
         },
       ],
       dedupe: ["react", "react-dom"],

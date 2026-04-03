@@ -17,20 +17,21 @@ import type { WorkspaceType } from "@app/types/user";
 import groupBy from "lodash/groupBy";
 import mapValues from "lodash/mapValues";
 import uniqBy from "lodash/uniqBy";
-import type { Dispatch, SetStateAction } from "react";
 
 interface ModelProvidersPageContentProps {
   workspace: WorkspaceType;
-  setProvidersSelection: Dispatch<SetStateAction<ProvidersSelection>>;
   providersSelection: ProvidersSelection;
   isWorkspaceValidating: boolean;
+  onToggleProvider: (provider: ModelProviderIdType) => void;
+  onSelectAllProviders: () => void;
 }
 
 export function ModelProvidersPageContent({
   workspace,
-  setProvidersSelection,
   providersSelection,
   isWorkspaceValidating,
+  onToggleProvider,
+  onSelectAllProviders,
 }: ModelProvidersPageContentProps) {
   const { subscription } = useAuth();
   const { plan } = subscription;
@@ -57,17 +58,18 @@ export function ModelProvidersPageContent({
     <div className="flex flex-col gap-8">
       {plan.isByok ? (
         <ProvidersConfigurationList
+          owner={workspace}
           modelsDescriptionByProvider={modelsDescriptionByProvider}
         />
       ) : (
         <>
           <AllProvidersToggle
             providersSelection={providersSelection}
-            setProvidersSelection={setProvidersSelection}
+            onSelectAll={onSelectAllProviders}
           />
           <ProvidersToggleList
             providersSelection={providersSelection}
-            setProvidersSelection={setProvidersSelection}
+            onToggleProvider={onToggleProvider}
             isWorkspaceValidating={isWorkspaceValidating}
             modelsDescriptionByProvider={modelsDescriptionByProvider}
           />

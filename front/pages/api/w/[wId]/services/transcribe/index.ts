@@ -1,4 +1,6 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { initSSEResponse } from "@app/lib/api/sse";
 import type { Authenticator } from "@app/lib/auth";
 import { findAgentsInMessage } from "@app/lib/utils/find_agents_in_message";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -36,6 +38,17 @@ async function handler(
       },
     });
   }
+  const plan = auth.getNonNullablePlan();
+  if (plan.isByok) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "Voice transcription is not available on this plan.",
+      },
+    });
+  }
+
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     res.status(405).json({
@@ -66,12 +79,7 @@ async function handler(
   const totalStartMs = performance.now();
 
   try {
-    res.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    });
-    res.flushHeaders();
+    initSSEResponse(res);
 
     // Create an AbortController to handle client disconnection
     const controller = new AbortController();

@@ -1,30 +1,48 @@
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type { TagsFilter } from "@app/types/data_source_view";
+import { TagsFilterSchema } from "@app/types/data_source_view";
 import type { Order } from "sequelize";
+import { z } from "zod";
 
-export type DataSourceFilter = {
-  parents: { in: string[] | null; not: string[] | null } | null;
-  tags: TagsFilter;
-};
+export const DataSourceFilterSchema = z.object({
+  parents: z
+    .object({
+      in: z.array(z.string()).nullable(),
+      not: z.array(z.string()).nullable(),
+    })
+    .nullable(),
+  tags: TagsFilterSchema,
+});
 
-export type DataSourceConfiguration = {
-  sId?: string; // The sId is not always available, for instance it is not in an unsaved state of the builder.
-  workspaceId: string;
-  dataSourceViewId: string;
-  filter: DataSourceFilter;
-};
+export type DataSourceFilter = z.infer<typeof DataSourceFilterSchema>;
 
-export type TableDataSourceConfiguration = {
-  sId?: string; // The sId is not always available, for instance it is not in an unsaved state of the builder.
-  workspaceId: string;
-  dataSourceViewId: string;
-  tableId: string;
-};
+export const DataSourceConfigurationSchema = z.object({
+  sId: z.string().optional(), // The sId is not always available, for instance it is not in an unsaved state of the builder.
+  workspaceId: z.string(),
+  dataSourceViewId: z.string(),
+  filter: DataSourceFilterSchema,
+});
 
-export type ProjectConfiguration = {
-  workspaceId: string; // The sId of the workspace (organization)
-  projectId: string; // The sId of the project (space)
-};
+export type DataSourceConfiguration = z.infer<
+  typeof DataSourceConfigurationSchema
+>;
+
+export const TableDataSourceConfigurationSchema = z.object({
+  sId: z.string().optional(), // The sId is not always available, for instance it is not in an unsaved state of the builder.
+  workspaceId: z.string(),
+  dataSourceViewId: z.string(),
+  tableId: z.string(),
+});
+
+export type TableDataSourceConfiguration = z.infer<
+  typeof TableDataSourceConfigurationSchema
+>;
+
+export const ProjectConfigurationSchema = z.object({
+  workspaceId: z.string(), // The sId of the workspace (organization)
+  projectId: z.string(), // The sId of the project (space)
+});
+
+export type ProjectConfiguration = z.infer<typeof ProjectConfigurationSchema>;
 
 export type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 

@@ -13,11 +13,13 @@ import React from "react";
 
 interface MessageEmojiPickerProps {
   onEmojiSelect: (emoji: string) => void;
+  onOpenChange?: (open: boolean) => void;
   className?: string;
 }
 
 export function MessageEmojiPicker({
   onEmojiSelect,
+  onOpenChange,
   className,
 }: MessageEmojiPickerProps) {
   const handleSelect = (emoji: string) => {
@@ -26,7 +28,7 @@ export function MessageEmojiPicker({
   const theme = useTheme();
 
   return (
-    <PopoverRoot modal={false}>
+    <PopoverRoot modal={false} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
         <Button
           key="emoji-picker-button"

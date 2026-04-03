@@ -1,4 +1,4 @@
-import { ImportSkillsDialog } from "@app/components/skills/ImportSkillsDialog";
+import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
@@ -85,14 +85,12 @@ export const CreateDropdown = ({
             }
           )}
         />
-        {hasFeature("agent_to_yaml") && (
-          <DropdownMenuItem
-            label={isUploadingYAML ? "Uploading..." : "agent from YAML"}
-            icon={isUploadingYAML ? <Spinner size="xs" /> : FolderOpenIcon}
-            disabled={isUploadingYAML}
-            onClick={triggerYAMLUpload}
-          />
-        )}
+        <DropdownMenuItem
+          label={isUploadingYAML ? "Uploading..." : "agent from YAML"}
+          icon={isUploadingYAML ? <Spinner size="xs" /> : FolderOpenIcon}
+          disabled={isUploadingYAML}
+          onClick={triggerYAMLUpload}
+        />
         {isBuilder(owner) && (
           <>
             <DropdownMenuLabel label="Skills" />

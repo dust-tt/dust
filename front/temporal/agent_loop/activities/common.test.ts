@@ -576,6 +576,7 @@ describe("updateAgentMessageDBAndMemory", () => {
       // Act: Update with error
       await updateAgentMessageDBAndMemory(auth, {
         agentMessage,
+        conversation,
         update: {
           type: "error",
           error,
@@ -631,6 +632,7 @@ describe("updateAgentMessageDBAndMemory", () => {
       // Act: Update status to succeeded
       await updateAgentMessageDBAndMemory(auth, {
         agentMessage,
+        conversation,
         update: {
           type: "status",
           status: "succeeded",
@@ -676,6 +678,7 @@ describe("updateAgentMessageDBAndMemory", () => {
       // Act: Update status to cancelled
       await updateAgentMessageDBAndMemory(auth, {
         agentMessage,
+        conversation,
         update: {
           type: "status",
           status: "cancelled",

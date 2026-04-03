@@ -1,3 +1,4 @@
+/** @ignoreswagger */
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -52,6 +53,44 @@ async function handler(
       return res.status(200).json({
         suggestions: suggestions.map((s) => s.toJSON()),
       });
+    }
+
+    case "DELETE": {
+      const { sId } = req.query;
+      if (!isString(sId)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The suggestion ID is required.",
+          },
+        });
+      }
+
+      const suggestion = await AgentSuggestionResource.fetchById(auth, sId);
+      if (!suggestion) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "agent_configuration_not_found",
+            message: "The suggestion was not found.",
+          },
+        });
+      }
+
+      const deleteResult = await suggestion.delete(auth);
+      if (deleteResult.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to delete suggestion.",
+          },
+        });
+      }
+
+      res.status(204).end();
+      return;
     }
 
     default:

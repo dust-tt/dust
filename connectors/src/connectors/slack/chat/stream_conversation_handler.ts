@@ -386,9 +386,44 @@ async function streamAgentAnswerToSlack(
 
         answer += event.text;
 
-        if (streamHandler) {
+        // Streaming path: append text or stop if too long.
+        if (streamHandler?.isStopped) {
+          break;
+        }
+        if (streamHandler && answer.length <= MAX_SLACK_MESSAGE_LENGTH) {
           await streamHandler.appendText(event.text);
-        } else {
+          break;
+        }
+        if (streamHandler) {
+          // Message too long for streaming: stop and fall back to chat.update
+          // with truncated content + footer.
+          await streamHandler.stop();
+          const { formattedContent, footnotes } = annotateCitations(
+            answer,
+            actions
+          );
+          const slackContent = safelyPrepareAnswer(formattedContent);
+          if (slackContent) {
+            await postSlackMessageUpdate({
+              messageUpdate: {
+                text: slackContent,
+                assistantName,
+                agentConfigurations,
+                footnotes,
+              },
+              ...conversationData,
+              canBeIgnored: false,
+              extraLogs: {
+                source: "streamAgentAnswerToSlack",
+                eventType: "stream_fallback",
+              },
+            });
+          }
+          break;
+        }
+
+        // Non-streaming path: throttled chat.update.
+        {
           const { formattedContent, footnotes } = annotateCitations(
             answer,
             actions
@@ -456,7 +491,7 @@ async function streamAgentAnswerToSlack(
           normalizeContentForSlack(formattedContent)
         );
 
-        if (streamHandler) {
+        if (streamHandler && !streamHandler.isStopped) {
           await streamHandler.stop();
         }
 
@@ -579,7 +614,7 @@ async function streamAgentAnswerToSlack(
       }
 
       case "agent_generation_cancelled": {
-        if (streamHandler) {
+        if (streamHandler && !streamHandler.isStopped) {
           await streamHandler.stop();
         }
 
@@ -610,8 +645,12 @@ async function streamAgentAnswerToSlack(
         return new Ok(undefined);
       }
 
+      case "agent_context_pruned":
       case "agent_message_done":
-        // No-op, we handle completion in "agent_message_success"
+      // TODO(2026-04-02 ask-user-question): add support for the AskUserQuestion tool on Slack.
+      // Temporarily we will not add the tool for messages coming from Slack to avoid receiving this event at all here.
+      case "tool_ask_user_question":
+        // No-op.
         break;
 
       default:
@@ -620,7 +659,7 @@ async function streamAgentAnswerToSlack(
   }
 
   // Clean up stream if the event stream ended without a terminal event.
-  if (streamHandler) {
+  if (streamHandler && !streamHandler.isStopped) {
     await streamHandler.stop();
   }
 
@@ -863,10 +902,9 @@ async function postThreadFollowUpMessages(
   followUpMessages: string[],
   conversationData: StreamConversationToSlackParams
 ): Promise<void> {
-  const { slack, connector, conversation, mainMessage, streamHandler } =
-    conversationData;
-  const { slackChannelId, slackClient } = slack;
-  const threadTs = mainMessage?.ts ?? streamHandler?.messageTs;
+  const { slack, connector, conversation, mainMessage } = conversationData;
+  const { slackChannelId, slackClient, slackMessageTs } = slack;
+  const threadTs = mainMessage?.message?.thread_ts ?? slackMessageTs;
 
   for (let i = 0; i < followUpMessages.length; i++) {
     const threadResponse = await slackClient.chat.postMessage({

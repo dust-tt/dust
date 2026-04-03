@@ -20,6 +20,7 @@ export type ButlerSuggestionStatus =
 // Per-type metadata schemas (no suggestionType inside — that's the top-level discriminator).
 const RenameTitleMetadataSchema = z.object({
   suggestedTitle: z.string(),
+  rationale: z.string().optional(),
 });
 
 // Shared schema for suggestion types that invoke an agent with a prompt.
@@ -27,6 +28,7 @@ const AgentInvocationMetadataSchema = z.object({
   agentSId: z.string(),
   agentName: z.string(),
   prompt: z.string(),
+  rationale: z.string().optional(),
 });
 
 export type RenameTitleMetadata = z.infer<typeof RenameTitleMetadataSchema>;

@@ -3,7 +3,7 @@ import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { describe, expect, it } from "vitest";
 
@@ -11,7 +11,7 @@ import handler from "./index";
 
 describe("DELETE /api/w/[wId]/spaces/[spaceId]/apps/[aId]", () => {
   it("returns 409 when the app is used by an active agent", async () => {
-    const { req, res, workspace, user, globalSpace, authenticator } =
+    const { req, res, workspace, user, globalSpace, auth } =
       await createPrivateApiMockRequest({
         method: "DELETE",
         role: "admin",
@@ -102,12 +102,12 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/apps/[aId]", () => {
     expect(data.error.message).toContain("Cannot delete app in use by");
     expect(data.error.message).toContain(agent.name);
 
-    const stillThere = await AppResource.fetchById(authenticator, app.sId);
+    const stillThere = await AppResource.fetchById(auth, app.sId);
     expect(stillThere).not.toBeNull();
   });
 
   it("returns 204 and deletes the app when it is unused", async () => {
-    const { req, res, workspace, globalSpace, authenticator } =
+    const { req, res, workspace, globalSpace, auth } =
       await createPrivateApiMockRequest({
         method: "DELETE",
         role: "admin",
@@ -137,7 +137,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/apps/[aId]", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(204);
-    const deleted = await AppResource.fetchById(authenticator, app.sId);
+    const deleted = await AppResource.fetchById(auth, app.sId);
     expect(deleted).toBeNull();
   });
 });

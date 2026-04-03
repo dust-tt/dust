@@ -1,4 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import { isInlineActivityEnabled } from "@app/lib/development";
 import { clientFetch } from "@app/lib/egress/client";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
@@ -23,7 +24,10 @@ export function useCancelMessage({
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "cancel", messageIds }),
+            body: JSON.stringify({
+              action: isInlineActivityEnabled() ? "gracefully_stop" : "cancel",
+              messageIds,
+            }),
           }
         );
         // eslint-disable-next-line @typescript-eslint/no-unused-vars

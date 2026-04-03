@@ -67,11 +67,9 @@ import type { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
-import { hash as blake3 } from "blake3";
 
-function getCacheKeyForSecret(secret: string): string {
-  const resolvedKey = `key:secret:${Buffer.from(blake3(secret)).toString("hex")}`;
-  return `cacheWithRedis-_fetchBySecretUncached-${resolvedKey}`;
+function toCacheKey(secret: string): string {
+  return `cacheWithRedis-_fetchBySecretUncached-${KeyResource.keyCacheKeyResolver(secret)}`;
 }
 
 describe("KeyResource", () => {
@@ -112,14 +110,13 @@ describe("KeyResource", () => {
       expect(fetched!.status).toBe("active");
       expect(fetched!.isSystem).toBe(false);
       expect(fetched!.role).toBe("builder");
-      expect(fetched!.scope).toBe("default");
-      expect(fetched!.groupId).toBe(globalGroup.id);
+      expect(fetched!.groupIds).toEqual([globalGroup.id]);
       expect(fetched!.secret).toBe(key.secret);
     });
 
     it("serves from cache on second call", async () => {
       const key = await KeyFactory.regular(globalGroup);
-      const cacheKey = getCacheKeyForSecret(key.secret);
+      const cacheKey = toCacheKey(key.secret);
 
       expect(inMemoryCache.has(cacheKey)).toBe(false);
       await KeyResource.fetchBySecret(key.secret); // miss → populates cache
@@ -200,5 +197,51 @@ describe("KeyResource", () => {
       expect(fetched1).toBeNull();
       expect(fetched2).toBeNull();
     });
+  });
+});
+
+describe("KeyResource.createNewSecret", () => {
+  it("returns a string starting with 'sk-'", () => {
+    const secret = KeyResource.createNewSecret();
+    expect(secret.startsWith("sk-")).toBe(true);
+  });
+
+  it("returns a 32-character lowercase hex string after the prefix", () => {
+    // blake3 produces 32 bytes (256 bits); we keep the first 32 hex chars.
+    const secret = KeyResource.createNewSecret();
+    const hash = secret.slice("sk-".length);
+    expect(hash).toMatch(/^[a-f0-9]{32}$/);
+  });
+
+  it("generates unique secrets on each call", () => {
+    const secret1 = KeyResource.createNewSecret();
+    const secret2 = KeyResource.createNewSecret();
+    expect(secret1).not.toBe(secret2);
+  });
+});
+
+describe("KeyResource.keyCacheKeyResolver", () => {
+  it("returns a key:secret: prefixed 64-char hex blake3 hash", () => {
+    const cacheKey = KeyResource.keyCacheKeyResolver("some-api-secret");
+    expect(cacheKey).toMatch(/^key:secret:[a-f0-9]{64}$/);
+  });
+
+  it("is deterministic for the same secret", () => {
+    const secret = "deterministic-secret";
+    expect(KeyResource.keyCacheKeyResolver(secret)).toBe(
+      KeyResource.keyCacheKeyResolver(secret)
+    );
+  });
+
+  it("returns different keys for different secrets", () => {
+    expect(KeyResource.keyCacheKeyResolver("secret-a")).not.toBe(
+      KeyResource.keyCacheKeyResolver("secret-b")
+    );
+  });
+
+  it("returns a stable value", () => {
+    expect(KeyResource.keyCacheKeyResolver("secret-a")).toBe(
+      "key:secret:6d0bd572a4f30536d6ad11b514678cb41703fdef30d395f4ecb207a6d2bd2fd3"
+    );
   });
 });

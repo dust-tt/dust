@@ -175,9 +175,16 @@ export const fetchDatasets = async ({
     );
   } catch (error) {
     const e = normalizeError(error);
-    // Sometimes the service account has access to a multiple projects, but one of them has not enabled BigQuery.
-    // In that case, we return an empty array.
-    if (e.message.includes("has not enabled BigQuery")) {
+    // Sometimes the service account has access to a multiple projects, but one of them has not enabled BigQuery
+    // or the project has been deleted. In that case, we skip the project and return an empty array.
+    if (
+      e.message.includes("has not enabled BigQuery") ||
+      e.message.includes("has been deleted")
+    ) {
+      logger?.info(
+        { database: database.name, error: e.message },
+        "[BigQuery] Skipping project"
+      );
       return new Ok([]);
     }
     return new Err(e);
@@ -210,23 +217,47 @@ export const fetchTables = async ({
 
     // Get the dataset specified by the schema
     const d = conn.dataset(dataset.name);
-    const r = await d.getTables();
-    const tables = r[0];
-    logger?.info(
-      {
-        tablesCount: tables.length,
-        dataset,
-      },
-      "[BigQuery] dataset.getTables"
-    );
 
-    const remoteDBTables: RemoteDBTable[] = removeNulls(
-      await concurrentExecutor(
+    // We paginate tables to avoid loading too many Table objects
+    // in memory at once.
+    const remoteDBTables: RemoteDBTable[] = [];
+
+    let nextQuery:
+      | {
+          autoPaginate: false;
+          maxResults: number;
+          pageToken?: string;
+          // Additional fields are forwarded to the BigQuery tables.list API.
+          // We rely on this to request specific fields when needed.
+          selectedFields?: string;
+          view?: string;
+        }
+      | undefined = {
+      autoPaginate: false,
+      maxResults: 32,
+      // Only request identifying fields; description is fetched via table.getMetadata
+      selectedFields: "tables(tableReference),nextPageToken",
+    };
+
+    while (nextQuery) {
+      const [tables, q] = await d.getTables(nextQuery as never);
+
+      logger?.info(
+        {
+          tablesCount: tables.length,
+          dataset,
+          pageToken: nextQuery.pageToken,
+        },
+        "[BigQuery] dataset.getTables (paginated)"
+      );
+
+      const pageTables = await concurrentExecutor(
         tables,
         async (table) => {
           if (!table.id) {
             return null;
           }
+
           if (fetchTablesDescription) {
             try {
               const metadata = await table.getMetadata();
@@ -244,45 +275,37 @@ export const fetchTables = async ({
                 description: metadata[0].description,
               };
             } catch (error) {
-              // Handle BigQuery permission errors gracefully
               if (isBigqueryPermissionsError(error)) {
-                const errorMessage =
-                  error &&
-                  typeof error === "object" &&
-                  "message" in error &&
-                  typeof error.message === "string"
-                    ? error.message
-                    : "Permission denied";
                 logger?.warn(
                   {
                     projectId: dataset.database_name,
                     dataset,
                     table: table.id,
-                    error: errorMessage,
+                    error: normalizeError(error).message,
                   },
                   "[BigQuery] Permission denied accessing table metadata, skipping table"
                 );
-                // Skip tables when we lack permissions
                 return null;
               }
-              // Re-throw other errors
               throw error;
             }
-          } else {
-            return {
-              name: table.id!,
-              database_name: dataset.database_name,
-              schema_name: dataset.name,
-            };
           }
-        },
-        {
-          concurrency: 4,
-        }
-      )
-    );
 
-    return new Ok(remoteDBTables);
+          return {
+            name: table.id!,
+            database_name: dataset.database_name,
+            schema_name: dataset.name,
+          };
+        },
+        { concurrency: 4 }
+      );
+
+      remoteDBTables.push(...removeNulls(pageTables));
+
+      nextQuery = q as typeof nextQuery;
+    }
+
+    return new Ok(removeNulls(remoteDBTables));
   } catch (error) {
     return new Err(error instanceof Error ? error : new Error(String(error)));
   }

@@ -2,13 +2,13 @@ import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
   DEFAULT_MCP_ACTION_NAME,
   DEFAULT_MCP_ACTION_VERSION,
+  DEFAULT_MCP_SERVER_ICON,
 } from "@app/lib/actions/constants";
 import {
   autoInternalMCPServerNameToSId,
   doesInternalMCPServerRequireBearerToken,
   internalMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
-import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type {
   InternalMCPServerNameType,
   MCPServerAvailability,
@@ -103,10 +103,12 @@ export class InternalMCPServerInMemoryResource {
       name,
       useCase,
       viewName,
+      oauthScope,
     }: {
       name: InternalMCPServerNameType;
       useCase: MCPOAuthUseCase | null;
       viewName?: string;
+      oauthScope?: string | null;
     }
   ) {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
@@ -186,6 +188,7 @@ export class InternalMCPServerInMemoryResource {
       editedAt: new Date(),
       editedByUserId: auth.user()?.id,
       oAuthUseCase: useCase ?? null,
+      oauthScope: oauthScope ?? null,
       ...(viewName ? { name: viewName } : {}),
     });
 

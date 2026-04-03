@@ -32,6 +32,9 @@ export function isConnectorProvider(val: string): val is ConnectorProvider {
   return (CONNECTOR_PROVIDERS as unknown as string[]).includes(val);
 }
 
+/**
+ * @swaggerschema Datasource (swagger_schemas.ts), PrivateDataSource (swagger_private_schemas.ts)
+ */
 export type DataSourceType = {
   id: ModelId;
   sId: string;

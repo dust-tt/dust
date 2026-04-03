@@ -1,0 +1,8 @@
+{
+  "action": "user.logout",
+  "targets": [
+    {
+      "type": "user"
+    }
+  ]
+}

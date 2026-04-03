@@ -61,6 +61,7 @@ export async function seedAgent(
       requestedSpaceIds: [],
       tags: [],
       editors,
+      authorId: user.id,
     });
 
     if (result.isErr()) {

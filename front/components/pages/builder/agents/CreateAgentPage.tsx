@@ -1,5 +1,4 @@
 import { AgentTemplateGrid } from "@app/components/agent_builder/AgentTemplateGrid";
-import { AgentTemplateModal } from "@app/components/agent_builder/AgentTemplateModal";
 import { getUniqueTemplateTags } from "@app/components/agent_builder/utils";
 import {
   useSetContentWidth,
@@ -7,35 +6,19 @@ import {
   useSetTitle,
 } from "@app/components/sparkle/AppLayoutContext";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
-import { useAppRouter, useSearchParam } from "@app/lib/platform";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useAppRouter } from "@app/lib/platform";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
 } from "@app/lib/utils/router";
-import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import type { TemplateTagCodeType } from "@app/types/assistant/templates";
 import {
   isTemplateTagCodeArray,
   TEMPLATES_TAGS_CONFIG,
 } from "@app/types/assistant/templates";
-import {
-  Button,
-  DocumentIcon,
-  FolderOpenIcon,
-  Icon,
-  MagicIcon,
-  Page,
-  PencilSquareIcon,
-  SearchInput,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Button, Page, SearchInput } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
@@ -43,31 +26,17 @@ export function CreateAgentPage() {
   const router = useAppRouter();
   const owner = useWorkspace();
   const templateTagsMapping = TEMPLATES_TAGS_CONFIG;
-  const initialTemplateId = useSearchParam("templateId");
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTags, setSelectedTags] = useState<TemplateTagCodeType[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
-    initialTemplateId
-  );
-  const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
-    owner,
-  });
 
-  const { hasFeature } = useFeatureFlags();
-  const { isAdmin, isBuilder } = useAuth();
-  const hasSidekick =
-    hasFeature("agent_builder_copilot") &&
-    (isAdmin || (hasFeature("agent_builder_copilot_builders") && isBuilder));
   const { assistantTemplates } = useAssistantTemplates();
 
   const { filteredTemplates, availableTags } = useMemo(() => {
     const validTemplates = assistantTemplates.filter(
       (template) =>
         isTemplateTagCodeArray(template.tags) &&
-        (hasSidekick
-          ? template.hasSidekickInstructions
-          : template.hasPresetInstructions)
+        template.hasSidekickInstructions
     );
 
     const filtered = validTemplates.filter((template) => {
@@ -92,21 +61,7 @@ export function CreateAgentPage() {
     const tags = getUniqueTemplateTags(validTemplates);
 
     return { filteredTemplates: filtered, availableTags: tags };
-  }, [assistantTemplates, selectedTags, searchTerm, hasSidekick]);
-
-  const openTemplateModal = async (templateId: string) => {
-    setSelectedTemplateId(templateId);
-    await router.replace(
-      { pathname: router.pathname, query: { wId: owner.sId, templateId } },
-      undefined,
-      { shallow: true }
-    );
-  };
-
-  const closeTemplateModal = async () => {
-    setSelectedTemplateId(null);
-    await removeParamFromRouter(router, "templateId");
-  };
+  }, [assistantTemplates, selectedTags, searchTerm]);
 
   const handleTagClick = (tagName: TemplateTagCodeType) => {
     setSelectedTags((prevTags) =>
@@ -140,65 +95,10 @@ export function CreateAgentPage() {
     <div id="pageContent">
       <Page variant="modal">
         <div className="flex flex-col gap-6">
-          {hasSidekick ? (
-            <Page.Header
-              title="Start with a template"
-              description="Explore different ways to use Dust. Find a setup that works for you and make it your own."
-            />
-          ) : (
-            <>
-              <div className="flex min-h-[20vh] flex-col justify-end gap-6">
-                <div className="flex flex-row items-center gap-2">
-                  <Icon
-                    visual={PencilSquareIcon}
-                    size="lg"
-                    className="text-primary-400 dark:text-primary-500"
-                  />
-                  <Page.Header title="Start new" />
-                </div>
-                <div className="flex flex-row gap-3">
-                  <Button
-                    icon={DocumentIcon}
-                    label="New Agent"
-                    data-gtm-label="assistantCreationButton"
-                    data-gtm-location="assistantCreationPage"
-                    size="md"
-                    variant="highlight"
-                    href={`/w/${owner.sId}/builder/agents/new`}
-                  />
-                  {hasFeature("agent_to_yaml") && (
-                    <Button
-                      icon={
-                        isUploadingYAML
-                          ? () => <Spinner size="xs" />
-                          : FolderOpenIcon
-                      }
-                      label={
-                        isUploadingYAML ? "Uploading..." : "Upload from YAML"
-                      }
-                      data-gtm-label="yamlUploadButton"
-                      data-gtm-location="assistantCreationPage"
-                      size="md"
-                      variant="outline"
-                      disabled={isUploadingYAML}
-                      onClick={triggerYAMLUpload}
-                    />
-                  )}
-                </div>
-              </div>
-
-              <Page.Separator />
-
-              <div className="flex flex-row items-center gap-2">
-                <Icon
-                  visual={MagicIcon}
-                  size="lg"
-                  className="text-primary-400 dark:text-primary-500"
-                />
-                <Page.Header title="Start from a template" />
-              </div>
-            </>
-          )}
+          <Page.Header
+            title="Start with a template"
+            description="Explore different ways to use Dust. Find a setup that works for you and make it your own."
+          />
 
           <div className="flex flex-col gap-6">
             <SearchInput
@@ -227,10 +127,8 @@ export function CreateAgentPage() {
               <div className="flex flex-col pb-56">
                 <AgentTemplateGrid
                   templates={filteredTemplates}
-                  openTemplateModal={openTemplateModal}
                   templateTagsMapping={templateTagsMapping}
                   selectedTags={selectedTags}
-                  hasSidekick={hasSidekick}
                   onTemplateClick={(id) =>
                     router.push(
                       getAgentBuilderRoute(owner.sId, "new", `templateId=${id}`)
@@ -242,13 +140,6 @@ export function CreateAgentPage() {
           )}
         </div>
       </Page>
-      {!hasSidekick && (
-        <AgentTemplateModal
-          owner={owner}
-          templateId={selectedTemplateId}
-          onClose={closeTemplateModal}
-        />
-      )}
     </div>
   );
 }

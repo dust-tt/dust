@@ -57,6 +57,7 @@ export async function validateAction(
     userMessageVersion,
     userMessageUserId,
     userMessageOrigin,
+    branchId,
   } = await getUserMessageIdFromMessageId(auth, {
     messageId,
   });
@@ -194,6 +195,7 @@ export async function validateAction(
       agentMessageVersion,
       conversationId,
       conversationTitle,
+      conversationBranchId: branchId,
       userMessageId,
       userMessageVersion,
       userMessageOrigin,

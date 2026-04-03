@@ -14,6 +14,7 @@ import {
   Markdown,
   Spinner,
   Tooltip,
+  TruncatedContent,
 } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 
@@ -37,7 +38,6 @@ export function SpaceUserProjectDigest({
 }: SpaceUserProjectDigestProps) {
   const [generationError, setGenerationError] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isExpanded, setIsExpanded] = useState(false);
 
   const { digests, isDigestsLoading, mutateDigests } = useUserProjectDigests({
     workspaceId: owner.sId,
@@ -80,7 +80,6 @@ export function SpaceUserProjectDigest({
   if (prevDigestsLengthRef.current !== digests.length) {
     prevDigestsLengthRef.current = digests.length;
     setCurrentIndex(0);
-    setIsExpanded(false);
   }
 
   const handleGenerate = async () => {
@@ -147,10 +146,6 @@ export function SpaceUserProjectDigest({
       })
     : "";
 
-  const isLongContent = currentDigest
-    ? currentDigest.digest.split("\n").length > 5
-    : false;
-
   return (
     <div className="flex flex-col gap-3">
       <div className="inline-flex flex-wrap items-center gap-2">
@@ -190,7 +185,6 @@ export function SpaceUserProjectDigest({
               disabled={!hasPrevious}
               onClick={() => {
                 setCurrentIndex(safeIndex + 1);
-                setIsExpanded(false);
               }}
               tooltip="Older"
             />
@@ -201,7 +195,6 @@ export function SpaceUserProjectDigest({
               disabled={!hasNext}
               onClick={() => {
                 setCurrentIndex(safeIndex - 1);
-                setIsExpanded(false);
               }}
               tooltip="Newer"
             />
@@ -216,33 +209,17 @@ export function SpaceUserProjectDigest({
       )}
 
       {currentDigest ? (
-        <>
-          <div className="relative">
-            <div
-              className="flex flex-col gap-4"
-              style={{
-                maxHeight: isExpanded ? 2000 : COLLAPSED_MAX_HEIGHT_PX,
-                overflow: "hidden",
-                transition: "max-height 200ms ease",
-              }}
-            >
-              <Markdown content={currentDigest.digest} />
-            </div>
-            {!isExpanded && isLongContent && (
-              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-b from-transparent to-background dark:to-background-night" />
-            )}
-          </div>
-          {isLongContent && (
-            <div>
-              <Button
-                size="xs"
-                variant="outline"
-                label={isExpanded ? "Show less" : "Show more"}
-                onClick={() => setIsExpanded((prev) => !prev)}
-              />
-            </div>
-          )}
-        </>
+        <TruncatedContent
+          key={currentDigest.id}
+          thresholdPx={COLLAPSED_MAX_HEIGHT_PX + 50}
+          collapsedHeightPx={COLLAPSED_MAX_HEIGHT_PX}
+          defaultCollapsed={true}
+          animated
+          animationDurationMs={200}
+          className="flex flex-col gap-3"
+        >
+          <Markdown content={currentDigest.digest} />
+        </TruncatedContent>
       ) : (
         <div className="flex items-center gap-3 py-4">
           <Spinner size="sm" variant="color" />

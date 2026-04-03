@@ -12,10 +12,8 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import {
-  generateRandomModelSId,
-  getResourceIdFromSId,
-} from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { isEmailValid } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -227,6 +225,7 @@ export async function createUserMessage(
     context,
     agenticMessageData: agenticMessageData ?? undefined,
     rank: m.rank,
+    branchId: conversation.branchId,
     reactions: [],
   };
   return createdUserMessage;
@@ -523,6 +522,7 @@ export const createAgentMessages = async (
             error: null,
             configuration,
             rank: messageRow.rank,
+            branchId: conversation.branchId,
             skipToolsValidation: agentMessageRow.skipToolsValidation,
             contents: [],
             parsedContents: {},
@@ -576,6 +576,7 @@ export async function getUserMessageIdFromMessageId(
   userMessageVersion: number;
   userMessageUserId: number | null;
   userMessageOrigin: UserMessageOrigin;
+  branchId: string | null;
 }> {
   // Query 1: Get the message and its parentId.
   const agentMessage = await MessageModel.findOne({
@@ -621,5 +622,6 @@ export async function getUserMessageIdFromMessageId(
     userMessageVersion: parentMessage.version,
     userMessageUserId: parentMessage.userMessage.userId,
     userMessageOrigin: parentMessage.userMessage.userContextOrigin,
+    branchId: agentMessage.branchSId,
   };
 }

@@ -224,23 +224,23 @@ describe("Method Support /api/w/[wId]/assistant/agent_configurations", () => {
 
 describe("POST /api/w/[wId]/assistant/agent_configurations - Skills with restricted spaces", () => {
   it("should include skill's requestedSpaceIds when creating agent with skill", async () => {
-    const { req, res, workspace, user, authenticator } =
+    const { req, res, workspace, user, auth } =
       await createPrivateApiMockRequest({
         role: "admin",
         method: "POST",
       });
 
-    await SpaceFactory.defaults(authenticator);
+    await SpaceFactory.defaults(auth);
     const restrictedSpace = await SpaceFactory.regular(workspace);
-    await restrictedSpace.addMembers(authenticator, { userIds: [user.sId] });
-    await authenticator.refresh();
+    await restrictedSpace.addMembers(auth, { userIds: [user.sId] });
+    await auth.refresh();
 
-    const skill = await SkillFactory.create(authenticator, {
+    const skill = await SkillFactory.create(auth, {
       name: "Skill with restricted space",
       requestedSpaceIds: [restrictedSpace.id],
     });
     const skillResource = await SkillResource.fetchByModelIdWithAuth(
-      authenticator,
+      auth,
       skill.id
     );
     expect(skillResource).not.toBeNull();
@@ -267,13 +267,13 @@ describe("POST /api/w/[wId]/assistant/agent_configurations - Skills with restric
 
 describe("POST /api/w/[wId]/assistant/agent_configurations - additionalRequestedSpaceIds", () => {
   it("should include additionalRequestedSpaceIds when creating agent", async () => {
-    const { req, res, workspace, user, authenticator, globalGroup } =
+    const { req, res, workspace, user, auth, globalGroup } =
       await createPrivateApiMockRequest({
         role: "admin",
         method: "POST",
       });
 
-    await SpaceFactory.defaults(authenticator);
+    await SpaceFactory.defaults(auth);
 
     const openSpace = await SpaceFactory.regular(workspace);
     await GroupSpaceFactory.associate(openSpace, globalGroup);
@@ -347,13 +347,13 @@ describe("POST /api/w/[wId]/assistant/agent_configurations - additionalRequested
   });
 
   it("should deduplicate additionalRequestedSpaceIds that overlap with tool spaces", async () => {
-    const { req, res, workspace, user, authenticator, globalGroup } =
+    const { req, res, workspace, user, auth, globalGroup } =
       await createPrivateApiMockRequest({
         role: "admin",
         method: "POST",
       });
 
-    await SpaceFactory.defaults(authenticator);
+    await SpaceFactory.defaults(auth);
 
     const openSpace = await SpaceFactory.regular(workspace);
     await GroupSpaceFactory.associate(openSpace, globalGroup);
@@ -362,12 +362,12 @@ describe("POST /api/w/[wId]/assistant/agent_configurations - additionalRequested
     // Get the system view for the remote MCP server
     const systemMcpServerView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
-        authenticator,
+        auth,
         remoteMCPServer.sId
       );
     expect(systemMcpServerView).not.toBeNull();
 
-    const mcpServerView = await MCPServerViewResource.create(authenticator, {
+    const { view: mcpServerView } = await MCPServerViewResource.create(auth, {
       systemView: systemMcpServerView!,
       space: openSpace,
     });
@@ -413,14 +413,12 @@ describe("POST /api/w/[wId]/assistant/agent_configurations - additionalRequested
 
 describe("GET /api/w/[wId]/assistant/agent_configurations - instructionsHtml", () => {
   it("should not include instructionsHtml in light variant but should in full variant", async () => {
-    const { req, res, user, authenticator } = await createPrivateApiMockRequest(
-      {
-        method: "POST",
-        role: "admin",
-      }
-    );
+    const { req, res, user, auth } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
 
-    await SpaceFactory.defaults(authenticator);
+    await SpaceFactory.defaults(auth);
 
     const testInstructionsHtml =
       '<p data-block-id="block1">Test instructions</p>';
@@ -439,7 +437,7 @@ describe("GET /api/w/[wId]/assistant/agent_configurations - instructionsHtml", (
     const createdAgent = res._getJSONData().agentConfiguration;
 
     // Light variant (via getAgentConfiguration) should nullify instructionsHtml.
-    const lightAgent = await getAgentConfiguration(authenticator, {
+    const lightAgent = await getAgentConfiguration(auth, {
       agentId: createdAgent.sId,
       variant: "light",
     });
@@ -449,7 +447,7 @@ describe("GET /api/w/[wId]/assistant/agent_configurations - instructionsHtml", (
     expect(lightAgent).toHaveProperty("instructionsHtml", null);
 
     // Full variant (via getAgentConfiguration) should include instructionsHtml.
-    const fullAgent = await getAgentConfiguration(authenticator, {
+    const fullAgent = await getAgentConfiguration(auth, {
       agentId: createdAgent.sId,
       variant: "full",
     });

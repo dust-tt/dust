@@ -10,7 +10,17 @@ import type {
   FileWithCreatorType,
   GetProjectFilesResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_files";
+import type { PatchProjectTodoResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]/index";
+import type {
+  GetProjectTodosResponseBody,
+  PostProjectTodoResponseBody,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/index";
 import type { CheckNameResponseBody } from "@app/pages/api/w/[wId]/spaces/check-name";
+import type {
+  ProjectTodoCategory,
+  ProjectTodoStatus,
+  ProjectTodoType,
+} from "@app/types/project_todo";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -162,5 +172,124 @@ export function useCheckProjectName({
     isNameAvailable: data?.available ?? true,
     isChecking: isLoading || isDebouncing,
     setValue,
+  };
+}
+
+export function useProjectTodos({
+  owner,
+  spaceId,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const todosFetcher: Fetcher<GetProjectTodosResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    disabled ? null : `/api/w/${owner.sId}/spaces/${spaceId}/project_todos`,
+    todosFetcher
+  );
+
+  return {
+    todos: data?.todos ?? [],
+    isTodosLoading: !disabled && !error && !data,
+    isTodosError: !!error,
+    mutateTodos: mutate,
+  };
+}
+
+export function useCreateProjectTodo({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  return async (
+    category: ProjectTodoCategory,
+    text: string
+  ): Promise<Result<ProjectTodoType, Error>> => {
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_todos`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ category, text }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to create todo",
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      const responseData: PostProjectTodoResponseBody = await res.json();
+      return new Ok(responseData.todo);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to create todo",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
+export function useUpdateProjectTodo({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  return async (
+    todoId: string,
+    updates: { text?: string; status?: ProjectTodoStatus }
+  ): Promise<Result<ProjectTodoType, Error>> => {
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_todos/${todoId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updates),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to update todo",
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      const responseData: PatchProjectTodoResponseBody = await res.json();
+      return new Ok(responseData.todo);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to update todo",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
   };
 }

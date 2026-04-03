@@ -34,12 +34,12 @@ jobs:
           node-version: 22.22.0
           cache: "npm"
           cache-dependency-path: ./package-lock.json
+      - name: Install correct npm version
+        run: npm install -g npm@11.11.0
       - name: Install Biome
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Install Grit CLI
-        run: |
-          curl -fsSL https://docs.grit.io/install | bash
-          echo "$HOME/.grit/bin" >> $GITHUB_PATH
+        run: npm install --location=global @getgrit/cli
       - name: Format Check
         run: npm run biome
       - name: GritQL Plugin Tests

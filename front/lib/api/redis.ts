@@ -3,6 +3,7 @@ import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
 import type { RedisClientType } from "redis";
+
 export type { RedisClientType };
 
 import { createClient } from "redis";
@@ -39,6 +40,7 @@ export type RedisUsageTagsType =
   | "conversation_events"
   | "daily_usage_tracking"
   | "email_context"
+  | "otp_challenge"
   | "force_reload_commits"
   | "key_usage_tracking"
   | "lock"

@@ -29,7 +29,6 @@ const MIN_SEARCH_CHARACTERS = 2;
 interface PokeNavbarProps {
   regionUrls?: Record<RegionType, string>;
   showRegionPicker?: boolean;
-  title: string;
 }
 
 function getPokeItemChipColor(
@@ -51,11 +50,7 @@ function getPokeItemChipColor(
   }
 }
 
-function PokeNavbar({
-  regionUrls,
-  showRegionPicker = false,
-  title,
-}: PokeNavbarProps) {
+function PokeNavbar({ regionUrls, showRegionPicker = false }: PokeNavbarProps) {
   return (
     <nav
       className={classNames(
@@ -82,12 +77,12 @@ function PokeNavbar({
           <Button
             href="/poke/global-agent-feedbacks"
             variant="ghost"
-            label="Agent Feedbacks"
+            label="Agent Feedback"
           />
         </div>
       </div>
       <div className="items-right flex items-center gap-4">
-        <PokeFavoriteButton title={title} />
+        <PokeFavoriteButton />
         {showRegionPicker && <PokeRegionDropdown regionUrls={regionUrls} />}
         <PokeSearchCommand />
       </div>

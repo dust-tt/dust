@@ -1,4 +1,4 @@
-import type { PlanType } from "@app/types/plan";
+import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 
 // Current free plans:
@@ -13,6 +13,7 @@ export const PRO_PLAN_LARGE_FILES_CODE = "PRO_PLAN_LARGE_FILES";
 export const PRO_PLAN_SEAT_39_CODE = "PRO_PLAN_SEAT_39";
 
 // BYOK plan:
+export const FREE_BYOK_TRANSITIONING_PLAN_CODE = "FREE_BYOK_TRANSITIONING";
 export const FREE_BYOK_PLAN_CODE = "FREE_BYOK";
 
 /**
@@ -56,12 +57,19 @@ export function isProPlan(plan?: PlanType) {
   );
 }
 
+export const isByokTransitioningPlan = (plan?: PlanType) =>
+  plan?.code === FREE_BYOK_TRANSITIONING_PLAN_CODE;
+
 export function isBusinessPlan(plan?: PlanType) {
   return plan?.code === PRO_PLAN_SEAT_39_CODE;
 }
 
 export function isProOrBusinessPlanCode(plan?: PlanType) {
   return isProPlan(plan) || isBusinessPlan(plan);
+}
+
+export function isMetronomeBilled(subscription: SubscriptionType): boolean {
+  return subscription.metronomeContractId != null;
 }
 
 /**

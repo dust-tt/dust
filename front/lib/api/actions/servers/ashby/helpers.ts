@@ -1,8 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AshbyClient } from "@app/lib/api/actions/servers/ashby/client";
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
-import { renderReferralForm } from "@app/lib/api/actions/servers/ashby/rendering";
+import {
+  JOB_FIELD_PATH,
+  renderReferralForm,
+} from "@app/lib/api/actions/servers/ashby/rendering";
 import type {
   AshbyCandidate,
   AshbyFieldSubmission,
@@ -14,11 +16,50 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
 
-export const JOB_FIELD_PATH = "_systemfield.job";
-
 interface CandidateSearchParams {
   email?: string;
   name?: string;
+}
+
+interface HiredApplicationInfo {
+  applicationId: string;
+  jobId: string | undefined;
+}
+
+export async function findHiredApplication(
+  client: AshbyClient,
+  candidate: AshbyCandidate
+): Promise<Result<HiredApplicationInfo, MCPError>> {
+  if (!candidate.applicationIds || candidate.applicationIds.length === 0) {
+    return new Err(
+      new MCPError(
+        `Candidate ${candidate.name} has no applications in the system.`,
+        { tracked: false }
+      )
+    );
+  }
+
+  for (const applicationId of candidate.applicationIds) {
+    const appInfoResult = await client.getApplicationInfo({ applicationId });
+    if (appInfoResult.isErr()) {
+      continue;
+    }
+
+    if (appInfoResult.value.status === "Hired") {
+      return new Ok({
+        applicationId,
+        jobId: appInfoResult.value.job?.id,
+      });
+    }
+  }
+
+  return new Err(
+    new MCPError(
+      `No hired application found for candidate ${candidate.name}. ` +
+        "This tool only works for candidates who have been hired.",
+      { tracked: false }
+    )
+  );
 }
 
 export async function assertCandidateNotHired(
@@ -39,7 +80,7 @@ export async function assertCandidateNotHired(
       );
     }
 
-    if (appInfoResult.value.results.status === "Hired") {
+    if (appInfoResult.value.status === "Hired") {
       return new Err(
         new MCPError(
           `Candidate ${candidate.name} was hired, this operation is not permitted for hired candidates.`,
@@ -74,7 +115,7 @@ export async function findUniqueCandidate(
     );
   }
 
-  const candidates = searchResult.value.results;
+  const candidates = searchResult.value;
   if (!candidates || candidates.length === 0) {
     return new Err(
       new MCPError("No candidates found matching the search criteria.", {
@@ -101,18 +142,6 @@ export async function findUniqueCandidate(
   }
 
   return new Ok(candidates[0]);
-}
-
-export async function withAuth<T>(
-  { authInfo }: ToolHandlerExtra,
-  action: (token: string) => Promise<Result<T, MCPError>>
-): Promise<Result<T, MCPError>> {
-  const token = authInfo?.token;
-  if (!token) {
-    return new Err(new MCPError("No access token provided"));
-  }
-
-  return action(token);
 }
 
 function normalizeTitle(title: string): string {
@@ -146,7 +175,7 @@ export async function resolveAshbyUser(
     );
   }
 
-  const ashbyUsers = ashbyUserResult.value.results;
+  const ashbyUsers = ashbyUserResult.value;
   if (ashbyUsers.length === 0) {
     return new Err(
       new MCPError(
