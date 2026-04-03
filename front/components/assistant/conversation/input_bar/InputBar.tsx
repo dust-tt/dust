@@ -58,6 +58,7 @@ interface InputBarProps {
   isFloatingWithoutMargin?: boolean;
   isSubmitting?: boolean;
   disable?: boolean;
+  isAgentBuilder?: boolean;
   shouldUseDraft?: boolean;
 }
 
@@ -72,6 +73,7 @@ export const InputBar = React.memo(function InputBar({
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   disableUserMentions,
+  isAgentBuilder = false,
   isFloating = true,
   isSubmitting = false,
   disable = false,
@@ -398,6 +400,7 @@ export const InputBar = React.memo(function InputBar({
             onSkillSelect={handleSkillSelect}
             onSkillDeselect={handleSkillDeselect}
             onResetSelections={handleResetSelections}
+            isAgentBuilder={isAgentBuilder}
             attachedNodes={attachedNodes}
             saveDraft={saveDraft}
             getDraft={getDraft}
