@@ -1,5 +1,6 @@
 import type { ScheduleConfig } from "@app/types/assistant/triggers";
 import { isCronScheduleConfig } from "@app/types/assistant/triggers";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import cronstrue from "cronstrue";
 
 const DAY_NAMES = [
@@ -21,8 +22,14 @@ export function describeScheduleConfig(config: ScheduleConfig): string {
 
   if (config.dayOfWeek !== null && config.intervalDays % 7 === 0) {
     const weeks = config.intervalDays / 7;
-    return `Every ${weeks} week${weeks > 1 ? "s" : ""} on ${DAY_NAMES[config.dayOfWeek]} at ${time}`;
+    if (weeks === 1) {
+      return `Every ${DAY_NAMES[config.dayOfWeek]} at ${time}`;
+    }
+    return `Every ${weeks} week${pluralize(weeks)} on ${DAY_NAMES[config.dayOfWeek]} at ${time}`;
   }
 
-  return `Every ${config.intervalDays} day${config.intervalDays > 1 ? "s" : ""} at ${time}`;
+  if (config.intervalDays === 1) {
+    return `Every day at ${time}`;
+  }
+  return `Every ${config.intervalDays} day${pluralize(config.intervalDays)} at ${time}`;
 }

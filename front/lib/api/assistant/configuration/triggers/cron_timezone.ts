@@ -143,7 +143,7 @@ type: "interval" examples:
 2. If no time is specified, default to 9:00 AM
 3. Use defaultTimezone unless a specific timezone is mentioned in the description
 4. ALWAYS use IANA timezone format (e.g., Europe/Paris, America/New_York), never UTC offsets
-5. Use type "cron" when the schedule can be expressed as cron. Use type "interval" ONLY for multi-day or multi-week intervals.
+5. ALWAYS prefer type "cron" — it covers the vast majority of schedules. Use type "interval" ONLY when the schedule genuinely cannot be expressed as a 5-field cron (e.g. "every 2 weeks", "every 3 days"). When in doubt, use "cron".
 6. Call set_schedule with the appropriate fields based on the type
 </instructions>`,
       specifications,

@@ -31,26 +31,30 @@ function validateIntervalConfig(config: {
   hour: number;
   minute: number;
   timezone: string;
-}): string | null {
+}): Result<void, Error> {
   if (config.intervalDays <= 0 || !Number.isInteger(config.intervalDays)) {
-    return "Invalid interval: intervalDays must be a positive integer.";
+    return new Err(
+      new Error("Invalid interval: intervalDays must be a positive integer.")
+    );
   }
   if (
     config.dayOfWeek !== null &&
     (config.dayOfWeek < 0 || config.dayOfWeek > 6)
   ) {
-    return "Invalid interval: dayOfWeek must be 0-6 or null.";
+    return new Err(
+      new Error("Invalid interval: dayOfWeek must be 0-6 or null.")
+    );
   }
   if (config.hour < 0 || config.hour > 23) {
-    return "Invalid interval: hour must be 0-23.";
+    return new Err(new Error("Invalid interval: hour must be 0-23."));
   }
   if (config.minute < 0 || config.minute > 59) {
-    return "Invalid interval: minute must be 0-59.";
+    return new Err(new Error("Invalid interval: minute must be 0-59."));
   }
   if (!isValidIANATimezone(config.timezone)) {
-    return INVALID_TIMEZONE_MESSAGE;
+    return new Err(new Error(INVALID_TIMEZONE_MESSAGE));
   }
-  return null;
+  return new Ok(undefined);
 }
 
 export async function generateScheduleRule(
@@ -76,17 +80,16 @@ export async function generateScheduleRule(
       });
     }
 
-    const validationError = validateIntervalConfig(config);
-    if (validationError) {
-      return new Err(new Error(validationError));
+    const validationResult = validateIntervalConfig(config);
+    if (validationResult.isErr()) {
+      return validationResult;
     }
 
     return new Ok(config);
   }
 
   // Cron validation (existing logic).
-  const cronRule = "cron" in config ? config.cron : undefined;
-  const { timezone } = config;
+  const { cron: cronRule, timezone } = config;
 
   if (
     !cronRule ||

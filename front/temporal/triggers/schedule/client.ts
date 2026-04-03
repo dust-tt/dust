@@ -21,6 +21,7 @@ import {
   ScheduleNotFoundError,
   ScheduleOverlapPolicy,
 } from "@temporalio/client";
+import moment from "moment-timezone";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -34,15 +35,10 @@ function localTimeToUtcMs(
   minute: number,
   timezone: string
 ): number {
-  // Build a date in the target timezone and compute UTC offset.
-  const now = new Date();
-  const localStr = now.toLocaleString("en-US", { timeZone: timezone });
-  const localDate = new Date(localStr);
-  const offsetMs = localDate.getTime() - now.getTime();
-
-  // Local time in ms, then subtract the tz offset to get UTC equivalent.
-  const localTimeMs = (hour * 60 + minute) * 60 * 1000;
-  return (((localTimeMs - offsetMs) % DAY_MS) + DAY_MS) % DAY_MS;
+  const localTime = moment.tz({ hour, minute }, timezone);
+  const utcHour = localTime.utc().hour();
+  const utcMinute = localTime.utc().minute();
+  return (utcHour * 60 + utcMinute) * 60 * 1000;
 }
 
 /**
@@ -60,8 +56,8 @@ function computeIntervalOffsetMs(config: IntervalScheduleConfig): number {
   if (config.dayOfWeek !== null) {
     // Week-aligned: offset to reach target day-of-week from epoch Thursday.
     const epochDayOfWeek = 4; // Thursday
-    const daysToTarget = (config.dayOfWeek - epochDayOfWeek + 7) % 7;
-    return daysToTarget * DAY_MS + utcTimeMs;
+    const offsetDays = (config.dayOfWeek - epochDayOfWeek + 7) % 7;
+    return offsetDays * DAY_MS + utcTimeMs;
   }
 
   // Pure day interval: just set the time-of-day offset.

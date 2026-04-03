@@ -17,7 +17,7 @@ import {
 } from "@dust-tt/sparkle";
 import type React from "react";
 import { useMemo, useState } from "react";
-import { useController, useFormContext, useWatch } from "react-hook-form";
+import { useController, useFormContext } from "react-hook-form";
 
 const MIN_DESCRIPTION_LENGTH = 10;
 
@@ -70,8 +70,12 @@ export function ScheduleEditionScheduler({
     },
   } = useController({ control, name: "schedule.naturalLanguageDescription" });
 
-  const cron = useWatch({ control, name: "schedule.cron" });
-  const scheduleType = useWatch({ control, name: "schedule.scheduleType" });
+  const {
+    field: { value: cron, onChange: onCronChange },
+  } = useController({ control, name: "schedule.cron" });
+  const {
+    field: { value: scheduleType, onChange: onScheduleTypeChange },
+  } = useController({ control, name: "schedule.scheduleType" });
   const { error: cronError } = getFieldState("schedule.cron", formState);
   const { error: timezoneError } = getFieldState(
     "schedule.timezone",
@@ -97,8 +101,8 @@ export function ScheduleEditionScheduler({
         return;
       }
 
-      setValue("schedule.cron", "");
-      setValue("schedule.scheduleType", "cron");
+      onCronChange("");
+      onScheduleTypeChange("cron");
       const result = await textAsCronRule(txt, signal);
 
       // If the request was not aborted, we can update the form.
@@ -108,18 +112,16 @@ export function ScheduleEditionScheduler({
           setGeneratedConfig(config);
 
           if (isCronScheduleConfig(config)) {
-            setValue("schedule.scheduleType", "cron");
-            setValue("schedule.cron", config.cron);
+            onScheduleTypeChange("cron");
+            onCronChange(config.cron);
             setValue("schedule.timezone", config.timezone);
           } else {
-            setValue("schedule.scheduleType", "interval");
+            onScheduleTypeChange("interval");
             setValue("schedule.intervalDays", config.intervalDays);
             setValue("schedule.dayOfWeek", config.dayOfWeek);
             setValue("schedule.hour", config.hour);
             setValue("schedule.minute", config.minute);
             setValue("schedule.timezone", config.timezone);
-            // Set cron to a placeholder so form validation passes.
-            setValue("schedule.cron", "interval");
           }
           setGeneratedTimezone(config.timezone);
           setGenerationStatus("idle");
@@ -146,20 +148,15 @@ export function ScheduleEditionScheduler({
         if (!hasSchedule) {
           return undefined;
         }
-        try {
-          const config = generatedConfig ?? { cron, timezone: "" };
-          const desc = describeScheduleConfig(config);
-          if (generatedTimezone) {
-            return `${desc}, in ${formatTimezone(generatedTimezone)} timezone.`;
-          }
-          return desc;
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-        } catch (error) {
-          // eslint-disable-next-line react-hooks/set-state-in-render
-          setGenerationStatus("error");
+        const config = generatedConfig ?? {
+          cron,
+          timezone: "",
+        };
+        const desc = describeScheduleConfig(config);
+        if (generatedTimezone) {
+          return `${desc}, in ${formatTimezone(generatedTimezone)} timezone.`;
         }
-        break;
+        return desc;
       }
       default:
         assertNever(generationStatus);
