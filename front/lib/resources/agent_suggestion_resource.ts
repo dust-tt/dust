@@ -480,4 +480,58 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   ): Promise<AgentSuggestionResource[]> {
     return this.baseFetch(auth, {});
   }
+
+  /**
+   * Lists suggestions across multiple agents identified by their sIds.
+   */
+  static async listByAgentConfigurationIds(
+    auth: Authenticator,
+    agentIds: string[],
+    filters?: {
+      states?: AgentSuggestionState[];
+      sources?: AgentSuggestionSource[];
+      kind?: AgentSuggestionKind;
+      limit?: number;
+      createdAfter?: Date;
+    }
+  ): Promise<AgentSuggestionResource[]> {
+    if (agentIds.length === 0) {
+      return [];
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+
+    const agentConfigs = await AgentConfigurationModel.findAll({
+      where: {
+        sId: { [Op.in]: agentIds },
+        workspaceId: owner.id,
+        status: "active",
+      },
+      attributes: ["id", "sId"],
+    });
+
+    if (agentConfigs.length === 0) {
+      return [];
+    }
+
+    const agentConfigIds = agentConfigs.map((ac) => ac.id);
+
+    const whereClause: WhereOptions<AgentSuggestionModel> = {
+      agentConfigurationId: agentConfigIds,
+      ...(filters?.states &&
+        filters.states.length > 0 && { state: filters.states }),
+      ...(filters?.sources &&
+        filters.sources.length > 0 && { source: filters.sources }),
+      ...(filters?.kind && { kind: filters.kind }),
+      ...(filters?.createdAfter && {
+        createdAt: { [Op.gte]: filters.createdAfter },
+      }),
+    };
+
+    return this.baseFetch(auth, {
+      where: whereClause,
+      order: [["createdAt", "DESC"]],
+      limit: filters?.limit,
+    });
+  }
 }

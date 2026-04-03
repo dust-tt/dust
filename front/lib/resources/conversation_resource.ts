@@ -720,6 +720,118 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return conversations.map((c) => c.sId);
   }
 
+  /**
+   * Returns the agent sIds that have at least one agent message with
+   * createdAt >= cutoffDate. With excludeHumanOutOfTheLoop, removes conversations where
+   * triggerId IS NOT NULL and no user messages are present.
+   */
+  static async listIdsOfAgentsWithRecentConversations(
+    auth: Authenticator,
+    {
+      agentSIds,
+      cutoffDate,
+      excludeHumanOutOfTheLoop = false,
+    }: {
+      agentSIds: string[];
+      cutoffDate: Date;
+      excludeHumanOutOfTheLoop?: boolean;
+    }
+  ): Promise<string[]> {
+    if (agentSIds.length === 0) {
+      return [];
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Step 1: start from agent_messages with the time window filter.
+    const participations = await AgentMessageModel.findAll({
+      attributes: ["agentConfigurationId"],
+      where: {
+        workspaceId,
+        agentConfigurationId: { [Op.in]: agentSIds },
+        createdAt: { [Op.gte]: cutoffDate },
+      },
+      include: [
+        {
+          model: MessageModel,
+          as: "message",
+          required: true,
+          attributes: ["conversationId"],
+        },
+      ],
+    });
+
+    if (participations.length === 0) {
+      return [];
+    }
+
+    let qualifyingConvIds: Set<number>;
+
+    if (!excludeHumanOutOfTheLoop) {
+      qualifyingConvIds = new Set(
+        participations.map((p) => p.message!.conversationId)
+      );
+    } else {
+      const conversationIds = [
+        ...new Set(participations.map((p) => p.message!.conversationId)),
+      ];
+      const candidateConversations = await ConversationModel.findAll({
+        attributes: ["id", "triggerId"],
+        where: {
+          workspaceId,
+          id: { [Op.in]: conversationIds },
+        },
+        raw: true,
+      });
+
+      if (candidateConversations.length === 0) {
+        return [];
+      }
+
+      // Non-triggered conversations are always human-initiated; triggered ones
+      // only qualify if a human has also replied.
+      const nonTriggeredIds = candidateConversations
+        .filter((c) => c.triggerId === null)
+        .map((c) => c.id);
+      const triggeredIds = candidateConversations
+        .filter((c) => c.triggerId !== null)
+        .map((c) => c.id);
+
+      if (triggeredIds.length === 0) {
+        qualifyingConvIds = new Set(nonTriggeredIds);
+      } else {
+        const triggeredConvsWithUserMessages = await MessageModel.findAll({
+          attributes: [
+            [
+              Sequelize.fn("DISTINCT", Sequelize.col("conversationId")),
+              "conversationId",
+            ],
+          ],
+          where: { workspaceId, conversationId: { [Op.in]: triggeredIds } },
+          include: [
+            {
+              model: UserMessageModel,
+              as: "userMessage",
+              required: true,
+              attributes: [],
+            },
+          ],
+          raw: true,
+        });
+        qualifyingConvIds = new Set([
+          ...nonTriggeredIds,
+          ...triggeredConvsWithUserMessages.map((m) => m.conversationId),
+        ]);
+      }
+    }
+
+    return uniq(
+      participations
+        .filter((p) => qualifyingConvIds.has(p.message!.conversationId))
+        .map((p) => p.agentConfigurationId)
+    );
+  }
+
   static async fetchConversationWithoutContent(
     auth: Authenticator,
     sId: string,
