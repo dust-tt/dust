@@ -1,7 +1,8 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -16,19 +17,10 @@ export type GetAgentMessageSkillsResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetAgentMessageSkillsResponseBody>>,
-  auth: Authenticator
+  auth: Authenticator,
+  { conversation }: { conversation: ConversationResource }
 ): Promise<void> {
-  const { cId, mId } = req.query;
-
-  if (!isString(cId)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameters, `cId` (string) is required.",
-      },
-    });
-  }
+  const { mId } = req.query;
 
   if (!isString(mId)) {
     return apiError(req, res, {
@@ -42,18 +34,6 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const conversation = await ConversationResource.fetchById(auth, cId);
-
-      if (!conversation) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "conversation_not_found",
-            message: "Conversation not found.",
-          },
-        });
-      }
-
       const messageRes = await conversation.getMessageById(auth, mId);
 
       if (messageRes.isErr()) {
@@ -98,4 +78,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, { conversation: {} })
+);

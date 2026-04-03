@@ -4,8 +4,9 @@ import {
   validateUserMention,
 } from "@app/lib/api/assistant/conversation/mentions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
@@ -35,19 +36,10 @@ export type PostMentionActionResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PostMentionActionResponseBody>>,
-  auth: Authenticator
+  auth: Authenticator,
+  { conversation }: { conversation: ConversationResource }
 ): Promise<void> {
-  const { cId, mId } = req.query;
-
-  if (!isString(cId)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameters, `cId` (string) is required.",
-      },
-    });
-  }
+  const { mId } = req.query;
 
   if (!isString(mId)) {
     return apiError(req, res, {
@@ -55,18 +47,6 @@ async function handler(
       api_error: {
         type: "invalid_request_error",
         message: "Invalid query parameters, `mId` (string) is required.",
-      },
-    });
-  }
-
-  const conversation = await ConversationResource.fetchById(auth, cId);
-
-  if (!conversation) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "Conversation not found.",
       },
     });
   }
@@ -92,7 +72,7 @@ async function handler(
 
       if (action === "dismissed") {
         const dismissMentionRes = await dismissMention(auth, {
-          conversationId: cId,
+          conversationId: conversation.sId,
           messageId: mId,
           type,
           id,
@@ -112,7 +92,7 @@ async function handler(
         }
 
         const validateUserMentionRes = await validateUserMention(auth, {
-          conversationId: cId,
+          conversationId: conversation.sId,
           userId: id,
           messageId: mId,
           approvalState: action,
@@ -140,4 +120,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, { conversation: {} })
+);

@@ -1,8 +1,9 @@
 /** @ignoreswagger */
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -23,10 +24,11 @@ export type ValidateActionResponse = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<ValidateActionResponse>>,
-  auth: Authenticator
+  auth: Authenticator,
+  { conversation }: { conversation: ConversationResource }
 ): Promise<void> {
-  const { cId, mId } = req.query;
-  if (typeof cId !== "string" || typeof mId !== "string") {
+  const { mId } = req.query;
+  if (typeof mId !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -54,18 +56,6 @@ async function handler(
       api_error: {
         type: "invalid_request_error",
         message: `Invalid request body: ${parseResult.error.message}`,
-      },
-    });
-  }
-
-  const conversation = await ConversationResource.fetchById(auth, cId);
-
-  if (!conversation) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "Conversation not found.",
       },
     });
   }
@@ -115,4 +105,6 @@ async function handler(
   res.status(200).json({ success: true });
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, { conversation: {} })
+);

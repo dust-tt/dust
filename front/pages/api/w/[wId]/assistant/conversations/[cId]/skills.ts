@@ -1,14 +1,13 @@
 /** @ignoreswagger */
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -31,31 +30,10 @@ async function handler(
   res: NextApiResponse<
     WithAPIErrorResponse<FetchConversationSkillsResponse | { success: boolean }>
   >,
-  auth: Authenticator
+  auth: Authenticator,
+  { conversation }: { conversation: ConversationResource }
 ): Promise<void> {
-  const conversationId = req.query.cId;
-
-  if (!isString(conversationId)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameters, `cId` (string) is required.",
-      },
-    });
-  }
-
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
-    );
-
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
-  }
-
-  const conversationWithoutContent = conversationRes.value;
+  const conversationWithoutContent = conversation.toJSON();
 
   switch (req.method) {
     case "GET":
@@ -91,7 +69,7 @@ async function handler(
         logger.error(
           {
             skillId,
-            conversationId,
+            conversationId: conversation.sId,
             workspaceId: req.query.wId,
           },
           "Skill not found"
@@ -115,7 +93,7 @@ async function handler(
           {
             error: r.error,
             skillId,
-            conversationId,
+            conversationId: conversation.sId,
             action,
             workspaceId: req.query.wId,
           },
@@ -143,4 +121,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, { conversation: {} })
+);
