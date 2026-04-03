@@ -1,4 +1,3 @@
-import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type {
   ImageModelIdType,
   StaticModelIdType,
@@ -508,6 +507,9 @@ const DEFAULT_PRICING_MODEL_ID: StaticModelIdType = "gpt-4o";
 
 const DEFAULT_PRICING = MODEL_PRICING[DEFAULT_PRICING_MODEL_ID];
 
+// This discount factor applies to OpenAi, Anthropic, Google and Mistral
+const BATCH_DISCOUNT_FACTOR = 0.5;
+
 /**
  * Calculate the cost in micro USD for token usage.
  * Note: promptTokens currently includes cached read and cache write tokens for some providers.
@@ -519,12 +521,14 @@ export function computeTokensCostForUsageInMicroUsd({
   completionTokens,
   cachedTokens,
   cacheCreationTokens,
+  isBatch = false,
 }: {
   modelId: ModelIdType | ImageModelIdType;
   promptTokens: number;
   completionTokens: number;
   cachedTokens: number | null;
   cacheCreationTokens?: number | null;
+  isBatch?: boolean;
 }): number {
   const pricing = MODEL_PRICING[modelId] ?? DEFAULT_PRICING;
 
@@ -539,14 +543,7 @@ export function computeTokensCostForUsageInMicroUsd({
   const cacheWriteDelta = cacheWriteTokens * (cacheWriteRate - pricing.input);
   const outputCost = completionTokens * pricing.output;
 
-  return basePromptCost + cachedReadDelta + cacheWriteDelta + outputCost;
-}
+  const cost = basePromptCost + cachedReadDelta + cacheWriteDelta + outputCost;
 
-export function calculateTokenUsageCostInMicroUsd(
-  usages: RunUsageType[]
-): number {
-  return usages.reduce(
-    (acc, usage) => acc + computeTokensCostForUsageInMicroUsd(usage),
-    0
-  );
+  return isBatch ? Math.round(cost * BATCH_DISCOUNT_FACTOR) : cost;
 }
