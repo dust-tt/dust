@@ -66,6 +66,7 @@ interface ProductDef {
   };
   pricing_group_key?: string[];
   presentation_group_key?: string[];
+  tags?: string[];
 }
 
 interface RateDef {
@@ -91,6 +92,19 @@ interface RateCardDef {
   rates: RateDef[];
 }
 
+interface PackageSubscription {
+  temporary_id: string;
+  product_name: string; // resolved to product ID at runtime
+  billing_frequency: "MONTHLY" | "QUARTERLY" | "ANNUAL" | "WEEKLY";
+  collection_schedule: "ADVANCE" | "ARREARS";
+  quantity_management_mode: "SEAT_BASED" | "MANUAL";
+  seat_config?: { seat_group_key: string };
+  proration?: {
+    is_prorated: boolean;
+    invoice_behavior?: "BILL_IMMEDIATELY" | "BILL_ON_NEXT_COLLECTION_DATE";
+  };
+}
+
 interface PackageDef {
   name: string;
   aliases: Array<{ name: string }>;
@@ -98,10 +112,7 @@ interface PackageDef {
   // Omit billing_provider + delivery_method for shadow packages (invoices generated but not delivered).
   billing_provider?: string;
   delivery_method?: string;
-  // KNOWN ISSUE: billing_anchor_date is accepted by the API but silently ignored.
-  // "Usage statement day: Contract start" must be set via the Metronome UI manually.
-  // Filed with Metronome support. When fixed, uncomment and recreate packages.
-  // billing_anchor_date?: "contract_start_date" | "first_billing_period";
+  subscriptions?: PackageSubscription[];
 }
 
 // ---------------------------------------------------------------------------
@@ -186,19 +197,25 @@ const METRICS: MetricDef[] = [
   // Phase 2 token metrics removed — will be added when Pricing Index is ready.
 ];
 
+// Tag shared by all AI/Tool usage products — use `applicable_product_tags: ["usage"]`
+// on credits/commits to apply them to all usage products at once.
+const USAGE_TAG = "usage";
+
 const PRODUCTS: ProductDef[] = [
-  // Usage products
+  // Usage products — all tagged "usage" for credit/commit targeting
   {
     name: "AI Usage (User)",
     type: "USAGE",
     billable_metric_name: "LLM Provider Cost (User)",
     quantity_conversion: { conversion_factor: 1000000, operation: "DIVIDE" },
+    tags: [USAGE_TAG],
   },
   {
     name: "AI Usage (Programmatic)",
     type: "USAGE",
     billable_metric_name: "LLM Provider Cost (Programmatic)",
     quantity_conversion: { conversion_factor: 1000000, operation: "DIVIDE" },
+    tags: [USAGE_TAG],
   },
   {
     name: "Tool Usage (Programmatic)",
@@ -206,6 +223,7 @@ const PRODUCTS: ProductDef[] = [
     billable_metric_name: "Tool Invocations (Programmatic)",
     pricing_group_key: ["tool_category"],
     presentation_group_key: ["tool_group"],
+    tags: [USAGE_TAG],
   },
   {
     name: "Tool Usage (User)",
@@ -213,13 +231,15 @@ const PRODUCTS: ProductDef[] = [
     billable_metric_name: "Tool Invocations (User)",
     pricing_group_key: ["tool_category"],
     presentation_group_key: ["tool_group"],
+    tags: [USAGE_TAG],
   },
-  // Legacy products
+  // Legacy seat product — SUBSCRIPTION type, managed via Metronome seat subscriptions.
+  // Seats synced from membership create/revoke hooks (same as new pricing).
   {
-    name: "Seat Billing (Registered Users)",
-    type: "USAGE",
-    billable_metric_name: "Registered Users",
+    name: "Legacy Seat",
+    type: "SUBSCRIPTION",
   },
+  // MAU products — USAGE on MAX gauge, billed once at end of period.
   {
     name: "MAU Billing (1+)",
     type: "USAGE",
@@ -254,16 +274,17 @@ const RATE_CARDS: RateCardDef[] = [
   {
     name: "Legacy Pro $29",
     description:
-      "Grandfathered Pro plan. Seat billing via registered_users gauge ($29/seat). AI usage 30% markup.",
+      "Grandfathered Pro plan. $29/seat via seat subscription. AI usage 30% markup.",
     aliases: [{ name: "legacy-pro-29" }],
     fiat_credit_type_id: USD_CREDIT_TYPE_ID,
     rates: [
       {
-        product_name: "Seat Billing (Registered Users)",
+        product_name: "Legacy Seat",
         starting_at: "2026-04-01T00:00:00.000Z",
         entitled: true,
         rate_type: "FLAT",
         price: 2900,
+        billing_frequency: "MONTHLY",
       },
       {
         product_name: "AI Usage (Programmatic)",
@@ -277,16 +298,17 @@ const RATE_CARDS: RateCardDef[] = [
   {
     name: "Legacy Business $39",
     description:
-      "Grandfathered Business plan. Seat billing via registered_users gauge ($39/seat). AI usage 30% markup.",
+      "Grandfathered Business plan. $39/seat via seat subscription. AI usage 30% markup.",
     aliases: [{ name: "legacy-business-39" }],
     fiat_credit_type_id: USD_CREDIT_TYPE_ID,
     rates: [
       {
-        product_name: "Seat Billing (Registered Users)",
+        product_name: "Legacy Seat",
         starting_at: "2026-04-01T00:00:00.000Z",
         entitled: true,
         rate_type: "FLAT",
         price: 3900,
+        billing_frequency: "MONTHLY",
       },
       {
         product_name: "AI Usage (Programmatic)",
@@ -299,6 +321,20 @@ const RATE_CARDS: RateCardDef[] = [
   },
 ];
 
+// Seat subscription definition shared by all legacy packages.
+const LEGACY_SEAT_SUBSCRIPTION: PackageSubscription = {
+  temporary_id: "legacy-seat-sub",
+  product_name: "Legacy Seat",
+  billing_frequency: "MONTHLY",
+  collection_schedule: "ADVANCE",
+  quantity_management_mode: "SEAT_BASED",
+  seat_config: { seat_group_key: "user_id" },
+  proration: {
+    is_prorated: true,
+    invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE",
+  },
+};
+
 const PACKAGES: PackageDef[] = [
   {
     name: "Legacy Pro $29",
@@ -306,6 +342,7 @@ const PACKAGES: PackageDef[] = [
     rate_card_name: "Legacy Pro $29",
     billing_provider: "stripe",
     delivery_method: "direct_to_billing_provider",
+    subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
   },
   {
     name: "Legacy Business $39",
@@ -313,20 +350,22 @@ const PACKAGES: PackageDef[] = [
     rate_card_name: "Legacy Business $39",
     billing_provider: "stripe",
     delivery_method: "direct_to_billing_provider",
+    subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
   },
-  // Shadow packages — same rate cards, no billing provider.
+  // Shadow packages — same rate cards + seat subscriptions, no billing provider.
   // Invoices generated in Metronome (viewable via API) but NOT delivered to Stripe.
-  // Used for shadow mode validation (Phase 1) before switching to real billing.
   {
     name: "Shadow Pro $29",
     aliases: [{ name: "shadow-pro-29" }],
     rate_card_name: "Legacy Pro $29",
+    subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
     // No billing_provider → invoices stay in Metronome only
   },
   {
     name: "Shadow Business $39",
     aliases: [{ name: "shadow-business-39" }],
     rate_card_name: "Legacy Business $39",
+    subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
   },
 ];
 
@@ -434,6 +473,7 @@ function productMatches(
       billable_metric_id?: string;
       pricing_group_key?: string[];
       presentation_group_key?: string[];
+      tags?: string[];
       quantity_conversion?: {
         conversion_factor: number;
         operation: string;
@@ -491,6 +531,13 @@ function productMatches(
   }
   if (
     !arraysEqual(cur.presentation_group_key, desired.presentation_group_key)
+  ) {
+    return false;
+  }
+
+  // Check tags
+  if (
+    !arraysEqual([...(cur.tags ?? [])].sort(), [...(desired.tags ?? [])].sort())
   ) {
     return false;
   }
@@ -569,6 +616,7 @@ async function syncProducts(): Promise<void> {
         quantity_conversion: desired.quantity_conversion ?? undefined,
         pricing_group_key: desired.pricing_group_key,
         presentation_group_key: desired.presentation_group_key,
+        tags: desired.tags,
       });
       const id = (created as { data: { id: string } }).data.id;
       console.log(`    → ${id}`);
@@ -694,6 +742,12 @@ async function syncRateCards(): Promise<void> {
           price: r.price,
           credit_type_id: r.credit_type_id,
           pricing_group_values: r.pricing_group_values,
+          billing_frequency: r.billing_frequency as
+            | "MONTHLY"
+            | "QUARTERLY"
+            | "ANNUAL"
+            | "WEEKLY"
+            | undefined,
         });
       }
 
@@ -706,12 +760,97 @@ async function syncRateCards(): Promise<void> {
 // Sync: Packages
 // ---------------------------------------------------------------------------
 
+interface ExistingPackage {
+  id: string;
+  name: string;
+  rate_card_id?: string;
+  billing_provider?: string;
+  subscriptions?: Array<{
+    collection_schedule: string;
+    proration: {
+      invoice_behavior: string;
+      is_prorated: boolean;
+    };
+    subscription_rate: {
+      billing_frequency: string;
+      product?: { id: string };
+      product_id?: string;
+    };
+    quantity_management_mode?: string;
+    seat_config?: { seat_group_key: string };
+  }>;
+}
+
+function packageMatches(ex: ExistingPackage, desired: PackageDef): boolean {
+  // Check rate card cascade
+  if (recreated.rateCards.has(desired.rate_card_name)) {
+    return false;
+  }
+
+  // Check billing provider
+  if ((ex.billing_provider ?? undefined) !== desired.billing_provider) {
+    return false;
+  }
+
+  // Check subscriptions count
+  const desiredSubs = desired.subscriptions ?? [];
+  const existingSubs = ex.subscriptions ?? [];
+  if (desiredSubs.length !== existingSubs.length) {
+    return false;
+  }
+
+  // Check each subscription's config
+  for (const desiredSub of desiredSubs) {
+    const productId = ids.products[desiredSub.product_name];
+    const matchingSub = existingSubs.find(
+      (s) =>
+        (s.subscription_rate.product?.id ?? s.subscription_rate.product_id) ===
+        productId
+    );
+    if (!matchingSub) {
+      return false;
+    }
+    if (matchingSub.collection_schedule !== desiredSub.collection_schedule) {
+      return false;
+    }
+    if (
+      matchingSub.subscription_rate.billing_frequency !==
+      desiredSub.billing_frequency
+    ) {
+      return false;
+    }
+    if (desiredSub.proration) {
+      if (
+        matchingSub.proration.is_prorated !== desiredSub.proration.is_prorated
+      ) {
+        return false;
+      }
+      if (
+        desiredSub.proration.invoice_behavior &&
+        matchingSub.proration.invoice_behavior !==
+          desiredSub.proration.invoice_behavior
+      ) {
+        return false;
+      }
+    }
+    if (
+      desiredSub.quantity_management_mode &&
+      matchingSub.quantity_management_mode !==
+        desiredSub.quantity_management_mode
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 async function syncPackages(): Promise<void> {
   console.log("\n=== Syncing Packages ===");
 
-  const existing: Array<{ id: string; name: string }> = [];
+  const existing: ExistingPackage[] = [];
   for await (const p of client.v1.packages.list()) {
-    existing.push(p as (typeof existing)[number]);
+    existing.push(p as ExistingPackage);
   }
 
   const byName = new Map(existing.map((p) => [p.name, p]));
@@ -730,16 +869,13 @@ async function syncPackages(): Promise<void> {
 
   for (const desired of PACKAGES) {
     const ex = byName.get(desired.name);
-    const rateCardRecreated = recreated.rateCards.has(desired.rate_card_name);
 
-    if (ex && !rateCardRecreated) {
-      console.log(`  ✓ ${desired.name} — exists (${ex.id})`);
+    if (ex && packageMatches(ex, desired)) {
+      console.log(`  ✓ ${desired.name} — up to date (${ex.id})`);
       ids.packages[desired.name] = ex.id;
     } else {
       if (ex) {
-        console.log(
-          `  ↻ ${desired.name} — ${rateCardRecreated ? "rate card recreated" : "config changed"}, archiving ${ex.id}`
-        );
+        console.log(`  ↻ ${desired.name} — config changed, archiving ${ex.id}`);
         try {
           await client.v1.packages.archive({ package_id: ex.id });
         } catch {
@@ -755,6 +891,27 @@ async function syncPackages(): Promise<void> {
       console.log(
         `  + Creating: ${desired.name}${desired.billing_provider ? "" : " (shadow — no billing provider)"}`
       );
+      // Resolve subscription product IDs
+      const subscriptions = (desired.subscriptions ?? []).map((sub) => {
+        const productId = ids.products[sub.product_name];
+        if (!productId) {
+          throw new Error(
+            `Product not found for subscription: ${sub.product_name}`
+          );
+        }
+        return {
+          temporary_id: sub.temporary_id,
+          subscription_rate: {
+            billing_frequency: sub.billing_frequency,
+            product_id: productId,
+          },
+          collection_schedule: sub.collection_schedule,
+          quantity_management_mode: sub.quantity_management_mode,
+          ...(sub.seat_config ? { seat_config: sub.seat_config } : {}),
+          ...(sub.proration ? { proration: sub.proration } : {}),
+        };
+      });
+
       const created = await client.v1.packages.create({
         name: desired.name,
         aliases: desired.aliases,
@@ -765,6 +922,7 @@ async function syncPackages(): Promise<void> {
               delivery_method: desired.delivery_method,
             }
           : {}),
+        ...(subscriptions.length > 0 ? { subscriptions } : {}),
       } as Parameters<typeof client.v1.packages.create>[0]);
       const id = (created as { data: { id: string } }).data.id;
       console.log(`    → ${id}`);
