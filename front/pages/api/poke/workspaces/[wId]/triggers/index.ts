@@ -58,7 +58,7 @@ async function handler(
 
       const webhookSourceViewIds = removeNulls(
         triggerJSONs.map((t) =>
-          t.kind === "webhook" ? t.webhookSourceViewSId : null
+          t.kind === "webhook" ? t.webhookSourceViewId : null
         )
       );
 
@@ -87,10 +87,10 @@ async function handler(
       const triggersWithProvider: TriggerWithProviderType[] = triggerJSONs.map(
         (t) => {
           const editorUser = editorUserMap.get(t.editor) ?? null;
-          if (t.kind === "webhook" && t.webhookSourceViewSId) {
+          if (t.kind === "webhook" && t.webhookSourceViewId) {
             return {
               ...t,
-              provider: providerMap.get(t.webhookSourceViewSId) ?? null,
+              provider: providerMap.get(t.webhookSourceViewId) ?? null,
               editorUser,
             };
           }

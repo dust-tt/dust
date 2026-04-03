@@ -885,7 +885,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         configuration: this.configuration as WebhookConfig,
         executionPerDayLimitOverride: this.executionPerDayLimitOverride,
         executionMode: this.executionMode,
-        webhookSourceViewSId: this.webhookSourceViewId
+        webhookSourceViewId: this.webhookSourceViewId
           ? makeSId("webhook_sources_view", {
               id: this.webhookSourceViewId,
               workspaceId: this.workspaceId,

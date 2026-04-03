@@ -54,11 +54,11 @@ export type PostTriggersRequestBody = z.infer<
 // Helper type guard for decoded trigger data from TriggerSchema
 function isWebhookTriggerData(trigger: {
   kind: string;
-  webhookSourceViewSId?: unknown;
-}): trigger is { kind: "webhook"; webhookSourceViewSId: string } {
+  webhookSourceViewId?: unknown;
+}): trigger is { kind: "webhook"; webhookSourceViewId: string } {
   return (
     trigger.kind === "webhook" &&
-    typeof trigger.webhookSourceViewSId === "string"
+    typeof trigger.webhookSourceViewId === "string"
   );
 }
 
@@ -222,7 +222,7 @@ async function handler(
         const validatedTrigger = triggerValidation.data;
 
         const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
-          ? getResourceIdFromSId(validatedTrigger.webhookSourceViewSId)
+          ? getResourceIdFromSId(validatedTrigger.webhookSourceViewId)
           : null;
 
         const updatedTrigger = await TriggerResource.update(
@@ -294,7 +294,7 @@ async function handler(
         const validatedTrigger = triggerValidation.data;
 
         const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
-          ? getResourceIdFromSId(validatedTrigger.webhookSourceViewSId)
+          ? getResourceIdFromSId(validatedTrigger.webhookSourceViewId)
           : null;
 
         const executionPerDay = isWebhookTriggerData(validatedTrigger)

@@ -1,4 +1,7 @@
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type {
+  AgentBuilderFormData,
+  AgentBuilderTriggerType,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
 import { DROID_AVATAR_URLS } from "@app/components/agent_builder/settings/avatar_picker/types";
 import {
   expandFoldersToTables,
@@ -35,6 +38,7 @@ import type {
 import type { DataSourceViewSelectionConfigurations } from "@app/types/data_source_view";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { UserType, WorkspaceType } from "@app/types/user";
 
@@ -200,6 +204,42 @@ export function processAdditionalConfiguration(
   return flattenConfig(additionalConfiguration, {});
 }
 
+function serializeTrigger(
+  trigger: AgentBuilderTriggerType
+): PostTriggersRequestBody["triggers"][number] {
+  switch (trigger.kind) {
+    case "webhook": {
+      if (
+        !trigger.webhookSourceViewId ||
+        trigger.executionPerDayLimitOverride === null
+      ) {
+        throw new Error("Webhook trigger missing required fields");
+      }
+      return {
+        name: trigger.name,
+        status: trigger.status,
+        customPrompt: trigger.customPrompt ?? "",
+        naturalLanguageDescription: trigger.naturalLanguageDescription,
+        configuration: trigger.configuration,
+        kind: trigger.kind,
+        executionPerDayLimitOverride: trigger.executionPerDayLimitOverride,
+        webhookSourceViewId: trigger.webhookSourceViewId,
+      };
+    }
+    case "schedule":
+      return {
+        name: trigger.name,
+        status: trigger.status,
+        customPrompt: trigger.customPrompt ?? "",
+        naturalLanguageDescription: trigger.naturalLanguageDescription,
+        configuration: trigger.configuration,
+        kind: trigger.kind,
+      };
+    default:
+      assertNever(trigger);
+  }
+}
+
 /**
  * Process triggers for an agent: validate, delete, update, and create.
  * Handles all trigger operations in the correct order (DELETE -> PATCH -> POST).
@@ -262,27 +302,14 @@ async function processTriggers({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          triggers: formData.triggersToUpdate.map((trigger) => {
-            const baseData = {
-              sId: trigger.sId,
-              name: trigger.name,
-              status: trigger.status,
-              customPrompt: trigger.customPrompt,
-              naturalLanguageDescription: trigger.naturalLanguageDescription,
-              configuration: trigger.configuration,
-              kind: trigger.kind,
-            };
-
-            if (trigger.kind === "webhook") {
-              return {
-                ...baseData,
-                executionPerDayLimitOverride:
-                  trigger.executionPerDayLimitOverride,
-                webhookSourceViewSId: trigger.webhookSourceViewSId,
-              } as PatchTriggersRequestBody["triggers"][number];
+          triggers: formData.triggersToUpdate.flatMap((trigger) => {
+            if (!trigger.sId) {
+              return [];
             }
-
-            return baseData as PatchTriggersRequestBody["triggers"][number];
+            return {
+              sId: trigger.sId,
+              ...serializeTrigger(trigger),
+            } satisfies PatchTriggersRequestBody["triggers"][number];
           }),
         }),
       }
@@ -314,27 +341,7 @@ async function processTriggers({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          triggers: formData.triggersToCreate.map((trigger) => {
-            const baseData = {
-              name: trigger.name,
-              status: trigger.status,
-              customPrompt: trigger.customPrompt,
-              naturalLanguageDescription: trigger.naturalLanguageDescription,
-              configuration: trigger.configuration,
-              kind: trigger.kind,
-            };
-
-            if (trigger.kind === "webhook") {
-              return {
-                ...baseData,
-                executionPerDayLimitOverride:
-                  trigger.executionPerDayLimitOverride,
-                webhookSourceViewSId: trigger.webhookSourceViewSId,
-              } as PostTriggersRequestBody["triggers"][number];
-            }
-
-            return baseData as PostTriggersRequestBody["triggers"][number];
-          }),
+          triggers: formData.triggersToCreate.map(serializeTrigger),
         }),
       }
     );
