@@ -247,18 +247,6 @@ async function runReinforcedStep({
 }
 
 /**
- * Check whether the workspace has opted out of agent reinforcement.
- */
-export async function isAgentReinforcementAllowedActivity({
-  workspaceId,
-}: {
-  workspaceId: string;
-}): Promise<boolean> {
-  const auth = await getAuthForWorkspace(workspaceId);
-  return hasReinforcementEnabled(auth);
-}
-
-/**
  * Selects agent configuration sIds and per-agent conversation budgets for this
  * workspace run.
  */

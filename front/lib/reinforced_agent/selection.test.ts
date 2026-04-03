@@ -242,6 +242,12 @@ describe("selectAgentsForReinforcement", () => {
       reinforcement: "on",
     };
 
+    await Promise.all(
+      Array.from({ length: DEFAULT_MIN_CONVERSATIONS_TO_INCLUDE }, () =>
+        createConversationWithUpdatedAt(auth, autoAgent.sId, daysAgo(2))
+      )
+    );
+
     const { conv, agentMessage } = await createAgentOnlyConversation(
       auth,
       workspace,
@@ -277,6 +283,13 @@ describe("selectAgentsForReinforcement", () => {
     const autoAgent = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Auto Agent Budget",
     });
+
+    await Promise.all(
+      Array.from({ length: DEFAULT_MIN_CONVERSATIONS_TO_INCLUDE }, () =>
+        createConversationWithUpdatedAt(auth, autoAgent.sId, daysAgo(2))
+      )
+    );
+
     const { conv, agentMessage } = await createAgentOnlyConversation(
       auth,
       workspace,
@@ -385,6 +398,13 @@ describe("selectAgentsForReinforcement", () => {
 
   it("includes auto agent whose pending suggestion is older than the threshold", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    await Promise.all(
+      Array.from({ length: DEFAULT_MIN_CONVERSATIONS_TO_INCLUDE }, () =>
+        createConversationWithUpdatedAt(auth, agent.sId, daysAgo(2))
+      )
+    );
+
     const { conv, agentMessage } = await createAgentOnlyConversation(
       auth,
       workspace,
@@ -419,6 +439,15 @@ describe("selectAgentsForReinforcement", () => {
     const agentB = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Low Feedback Agent",
     });
+
+    await Promise.all([
+      ...Array.from({ length: DEFAULT_MIN_CONVERSATIONS_TO_INCLUDE }, () =>
+        createConversationWithUpdatedAt(auth, agentA.sId, daysAgo(2))
+      ),
+      ...Array.from({ length: DEFAULT_MIN_CONVERSATIONS_TO_INCLUDE }, () =>
+        createConversationWithUpdatedAt(auth, agentB.sId, daysAgo(2))
+      ),
+    ]);
 
     for (let i = 0; i < 3; i++) {
       const { conv, agentMessage } = await createAgentOnlyConversation(
@@ -455,6 +484,13 @@ describe("selectAgentsForReinforcement", () => {
 
   it("conversationsToSample does not exceed maxConversationsPerAgent", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    await Promise.all(
+      Array.from({ length: 15 }, () =>
+        createConversationWithUpdatedAt(auth, agent.sId, daysAgo(2))
+      )
+    );
+
     const { conv, agentMessage } = await createAgentOnlyConversation(
       auth,
       workspace,
@@ -484,6 +520,12 @@ describe("selectAgentsForReinforcement", () => {
     const agentB = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Weak Signal Agent",
     });
+
+    await Promise.all(
+      Array.from({ length: 4 }, () =>
+        createConversationWithUpdatedAt(auth, agentA.sId, daysAgo(2))
+      )
+    );
 
     for (let i = 0; i < 3; i++) {
       const { conv, agentMessage } = await createAgentOnlyConversation(
