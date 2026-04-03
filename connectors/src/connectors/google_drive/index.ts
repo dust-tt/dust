@@ -15,10 +15,6 @@ import {
   launchGoogleGarbageCollector,
 } from "@connectors/connectors/google_drive/temporal/client";
 import {
-  googleDriveFullSyncWorkflowId,
-  googleDriveGarbageCollectorWorkflowId,
-} from "@connectors/connectors/google_drive/temporal/workflows";
-import {
   isGoogleDriveFolder,
   isGoogleDriveSpreadSheetFile,
 } from "@connectors/connectors/google_drive/temporal/mime_types";
@@ -31,6 +27,10 @@ import {
   getDriveFileId,
   getInternalId,
 } from "@connectors/connectors/google_drive/temporal/utils";
+import {
+  googleDriveFullSyncWorkflowId,
+  googleDriveGarbageCollectorWorkflowId,
+} from "@connectors/connectors/google_drive/temporal/workflows";
 import type {
   CreateConnectorErrorCode,
   RetrievePermissionsErrorCode,
