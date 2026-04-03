@@ -160,12 +160,14 @@ export type SupportedPaymentMethod = (typeof SUPPORTED_PAYMENT_METHODS)[number];
 export const createStripeSubscriptionCheckoutSession = async ({
   allowedPaymentMethods = ["card"],
   billingPeriod,
+  metronomePackageAlias,
   owner,
   planCode,
   user,
 }: {
   allowedPaymentMethods?: SupportedPaymentMethod[];
   billingPeriod: BillingPeriod;
+  metronomePackageAlias?: string;
   owner: WorkspaceType;
   planCode: string;
   user: UserType;
@@ -232,6 +234,7 @@ export const createStripeSubscriptionCheckoutSession = async ({
     metadata: {
       planCode: planCode,
       userId: `${user.id}`,
+      ...(metronomePackageAlias ? { metronomePackageAlias } : {}),
     },
     line_items: [
       {

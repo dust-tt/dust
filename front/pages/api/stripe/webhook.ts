@@ -23,7 +23,7 @@ import {
   isPAYGEnabled,
 } from "@app/lib/credits/payg";
 import { handleMetronomeSetupCheckout } from "@app/lib/metronome/checkout";
-import { createMetronomeCustomer } from "@app/lib/metronome/client";
+import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/client";
 import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
@@ -48,6 +48,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import { launchWorkOSWorkspaceSubscriptionCreatedWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
@@ -101,45 +102,63 @@ async function grantFreeCreditsForSubscription({
 }
 
 /**
- * Provision a Metronome customer for a workspace, linked to the Stripe customer.
- * Fire-and-forget: logs errors but does not throw.
+ * Shadow-provision Metronome customer + contract for a workspace.
+ * Uses shadow packages (no billing provider) so Metronome generates invoices
+ * but does NOT deliver them to Stripe. Fire-and-forget: logs errors but does not throw.
  */
-async function provisionMetronomeCustomer({
+async function shadowProvisionMetronome({
   workspace,
   stripeCustomerId,
+  metronomePackageAlias,
+  sessionId,
+  subscriptionModelId,
 }: {
   workspace: WorkspaceResource;
   stripeCustomerId: string;
+  metronomePackageAlias: string;
+  sessionId: string;
+  subscriptionModelId: ModelId;
 }): Promise<void> {
   try {
-    const result = await createMetronomeCustomer({
+    const result = await provisionMetronomeCustomerAndContract({
       workspaceId: workspace.sId,
       workspaceName: workspace.name,
       stripeCustomerId,
+      packageAlias: metronomePackageAlias,
+      uniquenessKey: sessionId,
     });
 
-    if (result.isOk()) {
-      await WorkspaceResource.updateMetronomeCustomerId(
-        workspace.id,
-        result.value.metronomeCustomerId
-      );
-      logger.info(
-        {
-          workspaceId: workspace.sId,
-          metronomeCustomerId: result.value.metronomeCustomerId,
-        },
-        "[Stripe Webhook] Metronome customer provisioned"
-      );
-    } else {
+    if (result.isErr()) {
       logger.error(
         { workspaceId: workspace.sId, error: result.error.message },
-        "[Stripe Webhook] Failed to provision Metronome customer"
+        "[Stripe Webhook] Failed to shadow-provision Metronome"
       );
+      return;
     }
+
+    const { metronomeCustomerId, metronomeContractId } = result.value;
+
+    await WorkspaceResource.updateMetronomeCustomerId(
+      workspace.id,
+      metronomeCustomerId
+    );
+    await SubscriptionResource.updateMetronomeContractId(
+      subscriptionModelId,
+      metronomeContractId
+    );
+
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        metronomeCustomerId,
+        metronomeContractId,
+      },
+      "[Stripe Webhook] Metronome shadow provisioned"
+    );
   } catch (err) {
     logger.error(
       { workspaceId: workspace.sId, error: normalizeError(err) },
-      "[Stripe Webhook] Failed to provision Metronome customer"
+      "[Stripe Webhook] Failed to shadow-provision Metronome"
     );
   }
 }
@@ -206,9 +225,9 @@ async function handler(
           const session = event.data.object as Stripe.Checkout.Session;
           const workspaceId = session.client_reference_id;
           const stripeSubscriptionId = session.subscription;
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           const planCode = session?.metadata?.planCode || null;
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          const metronomePackageAlias =
+            session?.metadata?.metronomePackageAlias || null;
           const userId = session?.metadata?.userId || null;
 
           if (session.status === "open" || session.status === "expired") {
@@ -309,7 +328,7 @@ async function handler(
             const checkoutStripeSubscription =
               await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
-            await withTransaction(async (t) => {
+            const newSubscription = await withTransaction(async (t) => {
               const activeSubscription =
                 await SubscriptionResource.fetchActiveByWorkspaceModelId(
                   workspace.id,
@@ -361,7 +380,7 @@ async function handler(
                 await activeSubscription.markAsEnded("ended", t);
               }
 
-              await SubscriptionResource.makeNew(
+              return SubscriptionResource.makeNew(
                 {
                   sId: generateRandomModelSId(),
                   workspaceId: workspace.id,
@@ -415,19 +434,18 @@ async function handler(
             }
             await restoreWorkspaceAfterSubscription(auth);
 
-            // Provision Metronome customer if not already set.
-            if (!workspace.metronomeCustomerId) {
-              const stripeCustomerId = isString(
-                checkoutStripeSubscription.customer
-              )
-                ? checkoutStripeSubscription.customer
-                : null;
-              if (stripeCustomerId) {
-                void provisionMetronomeCustomer({
-                  workspace,
-                  stripeCustomerId,
-                });
-              }
+            if (
+              metronomePackageAlias &&
+              newSubscription &&
+              isString(checkoutStripeSubscription.customer)
+            ) {
+              void shadowProvisionMetronome({
+                workspace,
+                stripeCustomerId: checkoutStripeSubscription.customer,
+                metronomePackageAlias,
+                sessionId: session.id,
+                subscriptionModelId: newSubscription.id,
+              });
             }
 
             await launchWorkOSWorkspaceSubscriptionCreatedWorkflow({
