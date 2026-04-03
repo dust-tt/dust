@@ -101,7 +101,9 @@ Some text
   });
 
   it("preserves data attributes on instruction blocks", () => {
-    const html = convertMarkdownToHtml("<instructions>\nhello\n</instructions>");
+    const html = convertMarkdownToHtml(
+      "<instructions>\nhello\n</instructions>"
+    );
     expect(html).toContain("data-type=");
     expect(html).toContain("data-instruction-type=");
   });

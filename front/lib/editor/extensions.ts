@@ -36,8 +36,7 @@ const BlockIdGlobalExtension = Extension.create({
                 return {};
               }
               return {
-                [`data-${BLOCK_ID_ATTRIBUTE}`]:
-                  attributes[BLOCK_ID_ATTRIBUTE],
+                [`data-${BLOCK_ID_ATTRIBUTE}`]: attributes[BLOCK_ID_ATTRIBUTE],
               };
             },
           },

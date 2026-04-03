@@ -3,7 +3,7 @@ import { preprocessMarkdownForEditor } from "@app/lib/editor/preprocessMarkdown"
 import { stripHtmlAttributes } from "@app/lib/editor/stripHtmlAttributes";
 import type { JSONContent } from "@tiptap/core";
 import { MarkdownManager } from "@tiptap/markdown";
-import { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string";
+import { renderToHTMLString } from "@tiptap/static-renderer";
 
 const INSTRUCTIONS_ROOT_BLOCK_ID = "instructions-root";
 
