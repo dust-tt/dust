@@ -230,6 +230,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     const isHealthy = await isCredentialHealthy({
       provider: providerId,
       credentials: { api_key: apiKey },
+      workspaceId: workspace.sId,
     });
 
     if (!isHealthy) {
@@ -301,6 +302,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     const isHealthy = await isCredentialHealthy({
       provider: this.providerId,
       credentials: { api_key: apiKey },
+      workspaceId: workspace.sId,
     });
 
     if (!isHealthy) {
@@ -488,7 +490,10 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
 async function isCredentialHealthy({
   provider,
   credentials,
-}: ModelProviderPostCredentialsBody): Promise<boolean> {
+  workspaceId,
+}: ModelProviderPostCredentialsBody & {
+  workspaceId: string;
+}): Promise<boolean> {
   switch (provider) {
     case "anthropic": {
       const client = new Anthropic({
@@ -496,7 +501,11 @@ async function isCredentialHealthy({
       });
       try {
         await client.models.list();
-      } catch (_error) {
+      } catch (error) {
+        logger.warn(
+          { error, workspaceId },
+          "Error while validating Anthropic credentials"
+        );
         return false;
       }
 
@@ -513,7 +522,11 @@ async function isCredentialHealthy({
 
       try {
         await client.models.list();
-      } catch (_error) {
+      } catch (error) {
+        logger.warn(
+          { error, workspaceId },
+          "Error while validating OpenAI credentials"
+        );
         return false;
       }
 
@@ -526,7 +539,11 @@ async function isCredentialHealthy({
 
       try {
         await client.models.list();
-      } catch (_error) {
+      } catch (error) {
+        logger.warn(
+          { error, workspaceId },
+          "Error while validating Google AI Studio credentials"
+        );
         return false;
       }
 
