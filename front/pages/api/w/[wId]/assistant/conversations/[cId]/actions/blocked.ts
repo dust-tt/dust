@@ -1,12 +1,12 @@
 /** @ignoreswagger */
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetBlockedActionsResponseType = {
@@ -16,7 +16,8 @@ export type GetBlockedActionsResponseType = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetBlockedActionsResponseType>>,
-  auth: Authenticator
+  auth: Authenticator,
+  { conversation }: { conversation: ConversationResource }
 ): Promise<void> {
   if (req.method !== "GET") {
     return apiError(req, res, {
@@ -28,29 +29,6 @@ async function handler(
     });
   }
 
-  const { cId } = req.query;
-
-  if (!cId || !isString(cId)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The conversation ID is required.",
-      },
-    });
-  }
-
-  const conversation = await ConversationResource.fetchById(auth, cId);
-
-  if (!conversation) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "Conversation not found.",
-      },
-    });
-  }
   const blockedActions =
     await AgentMCPActionResource.listBlockedActionsForConversation(
       auth,
@@ -60,4 +38,6 @@ async function handler(
   res.status(200).json({ blockedActions });
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, { conversation: {} })
+);

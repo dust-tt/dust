@@ -3,27 +3,23 @@ import { getSuggestedAgentsForContent } from "@app/lib/api/assistant/agent_sugge
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getLastUserMessage } from "@app/lib/api/assistant/conversation";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type SuggestResponseBody = {
   agentConfigurations: LightAgentConfigurationType[];
 };
 
-const SuggestQuerySchema = t.type({
-  cId: t.string,
-});
-
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<SuggestResponseBody>>,
-  auth: Authenticator
+  auth: Authenticator,
+  { conversation }: { conversation: ConversationResource }
 ): Promise<void> {
   if (req.method !== "GET") {
     return apiError(req, res, {
@@ -35,36 +31,10 @@ async function handler(
     });
   }
 
-  const queryValidation = SuggestQuerySchema.decode(req.query);
-  if (isLeft(queryValidation)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameters",
-      },
-    });
-  }
-
-  const { cId } = queryValidation.right;
-
-  // Get the conversation.
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(auth, cId);
-  if (conversationRes.isErr()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "Conversation not found",
-      },
-    });
-  }
-  const conversation = conversationRes.value;
   // Get the last user message.
   // We could have passed the usermessage id instead of the conversation id, but user message has a randomly generated sId
   // and this comes from a route so since we don't want to pass the model id in a route we use the conversation sId.
-  const lastUserMessage = await getLastUserMessage(auth, conversation);
+  const lastUserMessage = await getLastUserMessage(auth, conversation.toJSON());
   if (lastUserMessage.isErr()) {
     return apiError(req, res, {
       status_code: 500,
@@ -102,4 +72,6 @@ async function handler(
   });
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, { conversation: {} })
+);

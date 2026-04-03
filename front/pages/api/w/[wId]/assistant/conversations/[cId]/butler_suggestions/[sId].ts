@@ -1,10 +1,10 @@
 /** @ignoreswagger */
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { acceptSuggestion } from "@app/lib/butler/accept_suggestion";
 import { ConversationButlerSuggestionResource } from "@app/lib/resources/conversation_butler_suggestion_resource";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { ButlerSuggestionPublicType } from "@app/types/conversation_butler_suggestion";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -17,39 +17,26 @@ export type PatchButlerSuggestionResponse = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PatchButlerSuggestionResponse>>,
-  auth: Authenticator
+  auth: Authenticator,
+  { conversation }: { conversation: ConversationResource }
 ): Promise<void> {
-  if (
-    !(typeof req.query.cId === "string") ||
-    !(typeof req.query.sId === "string")
-  ) {
+  if (!(typeof req.query.sId === "string")) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message:
-          "Invalid query parameters, `cId` and `sId` (strings) are required.",
+        message: "Invalid query parameters, `sId` (string) is required.",
       },
     });
   }
 
-  const conversationId = req.query.cId;
   const suggestionSId = req.query.sId;
-
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
-    );
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
-  }
 
   const suggestion = await ConversationButlerSuggestionResource.fetchById(
     auth,
     suggestionSId
   );
-  if (!suggestion || suggestion.conversationId !== conversationRes.value.id) {
+  if (!suggestion || suggestion.conversationId !== conversation.id) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -76,7 +63,7 @@ async function handler(
       if (status === "accepted") {
         const acceptRes = await acceptSuggestion(auth, {
           suggestion,
-          conversationId,
+          conversationId: conversation.sId,
         });
         if (acceptRes.isErr()) {
           return apiError(req, res, {
@@ -117,4 +104,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, { conversation: {} })
+);

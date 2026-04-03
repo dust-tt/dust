@@ -43,12 +43,12 @@
 // via middleware. The /api/sse/ prefix allows the ingress to route SSE traffic to front-sse pods.
 
 import { getConversationMessageType } from "@app/lib/api/assistant/conversation";
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import { initSSEResponse } from "@app/lib/api/sse";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -58,30 +58,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<void>>,
-  auth: Authenticator
+  auth: Authenticator,
+  { conversation }: { conversation: ConversationResource }
 ): Promise<void> {
-  if (!(typeof req.query.cId === "string")) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameters, `cId` (string) is required.",
-      },
-    });
-  }
-  const conversationId = req.query.cId;
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
-    );
-
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
-  }
-
-  const conversation = conversationRes.value;
-
   if (!(typeof req.query.mId === "string")) {
     return apiError(req, res, {
       status_code: 400,
@@ -95,7 +74,7 @@ async function handler(
   const messageId = req.query.mId;
   const messageType = await getConversationMessageType(
     auth,
-    conversation,
+    conversation.toJSON(),
     messageId
   );
 
@@ -206,6 +185,7 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler, {
-  isStreaming: true,
-});
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, { conversation: {} }),
+  { isStreaming: true }
+);

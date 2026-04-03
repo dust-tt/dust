@@ -1,9 +1,10 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -14,7 +15,8 @@ import path from "path";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<never>>,
-  auth: Authenticator
+  auth: Authenticator,
+  { conversation }: { conversation: ConversationResource }
 ): Promise<void> {
   if (req.method !== "POST") {
     return apiError(req, res, {
@@ -22,17 +24,6 @@ async function handler(
       api_error: {
         type: "method_not_supported_error",
         message: "Only POST method is supported.",
-      },
-    });
-  }
-
-  const { cId } = req.query;
-  if (!isString(cId)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameters, `cId` (string) is required.",
       },
     });
   }
@@ -48,24 +39,12 @@ async function handler(
     });
   }
 
-  // Validate the conversation exists and user has access.
-  const conversation = await ConversationResource.fetchById(auth, cId);
-  if (!conversation) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "Conversation not found.",
-      },
-    });
-  }
-
   // Validate the requested path is within this conversation's files directory.
   // Normalize first to collapse any ".." or "." segments, then verify the prefix.
   const owner = auth.getNonNullableWorkspace();
   const expectedPrefix = getConversationFilesBasePath({
     workspaceId: owner.sId,
-    conversationId: cId,
+    conversationId: conversation.sId,
   });
   const normalizedPath = path.posix.normalize(filePath);
   if (!normalizedPath.startsWith(expectedPrefix)) {
@@ -115,4 +94,6 @@ async function handler(
   readStream.pipe(res);
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, { conversation: {} })
+);

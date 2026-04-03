@@ -140,7 +140,6 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
     expect(res._getStatusCode()).toBe(400);
     const responseData = res._getJSONData();
     expect(responseData.error.type).toBe("invalid_request_error");
-    expect(responseData.error.message).toContain("cId");
   });
 
   it("should return 404 when conversation doesn't exist", async () => {

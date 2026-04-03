@@ -1,8 +1,9 @@
 /** @ignoreswagger */
 import { suggestionsOfMentions } from "@app/lib/api/assistant/conversation/mention_suggestions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -16,7 +17,8 @@ type MentionSuggestionsResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<MentionSuggestionsResponseBody>>,
-  auth: Authenticator
+  auth: Authenticator,
+  { conversation }: { conversation: ConversationResource }
 ): Promise<void> {
   if (req.method !== "GET") {
     return apiError(req, res, {
@@ -28,34 +30,8 @@ async function handler(
     });
   }
 
-  if (!(typeof req.query.cId === "string")) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameters, `cId` (string) is required.",
-      },
-    });
-  }
-
-  const conversationId = req.query.cId;
-
-  const conversationRes = await ConversationResource.fetchById(
-    auth,
-    conversationId
-  );
-  if (!conversationRes) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "Conversation not found",
-      },
-    });
-  }
-
   const { select: selectParam, current } = req.query;
-  const spaceId = conversationRes.space?.sId;
+  const spaceId = conversation.space?.sId;
 
   const { query: queryParam } = req.query;
   const query = isString(queryParam) ? queryParam.trim().toLowerCase() : "";
@@ -75,7 +51,7 @@ async function handler(
 
   const suggestions = await suggestionsOfMentions(auth, {
     query,
-    conversationId,
+    conversationId: conversation.sId,
     select,
     current: current === "true",
     spaceId,
@@ -84,4 +60,6 @@ async function handler(
   return res.status(200).json({ suggestions });
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, { conversation: {} })
+);

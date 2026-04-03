@@ -2400,6 +2400,28 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
+  // Conversations are access-controlled by requestedSpaceIds: fetchById already
+  // enforces space-based membership before a ConversationResource is returned.
+  // These methods express the minimum workspace role required on top of that.
+  canRead(auth: Authenticator): boolean {
+    // Any workspace member who passed fetchById's space check may read.
+    return auth.isUser();
+  }
+
+  canWrite(auth: Authenticator): boolean {
+    // Posting messages and reactions is a user-level action.
+    return auth.isUser();
+  }
+
+  canAdministrate(auth: Authenticator): boolean {
+    // Deleting or changing conversation settings requires builder+.
+    return auth.isBuilder();
+  }
+
+  canReadOrAdministrate(auth: Authenticator): boolean {
+    return this.canRead(auth) || this.canAdministrate(auth);
+  }
+
   toJSON(): ConversationWithoutContentType {
     return {
       actionRequired: this.userParticipation?.actionRequired ?? false,
