@@ -115,13 +115,10 @@ export async function startCreditFromProOneOffInvoice({
     "customer:pro",
   ]);
 
-  const amountMicroUsd = creditAmountCents
-    ? Math.round(creditAmountCents * 10_000)
-    : null;
-  if (amountMicroUsd) {
+  if (creditAmountCents) {
     const metronomeResult = await addMetronomeCommitsForWorkspace({
       auth,
-      amountMicroUsd,
+      amountCents: creditAmountCents,
     });
     if (metronomeResult.isErr()) {
       return new Err(metronomeResult.error);
@@ -318,7 +315,7 @@ export async function createEnterpriseCreditPurchase({
 
   const metronomeResult = await addMetronomeCommitsForWorkspace({
     auth,
-    amountMicroUsd,
+    amountCents: amountMicroUsd / 10_000,
     startDate,
     expirationDate,
   });
@@ -493,12 +490,12 @@ export async function deleteCreditFromVoidedInvoice({
 
 async function addMetronomeCommitsForWorkspace({
   auth,
-  amountMicroUsd,
+  amountCents,
   startDate,
   expirationDate,
 }: {
   auth: Authenticator;
-  amountMicroUsd: number;
+  amountCents: number;
   startDate?: Date;
   expirationDate?: Date;
 }): Promise<Result<void, Error>> {
@@ -545,7 +542,7 @@ async function addMetronomeCommitsForWorkspace({
     metronomeCustomerId,
     contractId: metronomeContractId,
     productId: creditProduct.id,
-    amountMicroUsd,
+    amountCents,
     startingAt: effectiveStartDate,
     endingBefore: effectiveExpirationDate,
     name: `${PREPAID_COMMIT_PRODUCT_NAME} (${effectiveStartDate.toISOString()})`,
@@ -557,7 +554,7 @@ async function addMetronomeCommitsForWorkspace({
         workspaceId: workspace.sId,
         metronomeCustomerId,
         metronomeContractId,
-        amountMicroUsd,
+        amountCents,
         error: result.error.message,
       },
       "[Commit Purchase] Failed to add commits to Metronome"

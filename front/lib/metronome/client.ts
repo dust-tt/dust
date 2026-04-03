@@ -451,7 +451,7 @@ export async function createMetronomeCommit({
   metronomeCustomerId,
   contractId,
   productId,
-  amountMicroUsd,
+  amountCents,
   startingAt,
   endingBefore,
   name,
@@ -459,14 +459,11 @@ export async function createMetronomeCommit({
   metronomeCustomerId: string;
   contractId: string;
   productId: string;
-  amountMicroUsd: number;
+  amountCents: number;
   startingAt: Date;
   endingBefore: Date;
   name?: string;
 }): Promise<Result<void, Error>> {
-  // Metronome commits are expressed in cents.
-  const amountCents = amountMicroUsd / 10_000;
-
   // Metronome requires dates on hour boundaries — round down start, round up end.
   const roundedStartingAt = new Date(
     Math.floor(startingAt.getTime() / 3_600_000) * 3_600_000
@@ -480,7 +477,6 @@ export async function createMetronomeCommit({
         metronomeCustomerId,
         contractId,
         productId,
-        amountMicroUsd,
         amountCents,
         roundedStartingAt,
         roundedEndingBefore,
@@ -514,7 +510,6 @@ export async function createMetronomeCommit({
         metronomeCustomerId,
         contractId,
         productId,
-        amountMicroUsd,
         amountCents,
         roundedStartingAt,
         roundedEndingBefore,
@@ -530,7 +525,6 @@ export async function createMetronomeCommit({
         metronomeCustomerId,
         contractId,
         productId,
-        amountMicroUsd,
         amountCents,
         roundedStartingAt,
         roundedEndingBefore,
