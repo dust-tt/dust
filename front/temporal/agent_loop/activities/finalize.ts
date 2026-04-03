@@ -141,19 +141,16 @@ export async function finalizeSuccessfulAgentLoopActivity(
 }
 
 /**
- * Graceful stop mirrors the successful path: content is valid,
- * all side-effects (analytics, notifications, etc.) should run.
+ * Graceful stop mirrors the successful path: content is valid, all side-effects (analytics,
+ * notifications, etc.) should run. We're not running email response nor project related signals
+ * since the work is not finished per se since it was gracefully stopped and the intent of the user
+ * is to steer or continue with something else.
  */
 export async function finalizeGracefullyStoppedAgentLoopActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
   await finalizeGracefulStop(authType, agentLoopArgs);
-
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    return;
-  }
 
   await Promise.all([
     snapshotAgentMessageSkills(authType, agentLoopArgs),
