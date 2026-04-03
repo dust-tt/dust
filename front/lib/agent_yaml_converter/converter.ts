@@ -8,7 +8,6 @@ import type {
   AgentYAMLAction,
   AgentYAMLConfig,
   AgentYAMLDataSourceConfiguration,
-  AgentYAMLEditor,
   AgentYAMLSkill,
   AgentYAMLSlackIntegration,
   AgentYAMLSpace,
@@ -84,14 +83,10 @@ export class AgentYAMLConverter {
 
   private static convertEditors(
     editors: AgentBuilderFormData["agentSettings"]["editors"]
-  ): AgentYAMLEditor[] {
+  ): string[] {
     return editors
-      .filter((editor) => editor.sId && editor.email)
-      .map((editor) => ({
-        user_id: editor.sId,
-        email: editor.email,
-        full_name: editor.fullName,
-      }));
+      .filter((editor) => editor.email)
+      .map((editor) => editor.email);
   }
 
   private static convertSkills(

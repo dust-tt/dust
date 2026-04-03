@@ -9,6 +9,7 @@ import { getAgentConfigurationAsYAMLConfig } from "@app/lib/api/assistant/config
 import type { Authenticator } from "@app/lib/auth";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { APIErrorWithStatusCode } from "@app/types/error";
@@ -49,8 +50,8 @@ async function importAgentConfiguration(
     });
   }
 
-  const editorIds = yamlConfig.editors.map((e) => e.user_id);
-  if (editorIds.length === 0) {
+  const editorEmails = yamlConfig.editors;
+  if (editorEmails.length === 0) {
     return new Err({
       status_code: 400,
       api_error: {
@@ -60,7 +61,14 @@ async function importAgentConfiguration(
     });
   }
 
-  const editorUsers = await UserResource.fetchByIds(editorIds);
+  const editorUsers = (
+    await concurrentExecutor(
+      editorEmails,
+      (email) => UserResource.fetchByEmail(email),
+      { concurrency: 5 }
+    )
+  ).filter((u) => u !== null);
+
   if (editorUsers.length === 0) {
     return new Err({
       status_code: 400,
@@ -114,8 +122,8 @@ async function importAgentConfiguration(
       name: tag.name,
       kind: tag.kind,
     })),
-    editors: yamlConfig.editors.map((editor) => ({
-      sId: editor.user_id,
+    editors: editorUsers.map((user) => ({
+      sId: user.sId,
     })),
     skills: (yamlConfig.skills ?? []).map((skill) => ({
       sId: skill.sId,
