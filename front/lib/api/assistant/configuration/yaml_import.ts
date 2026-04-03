@@ -9,7 +9,6 @@ import { getAgentConfigurationAsYAMLConfig } from "@app/lib/api/assistant/config
 import type { Authenticator } from "@app/lib/auth";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { APIErrorWithStatusCode } from "@app/types/error";
@@ -61,13 +60,7 @@ async function importAgentConfiguration(
     });
   }
 
-  const editorUsers = (
-    await concurrentExecutor(
-      editorEmails,
-      (email) => UserResource.fetchByEmail(email),
-      { concurrency: 5 }
-    )
-  ).filter((u) => u !== null);
+  const editorUsers = await UserResource.fetchByEmails(editorEmails);
 
   if (editorUsers.length === 0) {
     return new Err({

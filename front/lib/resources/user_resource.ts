@@ -285,6 +285,20 @@ export class UserResource extends BaseResource<UserModel> {
     return sortedUsers[0] ?? null;
   }
 
+  static async fetchByEmails(emails: string[]): Promise<UserResource[]> {
+    if (emails.length === 0) {
+      return [];
+    }
+
+    const users = await UserModel.findAll({
+      where: {
+        email: emails.map((e) => e.toLowerCase()),
+      },
+    });
+
+    return users.map((user) => new UserResource(UserModel, user.get()));
+  }
+
   static async getWorkspaceFirstAdmin(
     workspaceId: number
   ): Promise<UserResource | null> {

@@ -56,7 +56,7 @@ export class AgentYAMLConverter {
           response_format: formData.generationSettings.responseFormat,
         },
         tags: this.convertTags(formData.agentSettings.tags),
-        editors: this.convertEditors(formData.agentSettings.editors),
+        editors: this.convertEditorEmails(formData.agentSettings.editors),
         toolset: actionsResult.value,
         spaces,
         skills: skills.length > 0 ? skills : undefined,
@@ -81,7 +81,7 @@ export class AgentYAMLConverter {
       }));
   }
 
-  private static convertEditors(
+  private static convertEditorEmails(
     editors: AgentBuilderFormData["agentSettings"]["editors"]
   ): string[] {
     return editors
