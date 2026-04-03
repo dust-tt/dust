@@ -164,7 +164,7 @@ export async function gracefullyStopAgentLoop(
       } catch (err) {
         const signalError = normalizeError(err);
         // Swallow errors from signaling (workflow might not exist anymore)
-        logger.info(
+        logger.warn(
           { error: signalError, messageId },
           "Failed to signal agent loop workflow for graceful stop"
         );
