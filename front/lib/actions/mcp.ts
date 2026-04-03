@@ -5,6 +5,7 @@ import type {
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   MCPApproveExecutionEvent,
+  ToolAskUserQuestionEvent,
   ToolExecution,
   ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
@@ -283,10 +284,22 @@ function isToolFileAuthRequiredEvent(
   );
 }
 
+export function isToolAskUserQuestionEvent(
+  event: unknown
+): event is ToolAskUserQuestionEvent {
+  return (
+    typeof event === "object" &&
+    event !== null &&
+    "type" in event &&
+    event.type === "tool_ask_user_question"
+  );
+}
+
 export function isBlockedActionEvent(
   event: unknown
 ): event is
   | MCPApproveExecutionEvent
+  | ToolAskUserQuestionEvent
   | ToolPersonalAuthRequiredEvent
   | ToolFileAuthRequiredEvent {
   return (
@@ -296,6 +309,7 @@ export function isBlockedActionEvent(
     (isMCPApproveExecutionEvent(event) ||
       isToolPersonalAuthRequiredEvent(event) ||
       isToolFileAuthRequiredEvent(event) ||
+      isToolAskUserQuestionEvent(event) ||
       isLegacyToolPersonalAuthRequiredEvent(event))
   );
 }

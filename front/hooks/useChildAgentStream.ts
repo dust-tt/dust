@@ -75,6 +75,7 @@ function childAgentStreamReducer(
     case "tool_approve_execution":
     case "tool_personal_auth_required":
     case "tool_file_auth_required":
+    case "tool_ask_user_question":
       return state;
 
     default:

@@ -348,6 +348,7 @@ export function AgentMessage({
           case "tool_notification":
           case "tool_params":
           case "agent_context_pruned":
+          case "tool_ask_user_question":
             // Do nothing
             break;
           default:

@@ -1,4 +1,5 @@
 import type {
+  ToolAskUserQuestionEvent,
   ToolEarlyExitEvent,
   ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
@@ -37,6 +38,7 @@ export async function getExitOrPauseEvents(
 ): Promise<
   (
     | MCPApproveExecutionEvent
+    | ToolAskUserQuestionEvent
     | ToolPersonalAuthRequiredEvent
     | ToolFileAuthRequiredEvent
     | ToolEarlyExitEvent
@@ -174,9 +176,24 @@ export async function getExitOrPauseEvents(
           resumeState: { type: "user_question", question },
         });
 
-        // TODO(ask-user-question): Emit a ToolAskUserQuestionEvent here once
-        // the event streaming pipeline supports it.
-        return [];
+        return [
+          {
+            type: "tool_ask_user_question",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            userId: auth.user()?.sId,
+            messageId: agentMessage.sId,
+            conversationId: conversation.sId,
+            actionId: action.sId,
+            metadata: {
+              toolName: action.toolConfiguration.originalName,
+              mcpServerName: action.toolConfiguration.mcpServerName,
+              agentName: agentConfiguration.name,
+            },
+            inputs: action.augmentedInputs,
+            question,
+          },
+        ];
       }
       default: {
         assertNever(exitOutputItem);
