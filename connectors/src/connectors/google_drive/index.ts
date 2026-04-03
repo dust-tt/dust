@@ -27,6 +27,10 @@ import {
   getDriveFileId,
   getInternalId,
 } from "@connectors/connectors/google_drive/temporal/utils";
+import {
+  googleDriveFullSyncWorkflowId,
+  googleDriveGarbageCollectorWorkflowId,
+} from "@connectors/connectors/google_drive/temporal/workflows";
 import type {
   CreateConnectorErrorCode,
   RetrievePermissionsErrorCode,
@@ -45,7 +49,10 @@ import {
   GoogleDriveSheetModel,
 } from "@connectors/lib/models/google_drive";
 import { syncSucceeded } from "@connectors/lib/sync_status";
-import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
+import {
+  terminateAllWorkflowsForConnectorId,
+  terminateWorkflow,
+} from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
@@ -58,6 +65,7 @@ import type {
 import {
   FILE_ATTRIBUTES_TO_FETCH,
   getGoogleSheetContentNodeInternalId,
+  googleDriveIncrementalSyncWorkflowId,
   INTERNAL_MIME_TYPES,
   normalizeError,
 } from "@connectors/types";
@@ -793,6 +801,17 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   }: {
     reason: string;
   }): Promise<Result<undefined, Error>> {
+    // Terminate known long-lived workflows by deterministic ID first to avoid
+    // relying solely on Temporal's eventually-consistent visibility query,
+    // which can miss workflows during a continueAsNew transition.
+    await terminateWorkflow(
+      googleDriveIncrementalSyncWorkflowId(this.connectorId)
+    );
+    await terminateWorkflow(googleDriveFullSyncWorkflowId(this.connectorId));
+    await terminateWorkflow(
+      googleDriveGarbageCollectorWorkflowId(this.connectorId)
+    );
+    // Sweep for any remaining child/transient workflows via visibility query.
     await terminateAllWorkflowsForConnectorId({
       connectorId: this.connectorId,
       stopReason: reason,
