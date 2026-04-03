@@ -703,3 +703,66 @@ export async function listMetronomeUsageWithGroups({
     return new Err(error);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Credits
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a credit grant on a Metronome customer.
+ * Used for monthly free programmatic credits on legacy plans.
+ */
+export async function createMetronomeCredit({
+  metronomeCustomerId,
+  productId,
+  amountCents,
+  startingAt,
+  endingBefore,
+  name,
+  idempotencyKey,
+}: {
+  metronomeCustomerId: string;
+  productId: string;
+  amountCents: number;
+  startingAt: string;
+  endingBefore: string;
+  name: string;
+  idempotencyKey: string;
+}): Promise<Result<{ creditId: string }, Error>> {
+  try {
+    const response = await getClient().v1.customers.credits.create({
+      customer_id: metronomeCustomerId,
+      product_id: productId,
+      priority: 100,
+      access_schedule: {
+        schedule_items: [
+          {
+            amount: amountCents,
+            starting_at: startingAt,
+            ending_before: endingBefore,
+          },
+        ],
+      },
+      name,
+      uniqueness_key: idempotencyKey,
+    });
+
+    return new Ok({ creditId: response.data.id });
+  } catch (err) {
+    if (err instanceof ConflictError) {
+      // Idempotency key conflict — credit already granted, safe to ignore.
+      logger.info(
+        { metronomeCustomerId, idempotencyKey },
+        "[Metronome] Credit grant already exists (idempotent)"
+      );
+      return new Ok({ creditId: "already-exists" });
+    }
+
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, name },
+      "[Metronome] Failed to create credit grant"
+    );
+    return new Err(error);
+  }
+}
