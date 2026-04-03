@@ -23,6 +23,13 @@ vi.mock("@app/lib/api/auth_wrappers", () => ({
   getAuthForSharedEndpointWorkspaceMembersOnly: vi.fn(),
 }));
 
+// Mock region redirect — returns null by default (no redirect).
+vi.mock("@app/lib/api/regions/lookup", () => ({
+  getShareTokenRegionRedirectUrl: vi.fn().mockResolvedValue(null),
+}));
+
+import { getShareTokenRegionRedirectUrl } from "@app/lib/api/regions/lookup";
+
 describe("GET /api/v1/public/frames/[token]", () => {
   let auth: Authenticator;
   let user: UserResource;
@@ -444,6 +451,40 @@ describe("GET /api/v1/public/frames/[token]", () => {
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(200);
+    });
+  });
+
+  describe("cross-region redirect", () => {
+    it("returns 307 when token belongs to another region", async () => {
+      const otherRegionUrl = "https://eu.dust.tt/api/v1/public/frames/unknown-token";
+      vi.mocked(getShareTokenRegionRedirectUrl).mockResolvedValueOnce(
+        otherRegionUrl
+      );
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { token: "unknown-token" },
+        url: "/api/v1/public/frames/unknown-token",
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(307);
+      expect(res._getRedirectUrl()).toBe(otherRegionUrl);
+    });
+
+    it("returns 404 when token is not found in any region", async () => {
+      vi.mocked(getShareTokenRegionRedirectUrl).mockResolvedValueOnce(null);
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { token: "nonexistent-token" },
+        url: "/api/v1/public/frames/nonexistent-token",
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(404);
     });
   });
 });

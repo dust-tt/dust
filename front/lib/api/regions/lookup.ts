@@ -1,6 +1,7 @@
 import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config } from "@app/lib/api/regions/config";
+import logger from "@app/logger/logger";
 import { isWorkspaceRelocationDone } from "@app/lib/api/workspace";
 import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
@@ -303,6 +304,30 @@ export async function lookupShareToken(
   } catch (error) {
     return new Err(normalizeError(error));
   }
+}
+
+/**
+ * Returns the full URL in the other region for this share token, or null if the token should be
+ * handled locally.
+ */
+export async function getShareTokenRegionRedirectUrl(
+  { requestUrl, token }: { requestUrl: string; token: string }
+): Promise<string | null> {
+  const lookupResult = await lookupShareToken(token);
+  if (lookupResult.isErr()) {
+    logger.error(
+      { err: lookupResult.error },
+      "Failed to lookup share token in other region"
+    );
+    return null;
+  }
+
+  const otherRegion = lookupResult.value;
+  if (!otherRegion) {
+    return null;
+  }
+
+  return `${config.getRegionUrl(otherRegion)}${requestUrl}`;
 }
 
 /**

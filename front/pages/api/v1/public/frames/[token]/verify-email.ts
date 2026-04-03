@@ -1,4 +1,5 @@
 /** @ignoreswagger */
+import { getShareTokenRegionRedirectUrl } from "@app/lib/api/regions/lookup";
 import {
   generateFrameOtpChallenge,
   sendFrameOtpEmail,
@@ -60,6 +61,12 @@ async function handler(
 
   const result = await FileResource.fetchByShareToken(token);
   if (result.isErr()) {
+    const redirectUrl = await getShareTokenRegionRedirectUrl({ requestUrl: req.url ?? "", token });
+    if (redirectUrl) {
+      res.redirect(307, redirectUrl);
+      return;
+    }
+
     // Return 200 to prevent enumeration.
     return res.status(200).json({ success: true });
   }
