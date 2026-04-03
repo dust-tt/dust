@@ -49,8 +49,8 @@ async function importAgentConfiguration(
     });
   }
 
-  const editorIds = yamlConfig.editors.map((e) => e.user_id);
-  if (editorIds.length === 0) {
+  const editorEmails = yamlConfig.editors;
+  if (editorEmails.length === 0) {
     return new Err({
       status_code: 400,
       api_error: {
@@ -60,7 +60,8 @@ async function importAgentConfiguration(
     });
   }
 
-  const editorUsers = await UserResource.fetchByIds(editorIds);
+  const editorUsers = await UserResource.fetchByEmails(editorEmails);
+
   if (editorUsers.length === 0) {
     return new Err({
       status_code: 400,
@@ -114,8 +115,8 @@ async function importAgentConfiguration(
       name: tag.name,
       kind: tag.kind,
     })),
-    editors: yamlConfig.editors.map((editor) => ({
-      sId: editor.user_id,
+    editors: editorUsers.map((user) => ({
+      sId: user.sId,
     })),
     skills: (yamlConfig.skills ?? []).map((skill) => ({
       sId: skill.sId,
