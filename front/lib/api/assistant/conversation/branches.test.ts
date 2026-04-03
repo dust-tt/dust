@@ -47,7 +47,7 @@ describe("mergeConversationBranch", () => {
       userContextFullName: "Test User",
       userContextEmail: "test@example.com",
       userContextProfilePictureUrl: null,
-      userContextOrigin: "api",
+      userContextOrigin: "web",
       clientSideMCPServerIds: [],
     });
 
@@ -84,7 +84,7 @@ describe("mergeConversationBranch", () => {
       userContextFullName: "Test User",
       userContextEmail: "test@example.com",
       userContextProfilePictureUrl: null,
-      userContextOrigin: "api",
+      userContextOrigin: "web",
       clientSideMCPServerIds: [],
     });
 

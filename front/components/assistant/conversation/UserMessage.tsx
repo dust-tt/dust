@@ -1,9 +1,11 @@
+import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { MessageEmojiPicker } from "@app/components/assistant/conversation/MessageEmojiPicker";
 import { MessageReactions } from "@app/components/assistant/conversation/MessageReactions";
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import {
+  hasHumansInteracting,
   isTriggeredOrigin,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
@@ -51,7 +53,7 @@ import { BubbleMenu } from "@tiptap/react/menus";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { cva } from "class-variance-authority";
 import type React from "react";
-import { useCallback, useContext, useState } from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 
 interface UserMessageEditorProps {
   editor: Editor | null;
@@ -189,6 +191,21 @@ export function UserMessage({
   );
 
   const methods = useVirtuosoMethods<VirtuosoMessage>();
+
+  const showAgentSuggestions = useMemo(() => {
+    return (
+      message.mentions.length === 0 &&
+      isLastMessage &&
+      !hasHumansInteracting(methods.data.get()) &&
+      message.user?.sId === currentUserId
+    );
+  }, [
+    message.mentions.length,
+    message.user?.sId,
+    isLastMessage,
+    methods.data,
+    currentUserId,
+  ]);
 
   const isDeleted = message.visibility === "deleted";
   const isCurrentUser = message.user?.sId === currentUserId;
@@ -397,6 +414,14 @@ export function UserMessage({
             )}
           </ConversationMessageContainer>
         </div>
+      )}
+
+      {showAgentSuggestions && (
+        <AgentSuggestion
+          conversationId={conversationId}
+          owner={owner}
+          userMessage={message}
+        />
       )}
     </>
   );
