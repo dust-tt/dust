@@ -63,6 +63,16 @@ async function handler(
     case "POST": {
       const { portal } = req.body;
 
+      if (!portal || typeof portal !== "string") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Missing or invalid portal parameter.",
+          },
+        });
+      }
+
       let workOSIntent: WorkOSPortalIntent;
       let action: "audit_log.viewed" | "audit_log.export_configured";
 
