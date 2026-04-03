@@ -357,7 +357,7 @@ const UserMessageOriginSchema = UserMessageOriginEnumSchema.catch("api")
   .or(z.null())
   .or(z.undefined());
 
-const VisibilitySchema = FlexibleEnumSchema<"visible" | "deleted">();
+const VisibilitySchema = FlexibleEnumSchema<"visible" | "deleted" | "pending">();
 
 const RankSchema = z.object({
   rank: z.number(),
