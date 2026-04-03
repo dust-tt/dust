@@ -1,7 +1,7 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { useAnswerUserQuestion } from "@app/hooks/useAnswerUserQuestion";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import type { UserQuestionAnswer } from "@app/lib/actions/types";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
@@ -36,8 +36,12 @@ export function UserQuestionRequired({
   const [selectedOptions, setSelectedOptions] = useState<number[]>([]);
   const [customResponse, setCustomResponse] = useState("");
   const [showOtherInput, setShowOtherInput] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const { answerQuestion, isSubmitting } = useAnswerUserQuestion({
+    owner,
+    onError: setErrorMessage,
+  });
 
   const { question } = blockedAction;
   const isTriggeredByCurrentUser = blockedAction.userId === user?.sId;
@@ -74,9 +78,6 @@ export function UserQuestionRequired({
       return;
     }
 
-    setIsSubmitting(true);
-    setErrorMessage(null);
-
     const answer: UserQuestionAnswer = {
       selectedOptions,
       ...(customResponse.trim()
@@ -84,46 +85,23 @@ export function UserQuestionRequired({
         : {}),
     };
 
-    try {
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/answer-question`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            actionId: blockedAction.actionId,
-            answer,
-          }),
-        }
-      );
+    const result = await answerQuestion({
+      conversationId,
+      messageId,
+      actionId: blockedAction.actionId,
+      answer,
+    });
 
-      if (!response.ok) {
-        try {
-          const errData = await response.json();
-          if (errData?.error?.type === "action_not_blocked") {
-            removeCompletedAction(blockedAction.actionId);
-            return;
-          }
-        } catch {
-          // ignore JSON parsing errors
-        }
-        setErrorMessage("Failed to submit answer. Please try again.");
-        return;
-      }
-
+    if (result.success) {
       removeCompletedAction(blockedAction.actionId);
-    } catch {
-      setErrorMessage("Failed to submit answer. Please try again.");
-    } finally {
-      setIsSubmitting(false);
     }
   }, [
     selectedOptions,
     customResponse,
-    owner.sId,
     conversationId,
     messageId,
     blockedAction.actionId,
+    answerQuestion,
     removeCompletedAction,
   ]);
 
