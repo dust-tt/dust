@@ -189,8 +189,11 @@ export const InputBar = React.memo(function InputBar({
     void deleteSkill(skill.sId);
   };
 
-  const activeAgents = agentConfigurations.filter((a) => a.status === "active");
-  activeAgents.sort(compareAgentsForSort);
+  const activeAgents = useMemo(() => {
+    const agents = agentConfigurations.filter((a) => a.status === "active");
+    agents.sort(compareAgentsForSort);
+    return agents;
+  }, [agentConfigurations]);
 
   const handleSubmit: InputBarContainerProps["onEnterKeyDown"] = async (
     isEmpty,
