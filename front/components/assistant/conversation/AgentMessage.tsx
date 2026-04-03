@@ -903,7 +903,8 @@ export function AgentMessage({
     </ConversationMessageContent>
   );
 
-  const footerButtons = !isCancelledOrDeleted && !isGracefullyStopped &&
+  const footerButtons = !isCancelledOrDeleted &&
+    !isGracefullyStopped &&
     (alwaysVisibleButtons.length > 0 || hoverButtons.length > 0) && (
       <div className="flex items-center gap-2">
         {alwaysVisibleButtons}
