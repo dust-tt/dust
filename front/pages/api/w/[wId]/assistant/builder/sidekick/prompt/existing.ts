@@ -6,7 +6,7 @@ import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overvie
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
+import { hasReinforcementEnabled } from "@app/lib/reinforced_agent/workspace_check";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -240,13 +240,13 @@ async function handler(
         await Promise.all([
           fetchFeedbackMarkdown(auth, agentConfigurationId),
           fetchInsightsMarkdown(auth, agentConfigurationId),
-          hasFeatureFlag(auth, "reinforced_agents").then((hasFlag) =>
+          hasReinforcementEnabled(auth).then((enabled) =>
             AgentSuggestionResource.listByAgentConfigurationId(
               auth,
               agentConfigurationId,
               {
                 states: ["pending"],
-                sources: hasFlag ? undefined : ["sidekick"],
+                sources: enabled ? undefined : ["sidekick"],
                 limit: MAX_PENDING_SUGGESTIONS_IN_FIRST_MESSAGE,
               }
             )

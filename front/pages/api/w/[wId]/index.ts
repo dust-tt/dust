@@ -66,6 +66,10 @@ const WorkspaceEmailAgentsUpdateBodySchema = t.type({
   allowEmailAgents: t.boolean,
 });
 
+const WorkspaceAgentReinforcementUpdateBodySchema = t.type({
+  allowAgentReinforcement: t.boolean,
+});
+
 const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceAllowedDomainUpdateBodySchema,
   WorkspaceBatchDomainUpdateBodySchema,
@@ -76,6 +80,7 @@ const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceInteractiveContentSharingUpdateBodySchema,
   WorkspaceVoiceTranscriptionUpdateBodySchema,
   WorkspaceEmailAgentsUpdateBodySchema,
+  WorkspaceAgentReinforcementUpdateBodySchema,
 ]);
 
 async function handler(
@@ -193,6 +198,14 @@ async function handler(
         const newMetadata = {
           ...previousMetadata,
           allowEmailAgents: body.allowEmailAgents,
+        };
+        await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+        owner.metadata = newMetadata;
+      } else if ("allowAgentReinforcement" in body) {
+        const previousMetadata = owner.metadata ?? {};
+        const newMetadata = {
+          ...previousMetadata,
+          allowAgentReinforcement: body.allowAgentReinforcement,
         };
         await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;
