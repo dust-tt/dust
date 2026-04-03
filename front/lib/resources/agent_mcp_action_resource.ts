@@ -14,7 +14,10 @@ import {
   TOOL_EXECUTION_BLOCKED_STATUSES,
 } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
-import { isFileAuthorizationInfo } from "@app/lib/actions/types";
+import {
+  isFileAuthorizationInfo,
+  isUserQuestionResumeState,
+} from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getCitationsFromToolOutput } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
@@ -482,6 +485,27 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
             mcpServerId,
             mcpServerDisplayName,
           },
+        });
+      } else if (action.status === "blocked_user_answer_required") {
+        const { resumeState } = action.stepContext;
+        if (!isUserQuestionResumeState(resumeState)) {
+          logger.warn(
+            {
+              actionId: action.id,
+              conversationId: conversation.sId,
+              messageId: agentMessage.message.sId,
+              workspaceId: owner.id,
+            },
+            `User question resume state not found for blocked action ${action.id}`
+          );
+          continue;
+        }
+
+        blockedActionsList.push({
+          ...baseActionParams,
+          status: action.status,
+          question: resumeState.question,
+          authorizationInfo: null,
         });
       } else if (action.status === "blocked_child_action_input_required") {
         const conversationId = action.stepContext.resumeState?.conversationId;

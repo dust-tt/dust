@@ -59,6 +59,22 @@ export const UserQuestionAnswerSchema = z.object({
 
 export type UserQuestionAnswer = z.infer<typeof UserQuestionAnswerSchema>;
 
+const UserQuestionResumeStateSchema = z.object({
+  type: z.literal("user_question"),
+  question: UserQuestionSchema,
+  answer: UserQuestionAnswerSchema.optional(),
+});
+
+export type UserQuestionResumeState = z.infer<
+  typeof UserQuestionResumeStateSchema
+>;
+
+export function isUserQuestionResumeState(
+  value: unknown
+): value is UserQuestionResumeState {
+  return UserQuestionResumeStateSchema.safeParse(value).success;
+}
+
 export type StepContext = {
   citationsCount: number;
   citationsOffset: number;

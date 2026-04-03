@@ -1,7 +1,7 @@
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { UserQuestion } from "@app/lib/actions/types";
-import { UserQuestionAnswerSchema } from "@app/lib/actions/types";
+import { isUserQuestionResumeState } from "@app/lib/actions/types";
 import { ASK_USER_QUESTION_TOOLS_METADATA } from "@app/lib/api/actions/servers/ask_user_question/metadata";
 import { Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
@@ -18,12 +18,8 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
     };
 
     const resumeState = agentLoopContext?.runContext?.stepContext?.resumeState;
-    const parsed = UserQuestionAnswerSchema.safeParse(
-      resumeState && "answer" in resumeState ? resumeState.answer : undefined
-    );
-
-    if (parsed.success) {
-      const answer = parsed.data;
+    if (isUserQuestionResumeState(resumeState) && resumeState.answer) {
+      const { answer } = resumeState;
       const selections: string[] = [];
       for (const idx of answer.selectedOptions) {
         if (idx >= 0 && idx < typedQuestion.options.length) {

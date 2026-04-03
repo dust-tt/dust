@@ -164,6 +164,20 @@ export async function getExitOrPauseEvents(
           },
         ];
       }
+      case "tool_user_answer_required": {
+        const { question } = exitOutputItem;
+
+        await action.updateStatus("blocked_user_answer_required");
+
+        await action.updateStepContext({
+          ...action.stepContext,
+          resumeState: { type: "user_question", question },
+        });
+
+        // TODO(ask-user-question): Emit a ToolAskUserQuestionEvent here once
+        // the event streaming pipeline supports it.
+        return [];
+      }
       default: {
         assertNever(exitOutputItem);
       }
