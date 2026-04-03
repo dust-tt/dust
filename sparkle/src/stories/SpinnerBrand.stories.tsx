@@ -4,7 +4,12 @@ import React from "react";
 import { SpinnerBrand } from "../index_with_tw_base";
 
 const SPINNER_DUST_SIZES = ["xs", "sm", "md", "lg", "xl", "2xl"] as const;
-const SPINNER_DUST_VARIANTS = ["mono", "colored", "colored-gray"] as const;
+const SPINNER_DUST_VARIANTS = [
+  "mono",
+  "mono-white",
+  "colored",
+  "colored-gray",
+] as const;
 
 const meta = {
   title: "Primitives/SpinnerBrand",
@@ -36,6 +41,16 @@ export const Playground: Story = {
     size: "md",
     variant: "mono",
     speed: 0.4,
+  },
+};
+
+export const MonoWhite: Story = {
+  args: {
+    size: "md",
+    variant: "mono-white",
+  },
+  parameters: {
+    backgrounds: { default: "dark" },
   },
 };
 
