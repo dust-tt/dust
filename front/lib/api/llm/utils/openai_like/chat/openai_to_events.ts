@@ -20,7 +20,8 @@ export async function* streamLLMEvents(
       id: string;
       name: string;
       arguments: string;
-      startEmissionState: "none" | "without_id" | "with_id";
+      lastEmittedStartedName: string;
+      hasEmittedStartedWithId: boolean;
     }
   > = new Map();
   let hasYieldedResponseId = false;
@@ -86,7 +87,8 @@ export async function* streamLLMEvents(
             id: "",
             name: "",
             arguments: "",
-            startEmissionState: "none",
+            lastEmittedStartedName: "",
+            hasEmittedStartedWithId: false,
           });
         }
 
@@ -103,17 +105,14 @@ export async function* streamLLMEvents(
           toolCall.arguments += toolCallDelta.function.arguments;
         }
 
-        const shouldEmitStartWithoutId =
-          toolCall.startEmissionState === "none" &&
+        const shouldEmitStart =
           toolCall.name.length > 0 &&
-          !toolCall.id;
-        const shouldEmitStartWithId =
-          toolCall.startEmissionState !== "with_id" &&
-          toolCall.name.length > 0 &&
-          toolCall.id.length > 0;
+          (toolCall.name !== toolCall.lastEmittedStartedName ||
+            (toolCall.id.length > 0 && !toolCall.hasEmittedStartedWithId));
 
-        if (shouldEmitStartWithoutId || shouldEmitStartWithId) {
-          toolCall.startEmissionState = toolCall.id ? "with_id" : "without_id";
+        if (shouldEmitStart) {
+          toolCall.lastEmittedStartedName = toolCall.name;
+          toolCall.hasEmittedStartedWithId ||= toolCall.id.length > 0;
           yield {
             type: "tool_call_started",
             content: {
