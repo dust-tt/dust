@@ -291,7 +291,10 @@ async function handler(
         }
       }
 
-      const conversationRes = await getConversation(auth, conversationId);
+      const [conversationRes, featureFlags] = await Promise.all([
+        getConversation(auth, conversationId),
+        getFeatureFlags(auth),
+      ]);
 
       if (conversationRes.isErr()) {
         return apiErrorForConversation(req, res, conversationRes.error);
@@ -328,8 +331,6 @@ async function handler(
         (isSidekickConversation(conversation.metadata)
           ? "agent_sidekick"
           : "web");
-
-      const featureFlags = await getFeatureFlags(auth);
 
       const messageRes = await postUserMessage(auth, {
         conversation,
