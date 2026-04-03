@@ -370,6 +370,7 @@ export function AgentMessage({
 
   const isDeleted = agentMessage.visibility === "deleted";
   const isCancelled = agentMessage.status === "cancelled";
+  const isGracefullyStopped = agentMessage.status === "gracefully_stopped";
   const isCancelledOrDeleted = isDeleted || isCancelled;
   const cancelMessage = useCancelMessage({ owner, conversationId });
 
@@ -902,7 +903,7 @@ export function AgentMessage({
     </ConversationMessageContent>
   );
 
-  const footerButtons = !isCancelledOrDeleted &&
+  const footerButtons = !isCancelledOrDeleted && !isGracefullyStopped &&
     (alwaysVisibleButtons.length > 0 || hoverButtons.length > 0) && (
       <div className="flex items-center gap-2">
         {alwaysVisibleButtons}
@@ -938,7 +939,8 @@ export function AgentMessage({
     );
   };
 
-  const hideCompletionStatus = isDeleted || isInlineActivityEnabled;
+  const hideCompletionStatus =
+    isDeleted || isInlineActivityEnabled || isGracefullyStopped;
 
   return (
     <ConversationMessageContainer messageType="agent" type="agent">

@@ -114,7 +114,8 @@ export function InlineActivitySteps({
   const toggleCollapse = () => setIsCollapsed((c) => !c);
 
   // Done with no steps: show a static line — no toggle, not clickable.
-  if (isDone && completedSteps.length === 0) {
+  // For gracefully stopped, skip this entirely (no completion UI needed).
+  if (isDone && completedSteps.length === 0 && agentMessage.status !== "gracefully_stopped") {
     return (
       <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
         {headerLabel ? `${headerLabel}, without tools.` : "No tools used."}
@@ -265,13 +266,15 @@ export function InlineActivitySteps({
             {!isDone && !showActiveThinking && !activeAction && (
               <TimelineRow spinner isLast />
             )}
-            {isDone && completedSteps.length > 0 && (
-              <TimelineRow icon={CheckIcon} isLast>
-                <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  Done
-                </span>
-              </TimelineRow>
-            )}
+            {isDone &&
+              completedSteps.length > 0 &&
+              agentMessage.status !== "gracefully_stopped" && (
+                <TimelineRow icon={CheckIcon} isLast>
+                  <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    Done
+                  </span>
+                </TimelineRow>
+              )}
           </div>
         </div>
       </div>
