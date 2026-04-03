@@ -2,6 +2,18 @@ import type { LLMEvent } from "@app/lib/api/llm/types/events";
 
 export const functionCallLLMEvents: LLMEvent[] = [
   {
+    type: "tool_call_started",
+    content: {
+      id: "call_TNG5uqSoWvdMD4MFV6wKCwZT",
+      index: 0,
+      name: "common_utilities__math_operation",
+    },
+    metadata: {
+      clientId: "openai",
+      modelId: "gpt-5",
+    },
+  },
+  {
     type: "tool_call_delta",
     metadata: {
       clientId: "openai",
@@ -10,6 +22,18 @@ export const functionCallLLMEvents: LLMEvent[] = [
   },
   {
     type: "tool_call_delta",
+    metadata: {
+      clientId: "openai",
+      modelId: "gpt-5",
+    },
+  },
+  {
+    type: "tool_call_started",
+    content: {
+      id: "call_XoBlcEPygqXN28I2McKpLSfF",
+      index: 1,
+      name: "web_search_browse__websearch",
+    },
     metadata: {
       clientId: "openai",
       modelId: "gpt-5",
