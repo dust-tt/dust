@@ -539,6 +539,13 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/martin-boudon/",
     github: "https://github.com/martindust",
   },
+  akabbadj: {
+    name: "Ali Kabbadj",
+    title: "AI Deployment Strategist",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0AD6UBJEPJ-17ea7e1e7d3f-512",
+    linkedIn: "https://www.linkedin.com/in/ali-kab/",
+    github: "https://github.com/kabbykabs",
+  },
   lguy: {
     name: "Lily Guy",
     title: "Customer Success",
@@ -580,6 +587,13 @@ const PEOPLE: Record<
     image: "https://ca.slack-edge.com/T050RH73H9P-U0AMW9B8SRE-bbd256ba10ef-512",
     linkedIn: "https://www.linkedin.com/in/stephanie-r-4091b84a/",
     github: "",
+  },
+  caupiais: {
+    name: "Clément Aupiais",
+    title: "Product Designer",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0AM218ESR0-c266c1998762-512",
+    linkedIn: "https://www.linkedin.com/in/clementaupiais/",
+    github: "https://github.com/ClementAupiais",
   },
   thervier: {
     name: "Thibault Hervier",
