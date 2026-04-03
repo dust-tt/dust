@@ -8,185 +8,130 @@ const metadata = {
   modelId: "gpt-5",
 } as const;
 
+type ChunkDelta = ChatCompletionChunk["choices"][number]["delta"];
+type ChunkFinishReason =
+  ChatCompletionChunk["choices"][number]["finish_reason"];
+type ChunkUsage = ChatCompletionChunk["usage"];
+
+function makeChunk({
+  delta,
+  finishReason = null,
+  usage,
+}: {
+  delta: ChunkDelta;
+  finishReason?: ChunkFinishReason;
+  usage?: ChunkUsage;
+}): ChatCompletionChunk {
+  return {
+    id: "chatcmpl_test",
+    object: "chat.completion.chunk",
+    created: 1,
+    model: "gpt-5",
+    choices: [
+      {
+        index: 0,
+        delta,
+        finish_reason: finishReason,
+        logprobs: null,
+      },
+    ],
+    ...(usage ? { usage } : {}),
+  };
+}
+
 const toolCallChunks = [
-  {
-    id: "chatcmpl_test",
-    object: "chat.completion.chunk",
-    created: 1,
-    model: "gpt-5",
-    choices: [
-      {
-        index: 0,
-        delta: {
-          tool_calls: [
-            {
-              index: 0,
-              function: {
-                name: "create_interactive_content_file",
-              },
-            },
-          ],
+  makeChunk({
+    delta: {
+      tool_calls: [
+        {
+          index: 0,
+          function: {
+            name: "create_interactive_content_file",
+          },
         },
-        finish_reason: null,
-        logprobs: null,
-      },
-    ],
-  },
-  {
-    id: "chatcmpl_test",
-    object: "chat.completion.chunk",
-    created: 1,
-    model: "gpt-5",
-    choices: [
-      {
-        index: 0,
-        delta: {
-          tool_calls: [
-            {
-              index: 0,
-              id: "call_123",
-            },
-          ],
+      ],
+    },
+  }),
+  makeChunk({
+    delta: {
+      tool_calls: [
+        {
+          index: 0,
+          id: "call_123",
         },
-        finish_reason: null,
-        logprobs: null,
-      },
-    ],
-  },
-  {
-    id: "chatcmpl_test",
-    object: "chat.completion.chunk",
-    created: 1,
-    model: "gpt-5",
-    choices: [
-      {
-        index: 0,
-        delta: {
-          tool_calls: [
-            {
-              index: 0,
-              function: {
-                arguments: '{"prompt":"hi"}',
-              },
-            },
-          ],
+      ],
+    },
+  }),
+  makeChunk({
+    delta: {
+      tool_calls: [
+        {
+          index: 0,
+          function: {
+            arguments: '{"prompt":"hi"}',
+          },
         },
-        finish_reason: null,
-        logprobs: null,
-      },
-    ],
-  },
-  {
-    id: "chatcmpl_test",
-    object: "chat.completion.chunk",
-    created: 1,
-    model: "gpt-5",
-    choices: [
-      {
-        index: 0,
-        delta: {},
-        finish_reason: "tool_calls",
-        logprobs: null,
-      },
-    ],
+      ],
+    },
+  }),
+  makeChunk({
+    delta: {},
+    finishReason: "tool_calls",
     usage: {
       prompt_tokens: 1,
       completion_tokens: 2,
       total_tokens: 3,
     },
-  },
+  }),
 ] satisfies ChatCompletionChunk[];
 
 const chunkedToolNameChunks = [
-  {
-    id: "chatcmpl_test",
-    object: "chat.completion.chunk",
-    created: 1,
-    model: "gpt-5",
-    choices: [
-      {
-        index: 0,
-        delta: {
-          tool_calls: [
-            {
-              index: 0,
-              id: "call_123",
-              function: {
-                name: "create_inter",
-              },
-            },
-          ],
+  makeChunk({
+    delta: {
+      tool_calls: [
+        {
+          index: 0,
+          id: "call_123",
+          function: {
+            name: "create_inter",
+          },
         },
-        finish_reason: null,
-        logprobs: null,
-      },
-    ],
-  },
-  {
-    id: "chatcmpl_test",
-    object: "chat.completion.chunk",
-    created: 1,
-    model: "gpt-5",
-    choices: [
-      {
-        index: 0,
-        delta: {
-          tool_calls: [
-            {
-              index: 0,
-              function: {
-                name: "active_content_file",
-              },
-            },
-          ],
+      ],
+    },
+  }),
+  makeChunk({
+    delta: {
+      tool_calls: [
+        {
+          index: 0,
+          function: {
+            name: "active_content_file",
+          },
         },
-        finish_reason: null,
-        logprobs: null,
-      },
-    ],
-  },
-  {
-    id: "chatcmpl_test",
-    object: "chat.completion.chunk",
-    created: 1,
-    model: "gpt-5",
-    choices: [
-      {
-        index: 0,
-        delta: {
-          tool_calls: [
-            {
-              index: 0,
-              function: {
-                arguments: '{"prompt":"hi"}',
-              },
-            },
-          ],
+      ],
+    },
+  }),
+  makeChunk({
+    delta: {
+      tool_calls: [
+        {
+          index: 0,
+          function: {
+            arguments: '{"prompt":"hi"}',
+          },
         },
-        finish_reason: null,
-        logprobs: null,
-      },
-    ],
-  },
-  {
-    id: "chatcmpl_test",
-    object: "chat.completion.chunk",
-    created: 1,
-    model: "gpt-5",
-    choices: [
-      {
-        index: 0,
-        delta: {},
-        finish_reason: "tool_calls",
-        logprobs: null,
-      },
-    ],
+      ],
+    },
+  }),
+  makeChunk({
+    delta: {},
+    finishReason: "tool_calls",
     usage: {
       prompt_tokens: 1,
       completion_tokens: 2,
       total_tokens: 3,
     },
-  },
+  }),
 ] satisfies ChatCompletionChunk[];
 
 describe("streamLLMEvents", () => {
