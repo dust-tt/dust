@@ -162,7 +162,11 @@ export function createProjectManagerTools(
           );
         }
 
-        const upsertRes = await addFileToProject(auth, file);
+        const upsertRes = await addFileToProject(auth, {
+          file,
+          space,
+          sourceConversationId: agentLoopContext?.runContext?.conversation?.sId,
+        });
 
         if (upsertRes.isErr()) {
           logger.warn(
@@ -272,7 +276,11 @@ export function createProjectManagerTools(
         await file.uploadContent(auth, fileContent);
 
         // Re-upsert to datasource to update search index.
-        const upsertRes = await addFileToProject(auth, file);
+        const upsertRes = await addFileToProject(auth, {
+          file,
+          space,
+          sourceConversationId: agentLoopContext?.runContext?.conversation?.sId,
+        });
 
         if (upsertRes.isErr()) {
           logger.error(

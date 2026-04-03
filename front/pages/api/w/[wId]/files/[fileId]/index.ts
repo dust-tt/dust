@@ -453,28 +453,27 @@ async function handler(
             });
           }
         }
-      } else if (
-        file.useCase === "project_context" &&
-        space &&
-        isFileTypeUpsertableForUseCase(file)
-      ) {
-        const upsertRes = await addFileToProject(auth, file);
+      } else if (file.useCase === "project_context" && space) {
+        const addFileToProjectRes = await addFileToProject(auth, {
+          file,
+          space,
+        });
 
-        if (upsertRes.isErr()) {
+        if (addFileToProjectRes.isErr()) {
           logger.error({
             fileModelId: file.id,
             workspaceId: auth.workspace()?.sId,
             contentType: file.contentType,
             useCase: file.useCase,
             useCaseMetadata: file.useCaseMetadata,
-            message: "Failed to upsert the file.",
-            error: upsertRes.error,
+            message: "Failed to add the file to the project.",
+            error: addFileToProjectRes.error,
           });
           return apiError(req, res, {
             status_code: 500,
             api_error: {
               type: "internal_server_error",
-              message: "Failed to upsert the file.",
+              message: "Failed to add the file to the project.",
             },
           });
         }

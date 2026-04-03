@@ -1057,28 +1057,26 @@ export class FileResource extends BaseResource<FileModel> {
     );
   }
 
-  /**
-   * Move a conversation frame file to a project (change use case to project_context).
-   * Preserves existing metadata and sets spaceId and sourceConversationId.
-   */
-  async moveFrameToSpace(
+  async updateUseCase(
     auth: Authenticator,
-    { projectId }: { projectId: string }
-  ): Promise<void> {
-    const existingMetadata = this.useCaseMetadata ?? {};
-    if (!this.isInteractiveContent || !existingMetadata.conversationId) {
-      throw new Error("File is not a conversation frame");
+    useCase: FileUseCase,
+    metadata: FileUseCaseMetadata
+  ) {
+    if (this.useCase === useCase) {
+      return;
     }
 
+    // Eg: for a conversation file, we need to cleanup the core artifacts.
+    await maybeDeleteCoreArtifactsForIndexedFile(auth, this);
+
+    const mergedMetadata: FileUseCaseMetadata = {
+      ...(this.useCaseMetadata ?? {}),
+      ...metadata,
+    };
+
     await this.update({
-      useCase: "project_context",
-      useCaseMetadata: {
-        ...existingMetadata,
-        spaceId: projectId,
-        // Remove conversationId to prevent confusion when accessing the file.
-        conversationId: undefined,
-        sourceConversationId: existingMetadata.conversationId,
-      },
+      useCase,
+      useCaseMetadata: mergedMetadata,
       userId: auth.getNonNullableUser().id ?? null,
     });
   }

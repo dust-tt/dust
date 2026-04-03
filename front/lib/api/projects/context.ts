@@ -8,64 +8,14 @@ import { fetchProjectDataSource } from "@app/lib/api/projects/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
-import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { isSupportedDelimitedTextContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { slugify } from "@app/types/shared/utils/string_utils";
-
-function validateFileMetadataForProjectContext(
-  file: FileResource
-): Result<string, Error> {
-  const spaceId = file.useCaseMetadata?.spaceId;
-  if (!spaceId) {
-    return new Err(new Error("Field spaceId is missing from metadata"));
-  }
-
-  return new Ok(spaceId);
-}
-
-export async function getProjectDataSourceFromFile(
-  auth: Authenticator,
-  file: FileResource
-): Promise<
-  Result<
-    DataSourceResource,
-    DustError<
-      "space_not_found" | "invalid_request_error" | "data_source_not_found"
-    >
-  >
-> {
-  // Note: this assume that if we don't have useCaseMetadata, the file is fine.
-  const metadataResult = validateFileMetadataForProjectContext(file);
-  if (metadataResult.isErr()) {
-    return new Err({
-      name: "dust_error",
-      code: "invalid_request_error",
-      message: metadataResult.error.message,
-    });
-  }
-
-  const space = await SpaceResource.fetchById(auth, metadataResult.value);
-  if (!space) {
-    return new Err({
-      name: "dust_error",
-      code: "space_not_found",
-      message: `Failed to fetch space.`,
-    });
-  }
-
-  const r = await fetchProjectDataSource(auth, space);
-  if (r.isErr()) {
-    return new Err(r.error);
-  }
-
-  return new Ok(r.value);
-}
 
 export async function listProjectContentFragments(
   auth: Authenticator,
@@ -123,25 +73,29 @@ export async function listProjectContextFiles(
  */
 export async function addFileToProject(
   auth: Authenticator,
-  file: FileResource
+  {
+    file,
+    space,
+    sourceConversationId,
+  }: {
+    file: FileResource;
+    space: SpaceResource;
+    sourceConversationId?: string;
+  }
 ): Promise<Result<ContentFragmentResource, DustError>> {
-  const metadataResult = validateFileMetadataForProjectContext(file);
-  if (metadataResult.isErr()) {
+  if (space.kind !== "project") {
     return new Err({
       name: "dust_error",
       code: "invalid_request_error",
-      message: metadataResult.error.message,
+      message: "Space is not a project.",
     });
   }
 
-  const space = await SpaceResource.fetchById(auth, metadataResult.value);
-  if (!space) {
-    return new Err({
-      name: "dust_error",
-      code: "space_not_found",
-      message: `Failed to fetch space.`,
-    });
-  }
+  await file.updateUseCase(auth, "project_context", {
+    spaceId: space.sId,
+    conversationId: undefined,
+    sourceConversationId,
+  });
 
   const projectContextDatasource = await fetchProjectDataSource(auth, space);
   if (projectContextDatasource.isErr()) {

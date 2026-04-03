@@ -2,7 +2,6 @@ export type { ProjectType } from "@app/types/space";
 export { createDataSourceAndConnectorForProject } from "./connector";
 export {
   addFileToProject,
-  getProjectDataSourceFromFile,
   listProjectContentFragments,
   listProjectContextFiles,
 } from "./context";
