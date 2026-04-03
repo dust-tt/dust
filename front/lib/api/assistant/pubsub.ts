@@ -19,6 +19,7 @@ import type {
   AgentGenerationCancelledEvent,
 } from "@app/types/assistant/agent";
 import type { GenerationTokensEvent } from "@app/types/assistant/generation";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export async function* getConversationEvents({
   conversationId,
@@ -125,7 +126,8 @@ export async function cancelMessageGenerationEvent(
       try {
         const handle = client.workflow.getHandle(workflowId);
         await handle.signal(cancelAgentLoopSignal);
-      } catch (signalError) {
+      } catch (err) {
+        const signalError = normalizeError(err);
         // Swallow errors from signaling (workflow might not exist anymore)
         logger.warn(
           { error: signalError, messageId },
@@ -159,7 +161,8 @@ export async function gracefullyStopAgentLoop(
       try {
         const handle = client.workflow.getHandle(workflowId);
         await handle.signal(gracefullyStopAgentLoopSignal);
-      } catch (signalError) {
+      } catch (err) {
+        const signalError = normalizeError(err);
         // Swallow errors from signaling (workflow might not exist anymore)
         logger.info(
           { error: signalError, messageId },
