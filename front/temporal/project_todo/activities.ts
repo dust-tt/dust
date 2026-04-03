@@ -82,5 +82,5 @@ export async function mergeTodosForProjectActivity({
     "Project todo merge: activity invoked (not yet implemented)"
   );
 
-  await mergeConversationTodosIntoProject(auth, { spaceId });
+  await mergeConversationTodosIntoProject(auth, { spaceSId: spaceId });
 }
