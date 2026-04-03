@@ -604,8 +604,13 @@ const getAssociationTypeId = async (
     throw normalizeError(e);
   }
 
-  // Assuming the first result is the one needed for standard associations.
-  return data.results[0].typeId;
+  // Prefer the unlabeled (default) association type. The API may return
+  // custom/labeled types or reverse-direction types first, so results[0]
+  // is not reliable.
+  const defaultType = data.results.find(
+    (r: { label: string | null }) => r.label === null
+  );
+  return (defaultType ?? data.results[0]).typeId;
 };
 
 export const createContact = async ({
@@ -759,7 +764,6 @@ export const createNote = async ({
     contactIds?: string[];
     companyIds?: string[];
     dealIds?: string[];
-    ownerIds?: string[];
   };
 }): Promise<SimplePublicObject> => {
   const hubspotClient = new Client({ accessToken });
@@ -770,6 +774,13 @@ export const createNote = async ({
     throw normalizeError(
       new Error("hs_note_body is required to create a note.")
     );
+  }
+
+  // Create notes as engagements so they appear in HubSpot's UI timeline.
+  // The CRM Objects API (/crm/v3/objects/notes) creates note objects that
+  // exist in the API but don't render in the UI.
+  if (!propertiesForApi.hs_engagement_type) {
+    propertiesForApi.hs_engagement_type = "NOTE";
   }
 
   // Use Unix milliseconds for hs_timestamp to ensure proper timeline placement.
@@ -792,14 +803,13 @@ export const createNote = async ({
       { ids: associations.contactIds, toObjectType: "contacts" },
       { ids: associations.companyIds, toObjectType: "companies" },
       { ids: associations.dealIds, toObjectType: "deals" },
-      { ids: associations.ownerIds, toObjectType: "owners" },
     ];
 
     for (const mapping of associationMappings) {
       if (mapping.ids && mapping.ids.length > 0) {
         const associationTypeId = await getAssociationTypeId(
           accessToken,
-          "notes",
+          "engagements",
           mapping.toObjectType
         );
         for (const id of mapping.ids) {
@@ -825,7 +835,7 @@ export const createNote = async ({
 
   try {
     const createdNote = await hubspotClient.crm.objects.basicApi.create(
-      "notes",
+      "engagements",
       noteInput
     );
     return createdNote;

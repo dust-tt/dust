@@ -44,13 +44,6 @@ const associationSchema = z.object({
   toObjectType: z.string().describe("e.g., contacts, companies, deals"),
 });
 
-const noteAssociationsSchema = z.object({
-  contactIds: z.array(z.string()).optional(),
-  companyIds: z.array(z.string()).optional(),
-  dealIds: z.array(z.string()).optional(),
-  ownerIds: z.array(z.string()).optional(),
-});
-
 const engagementAssociationsSchema = z.object({
   contactIds: z.array(z.string()).optional(),
   companyIds: z.array(z.string()).optional(),
@@ -491,7 +484,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
             .describe("The ID of the note's owner/creator."),
         })
         .describe("Properties for the note."),
-      associations: noteAssociationsSchema
+      associations: engagementAssociationsSchema
         .optional()
         .describe("Direct IDs of objects to associate the note with."),
     },
