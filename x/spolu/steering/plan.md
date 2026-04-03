@@ -47,21 +47,13 @@ Implement the graceful stop mechanism end-to-end.
 - Route `gracefulStopRequested` in the workflow to the new finalization.
 - Handle `agent_message_gracefully_stopped` in `processEventForDatabase`.
 
-### - [ ] PR 2.4 — Add `gracefullyStopAgentLoop` helper
+### - [x] PR 2.4+2.5 — Add `gracefullyStopAgentLoop` helper + expose on cancel endpoint
 
-- Add `gracefullyStopAgentLoop()` in `front/lib/api/assistant/pubsub.ts`.
-- Sends the `gracefullyStopAgentLoopSignal` Temporal signal.
-
-### - [ ] PR 2.5 — Rename `/cancel` endpoint to `/stop` with `reason`
-
-- Rename `front/pages/api/w/[wId]/assistant/conversations/[cId]/cancel.ts` to `stop.ts`.
-- Change body schema from `{ action: "cancel", messageIds }` to
-  `{ reason: "cancel" | "gracefully_stop", messageIds }`.
-- When `reason === "cancel"`, call `cancelMessageGenerationEvent()` (existing behavior).
-- When `reason === "gracefully_stop"`, call `gracefullyStopAgentLoop()` with
-  `reason: "user_requested"`.
-- Keep the old `/cancel` endpoint as a redirect or alias for backward compatibility until
-  all clients are updated.
+- Add `gracefullyStopAgentLoop()` in `front/lib/api/assistant/pubsub.ts` (mirrors
+  `cancelMessageGenerationEvent` but sends `gracefullyStopAgentLoopSignal`).
+- Extend private `/cancel` endpoint to accept `action: "cancel" | "gracefully_stop"`.
+- When `action === "gracefully_stop"`, call `gracefullyStopAgentLoop()`.
+- Public v1 API endpoint unchanged (no breaking change).
 
 ### - [ ] PR 2.6 — Context pruning: preserve gracefully stopped chains as single interaction
 
