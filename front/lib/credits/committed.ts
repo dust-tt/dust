@@ -1,9 +1,7 @@
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  createMetronomeCommit,
-  listMetronomeProducts,
-} from "@app/lib/metronome/client";
+import { createMetronomeCommit } from "@app/lib/metronome/client";
 import type { CustomerFacingInvoiceInfo } from "@app/lib/plans/stripe";
 import {
   ENTERPRISE_N30_PAYMENTS_DAYS,
@@ -26,8 +24,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import type Stripe from "stripe";
-
-const PREPAID_COMMIT_PRODUCT_NAME = "Prepaid Commit";
 
 export async function startCreditFromProOneOffInvoice({
   auth,
@@ -508,11 +504,11 @@ async function addMetronomeCommitsForWorkspace({
   if (!metronomeCustomerId || !metronomeContractId) {
     logger.info(
       { subscription },
-      "[Credit Purchase] Subscription missing Metronome contract ID, skipping credit addition"
+      "[Commit Purchase] Subscription missing Metronome contract ID, skipping credit addition"
     );
     logger.info(
       { workspaceId: workspace.sId, metronomeCustomerId, metronomeContractId },
-      "[Credit Purchase] Workspace not provisioned in Metronome, skipping credit addition"
+      "[Commit Purchase] Workspace not provisioned in Metronome, skipping credit addition"
     );
     return new Ok(undefined);
   }
@@ -525,27 +521,23 @@ async function addMetronomeCommitsForWorkspace({
         CREDIT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000
     );
 
-  const productsResult = await listMetronomeProducts();
-  if (productsResult.isErr()) {
-    return new Err(productsResult.error);
-  }
-  const creditProduct = productsResult.value.find(
-    (p) => p.name === PREPAID_COMMIT_PRODUCT_NAME
-  );
-  if (!creditProduct) {
+  const productId = config.getMetronomeCommitProductId();
+  if (!productId) {
     return new Err(
-      new Error(`Metronome product "${PREPAID_COMMIT_PRODUCT_NAME}" not found`)
+      new Error(
+        "[Commit Purchase] Metronome commit product ID not configured; cannot add commits for credit purchase"
+      )
     );
   }
 
   const result = await createMetronomeCommit({
     metronomeCustomerId,
     contractId: metronomeContractId,
-    productId: creditProduct.id,
+    productId,
     amountCents,
     startingAt: effectiveStartDate,
     endingBefore: effectiveExpirationDate,
-    name: `${PREPAID_COMMIT_PRODUCT_NAME} (${effectiveStartDate.toISOString()})`,
+    name: `Prepaid commit (${effectiveStartDate.toISOString()})`,
     idempotencyKey: `commit-${workspace.sId}-${effectiveStartDate.getTime()}-${amountCents}`,
   });
 

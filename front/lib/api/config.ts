@@ -521,6 +521,11 @@ const config = {
   getMetronomeApiKey: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("METRONOME_API_KEY");
   },
+  getMetronomeCommitProductId: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "METRONOME_COMMIT_PRODUCT_ID"
+    );
+  },
 };
 
 export default config;
