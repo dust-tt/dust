@@ -1,6 +1,7 @@
 import {
   mockSkill,
   mockTool,
+  noSuggestion,
   promptSuggestion,
   skillSuggestion,
   type TestSuite,
@@ -413,6 +414,73 @@ Score 0 if the suggestion targets the wrong block (e.g. "cb63b301" or "instructi
 Score 1 if the suggestion targets the correct block but is too vague or generic.
 Score 2 if the suggestion correctly targets the tools block and addresses the tool usage order but lacks specificity.
 Score 3 if the suggestion targets the tools block with clear, specific instructions about using search-company first to get the ID, then get-owner with the ID.`,
+    },
+    {
+      scenarioId: "no-suggestion-on-successful-conversation",
+      type: "analysis",
+      agentConfig: {
+        name: "Finance Assistant",
+        description:
+          "Helps the team answer financial questions using company data in Notion",
+        instructionsHtml: `<div data-type="instructions-root" data-block-id="instructions-root">
+        <div data-block-id="role-block" data-instruction-type="role" data-collapsed="false" data-type="instruction-block">
+          <p data-block-id="role-p">You are a finance assistant. Help the team answer questions about company financials, revenue metrics, and business targets by searching internal documentation.</p>
+        </div>
+        <div data-block-id="guidelines-block" data-instruction-type="guidelines" data-collapsed="false" data-type="instruction-block">
+          <p data-block-id="guidelines-p">Always cite the source document when providing numbers. Present monetary values in a clear format (e.g., $4M, $8M).</p>
+        </div>
+        </div>`,
+        tools: [{ name: "Notion", sId: "mcp_notion" }],
+      },
+      conversation: [
+        {
+          role: "user",
+          content: "What is the 2025 ARR of our company?",
+        },
+        {
+          role: "agent",
+          content:
+            "According to our 2025 Financial Summary, our 2025 ARR is **$4M** (MRR of $333K), with 45% year-over-year growth.",
+          actions: [
+            {
+              functionCallName: "notion-search",
+              status: "succeeded",
+              params: { query: "2025 ARR annual recurring revenue" },
+              output:
+                '{"results": [{"title": "2025 Financial Summary", "content": "2025 ARR: $4,000,000. MRR: $333,333. YoY growth: 45%."}]}',
+            },
+          ],
+        },
+        {
+          role: "user",
+          content: "And what will be the ARR in 2026?",
+        },
+        {
+          role: "agent",
+          content:
+            "Per the 2026 Business Plan, the 2026 ARR target is **$8M** — doubling from the current $4M. Key growth drivers are enterprise expansion and a new product tier launching in Q2.",
+          actions: [
+            {
+              functionCallName: "notion-search",
+              status: "succeeded",
+              params: { query: "ARR target 2026 plan" },
+              output:
+                '{"results": [{"title": "2026 Business Plan", "content": "2026 ARR target: $8,000,000. Key drivers: enterprise expansion, new product tier launch in Q2."}]}',
+            },
+          ],
+        },
+      ],
+      workspaceContext: WORKSPACE_CONTEXT,
+      expectedToolCalls: [noSuggestion()],
+      judgeCriteria: `This is a smooth, successful conversation. The agent correctly searched Notion, found
+accurate data, cited sources, and presented numbers clearly. The user asked two straightforward
+questions and got helpful, well-formatted answers with no friction.
+
+There is nothing to improve here — no negative feedback, no tool errors, no user frustration,
+no missing capabilities. The agent performed exactly as intended.
+
+Score 0 if any substantive suggestion is made (prompt edits with content, tool additions, skill additions).
+Score 3 if no suggestion is created (empty suggestions arrays only).`,
     },
   ],
 };

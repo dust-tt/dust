@@ -31,7 +31,9 @@ export const REINFORCED_ANALYSIS_SECTIONS: Record<SectionKey, string> = {
 
 ${REINFORCED_TOOLS_DESCRIPTION}
 
-You MUST follow <analysis_workflow>. These steps are entirely focused on identifying potential agent improvements and calling the suggestion tools as an end result.`,
+You MUST follow <analysis_workflow>. These steps are entirely focused on identifying potential agent improvements and calling the suggestion tools as an end result.
+
+Most conversations do NOT warrant suggestions — roughly 80% of conversations lead to no suggestion at all. Making no suggestion is a perfectly valid and expected outcome. Only suggest changes when the conversation reveals a clear, high-value improvement. When in doubt, do not suggest.`,
 
   analysis_workflow: `Follow this process for every conversation you analyze:
 
