@@ -10,6 +10,7 @@ import { ensureConversationTitleActivity } from "@app/temporal/agent_loop/activi
 import {
   finalizeCancelledAgentLoopActivity,
   finalizeErroredAgentLoopActivity,
+  finalizeGracefullyStoppedAgentLoopActivity,
   finalizeSuccessfulAgentLoopActivity,
 } from "@app/temporal/agent_loop/activities/finalize";
 import { publishDeferredEventsActivity } from "@app/temporal/agent_loop/activities/publish_deferred_events";
@@ -49,6 +50,7 @@ export async function runAgentLoopWorker() {
       ensureConversationTitleActivity,
       finalizeSuccessfulAgentLoopActivity,
       finalizeCancelledAgentLoopActivity,
+      finalizeGracefullyStoppedAgentLoopActivity,
       finalizeErroredAgentLoopActivity,
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,
