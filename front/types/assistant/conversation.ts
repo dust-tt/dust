@@ -469,6 +469,13 @@ export type UserMessageNewEvent = {
   message: UserMessageTypeWithContentFragments;
 };
 
+// Event sent when a pending user message is promoted to visible from pending.
+export type UserMessagePromotedEvent = {
+  type: "user_message_promoted";
+  created: number;
+  messageId: string;
+};
+
 // Event sent when the user message is created.
 export type UserMessageErrorEvent = {
   type: "user_message_error";
@@ -500,13 +507,6 @@ export type ButlerSuggestionCreatedEvent = {
   type: "butler_suggestion_created";
   created: number;
   suggestion: ButlerSuggestionPublicType;
-};
-
-// Event sent when a pending user message is promoted to visible after graceful stop.
-export type UserMessagePromotedEvent = {
-  type: "user_message_promoted";
-  created: number;
-  messageSId: string;
 };
 
 // Event sent when the butler starts analyzing a conversation.

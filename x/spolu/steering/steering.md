@@ -331,7 +331,7 @@ export async function updateAgentMessageWithFinalStatus(
 export interface UserMessagePromotedEvent {
   type: "user_message_promoted";
   created: number;
-  messageSId: string;
+  messageId: string;
 }
 ```
 
