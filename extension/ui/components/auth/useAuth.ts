@@ -171,7 +171,7 @@ export const useAuthHook = () => {
             : fetchedUser.workspaces[0];
           setWorkspace(ws);
           if (ws) {
-            datadogLogs.setGlobalContextProperty("workspaceSId", ws.sId);
+            datadogLogs.setGlobalContextProperty("workspaceId", ws.sId);
             await platform.storage.set("selectedWorkspace", ws.sId);
           }
         }
@@ -231,7 +231,7 @@ export const useAuthHook = () => {
 
   const redirectToSSOLogin = useCallback(
     async (workspace: WorkspaceType) => {
-      logger.info({ workspaceSId: workspace.sId }, "Enforcing SSO.");
+      logger.info({ workspaceId: workspace.sId }, "Enforcing SSO.");
       setAuthError(
         new AuthError(
           "sso_enforced",
