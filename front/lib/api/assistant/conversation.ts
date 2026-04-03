@@ -602,12 +602,16 @@ export async function postUserMessage(
     return limitResult;
   }
 
-  // Steering invariants: enforce single agent loop per conversation when
-  // `steeringEnabled` is true.
-  if (steeringEnabled) {
-    const agentMentions = mentions.filter(isAgentMention);
+  const agentMentions = mentions.filter(isAgentMention);
+  const runningAgentMessage = conversation.content
+    .flat()
+    .find(
+      (m): m is AgentMessageType =>
+        isAgentMessageType(m) && m.status === "created"
+    );
 
-    // At most one agent mention per message.
+  // Steering invariants: enforce single agent loop per conversation.
+  if (steeringEnabled) {
     if (agentMentions.length > 1) {
       return new Err({
         status_code: 400,
@@ -618,27 +622,18 @@ export async function postUserMessage(
       });
     }
 
-    // Cannot address a different agent than the running one.
-    const runningAgentMessage = conversation.content
-      .flat()
-      .find(
-        (m): m is AgentMessageType =>
-          isAgentMessageType(m) && m.status === "created"
-      );
-
-    if (runningAgentMessage && agentMentions.length > 0) {
-      if (
-        agentMentions[0].configurationId !==
-        runningAgentMessage.configuration.sId
-      ) {
-        return new Err({
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Cannot run a different agent while one is running.",
-          },
-        });
-      }
+    if (
+      runningAgentMessage &&
+      agentMentions.length > 0 &&
+      agentMentions[0].configurationId !== runningAgentMessage.configuration.sId
+    ) {
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Cannot run a different agent while one is running.",
+        },
+      });
     }
   }
 
@@ -754,27 +749,6 @@ export async function postUserMessage(
     }
   }
 
-  // When steering is enabled, detect the running agent message (if any) to
-  // determine whether to take the pending path inside the transaction.
-  const runningAgentMessage = steeringEnabled
-    ? conversation.content
-        .flat()
-        .find(
-          (m): m is AgentMessageType =>
-            isAgentMessageType(m) && m.status === "created"
-        )
-    : undefined;
-
-  const agentMentions = mentions.filter(isAgentMention);
-
-  // Determine if we should attempt the pending path: steering is enabled,
-  // there's a running agent, and the user mentioned that same agent.
-  const shouldAttemptPendingPath =
-    steeringEnabled &&
-    runningAgentMessage &&
-    agentMentions.length > 0 &&
-    agentMentions[0].configurationId === runningAgentMessage.configuration.sId;
-
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages } = await withTransaction(async (t) => {
     // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
@@ -784,7 +758,7 @@ export async function postUserMessage(
 
     // Pending path: re-read agent message status under lock. If the agent is
     // still running, create a pending user message without an agent message.
-    if (shouldAttemptPendingPath) {
+    if (steeringEnabled && runningAgentMessage) {
       const agentMessageRow = await AgentMessageModel.findByPk(
         runningAgentMessage.agentMessageId,
         { transaction: t }
@@ -1040,7 +1014,7 @@ export async function postUserMessage(
       conversation,
       userMessage,
     });
-  } else if (shouldAttemptPendingPath && runningAgentMessage) {
+  } else if (steeringEnabled && runningAgentMessage) {
     // Pending path: signal the running agent loop to gracefully stop.
     await gracefullyStopAgentLoop(auth, {
       messageIds: [runningAgentMessage.sId],
