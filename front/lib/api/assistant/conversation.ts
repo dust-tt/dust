@@ -48,7 +48,7 @@ import { isModelAvailable, isProviderWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import { extractFromString } from "@app/lib/mentions/format";
+import { extractFromString, serializeMention } from "@app/lib/mentions/format";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
@@ -103,6 +103,7 @@ import type {
   LightAgentConfigurationType,
   ToolErrorEvent,
 } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   AgenticMessageData,
   AgentMessageType,
@@ -142,6 +143,7 @@ import { md5 } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
+import uniq from "lodash/uniq";
 import type { NextApiRequest } from "next";
 import type { Transaction } from "sequelize";
 import { col } from "sequelize";
@@ -370,39 +372,6 @@ export async function getMessageConversationId(
     conversationId: messageRow?.conversation?.sId ?? null,
     messageId: messageRow?.sId ?? null,
   };
-}
-
-export async function getLastUserMessage(
-  auth: Authenticator,
-  conversation: ConversationWithoutContentType
-): Promise<Result<string, Error>> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const message = await MessageModel.findOne({
-    where: {
-      workspaceId: owner.id,
-      conversationId: conversation.id,
-    },
-    order: [
-      ["rank", "DESC"],
-      ["version", "ASC"],
-    ],
-    include: [
-      {
-        model: UserMessageModel,
-        as: "userMessage",
-        required: false,
-      },
-    ],
-  });
-
-  const content = message?.userMessage?.content;
-  if (!content) {
-    return new Err(
-      new Error("Error suggesting agents: no content found in conversation.")
-    );
-  }
-  return new Ok(content);
 }
 
 /**
@@ -654,8 +623,37 @@ export async function postUserMessage(
     })(),
   ]);
 
-  const agentConfigurations = removeNulls(results[0]);
+  let agentConfigurations = removeNulls(results[0]);
   let shouldCreateBranch = false;
+
+  // Check if no mentions, in that case, we might automatically append an @dust mention.
+  if (
+    mentions.length === 0 &&
+    (context.origin === "web" || context.origin === "extension")
+  ) {
+    const hasOtherHumans =
+      uniq(
+        conversation.content
+          .map((versions) => versions[versions.length - 1])
+          .filter(isUserMessageType)
+          .filter((m) => m.user?.sId && m.user.sId !== auth.user()?.sId)
+      ).length >= 1;
+
+    if (!hasOtherHumans) {
+      // Check if the global @dust agent is active for this workspace.
+      const dustAgent = await getAgentConfiguration(auth, {
+        agentId: GLOBAL_AGENTS_SID.DUST,
+        variant: "extra_light",
+      });
+
+      if (dustAgent && dustAgent.status === "active") {
+        agentConfigurations.push(dustAgent);
+        const dustMention: MentionType = { configurationId: dustAgent.sId };
+        mentions.push(dustMention);
+        content = `${serializeMention({ id: dustAgent.sId, type: "agent", label: dustAgent.name })} ${content}`;
+      }
+    }
+  }
 
   for (const agentConfig of agentConfigurations) {
     if (!canAccessAgent(agentConfig)) {
