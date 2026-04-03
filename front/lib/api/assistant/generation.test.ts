@@ -354,7 +354,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const userCtx =
       "<user_context>\n- Job function: Engineering\n- Preferred platforms: Slack\n</user_context>";
     const workspaceCtx =
-      "<workspace_context>\n## AVAILABLE MODELS\n1 model available.\n</workspace_context>";
+      "<workspace_context>\n<available_models>\n</available_models>\n</workspace_context>";
 
     const params = {
       userMessage: userMessage1,
@@ -384,7 +384,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       s.content.includes("<workspace_context>")
     );
     expect(wsSection).toBeDefined();
-    expect(wsSection?.content).toContain("AVAILABLE MODELS");
+    expect(wsSection?.content).toContain("<available_models>");
 
     // User context belongs in the ephemeral tier (per-user).
     const userSection = ephemeralContext.find((s) =>
