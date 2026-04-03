@@ -2,9 +2,13 @@ import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversati
 import { describe, expect, it } from "vitest";
 
 describe("groupMessagesIntoInteractions", () => {
-  type Tagged = { role: string; tag: string };
+  type Tagged = { role: string; tag: string; agentMessageStatus?: string };
 
-  const msg = (role: string, tag: string): Tagged => ({ role, tag });
+  const msg = (
+    role: string,
+    tag: string,
+    agentMessageStatus?: string
+  ): Tagged => ({ role, tag, agentMessageStatus });
 
   it("returns an empty array when there are no messages", () => {
     expect(groupMessagesIntoInteractions([])).toEqual([]);
@@ -82,5 +86,56 @@ describe("groupMessagesIntoInteractions", () => {
       "f1",
     ]);
     expect(interactions[1].messages.map((m) => m.tag)).toEqual(["u2"]);
+  });
+
+  it("keeps a gracefully_stopped chain as a single interaction", () => {
+    const interactions = groupMessagesIntoInteractions([
+      msg("user", "u1"),
+      msg("assistant", "a1", "gracefully_stopped"),
+      msg("function", "f1"),
+      msg("user", "u2"),
+      msg("assistant", "a2"),
+      msg("function", "f2"),
+    ]);
+    expect(interactions).toHaveLength(1);
+    expect(interactions[0].messages.map((m) => m.tag)).toEqual([
+      "u1",
+      "a1",
+      "f1",
+      "u2",
+      "a2",
+      "f2",
+    ]);
+  });
+
+  it("keeps multiple gracefully_stopped segments as a single interaction", () => {
+    const interactions = groupMessagesIntoInteractions([
+      msg("user", "u1"),
+      msg("assistant", "a1", "gracefully_stopped"),
+      msg("function", "f1"),
+      msg("user", "u2"),
+      msg("assistant", "a2", "gracefully_stopped"),
+      msg("function", "f2"),
+      msg("user", "u3"),
+      msg("assistant", "a3"),
+    ]);
+    expect(interactions).toHaveLength(1);
+  });
+
+  it("closes the interaction normally when agent is succeeded", () => {
+    const interactions = groupMessagesIntoInteractions([
+      msg("user", "u1"),
+      msg("assistant", "a1", "succeeded"),
+      msg("function", "f1"),
+      msg("user", "u2"),
+      msg("assistant", "a2"),
+    ]);
+    expect(interactions).toHaveLength(2);
+    expect(interactions[0].messages.map((m) => m.tag)).toEqual([
+      "u1",
+      "a1",
+      "f1",
+    ]);
+    expect(interactions[1].messages.map((m) => m.tag)).toEqual(["u2", "a2"]);
   });
 });

@@ -15,6 +15,7 @@ export type MessageWithTokens = ModelMessageTypeMultiActions & {
 
 export type MinimalMessageType = {
   role: string;
+  agentMessageStatus?: string;
 };
 
 export type Interaction<T extends MinimalMessageType> = {

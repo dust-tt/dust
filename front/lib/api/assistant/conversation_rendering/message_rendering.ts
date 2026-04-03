@@ -176,6 +176,15 @@ export async function renderAllMessages(
             conversation,
             !!excludeActions
           );
+          // Tag the last assistant message with the agent message status so
+          // that groupMessagesIntoInteractions can keep gracefully_stopped
+          // chains as a single interaction for pruning purposes.
+          const lastAssistant = [...agentMessages]
+            .reverse()
+            .find((msg) => msg.role === "assistant");
+          if (lastAssistant) {
+            lastAssistant.agentMessageStatus = m.status;
+          }
           messages.push(...agentMessages);
         } else {
           // Render other agent messages as user messages with system tags, showing only the final

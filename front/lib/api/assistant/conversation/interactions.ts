@@ -36,16 +36,23 @@ export function groupMessagesIntoInteractions<T extends MinimalMessageType>(
     // Decide if we should close the current interaction.
     // We close when:
     // - it's the last message, or
-    // - the next message is a "user" turn while the current message is an "agent" turn.
-    // This ensures that all consecutive user/content_fragment messages remain in the same
-    // user turn, followed by all agent/tool messages for that interaction.
+    // - the next message is a "user" turn while the current message is an "agent" turn,
+    //   UNLESS the last assistant message in this turn was gracefully stopped (in which
+    //   case the next user message is steering and the interaction continues).
     const shouldClose = (() => {
       if (isLastMessage) {
         return true;
       }
       const currentTurn = turnTypeForMessage(message);
       const nextTurn = turnTypeForMessage(messages[i + 1]);
-      return currentTurn === "agent" && nextTurn === "user";
+      if (currentTurn === "agent" && nextTurn === "user") {
+        // Find the last assistant message in the current interaction.
+        const lastAssistant = [...currentInteraction]
+          .reverse()
+          .find((m) => m.role === "assistant");
+        return lastAssistant?.agentMessageStatus !== "gracefully_stopped";
+      }
+      return false;
     })();
 
     if (shouldClose) {
