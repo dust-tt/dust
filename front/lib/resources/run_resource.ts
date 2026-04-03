@@ -339,19 +339,14 @@ export class RunResource extends BaseResource<RunModel> {
       return;
     }
 
-    const BATCH_DISCOUNT_FACTOR = 0.5;
-
-    let usageCostMicroUsd = computeTokensCostForUsageInMicroUsd({
+    const usageCostMicroUsd = computeTokensCostForUsageInMicroUsd({
       modelId: modelConfig.modelId,
       promptTokens: usage.inputTokens,
       completionTokens: usage.outputTokens,
       cachedTokens: usage.cachedTokens ?? null,
       cacheCreationTokens: usage.cacheCreationTokens ?? null,
+      isBatch,
     });
-
-    if (isBatch) {
-      usageCostMicroUsd = Math.round(usageCostMicroUsd * BATCH_DISCOUNT_FACTOR);
-    }
 
     return this.recordRunUsage(auth, [
       {
