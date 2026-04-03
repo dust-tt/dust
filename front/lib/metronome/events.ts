@@ -24,65 +24,6 @@ function truncateTransactionId(id: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// AWU message tier
-// ---------------------------------------------------------------------------
-
-// "basic" = standard models, no expensive tools → 0 credits (working assumption)
-// "advanced" = frontier/reasoning models OR premium tools → 1+ credits
-export type MessageTier = "basic" | "advanced";
-
-// Models considered "advanced" (frontier/reasoning) for AWU classification.
-// Standard models (GPT-5 Mini, Claude Sonnet, Gemini Flash, small models) are "basic".
-const ADVANCED_MODEL_PREFIXES = [
-  "claude-opus",
-  "claude-4-opus",
-  "claude-3-opus",
-  "gpt-5.4",
-  "gpt-5.2",
-  "gpt-5.1",
-  "gpt-5-",
-  "gpt-4-turbo",
-  "o1",
-  "o3",
-  "o4",
-  "grok-4-latest",
-  "gemini-3-pro",
-  "gemini-3.1-pro",
-  "gemini-2.5-pro",
-];
-
-// Tool categories that make a message "advanced" regardless of model.
-const ADVANCED_TOOL_CATEGORIES: ToolCategory[] = [
-  "deep_research",
-  "generation",
-  "agents",
-];
-
-function isAdvancedModel(modelId: string): boolean {
-  return ADVANCED_MODEL_PREFIXES.some((prefix) => modelId.startsWith(prefix));
-}
-
-/**
- * Classify a message as basic or advanced based on the models and tools used.
- * A message is "advanced" if it uses a frontier/reasoning model OR expensive tools.
- */
-export function classifyMessageTier({
-  modelIds,
-  toolCategories,
-}: {
-  modelIds: string[];
-  toolCategories: ToolCategory[];
-}): MessageTier {
-  if (modelIds.some(isAdvancedModel)) {
-    return "advanced";
-  }
-  if (toolCategories.some((c) => ADVANCED_TOOL_CATEGORIES.includes(c))) {
-    return "advanced";
-  }
-  return "basic";
-}
-
-// ---------------------------------------------------------------------------
 // Tool category mapping
 // ---------------------------------------------------------------------------
 
@@ -216,7 +157,6 @@ export function buildLlmUsageEvents({
   runUsages,
   origin,
   isProgrammaticUsage,
-  messageTier,
   isSubAgentMessage,
   timestamp,
 }: {
@@ -229,7 +169,6 @@ export function buildLlmUsageEvents({
   runUsages: RunUsageType[];
   origin: UserMessageOrigin;
   isProgrammaticUsage: boolean;
-  messageTier: MessageTier;
   isSubAgentMessage: boolean;
   timestamp: string;
 }): MetronomeEvent[] {
@@ -290,7 +229,6 @@ export function buildLlmUsageEvents({
       // Provider cost without markup — markup is applied in Metronome rate card.
       cost_micro_usd: group.costMicroUsd,
       is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
-      message_tier: messageTier,
       is_sub_agent_message: isSubAgentMessage ? "true" : "false",
       origin,
     },
@@ -327,7 +265,6 @@ export function buildToolUseEvents({
   actions,
   origin,
   isProgrammaticUsage,
-  messageTier,
   isSubAgentMessage,
   timestamp,
 }: {
@@ -340,7 +277,6 @@ export function buildToolUseEvents({
   actions: ToolAction[];
   origin: UserMessageOrigin;
   isProgrammaticUsage: boolean;
-  messageTier: MessageTier;
   isSubAgentMessage: boolean;
   timestamp: string;
 }): MetronomeEvent[] {
@@ -389,7 +325,6 @@ export function buildToolUseEvents({
       count,
       total_execution_duration_ms: totalDurationMs,
       is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
-      message_tier: messageTier,
       is_sub_agent_message: isSubAgentMessage ? "true" : "false",
       origin,
     },

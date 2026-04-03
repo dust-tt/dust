@@ -9,8 +9,6 @@ import {
   buildLlmUsageEvents,
   buildToolUseEvents,
   buildWorkspaceGaugeEvent,
-  classifyMessageTier,
-  getToolCategory,
 } from "@app/lib/metronome/events";
 import type { MetronomeEvent } from "@app/lib/metronome/types";
 import {
@@ -291,13 +289,6 @@ export async function emitMetronomeUsageEventsActivity(
     };
   });
 
-  // Classify message tier.
-  const modelIds = runUsages.map((u) => u.modelId);
-  const toolCategories = toolActions.map((a) =>
-    getToolCategory(a.internalMCPServerName)
-  );
-  const messageTier = classifyMessageTier({ modelIds, toolCategories });
-
   // Deterministic short hash of runIds — ensures different runs of the same
   // message produce different transaction_ids (e.g., error then success finalization).
   const runKey = createHash("sha256")
@@ -316,7 +307,6 @@ export async function emitMetronomeUsageEventsActivity(
     runUsages,
     origin: userMessageOrigin,
     isProgrammaticUsage: programmatic,
-    messageTier,
     isSubAgentMessage,
     timestamp,
   });
@@ -331,7 +321,6 @@ export async function emitMetronomeUsageEventsActivity(
     actions: toolActions,
     origin: userMessageOrigin,
     isProgrammaticUsage: programmatic,
-    messageTier,
     isSubAgentMessage,
     timestamp,
   });
