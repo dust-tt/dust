@@ -49,6 +49,7 @@ import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_worksp
 import { launchWorkOSWorkspaceSubscriptionCreatedWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import assert from "assert";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -137,7 +138,7 @@ async function provisionMetronomeCustomer({
     }
   } catch (err) {
     logger.error(
-      { workspaceId: workspace.sId, error: err },
+      { workspaceId: workspace.sId, error: normalizeError(err) },
       "[Stripe Webhook] Failed to provision Metronome customer"
     );
   }
@@ -378,14 +379,17 @@ async function handler(
 
             // Provision Metronome customer if not already set.
             if (!workspace.metronomeCustomerId) {
-              const stripeCustomerId =
-                typeof checkoutStripeSubscription.customer === "string"
-                  ? checkoutStripeSubscription.customer
-                  : "";
-              void provisionMetronomeCustomer({
-                workspace,
-                stripeCustomerId,
-              });
+              const stripeCustomerId = isString(
+                checkoutStripeSubscription.customer
+              )
+                ? checkoutStripeSubscription.customer
+                : null;
+              if (stripeCustomerId) {
+                void provisionMetronomeCustomer({
+                  workspace,
+                  stripeCustomerId,
+                });
+              }
             }
 
             await launchWorkOSWorkspaceSubscriptionCreatedWorkflow({
