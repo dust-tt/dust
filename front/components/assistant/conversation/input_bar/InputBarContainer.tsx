@@ -142,6 +142,7 @@ export interface InputBarContainerProps {
     text: string;
     agentMention?: RichAgentMention | null;
   } | null;
+  isAgentBuilder?: boolean;
   isSubmitting: boolean;
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   onMCPServerViewDeselect: (serverView: MCPServerViewType) => void;
@@ -177,6 +178,7 @@ const InputBarContainer = ({
   disableInput,
   fileUploaderService,
   getDraft,
+  isAgentBuilder = false,
   onNodeSelect,
   onNodeUnselect,
   attachedNodes,
@@ -211,6 +213,7 @@ const InputBarContainer = ({
     if (
       hasInitializedAgentRef.current ||
       !singleAgentInput ||
+      isAgentBuilder ||
       conversation ||
       hasUserMention ||
       stickyMentions?.length
@@ -237,6 +240,7 @@ const InputBarContainer = ({
     agentsBySId,
     setSelectedSingleAgent,
     getDraft,
+    isAgentBuilder,
   ]);
 
   // Callback for the editor's @ mention suggestion — sets the selected agent
