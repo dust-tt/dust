@@ -26,6 +26,7 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
 import { getManageSkillsRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
   RichAgentMention,
@@ -73,6 +74,48 @@ import React, {
 } from "react";
 import { InputBarContext } from "./InputBarContext";
 
+const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
+const FADE_OUT_TRANSITION = "50ms ease-out";
+const FADE_IN_TRANSITION = "150ms ease-out";
+
+function getButtonsTransitionStyle(
+  singleAgentInput: boolean,
+  hideButtons: boolean
+): React.CSSProperties | undefined {
+  if (!singleAgentInput) {
+    return undefined;
+  }
+  const opacityTransition = hideButtons
+    ? FADE_OUT_TRANSITION
+    : FADE_IN_TRANSITION;
+  return {
+    maxWidth: hideButtons ? 0 : 500,
+    opacity: hideButtons ? 0 : 1,
+    overflow: "hidden",
+    transition: `max-width ${COLLAPSE_TRANSITION}, opacity ${opacityTransition}`,
+  };
+}
+
+function getToolbarRowTransitionStyle(
+  singleAgentInput: boolean,
+  hideButtons: boolean
+): React.CSSProperties | undefined {
+  if (!singleAgentInput) {
+    return undefined;
+  }
+  const opacityTransition = hideButtons
+    ? FADE_OUT_TRANSITION
+    : FADE_IN_TRANSITION;
+  return {
+    maxHeight: hideButtons ? 0 : 100,
+    opacity: hideButtons ? 0 : 1,
+    overflow: "hidden",
+    paddingTop: hideButtons ? 0 : undefined,
+    paddingBottom: hideButtons ? 0 : undefined,
+    transition: `max-height ${COLLAPSE_TRANSITION}, opacity ${opacityTransition}, padding ${COLLAPSE_TRANSITION}`,
+  };
+}
+
 export const INPUT_BAR_ACTIONS = [
   "capabilities",
   "attachment",
@@ -95,17 +138,22 @@ export interface InputBarContainerProps {
   disableInput: boolean;
   disableUserMentions?: boolean;
   fileUploaderService: FileUploaderService;
-  getDraft: () => { text: string } | null;
+  getDraft: () => {
+    text: string;
+    agentMention?: RichAgentMention | null;
+  } | null;
+  isAgentBuilder?: boolean;
   isSubmitting: boolean;
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   onMCPServerViewDeselect: (serverView: MCPServerViewType) => void;
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
+  onResetSelections: () => void;
   onSkillDeselect: (skill: SkillType) => void;
   onSkillSelect: (skill: SkillType) => void;
   owner: WorkspaceType;
-  saveDraft: (markdown: string) => void;
+  saveDraft: (markdown: string, agentMention?: RichAgentMention | null) => void;
   pendingInputText: string | null;
   selectedAgent: RichAgentMention | null;
   selectedMCPServerViews: MCPServerViewType[];
@@ -130,12 +178,14 @@ const InputBarContainer = ({
   disableInput,
   fileUploaderService,
   getDraft,
+  isAgentBuilder = false,
   onNodeSelect,
   onNodeUnselect,
   attachedNodes,
   onMCPServerViewSelect,
   onMCPServerViewDeselect,
   selectedMCPServerViews,
+  onResetSelections,
   onSkillSelect,
   onSkillDeselect,
   selectedSkills,
@@ -147,6 +197,51 @@ const InputBarContainer = ({
   const singleAgentInput = isSingleAgentInputEnabled();
   const { selectedSingleAgent, setSelectedSingleAgent } =
     useContext(InputBarContext);
+  const [hasUserMention, setHasUserMention] = useState(false);
+
+  const agentsBySId = useMemo(
+    () => new Map(allAgents.map((a) => [a.sId, a])),
+    [allAgents]
+  );
+
+  // Auto-select the agent in single-agent mode for new conversations on mount.
+  // Prefer the agent saved in the draft; fall back to "dust".
+  // The ref guard ensures this only runs once so it doesn't override manual agent changes.
+  const hasInitializedAgentRef = useRef(false);
+
+  useEffect(() => {
+    if (
+      hasInitializedAgentRef.current ||
+      !singleAgentInput ||
+      isAgentBuilder ||
+      conversation ||
+      hasUserMention ||
+      stickyMentions?.length
+    ) {
+      return;
+    }
+    const draft = getDraft();
+    if (draft?.agentMention) {
+      hasInitializedAgentRef.current = true;
+      setSelectedSingleAgent(draft.agentMention);
+      return;
+    }
+
+    const dustAgent = agentsBySId.get(GLOBAL_AGENTS_SID.DUST);
+    if (dustAgent) {
+      hasInitializedAgentRef.current = true;
+      setSelectedSingleAgent(toRichAgentMentionType(dustAgent));
+    }
+  }, [
+    singleAgentInput,
+    conversation,
+    hasUserMention,
+    stickyMentions?.length,
+    agentsBySId,
+    setSelectedSingleAgent,
+    getDraft,
+    isAgentBuilder,
+  ]);
 
   // Callback for the editor's @ mention suggestion — sets the selected agent
   // without focusing (the editor already has focus when the user types @).
@@ -161,6 +256,8 @@ const InputBarContainer = ({
   >(null);
   const [pastedCount, setPastedCount] = useState(0);
   const [isEmpty, setIsEmpty] = useState(true);
+  // A ref so the mention suggestion plugin (which lives outside React) can read it synchronously.
+  const shouldSuggestAgentRef = useRef(true);
   const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
   const plusButtonRef = useRef<HTMLDivElement>(null);
@@ -336,6 +433,7 @@ const InputBarContainer = ({
     conversationId: conversation?.sId,
     spaceId: space?.sId,
     onInlineText: handleInlineText,
+    shouldSuggestAgentRef: singleAgentInput ? shouldSuggestAgentRef : undefined,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
       let inserted = false;
@@ -412,7 +510,7 @@ const InputBarContainer = ({
             break;
           case "mention": {
             if (singleAgentInput) {
-              const agent = allAgents.find((a) => a.sId === message.id);
+              const agent = agentsBySId.get(message.id);
               if (agent) {
                 handleSingleAgentSelect(toRichAgentMentionType(agent));
               }
@@ -439,14 +537,39 @@ const InputBarContainer = ({
     },
   });
 
+  // When a user is mentioned in single-agent mode, deselect the agent and clear capabilities.
+  // Uses a ref so the editor listener (registered once in the useEffect below) always calls
+  // the latest closure without re-registering the listener on every render.
+  const onEditorMentionsChangedRef = useRef((_userMentioned: boolean) => {});
+
+  onEditorMentionsChangedRef.current = (userMentioned: boolean) => {
+    shouldSuggestAgentRef.current = !(singleAgentInput && userMentioned);
+    if (singleAgentInput && userMentioned) {
+      setSelectedSingleAgent(null);
+      onResetSelections();
+      fileUploaderService.resetUpload();
+    }
+  };
+
+  // Persist the selected agent to the draft whenever it changes.
+  useEffect(() => {
+    if (singleAgentInput && selectedSingleAgent) {
+      const { markdown } = editorService.getMarkdownAndMentions();
+      saveDraft(markdown, selectedSingleAgent);
+    }
+  }, [singleAgentInput, selectedSingleAgent, editorService, saveDraft]);
+
   // Update the editor ref when the editor is created and listen for updates to the editor.
   useEffect(() => {
     const handleUpdate = () => {
       setIsEmpty(editorService.isEmpty());
 
-      // Auto-save draft when content changes.
-      const { markdown } = editorService.getMarkdownAndMentions();
+      // Auto-save draft when content changes and track user mentions.
+      const { markdown, mentions } = editorService.getMarkdownAndMentions();
       saveDraft(markdown);
+      const userMentioned = mentions.some((m) => m.type === "user");
+      setHasUserMention(userMentioned);
+      onEditorMentionsChangedRef.current(userMentioned);
     };
 
     if (editorRef.current) {
@@ -658,9 +781,15 @@ const InputBarContainer = ({
     };
   }, [clientType, editorService]);
 
+  // Tracks whether the draft restore effect set the selected agent,
+  // so the sticky-mentions sync in useHandleMentions can skip overwriting it.
+  const draftAgentRestoredRef = useRef(false);
+
   // Restore draft when switching conversations (including new conversations).
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
+    draftAgentRestoredRef.current = false;
+
     if (
       !editor ||
       editor.isDestroyed ||
@@ -679,9 +808,22 @@ const InputBarContainer = ({
       draft &&
       (editorService.isEmpty() || editorContainsOnlyStickyMentions)
     ) {
+      // Restore the selected agent from the draft (single-agent mode).
+      if (singleAgentInput && draft.agentMention) {
+        setSelectedSingleAgent(draft.agentMention);
+        draftAgentRestoredRef.current = true;
+      }
+      // TODO: cleanup once we ship the single agent mode
+      // In single-agent mode, strip agent mentions from the draft text since
+      // the agent is handled by the picker button, not inline in the editor.
+      // This handles drafts saved before single-agent mode was enabled.
+      const draftText = singleAgentInput
+        ? draft.text.replace(/:mention\[[^\]]*\]\{sId=[^}]*\}\s*/g, "").trim()
+        : draft.text;
+
       // Schedule content restoration to avoid flushing during render lifecycle.
       queueMicrotask(() =>
-        editorService.setContent(draft.text, { focus: !disableAutoFocus })
+        editorService.setContent(draftText, { focus: !disableAutoFocus })
       );
     }
   }, [
@@ -698,7 +840,8 @@ const InputBarContainer = ({
     stickyMentions,
     selectedAgent,
     disableAutoFocus,
-    pendingInputText
+    pendingInputText,
+    draftAgentRestoredRef
   );
 
   const buttonSize = useMemo(() => {
@@ -707,15 +850,27 @@ const InputBarContainer = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [isToolbarOpen, setIsToolbarOpen] = useState(false);
+  const hideButtons = singleAgentInput && hasUserMention;
+
   const contentEditableClasses = classNames(
     "inline-block w-full",
     "border-0 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
     "whitespace-pre-wrap font-normal",
-    "px-3 sm:pl-4 sm:pt-3.5 pt-3"
+    "px-3 sm:pl-4 pt-3",
+    !hideButtons && "sm:pt-3.5"
   );
 
-  const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const isRecording = voiceTranscriberService.status === "recording";
+
+  const buttonsTransitionStyle = getButtonsTransitionStyle(
+    singleAgentInput,
+    hideButtons
+  );
+  const toolbarRowTransitionStyle = getToolbarRowTransitionStyle(
+    singleAgentInput,
+    hideButtons
+  );
 
   return (
     <div
@@ -729,17 +884,21 @@ const InputBarContainer = ({
       }}
     >
       <div className="flex w-0 flex-grow flex-col">
-        <EditorContent
-          disabled={disableInput}
-          editor={editor}
-          className={classNames(
-            contentEditableClasses,
-            "scrollbar-hide",
-            "overflow-y-auto",
-            disableInput && "cursor-not-allowed",
-            "max-h-[40vh] min-h-14 sm:min-h-16"
-          )}
-        />
+        <div className="relative">
+          <EditorContent
+            disabled={disableInput}
+            editor={editor}
+            className={classNames(
+              contentEditableClasses,
+              "scrollbar-hide",
+              "overflow-y-auto",
+              disableInput && "cursor-not-allowed",
+              hideButtons
+                ? "max-h-[40vh] pr-20"
+                : "max-h-[40vh] min-h-14 sm:min-h-16"
+            )}
+          />
+        </div>
         <BubbleMenu
           editor={editor ?? undefined}
           className={cn("flex", isMobile && "hidden")}
@@ -750,8 +909,23 @@ const InputBarContainer = ({
             </Toolbar>
           )}
         </BubbleMenu>
-        <div className="flex w-full flex-col py-1.5 sm:pb-2">
-          <div className="mb-1 flex flex-wrap items-center px-2">
+        <div
+          className={cn(
+            "flex w-full flex-col",
+            !hideButtons && "py-1.5 sm:pb-2"
+          )}
+          style={
+            singleAgentInput
+              ? {
+                  transition: `padding ${COLLAPSE_TRANSITION}`,
+                }
+              : undefined
+          }
+        >
+          <div
+            className="mb-1 flex flex-wrap items-center px-2"
+            style={toolbarRowTransitionStyle}
+          >
             {selectedSkills.map((skill) => (
               <React.Fragment key={skill.sId}>
                 {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
@@ -825,7 +999,10 @@ const InputBarContainer = ({
               </React.Fragment>
             ))}
           </div>
-          <div className="relative flex w-full items-center justify-between">
+          <div
+            className="relative flex w-full items-center justify-between"
+            style={toolbarRowTransitionStyle}
+          >
             {!isRecording && editor && (
               <Toolbar
                 variant="overlay"
@@ -850,7 +1027,10 @@ const InputBarContainer = ({
               )}
             >
               {!isRecording && (
-                <div className="flex items-center">
+                <div
+                  className="flex items-center"
+                  style={buttonsTransitionStyle}
+                >
                   <Button
                     variant="ghost-secondary"
                     icon={TextIcon}
@@ -885,21 +1065,10 @@ const InputBarContainer = ({
                 </div>
               )}
               <div className="grow" />
-              <div className="flex items-center gap-2 md:gap-1">
-                {!subscription.plan.isByok &&
-                  owner.metadata?.allowVoiceTranscription !== false &&
-                  actions.includes("voice") && (
-                    <VoicePicker
-                      status={voiceTranscriberService.status}
-                      level={voiceTranscriberService.level}
-                      elapsedSeconds={voiceTranscriberService.elapsedSeconds}
-                      onRecordStart={voiceTranscriberService.startRecording}
-                      onRecordStop={voiceTranscriberService.stopRecording}
-                      disabled={disableInput}
-                      size={buttonSize}
-                      showStopLabel={!isMobile}
-                    />
-                  )}
+              <div
+                className="flex items-center gap-2 md:gap-1"
+                style={buttonsTransitionStyle}
+              >
                 {clientType === "extension" && (
                   <>
                     <div ref={plusButtonRef}>
@@ -986,47 +1155,64 @@ const InputBarContainer = ({
                     )}
                   </>
                 )}
-                <Button
-                  size={buttonSize}
-                  isLoading={
-                    isSubmitting &&
-                    voiceTranscriberService.status !== "transcribing"
-                  }
-                  icon={ArrowUpIcon}
-                  variant="highlight"
-                  disabled={
-                    isEmpty ||
-                    isSubmitting ||
-                    disableInput ||
-                    voiceTranscriberService.status !== "idle"
-                  }
-                  onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (disableAutoFocus) {
-                      editorService.blur();
-                      // wait a bit for the keyboard to be closed on mobile
-                      if (isMobile) {
-                        editorService.setLoading(true);
-                        await new Promise((resolve) =>
-                          setTimeout(resolve, 500)
-                        );
-                        editorService.setLoading(false);
-                      }
-                    }
-                    onEnterKeyDown(
-                      editorService.isEmpty(),
-                      editorService.getMarkdownAndMentions(),
-                      () => {
-                        editorService.clearEditor();
-                      },
-                      editorService.setLoading
-                    );
-                  }}
-                />
               </div>
             </div>
           </div>
+        </div>
+        <div
+          className={cn(
+            "absolute bottom-2 right-2 flex items-center gap-2 md:gap-1"
+          )}
+        >
+          {!subscription.plan.isByok &&
+            owner.metadata?.allowVoiceTranscription !== false &&
+            actions.includes("voice") && (
+              <VoicePicker
+                status={voiceTranscriberService.status}
+                level={voiceTranscriberService.level}
+                elapsedSeconds={voiceTranscriberService.elapsedSeconds}
+                onRecordStart={voiceTranscriberService.startRecording}
+                onRecordStop={voiceTranscriberService.stopRecording}
+                disabled={disableInput}
+                size={buttonSize}
+                showStopLabel={!isMobile}
+              />
+            )}
+          <Button
+            size={buttonSize}
+            isLoading={
+              isSubmitting && voiceTranscriberService.status !== "transcribing"
+            }
+            icon={ArrowUpIcon}
+            variant="highlight"
+            disabled={
+              isEmpty ||
+              isSubmitting ||
+              disableInput ||
+              voiceTranscriberService.status !== "idle"
+            }
+            onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (disableAutoFocus) {
+                editorService.blur();
+                // wait a bit for the keyboard to be closed on mobile
+                if (isMobile) {
+                  editorService.setLoading(true);
+                  await new Promise((resolve) => setTimeout(resolve, 500));
+                  editorService.setLoading(false);
+                }
+              }
+              onEnterKeyDown(
+                editorService.isEmpty(),
+                editorService.getMarkdownAndMentions(),
+                () => {
+                  editorService.clearEditor();
+                },
+                editorService.setLoading
+              );
+            }}
+          />
         </div>
       </div>
     </div>

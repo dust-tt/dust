@@ -58,6 +58,7 @@ interface InputBarProps {
   isFloatingWithoutMargin?: boolean;
   isSubmitting?: boolean;
   disable?: boolean;
+  isAgentBuilder?: boolean;
   shouldUseDraft?: boolean;
 }
 
@@ -72,6 +73,7 @@ export const InputBar = React.memo(function InputBar({
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   disableUserMentions,
+  isAgentBuilder = false,
   isFloating = true,
   isSubmitting = false,
   disable = false,
@@ -186,8 +188,11 @@ export const InputBar = React.memo(function InputBar({
     void deleteSkill(skill.sId);
   };
 
-  const activeAgents = agentConfigurations.filter((a) => a.status === "active");
-  activeAgents.sort(compareAgentsForSort);
+  const activeAgents = useMemo(() => {
+    const agents = agentConfigurations.filter((a) => a.status === "active");
+    agents.sort(compareAgentsForSort);
+    return agents;
+  }, [agentConfigurations]);
 
   const handleSubmit: InputBarContainerProps["onEnterKeyDown"] = async (
     isEmpty,
@@ -203,9 +208,11 @@ export const InputBar = React.memo(function InputBar({
     const singleAgentInput = isSingleAgentInputEnabled();
     // When single-agent input is enabled, inject the selected agent into mentions
     // since it's no longer in the editor as a mention node.
+    const hasUserMention = rawMentions.some((m) => m.type === "user");
     const shouldInjectSelectedAgent =
       singleAgentInput &&
       selectedSingleAgent &&
+      !hasUserMention &&
       !rawMentions.some((m) => m.id === selectedSingleAgent.id);
 
     const allMentions = shouldInjectSelectedAgent
@@ -318,6 +325,18 @@ export const InputBar = React.memo(function InputBar({
     setAttachedNodes((prev) => prev.filter((n) => !isEqualNode(n, node)));
   };
 
+  const handleResetSelections = () => {
+    setSelectedMCPServerViews((prev) => {
+      prev.forEach((sv) => void deleteTool(sv.sId));
+      return [];
+    });
+    setSelectedSkills((prev) => {
+      prev.forEach((s) => void deleteSkill(s.sId));
+      return [];
+    });
+    setAttachedNodes([]);
+  };
+
   useEffect(() => {
     setIsLocalSubmitting(isSubmitting);
   }, [isSubmitting]);
@@ -383,6 +402,8 @@ export const InputBar = React.memo(function InputBar({
             selectedSkills={selectedSkills}
             onSkillSelect={handleSkillSelect}
             onSkillDeselect={handleSkillDeselect}
+            onResetSelections={handleResetSelections}
+            isAgentBuilder={isAgentBuilder}
             attachedNodes={attachedNodes}
             saveDraft={saveDraft}
             getDraft={getDraft}
