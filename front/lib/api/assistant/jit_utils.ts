@@ -8,15 +8,9 @@ import {
   getAttachmentFromContentFragment,
   makeFileAttachment,
 } from "@app/lib/api/assistant/conversation/attachments";
-import { listProjectContextFiles } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
-import {
-  isAgentMessageType,
-  isProjectConversation,
-} from "@app/types/assistant/conversation";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
 import { isContentFragmentType } from "@app/types/content_fragment";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
@@ -25,10 +19,8 @@ export async function listAttachments(
   auth: Authenticator,
   {
     conversation,
-    includeProjectContextFiles = true,
   }: {
     conversation: ConversationType;
-    includeProjectContextFiles?: boolean;
   }
 ): Promise<ConversationAttachmentType[]> {
   // Using a map to avoid duplicated, order matters, project files should override directly attached files as they could have be moved from conversation to project.
@@ -67,35 +59,6 @@ export async function listAttachments(
             isInProjectContext: f.isInProjectContext ?? false,
             hideFromUser: f.hidden ?? false,
             creator: agentCreator,
-          })
-        );
-      }
-    }
-  }
-
-  if (isProjectConversation(conversation) && includeProjectContextFiles) {
-    const space = await SpaceResource.fetchById(auth, conversation.spaceId);
-    if (!space) {
-      logger.warn(
-        { conversationId: conversation.sId, spaceId: conversation.spaceId },
-        "Space not found for conversation"
-      );
-    } else {
-      const files = await listProjectContextFiles(auth, space);
-
-      for (const f of files) {
-        attachments.set(
-          f.sId,
-          makeFileAttachment({
-            fileId: f.sId,
-            source: null,
-            createdAt: f.createdAt.getTime(),
-            updatedAt: f.updatedAt.getTime(),
-            contentType: f.contentType,
-            title: f.fileName,
-            snippet: f.snippet,
-            isInProjectContext: true,
-            hideFromUser: f.useCaseMetadata?.hideFromUser ?? false,
           })
         );
       }

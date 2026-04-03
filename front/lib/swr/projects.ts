@@ -7,15 +7,16 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type {
-  FileWithCreatorType,
-  GetProjectFilesResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_files";
+  GetProjectContextResponseBody,
+  PostProjectContextContentNodeResponseBody,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_context";
 import type { PatchProjectTodoResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]/index";
 import type {
   GetProjectTodosResponseBody,
   PostProjectTodoResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/index";
 import type { CheckNameResponseBody } from "@app/pages/api/w/[wId]/spaces/check-name";
+import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import type {
   ProjectTodoCategory,
   ProjectTodoStatus,
@@ -28,9 +29,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
-export type { FileWithCreatorType };
-
-export function useProjectFiles({
+export function useProjectContextAttachments({
   owner,
   projectId,
   disabled,
@@ -40,18 +39,73 @@ export function useProjectFiles({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const projectFilesFetcher: Fetcher<GetProjectFilesResponseBody> = fetcher;
+  const projectContextFetcher: Fetcher<GetProjectContextResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    disabled ? null : `/api/w/${owner.sId}/spaces/${projectId}/project_files`,
-    projectFilesFetcher
+    disabled ? null : `/api/w/${owner.sId}/spaces/${projectId}/project_context`,
+    projectContextFetcher
   );
 
   return {
-    projectFiles: data?.files ?? [],
-    isProjectFilesLoading: !disabled && !error && !data,
-    isProjectFilesError: !!error,
-    mutateProjectFiles: mutate,
+    attachments: data?.attachments ?? [],
+    isProjectContextAttachmentsLoading: !disabled && !error && !data,
+    isProjectContextAttachmentsError: !!error,
+    mutateProjectContextAttachments: mutate,
+  };
+}
+
+export type ProjectContextContentNodeFragment =
+  PostProjectContextContentNodeResponseBody["contentFragment"];
+
+export function useAddProjectContextContentNode({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  return async (
+    contentFragment: ContentFragmentInputWithContentNode
+  ): Promise<Result<ProjectContextContentNodeFragment, Error>> => {
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_context`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(contentFragment),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to add reference to project",
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      const responseData: PostProjectContextContentNodeResponseBody =
+        await res.json();
+      sendNotification({
+        type: "success",
+        title: "Added to project context",
+      });
+
+      return new Ok(responseData.contentFragment);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to add reference to project",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
   };
 }
 

@@ -51,7 +51,6 @@ async function handler(
 
   const attachments = await listAttachments(auth, {
     conversation,
-    includeProjectContextFiles: false,
   });
 
   return res.status(200).json({

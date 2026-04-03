@@ -1,4 +1,3 @@
-import type { FileWithCreatorType } from "@app/lib/swr/projects";
 import { useRenameProjectFile } from "@app/lib/swr/projects";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -38,7 +37,7 @@ interface RenameFileDialogProps {
   onClose: () => void;
   onRenamed: () => void;
   owner: LightWorkspaceType;
-  file: FileWithCreatorType | null;
+  file: { sId: string; fileName: string } | null;
 }
 
 export function RenameFileDialog({

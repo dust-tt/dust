@@ -8,12 +8,28 @@ import {
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { FileType } from "@app/types/files";
-import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 interface ToolUploadResponseBody {
   file: FileType;
 }
+
+import { z } from "zod";
+
+const ToolUploadRequestBodySchema = z.object({
+  serverViewId: z.string().min(1, "serverViewId is required"),
+  externalId: z.string().min(1, "externalId is required"),
+  conversationId: z.string().optional(), // TODO(seb): remove after the next extension release + a few days.
+  useCase: z.enum(["conversation", "project_context"]).default("conversation"),
+  useCaseMetadata: z.object({
+    conversationId: z.string().optional(),
+    spaceId: z.string().optional(),
+  }),
+  serverName: z.string().optional(),
+  serverIcon: z.string().optional(),
+});
+
+export type ToolUploadRequestBody = z.infer<typeof ToolUploadRequestBodySchema>;
 
 async function handler(
   req: NextApiRequest,
@@ -30,58 +46,25 @@ async function handler(
     });
   }
 
-  const { serverViewId, externalId, conversationId, serverName, serverIcon } =
-    req.body;
-
-  if (typeof serverViewId !== "string" || serverViewId.length < 1) {
+  const r = ToolUploadRequestBodySchema.safeParse(req.body);
+  if (!r.success) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "serverViewId parameter is required.",
+        message: r.error.message,
       },
     });
   }
-
-  if (typeof externalId !== "string" || externalId.length < 1) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "externalId parameter is required.",
-      },
-    });
-  }
-
-  if (conversationId !== undefined && typeof conversationId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "conversationId must be a string.",
-      },
-    });
-  }
-
-  if (serverName !== undefined && !isString(serverName)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "serverName must be a string.",
-      },
-    });
-  }
-
-  if (serverIcon !== undefined && !isString(serverIcon)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "serverIcon must be a string.",
-      },
-    });
-  }
+  const {
+    serverViewId,
+    externalId,
+    useCase,
+    useCaseMetadata,
+    conversationId,
+    serverName,
+    serverIcon,
+  } = r.data;
 
   const tokenResult = await getToolAccessToken({ auth, serverViewId });
   if (tokenResult.isErr()) {
@@ -100,7 +83,11 @@ async function handler(
     tool,
     accessToken,
     externalId,
-    conversationId,
+    useCase,
+    useCaseMetadata: {
+      ...(useCaseMetadata ? useCaseMetadata : {}),
+      conversationId,
+    },
     metadata,
     serverName,
     serverIcon,

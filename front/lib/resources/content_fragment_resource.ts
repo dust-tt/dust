@@ -56,6 +56,19 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+/** How to build the message envelope and resolve the file when rendering a DB fragment to {@link ContentFragmentType}. */
+export type RenderContentFragmentToTypeSource =
+  | {
+      kind: "conversation_message";
+      conversationId: string;
+      message: MessageModel;
+      file?: FileResource;
+    }
+  | {
+      kind: "project_context";
+      file: FileResource | null;
+    };
+
 export const CONTENT_OUTDATED_MSG =
   "Content is outdated. Please refer to the latest version of this content.";
 
@@ -201,8 +214,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   }
 
   /**
-   * Latest file-backed content fragments tagged with this space (project knowledge).
-   * Node-backed fragments (Step 2) are excluded via `fileId IS NOT NULL`.
+   * Latest project-context content fragments tagged with this space: file-backed and/or
+   * content-node references (`nodeId` + `nodeDataSourceViewId`).
    */
   static async listBySpace(
     auth: Authenticator,
@@ -218,7 +231,13 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         workspaceId: workspace.id,
         spaceId: space.id,
         version: "latest",
-        fileId: { [Op.not]: null },
+        [Op.or]: [
+          { fileId: { [Op.not]: null } },
+          {
+            nodeId: { [Op.not]: null },
+            nodeDataSourceViewId: { [Op.not]: null },
+          },
+        ],
       },
       order: [["createdAt", "DESC"]],
     });
@@ -410,6 +429,150 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   }
 
   /**
+   * Create a latest-version content fragment row for a project context content node.
+   */
+  static async makeProjectContentNodeFragment(
+    auth: Authenticator,
+    space: SpaceResource,
+    resolved: {
+      title: string;
+      contentType: SupportedContentFragmentType;
+      sourceUrl: string | null;
+      textBytes: number | null;
+      nodeId: string;
+      nodeDataSourceViewId: ModelId;
+      nodeType: ContentNodeType;
+    },
+    transaction?: Transaction
+  ): Promise<Result<ContentFragmentResource, Error>> {
+    const workspace = auth.getNonNullableWorkspace();
+    if (space.workspaceId !== workspace.id) {
+      return new Err(
+        new Error("Space must belong to the authenticated workspace.")
+      );
+    }
+
+    const user = auth.user();
+    const fragment = await ContentFragmentResource.makeNew(
+      {
+        workspaceId: workspace.id,
+        spaceId: space.id,
+        fileId: null,
+        title: resolved.title,
+        contentType: resolved.contentType,
+        sourceUrl: resolved.sourceUrl,
+        textBytes: resolved.textBytes,
+        userId: user?.id ?? null,
+        userContextUsername: user?.username ?? null,
+        userContextFullName: user?.fullName() ?? null,
+        userContextEmail: user?.email ?? null,
+        userContextProfilePictureUrl: user?.imageUrl ?? null,
+        nodeId: resolved.nodeId,
+        nodeDataSourceViewId: resolved.nodeDataSourceViewId,
+        nodeType: resolved.nodeType,
+        expiredReason: null,
+      },
+      transaction
+    );
+
+    return new Ok(fragment);
+  }
+
+  /**
+   * Latest project content fragment for this content node + space: update if present or insert.
+   * Supersedes extra `version: latest` rows for the same node/space (duplicate cleanup).
+   */
+  static async upsertLatestProjectContentNodeFragment(
+    auth: Authenticator,
+    space: SpaceResource,
+    resolved: {
+      title: string;
+      contentType: SupportedContentFragmentType;
+      sourceUrl: string | null;
+      textBytes: number | null;
+      nodeId: string;
+      nodeDataSourceViewId: ModelId;
+      nodeType: ContentNodeType;
+    },
+    transaction?: Transaction
+  ): Promise<Result<ContentFragmentResource, Error>> {
+    const workspace = auth.getNonNullableWorkspace();
+    if (space.workspaceId !== workspace.id) {
+      return new Err(
+        new Error("Space must belong to the authenticated workspace.")
+      );
+    }
+
+    const user = auth.user();
+    const blob: {
+      title: string;
+      contentType: SupportedContentFragmentType;
+      sourceUrl: string | null;
+      textBytes: number | null;
+      userId: number | null;
+      userContextUsername: string | null;
+      userContextFullName: string | null;
+      userContextEmail: string | null;
+      userContextProfilePictureUrl: string | null;
+      nodeType: ContentNodeType;
+    } = {
+      title: resolved.title,
+      contentType: resolved.contentType,
+      sourceUrl: resolved.sourceUrl,
+      textBytes: resolved.textBytes,
+      userId: user?.id ?? null,
+      userContextUsername: user?.username ?? null,
+      userContextFullName: user?.fullName() ?? null,
+      userContextEmail: user?.email ?? null,
+      userContextProfilePictureUrl: user?.imageUrl ?? null,
+      nodeType: resolved.nodeType,
+    };
+
+    const rows = await ContentFragmentResource.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+        spaceId: space.id,
+        fileId: null,
+        nodeId: resolved.nodeId,
+        nodeDataSourceViewId: resolved.nodeDataSourceViewId,
+        version: "latest",
+      },
+      order: [["id", "DESC"]],
+      transaction,
+    });
+
+    if (rows.length > 1) {
+      await ContentFragmentResource.model.update(
+        { version: "superseded" },
+        {
+          where: {
+            id: { [Op.in]: rows.slice(1).map((r) => r.id) },
+          },
+          transaction,
+        }
+      );
+    }
+
+    const existing = rows[0];
+    if (existing) {
+      await existing.update(blob, { transaction });
+      return new Ok(
+        new ContentFragmentResource(
+          ContentFragmentResource.model,
+          existing.get()
+        )
+      );
+    }
+
+    return ContentFragmentResource.makeProjectContentNodeFragment(
+      auth,
+      space,
+      resolved,
+      transaction
+    );
+  }
+
+  /**
    * Batch render content fragments from messages with optimized file fetching.
    * This method fetches all files in a single query to avoid N+1 queries.
    *
@@ -513,6 +676,223 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   }
 
   /**
+   * Renders a stored content fragment row into API {@link ContentFragmentType}.
+   * Same logic for conversation messages and project-space fragments; differences are only
+   * the message envelope (ids, ranks, …) and how the backing file / `textUrl` are resolved.
+   */
+  static async renderToContentFragmentType(
+    auth: Authenticator,
+    fr: ContentFragmentResource,
+    source: RenderContentFragmentToTypeSource
+  ): Promise<ContentFragmentType> {
+    const workspace =
+      source.kind === "project_context"
+        ? auth.getNonNullableWorkspace()
+        : auth.workspace();
+    if (!workspace) {
+      throw new Error(
+        "Authenticator must have a workspace to render a content fragment"
+      );
+    }
+
+    const contentFragmentType = fr.getContentFragmentType();
+
+    const baseContentFragment: BaseContentFragmentType =
+      source.kind === "conversation_message"
+        ? {
+            type: "content_fragment",
+            id: source.message.id,
+            sId: source.message.sId,
+            created: source.message.createdAt.getTime(),
+            visibility: source.message.visibility,
+            version: source.message.version,
+            rank: source.message.rank,
+            branchId: source.message.branchSId,
+            sourceUrl: fr.sourceUrl,
+            title: fr.title,
+            contentType: fr.contentType,
+            context: {
+              profilePictureUrl: fr.userContextProfilePictureUrl,
+              fullName: fr.userContextFullName,
+              email: fr.userContextEmail,
+              username: fr.userContextUsername,
+            },
+            contentFragmentId: fr.sId,
+            contentFragmentVersion: fr.version,
+            expiredReason: fr.expiredReason,
+          }
+        : {
+            type: "content_fragment",
+            id: fr.id,
+            sId: fr.sId,
+            created: fr.createdAt.getTime(),
+            visibility: "visible",
+            version: 0,
+            rank: 0,
+            branchId: null,
+            sourceUrl: fr.sourceUrl,
+            title: fr.title,
+            contentType: fr.contentType,
+            context: {
+              profilePictureUrl: fr.userContextProfilePictureUrl,
+              fullName: fr.userContextFullName,
+              email: fr.userContextEmail,
+              username: fr.userContextUsername,
+            },
+            contentFragmentId: fr.sId,
+            contentFragmentVersion: fr.version,
+            expiredReason: fr.expiredReason,
+          };
+
+    if (fr.expiredReason) {
+      if (contentFragmentType === "file") {
+        return {
+          ...baseContentFragment,
+          contentFragmentType: "file",
+          expiredReason: fr.expiredReason,
+          fileId: null,
+          snippet: null,
+          generatedTables: [],
+          textUrl: null,
+          textBytes: null,
+          sourceProvider: null,
+          sourceIcon: null,
+          isInProjectContext: null,
+          hidden: true,
+        };
+      }
+      if (contentFragmentType === "content_node") {
+        return {
+          ...baseContentFragment,
+          contentFragmentType: "content_node",
+          expiredReason: fr.expiredReason,
+          nodeId: null,
+          nodeDataSourceViewId: null,
+          nodeType: null,
+          contentNodeData: null,
+        };
+      }
+      assertNever(contentFragmentType);
+    }
+
+    if (contentFragmentType === "file") {
+      if (source.kind === "project_context") {
+        assert(source.file, "Project file fragment requires FileResource");
+      }
+
+      const location =
+        source.kind === "conversation_message"
+          ? fileAttachmentLocation({
+              workspaceId: workspace.sId,
+              conversationId: source.conversationId,
+              messageId: source.message.sId,
+              contentFormat: "text",
+            })
+          : null;
+
+      const fileResource =
+        source.kind === "conversation_message"
+          ? (source.file ??
+            (fr.fileId
+              ? await FileResource.fetchByModelIdWithAuth(auth, fr.fileId)
+              : null))
+          : source.file;
+
+      let fileStringId: string | null = null;
+      let snippet: string | null = null;
+      let generatedTables: string[] = [];
+      let sourceProvider: string | null = null;
+      let sourceIcon: string | null = null;
+      let isInProjectContext = false;
+      let hidden = true;
+
+      if (fileResource) {
+        fileStringId = fileResource.sId;
+        snippet = fileResource.snippet;
+        generatedTables = fileResource.useCaseMetadata?.generatedTables ?? [];
+        sourceProvider = fileResource.useCaseMetadata?.sourceProvider ?? null;
+        sourceIcon = fileResource.useCaseMetadata?.sourceIcon ?? null;
+        isInProjectContext = !!fileResource.useCaseMetadata?.spaceId;
+        hidden = !!fileResource.useCaseMetadata?.hideFromUser;
+      }
+
+      if (source.kind === "project_context") {
+        isInProjectContext = true;
+      }
+
+      const textUrl =
+        source.kind === "conversation_message" ? location!.downloadUrl : "";
+
+      return {
+        ...baseContentFragment,
+        contentFragmentType: "file",
+        expiredReason: null,
+        fileId: fileStringId,
+        snippet,
+        generatedTables,
+        textUrl,
+        textBytes: fr.textBytes,
+        sourceProvider,
+        sourceIcon,
+        isInProjectContext,
+        hidden,
+      } satisfies FileContentFragmentType;
+    }
+
+    if (contentFragmentType === "content_node") {
+      assert(
+        fr.nodeId,
+        `Invalid content node content fragment (sId: ${fr.sId})`
+      );
+      assert(
+        fr.nodeDataSourceViewId,
+        `Invalid content node content fragment (sId: ${fr.sId})`
+      );
+      assert(
+        fr.nodeType,
+        `Invalid content node content fragment (sId: ${fr.sId})`
+      );
+
+      const nodeId: string = fr.nodeId;
+      const nodeDataSourceViewId: string = DataSourceViewResource.modelIdToSId({
+        id: fr.nodeDataSourceViewId,
+        workspaceId: workspace.id,
+      });
+      const nodeType: ContentNodeType = fr.nodeType;
+
+      const dsViews = await DataSourceViewResource.fetchByModelIds(auth, [
+        fr.nodeDataSourceViewId,
+      ]);
+      assert(
+        dsViews.length === 1,
+        `Data source view not found for content node content fragment (sId: ${fr.sId})`
+      );
+
+      const [dsView] = dsViews;
+
+      const contentNodeData = {
+        nodeId,
+        nodeDataSourceViewId,
+        nodeType: fr.nodeType,
+        provider: dsView.dataSource.connectorProvider,
+        spaceName: dsView.space.name,
+      };
+
+      return {
+        ...baseContentFragment,
+        contentFragmentType: "content_node",
+        expiredReason: null,
+        nodeId,
+        nodeDataSourceViewId,
+        nodeType,
+        contentNodeData,
+      } satisfies ContentNodeContentFragmentType;
+    }
+
+    assertNever(contentFragmentType);
+  }
+
+  /**
    * Use batchRenderFromMessages instead to avoid N+1 queries.
    */
   async renderFromMessage(
@@ -527,166 +907,12 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       file?: FileResource;
     }
   ): Promise<ContentFragmentType> {
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error(
-        "Authenticator must have a workspace to render a content fragment"
-      );
-    }
-
-    const contentFragmentType = this.getContentFragmentType();
-
-    const baseContentFragment: BaseContentFragmentType = {
-      type: "content_fragment",
-      id: message.id,
-      sId: message.sId,
-      created: message.createdAt.getTime(),
-      visibility: message.visibility,
-      version: message.version,
-      rank: message.rank,
-      branchId: message.branchSId,
-      sourceUrl: this.sourceUrl,
-      title: this.title,
-      contentType: this.contentType,
-      context: {
-        profilePictureUrl: this.userContextProfilePictureUrl,
-        fullName: this.userContextFullName,
-        email: this.userContextEmail,
-        username: this.userContextUsername,
-      },
-      contentFragmentId: this.sId,
-      contentFragmentVersion: this.version,
-      expiredReason: this.expiredReason,
-    };
-
-    if (this.expiredReason) {
-      if (contentFragmentType === "file") {
-        return {
-          ...baseContentFragment,
-          contentFragmentType: "file",
-          expiredReason: this.expiredReason,
-          fileId: null,
-          snippet: null,
-          generatedTables: [],
-          textUrl: null,
-          textBytes: null,
-          sourceProvider: null,
-          sourceIcon: null,
-          isInProjectContext: null,
-          hidden: true,
-        };
-      } else if (contentFragmentType === "content_node") {
-        return {
-          ...baseContentFragment,
-          contentFragmentType: "content_node",
-          expiredReason: this.expiredReason,
-          nodeId: null,
-          nodeDataSourceViewId: null,
-          nodeType: null,
-          contentNodeData: null,
-        };
-      } else {
-        assertNever(contentFragmentType);
-      }
-    }
-
-    if (contentFragmentType === "file") {
-      const location = fileAttachmentLocation({
-        workspaceId: owner.sId,
-        conversationId,
-        messageId: message.sId,
-        contentFormat: "text",
-      });
-      let fileStringId: string | null = null;
-      let snippet: string | null = null;
-      let generatedTables: string[] = [];
-      let sourceProvider: string | null = null;
-      let sourceIcon: string | null = null;
-      let isInProjectContext: boolean = false;
-      let hidden: boolean = true;
-
-      // Use pre-fetched file if provided, otherwise fetch it (for backward compatibility)
-      const fileResource =
-        file ??
-        (this.fileId
-          ? await FileResource.fetchByModelIdWithAuth(auth, this.fileId)
-          : null);
-
-      if (fileResource) {
-        fileStringId = fileResource.sId;
-        snippet = fileResource.snippet;
-        generatedTables = fileResource.useCaseMetadata?.generatedTables ?? [];
-        sourceProvider = fileResource.useCaseMetadata?.sourceProvider ?? null;
-        sourceIcon = fileResource.useCaseMetadata?.sourceIcon ?? null;
-        isInProjectContext = !!fileResource.useCaseMetadata?.spaceId;
-        hidden = !!fileResource.useCaseMetadata?.hideFromUser;
-      }
-
-      return {
-        ...baseContentFragment,
-        contentFragmentType: "file",
-        expiredReason: null,
-        fileId: fileStringId,
-        snippet,
-        generatedTables,
-        textUrl: location.downloadUrl,
-        textBytes: this.textBytes,
-        sourceProvider,
-        sourceIcon,
-        isInProjectContext,
-        hidden,
-      } satisfies FileContentFragmentType;
-    } else if (contentFragmentType === "content_node") {
-      assert(
-        this.nodeId,
-        `Invalid content node content fragment (sId: ${this.sId})`
-      );
-      assert(
-        this.nodeDataSourceViewId,
-        `Invalid content node content fragment (sId: ${this.sId})`
-      );
-      assert(
-        this.nodeType,
-        `Invalid content node content fragment (sId: ${this.sId})`
-      );
-
-      const nodeId: string = this.nodeId;
-      const nodeDataSourceViewId: string = DataSourceViewResource.modelIdToSId({
-        id: this.nodeDataSourceViewId,
-        workspaceId: owner.id,
-      });
-      const nodeType: ContentNodeType = this.nodeType;
-
-      const dsViews = await DataSourceViewResource.fetchByModelIds(auth, [
-        this.nodeDataSourceViewId,
-      ]);
-      assert(
-        dsViews.length === 1,
-        `Data source view not found for content node content fragment (sId: ${this.sId})`
-      );
-
-      const [dsView] = dsViews;
-
-      const contentNodeData = {
-        nodeId,
-        nodeDataSourceViewId,
-        nodeType: this.nodeType,
-        provider: dsView.dataSource.connectorProvider,
-        spaceName: dsView.space.name,
-      };
-
-      return {
-        ...baseContentFragment,
-        contentFragmentType: "content_node",
-        expiredReason: null,
-        nodeId,
-        nodeDataSourceViewId,
-        nodeType,
-        contentNodeData,
-      } satisfies ContentNodeContentFragmentType;
-    } else {
-      assertNever(contentFragmentType);
-    }
+    return ContentFragmentResource.renderToContentFragmentType(auth, this, {
+      kind: "conversation_message",
+      conversationId,
+      message,
+      file,
+    });
   }
 }
 
