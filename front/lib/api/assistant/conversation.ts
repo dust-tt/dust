@@ -114,6 +114,7 @@ import type {
   ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
+  MessageVisibility,
   RichMentionWithStatus,
   UserMessageContext,
   UserMessageType,
@@ -756,72 +757,6 @@ export async function postUserMessage(
     // connection pool, resulting in a deadlock.
     await getConversationRankVersionLock(auth, conversation, t);
 
-    // Re-read the agent message status inside the critical section of the
-    // advisory lock. Between the initial check and acquiring the lock, the
-    // agent loop may have finalized — if so, clear runningAgentMessage so we
-    // fall through to the normal flow.
-    if (steeringEnabled && runningAgentMessage) {
-      const agentMessageRow = await AgentMessageModel.findByPk(
-        runningAgentMessage.agentMessageId,
-        { transaction: t }
-      );
-
-      if (agentMessageRow?.status !== "created") {
-        runningAgentMessage = undefined;
-      }
-    }
-
-    // Pending path: agent is still running, create a pending user message
-    // without an agent message.
-    if (steeringEnabled && runningAgentMessage) {
-      const nextMessageRank =
-        ((await MessageModel.max<number | null, MessageModel>("rank", {
-          where: {
-            workspaceId: owner.id,
-            conversationId: conversation.id,
-            branchId: conversation.branchId
-              ? getResourceIdFromSId(conversation.branchId)
-              : null,
-          },
-          transaction: t,
-        })) ?? -1) + 1;
-
-      const enrichedContext: UserMessageContext = {
-        ...context,
-        apiKeyId: auth.key()?.id ?? null,
-        authMethod: auth.authMethod(),
-      };
-
-      const userMessageWithoutMentions = await createUserMessage(auth, {
-        conversation,
-        content,
-        metadata: {
-          type: "create",
-          user: doNotAssociateUser ? null : (user?.toJSON() ?? null),
-          rank: nextMessageRank,
-          context: enrichedContext,
-          agenticMessageData,
-          visibility: "pending",
-        },
-        transaction: t,
-      });
-
-      const richMentions = await createUserMentions(auth, {
-        mentions,
-        message: userMessageWithoutMentions,
-        conversation,
-        transaction: t,
-      });
-
-      const userMessage = {
-        ...userMessageWithoutMentions,
-        richMentions,
-        mentions: richMentions.map(toMentionType),
-      };
-
-      return { userMessage, agentMessages: [] };
-    }
-
     let nextMessageRank: number | undefined;
 
     // We will do best effort to create a branch, but there a several conditions that we will not create a branch.
@@ -901,6 +836,23 @@ export async function postUserMessage(
       authMethod: auth.authMethod(),
     };
 
+    // Re-read the agent message status inside the critical section of the advisory lock. Between
+    // the initial check and acquiring the lock, the agent loop may have finalized — if so, clear
+    // runningAgentMessage so we fall through to the normal flow.
+    if (steeringEnabled && runningAgentMessage) {
+      const agentMessageRow = await AgentMessageModel.findByPk(
+        runningAgentMessage.agentMessageId,
+        { transaction: t }
+      );
+
+      if (agentMessageRow?.status !== "created") {
+        runningAgentMessage = undefined;
+      }
+    }
+
+    const visibility: MessageVisibility =
+      steeringEnabled && runningAgentMessage ? "pending" : "visible";
+
     // Return the user message without mentions.
     // This way typescript forces us to create the mentions after the user message is created.
     const userMessageWithoutMentions = await createUserMessage(auth, {
@@ -912,6 +864,7 @@ export async function postUserMessage(
         rank: nextMessageRank++,
         context: enrichedContext,
         agenticMessageData,
+        visibility,
       },
       transaction: t,
     });
@@ -923,28 +876,6 @@ export async function postUserMessage(
       transaction: t,
     });
 
-    const { agentMessages, richMentions: agentRichMentions } =
-      await createAgentMessages(auth, {
-        conversation,
-        metadata: {
-          type: "create",
-          mentions,
-          agentConfigurations,
-          skipToolsValidation,
-          nextMessageRank,
-          userMessage: userMessageWithoutMentions,
-        },
-        transaction: t,
-      });
-
-    richMentions.push(...agentRichMentions);
-
-    const userMessage = {
-      ...userMessageWithoutMentions,
-      richMentions: richMentions,
-      mentions: richMentions.map(toMentionType),
-    };
-
     await ConversationResource.markAsUpdated(auth, { conversation, t });
 
     if (!doNotAssociateUser) {
@@ -955,10 +886,46 @@ export async function postUserMessage(
       });
     }
 
-    return {
-      userMessage,
-      agentMessages,
-    };
+    if (steeringEnabled && runningAgentMessage) {
+      // Pending path: agent is still running, create a pending user message without an agent
+      // message.
+      const userMessage = {
+        ...userMessageWithoutMentions,
+        richMentions,
+        mentions: richMentions.map(toMentionType),
+      };
+
+      return { userMessage, agentMessages: [] };
+    } else {
+      // Normal path: create agent messages for all mentioned agents, and associate them with the
+      // user message.
+      const { agentMessages, richMentions: agentRichMentions } =
+        await createAgentMessages(auth, {
+          conversation,
+          metadata: {
+            type: "create",
+            mentions,
+            agentConfigurations,
+            skipToolsValidation,
+            nextMessageRank,
+            userMessage: userMessageWithoutMentions,
+          },
+          transaction: t,
+        });
+
+      richMentions.push(...agentRichMentions);
+
+      const userMessage = {
+        ...userMessageWithoutMentions,
+        richMentions: richMentions,
+        mentions: richMentions.map(toMentionType),
+      };
+
+      return {
+        userMessage,
+        agentMessages,
+      };
+    }
   });
 
   // If a user is mentioned, we want to make sure the conversation has a title.
