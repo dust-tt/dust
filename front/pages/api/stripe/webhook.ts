@@ -22,6 +22,7 @@ import {
   invoiceEnterprisePAYGCredits,
   isPAYGEnabled,
 } from "@app/lib/credits/payg";
+import { handleMetronomeSetupCheckout } from "@app/lib/metronome/checkout";
 import { createMetronomeCustomer } from "@app/lib/metronome/client";
 import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
@@ -43,7 +44,6 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import { launchWorkOSWorkspaceSubscriptionCreatedWorkflow } from "@app/temporal/workos_events_queue/client";
@@ -235,6 +235,44 @@ async function handler(
               `[Stripe Webhook] Received checkout.session.completed with unkown status "${session.status}". Ignoring event.`
             );
             return res.status(200).json({ success: true });
+          }
+
+          // Branch on session mode: "setup" for Metronome, "subscription" for Stripe.
+          if (session.mode === "setup") {
+            const result = await handleMetronomeSetupCheckout({
+              session,
+              now,
+            });
+
+            if (result.isOk()) {
+              return res.status(200).json({ success: true });
+            }
+
+            switch (result.error.code) {
+              case "subscription_already_exists":
+              case "workspace_not_found":
+                logger.warn(
+                  { error: result.error, workspaceId, planCode },
+                  `[Stripe Webhook] Metronome setup: ${result.error.message}`
+                );
+                return res
+                  .status(200)
+                  .json({ success: false, message: result.error.message });
+
+              default:
+                logger.error(
+                  { error: result.error, workspaceId, planCode },
+                  `[Stripe Webhook] Metronome setup: ${result.error.message}`
+                );
+                return apiError(req, res, {
+                  status_code: 500,
+                  api_error: {
+                    type: "internal_server_error",
+                    message:
+                      "Stripe Webhook: error handling Metronome setup checkout.session.completed.",
+                  },
+                });
+            }
           }
 
           try {

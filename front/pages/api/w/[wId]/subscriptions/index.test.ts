@@ -1,3 +1,4 @@
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { Stripe } from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -5,12 +6,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import handler from "./index";
 
 const TEST_CHECKOUT_URL = "https://checkout.stripe.com/test-session";
+const TEST_METRONOME_CHECKOUT_URL =
+  "https://checkout.stripe.com/test-setup-session";
 
 vi.mock("@app/lib/plans/stripe", async () => {
   return {
-    createProPlanCheckoutSession: vi
+    createStripeSubscriptionCheckoutSession: vi
       .fn()
       .mockResolvedValue("https://checkout.stripe.com/test-session"),
+    createMetronomeSetupCheckoutSession: vi
+      .fn()
+      .mockResolvedValue("https://checkout.stripe.com/test-setup-session"),
     getProPlanStripeProductId: vi.fn().mockResolvedValue("testProductID"),
     getStripeSubscription: vi.fn().mockResolvedValue({
       id: "sub_test123",
@@ -86,6 +92,31 @@ describe("POST /api/w/[wId]/subscriptions", () => {
     const data = res._getJSONData();
     expect(data.checkoutUrl).toEqual(TEST_CHECKOUT_URL);
     expect(data.plan).toBeDefined();
+  });
+
+  it("returns Metronome setup checkout URL when metronome_billing flag is enabled", async () => {
+    const { req, res, auth } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    await FeatureFlagFactory.basic(auth, "metronome_billing");
+
+    req.body = {
+      billingPeriod: "monthly",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.checkoutUrl).toEqual(TEST_METRONOME_CHECKOUT_URL);
+    expect(data.plan).toEqual(
+      expect.objectContaining({
+        code: expect.any(String),
+        name: expect.any(String),
+      })
+    );
   });
 
   it("returns 403 when user is not admin", async () => {

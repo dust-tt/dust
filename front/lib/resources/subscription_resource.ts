@@ -1,3 +1,4 @@
+import assert from "node:assert";
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import {
   disableWorkOSSSOAndSCIM,
@@ -5,6 +6,13 @@ import {
 } from "@app/lib/api/workos/organization";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
+import { getMetronomeContractRateCardAliases } from "@app/lib/metronome/client";
+import {
+  LEGACY_BUSINESS_39_PACKAGE_ALIAS,
+  LEGACY_PRO_29_PACKAGE_ALIAS,
+  PRO_OR_BUSINESS_PACKAGE_ALIASES,
+} from "@app/lib/metronome/types";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
@@ -23,10 +31,12 @@ import {
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   cancelSubscriptionImmediately,
-  createProPlanCheckoutSession,
+  createMetronomeSetupCheckoutSession,
+  createStripeSubscriptionCheckoutSession,
   getBusinessProPlanProductId,
   getProPlanProductId,
   getStripeSubscription,
+  type SupportedPaymentMethod,
   upgradeProSubscriptionToBusiness,
 } from "@app/lib/plans/stripe";
 import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial/limits";
@@ -112,6 +122,12 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     this.plan = plan;
   }
 
+  get isBilled(): boolean {
+    return (
+      this.stripeSubscriptionId !== null || this.metronomeContractId !== null
+    );
+  }
+
   static async makeNew(
     blob: CreationAttributes<SubscriptionModel>,
     plan: PlanType,
@@ -130,6 +146,61 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       subscription.get(),
       plan
     );
+  }
+
+  static async createSubscriptionFromCheckout({
+    workspaceModelId,
+    plan,
+    metronomeContractId,
+    now,
+  }: {
+    workspaceModelId: ModelId;
+    plan: PlanModel;
+    metronomeContractId: string;
+    now: Date;
+  }): Promise<Result<void, DustError>> {
+    return withTransaction(async (t) => {
+      const activeSubscription =
+        await SubscriptionResource.fetchActiveByWorkspaceModelId(
+          workspaceModelId,
+          t
+        );
+
+      if (activeSubscription?.planId === plan.id) {
+        return new Err(
+          new DustError(
+            "subscription_already_exists",
+            `Active subscription already exists for plan ${plan.code}.`
+          )
+        );
+      }
+
+      if (activeSubscription?.isBilled) {
+        return new Err(
+          new DustError(
+            "subscription_already_exists",
+            "Active paid subscription already exists."
+          )
+        );
+      }
+
+      await activeSubscription?.markAsEnded("ended", t);
+      await SubscriptionResource.makeNew(
+        {
+          sId: generateRandomModelSId(),
+          workspaceId: workspaceModelId,
+          planId: plan.id,
+          status: "active",
+          trialing: false,
+          startDate: now,
+          metronomeContractId,
+        },
+        renderPlanFromModel({ plan }),
+        t
+      );
+
+      return new Ok(undefined);
+    });
   }
 
   private static readonly subscriptionCacheKeyResolver = (
@@ -809,40 +880,59 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   async getCheckoutUrlForUpgrade(
     owner: WorkspaceType,
     user: UserType,
-    billingPeriod: BillingPeriod
+    billingPeriod: BillingPeriod,
+    { useMetronomeBilling }: { useMetronomeBilling: boolean }
   ): Promise<CheckoutUrlResult> {
-    const planCode = owner.metadata?.isBusiness
-      ? PRO_PLAN_SEAT_39_CODE
-      : PRO_PLAN_SEAT_29_CODE;
+    const isBusiness = !!owner.metadata?.isBusiness;
+    const { planCode, allowedPaymentMethods, metronomePackageAlias } =
+      isBusiness
+        ? {
+            planCode: PRO_PLAN_SEAT_39_CODE,
+            allowedPaymentMethods: [
+              "card",
+              "sepa_debit",
+            ] satisfies SupportedPaymentMethod[],
+            metronomePackageAlias: LEGACY_BUSINESS_39_PACKAGE_ALIAS,
+          }
+        : {
+            planCode: PRO_PLAN_SEAT_29_CODE,
+            allowedPaymentMethods: ["card"] satisfies SupportedPaymentMethod[],
+            metronomePackageAlias: LEGACY_PRO_29_PACKAGE_ALIAS,
+          };
 
     const proPlan = await SubscriptionResource.findPlanOrThrow(planCode);
 
     // We verify that the workspace is not already subscribed to the Pro plan product.
     const isAlreadyOnProPlan =
       await this.isSubscriptionOnProOrBusinessPlan(owner);
-    if (isAlreadyOnProPlan) {
-      throw new Error(
-        `Cannot subscribe to plan ${planCode}: already subscribed to a Pro plan.`
-      );
+    assert(
+      !isAlreadyOnProPlan,
+      `Cannot subscribe to plan ${planCode}: already subscribed to a Pro plan.`
+    );
+
+    let checkoutUrl: string | null;
+    if (useMetronomeBilling) {
+      checkoutUrl = await createMetronomeSetupCheckoutSession({
+        owner,
+        user,
+        planCode,
+        metronomePackageAlias,
+        allowedPaymentMethods,
+      });
+    } else {
+      checkoutUrl = await createStripeSubscriptionCheckoutSession({
+        owner,
+        user,
+        billingPeriod,
+        planCode,
+        allowedPaymentMethods,
+      });
     }
 
-    // We enter Stripe Checkout flow.
-    const checkoutUrl = await createProPlanCheckoutSession({
-      owner,
-      user,
-      billingPeriod,
-      planCode,
-      allowedPaymentMethods:
-        owner.metadata?.isBusiness && planCode === PRO_PLAN_SEAT_39_CODE
-          ? ["card", "sepa_debit"]
-          : ["card"],
-    });
-
-    if (!checkoutUrl) {
-      throw new Error(
-        `Cannot subscribe to plan ${planCode}: error while creating Stripe Checkout session (URL is null).`
-      );
-    }
+    assert(
+      checkoutUrl,
+      `Cannot subscribe to plan ${planCode}: error while creating checkout session (URL is null).`
+    );
 
     return {
       checkoutUrl,
@@ -1139,6 +1229,22 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   private async isSubscriptionOnProOrBusinessPlan(
     owner: WorkspaceType
   ): Promise<boolean> {
+    // Check Metronome-billed subscription.
+    if (this.metronomeContractId && owner.metronomeCustomerId) {
+      const aliasesResult = await getMetronomeContractRateCardAliases({
+        metronomeCustomerId: owner.metronomeCustomerId,
+        metronomeContractId: this.metronomeContractId,
+      });
+      if (aliasesResult.isErr()) {
+        throw aliasesResult.error;
+      }
+
+      return aliasesResult.value.some((alias) =>
+        PRO_OR_BUSINESS_PACKAGE_ALIASES.has(alias)
+      );
+    }
+
+    // Check Stripe-billed subscription.
     if (!this.stripeSubscriptionId) {
       return false;
     }

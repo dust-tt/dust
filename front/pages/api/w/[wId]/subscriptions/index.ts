@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import {
   cancelSubscriptionAtPeriodEnd,
   skipSubscriptionFreeTrial,
@@ -9,17 +10,14 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { PlanType, SubscriptionType } from "@app/types/plan";
+import type { CheckoutUrlResult, SubscriptionType } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type PostSubscriptionResponseBody = {
-  plan: PlanType;
-  checkoutUrl?: string;
-};
+export type PostSubscriptionResponseBody = CheckoutUrlResult;
 
 type PatchSubscriptionResponseBody = {
   success: boolean;
@@ -95,14 +93,22 @@ async function handler(
       }
 
       try {
-        const { checkoutUrl, plan: newPlan } = await auth
-          .getNonNullableSubscriptionResource()
-          .getCheckoutUrlForUpgrade(
-            auth.getNonNullableWorkspace(),
-            auth.getNonNullableUser().toJSON(),
-            bodyValidation.right.billingPeriod
-          );
-        return res.status(200).json({ checkoutUrl, plan: newPlan });
+        const useMetronomeBilling = await hasFeatureFlag(
+          auth,
+          "metronome_billing"
+        );
+        const owner = auth.getNonNullableWorkspace();
+        const user = auth.getNonNullableUser().toJSON();
+        const subscription = auth.getNonNullableSubscriptionResource();
+
+        const checkoutUrlResult = await subscription.getCheckoutUrlForUpgrade(
+          owner,
+          user,
+          bodyValidation.right.billingPeriod,
+          { useMetronomeBilling }
+        );
+
+        return res.status(200).json(checkoutUrlResult);
       } catch (error) {
         logger.error({ error }, "Error while subscribing workspace to plan");
         return apiError(req, res, {
