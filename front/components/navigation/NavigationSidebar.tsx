@@ -10,6 +10,7 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   FREE_BYOK_TRANSITIONING_PLAN_CODE,
   FREE_TRIAL_PHONE_PLAN_CODE,
+  isEntreprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
@@ -125,7 +126,7 @@ export const NavigationSidebar = React.forwardRef<
           />
           {appStatus && <AppStatusBanner appStatus={appStatus} />}
           {subscription.paymentFailingSince && isAdmin(owner) && (
-            <SubscriptionPastDueBanner />
+            <SubscriptionPastDueBanner subscription={subscription} />
           )}
         </div>
         {navs.length > 1 && (
@@ -340,7 +341,30 @@ function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   return null;
 }
 
-function SubscriptionPastDueBanner() {
+interface SubscriptionPastDueBannerProps {
+  subscription: SubscriptionType;
+}
+
+function SubscriptionPastDueBanner({
+  subscription,
+}: SubscriptionPastDueBannerProps) {
+  const isEnterprise = isEntreprisePlanPrefix(subscription.plan.code);
+
+  if (isEnterprise) {
+    return (
+      <StatusBanner
+        variant="warning"
+        title="A recent payment requires attention."
+        description={
+          <>
+            <br />
+            Please reach out to your account manager to resolve this.
+          </>
+        }
+      />
+    );
+  }
+
   return (
     <StatusBanner
       variant="warning"
