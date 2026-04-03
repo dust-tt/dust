@@ -649,11 +649,24 @@ export const UserQuestionItemSchema = z.object({
   multiSelect: z.boolean(),
 });
 
+export const UserAnswerRequiredOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
+  type: z.literal("tool_user_answer_required"),
+  question: UserQuestionItemSchema,
+  text: z.string(),
+  uri: z.string(),
+});
+
+export type UserAnswerRequiredOutputResourceType = z.infer<
+  typeof UserAnswerRequiredOutputResourceSchema
+>;
+
 export const AgentPauseOutputResourceSchema = z.union([
   AuthRequiredOutputResourceSchema,
   BlockedAwaitingInputOutputResourceSchema,
   EarlyExitOutputResourceSchema,
   FileAuthRequiredOutputResourceSchema,
+  UserAnswerRequiredOutputResourceSchema,
 ]);
 
 export type AgentPauseOutputResourceType = z.infer<

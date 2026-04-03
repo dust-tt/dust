@@ -1332,6 +1332,7 @@ const ToolExecutionBlockedStatusSchema = z.enum([
   "blocked_file_authorization_required",
   "blocked_validation_required",
   "blocked_child_action_input_required",
+  "blocked_user_answer_required",
 ]);
 
 export type ToolExecutionBlockedStatusType = z.infer<
@@ -1352,7 +1353,7 @@ const BlockedActionExecutionSchema = ToolExecutionMetadataSchema.extend({
   messageId: z.string(),
   conversationId: z.string(),
   status: ToolExecutionBlockedStatusSchema,
-  // Present only when status is "blocked_user_question_required".
+  // Present only when status is "blocked_user_answer_required".
   question: UserQuestionItemSchema.optional(),
 });
 

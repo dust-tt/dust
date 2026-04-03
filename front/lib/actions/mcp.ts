@@ -12,7 +12,10 @@ import type {
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
-import type { FileAuthorizationInfo } from "@app/lib/actions/types";
+import type {
+  FileAuthorizationInfo,
+  UserQuestion,
+} from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
   MCPToolRetryPolicyType,
@@ -143,6 +146,11 @@ export type BlockedToolExecution = ToolExecution &
           mcpServerDisplayName: string;
         };
         fileAuthorizationInfo: FileAuthorizationInfo;
+      }
+    | {
+        status: "blocked_user_answer_required";
+        question: UserQuestion;
+        authorizationInfo: null;
       }
   );
 
