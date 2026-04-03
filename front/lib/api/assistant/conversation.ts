@@ -678,15 +678,15 @@ export async function postUserMessage(
       mentions.length === 0 &&
       (context.origin === "web" || context.origin === "extension")
     ) {
-      const areHumansInteracting =
+      const hasOtherHumans =
         uniq(
           conversation.content
             .map((versions) => versions[versions.length - 1])
             .filter(isUserMessageType)
-            .map((m) => m.user?.sId)
-        ).length >= 2;
+            .map((m) => m.user?.sId && m.user.sId !== auth.user()?.sId)
+        ).length >= 1;
 
-      if (!areHumansInteracting) {
+      if (!hasOtherHumans) {
         // Check if the global @dust agent is active for this workspace.
         const dustAgent = agentConfigurations.find(
           (agent) =>
