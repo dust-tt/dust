@@ -25,9 +25,7 @@ export function useCancelMessage({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              action: isInlineActivityEnabled()
-                ? "gracefully_stop"
-                : "cancel",
+              action: isInlineActivityEnabled() ? "gracefully_stop" : "cancel",
               messageIds,
             }),
           }
