@@ -1,0 +1,31 @@
+front/lib/plans/stripe.ts
+  068bbc100a060eab 163,170,237
+front/lib/metronome/todo.txt
+  068bbc100a060eab 1-7
+front/lib/resources/subscription_resource.ts
+  068bbc100a060eab 15-16,889-909,927,936,965-974,1251-1254,1256-1258,1260-1265,1281
+front/pages/api/stripe/webhook.ts
+  068bbc100a060eab 26,51,105-107,109,112-114,118-120,123,127-128,131,134,136,138-157,161,229-230,331,383,437-439,442,445-447
+front/lib/metronome/types.ts
+  068bbc100a060eab 12-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "e7b522bf954138af9c739c782c23d4be0208d093",
+  "prompts": {
+    "068bbc100a060eab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ca0ebdb-9a62-4038-94b7-8a530c09bf58",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Alexandre Pinon",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 126,
+      "overriden_lines": 0
+    }
+  }
+}
