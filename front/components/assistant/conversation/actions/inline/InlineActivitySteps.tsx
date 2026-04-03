@@ -114,8 +114,7 @@ export function InlineActivitySteps({
   const toggleCollapse = () => setIsCollapsed((c) => !c);
 
   // Done with no steps: show a static line — no toggle, not clickable.
-  // For gracefully stopped, skip this entirely (no completion UI needed).
-  if (isDone && completedSteps.length === 0 && agentMessage.status !== "gracefully_stopped") {
+  if (isDone && completedSteps.length === 0) {
     return (
       <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
         {headerLabel ? `${headerLabel}, without tools.` : "No tools used."}
