@@ -498,14 +498,15 @@ export abstract class LLM<TPayload = unknown> {
         workspaceId: this.authenticator.getNonNullableWorkspace().id,
       });
 
-      // Extract token usage from events and record it.
-      const tokenUsageEvent = events.find((e) => e.type === "token_usage");
-      if (tokenUsageEvent && tokenUsageEvent.type === "token_usage") {
-        await run.recordTokenUsage(
-          this.authenticator,
-          tokenUsageEvent.content,
-          this.modelId
-        );
+      // Record token usage from events.
+      for (const event of events) {
+        if (event.type === "token_usage") {
+          await run.recordTokenUsage(
+            this.authenticator,
+            event.content,
+            this.modelId
+          );
+        }
       }
 
       enrichedResults.set(customId, { events, dustRunId: traceId });
