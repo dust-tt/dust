@@ -26,6 +26,7 @@ import {
 import { handleMetronomeSetupCheckout } from "@app/lib/metronome/checkout";
 import {
   createMetronomeCredit,
+  getMetronomeActiveContract,
   listMetronomeProducts,
   provisionMetronomeCustomerAndContract,
 } from "@app/lib/metronome/client";
@@ -187,6 +188,18 @@ async function grantMetronomeFreeCredits({
   }
 
   try {
+    // Resolve the active contract.
+    const contractResult = await getMetronomeActiveContract(
+      workspace.metronomeCustomerId
+    );
+    if (contractResult.isErr() || !contractResult.value) {
+      logger.error(
+        { workspaceId: workspace.sId },
+        "[Stripe Webhook] No active Metronome contract found for free credit grant"
+      );
+      return;
+    }
+
     // Resolve the "Free Monthly Credits" product ID.
     const productsResult = await listMetronomeProducts();
     if (productsResult.isErr()) {
@@ -227,6 +240,7 @@ async function grantMetronomeFreeCredits({
 
     const result = await createMetronomeCredit({
       metronomeCustomerId: workspace.metronomeCustomerId,
+      contractId: contractResult.value.contractId,
       productId: creditProduct.id,
       amountCents,
       startingAt: periodStart.toISOString(),

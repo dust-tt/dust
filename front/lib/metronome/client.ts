@@ -714,6 +714,7 @@ export async function listMetronomeUsageWithGroups({
  */
 export async function createMetronomeCredit({
   metronomeCustomerId,
+  contractId,
   productId,
   amountCents,
   startingAt,
@@ -722,6 +723,7 @@ export async function createMetronomeCredit({
   idempotencyKey,
 }: {
   metronomeCustomerId: string;
+  contractId: string;
   productId: string;
   amountCents: number;
   startingAt: string;
@@ -730,22 +732,30 @@ export async function createMetronomeCredit({
   idempotencyKey: string;
 }): Promise<Result<{ creditId: string }, Error>> {
   try {
-    const response = await getClient().v1.customers.credits.create({
-      customer_id: metronomeCustomerId,
-      product_id: productId,
-      priority: 100,
-      access_schedule: {
-        schedule_items: [
+    const response = await getClient().v2.contracts.edit(
+      {
+        customer_id: metronomeCustomerId,
+        contract_id: contractId,
+        add_credits: [
           {
-            amount: amountCents,
-            starting_at: startingAt,
-            ending_before: endingBefore,
+            product_id: productId,
+            name,
+            priority: 100,
+            applicable_product_tags: ["usage"],
+            access_schedule: {
+              schedule_items: [
+                {
+                  amount: amountCents,
+                  starting_at: startingAt,
+                  ending_before: endingBefore,
+                },
+              ],
+            },
           },
         ],
       },
-      name,
-      uniqueness_key: idempotencyKey,
-    });
+      { idempotencyKey }
+    );
 
     return new Ok({ creditId: response.data.id });
   } catch (err) {
@@ -760,7 +770,7 @@ export async function createMetronomeCredit({
 
     const error = normalizeError(err);
     logger.error(
-      { error, metronomeCustomerId, name },
+      { error, metronomeCustomerId, name, idempotencyKey },
       "[Metronome] Failed to create credit grant"
     );
     return new Err(error);
