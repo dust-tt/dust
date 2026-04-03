@@ -4,14 +4,7 @@ import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import type { UserQuestionAnswer } from "@app/lib/actions/types";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import {
-  Button,
-  ChatBubbleBottomCenterTextIcon,
-  CheckBoxWithTextAndDescription,
-  CheckIcon,
-  ContentMessage,
-  Input,
-} from "@dust-tt/sparkle";
+import { Button, Card, Checkbox, Input, Spinner } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 
 interface UserQuestionRequiredProps {
@@ -35,7 +28,6 @@ export function UserQuestionRequired({
   const { removeCompletedAction } = useBlockedActionsContext();
   const [selectedOptions, setSelectedOptions] = useState<number[]>([]);
   const [customResponse, setCustomResponse] = useState("");
-  const [showOtherInput, setShowOtherInput] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const { answerQuestion, isSubmitting } = useAnswerUserQuestion({
@@ -46,7 +38,29 @@ export function UserQuestionRequired({
   const { question } = blockedAction;
   const isTriggeredByCurrentUser = blockedAction.userId === user?.sId;
 
-  const handleOptionToggle = useCallback(
+  const submitAnswer = useCallback(
+    async (answer: UserQuestionAnswer) => {
+      const result = await answerQuestion({
+        conversationId,
+        messageId,
+        actionId: blockedAction.actionId,
+        answer,
+      });
+
+      if (result.success) {
+        removeCompletedAction(blockedAction.actionId);
+      }
+    },
+    [
+      conversationId,
+      messageId,
+      blockedAction.actionId,
+      answerQuestion,
+      removeCompletedAction,
+    ]
+  );
+
+  const handleOptionClick = useCallback(
     (index: number) => {
       if (question.multiSelect) {
         setSelectedOptions((prev) =>
@@ -55,112 +69,116 @@ export function UserQuestionRequired({
             : [...prev, index]
         );
       } else {
-        setSelectedOptions([index]);
-        setShowOtherInput(false);
-        setCustomResponse("");
+        void submitAnswer({ selectedOptions: [index] });
       }
     },
-    [question.multiSelect]
+    [question.multiSelect, submitAnswer]
   );
 
-  const handleOtherToggle = useCallback(() => {
-    if (!question.multiSelect) {
-      setSelectedOptions([]);
+  const handleCustomResponseSubmit = useCallback(() => {
+    if (customResponse.trim()) {
+      void submitAnswer({
+        selectedOptions: [],
+        customResponse: customResponse.trim(),
+      });
     }
-    setShowOtherInput((prev) => !prev);
-    if (showOtherInput) {
-      setCustomResponse("");
-    }
-  }, [question.multiSelect, showOtherInput]);
+  }, [customResponse, submitAnswer]);
 
-  const handleSubmit = useCallback(async () => {
-    if (selectedOptions.length === 0 && !customResponse.trim()) {
+  const handleMultiSelectSubmit = useCallback(() => {
+    if (selectedOptions.length === 0) {
       return;
     }
+    void submitAnswer({ selectedOptions });
+  }, [selectedOptions, submitAnswer]);
 
-    const answer: UserQuestionAnswer = {
-      selectedOptions,
-      ...(customResponse.trim()
-        ? { customResponse: customResponse.trim() }
-        : {}),
-    };
+  const handleSkip = useCallback(() => {
+    void submitAnswer({ selectedOptions: [] });
+  }, [submitAnswer]);
 
-    const result = await answerQuestion({
-      conversationId,
-      messageId,
-      actionId: blockedAction.actionId,
-      answer,
-    });
+  if (isSubmitting) {
+    return (
+      <div className="s-flex s-justify-center s-py-4">
+        <Spinner size="sm" />
+      </div>
+    );
+  }
 
-    if (result.success) {
-      removeCompletedAction(blockedAction.actionId);
-    }
-  }, [
-    selectedOptions,
-    customResponse,
-    conversationId,
-    messageId,
-    blockedAction.actionId,
-    answerQuestion,
-    removeCompletedAction,
-  ]);
-
-  const hasSelection =
-    selectedOptions.length > 0 || customResponse.trim().length > 0;
+  if (!isTriggeredByCurrentUser) {
+    return (
+      <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+        Waiting for{" "}
+        <span className="s-font-semibold">{triggeringUser?.fullName}</span> to
+        answer.
+      </div>
+    );
+  }
 
   return (
-    <ContentMessage
-      title={question.question}
-      variant="primary"
-      className="flex w-full flex-col gap-3 sm:w-80 sm:min-w-[500px]"
-      icon={ChatBubbleBottomCenterTextIcon}
-    >
-      {isTriggeredByCurrentUser ? (
-        <>
-          {question.options.map((option, index) => (
-            <CheckBoxWithTextAndDescription
-              key={index}
-              checked={selectedOptions.includes(index)}
-              onCheckedChange={() => handleOptionToggle(index)}
-              text={option.label}
-              description={option.description ?? ""}
-            />
-          ))}
-          <CheckBoxWithTextAndDescription
-            checked={showOtherInput}
-            onCheckedChange={() => handleOtherToggle()}
-            text="Other"
-            description=""
-          />
-          {showOtherInput && (
-            <Input
-              placeholder="Type your answer..."
-              value={customResponse}
-              onChange={(e) => setCustomResponse(e.target.value)}
-              name="custom-response"
-            />
-          )}
-          {errorMessage && (
-            <ContentMessage variant="warning" size="sm">
-              {errorMessage}
-            </ContentMessage>
-          )}
+    <Card variant="secondary" className="s-flex s-flex-col s-gap-3 s-p-4">
+      <div className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+        {question.question}
+      </div>
+      {question.options.map((option, index) => (
+        <Card
+          key={index}
+          variant="secondary"
+          className="s-cursor-pointer s-p-3"
+          onClick={() => handleOptionClick(index)}
+        >
+          <div className="s-flex s-items-start s-gap-2">
+            {question.multiSelect && (
+              <Checkbox
+                checked={selectedOptions.includes(index)}
+                onCheckedChange={() => handleOptionClick(index)}
+              />
+            )}
+            <div className="s-flex s-flex-col">
+              <span className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
+                {option.label}
+              </span>
+              {option.description && (
+                <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  {option.description}
+                </span>
+              )}
+            </div>
+          </div>
+        </Card>
+      ))}
+      <Input
+        className="s-bg-background dark:s-bg-background-night"
+        placeholder="Type something else..."
+        value={customResponse}
+        onChange={(e) => setCustomResponse(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            handleCustomResponseSubmit();
+          }
+        }}
+        name="custom-response"
+      />
+      {errorMessage && (
+        <div className="s-text-sm s-font-medium s-text-warning-800 dark:s-text-warning-800-night">
+          {errorMessage}
+        </div>
+      )}
+      <div className="s-flex s-gap-2">
+        {question.multiSelect && (
           <Button
             label="Submit"
             variant="highlight"
             size="xs"
-            icon={CheckIcon}
-            disabled={isSubmitting || !hasSelection}
-            onClick={() => void handleSubmit()}
+            disabled={selectedOptions.length === 0}
+            onClick={handleMultiSelectSubmit}
           />
-        </>
-      ) : (
-        <ContentMessage variant="info" size="sm">
-          Waiting for{" "}
-          <span className="s-font-semibold">{triggeringUser?.fullName}</span> to
-          answer.
-        </ContentMessage>
-      )}
-    </ContentMessage>
+        )}
+        <Button
+          label="Skip"
+          variant="outline"
+          size="xs"
+          onClick={handleSkip}
+        />
+      </div>
+    </Card>
   );
 }
