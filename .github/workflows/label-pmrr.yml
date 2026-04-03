@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   add_label:
-    if: github.event.issue.pull_request && github.event.comment.body == 'PMRR'
+    if: github.event.issue.pull_request && contains(github.event.comment.body, 'PMRR')
     runs-on: ubuntu-latest
     steps:
       - name: Add PMRR label
