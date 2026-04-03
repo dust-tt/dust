@@ -105,6 +105,7 @@
     "@tiptap/pm": "^3.19.0",
     "@tiptap/react": "^3.19.0",
     "@tiptap/starter-kit": "^3.19.0",
+    "@tiptap/static-renderer": "^3.19.0",
     "@tiptap/suggestion": "^3.19.0",
     "@types/adm-zip": "^0.5.7",
     "@types/json-schema": "^7.0.15",
