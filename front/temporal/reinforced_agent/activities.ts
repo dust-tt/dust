@@ -164,7 +164,8 @@ async function runReinforcedStep({
     auth,
     reinforcementConv,
     events,
-    REINFORCEMENT_AGENT_ID
+    REINFORCEMENT_AGENT_ID,
+    { runIds: [llm.getTraceId()] }
   );
 
   const { exploratoryToolCalls, terminalToolCalls } = classifyToolCalls(events);

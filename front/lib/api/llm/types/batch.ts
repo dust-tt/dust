@@ -12,3 +12,12 @@ export type BatchStatus = "computing" | "ready" | "aborted";
  * Maps each conversation's custom_id to the sequence of LLM events produced for it.
  */
 export type BatchResult = Map<string, LLMEvent[]>;
+
+/**
+ * Enriched batch result that includes the dustRunId for each entry,
+ * enabling linkage between batch results and run_usages for cost tracking.
+ */
+export type BatchResultWithRunIds = Map<
+  string,
+  { events: LLMEvent[]; dustRunId: string }
+>;
