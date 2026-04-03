@@ -160,7 +160,7 @@ export async function gracefullyStopAgentLoop(
         const handle = client.workflow.getHandle(workflowId);
         await handle.signal(gracefullyStopAgentLoopSignal);
       } catch (signalError) {
-        // Workflow may have already completed — safe to ignore.
+        // Swallow errors from signaling (workflow might not exist anymore)
         logger.info(
           { error: signalError, messageId },
           "Failed to signal agent loop workflow for graceful stop"
