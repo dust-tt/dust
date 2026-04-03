@@ -14,7 +14,8 @@ async function provisionCustomer(
   execute: boolean,
   logger: Logger
 ) {
-  // Try to get Stripe customer ID from the active subscription.
+  // Get Stripe customer ID from the active subscription.
+  // Skip workspaces without a Stripe customer — only paying workspaces get a Metronome customer.
   let stripeCustomerId = "";
   const subscription = await SubscriptionModel.findOne({
     where: { workspaceId: workspace.id, status: "active" },
@@ -31,11 +32,19 @@ async function provisionCustomer(
     }
   }
 
+  if (!stripeCustomerId) {
+    logger.info(
+      { workspaceId: workspace.sId },
+      "Skipping — no Stripe customer"
+    );
+    return;
+  }
+
   logger.info(
     {
       workspaceId: workspace.sId,
       workspaceName: workspace.name,
-      stripeCustomerId: stripeCustomerId || "(none)",
+      stripeCustomerId,
     },
     `${execute ? "" : "[DRYRUN] "}Provisioning Metronome customer`
   );

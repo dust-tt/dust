@@ -22,6 +22,7 @@ import {
   invoiceEnterprisePAYGCredits,
   isPAYGEnabled,
 } from "@app/lib/credits/payg";
+import { createMetronomeCustomer } from "@app/lib/metronome/client";
 import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
@@ -48,6 +49,7 @@ import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_worksp
 import { launchWorkOSWorkspaceSubscriptionCreatedWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import assert from "assert";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -96,6 +98,50 @@ async function grantFreeCreditsForSubscription({
     auth,
     stripeSubscription,
   });
+}
+
+/**
+ * Provision a Metronome customer for a workspace, linked to the Stripe customer.
+ * Fire-and-forget: logs errors but does not throw.
+ */
+async function provisionMetronomeCustomer({
+  workspace,
+  stripeCustomerId,
+}: {
+  workspace: WorkspaceResource;
+  stripeCustomerId: string;
+}): Promise<void> {
+  try {
+    const result = await createMetronomeCustomer({
+      workspaceId: workspace.sId,
+      workspaceName: workspace.name,
+      stripeCustomerId,
+    });
+
+    if (result.isOk()) {
+      await WorkspaceResource.updateMetronomeCustomerId(
+        workspace.id,
+        result.value.metronomeCustomerId
+      );
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          metronomeCustomerId: result.value.metronomeCustomerId,
+        },
+        "[Stripe Webhook] Metronome customer provisioned"
+      );
+    } else {
+      logger.error(
+        { workspaceId: workspace.sId, error: result.error.message },
+        "[Stripe Webhook] Failed to provision Metronome customer"
+      );
+    }
+  } catch (err) {
+    logger.error(
+      { workspaceId: workspace.sId, error: normalizeError(err) },
+      "[Stripe Webhook] Failed to provision Metronome customer"
+    );
+  }
 }
 
 async function handler(
@@ -330,6 +376,21 @@ async function handler(
               });
             }
             await restoreWorkspaceAfterSubscription(auth);
+
+            // Provision Metronome customer if not already set.
+            if (!workspace.metronomeCustomerId) {
+              const stripeCustomerId = isString(
+                checkoutStripeSubscription.customer
+              )
+                ? checkoutStripeSubscription.customer
+                : null;
+              if (stripeCustomerId) {
+                void provisionMetronomeCustomer({
+                  workspace,
+                  stripeCustomerId,
+                });
+              }
+            }
 
             await launchWorkOSWorkspaceSubscriptionCreatedWorkflow({
               workspaceId,
