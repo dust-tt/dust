@@ -542,6 +542,11 @@ export const ConversationViewer = ({
               }
             }
             break;
+
+          case "user_message_promoted":
+            // TODO(steering): implement promotion of user message.
+            break;
+
           case "agent_message_new":
             if (ref.current) {
               const agentMessage = makeInitialMessageStreamState(

@@ -2458,6 +2458,7 @@ export async function isConversationEventAllowedForAuth(
     case "butler_done":
     case "butler_thinking":
     case "conversation_title":
+    case "user_message_promoted":
       return true;
     default:
       assertNever(type);

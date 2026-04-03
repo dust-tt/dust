@@ -127,6 +127,7 @@ function isMessageEventParams(
     case "butler_suggestion_created":
     case "butler_thinking":
     case "user_message_new":
+    case "user_message_promoted":
     case "agent_message_new":
     case "agent_message_done":
     case "conversation_title":
