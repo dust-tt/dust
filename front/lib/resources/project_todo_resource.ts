@@ -228,9 +228,11 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     {
       sourceType,
       sourceConversationId,
+      conversationTodoItemSId,
     }: {
       sourceType: ProjectTodoSourceType;
       sourceConversationId: ModelId | null;
+      conversationTodoItemSId?: string;
     },
     transaction?: Transaction
   ): Promise<void> {
@@ -240,6 +242,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
         projectTodoId: this.id,
         sourceType,
         sourceConversationId: sourceConversationId ?? null,
+        conversationTodoItemSId: conversationTodoItemSId ?? null,
       },
       { transaction }
     );
@@ -265,6 +268,48 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       },
       transaction,
     });
+  }
+
+  // Fetches the latest-version project_todo for a specific conversation_todo_versioned item and
+  // user. Used by the merge workflow for idempotent upserts: look up whether a project_todo
+  // already exists for (conversationId, conversationTodoItemSId, userId) before creating a new one.
+  static async fetchByConversationSource(
+    auth: Authenticator,
+    {
+      sourceConversationModelId,
+      conversationTodoItemSId,
+      userId,
+    }: {
+      sourceConversationModelId: ModelId;
+      conversationTodoItemSId: string;
+      userId: ModelId;
+    }
+  ): Promise<ProjectTodoResource | null> {
+    const source = await ProjectTodoSourceModel.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sourceConversationId: sourceConversationModelId,
+        conversationTodoItemSId,
+      },
+      include: [
+        {
+          model: ProjectTodoModel,
+          as: "projectTodo",
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            userId,
+          },
+          required: true,
+        },
+      ],
+    });
+
+    if (!source?.projectTodo) {
+      return null;
+    }
+
+    // Return the latest version of the matched todo.
+    return this.fetchBySId(auth, source.projectTodo.sId);
   }
 
   // ── Serialization ──────────────────────────────────────────────────────────

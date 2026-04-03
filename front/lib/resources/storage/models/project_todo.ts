@@ -335,6 +335,10 @@ export class ProjectTodoSourceModel extends WorkspaceAwareModel<ProjectTodoSourc
   declare sourceType: ProjectTodoSourceType;
   declare sourceConversationId: ForeignKey<ConversationModel["id"]> | null;
 
+  // Stable sId of the conversation_todo_versioned item (actionItem, keyDecision, or notableFact)
+  // that generated this project_todo. Used by the merge workflow for idempotent upserts.
+  declare conversationTodoItemSId: string | null;
+
   declare projectTodo: NonAttribute<ProjectTodoModel>;
   declare sourceConversation: NonAttribute<ConversationModel | null>;
 }
@@ -360,6 +364,13 @@ ProjectTodoSourceModel.init(
       allowNull: true,
       comment: "Set when sourceType is conversation.",
     },
+    conversationTodoItemSId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment:
+        "Stable sId of the conversation_todo_versioned item that generated this project_todo. " +
+        "Used by the merge workflow to idempotently match existing project_todos to their source items.",
+    },
   },
   {
     modelName: "project_todo_source",
@@ -378,6 +389,11 @@ ProjectTodoSourceModel.init(
       {
         name: "project_todo_sources_sourceConversationId_idx",
         fields: ["sourceConversationId"],
+        concurrently: true,
+      },
+      {
+        name: "project_todo_sources_conversation_item_sId_idx",
+        fields: ["sourceConversationId", "conversationTodoItemSId"],
         concurrently: true,
       },
     ],

@@ -941,6 +941,8 @@ export async function postUserMessage(
   ]);
 
   if (isPartOfProject) {
+    // conversation.spaceId is guaranteed non-null for project conversations.
+    const spaceId = conversation.spaceId ?? "";
     const projectTodoAndConversationButlerParams = {
       authType: auth.toJSON(),
       conversationId: conversation.sId,
@@ -948,9 +950,10 @@ export async function postUserMessage(
     };
 
     if (featureFlags.includes("project_todo")) {
-      void launchOrSignalProjectTodoWorkflow(
-        projectTodoAndConversationButlerParams
-      );
+      void launchOrSignalProjectTodoWorkflow({
+        ...projectTodoAndConversationButlerParams,
+        spaceId,
+      });
 
       if (agentMessages.length === 0) {
         void signalProjectTodoComplete(projectTodoAndConversationButlerParams);
@@ -1292,9 +1295,10 @@ export async function editUserMessage(
     };
 
     if (featureFlags.includes("project_todo")) {
-      void launchOrSignalProjectTodoWorkflow(
-        projectTodoAndConversationButlerParams
-      );
+      void launchOrSignalProjectTodoWorkflow({
+        ...projectTodoAndConversationButlerParams,
+        spaceId: conversation.spaceId,
+      });
 
       if (agentMessages.length === 0) {
         void signalProjectTodoComplete(projectTodoAndConversationButlerParams);
@@ -1800,9 +1804,10 @@ export async function retryAgentMessage(
     };
 
     if (featureFlags.includes("project_todo")) {
-      void launchOrSignalProjectTodoWorkflow(
-        projectTodoAndConversationButlerParams
-      );
+      void launchOrSignalProjectTodoWorkflow({
+        ...projectTodoAndConversationButlerParams,
+        spaceId: conversation.spaceId,
+      });
     }
 
     if (featureFlags.includes("conversation_butler")) {
@@ -1967,9 +1972,10 @@ export async function postNewContentFragment(
     };
 
     if (featureFlags.includes("project_todo")) {
-      void launchOrSignalProjectTodoWorkflow(
-        projectTodoAndConversationButlerParams
-      );
+      void launchOrSignalProjectTodoWorkflow({
+        ...projectTodoAndConversationButlerParams,
+        spaceId: conversation.spaceId,
+      });
       void signalProjectTodoComplete(projectTodoAndConversationButlerParams);
     }
 
