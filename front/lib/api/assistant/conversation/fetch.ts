@@ -46,7 +46,7 @@ export const getConversation = async (
   conversationId: string,
   includeDeleted: boolean = false,
   branchId: string | null = null,
-  lastInteractionsToFetchContentFor: number | null = null,
+  lastInteractionsToFetchToolOutputContentFor: number | null = null,
   messagePagination?: { limit: number; lastRank: number | null }
 ) =>
   _getConversation(
@@ -55,7 +55,7 @@ export const getConversation = async (
     includeDeleted,
     branchId,
     "full",
-    lastInteractionsToFetchContentFor,
+    lastInteractionsToFetchToolOutputContentFor,
     messagePagination
   );
 
@@ -72,7 +72,7 @@ async function _getConversation<V extends "light" | "full">(
   includeDeleted: boolean = false,
   branchId: string | null = null,
   viewType: V = "full" as V,
-  lastInteractionsToFetchContentFor: number | null = null,
+  lastInteractionsToFetchToolOutputContentFor: number | null = null,
   messagePagination?: { limit: number; lastRank: number | null }
 ): Promise<
   Result<
@@ -181,12 +181,12 @@ async function _getConversation<V extends "light" | "full">(
     });
   }
 
-  let outputItemContentOnlyForAgentMessageIds: Set<ModelId> | null = null;
+  let messagesWithToolOutputContent: Set<ModelId> | null = null;
 
   // In the case of the agentic loop, to save memory and latency, we only want to fetch content for the last N interactions.
-  if (lastInteractionsToFetchContentFor !== null) {
-    if (lastInteractionsToFetchContentFor <= 0) {
-      outputItemContentOnlyForAgentMessageIds = new Set();
+  if (lastInteractionsToFetchToolOutputContentFor !== null) {
+    if (lastInteractionsToFetchToolOutputContentFor <= 0) {
+      messagesWithToolOutputContent = new Set();
     } else {
       const interactions = groupMessagesIntoInteractions(
         removeNulls(
@@ -209,11 +209,11 @@ async function _getConversation<V extends "light" | "full">(
 
       // Keep the last N interactions with the highest ranks (order is correct because of the sort above).
       const interactionsToKeep = interactions.slice(
-        -lastInteractionsToFetchContentFor
+        -lastInteractionsToFetchToolOutputContentFor
       );
 
       // We only need to fetch content for the actions of the last N interactions.
-      outputItemContentOnlyForAgentMessageIds = new Set(
+      messagesWithToolOutputContent = new Set(
         interactionsToKeep.flatMap((i) =>
           i.messages.filter((m) => m.role === "agent").map((m) => m.id)
         )
@@ -226,7 +226,7 @@ async function _getConversation<V extends "light" | "full">(
     conversation,
     messages,
     viewType,
-    outputItemContentOnlyForAgentMessageIds
+    messagesWithToolOutputContent
   );
 
   if (renderRes.isErr()) {
