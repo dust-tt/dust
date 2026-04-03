@@ -705,17 +705,19 @@ export async function processAndStoreFile(
 
   if (processingRes.isErr()) {
     await file.markAsFailed();
-    // Unfortunately, there is no better way to catch this image format error.
-    const code = processingRes.error.message.includes(
-      "Input buffer contains unsupported image format"
-    )
-      ? "file_type_not_supported"
-      : "internal_server_error";
+    // Unfortunately, there is no better way to catch these errors.
+    const message = processingRes.error.message;
+    let code: ProcessAndStoreFileError["code"] = "internal_server_error";
+    if (message.includes("Input buffer contains unsupported image format")) {
+      code = "file_type_not_supported";
+    } else if (message.includes("could not be processed")) {
+      code = "file_too_large";
+    }
 
     return new Err({
       name: "dust_error",
       code,
-      message: `Failed to process the file : ${processingRes.error}`,
+      message: `Failed to process the file: ${message}`,
     });
   }
 

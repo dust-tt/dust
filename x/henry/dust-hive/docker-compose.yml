@@ -59,7 +59,10 @@ services:
       retries: 10
 
   apache-tika:
-    image: apache/tika:2.9.2.1-full
+    image: apache/tika:3.2.3.0-full
+    volumes:
+      - ./tika-config.xml:/tika-config.xml:ro
+    command: ["-c", "/tika-config.xml"]
     healthcheck:
       test: [ "CMD-SHELL", "wget -q --spider http://localhost:9998/tika || exit 1" ]
       interval: 5s

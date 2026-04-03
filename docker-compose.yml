@@ -48,9 +48,12 @@ services:
       - 6379:6379
     command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lfu
   apache-tika:
-    image: apache/tika:2.9.2.1-full
+    image: apache/tika:3.2.3.0-full
     ports:
       - "9998:9998"
+    volumes:
+      - ./tika-config.xml:/tika-config.xml:ro
+    command: ["-c", "/tika-config.xml"]
   elasticsearch:
     build:
       context: .
