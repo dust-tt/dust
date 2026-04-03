@@ -804,9 +804,17 @@ const InputBarContainer = ({
         setSelectedSingleAgent(draft.agentMention);
         draftAgentRestoredRef.current = true;
       }
+      // TODO: cleanup once we ship the single agent mode
+      // In single-agent mode, strip agent mentions from the draft text since
+      // the agent is handled by the picker button, not inline in the editor.
+      // This handles drafts saved before single-agent mode was enabled.
+      const draftText = singleAgentInput
+        ? draft.text.replace(/:mention\[[^\]]*\]\{sId=[^}]*\}\s*/g, "").trim()
+        : draft.text;
+
       // Schedule content restoration to avoid flushing during render lifecycle.
       queueMicrotask(() =>
-        editorService.setContent(draft.text, { focus: !disableAutoFocus })
+        editorService.setContent(draftText, { focus: !disableAutoFocus })
       );
     }
   }, [
