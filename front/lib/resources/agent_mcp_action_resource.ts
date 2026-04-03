@@ -15,10 +15,7 @@ import {
 } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
 import { isFileAuthorizationInfo } from "@app/lib/actions/types";
-import {
-  isLightClientSideMCPToolConfiguration,
-  isLightServerSideMCPToolConfiguration,
-} from "@app/lib/actions/types/guards";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getCitationsFromToolOutput } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
@@ -983,17 +980,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       this.functionCallName;
     const mcpServerId = this.metadata.mcpServerId ?? null;
 
-    const displayLabels = internalMCPServerName
-      ? (getInternalMCPServerToolDisplayLabels(internalMCPServerName)?.[
-          toolName
-        ] ?? null)
-      : isLightClientSideMCPToolConfiguration(this.toolConfiguration) &&
-          this.toolConfiguration.displayLabels
-        ? this.toolConfiguration.displayLabels
-        : getDefaultRemoteDisplayLabels(
-            this.toolConfiguration.mcpServerName,
-            toolName
-          );
+    const displayLabels = this.resolveDisplayLabels(
+      internalMCPServerName,
+      toolName
+    );
 
     return {
       id: this.id,
@@ -1013,6 +1003,33 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       executionDurationMs: this.executionDurationMs,
       displayLabels,
     };
+  }
+
+  /**
+   * Resolve displayLabels for this action. Checks the persisted toolConfiguration
+   * first (handles dynamic tool names), then falls back to static metadata for
+   * older DB records or remote server defaults.
+   */
+  private resolveDisplayLabels(
+    internalMCPServerName: InternalMCPServerNameType | null,
+    toolName: string
+  ): ToolDisplayLabels | null {
+    if (this.toolConfiguration.displayLabels) {
+      return this.toolConfiguration.displayLabels;
+    }
+
+    if (internalMCPServerName) {
+      return (
+        getInternalMCPServerToolDisplayLabels(internalMCPServerName)?.[
+          toolName
+        ] ?? null
+      );
+    }
+
+    return getDefaultRemoteDisplayLabels(
+      this.toolConfiguration.mcpServerName,
+      toolName
+    );
   }
 
   async updateStatus(

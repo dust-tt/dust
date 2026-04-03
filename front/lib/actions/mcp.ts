@@ -61,6 +61,7 @@ export type ServerSideMCPToolType = Omit<
   // For "medium" stake tools: defines which arguments require per-agent approval.
   // When present, the user must approve the specific (agent, tool, argument values) combination.
   argumentsRequiringApproval?: string[];
+  displayLabels?: ToolDisplayLabels;
 };
 
 export type ClientSideMCPToolType = Omit<

@@ -26,11 +26,18 @@ export function registerTool(
   tool: ToolDefinition,
   { monitoringName }: { monitoringName: string }
 ): void {
-  server.tool(
+  server.registerTool(
     tool.name,
-    tool.description,
-    tool.schema,
-
+    {
+      description: tool.description,
+      inputSchema: tool.schema,
+      _meta: {
+        dust: {
+          stake: tool.stake,
+          displayLabels: tool.displayLabels,
+        },
+      },
+    },
     withToolLogging(
       auth,
       {
