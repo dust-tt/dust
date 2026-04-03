@@ -24,6 +24,7 @@ export interface TruncatedContentProps {
   animationDurationMs?: number;
   expandLabel?: string;
   collapseLabel?: string;
+  isStreaming?: boolean;
   variant?: "default" | "light";
   footer?: React.ReactNode;
   className?: string;
@@ -39,13 +40,16 @@ export function TruncatedContent({
   animationDurationMs = 200,
   expandLabel = "Show more",
   collapseLabel = "Show less",
+  isStreaming = false,
   variant = "default",
   footer,
   className,
   buttonClassName,
 }: TruncatedContentProps) {
   const contentRef = useRef<HTMLDivElement>(null);
-  const [exceedsThreshold, setExceedsThreshold] = useState(defaultCollapsed);
+  const [exceedsThreshold, setExceedsThreshold] = useState(
+    defaultCollapsed && !isStreaming
+  );
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -83,11 +87,16 @@ export function TruncatedContent({
       >
         {children}
         <div
-          className={cn(
-            "s-pointer-events-none s-absolute s-bottom-0 s-left-0 s-right-0 s-h-24 s-bg-gradient-to-t s-from-background dark:s-from-background-night s-transition-opacity",
-            isCurrentlyCollapsed ? "s-opacity-100" : "s-opacity-0"
-          )}
-          style={{ transitionDuration: `${animationDurationMs}ms` }}
+          className="s-pointer-events-none s-absolute s-bottom-0 s-left-0 s-right-0 s-bg-gradient-to-t s-from-background dark:s-from-background-night s-transition-all s-overflow-hidden"
+          style={{
+            height:
+              isCurrentlyCollapsed || (isStreaming && isCollapsed)
+                ? "6rem"
+                : "0",
+            opacity:
+              isCurrentlyCollapsed || (isStreaming && isCollapsed) ? 1 : 0,
+            transitionDuration: `${animationDurationMs}ms`,
+          }}
         />
       </div>
       <div className="s-flex s-items-center s-gap-3">

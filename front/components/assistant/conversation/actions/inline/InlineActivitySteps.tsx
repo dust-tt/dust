@@ -233,6 +233,7 @@ export function InlineActivitySteps({
                     variant="light"
                     buttonClassName="mt-1"
                     animated
+                    isStreaming={true}
                   >
                     <Markdown
                       content={chainOfThought}
