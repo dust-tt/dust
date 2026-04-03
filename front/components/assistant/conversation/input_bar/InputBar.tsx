@@ -320,6 +320,18 @@ export const InputBar = React.memo(function InputBar({
     setAttachedNodes((prev) => prev.filter((n) => !isEqualNode(n, node)));
   };
 
+  const handleResetSelections = () => {
+    setSelectedMCPServerViews((prev) => {
+      prev.forEach((sv) => void deleteTool(sv.sId));
+      return [];
+    });
+    setSelectedSkills((prev) => {
+      prev.forEach((s) => void deleteSkill(s.sId));
+      return [];
+    });
+    setAttachedNodes([]);
+  };
+
   useEffect(() => {
     setIsLocalSubmitting(isSubmitting);
   }, [isSubmitting]);
@@ -385,6 +397,7 @@ export const InputBar = React.memo(function InputBar({
             selectedSkills={selectedSkills}
             onSkillSelect={handleSkillSelect}
             onSkillDeselect={handleSkillDeselect}
+            onResetSelections={handleResetSelections}
             attachedNodes={attachedNodes}
             saveDraft={saveDraft}
             getDraft={getDraft}
