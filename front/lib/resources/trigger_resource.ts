@@ -289,7 +289,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       return new Err(new Error(`Trigger with sId ${sId} not found`));
     }
 
-    if (!trigger.editor || trigger.editor !== auth.getNonNullableUser().id) {
+    if (
+      !auth.isAdmin() &&
+      (!trigger.editor || trigger.editor !== auth.getNonNullableUser().id)
+    ) {
       return new Err(
         new Error("Only the editor of the trigger can update the trigger")
       );

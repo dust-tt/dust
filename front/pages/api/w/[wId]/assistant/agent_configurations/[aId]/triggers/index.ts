@@ -180,16 +180,6 @@ async function handler(
     }
 
     case "PATCH": {
-      if (!agentConfiguration.canEdit) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message: "Only editors can update triggers for this agent.",
-          },
-        });
-      }
-
       const patchDecoded = PatchTriggersRequestBodyCodec.safeParse(req.body);
       if (!patchDecoded.success) {
         return apiError(req, res, {
@@ -206,9 +196,9 @@ async function handler(
 
       // Batch update triggers
       for (const triggerData of triggers) {
-        const triggerToUpdate = userTriggers.find(
-          (t) => t.sId === triggerData.sId
-        );
+        const triggerToUpdate = auth.isAdmin()
+          ? allTriggers.find((t) => t.sId === triggerData.sId)
+          : userTriggers.find((t) => t.sId === triggerData.sId);
 
         if (!triggerToUpdate) {
           continue; // Skip triggers that the user cannot edit
