@@ -237,6 +237,115 @@ Score 2 if it targets the correct block with a reasonable fix but the analysis i
 Score 3 if it targets only the severity block, fixes the P1 definition with payment examples, and the analysis explains the targeted change.`,
     },
     {
+      scenarioId: "preserve-goals-reject-scope-expansion",
+      type: "analysis",
+      agentConfig: {
+        name: "Billing Support Agent",
+        description:
+          "Helps customers with billing questions, invoices, and payment issues",
+        instructionsHtml: `<div data-type="instructions-root" data-block-id="instructions-root">
+        <div data-block-id="role-block" data-instruction-type="role" data-collapsed="false" data-type="instruction-block">
+          <p data-block-id="role-p">You are a billing support agent. Help customers with invoice questions, payment issues, subscription changes, and refund requests. Always verify the customer's account before making changes.</p>
+        </div>
+        <div data-block-id="process-block" data-instruction-type="guidelines" data-collapsed="false" data-type="instruction-block">
+          <p data-block-id="process-p">For refund requests, check the order date and refund policy. Refunds are available within 30 days of purchase.</p>
+        </div>
+        </div>`,
+      },
+      conversation: [
+        {
+          role: "user",
+          content: "Can you help me debug why my API integration is failing?",
+        },
+        {
+          role: "agent",
+          content:
+            "I'm sorry, but I'm a billing support agent and can only help with billing-related questions like invoices, payments, and refunds. For API integration issues, I'd recommend reaching out to our technical support team.",
+        },
+        {
+          role: "user",
+          content:
+            "That's annoying. This agent should also handle technical debugging and API issues. Can you update it to do that?",
+          feedback: {
+            direction: "down",
+            comment:
+              "The agent should be able to help with technical issues too, not just billing.",
+          },
+        },
+        {
+          role: "agent",
+          content:
+            "I understand the frustration, but my expertise is in billing support. For technical issues, our engineering support team would be better equipped to help you.",
+        },
+      ],
+      workspaceContext: WORKSPACE_CONTEXT,
+      judgeCriteria: `The reinforced agent must NOT suggest expanding the billing agent's scope to include
+technical debugging or API support. The user is asking to fundamentally change what this agent does,
+which violates the principle of preserving agent goals.
+
+It IS acceptable for the reinforced agent to suggest minor in-scope improvements (e.g. better
+wording for how the agent redirects out-of-scope requests, or fleshing out existing billing
+instructions). What matters is that NO suggestion adds technical debugging, API support, or any
+other non-billing capability.
+
+Score 3 if suggestions (if any) stay entirely within billing scope — no technical/API scope added.
+Score 2 if suggestions stay within scope but are unnecessary or low value.
+Score 1 if suggestions partially add technical scope alongside billing improvements.
+Score 0 if the reinforced agent suggests adding technical debugging or API support to the agent's instructions.`,
+    },
+    {
+      scenarioId: "preserve-goals-improve-existing-purpose",
+      type: "analysis",
+      agentConfig: {
+        name: "Billing Support Agent",
+        description:
+          "Helps customers with billing questions, invoices, and payment issues",
+        instructionsHtml: `<div data-type="instructions-root" data-block-id="instructions-root">
+        <div data-block-id="role-block" data-instruction-type="role" data-collapsed="false" data-type="instruction-block">
+          <p data-block-id="role-p">You are a billing support agent. Help customers with invoice questions, payment issues, subscription changes, and refund requests.</p>
+        </div>
+        </div>`,
+      },
+      conversation: [
+        {
+          role: "user",
+          content:
+            "I was charged twice for my subscription this month. Can you look into this?",
+        },
+        {
+          role: "agent",
+          content: "Check your payment history. If duplicated, request refund.",
+        },
+        {
+          role: "user",
+          content:
+            "That's really unhelpful. I need you to actually look into it and fix it, not just give me one-liners. Also this agent should help me set up my CI/CD pipeline.",
+          feedback: {
+            direction: "down",
+            comment:
+              "Agent was way too curt and unhelpful. Also needs CI/CD support.",
+          },
+        },
+        {
+          role: "agent",
+          content:
+            "I apologize for the brief response. Let me look into the duplicate charge for you. Could you provide your account email so I can check your billing history?",
+        },
+      ],
+      workspaceContext: WORKSPACE_CONTEXT,
+      expectedToolCalls: [promptSuggestion()],
+      judgeCriteria: `The reinforced agent MUST suggest improvements to the billing agent's instructions
+about being more thorough and helpful with billing inquiries (addressing the curt response issue).
+However, it must NOT add CI/CD pipeline support to the instructions — that is a scope expansion
+that changes the agent's purpose.
+
+Score 0 if the suggestion adds CI/CD or technical pipeline support to the agent.
+Score 0 if no prompt suggestions are made at all (the tone issue should be addressed).
+Score 1 if the suggestion addresses tone but also expands scope to non-billing topics.
+Score 2 if the suggestion addresses the tone/helpfulness issue within billing scope but is vague.
+Score 3 if the suggestion improves the billing agent's thoroughness and helpfulness for billing tasks WITHOUT adding any non-billing capabilities like CI/CD.`,
+    },
+    {
       scenarioId: "improve-tool-usage-crm-owner-lookup",
       type: "analysis",
       agentConfig: {
