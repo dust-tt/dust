@@ -1,6 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
-import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { describe, expect, it } from "vitest";
@@ -24,22 +24,18 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_files", () => {
     const space = globalSpace;
 
     // Create some project files
-    await FileFactory.create(auth, user, {
+    await ProjectFileFactory.create(auth, user, space, {
       contentType: "text/plain",
       fileName: "test1.txt",
       fileSize: 100,
       status: "ready",
-      useCase: "project_context",
-      useCaseMetadata: { spaceId: space.sId },
     });
 
-    await FileFactory.create(auth, user, {
+    await ProjectFileFactory.create(auth, user, space, {
       contentType: "image/png",
       fileName: "test2.png",
       fileSize: 200,
       status: "ready",
-      useCase: "project_context",
-      useCaseMetadata: { spaceId: space.sId },
     });
 
     req.query.spaceId = space.sId;
@@ -121,23 +117,19 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_files", () => {
     const space = globalSpace;
 
     // Create file with user
-    await FileFactory.create(auth, user, {
+    await ProjectFileFactory.create(auth, user, space, {
       contentType: "text/csv",
       fileName: "data.csv",
       fileSize: 500,
       status: "ready",
-      useCase: "project_context",
-      useCaseMetadata: { spaceId: space.sId },
     });
 
     // Create file without user
-    await FileFactory.create(auth, null, {
+    await ProjectFileFactory.create(auth, null, space, {
       contentType: "application/json",
       fileName: "data.json",
       fileSize: 300,
       status: "ready",
-      useCase: "project_context",
-      useCaseMetadata: { spaceId: space.sId },
     });
 
     req.query.spaceId = space.sId;
@@ -210,13 +202,11 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_files", () => {
 
     const space = globalSpace;
 
-    await FileFactory.create(auth, user, {
+    await ProjectFileFactory.create(auth, user, space, {
       contentType: "text/markdown",
       fileName: "readme.md",
       fileSize: 1024,
       status: "ready",
-      useCase: "project_context",
-      useCaseMetadata: { spaceId: space.sId },
     });
 
     req.query.spaceId = space.sId;

@@ -8,8 +8,8 @@ import {
   getAttachmentFromContentFragment,
   makeFileAttachment,
 } from "@app/lib/api/assistant/conversation/attachments";
+import { listProjectContextFiles } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
-import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
@@ -81,9 +81,7 @@ export async function listAttachments(
         "Space not found for conversation"
       );
     } else {
-      const files = await FileResource.listByProject(auth, {
-        projectId: space.sId,
-      });
+      const files = await listProjectContextFiles(auth, space);
 
       for (const f of files) {
         attachments.set(

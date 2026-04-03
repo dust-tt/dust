@@ -177,7 +177,7 @@ export function useFileMetadata({
       : `/api/w/${owner.sId}/files/${fileId}/metadata`
     : null;
 
-  const { data, error, mutate } = useSWRWithDefaults(
+  const { data, error, mutateRegardlessOfQueryParams } = useSWRWithDefaults(
     swrKey,
     fileMetadataFetcher
   );
@@ -186,7 +186,7 @@ export function useFileMetadata({
     fileMetadata: data,
     isFileMetadataLoading: !error && !data,
     isFileMetadataError: error,
-    mutateFileMetadata: mutate,
+    mutateFileMetadata: mutateRegardlessOfQueryParams,
   };
 }
 
