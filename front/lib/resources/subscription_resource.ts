@@ -12,6 +12,8 @@ import {
   LEGACY_BUSINESS_39_PACKAGE_ALIAS,
   LEGACY_PRO_29_PACKAGE_ALIAS,
   PRO_OR_BUSINESS_PACKAGE_ALIASES,
+  SHADOW_BUSINESS_39_PACKAGE_ALIAS,
+  SHADOW_PRO_29_PACKAGE_ALIAS,
 } from "@app/lib/metronome/types";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
@@ -884,21 +886,27 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     { useMetronomeBilling }: { useMetronomeBilling: boolean }
   ): Promise<CheckoutUrlResult> {
     const isBusiness = !!owner.metadata?.isBusiness;
-    const { planCode, allowedPaymentMethods, metronomePackageAlias } =
-      isBusiness
-        ? {
-            planCode: PRO_PLAN_SEAT_39_CODE,
-            allowedPaymentMethods: [
-              "card",
-              "sepa_debit",
-            ] satisfies SupportedPaymentMethod[],
-            metronomePackageAlias: LEGACY_BUSINESS_39_PACKAGE_ALIAS,
-          }
-        : {
-            planCode: PRO_PLAN_SEAT_29_CODE,
-            allowedPaymentMethods: ["card"] satisfies SupportedPaymentMethod[],
-            metronomePackageAlias: LEGACY_PRO_29_PACKAGE_ALIAS,
-          };
+    const {
+      planCode,
+      allowedPaymentMethods,
+      legacyPackageAlias,
+      shadowPackageAlias,
+    } = isBusiness
+      ? {
+          planCode: PRO_PLAN_SEAT_39_CODE,
+          allowedPaymentMethods: [
+            "card",
+            "sepa_debit",
+          ] satisfies SupportedPaymentMethod[],
+          legacyPackageAlias: LEGACY_BUSINESS_39_PACKAGE_ALIAS,
+          shadowPackageAlias: SHADOW_BUSINESS_39_PACKAGE_ALIAS,
+        }
+      : {
+          planCode: PRO_PLAN_SEAT_29_CODE,
+          allowedPaymentMethods: ["card"] satisfies SupportedPaymentMethod[],
+          legacyPackageAlias: LEGACY_PRO_29_PACKAGE_ALIAS,
+          shadowPackageAlias: SHADOW_PRO_29_PACKAGE_ALIAS,
+        };
 
     const proPlan = await SubscriptionResource.findPlanOrThrow(planCode);
 
@@ -916,7 +924,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         owner,
         user,
         planCode,
-        metronomePackageAlias,
+        metronomePackageAlias: legacyPackageAlias,
         allowedPaymentMethods,
       });
     } else {
@@ -925,6 +933,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         user,
         billingPeriod,
         planCode,
+        metronomePackageAlias: shadowPackageAlias,
         allowedPaymentMethods,
       });
     }
@@ -951,6 +960,16 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       transaction,
     });
     return new Ok(undefined);
+  }
+
+  static async updateMetronomeContractId(
+    subscriptionModelId: ModelId,
+    metronomeContractId: string
+  ): Promise<void> {
+    await SubscriptionModel.update(
+      { metronomeContractId },
+      { where: { id: subscriptionModelId } }
+    );
   }
 
   async getPerSeatPricing(): Promise<SubscriptionPerSeatPricing | null> {
@@ -1229,6 +1248,21 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   private async isSubscriptionOnProOrBusinessPlan(
     owner: WorkspaceType
   ): Promise<boolean> {
+    // Check Stripe-billed subscription first (covers shadow mode where both IDs are set).
+    if (this.stripeSubscriptionId) {
+      const stripeSubscription = await getStripeSubscription(
+        this.stripeSubscriptionId
+      );
+      if (!stripeSubscription) {
+        return false;
+      }
+
+      return SubscriptionResource.isStripeSubscriptionOnProOrBusinessPlan(
+        owner,
+        stripeSubscription
+      );
+    }
+
     // Check Metronome-billed subscription.
     if (this.metronomeContractId && owner.metronomeCustomerId) {
       const aliasesResult = await getMetronomeContractPackageAliases({
@@ -1244,21 +1278,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       );
     }
 
-    // Check Stripe-billed subscription.
-    if (!this.stripeSubscriptionId) {
-      return false;
-    }
-    const stripeSubscription = await getStripeSubscription(
-      this.stripeSubscriptionId
-    );
-    if (!stripeSubscription) {
-      return false;
-    }
-
-    return SubscriptionResource.isStripeSubscriptionOnProOrBusinessPlan(
-      owner,
-      stripeSubscription
-    );
+    return false;
   }
 }
 
