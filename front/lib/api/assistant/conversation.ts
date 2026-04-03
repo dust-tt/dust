@@ -534,6 +534,7 @@ export async function postUserMessage(
     agenticMessageData,
     skipToolsValidation,
     doNotAssociateUser,
+    enforceSteeringInvariants,
   }: {
     conversation: ConversationType;
     content: string;
@@ -542,6 +543,7 @@ export async function postUserMessage(
     agenticMessageData?: AgenticMessageData;
     skipToolsValidation: boolean;
     doNotAssociateUser?: boolean;
+    enforceSteeringInvariants?: boolean;
   }
 ): Promise<
   Result<
@@ -597,6 +599,45 @@ export async function postUserMessage(
   const limitResult = await checkMessagesLimit(auth, { mentions, context });
   if (limitResult.isErr()) {
     return limitResult;
+  }
+
+  // Steering invariants: enforce single agent loop per conversation.
+  if (enforceSteeringInvariants) {
+    const agentMentions = mentions.filter(isAgentMention);
+
+    // At most one agent mention per message.
+    if (agentMentions.length > 1) {
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Only one agent can be mentioned per message.",
+        },
+      });
+    }
+
+    // Cannot address a different agent than the running one.
+    const runningAgentMessage = conversation.content
+      .flat()
+      .find(
+        (m): m is AgentMessageType =>
+          isAgentMessageType(m) && m.status === "created"
+      );
+
+    if (runningAgentMessage && agentMentions.length > 0) {
+      if (
+        agentMentions[0].configurationId !==
+        runningAgentMessage.configuration.sId
+      ) {
+        return new Err({
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Cannot address a different agent while one is running.",
+          },
+        });
+      }
+    }
   }
 
   // `getAgentConfiguration` checks that we're only pulling a configuration from the
