@@ -28,7 +28,6 @@ import type {
 } from "@temporalio/workflow";
 import {
   CancellationScope,
-  patched,
   proxyActivities,
   proxySinks,
   setHandler,
@@ -150,14 +149,11 @@ export async function agentLoopWorkflow({
   // Graceful stop: let the current step finish, then exit the
   // loop at the next step boundary. Unlike cancellation, in-flight
   // activities are not killed.
-  const supportsGracefulStop = patched("graceful-stop-signal");
   let gracefulStopRequested = false;
 
-  if (supportsGracefulStop) {
-    setHandler(gracefullyStopAgentLoopSignal, () => {
-      gracefulStopRequested = true;
-    });
-  }
+  setHandler(gracefullyStopAgentLoopSignal, () => {
+    gracefulStopRequested = true;
+  });
 
   try {
     const { agentMessageId, conversationId } = agentLoopArgs;
