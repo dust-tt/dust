@@ -484,10 +484,17 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
           </div>
         </div>
         <Separator />
-        <Page.SectionHeader title="Notifications" />
+        <Page.SectionHeader
+          title="Default Notification Settings"
+          description="Tell us what you’d generally like to be notified about."
+        />
 
         <div className="s-flex s-flex-col">
           <Label className="s-text-foreground">New messages</Label>
+          <div className="s-text-muted-foreground s-text-sm">
+            Apply to all conversations by default. You can set specific rules
+            per project.
+          </div>
           <div className="s-items-center s-pt-1.5 s-space-y-1">
             <DropdownMenu>
               <DropdownMenuTrigger>
@@ -590,12 +597,11 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
         </div>
 
         <div className="s-flex s-flex-col">
-          <Label className="s-text-foreground">
-            New conversations{" "}
-            <span className="s-font-normal s-text-muted-foreground">
-              (In projects)
-            </span>
-          </Label>
+          <Label className="s-text-foreground">New conversations</Label>
+          <div className="s-text-muted-foreground s-text-sm">
+            Apply to conversations in projects only. You can set specific rules
+            per project.
+          </div>
           <div className="s-w-full s-text-sm s-text-foreground s-pt-1.5 s-space-y-1">
             <DropdownMenu>
               <DropdownMenuTrigger>

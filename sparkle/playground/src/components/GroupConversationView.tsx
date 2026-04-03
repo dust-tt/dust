@@ -9,11 +9,10 @@ import {
   Card,
   CardGrid,
   ChatBubbleLeftRightIcon,
-  CheckDoubleIcon,
   CheckIcon,
   Checkbox,
-  CircleIcon,
   Chip,
+  CircleIcon,
   Cog6ToothIcon,
   ConversationListItem,
   DataTable,
@@ -52,18 +51,18 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  Tooltip,
   ToolsIcon,
+  Tooltip,
   TrashIcon,
   TriangleIcon,
   TypingAnimation,
   UserGroupIcon,
-  XMarkIcon,
   WindIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
-import type { ColumnDef } from "@tanstack/react-table";
 import { cn } from "@sparkle/lib/utils";
+import type { ColumnDef } from "@tanstack/react-table";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { getAgentById } from "../data/agents";
@@ -1971,16 +1970,6 @@ export function GroupConversationView({
                     </h3>
                     <CardGrid>
                       {[
-                        {
-                          id: "kickoff",
-                          label: "Get your project running",
-                          icon: MagicIcon,
-                          variant: "highlight" as const,
-                          description:
-                            "Answer a few questions and an agent will fill in your project details.",
-                          onClick: () => {},
-                          isPulsing: true,
-                        },
                         {
                           id: "add-knowledge",
                           label: "Add knowledge",

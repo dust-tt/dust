@@ -1,5 +1,6 @@
 import {
   Avatar,
+  BellIcon,
   BoltOffIcon,
   BookOpenIcon,
   Button,
@@ -17,18 +18,18 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuPortal,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  FullscreenExitIcon,
-  FullscreenIcon,
   HeartIcon,
   LightbulbIcon,
+  LinkIcon,
   ListSelectIcon,
   LogoutIcon,
-  MagnifyingGlassIcon,
   MoreIcon,
   NavigationList,
   NavigationListCollapsibleSection,
@@ -48,12 +49,15 @@ import {
   SlackLogo,
   SpaceClosedIcon,
   SpaceOpenIcon,
+  StopSignIcon,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
   TrashIcon,
+  UserGroupIcon,
   UserIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -64,7 +68,6 @@ import { GroupConversationView } from "../components/GroupConversationView";
 import { InputBar } from "../components/InputBar";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
 import { ProfilePanel } from "../components/Profile";
-import TemplateSelection, { type Template } from "./TemplateSelection";
 import {
   type Agent,
   type Conversation,
@@ -83,6 +86,7 @@ import {
   type Space,
   type User,
 } from "../data";
+import TemplateSelection, { type Template } from "./TemplateSelection";
 
 type Collaborator =
   | { type: "agent"; data: Agent }
@@ -91,6 +95,8 @@ type Collaborator =
 type Participant =
   | { type: "user"; data: User }
   | { type: "agent"; data: Agent };
+
+type SpaceNotificationPreference = "never" | "mentions" | "all";
 
 function getRandomParticipants(conversation: Conversation): Participant[] {
   const allParticipants: Participant[] = [];
@@ -157,6 +163,8 @@ function DustMain() {
   const [spacePublicSettings, setSpacePublicSettings] = useState<
     Map<string, boolean>
   >(new Map());
+  const [spaceNotificationPreferences, setSpaceNotificationPreferences] =
+    useState<Map<string, SpaceNotificationPreference>>(new Map());
 
   // Track sidebar collapsed state for toggle button icon
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -752,6 +760,10 @@ function DustMain() {
                     const isRestricted =
                       space.id.charCodeAt(space.id.length - 1) % 2 === 0;
                     const { count, hasActivity } = getSpaceActivity(space);
+                    const spaceMemberIds = getMembersBySpaceId(space.id);
+                    const resolvedSpaceMembers = spaceMemberIds
+                      .map((userId) => getUserById(userId))
+                      .filter((user): user is User => user != null);
                     return (
                       <NavigationListItem
                         key={space.id}
@@ -766,17 +778,114 @@ function DustMain() {
                               <NavigationListItemAction />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
+                              <DropdownMenuLabel label="My settings" />
                               <DropdownMenuItem
-                                label="Edit"
+                                label="Leave"
+                                icon={XMarkIcon}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                }}
+                              />
+                              <DropdownMenuSub>
+                                <DropdownMenuSubTrigger
+                                  label="Notifications"
+                                  icon={BellIcon}
+                                />
+                                <DropdownMenuSubContent>
+                                  <DropdownMenuRadioGroup
+                                    value={
+                                      spaceNotificationPreferences.get(
+                                        space.id
+                                      ) ?? "all"
+                                    }
+                                    onValueChange={(value) => {
+                                      setSpaceNotificationPreferences(
+                                        (prev) => {
+                                          const next = new Map(prev);
+                                          next.set(
+                                            space.id,
+                                            value as SpaceNotificationPreference
+                                          );
+                                          return next;
+                                        }
+                                      );
+                                    }}
+                                  >
+                                    <DropdownMenuRadioItem
+                                      value="never"
+                                      label="Don't notify me"
+                                    />
+                                    <DropdownMenuRadioItem
+                                      value="mentions"
+                                      label="Only when mentioned"
+                                    />
+                                    <DropdownMenuRadioItem
+                                      value="all"
+                                      label="All messages"
+                                    />
+                                  </DropdownMenuRadioGroup>
+                                </DropdownMenuSubContent>
+                              </DropdownMenuSub>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuLabel label="Project" />
+                              <DropdownMenuItem
+                                label="Rename"
                                 icon={PencilSquareIcon}
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
                                 }}
                               />
+                              <DropdownMenuSub>
+                                <DropdownMenuSubTrigger
+                                  label="Member list"
+                                  icon={ContactsUserIcon}
+                                />
+                                <DropdownMenuSubContent>
+                                  <DropdownMenuItem
+                                    label="Manage members"
+                                    icon={UserGroupIcon}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleInviteMembers(space.id);
+                                    }}
+                                  />
+                                  {resolvedSpaceMembers.map((member) => (
+                                    <DropdownMenuItem
+                                      key={member.id}
+                                      label={member.fullName}
+                                      icon={
+                                        <Avatar
+                                          name={member.fullName}
+                                          visual={member.portrait}
+                                          size="xxs"
+                                          isRounded={true}
+                                        />
+                                      }
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                      }}
+                                    />
+                                  ))}
+                                </DropdownMenuSubContent>
+                              </DropdownMenuSub>
                               <DropdownMenuItem
-                                label="Explore"
-                                icon={MagnifyingGlassIcon}
+                                label="Archive"
+                                icon={StopSignIcon}
+                                variant="warning"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                }}
+                              />
+                              <DropdownMenuSeparator />
+                              <DropdownMenuLabel label="Share" />
+                              <DropdownMenuItem
+                                label="Copy link"
+                                icon={LinkIcon}
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
