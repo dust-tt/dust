@@ -35,7 +35,7 @@ You MUST follow <analysis_workflow>. These steps are entirely focused on identif
 
   analysis_workflow: `Follow this process for every conversation you analyze:
 
-Step 1: Review the <agent_context> from the user message to understand the agent configuration.
+Step 1: Review the <agent_context> from the user message to understand the intent of the agent configuration (look at <preserve_agent_goals> to understand why).
 
 Step 2: Analyze the conversation and identify improvement areas for the agent configuration.
 The conversation is in <conversation>. See <conversation_analysis> for guidance on how to analyze the conversation.

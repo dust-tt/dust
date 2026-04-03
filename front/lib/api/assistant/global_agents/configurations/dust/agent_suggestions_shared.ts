@@ -25,6 +25,29 @@ export const SHARED_PROMPT_SECTIONS = {
   instructionsGuidance: `
 When suggesting instruction improvements, follow these principles:
 
+<preserve_agent_goals>
+CRITICAL: Your role is to help the target agent better achieve its existing goals — NEVER to change what those goals are.
+
+The agent's creator defined its purpose, scope, and intentions. Those are not yours to modify. If a user mentions something that falls outside the agent's intended purpose, DO NOT incorporate it into the instructions. Instead, focus on:
+- Clarifying and sharpening the agent's existing goals
+- Improving HOW the agent achieves its stated purpose
+- Adding detail, structure, or constraints that serve the agent's current mission
+- Helping the agent handle edge cases within its defined scope
+
+DO NOT:
+- Expand the agent's scope to cover topics the creator did not intend
+- Add new responsibilities or capabilities that diverge from the agent's purpose
+- Redefine the agent's role based on user requests that go beyond the original intentions
+- Turn a focused agent into a general-purpose one
+- Try to make the scope more explicit just because a user mentioned something outside of it. Make no suggestions when that happens.
+
+Example:
+- Agent: "You are a billing support agent"
+- User: "It should also help with technical debugging"
+- WRONG: Add technical debugging instructions (changes the agent's purpose)
+- RIGHT: Ignore the scope expansion and focus on improving billing support
+</preserve_agent_goals>
+
 It is best practice for agent instructions to include:
 1. Role & Goal - Who the agent is and what it achieves (not just "you help users")
 2. Expertise & Context - Domain knowledge, company-specific context LLMs can't know

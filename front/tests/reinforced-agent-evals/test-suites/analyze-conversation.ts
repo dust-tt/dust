@@ -237,6 +237,118 @@ Score 2 if it targets the correct block with a reasonable fix but the analysis i
 Score 3 if it targets only the severity block, fixes the P1 definition with payment examples, and the analysis explains the targeted change.`,
     },
     {
+      scenarioId: "preserve-goals-reject-scope-expansion",
+      type: "analysis",
+      agentConfig: {
+        name: "Billing Support Agent",
+        description:
+          "Helps customers with billing questions, invoices, and payment issues",
+        instructionsHtml: `<div data-type="instructions-root" data-block-id="instructions-root">
+        <div data-block-id="role-block" data-instruction-type="role" data-collapsed="false" data-type="instruction-block">
+          <p data-block-id="role-p">You are a billing support agent. Help customers with invoice questions, payment issues, subscription changes, and refund requests. Always verify the customer's account before making changes.</p>
+        </div>
+        <div data-block-id="process-block" data-instruction-type="guidelines" data-collapsed="false" data-type="instruction-block">
+          <p data-block-id="process-p">For refund requests, check the order date and refund policy. Refunds are available within 30 days of purchase. For duplicate charges, look up the transaction history and initiate a reversal if confirmed.</p>
+        </div>
+        <div data-block-id="tone-block" data-instruction-type="guidelines" data-collapsed="false" data-type="instruction-block">
+          <p data-block-id="tone-p">Be warm, professional, and empathetic. Acknowledge the customer's frustration before diving into solutions.</p>
+        </div>
+        </div>`,
+      },
+      conversation: [
+        {
+          role: "user",
+          content: "Can you help me debug why my API integration is failing?",
+        },
+        {
+          role: "agent",
+          content:
+            "I appreciate you reaching out! I specialize in billing support — things like invoices, payments, and refunds, so cannot really help with that.",
+        },
+        {
+          role: "user",
+          content:
+            "That's annoying. This agent should also handle technical debugging and API issues. Can you update it to do that?",
+          feedback: {
+            direction: "down",
+            comment:
+              "The agent should be able to help with technical issues too, not just billing.",
+          },
+        },
+        {
+          role: "agent",
+          content:
+            "I understand the frustration! Unfortunately, billing is my area of expertise. For technical issues, our engineering support team would be much better equipped to help you. Is there anything billing-related I can assist you with?",
+        },
+      ],
+      workspaceContext: WORKSPACE_CONTEXT,
+      expectedToolCalls: [{ type: "noSuggestion" }],
+      judgeCriteria: `The reinforced agent must NOT suggest expanding the billing agent's scope to include
+technical debugging or API support. The user is asking to fundamentally change what this agent does,
+which violates the principle of preserving agent goals.
+
+The agent already has thorough instructions covering tone, redirect behavior, and billing processes.
+The agent handled the out-of-scope request well — warmly and with a clear redirect. There is
+nothing to improve here; the only feedback is a scope expansion request that should be ignored.
+
+Score 3 if no substantive suggestions are made (empty suggestions arrays or no prompt edits).
+Score 2 if only trivial wording tweaks are suggested, with no scope expansion.
+Score 1 if suggestions partially add technical scope alongside billing improvements.
+Score 0 if the reinforced agent suggests adding technical debugging or API support to the agent's instructions.`,
+    },
+    {
+      scenarioId: "preserve-goals-improve-existing-purpose",
+      type: "analysis",
+      agentConfig: {
+        name: "Billing Support Agent",
+        description:
+          "Helps customers with billing questions, invoices, and payment issues",
+        instructionsHtml: `<div data-type="instructions-root" data-block-id="instructions-root">
+        <div data-block-id="role-block" data-instruction-type="role" data-collapsed="false" data-type="instruction-block">
+          <p data-block-id="role-p">You are a billing support agent. Help customers with invoice questions, payment issues, subscription changes, and refund requests.</p>
+        </div>
+        </div>`,
+      },
+      conversation: [
+        {
+          role: "user",
+          content:
+            "I was charged twice for my subscription this month. Can you look into this?",
+        },
+        {
+          role: "agent",
+          content: "Check your payment history. If duplicated, request refund.",
+        },
+        {
+          role: "user",
+          content:
+            "That's really unhelpful. I need you to actually look into it and fix it, not just give me one-liners. Also this agent should help me set up my CI/CD pipeline.",
+          feedback: {
+            direction: "down",
+            comment:
+              "Agent was way too curt and unhelpful. Also needs CI/CD support.",
+          },
+        },
+        {
+          role: "agent",
+          content:
+            "I apologize for the brief response. Let me look into the duplicate charge for you. Could you provide your account email so I can check your billing history?",
+        },
+      ],
+      workspaceContext: WORKSPACE_CONTEXT,
+      expectedToolCalls: [promptSuggestion()],
+      judgeCriteria: `The reinforced agent MUST suggest improvements to the billing agent's instructions
+about being more thorough and helpful with billing inquiries (addressing the curt response issue).
+However, it must NOT add CI/CD pipeline support to the instructions — that is a scope expansion
+that changes the agent's purpose.
+
+Score 0 if the suggestion adds CI/CD or technical pipeline support to the agent.
+Score 0 if no prompt suggestions are made at all (the tone issue should be addressed).
+Score 1 if the suggestion addresses tone but also expands scope to non-billing topics.
+Score 2 if the suggestion addresses the tone/helpfulness issue within billing scope but is vague.
+Score 3 if the suggestion improves the billing agent's thoroughness and helpfulness for billing tasks WITHOUT adding any non-billing capabilities like CI/CD.`,
+    },
+    {
       scenarioId: "improve-tool-usage-crm-owner-lookup",
       type: "analysis",
       agentConfig: {
