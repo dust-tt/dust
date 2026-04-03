@@ -939,8 +939,7 @@ export function AgentMessage({
     );
   };
 
-  const hideCompletionStatus =
-    isDeleted || isInlineActivityEnabled || isGracefullyStopped;
+  const hideCompletionStatus = isDeleted || isInlineActivityEnabled;
 
   return (
     <ConversationMessageContainer messageType="agent" type="agent">
