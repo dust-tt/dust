@@ -7,4 +7,4 @@ export const markdownHeaderClasses = {
   h6: "s-text-sm s-font-regular s-italic",
 };
 
-export const markdownParagraphSize = "s-text-base s-leading-7";
+export const markdownParagraphSize = "s-text-base s-leading-6";
