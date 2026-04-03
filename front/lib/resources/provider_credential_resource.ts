@@ -504,7 +504,7 @@ async function isCredentialHealthy({
       } catch (error) {
         logger.warn(
           { error, workspaceId },
-          "Error while validating Google AI Studio credentials"
+          "Error while validating Anthropic credentials"
         );
         return false;
       }
@@ -525,7 +525,7 @@ async function isCredentialHealthy({
       } catch (error) {
         logger.warn(
           { error, workspaceId },
-          "Error while validating Google AI Studio credentials"
+          "Error while validating OpenAI credentials"
         );
         return false;
       }
