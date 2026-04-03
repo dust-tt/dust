@@ -41,10 +41,10 @@ DO NOT:
 - Turn a focused agent into a general-purpose one
 
 Example:
-- Agent purpose: "You are a customer support agent for billing questions"
-- User says: "It should also help with technical debugging"
-- WRONG: Add technical debugging instructions
-- RIGHT: Ignore the scope expansion — it changes what the agent IS, not how well it performs its job
+- Agent: "You are a billing support agent"
+- User: "It should also help with technical debugging"
+- WRONG: Add technical debugging instructions (changes the agent's purpose)
+- RIGHT: Ignore the scope expansion and focus on improving billing support
 </preserve_agent_goals>
 
 It is best practice for agent instructions to include:
