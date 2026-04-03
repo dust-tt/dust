@@ -29,8 +29,11 @@ import {
   prunePreviousInteractions,
 } from "./pruning";
 
-// When previous interactions pruning is enabled, we'll attempt to fully preserve this number of interactions.
-export const PREVIOUS_INTERACTIONS_TO_PRESERVE = 1;
+// When previous interactions pruning is enabled, we'll attempt to fully preserve this number of
+// interactions. This value was originally at 1 and bumped at 3 with the introduction of
+// gracefully_stopped agent message and user message steering to don't prune tool outputs too
+// agressively.
+export const PREVIOUS_INTERACTIONS_TO_PRESERVE = 3;
 
 // Fixed number of tokens assumed for image contents
 const IMAGE_CONTENT_TOKEN_COUNT = 3100;
