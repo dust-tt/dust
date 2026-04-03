@@ -840,10 +840,13 @@ export async function postUserMessage(
     // the initial check and acquiring the lock, the agent loop may have finalized — if so, clear
     // runningAgentMessage so we fall through to the normal flow.
     if (steeringEnabled && runningAgentMessage) {
-      const agentMessageRow = await AgentMessageModel.findByPk(
-        runningAgentMessage.agentMessageId,
-        { transaction: t }
-      );
+      const agentMessageRow = await AgentMessageModel.findOne({
+        where: {
+          id: runningAgentMessage.agentMessageId,
+          workspaceId: owner.id,
+        },
+        transaction: t,
+      });
 
       if (agentMessageRow?.status !== "created") {
         runningAgentMessage = undefined;
