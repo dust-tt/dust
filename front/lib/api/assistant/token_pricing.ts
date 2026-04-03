@@ -507,13 +507,14 @@ const DEFAULT_PRICING_MODEL_ID: StaticModelIdType = "gpt-4o";
 
 const DEFAULT_PRICING = MODEL_PRICING[DEFAULT_PRICING_MODEL_ID];
 
+// This discount factor applies to OpenAi, Anthropic, Google and Mistral
+const BATCH_DISCOUNT_FACTOR = 0.5;
+
 /**
  * Calculate the cost in micro USD for token usage.
  * Note: promptTokens currently includes cached read and cache write tokens for some providers.
  * To avoid double counting, price all promptTokens at base input rate, then adjust with deltas.
  */
-const BATCH_DISCOUNT_FACTOR = 0.5;
-
 export function computeTokensCostForUsageInMicroUsd({
   modelId,
   promptTokens,
