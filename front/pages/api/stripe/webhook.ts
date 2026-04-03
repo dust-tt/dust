@@ -169,8 +169,6 @@ async function shadowProvisionMetronome({
   }
 }
 
-const FREE_MONTHLY_CREDITS_PRODUCT_NAME = "Free Monthly Credits";
-
 /**
  * Grant monthly free programmatic credits to a Metronome-billed workspace.
  * Uses the same bracket formula as the Stripe credit system.
@@ -209,13 +207,11 @@ async function grantMetronomeFreeCredits({
       );
       return;
     }
-    const creditProduct = productsResult.value.find(
-      (p) => p.name === FREE_MONTHLY_CREDITS_PRODUCT_NAME
-    );
-    if (!creditProduct) {
+    const productId = apiConfig.getMetronomeFreeCreditProductId();
+    if (!productId) {
       logger.error(
         { workspaceId: workspace.sId },
-        `[Stripe Webhook] Metronome product "${FREE_MONTHLY_CREDITS_PRODUCT_NAME}" not found`
+        `[Stripe Webhook] Metronome product "Free Monthly Credits" not found`
       );
       return;
     }
@@ -241,7 +237,7 @@ async function grantMetronomeFreeCredits({
     const result = await createMetronomeCredit({
       metronomeCustomerId: workspace.metronomeCustomerId,
       contractId: contractResult.value.contractId,
-      productId: creditProduct.id,
+      productId,
       amountCents,
       startingAt: periodStart.toISOString(),
       endingBefore: periodEnd.toISOString(),
