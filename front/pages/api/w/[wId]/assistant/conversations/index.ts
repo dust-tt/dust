@@ -402,10 +402,10 @@ async function handler(
           }
         }
 
-        // If a message was provided we do await for the message to be created before returning the
-        // conversation along with the message.
         const featureFlags = await getFeatureFlags(auth);
 
+        // If a message was provided we do await for the message to be created before returning the
+        // conversation along with the message.
         const messageRes = await postUserMessage(auth, {
           conversation,
           content: message.content,
@@ -421,7 +421,7 @@ async function handler(
               message.context.clientSideMCPServerIds ?? [],
           },
           skipToolsValidation: skipToolsValidation ?? false,
-          enforceSteeringInvariants: featureFlags.includes("enable_steering"),
+          steeringEnabled: featureFlags.includes("enable_steering"),
         });
         if (messageRes.isErr()) {
           return apiError(req, res, messageRes.error);

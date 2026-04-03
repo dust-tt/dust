@@ -346,7 +346,7 @@ async function handler(
           clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
         },
         skipToolsValidation: skipToolsValidation ?? false,
-        enforceSteeringInvariants: featureFlags.includes("enable_steering"),
+        steeringEnabled: featureFlags.includes("enable_steering"),
       });
 
       if (messageRes.isErr()) {

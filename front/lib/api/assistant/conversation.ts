@@ -565,7 +565,7 @@ export async function postUserMessage(
     agenticMessageData,
     skipToolsValidation,
     doNotAssociateUser,
-    enforceSteeringInvariants,
+    steeringEnabled,
   }: {
     conversation: ConversationType;
     content: string;
@@ -574,7 +574,7 @@ export async function postUserMessage(
     agenticMessageData?: AgenticMessageData;
     skipToolsValidation: boolean;
     doNotAssociateUser?: boolean;
-    enforceSteeringInvariants?: boolean;
+    steeringEnabled?: boolean;
   }
 ): Promise<
   Result<
@@ -632,8 +632,9 @@ export async function postUserMessage(
     return limitResult;
   }
 
-  // Steering invariants: enforce single agent loop per conversation.
-  if (enforceSteeringInvariants) {
+  // Steering invariants: enforce single agent loop per conversation when
+  // `steeringEnabled` is true.
+  if (steeringEnabled) {
     const agentMentions = mentions.filter(isAgentMention);
 
     // At most one agent mention per message.
@@ -664,7 +665,7 @@ export async function postUserMessage(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Cannot address a different agent while one is running.",
+            message: "Cannot run a different agent while one is running.",
           },
         });
       }
