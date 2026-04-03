@@ -546,6 +546,7 @@ async function addMetronomeCommitsForWorkspace({
     startingAt: effectiveStartDate,
     endingBefore: effectiveExpirationDate,
     name: `${PREPAID_COMMIT_PRODUCT_NAME} (${effectiveStartDate.toISOString()})`,
+    idempotencyKey: `commit-${workspace.sId}-${effectiveStartDate.getTime()}-${amountCents}`,
   });
 
   if (result.isErr()) {

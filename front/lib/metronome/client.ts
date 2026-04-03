@@ -455,6 +455,7 @@ export async function createMetronomeCommit({
   startingAt,
   endingBefore,
   name,
+  idempotencyKey,
 }: {
   metronomeCustomerId: string;
   contractId: string;
@@ -462,6 +463,7 @@ export async function createMetronomeCommit({
   amountCents: number;
   startingAt: Date;
   endingBefore: Date;
+  idempotencyKey: string;
   name?: string;
 }): Promise<Result<void, Error>> {
   // Metronome requires dates on hour boundaries — round down start, round up end.
@@ -484,27 +486,30 @@ export async function createMetronomeCommit({
       "[Metronome] Adding commits to contract"
     );
 
-    await getClient().v2.contracts.edit({
-      customer_id: metronomeCustomerId,
-      contract_id: contractId,
-      add_commits: [
-        {
-          type: "PREPAID",
-          product_id: productId,
-          name: name ?? "Commit purchase",
-          applicable_product_tags: ["usage"],
-          access_schedule: {
-            schedule_items: [
-              {
-                amount: amountCents,
-                starting_at: roundedStartingAt.toISOString(),
-                ending_before: roundedEndingBefore.toISOString(),
-              },
-            ],
+    await getClient().v2.contracts.edit(
+      {
+        customer_id: metronomeCustomerId,
+        contract_id: contractId,
+        add_commits: [
+          {
+            type: "PREPAID",
+            product_id: productId,
+            name: name ?? "Commit purchase",
+            applicable_product_tags: ["usage"],
+            access_schedule: {
+              schedule_items: [
+                {
+                  amount: amountCents,
+                  starting_at: roundedStartingAt.toISOString(),
+                  ending_before: roundedEndingBefore.toISOString(),
+                },
+              ],
+            },
           },
-        },
-      ],
-    });
+        ],
+      },
+      { idempotencyKey }
+    );
 
     logger.info(
       {
