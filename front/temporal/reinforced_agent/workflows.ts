@@ -131,14 +131,21 @@ export async function reinforcedAgentWorkspaceWorkflow({
     }
   }
 
-  const agentIds = await getAgentConfigurationsActivity({ workspaceId });
+  const selections = await getAgentConfigurationsActivity({ workspaceId });
 
   await concurrentExecutor(
-    agentIds,
-    (agentConfigurationId) =>
+    selections,
+    ({ agentConfigurationId, conversationsToSample }) =>
       executeChild(reinforcedAgentForAgentWorkflow, {
         workflowId: `reinforced-agent-${workspaceId}-${agentConfigurationId}`,
-        args: [{ workspaceId, agentConfigurationId, useBatchMode }],
+        args: [
+          {
+            workspaceId,
+            agentConfigurationId,
+            useBatchMode,
+            conversationsToSample,
+          },
+        ],
         parentClosePolicy: ParentClosePolicy.ABANDON,
       }),
     { concurrency: AGENT_CONCURRENCY }
@@ -189,19 +196,22 @@ export async function reinforcedAgentForAgentWorkflow({
   workspaceId,
   agentConfigurationId,
   useBatchMode,
-  conversationLookbackDays = 1,
   disableNotifications = false,
+  conversationsToSample,
+  conversationLookbackDays,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
   useBatchMode: boolean;
-  conversationLookbackDays?: number;
   disableNotifications?: boolean;
+  conversationsToSample?: number;
+  conversationLookbackDays?: number;
 }): Promise<void> {
   const conversationIds = await getRecentConversationsForAgentActivity({
     workspaceId,
     agentConfigurationId,
     conversationLookbackDays,
+    maxConversations: conversationsToSample,
   });
 
   // No conversations to analyze: skip both analysis and aggregation.
