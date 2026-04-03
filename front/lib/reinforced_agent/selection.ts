@@ -6,24 +6,19 @@ import {
   DEFAULT_MAX_AUTO_AGENTS_PER_RUN,
   DEFAULT_MAX_CONVERSATIONS_PER_AGENT,
   DEFAULT_MIN_CONVERSATIONS_TO_INCLUDE,
+  DEFAULT_PENDING_SUGGESTION_MAX_AGE_DAYS,
   DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS,
   DEFAULT_TOTAL_CONVERSATIONS_TO_ANALYZE,
 } from "./constants";
+import { filterEligibleAgents } from "./eligibility";
 import {
   fetchDistinctUsersAndToolErrorCounts,
+  fetchReinforcementAutoTrackSignals,
   type ReinforcementAutoTrackSignals,
 } from "./signals";
 
 // Maximum days since agent configuration update to consider it "stale".
 const AGENT_UPDATE_STALENESS_WINDOW_CLAMP = 90;
-
-// Weighted sum of normalized signals for auto-track ranking (each factor is 0–1 within the cohort; sum = 1).
-const REINFORCEMENT_RANK_WEIGHT_FEEDBACK = 0.3;
-const REINFORCEMENT_RANK_WEIGHT_REINFORCEMENT_STALENESS = 0.2; // Favors agents that have not been reinforced recently
-const REINFORCEMENT_RANK_WEIGHT_HUMAN_CONVERSATIONS = 0.2;
-const REINFORCEMENT_RANK_WEIGHT_TOOL_ERROR = 0.1;
-const REINFORCEMENT_RANK_WEIGHT_MULTI_USER = 0.1;
-const REINFORCEMENT_RANK_WEIGHT_AGENT_VERSION_FRESHNESS = 0.1; // Favors agents with recently updated configs
 
 export interface AgentSelectionResult {
   agentConfigurationId: string;
@@ -37,7 +32,7 @@ export interface SelectionOptions {
   minConversationsToInclude?: number;
 }
 
-export interface ReinforcementSelectionInput {
+interface ReinforcementSelectionInput {
   explicitOnAgents: LightAgentConfigurationType[];
   eligibleAutoAgents: LightAgentConfigurationType[];
   signals: ReinforcementAutoTrackSignals;
@@ -57,6 +52,62 @@ interface ScoredAgent {
   };
 }
 
+type NormalizedSignals = ScoredAgent["normalized"];
+
+type ContributionLogKey =
+  | "feedback"
+  | "recency"
+  | "humanConversations"
+  | "toolError"
+  | "multiUser"
+  | "staleness";
+
+const SCORING_SIGNAL_ROWS: {
+  logKey: ContributionLogKey;
+  weight: number;
+  prefix: string;
+  normalizedSuffix?: string;
+  value: (n: NormalizedSignals) => number;
+}[] = [
+  {
+    logKey: "feedback",
+    weight: 0.3,
+    prefix: "feedback",
+    value: (n) => n.feedback,
+  },
+  {
+    logKey: "recency",
+    weight: 0.2, // Favors agents not recently reinforced
+    prefix: "recency",
+    value: (n) => n.reinforcementStaleness,
+  },
+  {
+    logKey: "humanConversations",
+    weight: 0.2,
+    prefix: "human_conversations",
+    value: (n) => n.humanConversations,
+  },
+  {
+    logKey: "toolError",
+    weight: 0.1,
+    prefix: "tool_error",
+    value: (n) => n.toolError,
+  },
+  {
+    logKey: "multiUser",
+    weight: 0.1,
+    prefix: "multi_user",
+    value: (n) => n.multiUser,
+  },
+  {
+    logKey: "staleness",
+    weight: 0.1, // Favors recently updated configs
+    prefix: "staleness",
+    normalizedSuffix: "staleness_score",
+    value: (n) => n.staleness,
+  },
+];
+
 /**
  * Determines which agents will be run and how many conversations to sample for each.
  *
@@ -65,7 +116,33 @@ interface ScoredAgent {
  *
  * Each agent is assigned a score, then conversation counts are split in proportion to those scores among the agents that are selected.
  */
-export async function selectAgentsForReinforcement(
+export async function selectAgentsForReinforcementPipeline(
+  auth: Authenticator,
+  agents: LightAgentConfigurationType[],
+  options: SelectionOptions = {}
+): Promise<AgentSelectionResult[]> {
+  const inScope = agents.filter((a) => a.id > 0 && a.reinforcement !== "off");
+  const explicitOnAgents = inScope.filter((a) => a.reinforcement === "on");
+  const autoAgents = inScope.filter((a) => a.reinforcement === "auto");
+
+  const signals = await fetchReinforcementAutoTrackSignals(auth, {
+    agentSIds: autoAgents.map((a) => a.sId),
+    lookbackWindowDays: DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS,
+    pendingSuggestionMaxAgeDays: DEFAULT_PENDING_SUGGESTION_MAX_AGE_DAYS,
+  });
+
+  const eligibleAutoAgents = filterEligibleAgents(auth, autoAgents, signals);
+
+  return computeReinforcementSelections(auth, {
+    explicitOnAgents,
+    eligibleAutoAgents,
+    signals,
+    options,
+  });
+}
+
+/** Scores eligible auto agents and splits the conversation pool; `on` agents are passed through unchanged. */
+async function computeReinforcementSelections(
   auth: Authenticator,
   {
     explicitOnAgents,
@@ -113,89 +190,32 @@ export async function selectAgentsForReinforcement(
   const feedbackCountMap = signals.feedbackCountByAgentSId;
   const humanConvsByAgent = signals.humanConversationSIdsByAgent;
 
-  // Collect raw metric values across all eligible agents for cross-agent normalization.
-  const agentFeedbackCounts: number[] = [];
-  const agentHumanConversationsCount: number[] = [];
-  const agentToolErrorCount: number[] = [];
-  const agentUserCount: number[] = [];
+  const rawByAgent = eligibleAutoAgents.map((agent) => ({
+    agent,
+    feedback: feedbackCountMap.get(agent.sId) ?? 0,
+    humanConversations: humanConvsByAgent.get(agent.sId)?.length ?? 0,
+    toolError: toolErrorCountByAgentSId.get(agent.sId) ?? 0,
+    multiUser: distinctUserCountByAgentSId.get(agent.sId) ?? 0,
+  }));
 
-  for (const agent of eligibleAutoAgents) {
-    agentFeedbackCounts.push(feedbackCountMap.get(agent.sId) ?? 0);
-    agentHumanConversationsCount.push(
-      humanConvsByAgent.get(agent.sId)?.length ?? 0
-    );
-    agentToolErrorCount.push(toolErrorCountByAgentSId.get(agent.sId) ?? 0);
-    agentUserCount.push(distinctUserCountByAgentSId.get(agent.sId) ?? 0);
-  }
+  const maxFeedback = Math.max(0, ...rawByAgent.map((r) => r.feedback));
+  const maxHumanConversations = Math.max(
+    0,
+    ...rawByAgent.map((r) => r.humanConversations)
+  );
+  const maxToolError = Math.max(0, ...rawByAgent.map((r) => r.toolError));
+  const maxMultiUser = Math.max(0, ...rawByAgent.map((r) => r.multiUser));
 
-  const maxFeedback = Math.max(...agentFeedbackCounts, 0);
-  const maxHumanConversations = Math.max(...agentHumanConversationsCount, 0);
-  const maxToolError = Math.max(...agentToolErrorCount, 0);
-  const maxMultiUser = Math.max(...agentUserCount, 0);
-
-  const normalize = (value: number, max: number): number =>
-    max === 0 ? 0 : value / max;
-
-  const scored: ScoredAgent[] = eligibleAutoAgents.map((agent) => {
-    const feedback = normalize(
-      feedbackCountMap.get(agent.sId) ?? 0,
-      maxFeedback
-    );
-    // TODO(dust-tt/tasks#7313): We do not yet persist last reinforcement analysis time per agent.
-    // Once we do, we can use that time to calculate the staleness of the agent.
-    // For now, we use a static factor of 1.
-    const reinforcementStaleness = 1;
-    const humanConversations = normalize(
-      humanConvsByAgent.get(agent.sId)?.length ?? 0,
-      maxHumanConversations
-    );
-    const toolError = normalize(
-      toolErrorCountByAgentSId.get(agent.sId) ?? 0,
-      maxToolError
-    );
-    const multiUser = normalize(
-      distinctUserCountByAgentSId.get(agent.sId) ?? 0,
-      maxMultiUser
-    );
-
-    const now = Date.now();
-    const versionCreatedAt = agent.versionCreatedAt
-      ? new Date(agent.versionCreatedAt).getTime()
-      : null;
-    const daysSinceConfigUpdate = versionCreatedAt
-      ? (now - versionCreatedAt) / (1000 * 60 * 60 * 24)
-      : AGENT_UPDATE_STALENESS_WINDOW_CLAMP;
-    // Despite the name `staleness`, this is a recency score: 1 right after a version bump, decays to 0 over the clamp window.
-    const staleness = Math.max(
-      0,
-      Math.min(
-        1,
-        1 - daysSinceConfigUpdate / AGENT_UPDATE_STALENESS_WINDOW_CLAMP
-      )
-    );
-
-    const score =
-      REINFORCEMENT_RANK_WEIGHT_FEEDBACK * feedback +
-      REINFORCEMENT_RANK_WEIGHT_REINFORCEMENT_STALENESS *
-        reinforcementStaleness +
-      REINFORCEMENT_RANK_WEIGHT_HUMAN_CONVERSATIONS * humanConversations +
-      REINFORCEMENT_RANK_WEIGHT_TOOL_ERROR * toolError +
-      REINFORCEMENT_RANK_WEIGHT_MULTI_USER * multiUser +
-      REINFORCEMENT_RANK_WEIGHT_AGENT_VERSION_FRESHNESS * staleness;
-
-    return {
-      agent,
-      score,
-      normalized: {
-        feedback,
-        reinforcementStaleness,
-        humanConversations,
-        toolError,
-        multiUser,
-        staleness,
-      },
-    };
-  });
+  const now = Date.now();
+  const scored: ScoredAgent[] = rawByAgent.map(({ agent, ...raw }) =>
+    scoreAutoAgent(agent, raw, {
+      maxFeedback,
+      maxHumanConversations,
+      maxToolError,
+      maxMultiUser,
+      now,
+    })
+  );
 
   // Sort agents by score descending
   scored.sort((a, b) => b.score - a.score);
@@ -245,6 +265,69 @@ export async function selectAgentsForReinforcement(
   return [...explicitOnResults, ...autoResults];
 }
 
+function normalize(value: number, max: number): number {
+  return max === 0 ? 0 : value / max;
+}
+
+function scoreAutoAgent(
+  agent: LightAgentConfigurationType,
+  raw: {
+    feedback: number;
+    humanConversations: number;
+    toolError: number;
+    multiUser: number;
+  },
+  maxes: {
+    maxFeedback: number;
+    maxHumanConversations: number;
+    maxToolError: number;
+    maxMultiUser: number;
+    now: number;
+  }
+): ScoredAgent {
+  const {
+    maxFeedback,
+    maxHumanConversations,
+    maxToolError,
+    maxMultiUser,
+    now,
+  } = maxes;
+
+  const versionCreatedAt = agent.versionCreatedAt
+    ? new Date(agent.versionCreatedAt).getTime()
+    : null;
+  const daysSinceConfigUpdate = versionCreatedAt
+    ? (now - versionCreatedAt) / (1000 * 60 * 60 * 24)
+    : AGENT_UPDATE_STALENESS_WINDOW_CLAMP;
+
+  const normalized: NormalizedSignals = {
+    feedback: normalize(raw.feedback, maxFeedback),
+    // TODO(dust-tt/tasks#7313): static placeholder until we persist last reinforcement time per agent.
+    reinforcementStaleness: 1,
+    humanConversations: normalize(
+      raw.humanConversations,
+      maxHumanConversations
+    ),
+    toolError: normalize(raw.toolError, maxToolError),
+    multiUser: normalize(raw.multiUser, maxMultiUser),
+    // Recency score: 1 right after a version bump, decays to 0 over the clamp window.
+    staleness: Math.max(
+      0,
+      Math.min(
+        1,
+        1 - daysSinceConfigUpdate / AGENT_UPDATE_STALENESS_WINDOW_CLAMP
+      )
+    ),
+  };
+
+  const score = SCORING_SIGNAL_ROWS.reduce(
+    (sum, row) => sum + row.weight * row.value(normalized),
+    0
+  );
+
+  return { agent, score, normalized };
+}
+
 function recordAgentScoringMetrics(
   workspaceId: string,
   scored: ScoredAgent[],
@@ -254,79 +337,22 @@ function recordAgentScoringMetrics(
   const statsd = getStatsDClient();
 
   for (const { agent, score, normalized } of scored) {
-    const {
-      feedback,
-      reinforcementStaleness: recency,
-      humanConversations,
-      toolError,
-      multiUser,
-      staleness,
-    } = normalized;
     const conversationsToSample = selectedAllocations.get(agent.sId) ?? null;
     const wasSelected = conversationsToSample !== null;
 
-    statsd.distribution(
-      "reinforced_agent.scoring.feedback_normalized",
-      feedback,
-      tags
-    );
-    statsd.distribution(
-      "reinforced_agent.scoring.recency_normalized",
-      recency,
-      tags
-    );
-    statsd.distribution(
-      "reinforced_agent.scoring.human_conversations_normalized",
-      humanConversations,
-      tags
-    );
-    statsd.distribution(
-      "reinforced_agent.scoring.tool_error_normalized",
-      toolError,
-      tags
-    );
-    statsd.distribution(
-      "reinforced_agent.scoring.multi_user_normalized",
-      multiUser,
-      tags
-    );
-    statsd.distribution(
-      "reinforced_agent.scoring.staleness_score",
-      staleness,
-      tags
-    );
-
-    // Weighted contributions (component × weight).
-    statsd.distribution(
-      "reinforced_agent.scoring.feedback_contribution",
-      REINFORCEMENT_RANK_WEIGHT_FEEDBACK * feedback,
-      tags
-    );
-    statsd.distribution(
-      "reinforced_agent.scoring.recency_contribution",
-      REINFORCEMENT_RANK_WEIGHT_REINFORCEMENT_STALENESS * recency,
-      tags
-    );
-    statsd.distribution(
-      "reinforced_agent.scoring.human_conversations_contribution",
-      REINFORCEMENT_RANK_WEIGHT_HUMAN_CONVERSATIONS * humanConversations,
-      tags
-    );
-    statsd.distribution(
-      "reinforced_agent.scoring.tool_error_contribution",
-      REINFORCEMENT_RANK_WEIGHT_TOOL_ERROR * toolError,
-      tags
-    );
-    statsd.distribution(
-      "reinforced_agent.scoring.multi_user_contribution",
-      REINFORCEMENT_RANK_WEIGHT_MULTI_USER * multiUser,
-      tags
-    );
-    statsd.distribution(
-      "reinforced_agent.scoring.staleness_contribution",
-      REINFORCEMENT_RANK_WEIGHT_AGENT_VERSION_FRESHNESS * staleness,
-      tags
-    );
+    for (const row of SCORING_SIGNAL_ROWS) {
+      const v = row.value(normalized);
+      statsd.distribution(
+        `reinforced_agent.scoring.${row.normalizedSuffix ?? `${row.prefix}_normalized`}`,
+        v,
+        tags
+      );
+      statsd.distribution(
+        `reinforced_agent.scoring.${row.prefix}_contribution`,
+        row.weight * v,
+        tags
+      );
+    }
 
     statsd.distribution("reinforced_agent.scoring.total_score", score, tags);
 
@@ -338,6 +364,13 @@ function recordAgentScoringMetrics(
       );
     }
 
+    const contributions = Object.fromEntries(
+      SCORING_SIGNAL_ROWS.map((row) => [
+        row.logKey,
+        row.weight * row.value(normalized),
+      ])
+    ) as Record<ContributionLogKey, number>;
+
     logger.info(
       {
         workspaceId,
@@ -346,23 +379,14 @@ function recordAgentScoringMetrics(
         wasSelected,
         conversationsToSample,
         normalized: {
-          feedback,
-          recency,
-          humanConversations,
-          toolError,
-          multiUser,
-          staleness,
+          feedback: normalized.feedback,
+          recency: normalized.reinforcementStaleness,
+          humanConversations: normalized.humanConversations,
+          toolError: normalized.toolError,
+          multiUser: normalized.multiUser,
+          staleness: normalized.staleness,
         },
-        contributions: {
-          feedback: REINFORCEMENT_RANK_WEIGHT_FEEDBACK * feedback,
-          recency: REINFORCEMENT_RANK_WEIGHT_REINFORCEMENT_STALENESS * recency,
-          humanConversations:
-            REINFORCEMENT_RANK_WEIGHT_HUMAN_CONVERSATIONS * humanConversations,
-          toolError: REINFORCEMENT_RANK_WEIGHT_TOOL_ERROR * toolError,
-          multiUser: REINFORCEMENT_RANK_WEIGHT_MULTI_USER * multiUser,
-          staleness:
-            REINFORCEMENT_RANK_WEIGHT_AGENT_VERSION_FRESHNESS * staleness,
-        },
+        contributions,
       },
       "ReinforcedAgent: agent score breakdown"
     );

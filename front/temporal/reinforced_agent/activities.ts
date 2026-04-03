@@ -27,10 +27,8 @@ import {
 } from "@app/lib/reinforced_agent/analyze_conversation";
 import {
   DEFAULT_MAX_CONVERSATIONS_PER_AGENT,
-  DEFAULT_PENDING_SUGGESTION_MAX_AGE_DAYS,
   DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS,
 } from "@app/lib/reinforced_agent/constants";
-import { filterEligibleAgents } from "@app/lib/reinforced_agent/eligibility";
 import {
   buildReinforcedSpecifications,
   classifyToolCalls,
@@ -41,8 +39,7 @@ import {
   REINFORCEMENT_AGENT_ID,
   reinforcementConversationTitle,
 } from "@app/lib/reinforced_agent/run_reinforced_analysis";
-import { selectAgentsForReinforcement } from "@app/lib/reinforced_agent/selection";
-import { fetchReinforcementAutoTrackSignals } from "@app/lib/reinforced_agent/signals";
+import { selectAgentsForReinforcementPipeline } from "@app/lib/reinforced_agent/selection";
 import {
   prepareReinforcedToolActions,
   type ReinforcedToolActionInfo,
@@ -262,24 +259,7 @@ export async function getAgentConfigurationsActivity({
     variant: "extra_light",
   });
 
-  const inScope = agents.filter((a) => a.id > 0 && a.reinforcement !== "off");
-  const explicitOnAgents = inScope.filter((a) => a.reinforcement === "on");
-  const autoAgents = inScope.filter((a) => a.reinforcement === "auto");
-
-  const signals = await fetchReinforcementAutoTrackSignals(auth, {
-    agentSIds: autoAgents.map((a) => a.sId),
-    lookbackWindowDays: DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS,
-    pendingSuggestionMaxAgeDays: DEFAULT_PENDING_SUGGESTION_MAX_AGE_DAYS,
-  });
-
-  const eligibleAutoAgents = filterEligibleAgents(auth, autoAgents, signals);
-
-  return selectAgentsForReinforcement(auth, {
-    explicitOnAgents,
-    eligibleAutoAgents,
-    signals,
-    options: {},
-  });
+  return selectAgentsForReinforcementPipeline(auth, agents, {});
 }
 
 /**

@@ -20,14 +20,11 @@ import {
   DEFAULT_MAX_AUTO_AGENTS_PER_RUN,
   DEFAULT_MAX_CONVERSATIONS_PER_AGENT,
   DEFAULT_MIN_CONVERSATIONS_TO_INCLUDE,
-  DEFAULT_PENDING_SUGGESTION_MAX_AGE_DAYS,
 } from "@app/lib/reinforced_agent/constants";
-import { filterEligibleAgents } from "@app/lib/reinforced_agent/eligibility";
 import {
   type SelectionOptions,
-  selectAgentsForReinforcement,
+  selectAgentsForReinforcementPipeline,
 } from "@app/lib/reinforced_agent/selection";
-import { fetchReinforcementAutoTrackSignals } from "@app/lib/reinforced_agent/signals";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
@@ -42,59 +39,11 @@ import type { LightWorkspaceType } from "@app/types/user";
 const daysAgo = (days: number) =>
   new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-type ReinforcementSelectionPipelineOptions = SelectionOptions & {
-  lookbackWindowDays?: number;
-  pendingSuggestionMaxAgeDays?: number;
-};
-
-const DEFAULT_PIPELINE_OPTIONS: ReinforcementSelectionPipelineOptions = {
-  lookbackWindowDays: 30,
-  pendingSuggestionMaxAgeDays: DEFAULT_PENDING_SUGGESTION_MAX_AGE_DAYS,
+const DEFAULT_PIPELINE_OPTIONS: SelectionOptions = {
   maxConversationsPerAgent: DEFAULT_MAX_CONVERSATIONS_PER_AGENT,
   maxAutoAgentsPerRun: DEFAULT_MAX_AUTO_AGENTS_PER_RUN,
   minConversationsToInclude: DEFAULT_MIN_CONVERSATIONS_TO_INCLUDE,
 };
-
-function pickSelectionOptions(
-  pipeline: ReinforcementSelectionPipelineOptions
-): SelectionOptions {
-  const {
-    lookbackWindowDays: _l,
-    pendingSuggestionMaxAgeDays: _p,
-    ...selection
-  } = pipeline;
-  return selection;
-}
-
-async function runReinforcementSelectionLikeActivity(
-  auth: Authenticator,
-  agents: LightAgentConfigurationType[],
-  pipelineOptions: ReinforcementSelectionPipelineOptions = DEFAULT_PIPELINE_OPTIONS
-) {
-  const inScope = agents.filter((a) => a.id > 0 && a.reinforcement !== "off");
-  const explicitOnAgents = inScope.filter((a) => a.reinforcement === "on");
-  const autoAgents = inScope.filter((a) => a.reinforcement === "auto");
-
-  const lookbackWindowDays = pipelineOptions.lookbackWindowDays ?? 30;
-  const pendingSuggestionMaxAgeDays =
-    pipelineOptions.pendingSuggestionMaxAgeDays ??
-    DEFAULT_PENDING_SUGGESTION_MAX_AGE_DAYS;
-
-  const signals = await fetchReinforcementAutoTrackSignals(auth, {
-    agentSIds: autoAgents.map((a) => a.sId),
-    lookbackWindowDays,
-    pendingSuggestionMaxAgeDays,
-  });
-
-  const eligibleAutoAgents = filterEligibleAgents(auth, autoAgents, signals);
-
-  return selectAgentsForReinforcement(auth, {
-    explicitOnAgents,
-    eligibleAutoAgents,
-    signals,
-    options: pickSelectionOptions(pipelineOptions),
-  });
-}
 
 async function createConversationWithUpdatedAt(
   auth: Authenticator,
@@ -114,7 +63,7 @@ async function createAgentOnlyConversation(
   workspace: LightWorkspaceType,
   agent: AgentConfigurationType,
   {
-    updatedAt = daysAgo(2),
+    updatedAt = new Date(),
     withFunctionCallStep = false,
   }: { updatedAt?: Date; withFunctionCallStep?: boolean } = {}
 ) {
@@ -162,7 +111,7 @@ async function addFeedback(
   });
 }
 
-describe("selectAgentsForReinforcement", () => {
+describe("selectAgentsForReinforcementPipeline", () => {
   let auth: Authenticator;
   let workspace: LightWorkspaceType;
   let userId: number;
@@ -176,7 +125,7 @@ describe("selectAgentsForReinforcement", () => {
 
   it("returns empty array when agents list is empty", async () => {
     expect(
-      await runReinforcementSelectionLikeActivity(
+      await selectAgentsForReinforcementPipeline(
         auth,
         [],
         DEFAULT_PIPELINE_OPTIONS
@@ -191,7 +140,7 @@ describe("selectAgentsForReinforcement", () => {
       reinforcement: "off",
     };
     expect(
-      await runReinforcementSelectionLikeActivity(
+      await selectAgentsForReinforcementPipeline(
         auth,
         [offAgent],
         DEFAULT_PIPELINE_OPTIONS
@@ -203,7 +152,7 @@ describe("selectAgentsForReinforcement", () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const globalAgent: LightAgentConfigurationType = { ...agent, id: 0 };
     expect(
-      await runReinforcementSelectionLikeActivity(
+      await selectAgentsForReinforcementPipeline(
         auth,
         [globalAgent],
         DEFAULT_PIPELINE_OPTIONS
@@ -217,7 +166,7 @@ describe("selectAgentsForReinforcement", () => {
       ...agent,
       reinforcement: "on",
     };
-    const results = await runReinforcementSelectionLikeActivity(
+    const results = await selectAgentsForReinforcementPipeline(
       auth,
       [onAgent],
       DEFAULT_PIPELINE_OPTIONS
@@ -244,7 +193,7 @@ describe("selectAgentsForReinforcement", () => {
 
     await Promise.all(
       Array.from({ length: DEFAULT_MIN_CONVERSATIONS_TO_INCLUDE }, () =>
-        createConversationWithUpdatedAt(auth, autoAgent.sId, daysAgo(2))
+        createConversationWithUpdatedAt(auth, autoAgent.sId, new Date())
       )
     );
 
@@ -261,7 +210,7 @@ describe("selectAgentsForReinforcement", () => {
       agentMessage.agentMessageId
     );
 
-    const results = await runReinforcementSelectionLikeActivity(
+    const results = await selectAgentsForReinforcementPipeline(
       auth,
       [autoAgent, onAgent],
       DEFAULT_PIPELINE_OPTIONS
@@ -286,7 +235,7 @@ describe("selectAgentsForReinforcement", () => {
 
     await Promise.all(
       Array.from({ length: DEFAULT_MIN_CONVERSATIONS_TO_INCLUDE }, () =>
-        createConversationWithUpdatedAt(auth, autoAgent.sId, daysAgo(2))
+        createConversationWithUpdatedAt(auth, autoAgent.sId, new Date())
       )
     );
 
@@ -303,7 +252,7 @@ describe("selectAgentsForReinforcement", () => {
       agentMessage.agentMessageId
     );
 
-    const results = await runReinforcementSelectionLikeActivity(
+    const results = await selectAgentsForReinforcementPipeline(
       auth,
       [onAgent, autoAgent],
       {
@@ -319,9 +268,9 @@ describe("selectAgentsForReinforcement", () => {
 
   it("excludes auto agent with only one human conversation and no feedback (insufficient signal)", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
-    await createConversationWithUpdatedAt(auth, agent.sId, daysAgo(2));
+    await createConversationWithUpdatedAt(auth, agent.sId, new Date());
 
-    const results = await runReinforcementSelectionLikeActivity(
+    const results = await selectAgentsForReinforcementPipeline(
       auth,
       [agent],
       DEFAULT_PIPELINE_OPTIONS
@@ -335,7 +284,7 @@ describe("selectAgentsForReinforcement", () => {
       withFunctionCallStep: true,
     });
 
-    const results = await runReinforcementSelectionLikeActivity(
+    const results = await selectAgentsForReinforcementPipeline(
       auth,
       [agent],
       DEFAULT_PIPELINE_OPTIONS
@@ -347,7 +296,7 @@ describe("selectAgentsForReinforcement", () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     await Promise.all(
       Array.from({ length: DEFAULT_MIN_CONVERSATIONS_TO_INCLUDE }, () =>
-        createConversationWithUpdatedAt(auth, agent.sId, daysAgo(2))
+        createConversationWithUpdatedAt(auth, agent.sId, new Date())
       )
     );
 
@@ -361,7 +310,7 @@ describe("selectAgentsForReinforcement", () => {
       agentMessage.agentMessageId
     );
 
-    const results = await runReinforcementSelectionLikeActivity(
+    const results = await selectAgentsForReinforcementPipeline(
       auth,
       [agent],
       DEFAULT_PIPELINE_OPTIONS
@@ -388,7 +337,7 @@ describe("selectAgentsForReinforcement", () => {
       source: "reinforcement",
     });
 
-    const results = await runReinforcementSelectionLikeActivity(
+    const results = await selectAgentsForReinforcementPipeline(
       auth,
       [agent],
       DEFAULT_PIPELINE_OPTIONS
@@ -401,7 +350,7 @@ describe("selectAgentsForReinforcement", () => {
 
     await Promise.all(
       Array.from({ length: DEFAULT_MIN_CONVERSATIONS_TO_INCLUDE }, () =>
-        createConversationWithUpdatedAt(auth, agent.sId, daysAgo(2))
+        createConversationWithUpdatedAt(auth, agent.sId, new Date())
       )
     );
 
@@ -424,10 +373,11 @@ describe("selectAgentsForReinforcement", () => {
     );
     await AgentSuggestionFactory.setCreatedAt(suggestion, daysAgo(31));
 
-    const results = await runReinforcementSelectionLikeActivity(auth, [agent], {
-      ...DEFAULT_PIPELINE_OPTIONS,
-      pendingSuggestionMaxAgeDays: 30,
-    });
+    const results = await selectAgentsForReinforcementPipeline(
+      auth,
+      [agent],
+      DEFAULT_PIPELINE_OPTIONS
+    );
     expect(results).toHaveLength(1);
     expect(results[0].agentConfigurationId).toBe(agent.sId);
   });
@@ -442,10 +392,10 @@ describe("selectAgentsForReinforcement", () => {
 
     await Promise.all([
       ...Array.from({ length: DEFAULT_MIN_CONVERSATIONS_TO_INCLUDE }, () =>
-        createConversationWithUpdatedAt(auth, agentA.sId, daysAgo(2))
+        createConversationWithUpdatedAt(auth, agentA.sId, new Date())
       ),
       ...Array.from({ length: DEFAULT_MIN_CONVERSATIONS_TO_INCLUDE }, () =>
-        createConversationWithUpdatedAt(auth, agentB.sId, daysAgo(2))
+        createConversationWithUpdatedAt(auth, agentB.sId, new Date())
       ),
     ]);
 
@@ -468,7 +418,7 @@ describe("selectAgentsForReinforcement", () => {
       await createAgentOnlyConversation(auth, workspace, agentB);
     await addFeedback(workspace, userId, agentB, convB.id, amB.agentMessageId);
 
-    const results = await runReinforcementSelectionLikeActivity(
+    const results = await selectAgentsForReinforcementPipeline(
       auth,
       [agentA, agentB],
       DEFAULT_PIPELINE_OPTIONS
@@ -487,7 +437,7 @@ describe("selectAgentsForReinforcement", () => {
 
     await Promise.all(
       Array.from({ length: 15 }, () =>
-        createConversationWithUpdatedAt(auth, agent.sId, daysAgo(2))
+        createConversationWithUpdatedAt(auth, agent.sId, new Date())
       )
     );
 
@@ -504,7 +454,7 @@ describe("selectAgentsForReinforcement", () => {
       agentMessage.agentMessageId
     );
 
-    const results = await runReinforcementSelectionLikeActivity(auth, [agent], {
+    const results = await selectAgentsForReinforcementPipeline(auth, [agent], {
       ...DEFAULT_PIPELINE_OPTIONS,
       maxConversationsPerAgent: 10,
     });
@@ -523,7 +473,7 @@ describe("selectAgentsForReinforcement", () => {
 
     await Promise.all(
       Array.from({ length: 4 }, () =>
-        createConversationWithUpdatedAt(auth, agentA.sId, daysAgo(2))
+        createConversationWithUpdatedAt(auth, agentA.sId, new Date())
       )
     );
 
@@ -546,11 +496,10 @@ describe("selectAgentsForReinforcement", () => {
       await createAgentOnlyConversation(auth, workspace, agentB);
     await addFeedback(workspace, userId, agentB, convB.id, amB.agentMessageId);
 
-    const results = await runReinforcementSelectionLikeActivity(
+    const results = await selectAgentsForReinforcementPipeline(
       auth,
       [agentA, agentB],
       {
-        lookbackWindowDays: 30,
         maxConversationsPerAgent: 4,
         maxAutoAgentsPerRun: 2,
         totalAutoConversationPool: 8,
