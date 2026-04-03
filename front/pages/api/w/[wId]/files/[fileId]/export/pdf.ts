@@ -2,6 +2,7 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { PDF_FOOTER_HTML } from "@app/lib/api/files/pdf_footer";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -10,7 +11,7 @@ import {
   isFriendsAndFamilyPlan,
 } from "@app/lib/plans/plan_codes";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -20,7 +21,6 @@ import {
 } from "@app/types/files";
 import type { PdfOptions } from "@app/types/shared/document_renderer";
 import { DocumentRenderer } from "@app/types/shared/document_renderer";
-import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
@@ -31,7 +31,8 @@ const PostPdfExportBodySchema = z.object({
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<Buffer>>,
-  auth: Authenticator
+  auth: Authenticator,
+  { file }: { file: FileResource }
 ): Promise<void> {
   if (req.method !== "POST") {
     return apiError(req, res, {
@@ -54,17 +55,6 @@ async function handler(
     });
   }
 
-  const { fileId } = req.query;
-  if (!isString(fileId)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Missing fileId query parameter.",
-      },
-    });
-  }
-
   // Parse and validate request body.
   const bodyResult = PostPdfExportBodySchema.safeParse(req.body);
   if (!bodyResult.success) {
@@ -73,17 +63,6 @@ async function handler(
       api_error: {
         type: "invalid_request_error",
         message: `Invalid request body: ${bodyResult.error.message}`,
-      },
-    });
-  }
-
-  const file = await FileResource.fetchById(auth, fileId);
-  if (!file) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "file_not_found",
-        message: "File not found.",
       },
     });
   }
@@ -161,7 +140,7 @@ async function handler(
 
   const params = new URLSearchParams({
     accessToken,
-    identifier: `viz-${fileId}`,
+    identifier: `viz-${file.sId}`,
     pdfMode: "true",
   });
   const targetUrl = `${vizUrl}/content?${params.toString()}`;
@@ -230,4 +209,6 @@ async function handler(
   res.status(200).send(result.value);
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, { file: {} })
+);
