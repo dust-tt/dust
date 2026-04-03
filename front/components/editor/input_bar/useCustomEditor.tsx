@@ -176,6 +176,8 @@ export interface CustomEditorProps {
   disableAutoFocus: boolean;
   disableUserMentions?: boolean;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
+  onAgentSelect?: (mention: RichMention) => void;
+  singleAgentInputEnabled?: boolean;
   owner: WorkspaceType;
   conversationId?: string | null;
   spaceId?: string;
@@ -196,6 +198,8 @@ export const buildEditorExtensions = ({
   disableUserMentions,
   onInlineText,
   onUrlDetected,
+  onAgentSelect,
+  singleAgentInputEnabled,
 }: {
   owner: WorkspaceType;
   conversationId?: string | null;
@@ -203,6 +207,8 @@ export const buildEditorExtensions = ({
   disableUserMentions?: boolean;
   onInlineText?: (fileId: string, textContent: string) => void;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
+  onAgentSelect?: (mention: RichMention) => void;
+  singleAgentInputEnabled?: boolean;
 }) => {
   const extensions = [
     KeyboardShortcutsExtension,
@@ -276,6 +282,8 @@ export const buildEditorExtensions = ({
           agents: true,
           users: !disableUserMentions,
         },
+        onAgentSelect,
+        singleAgentInputEnabled,
       }),
     }),
     EmojiExtension,
@@ -310,6 +318,8 @@ const useCustomEditor = ({
   disableAutoFocus,
   disableUserMentions,
   onUrlDetected,
+  onAgentSelect,
+  singleAgentInputEnabled,
   owner,
   conversationId,
   spaceId,
@@ -327,6 +337,8 @@ const useCustomEditor = ({
         disableUserMentions,
         onInlineText,
         onUrlDetected,
+        onAgentSelect,
+        singleAgentInputEnabled,
       }),
       shouldRerenderOnTransaction: true, // necessary to update the editor state (and so the toolbar icons "activation") in real time
       editorProps: {
