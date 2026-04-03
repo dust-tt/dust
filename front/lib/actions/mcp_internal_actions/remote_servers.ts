@@ -949,7 +949,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       "Datadog tools for monitoring and observability (Region: US1).",
     url: "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp",
     documentationUrl: "https://docs.datadoghq.com/bits_ai/mcp_server/?site=us1",
-    icon: "MagnifyingGlassIcon",
+    icon: "DatadogLogo",
     authMethod: "oauth",
     toolStakes: {
       ask_docs: "never_ask",
@@ -977,7 +977,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       "Datadog tools for monitoring and observability (Region: EU1).",
     url: "https://mcp.datadoghq.eu/api/unstable/mcp-server/mcp",
     documentationUrl: "https://docs.datadoghq.com/bits_ai/mcp_server/?site=eu1",
-    icon: "MagnifyingGlassIcon",
+    icon: "DatadogLogo",
     authMethod: "oauth",
     toolStakes: {
       ask_docs: "never_ask",
