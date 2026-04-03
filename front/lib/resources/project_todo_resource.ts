@@ -10,6 +10,7 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type {
+  ProjectTodoCategory,
   ProjectTodoSourceType,
   ProjectTodoType,
 } from "@app/types/project_todo";
@@ -21,6 +22,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -189,6 +191,71 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     });
   }
 
+  // Returns the latest version of every todo for a given space
+  // and category, paired with the source conversation info needed to check
+  // whether the originating ConversationTodoVersioned action item is still active.
+  // Used by the merge-into-project algorithm for both upsert lookups
+  static async fetchLatestBySpaceWithSources(
+    auth: Authenticator,
+    { spaceId, category }: { spaceId: ModelId; category: ProjectTodoCategory }
+  ): Promise<
+    Array<{
+      todo: ProjectTodoResource;
+      sourceConversationId: ModelId | null;
+      conversationTodoVersionedActionItemSId: string | null;
+    }>
+  > {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Load all version rows for todos in this space + category,
+    // sorted so we can determine both the first and the latest version in one
+    // pass (first id needed to locate the source row, last row = latest data).
+    const all = await this.baseFetch(auth, {
+      where: { spaceId: spaceId, category },
+      order: [
+        ["sId", "ASC"],
+        ["version", "ASC"],
+      ],
+    });
+
+    if (all.length === 0) {
+      return [];
+    }
+
+    // One pass: track the first version's id (for source lookup) and the last
+    // version's resource (latest data) for each sId.
+    const firstIdBySId = new Map<string, ModelId>();
+    const latestBySId = new Map<string, ProjectTodoResource>();
+    for (const todo of all) {
+      if (!firstIdBySId.has(todo.sId)) {
+        firstIdBySId.set(todo.sId, todo.id);
+      }
+      latestBySId.set(todo.sId, todo);
+    }
+
+    // Bulk-fetch source rows linked to the first-version ids.
+    const firstIds = Array.from(firstIdBySId.values());
+    const sources = await ProjectTodoSourceModel.findAll({
+      where: {
+        workspaceId,
+        projectTodoId: { [Op.in]: firstIds },
+      },
+    });
+    const sourceByFirstId = new Map(sources.map((s) => [s.projectTodoId, s]));
+
+    return Array.from(latestBySId.entries()).map(([sId, todo]) => {
+      const firstId = firstIdBySId.get(sId);
+      const source =
+        firstId !== undefined ? sourceByFirstId.get(firstId) : undefined;
+      return {
+        todo,
+        sourceConversationId: source?.sourceConversationId ?? null,
+        conversationTodoVersionedActionItemSId:
+          source?.conversationTodoVersionedActionItemSId ?? null,
+      };
+    });
+  }
+
   // ── Output conversation links (todo => conversation) ────────────────────
 
   async addOutputConversation(
@@ -228,9 +295,11 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     {
       sourceType,
       sourceConversationId,
+      conversationTodoVersionedActionItemSId,
     }: {
       sourceType: ProjectTodoSourceType;
       sourceConversationId: ModelId | null;
+      conversationTodoVersionedActionItemSId?: string;
     },
     transaction?: Transaction
   ): Promise<void> {
@@ -240,6 +309,8 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
         projectTodoId: this.id,
         sourceType,
         sourceConversationId: sourceConversationId ?? null,
+        conversationTodoVersionedActionItemSId:
+          conversationTodoVersionedActionItemSId ?? null,
       },
       { transaction }
     );

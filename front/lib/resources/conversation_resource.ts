@@ -427,6 +427,50 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return conversations;
   }
 
+  // Returns the internal ModelIds of all conversations belonging to a space.
+  // Used by the project-todo merge workflow to enumerate conversations without
+  // loading full conversation objects.
+  static async fetchIdsBySpaceId(
+    auth: Authenticator,
+    { spaceId }: { spaceId: ModelId }
+  ): Promise<ModelId[]> {
+    const rows = await ConversationModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        spaceId: spaceId,
+      },
+      attributes: ["id"],
+    });
+    return rows.map((r) => r.id);
+  }
+
+  // Returns a map of conversationModelId → participantUserIds for a set of
+  // conversations. Used by the project-todo merge workflow to resolve target
+  // users in bulk rather than per-conversation.
+  static async fetchParticipantUserIdsByConversationIds(
+    auth: Authenticator,
+    { conversationIds }: { conversationIds: ModelId[] }
+  ): Promise<Map<ModelId, ModelId[]>> {
+    if (conversationIds.length === 0) {
+      return new Map();
+    }
+
+    const rows = await ConversationParticipantModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: { [Op.in]: conversationIds },
+      },
+      attributes: ["conversationId", "userId"],
+    });
+
+    const result = new Map<ModelId, ModelId[]>();
+    for (const row of rows) {
+      const list = result.get(row.conversationId) ?? [];
+      result.set(row.conversationId, [...list, row.userId]);
+    }
+    return result;
+  }
+
   static async canAccess(
     auth: Authenticator,
     sId: string
@@ -1184,7 +1228,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const conversations = await this.baseFetchWithAuthorization(auth, options, {
       where: {
-        spaceId: spaceModelId,
+        spaceId: spaceId,
       },
       order: [["updatedAt", "DESC"]],
     });
@@ -1228,7 +1272,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const orderDirection = pagination.orderDirection ?? "desc";
 
     const whereClause: WhereOptions<InferAttributes<ConversationModel>> = {
-      spaceId: spaceModelId,
+      spaceId: spaceId,
     };
 
     if (pagination.lastValue) {
