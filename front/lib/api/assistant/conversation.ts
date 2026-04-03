@@ -20,6 +20,7 @@ import {
 } from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
+import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR_WINDOW_SECONDS,
@@ -755,12 +756,92 @@ export async function postUserMessage(
     }
   }
 
+  // When steering is enabled, detect the running agent message (if any) to
+  // determine whether to take the pending path inside the transaction.
+  const runningAgentMessage = steeringEnabled
+    ? conversation.content
+        .flat()
+        .find(
+          (m): m is AgentMessageType =>
+            isAgentMessageType(m) && m.status === "created"
+        )
+    : undefined;
+
+  const agentMentions = mentions.filter(isAgentMention);
+
+  // Determine if we should attempt the pending path: steering is enabled,
+  // there's a running agent, and the user mentioned that same agent.
+  const shouldAttemptPendingPath =
+    steeringEnabled &&
+    runningAgentMessage &&
+    agentMentions.length > 0 &&
+    agentMentions[0].configurationId === runningAgentMessage.configuration.sId;
+
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages } = await withTransaction(async (t) => {
     // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
     // this transaction, otherwise this other query will be competing for a connection in the database
     // connection pool, resulting in a deadlock.
     await getConversationRankVersionLock(auth, conversation, t);
+
+    // Pending path: re-read agent message status under lock. If the agent is
+    // still running, create a pending user message without an agent message.
+    if (shouldAttemptPendingPath) {
+      const agentMessageRow = await AgentMessageModel.findByPk(
+        runningAgentMessage.agentMessageId,
+        { transaction: t }
+      );
+
+      if (agentMessageRow?.status === "created") {
+        const nextMessageRank =
+          ((await MessageModel.max<number | null, MessageModel>("rank", {
+            where: {
+              workspaceId: owner.id,
+              conversationId: conversation.id,
+              branchId: conversation.branchId
+                ? getResourceIdFromSId(conversation.branchId)
+                : null,
+            },
+            transaction: t,
+          })) ?? -1) + 1;
+
+        const enrichedContext: UserMessageContext = {
+          ...context,
+          apiKeyId: auth.key()?.id ?? null,
+          authMethod: auth.authMethod(),
+        };
+
+        const userMessageWithoutMentions = await createUserMessage(auth, {
+          conversation,
+          content,
+          metadata: {
+            type: "create",
+            user: doNotAssociateUser ? null : (user?.toJSON() ?? null),
+            rank: nextMessageRank,
+            context: enrichedContext,
+            agenticMessageData,
+            visibility: "pending",
+          },
+          transaction: t,
+        });
+
+        const richMentions = await createUserMentions(auth, {
+          mentions,
+          message: userMessageWithoutMentions,
+          conversation,
+          transaction: t,
+        });
+
+        const userMessage = {
+          ...userMessageWithoutMentions,
+          richMentions,
+          mentions: richMentions.map(toMentionType),
+        };
+
+        return { userMessage, agentMessages: [] };
+      }
+      // Agent is no longer running — fall through to normal flow.
+    }
 
     let nextMessageRank: number | undefined;
 
@@ -960,6 +1041,12 @@ export async function postUserMessage(
       agentMessages,
       conversation,
       userMessage,
+    });
+  } else if (shouldAttemptPendingPath && runningAgentMessage) {
+    // Pending path: signal the running agent loop to gracefully stop.
+    await gracefullyStopAgentLoop(auth, {
+      messageIds: [runningAgentMessage.sId],
+      conversationId: conversation.sId,
     });
   }
 
