@@ -104,13 +104,13 @@ export async function createClientSideMCPServerConfigurations(
     return [];
   }
 
-  const metadata = await getMCPServersMetadata(auth, {
+  const metaByServerId = await getMCPServersMetadata(auth, {
     serverIds: clientSideMCPServerIds,
   });
 
-  return clientSideMCPServerIds.flatMap((serverId, index) => {
-    const meta = metadata[index];
-    if (meta === null) {
+  return clientSideMCPServerIds.flatMap((serverId) => {
+    const meta = metaByServerId.get(serverId);
+    if (!meta) {
       return [];
     }
     return [
