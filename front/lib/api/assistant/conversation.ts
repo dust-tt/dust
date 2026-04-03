@@ -855,8 +855,12 @@ export async function postUserMessage(
       }
     }
 
+    // We set the visibility of the user message to "pending" if steering is enabled, we have a
+    // running agent message and there are agent mentions in the user messsage.
     const visibility: MessageVisibility =
-      steeringEnabled && runningAgentMessage ? "pending" : "visible";
+      steeringEnabled && runningAgentMessage && agentMentions.length > 0
+        ? "pending"
+        : "visible";
 
     // Return the user message without mentions.
     // This way typescript forces us to create the mentions after the user message is created.
@@ -891,9 +895,9 @@ export async function postUserMessage(
       });
     }
 
-    if (steeringEnabled && runningAgentMessage) {
-      // Pending path: agent is still running, create a pending user message without an agent
-      // message.
+    if (visibility === "pending") {
+      // Pending path: agent is still running, and we have agent mentions, create a pending user
+      // message without an agent message.
       const userMessage = {
         ...userMessageWithoutMentions,
         richMentions,
@@ -993,7 +997,11 @@ export async function postUserMessage(
       conversation,
       userMessage,
     });
-  } else if (steeringEnabled && runningAgentMessage) {
+  } else if (
+    steeringEnabled &&
+    runningAgentMessage &&
+    userMessage.visibility === "pending"
+  ) {
     // Pending path: signal the running agent loop to gracefully stop.
     await gracefullyStopAgentLoop(auth, {
       messageIds: [runningAgentMessage.sId],
