@@ -146,9 +146,8 @@ export async function agentLoopWorkflow({
     executionScope.cancel();
   });
 
-  // Graceful stop: let the current step finish, then exit the
-  // loop at the next step boundary. Unlike cancellation, in-flight
-  // activities are not killed.
+  // Graceful stop: let the current step finish, then exit the loop at the next step boundary.
+  // Unlike cancellation, in-flight activities are not killed.
   let gracefulStopRequested = false;
 
   setHandler(gracefullyStopAgentLoopSignal, () => {
