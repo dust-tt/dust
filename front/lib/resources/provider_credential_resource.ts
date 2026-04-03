@@ -496,7 +496,11 @@ async function isCredentialHealthy({
       });
       try {
         await client.models.list();
-      } catch (_error) {
+      } catch (error) {
+        logger.warn(
+          { error },
+          "Error while validating Google AI Studio credentials"
+        );
         return false;
       }
 
@@ -513,7 +517,11 @@ async function isCredentialHealthy({
 
       try {
         await client.models.list();
-      } catch (_error) {
+      } catch (error) {
+        logger.warn(
+          { error },
+          "Error while validating Google AI Studio credentials"
+        );
         return false;
       }
 
@@ -526,7 +534,11 @@ async function isCredentialHealthy({
 
       try {
         await client.models.list();
-      } catch (_error) {
+      } catch (error) {
+        logger.warn(
+          { error },
+          "Error while validating Google AI Studio credentials"
+        );
         return false;
       }
 
