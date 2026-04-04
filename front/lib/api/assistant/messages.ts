@@ -33,6 +33,7 @@ import type {
   RichMentionWithStatus,
   UserMessageType,
   UserMessageTypeWithContentFragments,
+  UserMessageTypeWithoutMentions,
 } from "@app/types/assistant/conversation";
 import {
   ConversationError,
@@ -51,6 +52,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
+import type { Transaction } from "sequelize";
 
 export function getCompletionDuration(
   created: number,
@@ -176,6 +178,82 @@ function interleaveConditionalNewlines(parts: string[]): string[] {
   return out;
 }
 
+/**
+ * Render base user message fields from a MessageModel (with userMessage
+ * eager-loaded). No DB calls — uses only data on the models.
+ */
+function renderUserMessage(
+  message: MessageModel,
+  linkedUser: UserType | undefined
+): UserMessageTypeWithoutMentions {
+  if (!message.userMessage) {
+    throw new Error(
+      "Unreachable: renderUserMessage called on non-user message"
+    );
+  }
+  const userMessage = message.userMessage;
+
+  if (linkedUser && linkedUser.id !== userMessage.userId) {
+    throw new Error(
+      `linkedUser.id (${linkedUser.id}) does not match userMessage.userId (${userMessage.userId})`
+    );
+  }
+
+  let username = userMessage.userContextUsername;
+  let fullName = userMessage.userContextFullName;
+  let email = userMessage.userContextEmail;
+  let profilePictureUrl = userMessage.userContextProfilePictureUrl;
+
+  if (userMessage.userId !== null && !userMessage.agenticMessageType) {
+    if (linkedUser) {
+      username = linkedUser.username;
+      fullName = linkedUser.fullName;
+      email = linkedUser.email;
+      profilePictureUrl = linkedUser.image;
+    } else {
+      logger.warn(
+        {
+          conversationSId: message.sId,
+          userId: userMessage.userId,
+        },
+        "User not found for user message while it should have been fetched before. Falling back to user context."
+      );
+    }
+  }
+
+  return {
+    id: message.id,
+    sId: message.sId,
+    type: "user_message",
+    visibility: message.visibility,
+    version: message.version,
+    rank: message.rank,
+    branchId: message.branchSId,
+    created: message.createdAt.getTime(),
+    user: linkedUser ?? null,
+    content: userMessage.content,
+    context: {
+      username,
+      timezone: userMessage.userContextTimezone,
+      fullName,
+      email,
+      profilePictureUrl,
+      origin: userMessage.userContextOrigin,
+      clientSideMCPServerIds: userMessage.clientSideMCPServerIds,
+      lastTriggerRunAt:
+        userMessage.userContextLastTriggerRunAt?.getTime() ?? null,
+    },
+    agenticMessageData:
+      userMessage.agenticMessageType && userMessage.agenticOriginMessageId
+        ? {
+            type: userMessage.agenticMessageType,
+            originMessageId: userMessage.agenticOriginMessageId,
+          }
+        : undefined,
+    reactions: [],
+  };
+}
+
 async function batchRenderUserMessages(
   auth: Authenticator,
   messages: MessageModel[]
@@ -226,13 +304,12 @@ async function batchRenderUserMessages(
   });
 
   return userMessages.map((message) => {
-    if (!message.userMessage) {
-      throw new Error(
-        "Unreachable: batchRenderUserMessages has been filtered on user messages"
-      );
-    }
-    const userMessage = message.userMessage;
-    const user = userMessage.userId ? usersById.get(userMessage.userId) : null;
+    const base = renderUserMessage(
+      message,
+      message.userMessage?.userId
+        ? usersById.get(message.userMessage.userId)
+        : undefined
+    );
 
     const richMentions = getRichMentionsWithStatusForMessage(
       message.id,
@@ -240,66 +317,50 @@ async function batchRenderUserMessages(
       usersById,
       agentConfigurationsById
     );
-    let username = userMessage.userContextUsername;
-    let fullName = userMessage.userContextFullName;
-    let email = userMessage.userContextEmail;
-    let profilePictureUrl = userMessage.userContextProfilePictureUrl;
 
-    // We have a linked user and this is not an agentic message, so we can override the user context with the latest user data.
-    if (userMessage.userId !== null && !userMessage.agenticMessageType) {
-      const user = usersById.get(userMessage.userId);
-      if (user) {
-        username = user.username;
-        fullName = user.fullName;
-        email = user.email;
-        profilePictureUrl = user.image;
-      } else {
-        logger.warn(
-          {
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            conversationSId: message.sId,
-            userId: userMessage.userId,
-          },
-          "User not found for user message while it should have been fetched before. Falling back to user context."
-        );
-      }
-    }
-
-    const mentions = richMentions.map(toMentionType);
     return {
-      id: message.id,
-      sId: message.sId,
-      type: "user_message",
-      visibility: message.visibility,
-      version: message.version,
-      rank: message.rank,
-      branchId: message.branchSId,
-      created: message.createdAt.getTime(),
-      user: user ?? null,
-      mentions,
+      ...base,
+      mentions: richMentions.map(toMentionType),
       richMentions,
-      content: userMessage.content,
-      context: {
-        username,
-        timezone: userMessage.userContextTimezone,
-        fullName,
-        email,
-        profilePictureUrl,
-        origin: userMessage.userContextOrigin,
-        clientSideMCPServerIds: userMessage.clientSideMCPServerIds,
-        lastTriggerRunAt:
-          userMessage.userContextLastTriggerRunAt?.getTime() ?? null,
-      },
-      agenticMessageData:
-        userMessage.agenticMessageType && userMessage.agenticOriginMessageId
-          ? {
-              type: userMessage.agenticMessageType,
-              originMessageId: userMessage.agenticOriginMessageId,
-            }
-          : undefined,
       reactions: reactionsByMessageId[message.id] ?? [],
     } satisfies UserMessageType;
   });
+}
+
+/**
+ * Render user messages without mentions or reactions.
+ * No DB calls beyond the provided transaction — safe to use inside an advisory lock.
+ */
+export async function batchRenderUserMessagesWithoutMentions(
+  auth: Authenticator,
+  {
+    messages,
+    transaction,
+  }: { messages: MessageModel[]; transaction: Transaction }
+): Promise<UserMessageTypeWithoutMentions[]> {
+  const userMessages = messages.filter(
+    (m) => m.userMessage !== null && m.userMessage !== undefined
+  );
+
+  const userIds = [
+    ...new Set(removeNulls(userMessages.map((m) => m.userMessage?.userId))),
+  ];
+
+  const users =
+    userIds.length > 0
+      ? await UserResource.fetchByModelIds(userIds, { transaction })
+      : [];
+
+  const usersById = new Map(users.map((u) => [u.id, u.toJSON()]));
+
+  return userMessages.map((message) =>
+    renderUserMessage(
+      message,
+      message.userMessage?.userId
+        ? usersById.get(message.userMessage.userId)
+        : undefined
+    )
+  );
 }
 
 async function batchRenderAgentMessages<V extends RenderMessageVariant>(
