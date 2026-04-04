@@ -28,14 +28,24 @@ vi.mock("@app/lib/file_storage", () => {
 
 describe("GET /api/w/[wId]/files/[fileId]/signed-url", () => {
   it("should return 405 for non-GET requests", async () => {
-    const { req, res } = await createPrivateApiMockRequest({
+    const { auth, req, res, user } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",
     });
 
+    const file = await FileFactory.create(auth, user, {
+      contentType:
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      fileName: "file.docx",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "folders_document",
+      useCaseMetadata: null,
+    });
+
     req.query = {
       ...req.query,
-      fileId: "test-file-id",
+      fileId: file.sId,
     };
 
     await handler(req, res);
