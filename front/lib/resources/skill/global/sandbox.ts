@@ -15,8 +15,7 @@ const SANDBOX_INSTRUCTIONS =
   "The sandbox provides an isolated Linux environment for running code, scripts, and shell commands. " +
   "Use `bash` to run commands and scripts. " +
   "The sandbox persists for the conversation duration. " +
-  "Conversation files are mounted at /files/conversation. " +
-  "/files/conversation may be empty, there is a sentinel dotfile /files/conversation/.mount-pending in that case, it is fine to wait 1 second and retry your command should you find the dotfile. " +
+  "Conversation files are mounted at /files/conversation" +
   "This includes files uploaded by the user and files created by the agent. " +
   "You can use the `dsbx` command line tool to list and run tools programmatically in the sandbox. " +
   "Use it with `dsbx tools [SERVER_NAME] [TOOL_NAME] [ARGS]...`. Run `dsbx tools --help` for more information. " +

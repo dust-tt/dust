@@ -204,6 +204,10 @@ SHELLEOF`,
     `${PROFILE_DIR}/edit_file.sh`
   )
   .copy(
+    getLocalContent(PROFILE_LOCAL_DIR, "_edit_file_core.py"),
+    `${PROFILE_DIR}/_edit_file_core.py`
+  )
+  .copy(
     getLocalContent(PROFILE_LOCAL_DIR, "write_file.sh"),
     `${PROFILE_DIR}/write_file.sh`
   )
@@ -255,9 +259,10 @@ SHELLEOF`,
     {
       name: "edit_file",
       description:
-        "Replace exact text in files. Fails per-file if old_text not found or matches multiple times",
-      usage: "edit_file <old_text> <new_text> <path1> [path2]...",
-      returns: "'Edited <path>' per success",
+        "Replace text in files with LLM error correction (quote normalization, desanitization). Use --replace-all for multiple occurrences",
+      usage:
+        "edit_file [--replace-all] <old_text> <new_text> <path1> [path2]...",
+      returns: "'Edited <path>' per success, unified diff on stderr",
       runtime: "system",
     },
     {
@@ -298,7 +303,7 @@ SHELLEOF`,
   .withToolManifest()
   .register({
     imageName: "dust-base",
-    tag: "0.7.1",
+    tag: "0.7.2",
   });
 
 const IMAGES: readonly SandboxImage[] = [DUST_BASE_IMAGE];
