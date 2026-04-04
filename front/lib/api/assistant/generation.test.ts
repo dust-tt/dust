@@ -53,6 +53,7 @@ describe("constructProjectContextSection", () => {
       depth: 0,
       requestedSpaceIds: [],
       metadata: {},
+      branchId: null,
     };
 
     const result = constructProjectContextSection(conversation);
@@ -75,6 +76,7 @@ describe("constructProjectContextSection", () => {
       depth: 0,
       requestedSpaceIds: [],
       metadata: {},
+      branchId: null,
     };
 
     const result = constructProjectContextSection(conversation);

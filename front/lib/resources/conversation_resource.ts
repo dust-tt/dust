@@ -871,6 +871,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       spaceId: conversation.space?.sId ?? null,
       depth: conversation.depth,
       metadata: conversation.metadata,
+      branchId: null,
     });
   }
 
@@ -1340,6 +1341,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           spaceId: c.space?.sId ?? null,
           depth: c.depth,
           metadata: c.metadata,
+          branchId: null,
         };
       })
     );
@@ -1391,6 +1393,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       spaceId: null,
       depth: c.depth,
       metadata: c.metadata,
+      branchId: null,
     }));
   }
 
@@ -2420,6 +2423,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       lastReadMs: this.userLastReadAt?.getTime() ?? null,
       depth: this.depth,
       metadata: this.metadata,
+      branchId: null,
     };
   }
 }
