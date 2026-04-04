@@ -712,8 +712,8 @@ export const ConversationViewer = ({
 
         let rank =
           lastMessageRank +
-          // Content fragments are prepended as "message" in the conversation, before the user message.
-          // We need to account for their ranks as well.
+          // Content fragments are prepended as "message" in the conversation, before the user
+          // message.  We need to account for their ranks as well.
           contentFragments.contentNodes.length +
           contentFragments.uploaded.length +
           // +1 for the user message
@@ -729,19 +729,28 @@ export const ConversationViewer = ({
             contentFragments,
           });
 
+        // Skip placeholder agent messages if there's already a running agent in the conversation
+        // (steering: the message will be pending, no new agent message is created until the running
+        // one gracefully stops).
+        const hasRunningAgent = ref.current.data
+          .get()
+          .some((m) => m.type === "agent_message" && m.status === "created");
+
         const placeholderAgentMessages: VirtuosoMessage[] = [];
-        for (const mention of mentions) {
-          if (isRichAgentMention(mention)) {
-            // +1 per agent message mentioned
-            rank += 1;
-            placeholderAgentMessages.push(
-              createPlaceholderAgentMessage({
-                userMessage: placeholderUserMsg,
-                mention,
-                rank,
-                branchId: null, // We can't know the branch id yet, it will be set when the message is created.
-              })
-            );
+        if (!hasRunningAgent) {
+          for (const mention of mentions) {
+            if (isRichAgentMention(mention)) {
+              // +1 per agent message mentioned
+              rank += 1;
+              placeholderAgentMessages.push(
+                createPlaceholderAgentMessage({
+                  userMessage: placeholderUserMsg,
+                  mention,
+                  rank,
+                  branchId: null, // We can't know the branch id yet, it will be set when the message is created.
+                })
+              );
+            }
           }
         }
 
