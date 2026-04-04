@@ -19,7 +19,10 @@ import {
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
-import { batchRenderMessages } from "@app/lib/api/assistant/messages";
+import {
+  batchRenderMessages,
+  batchRenderUserMessagesWithoutMentions,
+} from "@app/lib/api/assistant/messages";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
@@ -2555,7 +2558,7 @@ export async function isConversationEventAllowedForAuth(
  * Finalize an agent message terminal status behind the conversation advisory lock.
  *
  * This ensures the status transition is serialized against other conversation operations (e.g.
- * postUserMessage's pending path in the future).
+ * postUserMessage's pending path).
  */
 export async function updateAgentMessageWithFinalStatus(
   auth: Authenticator,
@@ -2573,13 +2576,12 @@ export async function updateAgentMessageWithFinalStatus(
 ): Promise<{
   completedTs: number;
   status: "succeeded" | "cancelled" | "failed" | "gracefully_stopped";
-  promotedUserMessages: string[];
-  agentMessageId: string | null;
+  agentMessages: AgentMessageType[];
 }> {
   const completedAt = new Date();
-  const workspaceId = auth.getNonNullableWorkspace().id;
+  const owner = auth.getNonNullableWorkspace();
 
-  const result = await withTransaction(async (t) => {
+  const { agentMessages } = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
     await AgentMessageModel.update(
@@ -2597,73 +2599,90 @@ export async function updateAgentMessageWithFinalStatus(
       {
         where: {
           id: agentMessage.agentMessageId,
-          workspaceId,
+          workspaceId: owner.id,
         },
         transaction: t,
       }
     );
 
-    // Promote pending messages when the agent loop ends (gracefully stopped or
-    // succeeded as safety net). Also create a new agent message so the caller
-    // can launch a new agent loop.
-    if (status === "gracefully_stopped" || status === "succeeded") {
-      const pendingMessages = await MessageModel.findAll({
-        where: {
-          conversationId: conversation.id,
-          workspaceId,
-          visibility: "pending",
+    // Promote *all* pending messages when the agent loop ends. If a pending message exists it will
+    // be promoted and will trigger the ending agentMessage. The `enableSteering` invariants of
+    // postUserMessage ensure that we have only one running agentic loop so we can just recreate a
+    // new agentMesssage for the same agent as the one that finished.
+    //
+    // There is an edge case here for API interactions which are not subject to the steering
+    // invariant in which case we could have more than one running agent message and could pick the
+    // wrong agent compared to user attempt. But should ~never happen so the simplicity is worth it.
+    const pendingMessages = await MessageModel.findAll({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: owner.id,
+        visibility: "pending",
+      },
+      include: [
+        { model: UserMessageModel, as: "userMessage", required: false },
+      ],
+      order: [["rank", "ASC"]],
+      transaction: t,
+    });
+
+    if (pendingMessages.length > 0) {
+      await MessageModel.update(
+        { visibility: "visible" },
+        {
+          where: {
+            id: pendingMessages.map((m) => m.id),
+            workspaceId: owner.id,
+          },
+          transaction: t,
+        }
+      );
+
+      const nextMessageRank =
+        ((await MessageModel.max<number | null, MessageModel>("rank", {
+          where: {
+            workspaceId: owner.id,
+            conversationId: conversation.id,
+            branchId: conversation.branchId
+              ? getResourceIdFromSId(conversation.branchId)
+              : null,
+          },
+          transaction: t,
+        })) ?? -1) + 1;
+
+      await ConversationResource.markAsUpdated(auth, { conversation, t });
+
+      // Render the last pending message to pass to createAgentMessages.
+      const renderedUserMessages = await batchRenderUserMessagesWithoutMentions(
+        auth,
+        {
+          messages: [pendingMessages[pendingMessages.length - 1]],
+          transaction: t,
+        }
+      );
+
+      const { agentMessages } = await createAgentMessages(auth, {
+        conversation,
+        metadata: {
+          type: "create",
+          mentions: [{ configurationId: agentMessage.configuration.sId }],
+          agentConfigurations: [agentMessage.configuration],
+          skipToolsValidation: agentMessage.skipToolsValidation,
+          nextMessageRank,
+          userMessage: renderedUserMessages[0],
         },
-        order: [["rank", "ASC"]],
         transaction: t,
       });
 
-      if (pendingMessages.length > 0) {
-        await MessageModel.update(
-          { visibility: "visible" },
-          {
-            where: { id: pendingMessages.map((m) => m.id) },
-            transaction: t,
-          }
-        );
-
-        // Create a new agent message for the same agent configuration.
-        const lastPendingMessage = pendingMessages[pendingMessages.length - 1];
-        const newAgentMessageRow = await AgentMessageModel.create(
-          {
-            status: "created",
-            agentConfigurationId: agentMessage.configuration.sId,
-            agentConfigurationVersion: agentMessage.configuration.version,
-            workspaceId,
-            skipToolsValidation: false,
-          },
-          { transaction: t }
-        );
-        const newMessageRow = await MessageModel.create(
-          {
-            sId: generateRandomModelSId(),
-            rank: lastPendingMessage.rank + 1,
-            conversationId: conversation.id,
-            branchId: lastPendingMessage.branchId,
-            parentId: lastPendingMessage.id,
-            agentMessageId: newAgentMessageRow.id,
-            workspaceId,
-          },
-          { transaction: t }
-        );
-
-        return {
-          promotedUserMessages: pendingMessages.map((m) => m.sId),
-          agentMessageId: newMessageRow.sId,
-        };
-      }
+      return { agentMessages };
+    } else {
+      return { agentMessages: [] };
     }
-
-    return { promotedUserMessages: [], agentMessageId: null };
   });
 
   return {
     completedTs: completedAt.getTime(),
     status,
-    ...result,
+    agentMessages,
   };
 }
