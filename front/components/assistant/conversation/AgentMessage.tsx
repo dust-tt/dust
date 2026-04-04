@@ -131,9 +131,14 @@ function PrunedContextChip() {
           </div>
           <div className="flex flex-col gap-2 text-justify text-sm text-muted-foreground dark:text-muted-foreground-night">
             <p>
-              The agent can only process so much information at once. We removed
-              some <strong>data from earlier steps</strong> to make room. For
-              better accuracy, start a fresh conversation.
+              Dust had to trim part of the tool output used to generate this
+              message to fit the model&apos;s context window. This usually
+              happens when a search or other tool returns more data than the
+              model can process at once.
+            </p>
+            <p>
+              For best accuracy, start a fresh conversation or narrow the
+              request.
             </p>
             <p>
               <a
