@@ -2644,6 +2644,8 @@ export async function updateAgentMessageWithFinalStatus(
             id: pendingMessages.map((m) => m.id),
             workspaceId: owner.id,
           },
+          // Skip validation — rows are already valid, we're only updating visibility.
+          validate: false,
           transaction: t,
         }
       );
