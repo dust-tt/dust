@@ -193,6 +193,12 @@ function renderUserMessage(
   }
   const userMessage = message.userMessage;
 
+  if (linkedUser && linkedUser.id !== userMessage.userId) {
+    throw new Error(
+      `linkedUser.id (${linkedUser.id}) does not match userMessage.userId (${userMessage.userId})`
+    );
+  }
+
   let username = userMessage.userContextUsername;
   let fullName = userMessage.userContextFullName;
   let email = userMessage.userContextEmail;
@@ -322,8 +328,8 @@ async function batchRenderUserMessages(
 }
 
 /**
- * Render user messages without mentions or reactions. No external DB calls
- * beyond the provided transaction — safe to use inside an advisory lock.
+ * Render user messages without mentions or reactions.
+ * No DB calls beyond the provided transaction — safe to use inside an advisory lock.
  */
 export async function batchRenderUserMessagesWithoutMentions(
   auth: Authenticator,
