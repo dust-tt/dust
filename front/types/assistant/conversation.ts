@@ -356,6 +356,7 @@ export type ConversationWithoutContentType = {
   triggerId: string | null;
   depth: number;
   metadata: ConversationMetadata;
+  branchId: string | null;
 
   // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];
@@ -370,7 +371,6 @@ export type ConversationWithoutContentType = {
 export type ConversationType = ConversationWithoutContentType & {
   owner: WorkspaceType;
   visibility: ConversationVisibility;
-  branchId: string | null;
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
 };
 
@@ -381,7 +381,6 @@ export type ConversationType = ConversationWithoutContentType & {
 export type LightConversationType = ConversationWithoutContentType & {
   owner: WorkspaceType;
   visibility: ConversationVisibility;
-  branchId: string | null;
   content: (LightAgentMessageType | UserMessageTypeWithContentFragments)[];
 };
 

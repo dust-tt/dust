@@ -80,6 +80,7 @@ async function handler(
             requestedSpaceIds: c.getRequestedSpaceIdsFromModel(),
             spaceId: c.space?.sId ?? null,
             metadata: c.metadata,
+            branchId: null,
           };
         });
 
