@@ -15,6 +15,8 @@
     "start:dev:worker": "tsx ./src/start_worker.ts",
     "test": "vitest",
     "test:ci": "vitest --reporter=junit --outputFile=junit.xml --watch=false",
+    "test:workers": "vitest --run --config vite.smoke.config.mjs src/temporal/workers.smoke.test.ts",
+    "test:workers:ci": "vitest --run --config vite.smoke.config.mjs --reporter=junit --outputFile=junit-workers.xml src/temporal/workers.smoke.test.ts",
     "tsgo": "tsgo",
     "cli": "npx tsx src/admin/cli.ts",
     "initdb": "./admin/init_db.sh",
