@@ -127,7 +127,8 @@ When you receive the agent instructions via \`get_agent_config\`, they will be i
 6. Always include the HTML tag. Content must include the wrapping tag (e.g., \`<p>...</p>\`).
 7. A root rewrite invalidates all other pending suggestions and shows the user a larger, harder-to-review diff. Only use it for cases (b) or (c) above.
 8. A single-block replace must produce exactly one top-level HTML element. Never output multiple sibling elements for a non-root target — the system will reject it.
-9. For full rewrites, target the root. Use \`targetBlockId: "${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"\` with content wrapped in \`<div data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}">...</div>\` to replace all instructions at once.
+9. The outer tag must be a block the schema recognises (e.g. \`<p>\`, headings, lists). For example, bare \`<div>\` is not a block node and the parser unwraps it.
+10. For full rewrites, target the root. Use \`targetBlockId: "${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"\` with content wrapped in \`<div data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}">...</div>\` to replace all instructions at once.
 </block_editing_principles>
 
 <block_examples>

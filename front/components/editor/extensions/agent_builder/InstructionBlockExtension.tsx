@@ -1,10 +1,15 @@
-import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 import {
   CLOSING_TAG_REGEX,
   INSTRUCTION_BLOCK_REGEX,
   OPENING_TAG_BEGINNING_REGEX,
   OPENING_TAG_REGEX,
 } from "@app/components/editor/extensions/agent_builder/instructionBlockUtils";
+import {
+  INSTRUCTION_BLOCK_NODE_NAME,
+  INSTRUCTION_BLOCK_SELECTOR,
+  instructionBlockSpec,
+} from "@app/lib/editor/specs/instructionBlockSpec";
+import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/lib/editor/specs/instructionsRootSpec";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { ChevronDownIcon, ChevronRightIcon, Chip, cn } from "@dust-tt/sparkle";
@@ -213,13 +218,13 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
 
 export const InstructionBlockExtension =
   Node.create<InstructionBlockAttributes>({
-    name: "instructionBlock",
-    group: "block",
+    name: INSTRUCTION_BLOCK_NODE_NAME,
+    group: instructionBlockSpec.group,
     priority: 1000,
-    content: "block+",
-    defining: true,
+    content: instructionBlockSpec.content,
+    defining: instructionBlockSpec.defining,
     // Prevents auto-merging two blocks when they're not separated by a paragraph
-    isolating: true,
+    isolating: instructionBlockSpec.isolating,
     selectable: true,
 
     addAttributes() {
@@ -244,11 +249,7 @@ export const InstructionBlockExtension =
     },
 
     parseHTML() {
-      return [
-        {
-          tag: "div[data-type='instruction-block']",
-        },
-      ];
+      return [{ tag: INSTRUCTION_BLOCK_SELECTOR }];
     },
 
     renderHTML({ HTMLAttributes }) {

@@ -1,5 +1,5 @@
 import { BLOCK_ID_ATTRIBUTE } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
-import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
+import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/lib/editor/specs/instructionsRootSpec";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { Extension } from "@tiptap/core";
 import type { Node as PMNode, Schema } from "@tiptap/pm/model";

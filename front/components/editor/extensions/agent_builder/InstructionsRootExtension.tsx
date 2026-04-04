@@ -1,9 +1,12 @@
+import {
+  INSTRUCTIONS_ROOT_NODE_NAME,
+  INSTRUCTIONS_ROOT_SELECTOR,
+  instructionsRootSpec,
+} from "@app/lib/editor/specs/instructionsRootSpec";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { Node } from "@tiptap/core";
 
 import { BLOCK_ID_ATTRIBUTE } from "./BlockIdExtension";
-
-export const INSTRUCTIONS_ROOT_NODE_NAME = "instructionsRoot";
 
 // Wrapper node that sits between doc and the block-level content.
 // Carries a stable block-id so the sidekick can target it to replace
@@ -11,7 +14,7 @@ export const INSTRUCTIONS_ROOT_NODE_NAME = "instructionsRoot";
 export const InstructionsRootExtension = Node.create({
   name: INSTRUCTIONS_ROOT_NODE_NAME,
 
-  content: "block+",
+  content: instructionsRootSpec.content,
 
   addAttributes() {
     return {
@@ -29,7 +32,7 @@ export const InstructionsRootExtension = Node.create({
   },
 
   parseHTML() {
-    return [{ tag: `div[data-type='${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}']` }];
+    return [{ tag: INSTRUCTIONS_ROOT_SELECTOR }];
   },
 
   renderHTML({ HTMLAttributes }) {
