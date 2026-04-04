@@ -10,7 +10,7 @@
  * Requires: METRONOME_API_KEY env var
  */
 
-import Metronome from "@metronome/sdk";
+import { getMetronomeClient } from "@app/lib/metronome/client";
 
 if (!process.env.METRONOME_API_KEY) {
   console.error("METRONOME_API_KEY env var required");
@@ -20,9 +20,7 @@ if (!process.env.METRONOME_API_KEY) {
 const ENV =
   process.env.METRONOME_ENV === "production" ? "production" : "sandbox";
 
-const client = new Metronome({
-  bearerToken: process.env.METRONOME_API_KEY,
-});
+const client = getMetronomeClient();
 
 // Credit type IDs per environment (created via Metronome UI, not API-manageable).
 const CREDIT_TYPES = {
@@ -242,7 +240,7 @@ const PRODUCTS: ProductDef[] = [
   // Legacy seat product — SUBSCRIPTION type, managed via Metronome seat subscriptions.
   // Seats synced from membership create/revoke hooks (same as new pricing).
   {
-    name: "Legacy Seat",
+    name: "Workspace Seat",
     type: "SUBSCRIPTION",
   },
   // MAU products — USAGE on MAX gauge, billed once at end of period.
@@ -285,7 +283,7 @@ const RATE_CARDS: RateCardDef[] = [
     fiat_credit_type_id: USD_CREDIT_TYPE_ID,
     rates: [
       {
-        product_name: "Legacy Seat",
+        product_name: "Workspace Seat",
         starting_at: "2026-04-01T00:00:00.000Z",
         entitled: true,
         rate_type: "FLAT",
@@ -309,7 +307,7 @@ const RATE_CARDS: RateCardDef[] = [
     fiat_credit_type_id: USD_CREDIT_TYPE_ID,
     rates: [
       {
-        product_name: "Legacy Seat",
+        product_name: "Workspace Seat",
         starting_at: "2026-04-01T00:00:00.000Z",
         entitled: true,
         rate_type: "FLAT",
@@ -330,7 +328,7 @@ const RATE_CARDS: RateCardDef[] = [
 // Seat subscription definition shared by all legacy packages.
 const LEGACY_SEAT_SUBSCRIPTION: PackageSubscription = {
   temporary_id: "legacy-seat-sub",
-  product_name: "Legacy Seat",
+  product_name: "Workspace Seat",
   billing_frequency: "MONTHLY",
   collection_schedule: "ADVANCE",
   quantity_management_mode: "SEAT_BASED",

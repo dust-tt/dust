@@ -1,6 +1,6 @@
 /** @ignoreswagger */
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
-import { createAndLogMembership } from "@app/lib/api/signup";
+import { createAndTrackMembership } from "@app/lib/api/membership";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createWorkspace } from "@app/lib/iam/workspaces";
@@ -59,7 +59,7 @@ async function handler(
     });
   }
 
-  await createAndLogMembership({
+  await createAndTrackMembership({
     user: u,
     workspace,
     role: "admin",

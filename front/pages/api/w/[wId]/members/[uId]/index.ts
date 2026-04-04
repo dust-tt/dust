@@ -5,13 +5,15 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { revokeAndTrackMembership } from "@app/lib/api/membership";
+import {
+  revokeAndTrackMembership,
+  updateMembershipRoleAndTrack,
+} from "@app/lib/api/membership";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { showDebugTools } from "@app/lib/development";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -203,11 +205,10 @@ async function handler(
 
         const allowLastAdminRemoval = showDebugTools(featureFlags);
 
-        const updateRes = await MembershipResource.updateMembershipRole({
+        const updateRes = await updateMembershipRoleAndTrack({
           user,
           workspace: owner,
           newRole: role,
-          // We allow to re-activate a terminated membership when updating the role here.
           allowTerminated: true,
           allowLastAdminRemoval,
           author: auth.user()?.toJSON() ?? "no-author",
@@ -244,13 +245,6 @@ async function handler(
         }
 
         if (updateRes.isOk()) {
-          void ServerSideTracking.trackUpdateMembershipRole({
-            user: user.toJSON(),
-            workspace: owner,
-            previousRole: updateRes.value.previousRole,
-            role: updateRes.value.newRole,
-          });
-
           void emitAuditLogEvent({
             auth,
             action: "membership.role_updated",

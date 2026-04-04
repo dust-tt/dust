@@ -2,7 +2,10 @@ import {
   buildAuditLogTarget,
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
-import { createAndLogMembership } from "@app/lib/api/signup";
+import {
+  createAndTrackMembership,
+  revokeAndTrackMembership,
+} from "@app/lib/api/membership";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { determineUserRoleFromGroups } from "@app/lib/api/user";
 import { getWorkOS } from "@app/lib/api/workos/client";
@@ -30,7 +33,6 @@ import {
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -1044,7 +1046,7 @@ async function handleCreateOrUpdateWorkOSUser(
     return;
   }
 
-  await createAndLogMembership({
+  await createAndTrackMembership({
     user: createdOrUpdatedUser,
     workspace,
     role: "user",
@@ -1124,9 +1126,7 @@ async function handleDeleteWorkOSUser(
     }
   }
 
-  const membershipRevokeResult = await MembershipResource.revokeMembership({
-    user,
-    workspace,
+  const membershipRevokeResult = await revokeAndTrackMembership(auth, user, {
     allowLastAdminRevocation: true,
   });
 
@@ -1144,27 +1144,7 @@ async function handleDeleteWorkOSUser(
     throw membershipRevokeResult.error;
   }
 
-  const deleteTriggerResult = await TriggerResource.deleteAllForUser(
-    auth,
-    user
-  );
-  if (deleteTriggerResult.isErr()) {
-    logger.error(
-      {
-        workspaceId: workspace.sId,
-        userId: user.sId,
-        error: deleteTriggerResult.error,
-      },
-      "Failed to delete triggers for revoked user"
-    );
-  }
-
-  void ServerSideTracking.trackRevokeMembership({
-    user: user.toJSON(),
-    workspace,
-    ...membershipRevokeResult.value,
-  });
-
+  // Emit SCIM-specific audit event in addition to the generic membership.revoked.
   void emitAuditLogEventDirect({
     workspace,
     action: "scim.user_deprovisioned",

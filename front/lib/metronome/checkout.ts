@@ -1,7 +1,7 @@
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/client";
+import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -67,8 +67,7 @@ export async function handleMetronomeSetupCheckout({
   }
 
   const provisionResult = await provisionMetronomeCustomerAndContract({
-    workspaceId: workspace.sId,
-    workspaceName: workspace.name,
+    workspace: renderLightWorkspaceType({ workspace }),
     stripeCustomerId,
     packageAlias: metronomePackageAlias,
     uniquenessKey: sessionId,

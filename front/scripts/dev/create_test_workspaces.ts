@@ -1,4 +1,4 @@
-import { createAndLogMembership } from "@app/lib/api/signup";
+import { createAndTrackMembership } from "@app/lib/api/membership";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
 import { PlanModel } from "@app/lib/models/plan";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -63,7 +63,7 @@ async function createTestWorkspaces(
 
     logger.info(`Workspace ${name} created.`);
 
-    await createAndLogMembership({
+    await createAndTrackMembership({
       user,
       workspace,
       role: "admin",

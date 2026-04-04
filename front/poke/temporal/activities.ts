@@ -7,6 +7,7 @@ import { deleteWebhookSource } from "@app/lib/api/webhook_source";
 import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/organization";
 import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
+import { endMetronomeContract } from "@app/lib/metronome/client";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
   AgentChildAgentConfigurationModel,
@@ -63,6 +64,7 @@ import {
 } from "@app/lib/resources/storage/models/user";
 import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_project_digest";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -711,6 +713,28 @@ export async function deleteWorkspaceActivity({
     return;
   }
   const workspace = auth.getNonNullableWorkspace();
+
+  // End the Metronome contract if one exists.
+  if (workspace.metronomeCustomerId) {
+    const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+    const subscription = workspaceResource
+      ? await SubscriptionResource.fetchActiveByWorkspaceModelId(
+          workspaceResource.id
+        )
+      : null;
+    if (subscription?.metronomeContractId) {
+      const endResult = await endMetronomeContract({
+        metronomeCustomerId: workspace.metronomeCustomerId,
+        contractId: subscription.metronomeContractId,
+      });
+      if (endResult.isErr()) {
+        hardDeleteLogger.error(
+          { workspaceId, error: endResult.error.message },
+          "Failed to end Metronome contract"
+        );
+      }
+    }
+  }
 
   await SubscriptionModel.destroy({
     where: {
