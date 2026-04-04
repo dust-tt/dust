@@ -80,7 +80,8 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
     args: InferPluginArgsAtExecution<PluginArgs>,
     author: UserResource,
     workspace: LightWorkspaceType | null,
-    pluginResourceTarget: PluginResourceTarget
+    pluginResourceTarget: PluginResourceTarget,
+    reason: string | null
   ) {
     const sanitizedArgs = redactPluginArgs(plugin, args);
 
@@ -91,6 +92,7 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
       ),
       author: author.email,
       pluginId: plugin.manifest.id,
+      reason: reason || null,
       status: "pending",
       workspaceId: workspace?.id,
       resourceType: pluginResourceTarget.resourceType,
@@ -209,6 +211,7 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
       createdAt: this.createdAt.getTime(),
       author: this.author,
       pluginId: this.pluginId,
+      reason: this.reason,
       status: this.status,
       resourceType: this.resourceType,
       resourceId: this.resourceId,
