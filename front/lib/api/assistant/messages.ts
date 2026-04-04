@@ -184,7 +184,7 @@ function interleaveConditionalNewlines(parts: string[]): string[] {
  */
 function renderUserMessage(
   message: MessageModel,
-  usersById: Map<ModelId, UserType>
+  linkedUser: UserType | undefined
 ): UserMessageTypeWithoutMentions {
   if (!message.userMessage) {
     throw new Error(
@@ -192,7 +192,6 @@ function renderUserMessage(
     );
   }
   const userMessage = message.userMessage;
-  const user = userMessage.userId ? usersById.get(userMessage.userId) : null;
 
   let username = userMessage.userContextUsername;
   let fullName = userMessage.userContextFullName;
@@ -200,7 +199,6 @@ function renderUserMessage(
   let profilePictureUrl = userMessage.userContextProfilePictureUrl;
 
   if (userMessage.userId !== null && !userMessage.agenticMessageType) {
-    const linkedUser = usersById.get(userMessage.userId);
     if (linkedUser) {
       username = linkedUser.username;
       fullName = linkedUser.fullName;
@@ -226,7 +224,7 @@ function renderUserMessage(
     rank: message.rank,
     branchId: message.branchSId,
     created: message.createdAt.getTime(),
-    user: user ?? null,
+    user: linkedUser ?? null,
     content: userMessage.content,
     context: {
       username,
@@ -300,7 +298,12 @@ async function batchRenderUserMessages(
   });
 
   return userMessages.map((message) => {
-    const base = renderUserMessage(message, usersById);
+    const base = renderUserMessage(
+      message,
+      message.userMessage?.userId
+        ? usersById.get(message.userMessage.userId)
+        : undefined
+    );
 
     const richMentions = getRichMentionsWithStatusForMessage(
       message.id,
@@ -344,7 +347,14 @@ export async function batchRenderUserMessagesWithoutMentions(
 
   const usersById = new Map(users.map((u) => [u.id, u.toJSON()]));
 
-  return userMessages.map((message) => renderUserMessage(message, usersById));
+  return userMessages.map((message) =>
+    renderUserMessage(
+      message,
+      message.userMessage?.userId
+        ? usersById.get(message.userMessage.userId)
+        : undefined
+    )
+  );
 }
 
 async function batchRenderAgentMessages<V extends RenderMessageVariant>(
