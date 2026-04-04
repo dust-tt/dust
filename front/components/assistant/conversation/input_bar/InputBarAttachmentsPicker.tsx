@@ -21,10 +21,10 @@ import type {
 } from "@app/lib/search/tools/types";
 import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
 import type { DataSourceType } from "@app/types/data_source";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import type { FileUseCaseMetadata } from "@app/types/files";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { SpaceType } from "@app/types/space";
@@ -51,6 +51,7 @@ import {
   MagnifyingGlassIcon,
   Spinner,
 } from "@dust-tt/sparkle";
+import type { ButtonVariantType } from "@dust-tt/sparkle/dist/esm/components/Button";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const getKeyForDataSource = (dataSource: DataSourceType) => {
@@ -71,9 +72,15 @@ interface InputBarAttachmentsPickerProps {
   attachedNodes: DataSourceViewContentNode[];
   type: "dropdown" | "subdropdown";
   isLoading?: boolean;
+  buttonLabel?: string;
+  buttonVariant?: ButtonVariantType;
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
-  conversation?: ConversationWithoutContentType;
+  // Will be used to upload files found via tools and not the connected datasources.
+  toolFileUpload: {
+    useCase: "conversation" | "project_context";
+    useCaseMetadata: FileUseCaseMetadata;
+  };
   space?: SpaceType;
   onFileChange?: () => void;
   externalOpen?: boolean;
@@ -202,7 +209,9 @@ export const InputBarAttachmentsPicker = ({
   isLoading = false,
   disabled = false,
   buttonSize = "xs",
-  conversation,
+  buttonLabel = undefined,
+  buttonVariant = "ghost-secondary",
+  toolFileUpload,
   space,
   type,
   onFileChange,
@@ -381,12 +390,17 @@ export const InputBarAttachmentsPicker = ({
     getToolFileKey,
     isToolFileAttached,
     isToolFileUploading,
+    isAnyToolFileUploading,
     uploadToolFile,
     removeToolFile,
   } = useToolFileUpload({
     owner,
     fileUploaderService,
-    conversationId: conversation?.sId,
+    useCase: toolFileUpload.useCase,
+    useCaseMetadata: toolFileUpload.useCaseMetadata,
+    onUploadSuccess: () => {
+      onFileChange?.();
+    },
   });
 
   const showLoader =
@@ -429,10 +443,12 @@ export const InputBarAttachmentsPicker = ({
       {type === "dropdown" && !isExternallyControlled ? (
         <DropdownMenuTrigger asChild>
           <Button
-            variant="ghost-secondary"
+            variant={buttonVariant}
             icon={AttachmentIcon}
             size={buttonSize}
-            disabled={disabled || isLoading}
+            disabled={disabled || isLoading || isAnyToolFileUploading}
+            isLoading={isLoading || isAnyToolFileUploading}
+            label={buttonLabel}
             onClick={() => setIsOpen(!isOpen)}
           />
         </DropdownMenuTrigger>
@@ -485,9 +501,9 @@ export const InputBarAttachmentsPicker = ({
               ref={fileInputRef}
               style={{ display: "none" }}
               onChange={async (e) => {
-                onFileChange?.();
                 setIsOpen(false);
                 await fileUploaderService.handleFileChange(e);
+                onFileChange?.();
                 if (fileInputRef.current) {
                   fileInputRef.current.value = "";
                 }

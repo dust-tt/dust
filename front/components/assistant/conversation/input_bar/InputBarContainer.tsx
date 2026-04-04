@@ -1144,7 +1144,12 @@ const InputBarContainer = ({
                         attachedNodes={attachedNodes}
                         disabled={disableInput}
                         buttonSize={buttonSize}
-                        conversation={conversation}
+                        toolFileUpload={{
+                          useCase: "conversation",
+                          useCaseMetadata: {
+                            conversationId: conversation?.sId,
+                          },
+                        }}
                         space={space}
                         type="dropdown"
                         onFileChange={() => setShowKnowledgePicker(false)}
