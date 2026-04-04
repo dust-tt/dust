@@ -69,6 +69,7 @@ function childAgentStreamReducer(
     // Events we don't use for the child stream display.
     case "end-of-stream":
     case "agent_action_success":
+    case "tool_call_started":
     case "tool_params":
     case "tool_notification":
     case "agent_context_pruned":

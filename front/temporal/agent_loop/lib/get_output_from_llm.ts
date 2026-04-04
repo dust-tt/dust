@@ -237,6 +237,25 @@ export async function getOutputFromLLMStream(
           nativeChainOfThought += event.content.delta;
           continue;
         }
+        case "tool_call_started": {
+          await updateResourceAndPublishEvent(auth, {
+            event: {
+              type: "tool_call_started",
+              created: Date.now(),
+              configurationId: agentConfiguration.sId,
+              messageId: agentMessage.sId,
+              ...(event.content.id ? { toolCallId: event.content.id } : {}),
+              ...(event.content.index !== undefined
+                ? { toolCallIndex: event.content.index }
+                : {}),
+              toolName: event.content.name,
+            },
+            agentMessage,
+            conversation,
+            step,
+          });
+          continue;
+        }
         case "tool_call_delta":
           // tool_call_delta events act as heartbeat signals during tool call
           // streaming, preventing the LLM stream timeout when the model is
