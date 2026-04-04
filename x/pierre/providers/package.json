@@ -1,0 +1,20 @@
+{
+  "name": "pierre-providers",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "anthropic": "tsx anthropic.ts",
+    "openai": "tsx openai.ts",
+    "mistral": "tsx mistral.ts",
+    "google": "tsx google.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.81.0",
+    "@google/genai": "^1.48.0",
+    "@mistralai/mistralai": "^2.1.2",
+    "openai": "^6.33.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  }
+}

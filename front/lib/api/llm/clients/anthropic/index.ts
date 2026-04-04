@@ -38,6 +38,9 @@ import { normalizePrompt } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import assert from "assert";
 
+import * as fs from "fs";
+import * as path from "path";
+
 /**
  * Maps prompt tiers to Anthropic system blocks with cache breakpoints.
  *
@@ -190,6 +193,11 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     payload: BetaMessageStreamParams
   ): AsyncGenerator<LLMEvent> {
     try {
+      await fs.promises.writeFile(
+        path.join(__dirname, `payload_${Date.now().toString()}.json`),
+        JSON.stringify(payload, null, 2),
+        "utf8"
+      );
       const events = this.client.beta.messages.stream(payload);
 
       yield* streamLLMEvents(
