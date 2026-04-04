@@ -15,7 +15,7 @@ import {
 
 export const InputBarContext = createContext<{
   animate: boolean;
-  getAndClearSelectedAgent: () => RichAgentMention | null;
+  selectedAgent: RichAgentMention | null;
   setAnimate: React.Dispatch<React.SetStateAction<boolean>>;
   setSelectedAgent: (agentMention: RichAgentMention | null) => void;
   selectedSingleAgent: RichAgentMention | null;
@@ -29,7 +29,7 @@ export const InputBarContext = createContext<{
   };
 }>({
   animate: false,
-  getAndClearSelectedAgent: () => null,
+  selectedAgent: null,
   setAnimate: () => {},
   setSelectedAgent: () => {},
   selectedSingleAgent: null,
@@ -102,14 +102,6 @@ export function InputBarContextProvider({
     [setSelectedAgent]
   );
 
-  // Immediately clear the selected agent and return the previous selected agent to avoid sticky agent mentions.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  const getAndClearSelectedAgent = useCallback(() => {
-    const previousSelectedAgent = selectedAgent;
-    setSelectedAgent(null);
-    return previousSelectedAgent;
-  }, [selectedAgent, setSelectedAgent]);
-
   const getAndClearPendingInputText = useCallback(() => {
     const text = pendingInputText;
     setPendingInputTextState(null);
@@ -124,7 +116,7 @@ export function InputBarContextProvider({
     () => ({
       animate,
       setAnimate,
-      getAndClearSelectedAgent,
+      selectedAgent,
       setSelectedAgent: setSelectedAgentOuter,
       selectedSingleAgent,
       setSelectedSingleAgent,
@@ -135,7 +127,7 @@ export function InputBarContextProvider({
     }),
     [
       animate,
-      getAndClearSelectedAgent,
+      selectedAgent,
       setSelectedAgentOuter,
       selectedSingleAgent,
       getAndClearPendingInputText,

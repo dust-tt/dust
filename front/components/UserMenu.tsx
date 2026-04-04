@@ -81,6 +81,8 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
     });
   };
 
+
+
   const { clearAllDraftsFromUser } = useConversationDrafts({
     workspaceId: owner.sId,
     userId: user.sId,

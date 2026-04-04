@@ -81,6 +81,7 @@ export type VirtuosoMessageListContext = {
   conversation?: ConversationWithoutContentType;
   agentBuilderContext?: {
     draftAgent?: LightAgentConfigurationType;
+    stickyMentions?: RichMention[];
     isSubmitting: boolean;
     actionsToShow: InputBarContainerProps["actions"];
     resetConversation: () => void;
