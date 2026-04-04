@@ -16,7 +16,6 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { UserModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
@@ -348,16 +347,12 @@ export async function batchRenderUserMessagesWithoutMentions(
 
   const users =
     userIds.length > 0
-      ? await UserModel.findAll({ where: { id: userIds }, transaction })
+      ? await UserResource.fetchByModelIds(userIds, { transaction })
       : [];
 
-  const usersById = new Map(
-    users.map((u) => [u.id, new UserResource(UserModel, u.get()).toJSON()])
-  );
+  const usersById = new Map(users.map((u) => [u.id, u.toJSON()]));
 
-  return userMessages.map((message) =>
-    renderUserMessage(message, usersById)
-  );
+  return userMessages.map((message) => renderUserMessage(message, usersById));
 }
 
 async function batchRenderAgentMessages<V extends RenderMessageVariant>(
