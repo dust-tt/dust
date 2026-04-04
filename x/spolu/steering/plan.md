@@ -106,22 +106,19 @@ Behind `enable_steering` feature flag:
 - After commit: publish `UserMessageNewEvent` (pending), call `gracefullyStopAgentLoop()`
   with `reason: "steering"`.
 
-### - [ ] PR 3.3 — `finalizeGracefulStopAgentMessage`
+### - [x] PR 3.3+3.4 — Promote pending messages in `updateAgentMessageWithFinalStatus`
 
-- Add `finalizeGracefulStopAgentMessage()` in `front/lib/api/assistant/conversation.ts`:
-  - Acquires conversation advisory lock.
-  - Sets agent message status to `"gracefully_stopped"`.
-  - Finds pending messages, promotes visibility to `"visible"`.
-  - Creates one `AgentMessage` + `MessageModel`.
-- Update `finalizeGracefullyStoppedAgentLoopActivity` to call this function, publish
-  `UserMessagePromotedEvent` events, publish `AgentMessageNewEvent`, launch new agent loop.
+Extend `updateAgentMessageWithFinalStatus()` in `conversation.ts` to promote pending messages
+inside the same advisory-locked transaction when status is `"gracefully_stopped"` or
+`"succeeded"` (safety net). The existing flow already handles setting the status and emitting
+the terminal event — this adds the promotion logic:
 
-### - [ ] PR 3.4 — Safety net in `finalizeAgentMessage` for succeeded path
-
-- Update `finalizeAgentMessage()` to check for orphaned pending messages when `status` is
-  `"succeeded"` and promote them (same logic as `finalizeGracefulStopAgentMessage`).
-- This handles the edge case where the graceful stop signal was lost or arrived after the loop
-  already decided to exit naturally.
+- Inside the locked transaction: find pending messages, promote visibility to `"visible"`,
+  create one `AgentMessage` + `MessageModel`.
+- Return promoted messages + new agent message info to the caller.
+- In `finalizeGracefullyStoppedAgentLoopActivity`: publish `UserMessagePromotedEvent` events,
+  publish `AgentMessageNewEvent`, launch new agent loop.
+- The `"succeeded"` path acts as safety net (graceful stop signal lost or arrived too late).
 
 ### - [ ] PR 3.5 — Frontend: pending message display with spinner
 

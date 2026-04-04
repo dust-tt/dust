@@ -2573,10 +2573,13 @@ export async function updateAgentMessageWithFinalStatus(
 ): Promise<{
   completedTs: number;
   status: "succeeded" | "cancelled" | "failed" | "gracefully_stopped";
+  promotedUserMessages: string[];
+  agentMessageId: string | null;
 }> {
   const completedAt = new Date();
+  const workspaceId = auth.getNonNullableWorkspace().id;
 
-  await withTransaction(async (t) => {
+  const result = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
     await AgentMessageModel.update(
@@ -2594,12 +2597,73 @@ export async function updateAgentMessageWithFinalStatus(
       {
         where: {
           id: agentMessage.agentMessageId,
-          workspaceId: auth.getNonNullableWorkspace().id,
+          workspaceId,
         },
         transaction: t,
       }
     );
+
+    // Promote pending messages when the agent loop ends (gracefully stopped or
+    // succeeded as safety net). Also create a new agent message so the caller
+    // can launch a new agent loop.
+    if (status === "gracefully_stopped" || status === "succeeded") {
+      const pendingMessages = await MessageModel.findAll({
+        where: {
+          conversationId: conversation.id,
+          workspaceId,
+          visibility: "pending",
+        },
+        order: [["rank", "ASC"]],
+        transaction: t,
+      });
+
+      if (pendingMessages.length > 0) {
+        await MessageModel.update(
+          { visibility: "visible" },
+          {
+            where: { id: pendingMessages.map((m) => m.id) },
+            transaction: t,
+          }
+        );
+
+        // Create a new agent message for the same agent configuration.
+        const lastPendingMessage = pendingMessages[pendingMessages.length - 1];
+        const newAgentMessageRow = await AgentMessageModel.create(
+          {
+            status: "created",
+            agentConfigurationId: agentMessage.configuration.sId,
+            agentConfigurationVersion: agentMessage.configuration.version,
+            workspaceId,
+            skipToolsValidation: false,
+          },
+          { transaction: t }
+        );
+        const newMessageRow = await MessageModel.create(
+          {
+            sId: generateRandomModelSId(),
+            rank: lastPendingMessage.rank + 1,
+            conversationId: conversation.id,
+            branchId: lastPendingMessage.branchId,
+            parentId: lastPendingMessage.id,
+            agentMessageId: newAgentMessageRow.id,
+            workspaceId,
+          },
+          { transaction: t }
+        );
+
+        return {
+          promotedUserMessages: pendingMessages.map((m) => m.sId),
+          agentMessageId: newMessageRow.sId,
+        };
+      }
+    }
+
+    return { promotedUserMessages: [], agentMessageId: null };
   });
 
-  return { completedTs: completedAt.getTime(), status };
+  return {
+    completedTs: completedAt.getTime(),
+    status,
+    ...result,
+  };
 }
