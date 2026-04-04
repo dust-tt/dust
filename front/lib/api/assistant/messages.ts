@@ -51,6 +51,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
+import type { Transaction } from "sequelize";
 
 export function getCompletionDuration(
   created: number,
@@ -176,9 +177,12 @@ function interleaveConditionalNewlines(parts: string[]): string[] {
   return out;
 }
 
-async function batchRenderUserMessages(
+export async function batchRenderUserMessages(
   auth: Authenticator,
-  messages: MessageModel[]
+  {
+    messages,
+    transaction,
+  }: { messages: MessageModel[]; transaction?: Transaction }
 ): Promise<UserMessageType[]> {
   const userMessages = messages.filter(
     (m) => m.userMessage !== null && m.userMessage !== undefined
@@ -189,6 +193,7 @@ async function batchRenderUserMessages(
       workspaceId: auth.getNonNullableWorkspace().id,
       messageId: userMessages.map((m) => m.id),
     },
+    transaction,
   });
 
   const userIds = [
@@ -706,7 +711,7 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
   >
 > {
   const [userMessages, agentMessagesRes, contentFragments] = await Promise.all([
-    batchRenderUserMessages(auth, messages),
+    batchRenderUserMessages(auth, { messages }),
     batchRenderAgentMessages(
       auth,
       messages,
