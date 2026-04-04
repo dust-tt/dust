@@ -15,6 +15,14 @@ export const SLEEP_THRESHOLD_MS = sleepThresholdEnv
   ? Number(sleepThresholdEnv)
   : 10 * 60 * 1_000;
 
+/** Transition pending_approval sandboxes to sleeping after this long. Default: 30 min. */
+const pendingApprovalThresholdEnv = EnvironmentConfig.getOptionalEnvVariable(
+  "SANDBOX_PENDING_APPROVAL_THRESHOLD_MS"
+);
+export const PENDING_APPROVAL_THRESHOLD_MS = pendingApprovalThresholdEnv
+  ? Number(pendingApprovalThresholdEnv)
+  : 30 * 60 * 1_000;
+
 /** Destroy sandboxes that have been inactive for this long. Default: 24 h. */
 const destroyThresholdEnv = EnvironmentConfig.getOptionalEnvVariable(
   "SANDBOX_DESTROY_THRESHOLD_MS"

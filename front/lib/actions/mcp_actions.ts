@@ -192,7 +192,7 @@ export function getToolExtraFields(
   });
 }
 
-function makeServerSideMCPToolConfigurations(
+export function makeServerSideMCPToolConfigurations(
   config: ServerSideMCPServerConfigurationType,
   tools: ServerSideMCPToolTypeWithStakeAndRetryPolicy[],
   toolsArgumentsRequiringApproval?: Record<string, string[]>
@@ -293,12 +293,14 @@ export async function* tryCallMCPTool(
   {
     progressToken,
     makeToolNotificationEvent,
+    heartbeat: heartbeatFn = heartbeat,
     signal,
   }: {
     progressToken: ModelId;
     makeToolNotificationEvent: (
       notification: MCPProgressNotificationType
     ) => Promise<ToolNotificationEvent>;
+    heartbeat?: () => void;
     signal?: AbortSignal;
   }
 ): AsyncGenerator<ToolNotificationEvent, CallToolResult> {
@@ -403,7 +405,7 @@ export async function* tryCallMCPTool(
     }
     mcpClient = connectionResult.value;
 
-    heartbeat();
+    heartbeatFn();
 
     const emitter = new EventEmitter();
 
@@ -466,7 +468,7 @@ export async function* tryCallMCPTool(
       new Promise((resolve) => {
         heartbeatTimer = setTimeout(() => {
           logger.info(toolLogContext, "MCP tool heartbeat");
-          heartbeat();
+          heartbeatFn();
           resolve();
           // Reasonable delay to react to cancellation under 10s.
         }, 10_000);

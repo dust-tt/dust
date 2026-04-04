@@ -164,6 +164,24 @@ export async function validateAction(
       : false;
   }, getMessageChannelId(messageId));
 
+  // For sandbox-originated actions:
+  // - If the sandbox was paused (slow path), we need to relaunch the agent loop
+  //   so the bash handler can wake the sandbox and reattach to the process.
+  // - If not paused (happy path), the Rust client is polling directly and the
+  //   agent loop is still running, so we skip the re-launch.
+  if (action.stepContext.sandboxOrigin && !action.stepContext.sandboxPaused) {
+    logger.info(
+      {
+        workspaceId: owner.sId,
+        conversationId,
+        messageId,
+        actionId,
+      },
+      `Sandbox action ${approvalState === "approved" ? "approved" : "rejected"} by user (no pause)`
+    );
+    return new Ok(undefined);
+  }
+
   // We only launch the agent loop if there are no remaining blocked actions.
   const blockedActions =
     await AgentMCPActionResource.listBlockedActionsForConversation(
