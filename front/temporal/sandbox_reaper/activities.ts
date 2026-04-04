@@ -6,7 +6,12 @@ import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types/shared/model_id";
 import { heartbeat } from "@temporalio/activity";
 
-import { BATCH_SIZE, DESTROY_THRESHOLD_MS, SLEEP_THRESHOLD_MS } from "./config";
+import {
+  BATCH_SIZE,
+  DESTROY_THRESHOLD_MS,
+  PENDING_APPROVAL_THRESHOLD_MS,
+  SLEEP_THRESHOLD_MS,
+} from "./config";
 
 const REAPER_CONCURRENCY = 16;
 
@@ -90,7 +95,56 @@ export async function reapStaleSandboxesActivity(): Promise<boolean> {
     );
   }
 
-  // Phase 2: Destroy sleeping sandboxes that have been idle > DESTROY_THRESHOLD_MS.
+  // Phase 2: Transition abandoned pending_approval sandboxes to sleeping.
+  const pendingConversations =
+    await SandboxResource.dangerouslyGetStaleConversationIds({
+      status: "pending_approval",
+      olderThanMs: PENDING_APPROVAL_THRESHOLD_MS,
+      limit: BATCH_SIZE,
+    });
+
+  if (pendingConversations.length > 0) {
+    logger.info(
+      { count: pendingConversations.length },
+      "Reaper: stale pending_approval sandboxes found."
+    );
+
+    const workspaceMap = await fetchWorkspaceMap(pendingConversations);
+
+    await concurrentExecutor(
+      pendingConversations,
+      async ({ conversationId, workspaceModelId }) => {
+        const workspace = workspaceMap.get(workspaceModelId);
+
+        if (!workspace) {
+          logger.warn(
+            { conversationId, workspaceModelId },
+            "Workspace not found, skipping"
+          );
+          return;
+        }
+
+        const auth = await Authenticator.internalBuilderForWorkspace(
+          workspace.sId
+        );
+        const result =
+          await SandboxResource.dangerouslySleepIfPendingApproval(
+            auth,
+            conversationId
+          );
+        if (result.isErr()) {
+          logger.error(
+            { conversationId, error: result.error.message },
+            "Reaper: failed to transition pending_approval sandbox — continuing."
+          );
+        }
+        heartbeat();
+      },
+      { concurrency: REAPER_CONCURRENCY }
+    );
+  }
+
+  // Phase 3: Destroy sleeping sandboxes that have been idle > DESTROY_THRESHOLD_MS.
   const sleepingConversations =
     await SandboxResource.dangerouslyGetStaleConversationIds({
       status: "sleeping",
@@ -149,6 +203,7 @@ export async function reapStaleSandboxesActivity(): Promise<boolean> {
 
   return (
     runningConversations.length >= BATCH_SIZE ||
+    pendingConversations.length >= BATCH_SIZE ||
     sleepingConversations.length >= BATCH_SIZE
   );
 }

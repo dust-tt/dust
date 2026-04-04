@@ -93,3 +93,16 @@ pub struct ResourceContent {
     #[allow(dead_code)]
     pub blob: Option<String>,
 }
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CallToolPendingResponse {
+    #[allow(dead_code)]
+    pub status: String,
+    pub action_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ApprovalStatusResponse {
+    pub status: String,
+}

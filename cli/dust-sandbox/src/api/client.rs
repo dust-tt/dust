@@ -2,7 +2,10 @@ use anyhow::{bail, Context};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde::{de::DeserializeOwned, Serialize};
 
-use super::types::{CallToolRequest, CallToolResponse, MCPServerView, SandboxToolsResponse};
+use super::types::{
+    ApprovalStatusResponse, CallToolPendingResponse, CallToolRequest, CallToolResponse,
+    MCPServerView, SandboxToolsResponse,
+};
 
 const SANDBOX_TOKEN_ENV: &str = "DUST_SANDBOX_TOKEN";
 const API_URL_ENV: &str = "DUST_API_URL";
@@ -107,6 +110,29 @@ impl DustApiClient {
         Ok(resp.server_views)
     }
 
+    async fn post_raw<B: Serialize>(
+        &self,
+        path: &str,
+        body: &B,
+    ) -> anyhow::Result<(reqwest::StatusCode, String)> {
+        let url = self.url(path);
+        let resp = self
+            .client
+            .post(&url)
+            .json(body)
+            .send()
+            .await
+            .context(format!("POST {url}"))?;
+
+        let status = resp.status();
+        let body = resp
+            .text()
+            .await
+            .context(format!("failed to read response from POST {url}"))?;
+
+        Ok((status, body))
+    }
+
     pub async fn call_tool(
         &self,
         space_id: &str,
@@ -114,14 +140,75 @@ impl DustApiClient {
         tool_name: &str,
         arguments: Option<serde_json::Value>,
     ) -> anyhow::Result<CallToolResponse> {
+        let call_tool_path = format!("spaces/{space_id}/mcp_server_views/{view_id}/call_tool");
+
         let body = CallToolRequest {
             tool_name: tool_name.to_string(),
-            arguments,
+            arguments: arguments.clone(),
         };
-        self.post(
-            &format!("spaces/{space_id}/mcp_server_views/{view_id}/call_tool"),
-            &body,
-        )
-        .await
+
+        let (status, body_text) = self.post_raw(&call_tool_path, &body).await?;
+
+        if status == reqwest::StatusCode::OK {
+            return serde_json::from_str::<CallToolResponse>(&body_text)
+                .context("failed to parse 200 response");
+        }
+
+        if status == reqwest::StatusCode::ACCEPTED {
+            let pending: CallToolPendingResponse = serde_json::from_str(&body_text)
+                .context("failed to parse 202 response")?;
+
+            eprintln!("Waiting for tool approval...");
+
+            let timeout_seconds: u64 = std::env::var("DUST_APPROVAL_TIMEOUT_SECONDS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(600);
+
+            let start = std::time::Instant::now();
+            loop {
+                if start.elapsed().as_secs() >= timeout_seconds {
+                    bail!("Tool approval timed out after {timeout_seconds}s");
+                }
+
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+                // Poll the same call_tool endpoint via GET with ?actionId=...
+                let poll_result: ApprovalStatusResponse = self
+                    .get(
+                        &call_tool_path,
+                        &[("actionId", &pending.action_id)],
+                    )
+                    .await?;
+
+                match poll_result.status.as_str() {
+                    "approved" => {
+                        // Re-POST with actionId to execute the tool.
+                        let mut re_post_body = serde_json::json!({
+                            "toolName": tool_name,
+                            "actionId": pending.action_id,
+                        });
+                        if let Some(args) = &arguments {
+                            re_post_body["arguments"] = args.clone();
+                        }
+                        return self.post(&call_tool_path, &re_post_body).await;
+                    }
+                    "rejected" => {
+                        bail!("Tool execution was rejected by the user");
+                    }
+                    "error" => {
+                        bail!("Tool approval encountered an error");
+                    }
+                    "pending" => {
+                        // Continue polling.
+                    }
+                    other => {
+                        bail!("Unexpected approval status: {other}");
+                    }
+                }
+            }
+        }
+
+        bail!("POST call_tool returned {status}: {body_text}");
     }
 }

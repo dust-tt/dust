@@ -10,9 +10,14 @@ export interface ToolInputContext {
   toolInputs: Record<string, unknown>;
 }
 
+type StakeCheckFields = Pick<
+  MCPToolConfigurationType,
+  "permission" | "toolServerId" | "name" | "argumentsRequiringApproval"
+>;
+
 export async function getExecutionStatusFromConfig(
   auth: Authenticator,
-  actionConfiguration: MCPToolConfigurationType,
+  actionConfiguration: StakeCheckFields,
   agentMessage: AgentMessageType,
   context?: ToolInputContext
 ): Promise<{
