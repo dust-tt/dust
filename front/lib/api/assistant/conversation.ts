@@ -38,6 +38,7 @@ import {
 } from "@app/lib/api/assistant/rate_limits";
 import {
   publishAgentMessagesEvents,
+  publishConversationEvent,
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
@@ -121,6 +122,7 @@ import type {
   RichMentionWithStatus,
   UserMessageContext,
   UserMessageType,
+  UserMessageTypeWithoutMentions,
 } from "@app/types/assistant/conversation";
 import {
   ConversationError,
@@ -2580,54 +2582,61 @@ export async function updateAgentMessageWithFinalStatus(
   const completedAt = new Date();
   const owner = auth.getNonNullableWorkspace();
 
-  // TODO(steering): use promotedUserMessages and agentMessages to publish
-  // events and launch the new agent loop.
-  await withTransaction(async (t) => {
-    await getConversationRankVersionLock(auth, conversation, t);
+  const { promotedUserMessages, agentMessage: newAgentMessage } =
+    await withTransaction(async (t) => {
+      await getConversationRankVersionLock(auth, conversation, t);
 
-    await AgentMessageModel.update(
-      {
-        status,
-        completedAt,
-        ...(error
-          ? {
-              errorCode: error.code,
-              errorMessage: error.message,
-              errorMetadata: error.metadata,
-            }
-          : {}),
-      },
-      {
-        where: {
-          id: agentMessage.agentMessageId,
-          workspaceId: owner.id,
+      await AgentMessageModel.update(
+        {
+          status,
+          completedAt,
+          ...(error
+            ? {
+                errorCode: error.code,
+                errorMessage: error.message,
+                errorMetadata: error.metadata,
+              }
+            : {}),
         },
+        {
+          where: {
+            id: agentMessage.agentMessageId,
+            workspaceId: owner.id,
+          },
+          transaction: t,
+        }
+      );
+
+      // Promote *all* pending messages when the agent loop ends. If a pending
+      // message exists it will be promoted and will trigger the ending
+      // agentMessage. The `enableSteering` invariants of postUserMessage ensure
+      // that we have only one running agentic loop so we can just recreate a
+      // new agentMessage for the same agent as the one that finished.
+      //
+      // There is an edge case here for API interactions which are not subject
+      // to the steering invariant in which case we could have more than one
+      // running agent message and could pick the wrong agent compared to user
+      // attempt. But should ~never happen so the simplicity is worth it.
+      const pendingMessages = await MessageModel.findAll({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: owner.id,
+          visibility: "pending",
+        },
+        include: [
+          { model: UserMessageModel, as: "userMessage", required: false },
+        ],
+        order: [["rank", "ASC"]],
         transaction: t,
+      });
+
+      if (pendingMessages.length === 0) {
+        return {
+          promotedUserMessages: [] as UserMessageTypeWithoutMentions[],
+          agentMessage: null as AgentMessageType | null,
+        };
       }
-    );
 
-    // Promote *all* pending messages when the agent loop ends. If a pending message exists it will
-    // be promoted and will trigger the ending agentMessage. The `enableSteering` invariants of
-    // postUserMessage ensure that we have only one running agentic loop so we can just recreate a
-    // new agentMesssage for the same agent as the one that finished.
-    //
-    // There is an edge case here for API interactions which are not subject to the steering
-    // invariant in which case we could have more than one running agent message and could pick the
-    // wrong agent compared to user attempt. But should ~never happen so the simplicity is worth it.
-    const pendingMessages = await MessageModel.findAll({
-      where: {
-        conversationId: conversation.id,
-        workspaceId: owner.id,
-        visibility: "pending",
-      },
-      include: [
-        { model: UserMessageModel, as: "userMessage", required: false },
-      ],
-      order: [["rank", "ASC"]],
-      transaction: t,
-    });
-
-    if (pendingMessages.length > 0) {
       await MessageModel.update(
         { visibility: "visible" },
         {
@@ -2676,11 +2685,36 @@ export async function updateAgentMessageWithFinalStatus(
         transaction: t,
       });
 
-      return { promotedUserMessages, agentMessages };
-    } else {
-      return { promotedUserMessages: [], agentMessages: [] };
+      return {
+        promotedUserMessages,
+        agentMessage: agentMessages[0] ?? null,
+      };
+    });
+
+  // Publish events and launch agent loop outside of the advisory lock.
+  if (promotedUserMessages.length > 0) {
+    for (const userMsg of promotedUserMessages) {
+      await publishConversationEvent(
+        {
+          type: "user_message_promoted",
+          created: Date.now(),
+          messageId: userMsg.sId,
+        },
+        { conversationId: conversation.sId }
+      );
     }
-  });
+  }
+
+  if (newAgentMessage) {
+    await publishAgentMessagesEvents(conversation, [newAgentMessage]);
+
+    await runAgentLoopWorkflow({
+      auth,
+      agentMessages: [newAgentMessage],
+      conversation,
+      userMessage: promotedUserMessages[promotedUserMessages.length - 1],
+    });
+  }
 
   return {
     completedTs: completedAt.getTime(),
