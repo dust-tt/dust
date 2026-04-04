@@ -22,7 +22,6 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgenticMessageData,
   AgentMessageType,
-  ConversationType,
   ConversationWithoutContentType,
   MessageVisibility,
   RichMentionWithStatus,
@@ -73,7 +72,7 @@ export async function createUserMessage(
     content,
     transaction,
   }: {
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     content: string;
     metadata:
       | {
