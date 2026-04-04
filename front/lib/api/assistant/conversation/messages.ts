@@ -23,6 +23,7 @@ import type {
   AgenticMessageData,
   AgentMessageType,
   ConversationType,
+  ConversationWithoutContentType,
   MessageVisibility,
   RichMentionWithStatus,
   UserMessageContext,
@@ -242,7 +243,7 @@ export const createAgentMessages = async (
     metadata,
     transaction,
   }: {
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     metadata:
       | {
           type: "retry";
