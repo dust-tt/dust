@@ -113,6 +113,12 @@ interface PackageDef {
   billing_provider?: string;
   delivery_method?: string;
   subscriptions?: PackageSubscription[];
+  // Billing cycle anchored to contract start date (matches Stripe subscription anniversary).
+  billing_anchor_date?: "contract_start_date" | "first_billing_period";
+  usage_statement_schedule?: {
+    frequency: "MONTHLY" | "QUARTERLY" | "ANNUAL" | "WEEKLY";
+    day?: "CONTRACT_START" | "FIRST_OF_MONTH";
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -335,37 +341,35 @@ const LEGACY_SEAT_SUBSCRIPTION: PackageSubscription = {
   },
 };
 
+// Billing cycle config shared by all packages — anchored to contract start date.
+const BILLING_CYCLE_CONFIG = {
+  billing_anchor_date: "contract_start_date" as const,
+  usage_statement_schedule: {
+    frequency: "MONTHLY" as const,
+    day: "CONTRACT_START" as const,
+  },
+};
+
+// Packages have NO billing_provider — billing provider is set at contract creation time.
+// Shadow mode: create contract without billing_provider_configuration → invoices stay in Metronome.
+// Real billing: create contract with billing_provider_configuration: { billing_provider: "stripe" }.
+// Package names are versioned (v1, v2, ...) to track pricing changes.
+// Aliases stay stable — code always references the alias, which points to the latest version.
+// Old versions are archived automatically when a new version is created with the same alias.
 const PACKAGES: PackageDef[] = [
   {
-    name: "Legacy Pro $29",
+    name: "Legacy Pro $29 v1",
     aliases: [{ name: "legacy-pro-29" }],
     rate_card_name: "Legacy Pro $29",
-    billing_provider: "stripe",
-    delivery_method: "direct_to_billing_provider",
     subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
+    ...BILLING_CYCLE_CONFIG,
   },
   {
-    name: "Legacy Business $39",
+    name: "Legacy Business $39 v1",
     aliases: [{ name: "legacy-business-39" }],
     rate_card_name: "Legacy Business $39",
-    billing_provider: "stripe",
-    delivery_method: "direct_to_billing_provider",
     subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
-  },
-  // Shadow packages — same rate cards + seat subscriptions, no billing provider.
-  // Invoices generated in Metronome (viewable via API) but NOT delivered to Stripe.
-  {
-    name: "Shadow Pro $29",
-    aliases: [{ name: "shadow-pro-29" }],
-    rate_card_name: "Legacy Pro $29",
-    subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
-    // No billing_provider → invoices stay in Metronome only
-  },
-  {
-    name: "Shadow Business $39",
-    aliases: [{ name: "shadow-business-39" }],
-    rate_card_name: "Legacy Business $39",
-    subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
+    ...BILLING_CYCLE_CONFIG,
   },
 ];
 
@@ -763,6 +767,7 @@ async function syncRateCards(): Promise<void> {
 interface ExistingPackage {
   id: string;
   name: string;
+  aliases?: Array<{ name: string }>;
   rate_card_id?: string;
   billing_provider?: string;
   subscriptions?: Array<{
@@ -853,11 +858,24 @@ async function syncPackages(): Promise<void> {
     existing.push(p as ExistingPackage);
   }
 
-  const byName = new Map(existing.map((p) => [p.name, p]));
-  const desiredNames = new Set(PACKAGES.map((p) => p.name));
-
+  // Build a map from alias → existing package (a package may have multiple aliases).
+  const byAlias = new Map<string, ExistingPackage>();
   for (const p of existing) {
-    if (!desiredNames.has(p.name) && !isTestObject(p.name)) {
+    for (const alias of p.aliases ?? []) {
+      byAlias.set(alias.name, p);
+    }
+  }
+
+  // Collect all desired aliases to identify stale packages.
+  const desiredAliases = new Set(
+    PACKAGES.flatMap((p) => p.aliases.map((a) => a.name))
+  );
+
+  // Archive packages whose aliases are not in the desired set (and not test objects).
+  for (const p of existing) {
+    const aliases = (p.aliases ?? []).map((a) => a.name);
+    const isDesired = aliases.some((a) => desiredAliases.has(a));
+    if (!isDesired && !isTestObject(p.name)) {
       console.log(`  ⚠ Archiving stale package: ${p.name} (${p.id})`);
       try {
         await client.v1.packages.archive({ package_id: p.id });
@@ -868,14 +886,20 @@ async function syncPackages(): Promise<void> {
   }
 
   for (const desired of PACKAGES) {
-    const ex = byName.get(desired.name);
+    // Find existing package by alias (not name — name changes on version bumps).
+    const primaryAlias = desired.aliases[0]?.name;
+    const ex = primaryAlias ? byAlias.get(primaryAlias) : undefined;
 
-    if (ex && packageMatches(ex, desired)) {
+    if (ex && ex.name === desired.name && packageMatches(ex, desired)) {
       console.log(`  ✓ ${desired.name} — up to date (${ex.id})`);
       ids.packages[desired.name] = ex.id;
     } else {
       if (ex) {
-        console.log(`  ↻ ${desired.name} — config changed, archiving ${ex.id}`);
+        const reason =
+          ex.name !== desired.name
+            ? `version change (${ex.name} → ${desired.name})`
+            : "config changed";
+        console.log(`  ↻ ${desired.name} — ${reason}, archiving ${ex.id}`);
         try {
           await client.v1.packages.archive({ package_id: ex.id });
         } catch {
@@ -916,6 +940,10 @@ async function syncPackages(): Promise<void> {
         name: desired.name,
         aliases: desired.aliases,
         rate_card_id: rateCardId,
+        billing_anchor_date: desired.billing_anchor_date,
+        ...(desired.usage_statement_schedule
+          ? { usage_statement_schedule: desired.usage_statement_schedule }
+          : {}),
         ...(desired.billing_provider
           ? {
               billing_provider: desired.billing_provider,
