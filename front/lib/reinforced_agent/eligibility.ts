@@ -7,6 +7,7 @@ import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 
 const PENDING_SUGGESTION_MAX_AGE_DAYS = 30;
+const MIN_HOURS_BETWEEN_WORKFLOWS = 23;
 
 function recordReinforcedAgentEligibilityMetrics({
   workspaceId,
@@ -48,7 +49,7 @@ function recordReinforcedAgentEligibilityMetrics({
 }
 
 // An agent is eligible if: reinforcement is not "off", it is workspace-owned (id > 0),
-// has no recent pending suggestions, and either:
+// has no recent pending suggestions, has not been analyzed recently, and either:
 //   (a) has explicit human feedback in the lookback window, or
 //   (b) has recent qualifying conversations in the lookback window.
 export async function filterEligibleAgents(
@@ -57,9 +58,29 @@ export async function filterEligibleAgents(
   lookbackWindowDays: number
 ): Promise<LightAgentConfigurationType[]> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
-  const candidates = agents.filter(
-    (a) => a.reinforcement !== "off" && a.id > 0
+  
+  // Filter out agents with reinforcement off, non-positive id, or recently analyzed.
+  const minTimeSinceLastAnalysis = new Date();
+  minTimeSinceLastAnalysis.setHours(
+    minTimeSinceLastAnalysis.getHours() - MIN_HOURS_BETWEEN_WORKFLOWS
   );
+  
+  const candidates = agents.filter((a) => {
+    if (a.reinforcement === "off" || a.id <= 0) {
+      return false;
+    }
+    
+    // If lastAnalysedAt is set and within the minimum time window, exclude.
+    if (a.lastAnalysedAt) {
+      const lastAnalysedDate = new Date(a.lastAnalysedAt);
+      if (lastAnalysedDate > minTimeSinceLastAnalysis) {
+        return false;
+      }
+    }
+    
+    return true;
+  });
+  
   if (candidates.length === 0) {
     recordReinforcedAgentEligibilityMetrics({
       workspaceId,

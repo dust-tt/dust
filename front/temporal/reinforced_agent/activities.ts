@@ -442,6 +442,49 @@ export async function finalizeAggregationActivity({
 }
 
 /**
+ * Record that a reinforced workflow has completed for an agent.
+ * Updates the lastAnalysedAt timestamp on the active agent configuration.
+ */
+export async function recordWorkflowCompletionActivity({
+  workspaceId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+}): Promise<void> {
+  const auth = await getAuthForWorkspace(workspaceId);
+
+  const [agentConfig] = await getAgentConfigurations(auth, {
+    agentIds: [agentConfigurationId],
+    variant: "light",
+  });
+
+  if (!agentConfig) {
+    logger.warn(
+      { agentConfigurationId, workspaceId },
+      "ReinforcedAgent: agent not found for recordWorkflowCompletion"
+    );
+    return;
+  }
+
+  await AgentConfigurationModel.update(
+    { lastAnalysedAt: new Date() },
+    {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sId: agentConfigurationId,
+        status: "active",
+      },
+    }
+  );
+
+  logger.info(
+    { agentConfigurationId, workspaceId },
+    "ReinforcedAgent: recorded workflow completion timestamp"
+  );
+}
+
+/**
  * Single step of aggregation for reinforcement (streaming mode).
  *
  * Mirrors `analyzeConversationStepActivity` but for the aggregation phase.

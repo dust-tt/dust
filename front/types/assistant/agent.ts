@@ -194,6 +194,7 @@ export const LightAgentConfigurationSchema = z.object({
   requestedGroupIds: z.array(z.array(z.string())),
   requestedSpaceIds: z.array(z.string()),
   reinforcement: z.enum(AGENT_REINFORCEMENT_MODES).optional(),
+  lastAnalysedAt: z.string().nullable().optional(),
   canRead: z.boolean(),
   canEdit: z.boolean(),
   omittedThinking: z.boolean().optional(),

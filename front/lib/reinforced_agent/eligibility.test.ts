@@ -122,4 +122,51 @@ describe("filterEligibleAgents", () => {
     const result = await filterEligibleAgents(auth, [agent], 30);
     expect(result).toEqual([]);
   });
+
+  it("excludes agents with lastAnalysedAt within MIN_HOURS_BETWEEN_WORKFLOWS", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    await createRecentAgentMessage(auth, workspace, agent, daysAgo(2));
+
+    // Set lastAnalysedAt to 12 hours ago (within 23 hour window).
+    const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
+    const agentWithRecentAnalysis: LightAgentConfigurationType = {
+      ...agent,
+      lastAnalysedAt: twelveHoursAgo.toISOString(),
+    };
+
+    const result = await filterEligibleAgents(
+      auth,
+      [agentWithRecentAnalysis],
+      30
+    );
+    expect(result).toEqual([]);
+  });
+
+  it("includes agents with lastAnalysedAt older than MIN_HOURS_BETWEEN_WORKFLOWS", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    await createRecentAgentMessage(auth, workspace, agent, daysAgo(2));
+
+    // Set lastAnalysedAt to 25 hours ago (outside 23 hour window).
+    const twentyFiveHoursAgo = new Date(Date.now() - 25 * 60 * 60 * 1000);
+    const agentWithOldAnalysis: LightAgentConfigurationType = {
+      ...agent,
+      lastAnalysedAt: twentyFiveHoursAgo.toISOString(),
+    };
+
+    const result = await filterEligibleAgents(auth, [agentWithOldAnalysis], 30);
+    expect(result.map((a) => a.sId)).toEqual([agent.sId]);
+  });
+
+  it("includes agents with lastAnalysedAt = null (never analyzed before)", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    await createRecentAgentMessage(auth, workspace, agent, daysAgo(2));
+
+    const agentNeverAnalyzed: LightAgentConfigurationType = {
+      ...agent,
+      lastAnalysedAt: null,
+    };
+
+    const result = await filterEligibleAgents(auth, [agentNeverAnalyzed], 30);
+    expect(result.map((a) => a.sId)).toEqual([agent.sId]);
+  });
 });
