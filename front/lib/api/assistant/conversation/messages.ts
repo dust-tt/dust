@@ -89,6 +89,7 @@ export async function createUserMessage(
           rank: number;
           context: UserMessageContext;
           agenticMessageData?: AgenticMessageData;
+          visibility?: MessageVisibility;
         };
     transaction: Transaction;
   }
@@ -139,6 +140,9 @@ export async function createUserMessage(
 
       context = metadata.context;
       agenticMessageData = metadata.agenticMessageData;
+      if (metadata.visibility) {
+        visibility = metadata.visibility;
+      }
       break;
     default:
       assertNever(metadata);

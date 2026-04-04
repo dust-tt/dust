@@ -76,11 +76,11 @@ Implement the graceful stop mechanism end-to-end.
 
 ---
 
-## Phase 3: Steering (behind `enable_steering_behavior` feature flag)
+## Phase 3: Steering (behind `enable_steering` feature flag)
 
 All steering behavior gated behind a feature flag. No UI work except pending message display.
 
-### - [ ] PR 3.1 — Add `"pending"` to `MessageVisibility` + `UserMessagePromotedEvent`
+### - [x] PR 3.1 — Add `"pending"` to `MessageVisibility` + `UserMessagePromotedEvent`
 
 Type + DB schema change, no runtime behavior.
 
@@ -92,9 +92,9 @@ Type + DB schema change, no runtime behavior.
 - Add `UserMessagePromotedEvent` type in `front/types/assistant/conversation.ts`.
 - Add to `ConversationEvents` union in `front/lib/api/assistant/streaming/types.ts`.
 
-### - [ ] PR 3.2 — Pending path in `postUserMessage`
+### - [x] PR 3.2 — Pending path in `postUserMessage`
 
-Behind `enable_steering_behavior` feature flag:
+Behind `enable_steering` feature flag:
 
 - Add constraints and routing logic in `postUserMessage`:
   - At most one agent mention per message (error if >1).
