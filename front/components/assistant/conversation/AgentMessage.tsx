@@ -126,14 +126,17 @@ function PrunedContextChip() {
     <Tooltip
       label={
         <div className="flex flex-col gap-2 py-2">
-          <div className="font-semibold">
-            This conversation reached its size limit
-          </div>
+          <div className="font-semibold">Some context was trimmed</div>
           <div className="flex flex-col gap-2 text-justify text-sm text-muted-foreground dark:text-muted-foreground-night">
             <p>
-              The agent can only process so much information at once. We removed
-              some <strong>data from earlier steps</strong> to make room. For
-              better accuracy, start a fresh conversation.
+              Dust had to trim some retrieved context to fit the model&apos;s
+              context window while generating this message. This can happen
+              because earlier conversation state or tool output from this
+              message was too large.
+            </p>
+            <p>
+              For best accuracy, narrow the request or start a fresh
+              conversation.
             </p>
             <p>
               <a
@@ -151,7 +154,7 @@ function PrunedContextChip() {
       className="max-w-sm"
       trigger={
         <Chip
-          label="Context limit reached"
+          label="Context trimmed"
           size="xs"
           color="white"
           icon={InformationCircleIcon}
