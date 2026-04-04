@@ -26,6 +26,8 @@ async function buildWorker() {
         "isomorphic-dompurify",
         "tsconfig-paths-webpack-plugin",
         "pg-hstore",
+        "sequelize",
+        "pg",
       ],
     });
 
