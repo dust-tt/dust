@@ -20,6 +20,17 @@ const HEARTBEAT_LOG_INTERVAL = 6; // Every minute (6 * 10s)
 const LLM_EVENT_TIMEOUT_MINUTES = 2;
 const LLM_EVENT_TIMEOUT_MS = LLM_EVENT_TIMEOUT_MINUTES * 60 * 1000;
 
+export function resolveStableToolCallName(
+  specifications: GetOutputRequestParams["specifications"],
+  streamedToolName: string
+): string | null {
+  const exactMatch = specifications.find(
+    (specification) => specification.name === streamedToolName
+  );
+
+  return exactMatch?.name ?? null;
+}
+
 class LLMStreamTimeoutError extends Error {
   constructor(
     public readonly elapsedMs: number,
@@ -175,6 +186,9 @@ export async function getOutputFromLLMStream(
   const actions: Output["actions"] = [];
   let generation = "";
   let nativeChainOfThought = "";
+  const publishedToolCallStartIds = new Set<string>();
+  const publishedToolCallStartIndices = new Set<number>();
+  const publishedToolCallStartNames = new Set<string>();
 
   const logContext = {
     workspaceId: conversation.owner.sId,
@@ -238,6 +252,25 @@ export async function getOutputFromLLMStream(
           continue;
         }
         case "tool_call_started": {
+          const stableToolName = resolveStableToolCallName(
+            specifications,
+            event.content.name
+          );
+
+          if (!stableToolName) {
+            continue;
+          }
+
+          if (
+            (event.content.id &&
+              publishedToolCallStartIds.has(event.content.id)) ||
+            (event.content.index !== undefined &&
+              publishedToolCallStartIndices.has(event.content.index)) ||
+            publishedToolCallStartNames.has(stableToolName)
+          ) {
+            continue;
+          }
+
           await updateResourceAndPublishEvent(auth, {
             event: {
               type: "tool_call_started",
@@ -248,12 +281,20 @@ export async function getOutputFromLLMStream(
               ...(event.content.index !== undefined
                 ? { toolCallIndex: event.content.index }
                 : {}),
-              toolName: event.content.name,
+              toolName: stableToolName,
             },
             agentMessage,
             conversation,
             step,
           });
+
+          if (event.content.id) {
+            publishedToolCallStartIds.add(event.content.id);
+          }
+          if (event.content.index !== undefined) {
+            publishedToolCallStartIndices.add(event.content.index);
+          }
+          publishedToolCallStartNames.add(stableToolName);
           continue;
         }
         case "tool_call_delta":
