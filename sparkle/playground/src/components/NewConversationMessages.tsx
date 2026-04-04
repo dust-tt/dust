@@ -850,6 +850,7 @@ export const NewConversationAgentMessage = React.forwardRef<
               <div
                 ref={containerRef}
                 className={cn(
+                  "s-w-full",
                   shouldAutoCollapse && isCollapsible && "s-relative"
                 )}
                 style={
