@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { ConversationView } from "../components/ConversationView";
 import {
@@ -1117,78 +1117,10 @@ Recommendation: Ship the core experience (grouping + preferences + in-app panel)
         { emoji: "💪", count: 2, reactedByLocutor: false },
       ],
     },
-
-    // Active indicators
-    {
-      kind: "activeIndicator",
-      id: "active-agent-typing",
-      type: "agent",
-      name: designAgent.name,
-      action: "thinking",
-      avatar: {
-        emoji: designAgent.emoji,
-        backgroundColor: designAgent.backgroundColor,
-      },
-    },
-    {
-      kind: "activeIndicator",
-      id: "active-user-typing",
-      type: "interlocutor",
-      name: user3.fullName,
-      action: "typing",
-      avatar: { visual: user3.portrait, isRounded: true },
-    },
-
-    // Pending validation block (locutor + agent + Accept/Cancel)
-    {
-      kind: "pendingValidation",
-      id: "pending-validation-notification-redesign",
-      userMessage: {
-        kind: "message",
-        id: "pending-user-notification",
-        content:
-          "@StrategyPlanner Can you summarize the rollout plan for the sprint review? I want to make sure we have the key points ready.",
-        timestamp: new Date(now.getTime()),
-        ownerId: locutor.id,
-        ownerType: "user",
-        type: "user",
-        group: {
-          id: "g-pending-locutor",
-          type: "locutor",
-          timestamp: "11:35",
-        },
-      } as ConversationMessage,
-      agentMessage: {
-        kind: "message",
-        id: "pending-agent-notification",
-        markdown: `**Rollout summary**
-
-- **Phase 1 (today)**: Deploy behind \`notifications_v2\` feature flag, enable for the team (10 users) for smoke testing.
-- **Phase 2 (Monday)**: 5% canary rollout with monitoring for error rates, WebSocket stability, and grouping latency.
-- **Phase 3 (Wednesday)**: Full rollout if canary metrics are green. Announce via in-app banner + changelog.
-
-**Kill switch**: Disable flag → instant revert to legacy notifications.`,
-        timestamp: new Date(now.getTime() + 30 * 1000),
-        ownerId: designAgent.id,
-        ownerType: "agent",
-        type: "agent",
-        group: {
-          id: "g-pending-strategy",
-          type: "agent",
-          name: designAgent.name,
-          timestamp: "11:35",
-          completionStatus: "Completed in 12 sec",
-          avatar: {
-            emoji: designAgent.emoji,
-            backgroundColor: designAgent.backgroundColor,
-          },
-        },
-      } as ConversationMessage,
-    } as ConversationPendingValidation,
   ];
 
   return {
-    id: "conv-standalone-1",
+    id: "conv-agent-message-user-validation-1",
     title: "Notification System Redesign",
     createdAt: twoDaysAgo,
     updatedAt: now,
@@ -1201,11 +1133,103 @@ Recommendation: Ship the core experience (grouping + preferences + in-app panel)
 }
 
 // ---------------------------------------------------------------------------
-// Story component
+// Pending validation block (ephemeral container)
 // ---------------------------------------------------------------------------
 
-export default function ConversationStory() {
-  const conversation = useMemo(() => buildConversation(), []);
+function createPendingValidationBlock(
+  now: Date
+): ConversationPendingValidation {
+  const userMessage: ConversationMessage = {
+    kind: "message",
+    id: "pending-user-1",
+    content:
+      "@SuperSecureVaultTouchyAgent Can you summarize the rollout plan for the sprint review? I want to make sure we have the key points ready.",
+    timestamp: new Date(now.getTime()),
+    ownerId: locutor.id,
+    ownerType: "user",
+    type: "user",
+    group: {
+      id: "g-pending-locutor",
+      type: "locutor",
+      timestamp: "11:35",
+    },
+  };
+
+  const agentMessage: ConversationMessage = {
+    kind: "message",
+    id: "pending-agent-1",
+    markdown: `**Rollout summary**
+
+- **Phase 1 (today)**: Deploy behind \`notifications_v2\` feature flag, enable for the team (10 users) for smoke testing.
+- **Phase 2 (Monday)**: 5% canary rollout with monitoring for error rates, WebSocket stability, and grouping latency.
+- **Phase 3 (Wednesday)**: Full rollout if canary metrics are green. Announce via in-app banner + changelog.
+
+**Kill switch**: Disable flag → instant revert to legacy notifications.`,
+    timestamp: new Date(now.getTime() + 30 * 1000),
+    ownerId: designAgent.id,
+    ownerType: "agent",
+    type: "agent",
+    group: {
+      id: "g-pending-strategy",
+      type: "agent",
+      name: designAgent.name,
+      timestamp: "11:35",
+      completionStatus: "Completed in 12 sec",
+      avatar: {
+        emoji: designAgent.emoji,
+        backgroundColor: designAgent.backgroundColor,
+      },
+    },
+  };
+
+  return {
+    kind: "pendingValidation",
+    id: "pending-validation-1",
+    userMessage,
+    agentMessage,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Story component — ConversationDialogValidation (validation in Sheet, not inline)
+// ---------------------------------------------------------------------------
+
+export default function ConversationDialogValidationStory() {
+  const baseConversation = useMemo(() => buildConversation(), []);
+
+  const [conversation, setConversation] = useState<Conversation>(
+    () => baseConversation
+  );
+
+  const [pendingValidationForSheet, setPendingValidationForSheet] =
+    useState<ConversationPendingValidation | null>(null);
+
+  const handleSend = useCallback(() => {
+    setPendingValidationForSheet(createPendingValidationBlock(new Date()));
+  }, []);
+
+  const handleAcceptPendingValidation = useCallback(
+    (blockId: string) => {
+      setConversation((prev) => {
+        const block = pendingValidationForSheet;
+        if (!block || block.id !== blockId) return prev;
+
+        const messages = prev.messages ?? [];
+        const newMessages: ConversationItem[] = [
+          ...messages,
+          block.userMessage,
+          block.agentMessage,
+        ];
+        return { ...prev, messages: newMessages };
+      });
+      setPendingValidationForSheet(null);
+    },
+    [pendingValidationForSheet]
+  );
+
+  const handleCancelPendingValidation = useCallback((blockId: string) => {
+    setPendingValidationForSheet(null);
+  }, []);
 
   return (
     <div className="s-flex s-h-screen s-w-full s-bg-background dark:s-bg-background-night">
@@ -1218,6 +1242,11 @@ export default function ConversationStory() {
         showBackButton={false}
         conversationTitle="Notification System Redesign"
         projectTitle="Product Engineering"
+        onAcceptPendingValidation={handleAcceptPendingValidation}
+        onCancelPendingValidation={handleCancelPendingValidation}
+        validationDisplayMode="sheet"
+        onSend={handleSend}
+        pendingValidationForSheet={pendingValidationForSheet}
       />
     </div>
   );

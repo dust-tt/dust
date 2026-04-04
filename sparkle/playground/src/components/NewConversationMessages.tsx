@@ -986,3 +986,117 @@ export const NewConversationMessageContent = React.forwardRef<
 });
 
 NewConversationMessageContent.displayName = "NewConversationMessageContent";
+
+// --- Pending validation block (ephemeral container: user + agent + Accept/Cancel) ---
+
+interface NewConversationPendingValidationBlockProps
+  extends React.HTMLAttributes<HTMLDivElement> {
+  userMessageContent: React.ReactNode;
+  agentMessageContent: React.ReactNode;
+  userGroupHeader: {
+    timestamp?: string;
+  };
+  agentGroupHeader: {
+    avatar?: React.ComponentProps<typeof Avatar>;
+    name?: string;
+    timestamp?: string;
+    completionStatus?: React.ReactNode;
+  };
+  userCitations?: React.ReactElement[];
+  agentCitations?: React.ReactElement[];
+  onAccept: () => void;
+  onCancel: () => void;
+  hideActions?: boolean;
+}
+
+export const NewConversationPendingValidationBlock = React.forwardRef<
+  HTMLDivElement,
+  NewConversationPendingValidationBlockProps
+>(
+  (
+    {
+      userMessageContent,
+      agentMessageContent,
+      userGroupHeader,
+      agentGroupHeader,
+      userCitations,
+      agentCitations,
+      onAccept,
+      onCancel,
+      hideActions = false,
+      className,
+      ...props
+    },
+    ref
+  ) => {
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "s-flex s-relative s-w-full s-flex-col s-gap-3 s-pt-3 s-pb-2 s-border-t-2 s-border-highlight-100",
+          className
+        )}
+        {...props}
+      >
+        <div className="s-flex s-w-full s-flex-col s-gap-1 s-pl-12">
+          <messageGroupTypeContext.Provider
+            value={{ messageType: "locutor", messageContainerType: "locutor" }}
+          >
+            <NewConversationUserMessage
+              hideActions
+              isLastMessage
+              citations={userCitations}
+            >
+              {userMessageContent}
+            </NewConversationUserMessage>
+          </messageGroupTypeContext.Provider>
+        </div>
+        <div className="s-flex s-w-full s-flex-col s-gap-1">
+          <messageGroupTypeContext.Provider
+            value={{ messageType: "agent", messageContainerType: "agent" }}
+          >
+            <NewConversationMessageGroupHeader
+              groupType="agent"
+              type="agent"
+              avatar={agentGroupHeader.avatar}
+              name={agentGroupHeader.name}
+              timestamp={agentGroupHeader.timestamp}
+              completionStatus={agentGroupHeader.completionStatus}
+              renderName={(name) => <span>{name ?? ""}</span>}
+            />
+            <NewConversationAgentMessage
+              hideActions
+              isLastMessage
+              citations={agentCitations}
+            >
+              {agentMessageContent}
+            </NewConversationAgentMessage>
+          </messageGroupTypeContext.Provider>
+        </div>
+        {!hideActions && (
+          <div className="s-flex s-items-center s-gap-2 s-p-2 s-pl-3 s-rounded-b-2xl s-border-t-2 s-border-border s-border-highlight-100 s-bg-highlight-50">
+            <span className="s-flex-1 s-text-sm s-text-foreground dark:s-text-muted-foreground-night">
+              This agent has access to sensitive data. Do you want to post this
+              message in this shared conversation?
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              label="Cancel"
+              onClick={onCancel}
+            />
+            <Button
+              size="sm"
+              variant="highlight"
+              label="Accept"
+              onClick={onAccept}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
+);
+
+NewConversationPendingValidationBlock.displayName =
+  "NewConversationPendingValidationBlock";
