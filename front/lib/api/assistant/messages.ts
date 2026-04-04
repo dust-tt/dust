@@ -206,6 +206,14 @@ function renderUserMessage(
       fullName = linkedUser.fullName;
       email = linkedUser.email;
       profilePictureUrl = linkedUser.image;
+    } else {
+      logger.warn(
+        {
+          conversationSId: message.sId,
+          userId: userMessage.userId,
+        },
+        "User not found for user message while it should have been fetched before. Falling back to user context."
+      );
     }
   }
 
@@ -293,22 +301,6 @@ async function batchRenderUserMessages(
 
   return userMessages.map((message) => {
     const base = renderUserMessage(message, usersById);
-
-    if (
-      !message.userMessage?.userId ||
-      message.userMessage.agenticMessageType
-    ) {
-      // Log warning for missing user only when we expected to find one.
-    } else if (!usersById.get(message.userMessage.userId)) {
-      logger.warn(
-        {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          conversationSId: message.sId,
-          userId: message.userMessage.userId,
-        },
-        "User not found for user message while it should have been fetched before. Falling back to user context."
-      );
-    }
 
     const richMentions = getRichMentionsWithStatusForMessage(
       message.id,
