@@ -13,6 +13,7 @@ import { cva } from "class-variance-authority";
 import tippy, { type Instance as TippyInstance } from "tippy.js";
 import React, {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -68,6 +69,14 @@ const SuggestionList = forwardRef<SuggestionListHandle, SuggestionProps>(
       const item = items[index];
       if (item) {
         command(item);
+        if (item.type === "agent" && _onAgentMentionedRef) {
+          _onAgentMentionedRef({
+            id: item.id,
+            label: item.label,
+            emoji: item.avatarEmoji,
+            backgroundColor: item.avatarColor,
+          });
+        }
       }
     };
 
@@ -89,6 +98,11 @@ const SuggestionList = forwardRef<SuggestionListHandle, SuggestionProps>(
 
         if (event.key === "Enter") {
           selectItem(selectedIndex);
+          return true;
+        }
+
+        if (event.key === "Tab") {
+          selectItem(0);
           return true;
         }
 
@@ -404,6 +418,16 @@ const SuggestionSelectionHighlight = Extension.create({
   },
 });
 
+// Module-level ref for the agent mention callback (set by the component instance).
+let _onAgentMentionedRef:
+  | ((agent: {
+      id: string;
+      label: string;
+      emoji?: string;
+      backgroundColor?: string;
+    }) => void)
+  | null = null;
+
 const getMentionItems = (query: string): MentionItem[] => {
   const normalized = query.trim().toLowerCase();
 
@@ -550,7 +574,7 @@ const richTextAreaVariants = cva(
           "s-min-h-40"
         ),
         compact: cn(
-          "s-p-5",
+          "s-p-0",
           "s-bg-transparent s-border-0 s-rounded-none",
           "focus-visible:s-ring-0 focus-visible:s-border-0",
           "s-min-h-0"
@@ -577,6 +601,9 @@ export type RichTextAreaHandle = {
   insertMention: (options: { id: string; label: string }) => void;
   insertInstructionSnippet: (options: { id: string; label: string }) => void;
   setContent: (text: string) => void;
+  getContent: () => string;
+  clearContent: () => void;
+  removeMentions: () => void;
   applyRandomSuggestions: (changes: string[]) => void;
   hasSuggestions: () => boolean;
   acceptAllSuggestions: () => void;
@@ -598,6 +625,12 @@ type RichTextAreaProps = {
   onTextChange?: (value: string) => void;
   onFocus?: () => void;
   onBlur?: () => void;
+  onAgentMentioned?: (agent: {
+    id: string;
+    label: string;
+    emoji?: string;
+    backgroundColor?: string;
+  }) => void;
   scrollContainer?: HTMLElement | null;
   readOnly?: boolean;
   defaultValue?: string;
@@ -619,6 +652,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       onTextChange,
       onFocus,
       onBlur,
+      onAgentMentioned,
       scrollContainer,
       readOnly,
       defaultValue,
@@ -628,6 +662,9 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
     },
     ref
   ) => {
+    // Wire up the module-level agent mention callback.
+    _onAgentMentionedRef = onAgentMentioned ?? null;
+
     const hasTopBar = Boolean(topBar);
     const editorVariant =
       hasTopBar && variant === "default" ? "embedded" : variant;
@@ -815,6 +852,34 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         });
       };
     }, [editor]);
+
+    const getContent = useCallback(() => {
+      if (!editor) return "";
+      return editor.getText();
+    }, [editor]);
+
+    const clearContent = useCallback(() => {
+      if (!editor) return;
+      editor.commands.clearContent();
+    }, [editor]);
+
+    const removeMentions = useCallback(() => {
+      if (!editor) return;
+      const { doc, tr } = editor.state;
+      const mentionPositions: { from: number; to: number }[] = [];
+      doc.descendants((node, pos) => {
+        if (node.type.name === "mention") {
+          mentionPositions.push({ from: pos, to: pos + node.nodeSize });
+        }
+      });
+      // Remove in reverse order to preserve positions
+      for (let i = mentionPositions.length - 1; i >= 0; i--) {
+        const { from, to } = mentionPositions[i];
+        tr.delete(from, to);
+      }
+      editor.view.dispatch(tr);
+    }, [editor]);
+
     const applyRandomSuggestions = useMemo(() => {
       return (changes: string[]) => {
         if (!editor || changes.length === 0) {
@@ -1037,6 +1102,9 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         insertMention,
         insertInstructionSnippet,
         setContent,
+        getContent,
+        clearContent,
+        removeMentions,
         applyRandomSuggestions,
         hasSuggestions,
         acceptAllSuggestions,
@@ -1047,6 +1115,9 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         insertMention,
         insertInstructionSnippet,
         setContent,
+        getContent,
+        clearContent,
+        removeMentions,
         applyRandomSuggestions,
         hasSuggestions,
         acceptAllSuggestions,
