@@ -484,8 +484,11 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
           </div>
         </div>
         <Separator />
-        <Page.SectionHeader title="Notifications" />
-
+        <Page.SectionHeader
+          title="Default Notifications Settings"
+          description="Set your preferences for receiving notifications about new messages and
+          conversations."
+        />
         <div className="s-flex s-flex-col">
           <Label className="s-text-foreground">New messages</Label>
           <div className="s-items-center s-pt-1.5 s-space-y-1">

@@ -1,13 +1,12 @@
 import {
   AtomIcon,
   Avatar,
-  BoltOffIcon,
   BookOpenIcon,
   Button,
   Card,
   ChatBubbleLeftRightIcon,
-  Cog6ToothIcon,
   CodeSlashIcon,
+  Cog6ToothIcon,
   ContactsRobotIcon,
   ContactsUserIcon,
   Dialog,
@@ -26,13 +25,11 @@ import {
   HeartIcon,
   InboxIcon,
   LightbulbIcon,
-  ListSelectIcon,
   LogoutIcon,
   MagnifyingGlassIcon,
   MoreIcon,
   NavigationList,
   NavigationListCollapsibleSection,
-  NavigationListCompactLabel,
   NavigationListItem,
   NavigationListItemAction,
   PencilSquareIcon,
@@ -51,29 +48,31 @@ import {
   TrashIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 
 // Store conversations by ID for lookup (for dynamically generated conversations)
 const conversationCache = new Map<string, Conversation>();
 
 import { AgentBuilderView } from "../components/AgentBuilderView";
-import { ConversationView } from "../components/ConversationView";
+import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
+import { GroupThreadConversationView } from "../components/GroupThreadConversationView";
+import { SoloConversationView } from "../components/SoloConversationView";
 import { InboxView } from "../components/InboxView";
 import { InputBar } from "../components/InputBar";
+import { InviteUsersScreen } from "../components/InviteUsersScreen";
 import { PersonAgentView } from "../components/PersonAgentView";
 import { ProfilePanel } from "../components/Profile";
-import TemplateSelection, { type Template } from "./TemplateSelection";
 import {
   type Agent,
   type Conversation,
   createConversationsWithMessages,
-  getAgentById,
+  createSpace,
   getConversationsBySpaceId,
+  getMembersBySpaceId,
   getRandomAgents,
   getRandomSpaces,
   getRandomUsers,
-  getUserById,
   getAgentAvatarProps,
   mockAgents,
   mockConversations,
@@ -81,44 +80,43 @@ import {
   type Space,
   type User,
 } from "../data";
+import TemplateSelection, { type Template } from "./TemplateSelection";
+import { inferConversationThreadKind } from "../utils/conversationThreadKind";
 import { createForkedConversation } from "../utils/createForkedConversation";
 import { createNewConversationFromComposer } from "../utils/createNewConversationFromComposer";
-import { conversationRowDragProps } from "../utils/conversationAttachDnD";
 
 type Collaborator =
   | { type: "agent"; data: Agent }
   | { type: "person"; data: User };
 
-type Participant =
-  | { type: "user"; data: User }
-  | { type: "agent"; data: Agent };
+function sidebarItemHash(input: string): number {
+  let h = 5381;
+  for (let i = 0; i < input.length; i++) {
+    h = (h * 33) ^ input.charCodeAt(i);
+  }
+  return h >>> 0;
+}
 
-function getRandomParticipants(conversation: Conversation): Participant[] {
-  const allParticipants: Participant[] = [];
+/** Fake pending DMs: 0–3. Activity key orders “most recent” first (deterministic). */
+function getAgentSidebarMeta(agent: Agent) {
+  const pending = sidebarItemHash(`sessions-agent-pending:${agent.id}`) % 4;
+  const activityKey = sidebarItemHash(`sessions-agent-activity:${agent.id}`);
+  return {
+    pending,
+    activityKey,
+    hasActivity: pending > 0,
+  };
+}
 
-  // Add user participants
-  conversation.userParticipants.forEach((userId) => {
-    const user = getUserById(userId);
-    if (user) {
-      allParticipants.push({ type: "user", data: user });
-    }
-  });
-
-  // Add agent participants
-  conversation.agentParticipants.forEach((agentId) => {
-    const agent = getAgentById(agentId);
-    if (agent) {
-      allParticipants.push({ type: "agent", data: agent });
-    }
-  });
-
-  // Shuffle and select 1-6 participants
-  const shuffled = [...allParticipants].sort(() => Math.random() - 0.5);
-  const count = Math.min(
-    Math.max(1, Math.floor(Math.random() * 6) + 1),
-    shuffled.length
-  );
-  return shuffled.slice(0, count);
+/** Fake pending DMs: 0–8. Activity key orders “most recent” first (deterministic). */
+function getPersonSidebarMeta(person: User) {
+  const pending = sidebarItemHash(`sessions-person-pending:${person.id}`) % 9;
+  const activityKey = sidebarItemHash(`sessions-person-activity:${person.id}`);
+  return {
+    pending,
+    activityKey,
+    hasActivity: pending > 0,
+  };
 }
 
 function DustMain() {
@@ -155,6 +153,21 @@ function DustMain() {
   const [selectedTemplateForBuilder, setSelectedTemplateForBuilder] =
     useState<Template | null>(null);
   const [isAgentsDropdownOpen, setIsAgentsDropdownOpen] = useState(false);
+  const [isCreateRoomDialogOpen, setIsCreateRoomDialogOpen] = useState(false);
+  const [isInviteUsersScreenOpen, setIsInviteUsersScreenOpen] = useState(false);
+  const [lastCreatedSpaceId, setLastCreatedSpaceId] = useState<string | null>(
+    null
+  );
+  const [inviteSpaceId, setInviteSpaceId] = useState<string | null>(null);
+  const [spaceMembers, setSpaceMembers] = useState<Map<string, string[]>>(
+    new Map()
+  );
+  const [spaceEditors, setSpaceEditors] = useState<Map<string, string[]>>(
+    new Map()
+  );
+  const [spacePublicSettings, setSpacePublicSettings] = useState<
+    Map<string, boolean>
+  >(new Map());
 
   // Track sidebar collapsed state for toggle button icon
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -165,14 +178,9 @@ function DustMain() {
     const randomUser = getRandomUsers(1)[0];
     setUser(randomUser);
 
-    // Generate random total count of collaborators between 2 and 12
-    const totalCount = Math.floor(Math.random() * (12 - 2 + 1)) + 2;
-
-    // Randomly decide how many agents and people
-    const agentCount = Math.floor(Math.random() * (totalCount - 1)) + 1;
-    const peopleCount = totalCount - agentCount;
-
-    const randomAgents = getRandomAgents(agentCount);
+    const agentListSize = 20;
+    const randomAgents = getRandomAgents(agentListSize);
+    const peopleCount = Math.floor(Math.random() * 6) + 4;
     const randomPeople = getRandomUsers(peopleCount);
 
     // Create mixed collaborator list
@@ -196,6 +204,26 @@ function DustMain() {
     setConversationsWithMessages(convsWithMessages);
   }, []);
 
+  useEffect(() => {
+    if (selectedSpaceId && !spaceMembers.has(selectedSpaceId)) {
+      const generatedMembers = getMembersBySpaceId(selectedSpaceId);
+      setSpaceMembers((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(selectedSpaceId, generatedMembers);
+        return newMap;
+      });
+    }
+  }, [selectedSpaceId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (lastCreatedSpaceId && spaces.find((s) => s.id === lastCreatedSpaceId)) {
+      setSelectedView(null);
+      setSelectedSpaceId(lastCreatedSpaceId);
+      setSelectedConversationId(null);
+      setLastCreatedSpaceId(null);
+    }
+  }, [spaces, lastCreatedSpaceId]);
+
   // Combine mock conversations with conversations that have messages
   const allConversations = useMemo(() => {
     return [...conversationsWithMessages, ...mockConversations];
@@ -213,52 +241,6 @@ function DustMain() {
       return conv.updatedAt >= twoDaysAgo;
     }).length;
   }, [allConversations]);
-
-  const filteredConversations = useMemo(() => {
-    if (!searchText.trim()) {
-      return allConversations;
-    }
-    const lowerSearch = searchText.toLowerCase();
-    return allConversations.filter((conv) =>
-      conv.title.toLowerCase().includes(lowerSearch)
-    );
-  }, [searchText, allConversations]);
-
-  const groupedConversations = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    const lastWeek = new Date(today);
-    lastWeek.setDate(lastWeek.getDate() - 7);
-
-    const lastMonth = new Date(today);
-    lastMonth.setDate(lastMonth.getDate() - 30);
-
-    const groups = {
-      today: [] as typeof filteredConversations,
-      yesterday: [] as typeof filteredConversations,
-      lastWeek: [] as typeof filteredConversations,
-      lastMonth: [] as typeof filteredConversations,
-    };
-
-    filteredConversations.forEach((conv) => {
-      const updatedAt = conv.updatedAt;
-      if (updatedAt >= today) {
-        groups.today.push(conv);
-      } else if (updatedAt >= yesterday) {
-        groups.yesterday.push(conv);
-      } else if (updatedAt >= lastWeek) {
-        groups.lastWeek.push(conv);
-      } else if (updatedAt >= lastMonth) {
-        groups.lastMonth.push(conv);
-      }
-    });
-
-    return groups;
-  }, [filteredConversations]);
 
   const filteredAgents = useMemo(() => {
     if (!agentSearchText.trim()) {
@@ -312,18 +294,58 @@ function DustMain() {
     });
   }, [searchText, sortedCollaborators]);
 
+  const getSpaceActivity = (space: Space) => {
+    const charCode = space.id.charCodeAt(space.id.length - 1);
+    const count = charCode % 3 === 0 ? (charCode % 9) + 1 : undefined;
+    const hasActivity = count ? true : charCode % 2 !== 0;
+    return { count, hasActivity };
+  };
+
+  const filteredAgentCollaborators = useMemo(() => {
+    const agents = filteredCollaborators.filter((c) => c.type === "agent");
+    return [...agents].sort((a, b) => {
+      const ma = getAgentSidebarMeta(a.data);
+      const mb = getAgentSidebarMeta(b.data);
+      if (mb.activityKey !== ma.activityKey) {
+        return mb.activityKey - ma.activityKey;
+      }
+      if (mb.pending !== ma.pending) {
+        return mb.pending - ma.pending;
+      }
+      return a.data.name.localeCompare(b.data.name);
+    });
+  }, [filteredCollaborators]);
+
+  const filteredPeopleCollaborators = useMemo(() => {
+    const people = filteredCollaborators.filter((c) => c.type === "person");
+    return [...people].sort((a, b) => {
+      const ma = getPersonSidebarMeta(a.data);
+      const mb = getPersonSidebarMeta(b.data);
+      if (mb.activityKey !== ma.activityKey) {
+        return mb.activityKey - ma.activityKey;
+      }
+      if (mb.pending !== ma.pending) {
+        return mb.pending - ma.pending;
+      }
+      return a.data.fullName.localeCompare(b.data.fullName);
+    });
+  }, [filteredCollaborators]);
+
   const sortedSpaces = useMemo(() => {
     return [...spaces].sort((a, b) => {
-      // Determine if restricted based on space ID
-      const isRestrictedA = a.id.charCodeAt(a.id.length - 1) % 2 === 0;
-      const isRestrictedB = b.id.charCodeAt(b.id.length - 1) % 2 === 0;
+      const actA = getSpaceActivity(a);
+      const actB = getSpaceActivity(b);
 
-      // First sort by type: Open (false) first, Restricted (true) second
-      if (isRestrictedA !== isRestrictedB) {
-        return isRestrictedA ? 1 : -1;
+      const countA = actA.count ?? 0;
+      const countB = actB.count ?? 0;
+      if (countA !== countB) {
+        return countB - countA;
       }
 
-      // Then sort alphabetically by name
+      if (actA.hasActivity !== actB.hasActivity) {
+        return actA.hasActivity ? -1 : 1;
+      }
+
       return a.name.localeCompare(b.name);
     });
   }, [spaces]);
@@ -535,88 +557,6 @@ function DustMain() {
     );
   }, [selectedCollaboratorId, selectedCollaboratorType, collaborators]);
 
-  const getConversationMoreMenu = (conversation: Conversation) => {
-    const participants = getRandomParticipants(conversation);
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <NavigationListItemAction />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuItem
-            label="Rename"
-            icon={PencilSquareIcon}
-            onClick={(e: MouseEvent) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-          />
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger
-              icon={ContactsUserIcon}
-              label="Participant list"
-            />
-            <DropdownMenuPortal>
-              <DropdownMenuSubContent>
-                {participants.length > 0 ? (
-                  participants.map((participant) => (
-                    <DropdownMenuItem
-                      key={
-                        participant.type === "user"
-                          ? `user-${participant.data.id}`
-                          : `agent-${participant.data.id}`
-                      }
-                      label={
-                        participant.type === "user"
-                          ? participant.data.fullName
-                          : participant.data.name
-                      }
-                      icon={
-                        participant.type === "user" ? (
-                          <Avatar
-                            size="xxs"
-                            name={participant.data.fullName}
-                            visual={participant.data.portrait}
-                            isRounded={true}
-                          />
-                        ) : (
-                          <Avatar
-                            size="xxs"
-                            name={participant.data.name}
-                            emoji={participant.data.emoji}
-                            backgroundColor={participant.data.backgroundColor}
-                            isRounded={false}
-                          />
-                        )
-                      }
-                      onClick={(e: MouseEvent) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                    />
-                  ))
-                ) : (
-                  <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
-                    No participants
-                  </div>
-                )}
-              </DropdownMenuSubContent>
-            </DropdownMenuPortal>
-          </DropdownMenuSub>
-          <DropdownMenuItem
-            label="Delete"
-            icon={TrashIcon}
-            variant="warning"
-            onClick={(e: MouseEvent) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-          />
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  };
-
   if (!user) {
     return (
       <div className="s-flex s-min-h-screen s-items-center s-justify-center s-bg-background">
@@ -775,14 +715,6 @@ function DustMain() {
             placeholder="Search"
             className="s-flex-1"
           />
-          <Button
-            variant="primary"
-            tooltip="New Conversation"
-            size="sm"
-            icon={ChatBubbleLeftRightIcon}
-            label="New"
-            onClick={handleNewConversation}
-          />
           <DropdownMenu
             open={isAgentsDropdownOpen}
             onOpenChange={setIsAgentsDropdownOpen}
@@ -863,71 +795,53 @@ function DustMain() {
         {/* Collapsible Sections */}
         <NavigationList className="s-px-2">
           {!searchText.trim() ? (
-            <>
-              <NavigationListItem
-                label="Inbox"
-                icon={InboxIcon}
-                selected={selectedView === "inbox"}
-                count={unreadCount > 0 ? unreadCount : undefined}
-                onClick={() => {
-                  setShowProfileView(false);
-                  setSelectedView("inbox");
-                  setSelectedSpaceId(null);
-                  setSelectedConversationId(null);
-                  setPreviousSpaceId(null);
-                  setCameFromInbox(false);
-                }}
-              />
-              <NavigationListItem
-                label="New Conversation"
-                icon={ChatBubbleLeftRightIcon}
-                selected={selectedConversationId === "new-conversation"}
-                onClick={() => {
-                  setShowProfileView(false);
-                  setPreviousSpaceId(null);
-                  setSelectedConversationId("new-conversation");
-                  setSelectedSpaceId(null);
-                  setSelectedView(null);
-                  setSelectedCollaboratorId(null);
-                  setSelectedCollaboratorType(null);
-                  setCameFromInbox(false);
-                  setCameFromPersonAgent(false);
-                }}
-              />
-            </>
+            <NavigationListItem
+              label="Inbox"
+              icon={InboxIcon}
+              selected={selectedView === "inbox"}
+              count={unreadCount > 0 ? unreadCount : undefined}
+              onClick={() => {
+                setShowProfileView(false);
+                setSelectedView("inbox");
+                setSelectedSpaceId(null);
+                setSelectedConversationId(null);
+                setPreviousSpaceId(null);
+                setCameFromInbox(false);
+              }}
+            />
           ) : (
-            <>
-              <div className="s-flex s-w-full s-justify-end s-gap-1.5">
-                <Button
-                  size="xs"
-                  icon={MagnifyingGlassIcon}
-                  variant="highlight"
-                  label="Documents"
-                />
-                <Button
-                  size="xs"
-                  icon={AtomIcon}
-                  label="Deep Dive"
-                  variant="highlight"
-                />
-              </div>
-            </>
+            <div className="s-flex s-w-full s-justify-end s-gap-1.5">
+              <Button
+                size="xs"
+                icon={MagnifyingGlassIcon}
+                variant="highlight"
+                label="Documents"
+              />
+              <Button
+                size="xs"
+                icon={AtomIcon}
+                label="Deep Dive"
+                variant="highlight"
+              />
+            </div>
           )}
           {(filteredSpaces.length > 0 || !searchText.trim()) && (
             <NavigationListCollapsibleSection
-              label="Spaces"
+              label="Projects"
               type="collapse"
               defaultOpen={true}
+              visibleItems={4}
               action={
                 <>
                   <Button
                     size="xmini"
                     icon={PlusIcon}
                     variant="ghost"
-                    aria-label="Agents options"
+                    aria-label="Create project"
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
+                      setIsCreateRoomDialogOpen(true);
                     }}
                   />
                   <DropdownMenu>
@@ -936,7 +850,7 @@ function DustMain() {
                         size="xmini"
                         icon={MoreIcon}
                         variant="ghost"
-                        aria-label="Spaces options"
+                        aria-label="Projects options"
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -958,6 +872,7 @@ function DustMain() {
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
+                          setIsCreateRoomDialogOpen(true);
                         }}
                       />
                     </DropdownMenuContent>
@@ -966,13 +881,9 @@ function DustMain() {
               }
             >
               {filteredSpaces.map((space) => {
-                // Deterministically assign open or restricted status based on space ID
                 const isRestricted =
                   space.id.charCodeAt(space.id.length - 1) % 2 === 0;
-                // Deterministically assign count to some spaces based on space ID
-                const spaceIndex = space.id.charCodeAt(space.id.length - 1);
-                const count =
-                  spaceIndex % 3 === 0 ? (spaceIndex % 9) + 1 : undefined;
+                const { count, hasActivity } = getSpaceActivity(space);
                 return (
                   <NavigationListItem
                     key={space.id}
@@ -980,6 +891,7 @@ function DustMain() {
                     icon={isRestricted ? SpaceOpenIcon : SpaceClosedIcon}
                     selected={space.id === selectedSpaceId}
                     count={count}
+                    hasActivity={hasActivity}
                     moreMenu={
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -1007,9 +919,10 @@ function DustMain() {
                     }
                     onClick={() => {
                       setShowProfileView(false);
+                      setSelectedView(null);
                       setSelectedSpaceId(space.id);
                       setSelectedConversationId(null);
-                      setSelectedView("space");
+                      setPreviousSpaceId(null);
                       setCameFromInbox(false);
                       setCameFromPersonAgent(false);
                       setSelectedCollaboratorId(null);
@@ -1021,11 +934,12 @@ function DustMain() {
             </NavigationListCollapsibleSection>
           )}
 
-          {(filteredCollaborators.length > 0 || !searchText.trim()) && (
+          {(filteredAgentCollaborators.length > 0 || !searchText.trim()) && (
             <NavigationListCollapsibleSection
-              label="People & Agents"
+              label="Agents"
               type="collapse"
               defaultOpen={true}
+              visibleItems={4}
               action={
                 <>
                   <Button
@@ -1109,324 +1023,212 @@ function DustMain() {
                           </DropdownMenuSubContent>
                         </DropdownMenuPortal>
                       </DropdownMenuSub>
-                      <DropdownMenuLabel>People</DropdownMenuLabel>
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger
-                          icon={ContactsUserIcon}
-                          label="Browse"
-                        />
-                        <DropdownMenuPortal>
-                          <DropdownMenuSubContent>
-                            <DropdownMenuSearchbar
-                              value={peopleSearchText}
-                              onChange={setPeopleSearchText}
-                              name="people-search"
-                            />
-                            {filteredPeople.length > 0 ? (
-                              [...filteredPeople]
-                                .sort((a, b) =>
-                                  a.fullName.localeCompare(b.fullName)
-                                )
-                                .map((person) => (
-                                  <DropdownMenuItem
-                                    key={person.id}
-                                    label={person.fullName}
-                                    icon={
-                                      <Avatar
-                                        size="xxs"
-                                        name={person.fullName}
-                                        visual={person.portrait}
-                                        isRounded={true}
-                                      />
-                                    }
-                                    onClick={(e: MouseEvent) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                    }}
-                                  />
-                                ))
-                            ) : (
-                              <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
-                                No people found
-                              </div>
-                            )}
-                          </DropdownMenuSubContent>
-                        </DropdownMenuPortal>
-                      </DropdownMenuSub>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </>
               }
             >
-              {filteredCollaborators.map((collaborator) => {
-                if (collaborator.type === "agent") {
-                  const agent = collaborator.data;
-                  return (
-                    <NavigationListItem
-                      key={`agent-${agent.id}`}
-                      label={agent.name}
-                      selected={
-                        selectedCollaboratorId === agent.id &&
-                        selectedCollaboratorType === "agent"
-                      }
-                      avatar={
-                        <Avatar
-                          size="xxs"
-                          {...getAgentAvatarProps(agent)}
-                          isRounded={false}
-                        />
-                      }
-                      moreMenu={
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <NavigationListItemAction />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            <DropdownMenuItem
-                              label="Edit"
-                              icon={PencilSquareIcon}
-                              onClick={(e: MouseEvent) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                              }}
-                            />
-                            <DropdownMenuItem
-                              label="Remove from favorites"
-                              icon={StarStrokeIcon}
-                              onClick={(e: MouseEvent) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                              }}
-                            />
-                            <DropdownMenuItem
-                              label="Delete"
-                              icon={TrashIcon}
-                              variant="warning"
-                              onClick={(e: MouseEvent) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                              }}
-                            />
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      }
-                      onClick={() => {
-                        setShowProfileView(false);
-                        setSelectedCollaboratorId(agent.id);
-                        setSelectedCollaboratorType("agent");
-                        setSelectedView("agent");
-                        setSelectedConversationId(null);
-                        setSelectedSpaceId(null);
-                        setPreviousSpaceId(null);
-                      }}
-                    />
-                  );
-                } else {
-                  const person = collaborator.data;
-                  return (
-                    <NavigationListItem
-                      key={`person-${person.id}`}
-                      label={person.fullName}
-                      selected={
-                        selectedCollaboratorId === person.id &&
-                        selectedCollaboratorType === "person"
-                      }
-                      avatar={
-                        <Avatar
-                          size="xxs"
-                          name={person.fullName}
-                          visual={person.portrait}
-                          isRounded={true}
-                        />
-                      }
-                      moreMenu={
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <NavigationListItemAction />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            <DropdownMenuItem
-                              label="View profile"
-                              icon={UserIcon}
-                              onClick={(e: MouseEvent) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                              }}
-                            />
-                            <DropdownMenuItem
-                              label="Remove from favorites"
-                              icon={TrashIcon}
-                              variant="warning"
-                              onClick={(e: MouseEvent) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                              }}
-                            />
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      }
-                      onClick={() => {
-                        setShowProfileView(false);
-                        setSelectedCollaboratorId(person.id);
-                        setSelectedCollaboratorType("person");
-                        setSelectedView("person");
-                        setSelectedConversationId(null);
-                        setSelectedSpaceId(null);
-                        setPreviousSpaceId(null);
-                      }}
-                    />
-                  );
-                }
+              {filteredAgentCollaborators.map((collaborator) => {
+                const agent = collaborator.data;
+                const agentMeta = getAgentSidebarMeta(agent);
+                return (
+                  <NavigationListItem
+                    key={`agent-${agent.id}`}
+                    label={agent.name}
+                    selected={
+                      selectedCollaboratorId === agent.id &&
+                      selectedCollaboratorType === "agent"
+                    }
+                    count={
+                      agentMeta.pending > 0 ? agentMeta.pending : undefined
+                    }
+                    hasActivity={agentMeta.hasActivity}
+                    avatar={
+                      <Avatar
+                        size="xxs"
+                        {...getAgentAvatarProps(agent)}
+                        isRounded={false}
+                      />
+                    }
+                    moreMenu={
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <NavigationListItemAction />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem
+                            label="Edit"
+                            icon={PencilSquareIcon}
+                            onClick={(e: MouseEvent) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                          />
+                          <DropdownMenuItem
+                            label="Remove from favorites"
+                            icon={StarStrokeIcon}
+                            onClick={(e: MouseEvent) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                          />
+                          <DropdownMenuItem
+                            label="Delete"
+                            icon={TrashIcon}
+                            variant="warning"
+                            onClick={(e: MouseEvent) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                          />
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    }
+                    onClick={() => {
+                      setShowProfileView(false);
+                      setSelectedCollaboratorId(agent.id);
+                      setSelectedCollaboratorType("agent");
+                      setSelectedView("agent");
+                      setSelectedConversationId(null);
+                      setSelectedSpaceId(null);
+                      setPreviousSpaceId(null);
+                    }}
+                  />
+                );
               })}
             </NavigationListCollapsibleSection>
           )}
 
-          {(filteredConversations.length > 0 || !searchText.trim()) && (
+          {(filteredPeopleCollaborators.length > 0 || !searchText.trim()) && (
             <NavigationListCollapsibleSection
-              label="Conversations"
+              label="People"
               type="collapse"
               defaultOpen={true}
+              visibleItems={4}
               action={
-                <>
-                  <Button
-                    size="xmini"
-                    icon={ChatBubbleLeftRightIcon}
-                    variant="ghost"
-                    aria-label="New Conversation"
-                    tooltip="New Conversation"
-                    onClick={(e: MouseEvent) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  />
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        size="xmini"
-                        icon={MoreIcon}
-                        variant="ghost"
-                        aria-label="Conversations options"
-                        onClick={(e: MouseEvent) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="xmini"
+                      icon={MoreIcon}
+                      variant="ghost"
+                      aria-label="People options"
+                      onClick={(e: MouseEvent) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuLabel>People</DropdownMenuLabel>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger
+                        icon={ContactsUserIcon}
+                        label="Browse"
                       />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuLabel label="Conversations" />
-                      <DropdownMenuItem
-                        label="Hide triggered"
-                        icon={BoltOffIcon}
-                        onClick={(e: MouseEvent) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
-                      />
-                      <DropdownMenuItem
-                        label="Edit history"
-                        icon={ListSelectIcon}
-                        onClick={(e: MouseEvent) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
-                      />
-                      <DropdownMenuItem
-                        label="Clear history"
-                        variant="warning"
-                        icon={TrashIcon}
-                        onClick={(e: MouseEvent) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
-                      />
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                          <DropdownMenuSearchbar
+                            value={peopleSearchText}
+                            onChange={setPeopleSearchText}
+                            name="people-search"
+                          />
+                          {filteredPeople.length > 0 ? (
+                            [...filteredPeople]
+                              .sort((a, b) =>
+                                a.fullName.localeCompare(b.fullName)
+                              )
+                              .map((person) => (
+                                <DropdownMenuItem
+                                  key={person.id}
+                                  label={person.fullName}
+                                  icon={
+                                    <Avatar
+                                      size="xxs"
+                                      name={person.fullName}
+                                      visual={person.portrait}
+                                      isRounded={true}
+                                    />
+                                  }
+                                  onClick={(e: MouseEvent) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                  }}
+                                />
+                              ))
+                          ) : (
+                            <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
+                              No people found
+                            </div>
+                          )}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               }
             >
-              {groupedConversations.today.length > 0 && (
-                <>
-                  {groupedConversations.today.map((conversation) => (
-                    <NavigationListItem
-                      key={conversation.id}
-                      label={conversation.title}
-                      selected={conversation.id === selectedConversationId}
-                      moreMenu={getConversationMoreMenu(conversation)}
-                      {...conversationRowDragProps(conversation)}
-                      onClick={() => {
-                        setShowProfileView(false);
-                        setPreviousSpaceId(null);
-                        setSelectedConversationId(conversation.id);
-                        setSelectedSpaceId(null);
-                        setSelectedView("conversation");
-                      }}
-                    />
-                  ))}
-                </>
-              )}
-              {groupedConversations.yesterday.length > 0 && (
-                <>
-                  <NavigationListCompactLabel label="Yesterday" />
-                  {groupedConversations.yesterday.map((conversation) => (
-                    <NavigationListItem
-                      key={conversation.id}
-                      label={conversation.title}
-                      selected={conversation.id === selectedConversationId}
-                      moreMenu={getConversationMoreMenu(conversation)}
-                      {...conversationRowDragProps(conversation)}
-                      onClick={() => {
-                        setShowProfileView(false);
-                        setPreviousSpaceId(null);
-                        setSelectedConversationId(conversation.id);
-                        setSelectedSpaceId(null);
-                        setSelectedView("conversation");
-                      }}
-                    />
-                  ))}
-                </>
-              )}
-              {groupedConversations.lastWeek.length > 0 && (
-                <>
-                  <NavigationListCompactLabel label="Last week" />
-                  {groupedConversations.lastWeek.map((conversation) => (
-                    <NavigationListItem
-                      key={conversation.id}
-                      label={conversation.title}
-                      selected={conversation.id === selectedConversationId}
-                      moreMenu={getConversationMoreMenu(conversation)}
-                      {...conversationRowDragProps(conversation)}
-                      onClick={() => {
-                        setShowProfileView(false);
-                        setPreviousSpaceId(null);
-                        setSelectedConversationId(conversation.id);
-                        setSelectedSpaceId(null);
-                        setSelectedView("conversation");
-                      }}
-                    />
-                  ))}
-                </>
-              )}
-              {groupedConversations.lastMonth.length > 0 && (
-                <>
-                  <NavigationListCompactLabel label="Last month" />
-                  {groupedConversations.lastMonth.map((conversation) => (
-                    <NavigationListItem
-                      key={conversation.id}
-                      label={conversation.title}
-                      selected={conversation.id === selectedConversationId}
-                      moreMenu={getConversationMoreMenu(conversation)}
-                      {...conversationRowDragProps(conversation)}
-                      onClick={() => {
-                        setShowProfileView(false);
-                        setPreviousSpaceId(null);
-                        setSelectedConversationId(conversation.id);
-                        setSelectedSpaceId(null);
-                        setSelectedView("conversation");
-                      }}
-                    />
-                  ))}
-                </>
-              )}
+              {filteredPeopleCollaborators.map((collaborator) => {
+                const person = collaborator.data;
+                const personMeta = getPersonSidebarMeta(person);
+                return (
+                  <NavigationListItem
+                    key={`person-${person.id}`}
+                    label={person.fullName}
+                    selected={
+                      selectedCollaboratorId === person.id &&
+                      selectedCollaboratorType === "person"
+                    }
+                    count={
+                      personMeta.pending > 0 ? personMeta.pending : undefined
+                    }
+                    hasActivity={personMeta.hasActivity}
+                    avatar={
+                      <Avatar
+                        size="xxs"
+                        name={person.fullName}
+                        visual={person.portrait}
+                        isRounded={true}
+                      />
+                    }
+                    moreMenu={
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <NavigationListItemAction />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem
+                            label="View profile"
+                            icon={UserIcon}
+                            onClick={(e: MouseEvent) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                          />
+                          <DropdownMenuItem
+                            label="Remove from favorites"
+                            icon={TrashIcon}
+                            variant="warning"
+                            onClick={(e: MouseEvent) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                          />
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    }
+                    onClick={() => {
+                      setShowProfileView(false);
+                      setSelectedCollaboratorId(person.id);
+                      setSelectedCollaboratorType("person");
+                      setSelectedView("person");
+                      setSelectedConversationId(null);
+                      setSelectedSpaceId(null);
+                      setPreviousSpaceId(null);
+                    }}
+                  />
+                );
+              })}
             </NavigationListCollapsibleSection>
           )}
         </NavigationList>
@@ -1440,7 +1242,7 @@ function DustMain() {
     if (previousSpaceId) {
       setSelectedSpaceId(previousSpaceId);
       setSelectedConversationId(null);
-      setSelectedView("space");
+      setSelectedView(null);
       setCameFromInbox(false);
       setCameFromPersonAgent(false);
       // Optionally clear previousSpaceId, or keep it for future navigation
@@ -1471,6 +1273,64 @@ function DustMain() {
     setCameFromInbox(false);
     setCameFromPersonAgent(false);
   }
+
+  const handleRoomNameNext = (name: string, isPublic: boolean) => {
+    const newSpace = createSpace(name, undefined, isPublic);
+    setSpaces((prev) => [...prev, newSpace]);
+    setSpacePublicSettings((prev) => {
+      const newMap = new Map(prev);
+      newMap.set(newSpace.id, isPublic);
+      return newMap;
+    });
+    setLastCreatedSpaceId(newSpace.id);
+    setIsCreateRoomDialogOpen(false);
+  };
+
+  const handleInviteMembers = (spaceId: string) => {
+    setInviteSpaceId(spaceId);
+    setIsInviteUsersScreenOpen(true);
+  };
+
+  const handleInviteUsersComplete = (
+    selectedUserIds: string[],
+    editorUserIds: string[]
+  ) => {
+    if (inviteSpaceId) {
+      setSpaceMembers((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(inviteSpaceId, selectedUserIds);
+        return newMap;
+      });
+      setSpaceEditors((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(inviteSpaceId, editorUserIds);
+        return newMap;
+      });
+    }
+    setIsInviteUsersScreenOpen(false);
+    setInviteSpaceId(null);
+  };
+
+  const handleUpdateSpaceName = (spaceId: string, newName: string) => {
+    setSpaces((prev) =>
+      prev.map((space) =>
+        space.id === spaceId ? { ...space, name: newName } : space
+      )
+    );
+  };
+
+  const handleUpdateSpacePublic = (spaceId: string, isPublic: boolean) => {
+    setSpacePublicSettings((prev) => {
+      const newMap = new Map(prev);
+      newMap.set(spaceId, isPublic);
+      return newMap;
+    });
+    setSpaces((prev) =>
+      prev.map((space) =>
+        space.id === spaceId ? { ...space, isPublic } : space
+      )
+    );
+  };
 
   const handleForkConversationWithContext = ({
     newAgentId,
@@ -1526,20 +1386,39 @@ function DustMain() {
       selectedConversationId !== "new-conversation" &&
       selectedConversation &&
       user ? (
-      <ConversationView
-        conversation={selectedConversation}
-        locutor={user}
-        users={mockUsers}
-        agents={mockAgents}
-        conversationsWithMessages={conversationsWithMessages}
-        attachConversations={allConversations}
-        showBackButton={
-          !!previousSpaceId || cameFromInbox || cameFromPersonAgent
-        }
-        onBack={handleConversationBack}
-        projectTitle={previousSpaceId ? selectedSpace?.name : undefined}
-        onForkConversationWithContext={handleForkConversationWithContext}
-      />
+      inferConversationThreadKind(selectedConversation, {
+        previousSpaceId,
+      }) === "solo" ? (
+        <SoloConversationView
+          conversation={selectedConversation}
+          locutor={user}
+          users={mockUsers}
+          agents={mockAgents}
+          conversationsWithMessages={conversationsWithMessages}
+          attachConversations={allConversations}
+          showBackButton={
+            !!previousSpaceId || cameFromInbox || cameFromPersonAgent
+          }
+          onBack={handleConversationBack}
+          projectTitle={previousSpaceId ? selectedSpace?.name : undefined}
+          onForkConversationWithContext={handleForkConversationWithContext}
+        />
+      ) : (
+        <GroupThreadConversationView
+          conversation={selectedConversation}
+          locutor={user}
+          users={mockUsers}
+          agents={mockAgents}
+          conversationsWithMessages={conversationsWithMessages}
+          attachConversations={allConversations}
+          showBackButton={
+            !!previousSpaceId || cameFromInbox || cameFromPersonAgent
+          }
+          onBack={handleConversationBack}
+          projectTitle={previousSpaceId ? selectedSpace?.name : undefined}
+          onForkConversationWithContext={handleForkConversationWithContext}
+        />
+      )
     ) : // Priority 2: Show inbox view if inbox is selected
     selectedView === "inbox" && user ? (
       <InboxView
@@ -1558,7 +1437,7 @@ function DustMain() {
         onSpaceClick={(space) => {
           setShowProfileView(false);
           setSelectedSpaceId(space.id);
-          setSelectedView("space");
+          setSelectedView(null);
           setSelectedConversationId(null);
           setCameFromInbox(false);
         }}
@@ -1623,12 +1502,26 @@ function DustMain() {
         users={mockUsers}
         agents={mockAgents}
         showToolsAndAboutTabs={true}
+        spaceMemberIds={
+          spaceMembers.has(selectedSpaceId)
+            ? spaceMembers.get(selectedSpaceId)!
+            : getMembersBySpaceId(selectedSpaceId)
+        }
+        editorUserIds={
+          spaceEditors.has(selectedSpaceId)
+            ? spaceEditors.get(selectedSpaceId)!
+            : []
+        }
         onConversationClick={(conversation) => {
           setShowProfileView(false);
           setPreviousSpaceId(selectedSpaceId);
           setSelectedView("conversation");
           setSelectedConversationId(conversation.id);
         }}
+        onInviteMembers={() => handleInviteMembers(selectedSpaceId)}
+        onUpdateSpaceName={handleUpdateSpaceName}
+        onUpdateSpacePublic={handleUpdateSpacePublic}
+        spacePublicSettings={spacePublicSettings}
       />
     ) : (
       // Priority 6: Show welcome/new conversation view
@@ -1671,6 +1564,11 @@ function DustMain() {
         collapsible={true}
         onSidebarToggle={setIsSidebarCollapsed}
       />
+      <CreateRoomDialog
+        isOpen={isCreateRoomDialogOpen}
+        onClose={() => setIsCreateRoomDialogOpen(false)}
+        onNext={handleRoomNameNext}
+      />
       <Dialog
         open={selectedTemplateForBuilder !== null}
         onOpenChange={(open) => {
@@ -1695,6 +1593,27 @@ function DustMain() {
           )}
         </DialogContent>
       </Dialog>
+      <InviteUsersScreen
+        isOpen={isInviteUsersScreenOpen}
+        spaceId={inviteSpaceId}
+        onClose={() => {
+          setIsInviteUsersScreenOpen(false);
+          setInviteSpaceId(null);
+        }}
+        onInvite={handleInviteUsersComplete}
+        actionLabel="Save"
+        initialSelectedUserIds={
+          inviteSpaceId && spaceMembers.has(inviteSpaceId)
+            ? spaceMembers.get(inviteSpaceId)
+            : []
+        }
+        initialEditorUserIds={
+          inviteSpaceId && spaceEditors.has(inviteSpaceId)
+            ? spaceEditors.get(inviteSpaceId)
+            : []
+        }
+        hasMultipleSelect={true}
+      />
     </div>
   );
 }

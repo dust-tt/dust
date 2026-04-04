@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 export interface User {
   id: string;
   firstName: string;
@@ -18,10 +20,11 @@ export interface Agent {
 export type MessageGroupType = "agent" | "locutor" | "interlocutor";
 
 export interface AvatarData {
-  visual?: string;
+  visual?: string | ReactNode;
   emoji?: string;
   backgroundColor?: string;
   isRounded?: boolean;
+  name?: string;
 }
 
 export interface MessageReactionData {
