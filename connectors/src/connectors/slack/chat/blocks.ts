@@ -331,6 +331,88 @@ export function makeErrorBlock(
   };
 }
 
+export type TaskCardStatus = "pending" | "in_progress" | "complete" | "error";
+
+export interface TaskCardSource {
+  url: string;
+  text: string;
+}
+
+export interface TaskCardState {
+  taskId: string;
+  title: string;
+  status: TaskCardStatus;
+  details?: string;
+  sources?: TaskCardSource[];
+}
+
+function makeRichTextBlock(text: string) {
+  return {
+    type: "rich_text",
+    elements: [
+      {
+        type: "rich_text_section",
+        elements: [{ type: "text", text }],
+      },
+    ],
+  };
+}
+
+function makeTaskCardBlock(t: TaskCardState) {
+  const card: Record<string, unknown> = {
+    type: "task_card",
+    task_id: t.taskId,
+    title: t.title,
+    status: t.status,
+  };
+  if (t.details) {
+    card.details = makeRichTextBlock(t.details);
+  }
+  if (t.sources && t.sources.length > 0) {
+    card.sources = t.sources.map((s) => ({
+      type: "url",
+      url: s.url,
+      text: s.text,
+    }));
+  }
+  return card;
+}
+
+export function makePlanMessage({
+  planTitle,
+  tasks,
+  conversationUrl,
+  assistantName,
+  workspaceId,
+}: {
+  planTitle: string;
+  tasks: TaskCardState[];
+  conversationUrl: string | null;
+  assistantName: string;
+  workspaceId: string;
+}) {
+  return {
+    blocks: [
+      {
+        type: "plan",
+        block_id: "agent-plan",
+        title: planTitle,
+        tasks: tasks.map(makeTaskCardBlock),
+      },
+      makeDividerBlock(),
+      makeFooterBlock({
+        state: "thinking",
+        assistantName,
+        conversationUrl,
+        workspaceId,
+      }),
+    ],
+    text: planTitle,
+    mrkdwn: true,
+    unfurl_links: false,
+  };
+}
+
 /**
  * Creates Slack blocks with buttons for validating a tool execution.
  * This is used when an agent sends a tool_approve_execution event to Slack.
