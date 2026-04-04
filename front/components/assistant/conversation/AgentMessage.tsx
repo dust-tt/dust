@@ -126,17 +126,17 @@ function PrunedContextChip() {
     <Tooltip
       label={
         <div className="flex flex-col gap-2 py-2">
-          <div className="font-semibold">Some context was trimmed</div>
+          <div className="font-semibold">Tool output was trimmed</div>
           <div className="flex flex-col gap-2 text-justify text-sm text-muted-foreground dark:text-muted-foreground-night">
             <p>
-              Dust had to trim some retrieved context to fit the model&apos;s
-              context window while generating this message. This can happen
-              because earlier conversation state or tool output from this
-              message was too large.
+              Dust had to trim part of the tool output for this message to fit
+              the model&apos;s context window. This usually means a search or
+              other tool returned more data than the model could process at
+              once.
             </p>
             <p>
-              For best accuracy, narrow the request or start a fresh
-              conversation.
+              For best accuracy, narrow the request or reduce the amount of
+              retrieved data, then try again.
             </p>
             <p>
               <a
@@ -154,7 +154,7 @@ function PrunedContextChip() {
       className="max-w-sm"
       trigger={
         <Chip
-          label="Context trimmed"
+          label="Tool output trimmed"
           size="xs"
           color="white"
           icon={InformationCircleIcon}
