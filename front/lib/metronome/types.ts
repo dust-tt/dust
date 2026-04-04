@@ -9,8 +9,6 @@
 // These map to packages configured in the Metronome dashboard.
 export const LEGACY_PRO_29_PACKAGE_ALIAS = "legacy-pro-29";
 export const LEGACY_BUSINESS_39_PACKAGE_ALIAS = "legacy-business-39";
-export const SHADOW_PRO_29_PACKAGE_ALIAS = "shadow-pro-29";
-export const SHADOW_BUSINESS_39_PACKAGE_ALIAS = "shadow-business-39";
 
 export const PRO_OR_BUSINESS_PACKAGE_ALIASES: ReadonlySet<string> = new Set([
   LEGACY_PRO_29_PACKAGE_ALIAS,
