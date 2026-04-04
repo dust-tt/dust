@@ -183,13 +183,13 @@ function interleaveConditionalNewlines(parts: string[]): string[] {
  * Render base user message fields from a MessageModel (with userMessage
  * eager-loaded). No DB calls — uses only data on the models.
  */
-function renderUserMessageBase(
+function renderUserMessage(
   message: MessageModel,
   usersById: Map<ModelId, UserType>
 ): UserMessageTypeWithoutMentions {
   if (!message.userMessage) {
     throw new Error(
-      "Unreachable: renderUserMessageBase called on non-user message"
+      "Unreachable: renderUserMessage called on non-user message"
     );
   }
   const userMessage = message.userMessage;
@@ -293,7 +293,7 @@ async function batchRenderUserMessages(
   });
 
   return userMessages.map((message) => {
-    const base = renderUserMessageBase(message, usersById);
+    const base = renderUserMessage(message, usersById);
 
     if (
       !message.userMessage?.userId ||
@@ -356,7 +356,7 @@ export async function batchRenderUserMessagesWithoutMentions(
   );
 
   return userMessages.map((message) =>
-    renderUserMessageBase(message, usersById)
+    renderUserMessage(message, usersById)
   );
 }
 
