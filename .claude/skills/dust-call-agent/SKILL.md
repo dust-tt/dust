@@ -24,4 +24,7 @@ An agent may take long to answer. Avoid repeating an agent call if possible, esp
 - the agent call may not be idempotent, e.g. when creating an issue, if the conversation on Dust has been started, repeating will create two issues;
 - multiple conversations are created in the user's Dust workspace, which bloats their conversation history.
 
-In general, wait for a clear answer. If you decide to time out, make no assumption on success or failure; report back to the user.
+If the CLI timed out but returned a `conversationId` and `messageId`, you can safely fetch the result without side effects:
+`$ dust chat -c <conversationId> --messageId <messageId>`
+
+Otherwise, wait for a clear answer. If you decide to time out with no conversation ID, make no assumption on success or failure; report back to the user.
