@@ -2576,12 +2576,13 @@ export async function updateAgentMessageWithFinalStatus(
 ): Promise<{
   completedTs: number;
   status: "succeeded" | "cancelled" | "failed" | "gracefully_stopped";
-  agentMessages: AgentMessageType[];
 }> {
   const completedAt = new Date();
   const owner = auth.getNonNullableWorkspace();
 
-  const { agentMessages } = await withTransaction(async (t) => {
+  // TODO(steering): use promotedUserMessages and agentMessages to publish
+  // events and launch the new agent loop.
+  await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
     await AgentMessageModel.update(
@@ -2652,15 +2653,16 @@ export async function updateAgentMessageWithFinalStatus(
 
       await ConversationResource.markAsUpdated(auth, { conversation, t });
 
-      // Render the last pending message to pass to createAgentMessages.
-      const renderedUserMessages = await batchRenderUserMessagesWithoutMentions(
+      // Render all promoted user messages.
+      const promotedUserMessages = await batchRenderUserMessagesWithoutMentions(
         auth,
         {
-          messages: [pendingMessages[pendingMessages.length - 1]],
+          messages: pendingMessages,
           transaction: t,
         }
       );
 
+      // Create a new agent message using the last promoted user message.
       const { agentMessages } = await createAgentMessages(auth, {
         conversation,
         metadata: {
@@ -2669,20 +2671,19 @@ export async function updateAgentMessageWithFinalStatus(
           agentConfigurations: [agentMessage.configuration],
           skipToolsValidation: agentMessage.skipToolsValidation,
           nextMessageRank,
-          userMessage: renderedUserMessages[0],
+          userMessage: promotedUserMessages[promotedUserMessages.length - 1],
         },
         transaction: t,
       });
 
-      return { agentMessages };
+      return { promotedUserMessages, agentMessages };
     } else {
-      return { agentMessages: [] };
+      return { promotedUserMessages: [], agentMessages: [] };
     }
   });
 
   return {
     completedTs: completedAt.getTime(),
     status,
-    agentMessages,
   };
 }
