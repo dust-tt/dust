@@ -6,7 +6,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { DEFAULT_REMOTE_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
-import { slugify } from "@app/types/shared/utils/string_utils";
+import { asDisplayName, slugify } from "@app/types/shared/utils/string_utils";
 
 type ToolDisplayLabelsByTool = Record<string, ToolDisplayLabels>;
 
@@ -123,4 +123,15 @@ export function getStaticToolDisplayLabelsFromFunctionCallName(
   }
 
   return null;
+}
+
+export function getToolCallDisplayLabel(
+  functionCallName: string,
+  context: "running" | "done" = "done"
+): string {
+  return (
+    getStaticToolDisplayLabelsFromFunctionCallName(functionCallName)?.[
+      context
+    ] ?? asDisplayName(functionCallName)
+  );
 }

@@ -7,7 +7,7 @@ import type {
   PendingToolCall,
 } from "@app/components/assistant/conversation/types";
 import { GENERATE_IMAGE_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getToolCallDisplayLabel } from "@app/lib/api/assistant/tool_call_labels";
+import { getToolCallDisplayLabel } from "@app/lib/actions/tool_display_labels";
 import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
