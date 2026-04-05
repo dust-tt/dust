@@ -147,7 +147,7 @@ export function UserQuestionRequired({
       ))}
       <Input
         className="bg-background dark:bg-background-night"
-        placeholder="Type something else\u2026"
+        placeholder="Type something else…"
         value={customResponse}
         onChange={(e) => setCustomResponse(e.target.value)}
         onKeyDown={(e) => {
