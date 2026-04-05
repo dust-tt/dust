@@ -22,7 +22,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isDustMimeType } from "@dust-tt/client";
 
-const DEFAULT_LIST_LIMIT = 20;
+const DEFAULT_LIST_LIMIT = 50;
 
 export async function list(
   {

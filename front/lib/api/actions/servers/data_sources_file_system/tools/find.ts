@@ -19,7 +19,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { isDustMimeType } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-const DEFAULT_FIND_LIMIT = 20;
+const DEFAULT_FIND_LIMIT = 50;
 
 export async function find(
   {
