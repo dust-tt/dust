@@ -713,6 +713,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           agentConfiguration,
           message.sId
         );
+
         return new Ok({
           ...getLightAgentMessageFromAgentMessage(m),
           activitySteps,

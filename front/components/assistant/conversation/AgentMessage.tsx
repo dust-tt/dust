@@ -249,6 +249,7 @@ export function AgentMessage({
   const { shouldStream, streamError } = useAgentMessageStream({
     agentMessage: agentMessage,
     conversationId,
+    isInlineActivityEnabled,
     owner,
     onEventCallback: useCallback(
       (eventPayload: {
@@ -917,7 +918,12 @@ export function AgentMessage({
           streaming={shouldStream}
           streamError={streamError}
           lastTokenClassification={
-            agentMessage.streaming.agentState === "thinking" ? "tokens" : null
+            isInlineActivityEnabled
+              ? null
+              : agentMessage.streaming.agentState === "thinking" ||
+                  agentMessage.streaming.agentState === "writing"
+                ? "tokens"
+                : null
           }
           activeReferences={activeReferences}
           setActiveReferences={setActiveReferences}
@@ -1335,24 +1341,28 @@ function AgentMessageContent({
         />
       )}
 
-      {agentMessage.content !== null && (
-        <div>
-          <CitationsContext.Provider value={citationsContextValue}>
-            <AgentMessageMarkdown
-              content={sanitizeVisualizationContent(agentMessage.content)}
-              owner={owner}
-              isStreaming={streaming && lastTokenClassification === "tokens"}
-              streamingState={getStreamingState(
-                streaming && lastTokenClassification === "tokens",
-                agentMessage.status
-              )}
-              isLastMessage={isLastMessage}
-              additionalMarkdownComponents={additionalMarkdownComponents}
-              additionalMarkdownPlugins={additionalMarkdownPlugins}
-            />
-          </CitationsContext.Provider>
-        </div>
-      )}
+      {agentMessage.content !== null &&
+        !(
+          isInlineActivityEnabled &&
+          agentMessage.streaming.agentState !== "done"
+        ) && (
+          <div>
+            <CitationsContext.Provider value={citationsContextValue}>
+              <AgentMessageMarkdown
+                content={sanitizeVisualizationContent(agentMessage.content)}
+                owner={owner}
+                isStreaming={streaming && lastTokenClassification === "tokens"}
+                streamingState={getStreamingState(
+                  streaming && lastTokenClassification === "tokens",
+                  agentMessage.status
+                )}
+                isLastMessage={isLastMessage}
+                additionalMarkdownComponents={additionalMarkdownComponents}
+                additionalMarkdownPlugins={additionalMarkdownPlugins}
+              />
+            </CitationsContext.Provider>
+          </div>
+        )}
       {generatedFiles.length > 0 && (
         <div className="mt-2 grid grid-cols-5 gap-1">
           {getCitations({
