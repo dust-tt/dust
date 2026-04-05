@@ -146,8 +146,8 @@ export function UserQuestionRequired({
         </Card>
       ))}
       <Input
-        className="s-bg-background dark:s-bg-background-night"
-        placeholder="Type something else..."
+        className="bg-background dark:bg-background-night"
+        placeholder="Type something else\u2026"
         value={customResponse}
         onChange={(e) => setCustomResponse(e.target.value)}
         onKeyDown={(e) => {
