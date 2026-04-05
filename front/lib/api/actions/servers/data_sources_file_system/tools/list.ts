@@ -22,6 +22,8 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isDustMimeType } from "@dust-tt/client";
 
+const DEFAULT_LIST_LIMIT = 50;
+
 export async function list(
   {
     nodeId,
@@ -60,7 +62,7 @@ export async function list(
 
   const options = {
     cursor: nextPageCursor,
-    limit,
+    limit: limit ?? DEFAULT_LIST_LIMIT,
     sort: sortBy
       ? [
           {

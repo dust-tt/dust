@@ -19,6 +19,8 @@ import { Err, Ok } from "@app/types/shared/result";
 import { isDustMimeType } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
+const DEFAULT_FIND_LIMIT = 50;
+
 export async function find(
   {
     query,
@@ -118,7 +120,7 @@ export async function find(
     },
     options: {
       cursor: nextPageCursor,
-      limit,
+      limit: limit ?? DEFAULT_FIND_LIMIT,
     },
   });
 
