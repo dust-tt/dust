@@ -9,20 +9,20 @@ export const ASK_USER_QUESTION_TOOLS_METADATA = createToolsRecord({
   ask_user_question: {
     description:
       "Asks the user a question during execution.\n\n" +
-      "This tool can be used to:\n" +
+      "This tool can serve multiple purposes:\n" +
       "- Clarify ambiguous instructions where multiple interpretations are plausible\n" +
       "- Get more context and information on the user's intent\n" +
       "- Make decisions on the desired course of action while working\n" +
-      "- Let the user choose what direction to take\n" +
-      "Examples of situations where this tool should be used:" +
+      "- Let the user choose what direction to take\n\n" +
+      "Examples of situations where this tool should be used:\n" +
       "- When about to take a consequential action (e.g., sending an email, deleting records, posting to Slack), " +
       "and the scope or target is unclear, it's much better to ask once than to act on a wrong assumption. " +
       "Example: \"Should I send this to the whole team or just the manager?\"\n" +
-      "- When some required input parameters or data is missing. Example: \"Which time zone should I use for " +
-      "scheduling this?\n" +
-      "- When there are two or more valid interpretations that would lead to very different outputs, rather than " +
-      "picking one arbitrarily, surfacing the tradeoff is often faster and more helpful to the user. Example: \"Do " +
-      "you want a detailed breakdown by country, or a single aggregated number?\"" +
+      "- When some required input parameters or data is missing and cannot be reliably inferred from context. " +
+      "Example: \"Which time zone should I use for scheduling this?\n" +
+      "- When there are two or more valid interpretations that would lead to different outputs, rather than " +
+      "picking one arbitrarily or exploring all possible options, surfacing the tradeoff is faster and more helpful " +
+      "to the user. Example: \"Do you want a detailed breakdown by country, or a single aggregated number?\"\n\n" +
       "Important notes:\n" +
       "- The user always gets an automatic option for free-text input\n" +
       "- Use multiSelect: true to allow multiple answers to be selected for a question\n" +
