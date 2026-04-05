@@ -31,6 +31,30 @@ export function resolveStableToolCallName(
   return exactMatch?.name ?? null;
 }
 
+export function getToolCallStartDeduplicationKeys({
+  stableToolName,
+  toolCallId,
+  toolCallIndex,
+}: {
+  stableToolName: string;
+  toolCallId?: string;
+  toolCallIndex?: number;
+}): string[] {
+  const keys: string[] = [];
+
+  if (toolCallId) {
+    keys.push(`id:${toolCallId}`);
+  }
+  if (toolCallIndex !== undefined) {
+    keys.push(`index:${toolCallIndex}`);
+  }
+  if (keys.length === 0) {
+    keys.push(`name:${stableToolName}`);
+  }
+
+  return keys;
+}
+
 class LLMStreamTimeoutError extends Error {
   constructor(
     public readonly elapsedMs: number,
@@ -186,9 +210,7 @@ export async function getOutputFromLLMStream(
   const actions: Output["actions"] = [];
   let generation = "";
   let nativeChainOfThought = "";
-  const publishedToolCallStartIds = new Set<string>();
-  const publishedToolCallStartIndices = new Set<number>();
-  const publishedToolCallStartNames = new Set<string>();
+  const publishedToolCallStartKeys = new Set<string>();
 
   const logContext = {
     workspaceId: conversation.owner.sId,
@@ -261,12 +283,14 @@ export async function getOutputFromLLMStream(
             continue;
           }
 
+          const deduplicationKeys = getToolCallStartDeduplicationKeys({
+            stableToolName,
+            toolCallId: event.content.id,
+            toolCallIndex: event.content.index,
+          });
+
           if (
-            (event.content.id &&
-              publishedToolCallStartIds.has(event.content.id)) ||
-            (event.content.index !== undefined &&
-              publishedToolCallStartIndices.has(event.content.index)) ||
-            publishedToolCallStartNames.has(stableToolName)
+            deduplicationKeys.some((key) => publishedToolCallStartKeys.has(key))
           ) {
             continue;
           }
@@ -288,13 +312,9 @@ export async function getOutputFromLLMStream(
             step,
           });
 
-          if (event.content.id) {
-            publishedToolCallStartIds.add(event.content.id);
+          for (const key of deduplicationKeys) {
+            publishedToolCallStartKeys.add(key);
           }
-          if (event.content.index !== undefined) {
-            publishedToolCallStartIndices.add(event.content.index);
-          }
-          publishedToolCallStartNames.add(stableToolName);
           continue;
         }
         case "tool_call_delta":
