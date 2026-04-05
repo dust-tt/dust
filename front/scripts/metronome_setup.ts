@@ -62,6 +62,10 @@ interface ProductDef {
     conversion_factor: number;
     operation: "DIVIDE" | "MULTIPLY";
   };
+  quantity_rounding?: {
+    decimal_places: number;
+    rounding_method: "ROUND_UP" | "ROUND_DOWN" | "ROUND_HALF_UP";
+  };
   pricing_group_key?: string[];
   presentation_group_key?: string[];
   tags?: string[];
@@ -104,12 +108,10 @@ interface PackageSubscription {
 }
 
 interface PackageDef {
+  // Base name without version suffix. Version is auto-computed at sync time.
   name: string;
   aliases: Array<{ name: string }>;
   rate_card_name: string;
-  // Omit billing_provider + delivery_method for shadow packages (invoices generated but not delivered).
-  billing_provider?: string;
-  delivery_method?: string;
   subscriptions?: PackageSubscription[];
   // Billing cycle anchored to contract start date (matches Stripe subscription anniversary).
   billing_anchor_date?: "contract_start_date" | "first_billing_period";
@@ -206,19 +208,36 @@ const METRICS: MetricDef[] = [
 const USAGE_TAG = "usage";
 
 const PRODUCTS: ProductDef[] = [
-  // Usage products — all tagged "usage" for credit/commit targeting
+  // --- Legacy usage product (USD, 30% markup baked into quantity_conversion) ---
+  {
+    name: "Programmatic Usage",
+    type: "USAGE",
+    billable_metric_name: "LLM Provider Cost (Programmatic)",
+    // Convert cost_micro_usd to billable USD: multiply by 1.3 (30% markup) / 1_000_000 (micro→USD).
+    // The rate card prices at $1.00/unit so the final amount equals the marked-up cost.
+    quantity_conversion: {
+      conversion_factor: 1.3 / 1_000_000,
+      operation: "MULTIPLY",
+    },
+    // Round up to cents (2 decimal places) — never undercharge.
+    quantity_rounding: { decimal_places: 2, rounding_method: "ROUND_UP" },
+    tags: [USAGE_TAG],
+  },
+  // --- New pricing usage products (AWU) ---
+  // 1 AWU = $0.01. AI Usage: cost_micro_usd / 10_000 = AWU (100 AWU per dollar of cost).
+  // Tool Usage: count × tool_weight = AWU (weight configured per tool category in rate card).
   {
     name: "AI Usage (User)",
     type: "USAGE",
     billable_metric_name: "LLM Provider Cost (User)",
-    quantity_conversion: { conversion_factor: 1000000, operation: "DIVIDE" },
+    quantity_conversion: { conversion_factor: 10_000, operation: "DIVIDE" },
     tags: [USAGE_TAG],
   },
   {
     name: "AI Usage (Programmatic)",
     type: "USAGE",
     billable_metric_name: "LLM Provider Cost (Programmatic)",
-    quantity_conversion: { conversion_factor: 1000000, operation: "DIVIDE" },
+    quantity_conversion: { conversion_factor: 10_000, operation: "DIVIDE" },
     tags: [USAGE_TAG],
   },
   {
@@ -279,7 +298,7 @@ const RATE_CARDS: RateCardDef[] = [
     name: "Legacy Pro $29",
     description:
       "Grandfathered Pro plan. $29/seat via seat subscription. AI usage 30% markup.",
-    aliases: [{ name: "legacy-pro-29" }],
+    aliases: [{ name: "legacy-pro-monthly" }],
     fiat_credit_type_id: USD_CREDIT_TYPE_ID,
     rates: [
       {
@@ -291,19 +310,19 @@ const RATE_CARDS: RateCardDef[] = [
         billing_frequency: "MONTHLY",
       },
       {
-        product_name: "AI Usage (Programmatic)",
+        product_name: "Programmatic Usage",
         starting_at: "2026-04-01T00:00:00.000Z",
         entitled: true,
         rate_type: "FLAT",
-        price: 130,
+        price: 100,
       },
     ],
   },
   {
-    name: "Legacy Business $39",
+    name: "Legacy Business $45",
     description:
-      "Grandfathered Business plan. $39/seat via seat subscription. AI usage 30% markup.",
-    aliases: [{ name: "legacy-business-39" }],
+      "Grandfathered Business plan. $45/seat via seat subscription. AI usage 30% markup.",
+    aliases: [{ name: "legacy-business" }],
     fiat_credit_type_id: USD_CREDIT_TYPE_ID,
     rates: [
       {
@@ -311,18 +330,99 @@ const RATE_CARDS: RateCardDef[] = [
         starting_at: "2026-04-01T00:00:00.000Z",
         entitled: true,
         rate_type: "FLAT",
-        price: 3900,
+        price: 4500,
         billing_frequency: "MONTHLY",
       },
       {
-        product_name: "AI Usage (Programmatic)",
+        product_name: "Programmatic Usage",
         starting_at: "2026-04-01T00:00:00.000Z",
         entitled: true,
         rate_type: "FLAT",
-        price: 130,
+        price: 100,
       },
     ],
   },
+  {
+    name: "Legacy Pro $27 Annual",
+    description:
+      "Grandfathered Pro plan (annual). $27/seat/month billed monthly. AI usage 30% markup.",
+    aliases: [{ name: "legacy-pro-annual" }],
+    fiat_credit_type_id: USD_CREDIT_TYPE_ID,
+    rates: [
+      {
+        product_name: "Workspace Seat",
+        starting_at: "2026-04-01T00:00:00.000Z",
+        entitled: true,
+        rate_type: "FLAT",
+        price: 2700,
+        billing_frequency: "MONTHLY",
+      },
+      {
+        product_name: "Programmatic Usage",
+        starting_at: "2026-04-01T00:00:00.000Z",
+        entitled: true,
+        rate_type: "FLAT",
+        price: 100,
+      },
+    ],
+  },
+  // --- Example: New Business plan with AWU-based usage pricing ---
+  // Seats in USD, AI/Tool usage in AWU (1 AWU = $0.01).
+  // This is a template — uncomment and adjust when new pricing goes live.
+  // {
+  //   name: "Business Plan",
+  //   description: "New Business plan. Pro/Max seats in USD, usage in AWU.",
+  //   aliases: [{ name: "business-plan" }],
+  //   fiat_credit_type_id: USD_CREDIT_TYPE_ID,
+  //   credit_type_conversions: [
+  //     { custom_credit_type_id: AWU_CREDIT_TYPE_ID, fiat_per_custom_credit: 0.01 },
+  //   ],
+  //   rates: [
+  //     // Pro Seat — $30/mo in USD
+  //     {
+  //       product_name: "Workspace Seat",
+  //       starting_at: "2026-04-01T00:00:00.000Z",
+  //       entitled: true,
+  //       rate_type: "FLAT",
+  //       price: 3000,
+  //       billing_frequency: "MONTHLY",
+  //     },
+  //     // AI Usage — 1 AWU per unit (quantity already converted from cost_micro_usd)
+  //     {
+  //       product_name: "AI Usage (User)",
+  //       starting_at: "2026-04-01T00:00:00.000Z",
+  //       entitled: true,
+  //       rate_type: "FLAT",
+  //       price: 1,
+  //       credit_type_id: AWU_CREDIT_TYPE_ID,
+  //     },
+  //     {
+  //       product_name: "AI Usage (Programmatic)",
+  //       starting_at: "2026-04-01T00:00:00.000Z",
+  //       entitled: true,
+  //       rate_type: "FLAT",
+  //       price: 1,
+  //       credit_type_id: AWU_CREDIT_TYPE_ID,
+  //     },
+  //     // Tool Usage — AWU per invocation (price = tool weight in AWU)
+  //     {
+  //       product_name: "Tool Usage (User)",
+  //       starting_at: "2026-04-01T00:00:00.000Z",
+  //       entitled: true,
+  //       rate_type: "FLAT",
+  //       price: 1,
+  //       credit_type_id: AWU_CREDIT_TYPE_ID,
+  //     },
+  //     {
+  //       product_name: "Tool Usage (Programmatic)",
+  //       starting_at: "2026-04-01T00:00:00.000Z",
+  //       entitled: true,
+  //       rate_type: "FLAT",
+  //       price: 1,
+  //       credit_type_id: AWU_CREDIT_TYPE_ID,
+  //     },
+  //   ],
+  // },
 ];
 
 // Seat subscription definition shared by all legacy packages.
@@ -354,18 +454,28 @@ const BILLING_CYCLE_CONFIG = {
 // Package names are versioned (v1, v2, ...) to track pricing changes.
 // Aliases stay stable — code always references the alias, which points to the latest version.
 // Old versions are archived automatically when a new version is created with the same alias.
+// Package names and contract_name are auto-versioned at sync time (e.g., "Legacy Pro $29 v3").
+// The version is derived from existing packages in Metronome: if the current package matches,
+// keep its version; if it needs recreation, increment by 1.
 const PACKAGES: PackageDef[] = [
   {
-    name: "Legacy Pro $29 v1",
-    aliases: [{ name: "legacy-pro-29" }],
+    name: "Legacy Pro $29",
+    aliases: [{ name: "legacy-pro-monthly" }],
     rate_card_name: "Legacy Pro $29",
     subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
     ...BILLING_CYCLE_CONFIG,
   },
   {
-    name: "Legacy Business $39 v1",
-    aliases: [{ name: "legacy-business-39" }],
-    rate_card_name: "Legacy Business $39",
+    name: "Legacy Business $45",
+    aliases: [{ name: "legacy-business" }],
+    rate_card_name: "Legacy Business $45",
+    subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
+    ...BILLING_CYCLE_CONFIG,
+  },
+  {
+    name: "Legacy Pro $27 Annual",
+    aliases: [{ name: "legacy-pro-annual" }],
+    rate_card_name: "Legacy Pro $27 Annual",
     subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
     ...BILLING_CYCLE_CONFIG,
   },
@@ -480,6 +590,10 @@ function productMatches(
         conversion_factor: number;
         operation: string;
       } | null;
+      quantity_rounding?: {
+        decimal_places: number;
+        rounding_method: string;
+      } | null;
     };
   },
   desired: ProductDef
@@ -527,6 +641,20 @@ function productMatches(
     }
   }
 
+  // Check quantity_rounding
+  const desiredQr = desired.quantity_rounding;
+  const existingQr = cur.quantity_rounding;
+  if (desiredQr && existingQr) {
+    if (
+      desiredQr.decimal_places !== existingQr.decimal_places ||
+      desiredQr.rounding_method !== existingQr.rounding_method
+    ) {
+      return false;
+    }
+  } else if (!!desiredQr !== !!existingQr) {
+    return false;
+  }
+
   // Check group keys
   if (!arraysEqual(cur.pricing_group_key, desired.pricing_group_key)) {
     return false;
@@ -561,6 +689,10 @@ async function syncProducts(): Promise<void> {
       quantity_conversion?: {
         conversion_factor: number;
         operation: string;
+      } | null;
+      quantity_rounding?: {
+        decimal_places: number;
+        rounding_method: string;
       } | null;
     };
   }
@@ -616,6 +748,7 @@ async function syncProducts(): Promise<void> {
         type: desired.type,
         billable_metric_id: metricId,
         quantity_conversion: desired.quantity_conversion ?? undefined,
+        quantity_rounding: desired.quantity_rounding ?? undefined,
         pricing_group_key: desired.pricing_group_key,
         presentation_group_key: desired.presentation_group_key,
         tags: desired.tags,
@@ -765,9 +898,9 @@ async function syncRateCards(): Promise<void> {
 interface ExistingPackage {
   id: string;
   name: string;
+  contract_name?: string;
   aliases?: Array<{ name: string }>;
   rate_card_id?: string;
-  billing_provider?: string;
   subscriptions?: Array<{
     collection_schedule: string;
     proration: {
@@ -787,11 +920,6 @@ interface ExistingPackage {
 function packageMatches(ex: ExistingPackage, desired: PackageDef): boolean {
   // Check rate card cascade
   if (recreated.rateCards.has(desired.rate_card_name)) {
-    return false;
-  }
-
-  // Check billing provider
-  if ((ex.billing_provider ?? undefined) !== desired.billing_provider) {
     return false;
   }
 
@@ -888,16 +1016,25 @@ async function syncPackages(): Promise<void> {
     const primaryAlias = desired.aliases[0]?.name;
     const ex = primaryAlias ? byAlias.get(primaryAlias) : undefined;
 
-    if (ex && ex.name === desired.name && packageMatches(ex, desired)) {
-      console.log(`  ✓ ${desired.name} — up to date (${ex.id})`);
+    // Extract current version from existing package name (e.g., "Legacy Pro $29 v3" → 3).
+    const existingVersion = ex?.name
+      ? parseInt(ex.name.match(/\sv(\d+)$/)?.[1] ?? "0", 10)
+      : 0;
+
+    if (ex && packageMatches(ex, desired)) {
+      // Up to date — keep existing version.
+      const versionedName = `${desired.name} v${existingVersion || 1}`;
+      console.log(`  ✓ ${versionedName} — up to date (${ex.id})`);
       ids.packages[desired.name] = ex.id;
     } else {
+      // Needs recreation — increment version.
+      const newVersion = existingVersion + 1;
+      const versionedName = `${desired.name} v${newVersion}`;
+
       if (ex) {
-        const reason =
-          ex.name !== desired.name
-            ? `version change (${ex.name} → ${desired.name})`
-            : "config changed";
-        console.log(`  ↻ ${desired.name} — ${reason}, archiving ${ex.id}`);
+        console.log(
+          `  ↻ ${versionedName} — config changed, archiving ${ex.name} (${ex.id})`
+        );
         try {
           await client.v1.packages.archive({ package_id: ex.id });
         } catch {
@@ -910,9 +1047,7 @@ async function syncPackages(): Promise<void> {
         throw new Error(`Rate card not found: ${desired.rate_card_name}`);
       }
 
-      console.log(
-        `  + Creating: ${desired.name}${desired.billing_provider ? "" : " (shadow — no billing provider)"}`
-      );
+      console.log(`  + Creating: ${versionedName}`);
       // Resolve subscription product IDs
       const subscriptions = (desired.subscriptions ?? []).map((sub) => {
         const productId = ids.products[sub.product_name];
@@ -935,18 +1070,13 @@ async function syncPackages(): Promise<void> {
       });
 
       const created = await client.v1.packages.create({
-        name: desired.name,
+        name: versionedName,
+        contract_name: versionedName,
         aliases: desired.aliases,
         rate_card_id: rateCardId,
         billing_anchor_date: desired.billing_anchor_date,
         ...(desired.usage_statement_schedule
           ? { usage_statement_schedule: desired.usage_statement_schedule }
-          : {}),
-        ...(desired.billing_provider
-          ? {
-              billing_provider: desired.billing_provider,
-              delivery_method: desired.delivery_method,
-            }
           : {}),
         ...(subscriptions.length > 0 ? { subscriptions } : {}),
       } as Parameters<typeof client.v1.packages.create>[0]);

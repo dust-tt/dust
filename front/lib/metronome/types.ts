@@ -9,12 +9,14 @@ import type { Commit, Credit } from "@metronome/sdk/resources/shared";
 
 // Metronome package aliases for contract provisioning.
 // These map to packages configured in the Metronome dashboard.
-export const LEGACY_PRO_29_PACKAGE_ALIAS = "legacy-pro-29";
-export const LEGACY_BUSINESS_39_PACKAGE_ALIAS = "legacy-business-39";
+export const LEGACY_PRO_MONTHLY_PACKAGE_ALIAS = "legacy-pro-monthly";
+export const LEGACY_PRO_ANNUAL_PACKAGE_ALIAS = "legacy-pro-annual";
+export const LEGACY_BUSINESS_PACKAGE_ALIAS = "legacy-business";
 
 export const PRO_OR_BUSINESS_PACKAGE_ALIASES: ReadonlySet<string> = new Set([
-  LEGACY_PRO_29_PACKAGE_ALIAS,
-  LEGACY_BUSINESS_39_PACKAGE_ALIAS,
+  LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
+  LEGACY_PRO_ANNUAL_PACKAGE_ALIAS,
+  LEGACY_BUSINESS_PACKAGE_ALIAS,
 ]);
 
 export interface MetronomeEvent {

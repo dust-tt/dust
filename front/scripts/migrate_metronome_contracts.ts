@@ -15,8 +15,9 @@
 import { getMetronomeClient } from "@app/lib/metronome/client";
 import { provisionSeatsForContract } from "@app/lib/metronome/seats";
 import {
-  LEGACY_BUSINESS_39_PACKAGE_ALIAS,
-  LEGACY_PRO_29_PACKAGE_ALIAS,
+  LEGACY_BUSINESS_PACKAGE_ALIAS,
+  LEGACY_PRO_ANNUAL_PACKAGE_ALIAS,
+  LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
 } from "@app/lib/metronome/types";
 import {
   PRO_PLAN_SEAT_29_CODE,
@@ -31,15 +32,14 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { makeScript } from "./helpers";
 import { runOnAllWorkspaces } from "./workspace_helpers";
 
-const plansCodeToPackageAlias: Record<string, string> = {
-  [PRO_PLAN_SEAT_29_CODE]: LEGACY_PRO_29_PACKAGE_ALIAS,
-  [PRO_PLAN_SEAT_39_CODE]: LEGACY_BUSINESS_39_PACKAGE_ALIAS,
-};
-
 // Map from old alias → current alias.
 const ALIAS_MIGRATION: Record<string, string> = {
-  "shadow-pro-29": LEGACY_PRO_29_PACKAGE_ALIAS,
-  "shadow-business-39": LEGACY_BUSINESS_39_PACKAGE_ALIAS,
+  "shadow-pro-29": LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
+  "shadow-business-39": LEGACY_BUSINESS_PACKAGE_ALIAS,
+  "legacy-pro-29": LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
+  "legacy-business-39": LEGACY_BUSINESS_PACKAGE_ALIAS,
+  "legacy-business-45": LEGACY_BUSINESS_PACKAGE_ALIAS,
+  "legacy-pro-27-annual": LEGACY_PRO_ANNUAL_PACKAGE_ALIAS,
 };
 
 /**
@@ -55,17 +55,57 @@ async function getPackageInfo(): Promise<{
   const aliasToPackageId: Record<string, string> = {};
   const packageIdToAlias: Record<string, string> = {};
 
-  // Include archived packages so we can identify contracts on old versions.
+  // First pass: collect all packages with their aliases.
+  // Active packages own the alias; archived packages may have lost theirs
+  // (Metronome removes the alias from old versions when a new version claims it).
+  const allPackages: {
+    id: string;
+    name: string | undefined;
+    aliases: string[];
+    archived: boolean;
+  }[] = [];
   for await (const pkg of client.v1.packages.list({
     archive_filter: "ALL",
   })) {
-    for (const alias of pkg.aliases ?? []) {
-      // aliasToPackageId: only keep the latest (non-archived) package per alias.
+    const aliases = (pkg.aliases ?? []).map((a) => a.name);
+    allPackages.push({
+      id: pkg.id,
+      name: pkg.name,
+      aliases,
+      archived: !!pkg.archived_at,
+    });
+
+    for (const alias of aliases) {
       if (!pkg.archived_at) {
-        aliasToPackageId[alias.name] = pkg.id;
+        aliasToPackageId[alias] = pkg.id;
       }
-      // packageIdToAlias: map ALL package IDs (including archived) to their alias.
-      packageIdToAlias[pkg.id] = alias.name;
+      packageIdToAlias[pkg.id] = alias;
+    }
+  }
+
+  // Second pass: for archived packages with no aliases, find the current alias
+  // by matching the name prefix. Package names are versioned ("Name vN"), so
+  // "Legacy Pro $29 v1" shares the prefix "Legacy Pro $29" with "Legacy Pro $29 v2".
+  for (const pkg of allPackages) {
+    if (pkg.archived && pkg.aliases.length === 0) {
+      if (!pkg.name) {
+        continue;
+      }
+      // Strip version suffix (e.g., " v1") to get the base name.
+      const baseName = pkg.name.replace(/\s+v\d+$/, "");
+      // Find a current (non-archived) package with the same base name.
+      const currentPkg = allPackages.find(
+        (p) =>
+          !p.archived &&
+          p.aliases.length > 0 &&
+          p.name?.replace(/\s+v\d+$/, "") === baseName
+      );
+      if (currentPkg) {
+        packageIdToAlias[pkg.id] = currentPkg.aliases[0];
+      } else {
+        // No current version found — store name for logging.
+        packageIdToAlias[pkg.id] = pkg.name;
+      }
     }
   }
 
@@ -90,15 +130,9 @@ async function getSubscriptionInfo(
     return undefined;
   }
 
-  // Determine alias from plan code.
-  const packageAlias = plansCodeToPackageAlias[subscription.getPlan().code];
-
-  if (!packageAlias) {
-    return undefined;
-  }
-
   // Get Stripe subscription start date, rounded to hour boundary (Metronome requirement).
   let startDate: string | undefined;
+  let isAnnual = false;
   try {
     const stripeSubscription = await getStripeSubscription(
       subscription.stripeSubscriptionId
@@ -107,8 +141,14 @@ async function getSubscriptionInfo(
       const startTimestamp =
         stripeSubscription.start_date ??
         stripeSubscription.current_period_start;
+      // Round to hour boundary (Metronome requirement).
       const rounded = Math.floor(startTimestamp / 3600) * 3600;
       startDate = new Date(rounded * 1000).toISOString();
+
+      // Detect annual billing from the Stripe price interval.
+      const interval =
+        stripeSubscription.items?.data[0]?.price?.recurring?.interval;
+      isAnnual = interval === "year";
     }
   } catch (err) {
     logger.warn(
@@ -119,6 +159,20 @@ async function getSubscriptionInfo(
   }
 
   if (!startDate) {
+    return undefined;
+  }
+
+  // Determine alias from plan code + billing interval.
+  const isPro = subscription.getPlan().code === PRO_PLAN_SEAT_29_CODE;
+  const isBusiness = subscription.getPlan().code === PRO_PLAN_SEAT_39_CODE;
+  let packageAlias: string;
+  if (isBusiness) {
+    packageAlias = LEGACY_BUSINESS_PACKAGE_ALIAS;
+  } else if (isPro) {
+    packageAlias = isAnnual
+      ? LEGACY_PRO_ANNUAL_PACKAGE_ALIAS
+      : LEGACY_PRO_MONTHLY_PACKAGE_ALIAS;
+  } else {
     return undefined;
   }
 
@@ -330,19 +384,34 @@ async function migrateWorkspace(
       continue;
     }
 
-    // Create new contract that supersedes the old one.
-    // - transition.type = "SUPERSEDE": Metronome ends the old contract and rolls
-    //   over unused credits/commits to the new one automatically.
-    // - starting_at: same as the old contract.
-    // - No billing_provider_configuration: shadow mode by default.
+    // Metronome does not support SUPERSEDE for package-based contracts.
+    // Approach: end old contract, create new with same starting_at (preserves billing
+    // anchor/cycle), transfer remaining credit/commit balances.
+    const now = new Date(
+      Math.floor(Date.now() / 3_600_000) * 3_600_000
+    ).toISOString();
+
+    // 1. End the old contract.
+    await client.v1.contracts.updateEndDate({
+      customer_id: metronomeCustomerId,
+      contract_id: contract.id,
+      ending_before: now,
+    });
+
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        contractId: contract.id,
+        endingBefore: now,
+      },
+      "Old contract ended"
+    );
+
+    // 2. Create new contract with same starting_at (preserves billing cycle anchor).
     const newContract = await client.v1.contracts.create({
       customer_id: metronomeCustomerId,
       package_alias: targetAlias,
       starting_at: contract.starting_at,
-      transition: {
-        from_contract_id: contract.id,
-        type: "SUPERSEDE",
-      },
     });
 
     const newContractId = newContract.data.id;
@@ -354,10 +423,10 @@ async function migrateWorkspace(
         newContractId,
         targetAlias,
       },
-      "New contract created (supersedes old, credits/commits rolled over)"
+      "New contract created (same starting_at as old)"
     );
 
-    // Provision seats for all existing members on the new contract.
+    // 3. Provision seats on the new contract.
     await provisionSeatsForContract({
       metronomeCustomerId,
       contractId: newContractId,
@@ -365,7 +434,7 @@ async function migrateWorkspace(
       startingAt: contract.starting_at,
     });
 
-    // Update metronomeContractId on the active subscription.
+    // 4. Update metronomeContractId on the active subscription.
     const activeSubscription =
       await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
 
