@@ -323,6 +323,7 @@ export const INTERNAL_MCP_SERVERS = {
     availability: "manual",
     allowMultipleInstances: true,
     isRestricted: undefined,
+    supersededByFeatureFlag: "official_notion_mcp",
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
@@ -1118,6 +1119,10 @@ type InternalMCPServerEntryCommon = {
         isDeepDiveDisabled: boolean;
       }) => boolean)
     | undefined;
+  // When set, the internal server is hidden from the "Add Tool" menu when this
+  // feature flag is enabled (superseded by a remote server). Existing server
+  // views continue to work.
+  supersededByFeatureFlag?: WhitelistableFeature;
   isPreview: boolean;
   // Defines which arguments require per-agent approval for "medium" stake tools.
   // When a tool has "medium" stake, the user must approve the specific combination
@@ -1364,4 +1369,11 @@ export function isInternalMCPServerAvailableInDirectExecution(
 ): boolean {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
   return server.availableInDirectExecution !== false;
+}
+
+export function getInternalMCPServerSupersededByFeatureFlag(
+  name: InternalMCPServerNameType
+): WhitelistableFeature | undefined {
+  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+  return server.supersededByFeatureFlag;
 }

@@ -20,12 +20,14 @@ import {
   getAvailabilityOfInternalMCPServerById,
   getInternalMCPServerMetadata,
   getInternalMCPServerNameAndWorkspaceId,
+  getInternalMCPServerSupersededByFeatureFlag,
   isAutoInternalMCPServerName,
   matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions/enabled";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
@@ -310,13 +312,23 @@ export class InternalMCPServerInMemoryResource {
   static async listAvailableInternalMCPServers(auth: Authenticator) {
     // Hide servers with flags that are not enabled for the workspace.
     const names: InternalMCPServerNameType[] = [];
+    const featureFlags = await getFeatureFlags(auth);
 
     for (const name of AVAILABLE_INTERNAL_MCP_SERVER_NAMES) {
       const isEnabled = await isEnabledForWorkspace(auth, name);
 
-      if (isEnabled) {
-        names.push(name);
+      if (!isEnabled) {
+        continue;
       }
+
+      // Hide internal servers that are superseded by a remote server when the
+      // feature flag is enabled. Existing server views are not affected.
+      const supersededBy = getInternalMCPServerSupersededByFeatureFlag(name);
+      if (supersededBy && featureFlags.includes(supersededBy)) {
+        continue;
+      }
+
+      names.push(name);
     }
 
     const ids = names.map((name) =>
