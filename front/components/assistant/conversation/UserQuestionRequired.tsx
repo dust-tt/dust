@@ -125,9 +125,10 @@ export function UserQuestionRequired({
           className="cursor-pointer p-3"
           onClick={() => handleOptionClick(index)}
         >
-          <div className="flex items-start gap-2">
+          <div className="flex items-center gap-3">
             {question.multiSelect && (
               <Checkbox
+                size="xs"
                 checked={selectedOptions.includes(index)}
                 onCheckedChange={() => handleOptionClick(index)}
               />
@@ -163,16 +164,16 @@ export function UserQuestionRequired({
         </div>
       )}
       <div className="flex gap-2">
+        <Button label="Skip" variant="outline" size="xs" onClick={handleSkip} />
         {question.multiSelect && (
           <Button
             label="Submit"
-            variant="highlight"
+            variant="primary"
             size="xs"
             disabled={selectedOptions.length === 0}
             onClick={handleMultiSelectSubmit}
           />
         )}
-        <Button label="Skip" variant="outline" size="xs" onClick={handleSkip} />
       </div>
     </Card>
   );
