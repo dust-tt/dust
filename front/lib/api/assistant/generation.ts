@@ -164,8 +164,9 @@ function constructToolsSection({
       "\nUse ask_user_question when (1) the user's request has 2+ plausible " +
       "interpretations that lead to different work, or (2) you're about to " +
       "take a consequential action and want to confirm the target or scope. " +
-      "Ask one focused question at a time, only when the answer materially " +
-      "changes what you do next.\n";
+      "Only ask when the answer materially changes what you do next. " +
+      "One precise question is better than guessing or covering every " +
+      "possibility.\n";
   }
 
   toolsSection += toolUseDirectives;
