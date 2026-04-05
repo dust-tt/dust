@@ -322,10 +322,7 @@ export class InternalMCPServerInMemoryResource {
 
       // Hide internal Notion server when the official Notion MCP is enabled.
       // Existing server views are not affected.
-      if (
-        name === "notion" &&
-        featureFlags.includes("official_notion_mcp")
-      ) {
+      if (name === "notion" && featureFlags.includes("official_notion_mcp")) {
         continue;
       }
 
