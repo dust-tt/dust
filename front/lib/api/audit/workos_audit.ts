@@ -73,11 +73,16 @@ type AuditAction =
   | "space.created"
   | "space.deleted"
   | "space.permissions_updated"
+  // Conversations.
+  | "conversation.accessed"
   // Data Sources.
   | "datasource.created"
   | "datasource.updated"
   | "datasource.deleted"
-  | "datasource.deleted_admin";
+  | "datasource.deleted_admin"
+  // Audit Logs.
+  | "audit_log.viewed"
+  | "audit_log.export_configured";
 
 export type EmitAuditLogEventParams = {
   auth: Authenticator;
@@ -239,6 +244,7 @@ type AuditTargetType =
   | "workspace"
   | "user"
   | "agent"
+  | "conversation"
   | "space"
   | "data_source"
   | "tool"
