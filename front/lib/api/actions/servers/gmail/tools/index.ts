@@ -51,6 +51,7 @@ function buildAndEncodeEmail(params: {
   to: string[];
   cc?: string[];
   bcc?: string[];
+  from?: string;
   subject: string;
   contentType: string;
   body: string;
@@ -70,6 +71,7 @@ function buildAndEncodeEmail(params: {
   // Create the email message with proper headers and content.
   const messageLines = [
     `To: ${params.to.join(", ")}`,
+    params.from ? `From: ${params.from}` : null,
     params.cc?.length ? `Cc: ${params.cc.join(", ")}` : null,
     params.bcc?.length ? `Bcc: ${params.bcc.join(", ")}` : null,
     `Subject: ${encodedSubject}`,
@@ -147,7 +149,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
   },
 
   create_draft: async (
-    { to, cc, bcc, subject, contentType, body },
+    { to, cc, bcc, from, subject, contentType, body },
     { authInfo }
   ) => {
     const accessToken = authInfo?.token;
@@ -160,6 +162,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       to,
       cc,
       bcc,
+      from,
       subject,
       contentType,
       body,
@@ -477,7 +480,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
   },
 
   create_reply_draft: async (
-    { messageId, body, contentType = "text/plain" as const, to, cc, bcc },
+    { messageId, body, contentType = "text/plain" as const, to, cc, bcc, from },
     { authInfo }
   ) => {
     const accessToken = authInfo?.token;
@@ -566,6 +569,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     // Construct the reply message
     const messageLines = [
       `To: ${replyTo}`,
+      from ? `From: ${from}` : null,
       replyCc ? `Cc: ${replyCc}` : null,
       replyBcc ? `Bcc: ${replyBcc}` : null,
       `Subject: ${encodedSubject}`,
@@ -629,7 +633,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
   },
 
   send_mail: async (
-    { to, cc, bcc, subject, contentType, body },
+    { to, cc, bcc, from, subject, contentType, body },
     { authInfo }
   ) => {
     const accessToken = authInfo?.token;
@@ -642,6 +646,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       to,
       cc,
       bcc,
+      from,
       subject,
       contentType,
       body,
