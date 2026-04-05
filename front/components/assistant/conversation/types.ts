@@ -44,12 +44,19 @@ export type ActionProgressState = Map<
   }
 >;
 
+export type PendingToolCall = {
+  toolName: string;
+  toolCallId?: string;
+  toolCallIndex?: number;
+};
+
 export type MessageTemporaryState = LightAgentMessageWithActionsType & {
   streaming: {
     agentState: AgentStateClassification;
     isRetrying: boolean;
     lastUpdated: Date;
     actionProgress: ActionProgressState;
+    pendingToolCalls: PendingToolCall[];
     useFullChainOfThought: boolean;
     inlineActivitySteps: InlineActivityStep[];
   };
@@ -164,6 +171,7 @@ export const makeInitialMessageStreamState = (
       inlineActivitySteps: message.activitySteps ?? [],
       isRetrying: false,
       lastUpdated: new Date(),
+      pendingToolCalls: [],
       useFullChainOfThought: false,
     },
   };

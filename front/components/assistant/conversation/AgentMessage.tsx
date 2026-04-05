@@ -1319,6 +1319,7 @@ function AgentMessageContent({
           agentMessage={agentMessage}
           lastAgentStateClassification={agentMessage.streaming.agentState}
           actionProgress={agentMessage.streaming.actionProgress}
+          pendingToolCalls={agentMessage.streaming.pendingToolCalls}
           owner={owner}
         />
       )}
