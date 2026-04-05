@@ -1,5 +1,7 @@
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { createMetronomeCommit } from "@app/lib/metronome/client";
 import type { CustomerFacingInvoiceInfo } from "@app/lib/plans/stripe";
 import {
   ENTERPRISE_N30_PAYMENTS_DAYS,
@@ -17,6 +19,7 @@ import { CreditResource } from "@app/lib/resources/credit_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
+import { CREDIT_EXPIRATION_DAYS } from "@app/types/credits";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
@@ -107,6 +110,17 @@ export async function startCreditFromProOneOffInvoice({
     "type:committed",
     "customer:pro",
   ]);
+
+  if (creditAmountCents) {
+    const metronomeResult = await addMetronomeCommitsForWorkspace({
+      auth,
+      amountCents: creditAmountCents,
+    });
+    if (metronomeResult.isErr()) {
+      return new Err(metronomeResult.error);
+    }
+  }
+
   logger.info(
     {
       workspaceId: workspace.sId,
@@ -294,6 +308,17 @@ export async function createEnterpriseCreditPurchase({
     "type:committed",
     "customer:enterprise",
   ]);
+
+  const metronomeResult = await addMetronomeCommitsForWorkspace({
+    auth,
+    amountCents: amountMicroUsd / 10_000,
+    startDate,
+    expirationDate,
+  });
+  if (metronomeResult.isErr()) {
+    return new Err(metronomeResult.error);
+  }
+
   logger.info(
     {
       workspaceId: workspace.sId,
@@ -457,4 +482,76 @@ export async function deleteCreditFromVoidedInvoice({
   await credit.delete(auth);
 
   return new Ok(undefined);
+}
+
+async function addMetronomeCommitsForWorkspace({
+  auth,
+  amountCents,
+  startDate,
+  expirationDate,
+}: {
+  auth: Authenticator;
+  amountCents: number;
+  startDate?: Date;
+  expirationDate?: Date;
+}): Promise<Result<void, Error>> {
+  const workspace = auth.getNonNullableWorkspace();
+  const subscription = auth.subscription();
+
+  const metronomeCustomerId = workspace.metronomeCustomerId;
+  const metronomeContractId = subscription?.metronomeContractId;
+
+  if (!metronomeCustomerId || !metronomeContractId) {
+    logger.info(
+      { subscription },
+      "[Commit Purchase] Subscription missing Metronome contract ID, skipping credit addition"
+    );
+    logger.info(
+      { workspaceId: workspace.sId, metronomeCustomerId, metronomeContractId },
+      "[Commit Purchase] Workspace not provisioned in Metronome, skipping credit addition"
+    );
+    return new Ok(undefined);
+  }
+
+  const effectiveStartDate = startDate ?? new Date();
+  const effectiveExpirationDate =
+    expirationDate ??
+    new Date(
+      effectiveStartDate.getTime() +
+        CREDIT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000
+    );
+
+  const productId = config.getMetronomeCommitProductId();
+  if (!productId) {
+    return new Err(
+      new Error(
+        "[Commit Purchase] Metronome commit product ID not configured; cannot add commits for credit purchase"
+      )
+    );
+  }
+
+  const result = await createMetronomeCommit({
+    metronomeCustomerId,
+    contractId: metronomeContractId,
+    productId,
+    amountCents,
+    startingAt: effectiveStartDate,
+    endingBefore: effectiveExpirationDate,
+    name: `Prepaid commit (${effectiveStartDate.toISOString()})`,
+    idempotencyKey: `commit-${workspace.sId}-${effectiveStartDate.getTime()}-${amountCents}`,
+  });
+
+  if (result.isErr()) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        metronomeCustomerId,
+        metronomeContractId,
+        amountCents,
+        error: result.error.message,
+      },
+      "[Commit Purchase] Failed to add commits to Metronome"
+    );
+  }
+  return result;
 }
