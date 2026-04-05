@@ -115,6 +115,7 @@ function isMessageEventParams(
     case "agent_message_success":
     case "agent_message_gracefully_stopped":
     case "generation_tokens":
+    case "tool_call_started":
     case "tool_approve_execution":
     case "tool_error":
     case "tool_file_auth_required":

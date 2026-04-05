@@ -20,6 +20,41 @@ const HEARTBEAT_LOG_INTERVAL = 6; // Every minute (6 * 10s)
 const LLM_EVENT_TIMEOUT_MINUTES = 2;
 const LLM_EVENT_TIMEOUT_MS = LLM_EVENT_TIMEOUT_MINUTES * 60 * 1000;
 
+export function resolveStableToolCallName(
+  specifications: GetOutputRequestParams["specifications"],
+  streamedToolName: string
+): string | null {
+  const exactMatch = specifications.find(
+    (specification) => specification.name === streamedToolName
+  );
+
+  return exactMatch?.name ?? null;
+}
+
+export function getToolCallStartDeduplicationKeys({
+  stableToolName,
+  toolCallId,
+  toolCallIndex,
+}: {
+  stableToolName: string;
+  toolCallId?: string;
+  toolCallIndex?: number;
+}): string[] {
+  const keys: string[] = [];
+
+  if (toolCallId) {
+    keys.push(`id:${toolCallId}`);
+  }
+  if (toolCallIndex !== undefined) {
+    keys.push(`index:${toolCallIndex}`);
+  }
+  if (keys.length === 0) {
+    keys.push(`name:${stableToolName}`);
+  }
+
+  return keys;
+}
+
 class LLMStreamTimeoutError extends Error {
   constructor(
     public readonly elapsedMs: number,
@@ -175,6 +210,7 @@ export async function getOutputFromLLMStream(
   const actions: Output["actions"] = [];
   let generation = "";
   let nativeChainOfThought = "";
+  const publishedToolCallStartKeys = new Set<string>();
 
   const logContext = {
     workspaceId: conversation.owner.sId,
@@ -235,6 +271,50 @@ export async function getOutputFromLLMStream(
           });
 
           nativeChainOfThought += event.content.delta;
+          continue;
+        }
+        case "tool_call_started": {
+          const stableToolName = resolveStableToolCallName(
+            specifications,
+            event.content.name
+          );
+
+          if (!stableToolName) {
+            continue;
+          }
+
+          const deduplicationKeys = getToolCallStartDeduplicationKeys({
+            stableToolName,
+            toolCallId: event.content.id,
+            toolCallIndex: event.content.index,
+          });
+
+          if (
+            deduplicationKeys.some((key) => publishedToolCallStartKeys.has(key))
+          ) {
+            continue;
+          }
+
+          await updateResourceAndPublishEvent(auth, {
+            event: {
+              type: "tool_call_started",
+              created: Date.now(),
+              configurationId: agentConfiguration.sId,
+              messageId: agentMessage.sId,
+              ...(event.content.id ? { toolCallId: event.content.id } : {}),
+              ...(event.content.index !== undefined
+                ? { toolCallIndex: event.content.index }
+                : {}),
+              toolName: stableToolName,
+            },
+            agentMessage,
+            conversation,
+            step,
+          });
+
+          for (const key of deduplicationKeys) {
+            publishedToolCallStartKeys.add(key);
+          }
           continue;
         }
         case "tool_call_delta":

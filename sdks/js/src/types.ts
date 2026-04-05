@@ -1467,6 +1467,19 @@ export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema
 >;
 
+const AgentToolCallStartedEventSchema = z.object({
+  type: z.literal("tool_call_started"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  toolCallId: z.string().optional(),
+  toolCallIndex: z.number().optional(),
+  toolName: z.string(),
+});
+export type AgentToolCallStartedEvent = z.infer<
+  typeof AgentToolCallStartedEventSchema
+>;
+
 const AgentActionSuccessEventSchema = z.object({
   type: z.literal("agent_action_success"),
   created: z.number(),
@@ -1575,6 +1588,7 @@ const AgentMessageEventTypeSchema = z.object({
   data: z.union([
     AgentErrorEventSchema,
     AgentActionSpecificEventSchema,
+    AgentToolCallStartedEventSchema,
     AgentActionSuccessEventSchema,
     AgentContextPrunedEventSchema,
     AgentGenerationCancelledEventSchema,

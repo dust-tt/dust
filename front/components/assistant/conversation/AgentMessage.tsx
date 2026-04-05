@@ -370,6 +370,7 @@ export function AgentMessage({
             break;
           }
           case "end-of-stream":
+          case "tool_call_started":
           case "tool_error":
           case "tool_notification":
           case "tool_params":

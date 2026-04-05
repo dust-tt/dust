@@ -350,6 +350,16 @@ export type AgentDisabledErrorEvent = {
   };
 };
 
+export type AgentToolCallStartedEvent = {
+  type: "tool_call_started";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  toolCallId?: string;
+  toolCallIndex?: number;
+  toolName: string;
+};
+
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {
   type: "agent_action_success";

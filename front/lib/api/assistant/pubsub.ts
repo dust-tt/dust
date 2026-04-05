@@ -17,6 +17,7 @@ import type {
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
+  AgentToolCallStartedEvent,
 } from "@app/types/assistant/agent";
 import type { GenerationTokensEvent } from "@app/types/assistant/generation";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -189,6 +190,7 @@ export async function* getMessagesEvents(
       | AgentActionRunningEvents
       | AgentActionSuccessEvent
       | AgentGenerationCancelledEvent
+      | AgentToolCallStartedEvent
       | GenerationTokensEvent
     ) & {
       step: number;

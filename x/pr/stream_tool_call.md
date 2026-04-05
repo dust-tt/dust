@@ -35,6 +35,11 @@ Interactive Content File` ()
 Important: this does not change tool execution itself. It only exposes an
 earlier moment in the same execution chain.
 
+Important nuance: provider adapters may emit several internal
+`tool_call_started` updates while a tool name is still streaming. The public
+assistant SSE event should remain a single stable start signal for a given tool
+call, not a raw stream of partial-name updates.
+
 ## End-to-End Flow
 
 Changes affect 3 layers.
@@ -163,6 +168,9 @@ Behavior:
 Details:
 
 - this is the backend/public-wire seam
+- if a provider emits several internal `tool_call_started` updates for the same
+  call, coalesce them before publishing to assistant SSE
+- only publish a stable tool name to assistant SSE, not a partial streamed name
 - still deployable without a visible UI change
 
 ### 6: Main Conversation Message Shows `Preparing to call ...`
@@ -176,6 +184,8 @@ Scope:
 Behavior:
 
 - store pending tool calls when `tool_call_started` arrives
+- key pending tool calls by `toolCallId` when available, otherwise by
+  `toolCallIndex`
 - remove only the matching pending tool call when `tool_params` or
   `agent_action_success` arrives
 - render the pending state in the main message surface
