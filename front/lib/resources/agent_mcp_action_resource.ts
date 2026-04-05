@@ -1,18 +1,19 @@
-import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import {
   getInternalMCPServerNameFromSId,
-  getInternalMCPServerToolDisplayLabels,
   type InternalMCPServerNameType,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
   isToolExecutionStatusBlocked,
   TOOL_EXECUTION_BLOCKED_STATUSES,
 } from "@app/lib/actions/statuses";
+import {
+  getStaticToolDisplayLabels,
+  getToolNameFromFunctionCallName,
+} from "@app/lib/actions/tool_display_labels";
 import type { StepContext } from "@app/lib/actions/types";
 import {
   isFileAuthorizationInfo,
@@ -80,14 +81,6 @@ const OUTPUT_ITEMS_BATCH_SIZE = 32;
 const FETCH_OUTPUT_ITEMS_CONCURRENCY = 2;
 
 const CONCURRENCY_UPDATE_OUTPUT_ITEMS = 16;
-
-function getDefaultRemoteDisplayLabels(
-  mcpServerName: string,
-  toolName: string
-): ToolDisplayLabels | null {
-  const server = getDefaultRemoteMCPServerByName(mcpServerName);
-  return server?.toolDisplayLabels?.[toolName] ?? null;
-}
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -1000,8 +993,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     // Extract the unprefixed tool name from the function call name (e.g. "server__tool" -> "tool").
     const toolName =
       this.toolConfiguration.originalName ??
-      this.functionCallName.split(TOOL_NAME_SEPARATOR).at(-1) ??
-      this.functionCallName;
+      getToolNameFromFunctionCallName(this.functionCallName);
     const mcpServerId = this.metadata.mcpServerId ?? null;
 
     const displayLabels = this.resolveDisplayLabels(
@@ -1042,18 +1034,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       return this.toolConfiguration.displayLabels;
     }
 
-    if (internalMCPServerName) {
-      return (
-        getInternalMCPServerToolDisplayLabels(internalMCPServerName)?.[
-          toolName
-        ] ?? null
-      );
-    }
-
-    return getDefaultRemoteDisplayLabels(
-      this.toolConfiguration.mcpServerName,
-      toolName
-    );
+    return getStaticToolDisplayLabels({
+      internalMCPServerName,
+      mcpServerName: this.toolConfiguration.mcpServerName,
+      toolName,
+    });
   }
 
   async updateStatus(

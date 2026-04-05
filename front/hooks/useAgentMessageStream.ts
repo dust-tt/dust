@@ -1,6 +1,7 @@
 import type {
   AgentMessageStateWithControlEvent,
   MessageTemporaryState,
+  PendingToolCall,
   VirtuosoMessage,
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
@@ -55,6 +56,58 @@ const updateMessageThrottled = _.throttle(
   },
   100
 );
+
+export function upsertPendingToolCall(
+  pendingToolCalls: PendingToolCall[],
+  pendingToolCall: PendingToolCall
+): PendingToolCall[] {
+  const matchIndex = pendingToolCalls.findIndex(
+    (toolCall) =>
+      (pendingToolCall.toolCallId &&
+        toolCall.toolCallId === pendingToolCall.toolCallId) ||
+      (pendingToolCall.toolCallIndex !== undefined &&
+        toolCall.toolCallIndex === pendingToolCall.toolCallIndex)
+  );
+
+  if (matchIndex === -1) {
+    return [...pendingToolCalls, pendingToolCall];
+  }
+
+  return pendingToolCalls.map((toolCall, index) =>
+    index === matchIndex
+      ? {
+          ...toolCall,
+          ...pendingToolCall,
+        }
+      : toolCall
+  );
+}
+
+export function removePendingToolCallForAction(
+  pendingToolCalls: PendingToolCall[],
+  action: Pick<
+    AgentMCPActionWithOutputType,
+    "functionCallId" | "functionCallName"
+  >
+): PendingToolCall[] {
+  const matchIndex = pendingToolCalls.findIndex(
+    (toolCall) => toolCall.toolCallId === action.functionCallId
+  );
+
+  if (matchIndex !== -1) {
+    return pendingToolCalls.filter((_, index) => index !== matchIndex);
+  }
+
+  const fallbackMatchIndex = pendingToolCalls.findIndex(
+    (toolCall) => toolCall.toolName === action.functionCallName
+  );
+
+  if (fallbackMatchIndex === -1) {
+    return pendingToolCalls;
+  }
+
+  return pendingToolCalls.filter((_, index) => index !== fallbackMatchIndex);
+}
 
 export function updateMessageWithAction(
   m: LightAgentMessageWithActionsType,
@@ -339,6 +392,10 @@ export function useAgentMessageStream({
                     ([id]) => id !== action.id
                   )
                 ),
+                pendingToolCalls: removePendingToolCallForAction(
+                  m.streaming.pendingToolCalls,
+                  action
+                ),
               },
             };
           });
@@ -368,6 +425,10 @@ export function useAgentMessageStream({
                 ...m.streaming,
                 agentState: "acting",
                 inlineActivitySteps: steps,
+                pendingToolCalls: removePendingToolCallForAction(
+                  m.streaming.pendingToolCalls,
+                  toolParams.action
+                ),
               },
             };
           });
@@ -383,6 +444,30 @@ export function useAgentMessageStream({
           break;
 
         case "tool_call_started":
+          const toolCallStarted = eventPayload.data;
+          if (toolCallStarted.type !== "tool_call_started") {
+            break;
+          }
+          methods.data.map((m) => {
+            if (!isMessageTemporayState(m) || m.sId !== sId) {
+              return m;
+            }
+
+            return {
+              ...m,
+              streaming: {
+                ...m.streaming,
+                pendingToolCalls: upsertPendingToolCall(
+                  m.streaming.pendingToolCalls,
+                  {
+                    toolName: toolCallStarted.toolName,
+                    toolCallId: toolCallStarted.toolCallId,
+                    toolCallIndex: toolCallStarted.toolCallIndex,
+                  }
+                ),
+              },
+            };
+          });
           break;
 
         case "tool_error":
@@ -409,6 +494,7 @@ export function useAgentMessageStream({
                 ...m.streaming,
                 agentState: "done",
                 inlineActivitySteps: steps,
+                pendingToolCalls: [],
               },
             };
           });
@@ -434,6 +520,7 @@ export function useAgentMessageStream({
                   streaming: {
                     ...m.streaming,
                     agentState: "done",
+                    pendingToolCalls: [],
                   },
                 }
               : m
@@ -464,6 +551,7 @@ export function useAgentMessageStream({
                 ...m.streaming,
                 agentState: "done",
                 inlineActivitySteps: steps,
+                pendingToolCalls: [],
               },
             };
           });
