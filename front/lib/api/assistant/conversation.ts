@@ -2643,7 +2643,10 @@ export async function updateAgentMessageWithFinalStatus(
             id: pendingMessages.map((m) => m.id),
             workspaceId: owner.id,
           },
-          // Skip validation — rows are already valid, we're only updating visibility.
+          // Skip validation: Sequelize bulk update constructs a dummy instance with only the
+          // updated fields, so the beforeValidate hook (which checks that exactly one of
+          // userMessageId/agentMessageId/ contentFragmentId is set) fails because all three are
+          // undefined. The rows are already valid, we're only updating visibility.
           validate: false,
           transaction: t,
         }
