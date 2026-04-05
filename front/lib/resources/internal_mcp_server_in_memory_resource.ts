@@ -20,7 +20,6 @@ import {
   getAvailabilityOfInternalMCPServerById,
   getInternalMCPServerMetadata,
   getInternalMCPServerNameAndWorkspaceId,
-  getInternalMCPServerSupersededByFeatureFlag,
   isAutoInternalMCPServerName,
   matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -321,10 +320,12 @@ export class InternalMCPServerInMemoryResource {
         continue;
       }
 
-      // Hide internal servers that are superseded by a remote server when the
-      // feature flag is enabled. Existing server views are not affected.
-      const supersededBy = getInternalMCPServerSupersededByFeatureFlag(name);
-      if (supersededBy && featureFlags.includes(supersededBy)) {
+      // Hide internal Notion server when the official Notion MCP is enabled.
+      // Existing server views are not affected.
+      if (
+        name === "notion" &&
+        featureFlags.includes("official_notion_mcp")
+      ) {
         continue;
       }
 
