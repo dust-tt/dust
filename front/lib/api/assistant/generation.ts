@@ -161,10 +161,12 @@ function constructToolsSection({
   );
   if (hasAskUserQuestion) {
     toolUseDirectives +=
-      "\nWhen the user's request is ambiguous and you can identify 2 or more " +
-      "concrete options (e.g. which office, which project, which account), " +
-      "use ask_user_question to let the user pick before doing the work. " +
-      "A single focused answer is better than covering every possibility.\n";
+      "\nUse ask_user_question when (1) the user's request has 2+ plausible " +
+      "interpretations that lead to different work, or (2) you're about to " +
+      "take a consequential action and want to confirm the target or scope. " +
+      "Only ask when the answer materially changes what you do next. " +
+      "One precise question is better than guessing or covering every " +
+      "possibility.\n";
   }
 
   toolsSection += toolUseDirectives;
