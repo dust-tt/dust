@@ -28,6 +28,7 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
+import { UserQuestionRequired } from "@app/components/assistant/conversation/UserQuestionRequired";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   CitationsContext,
@@ -326,6 +327,26 @@ export function AgentMessage({
             });
             break;
 
+          case "tool_ask_user_question":
+            enqueueBlockedAction({
+              messageId: sId,
+              blockedAction: {
+                status: "blocked_user_answer_required",
+                actionId: eventPayload.data.actionId,
+                question: eventPayload.data.question,
+                authorizationInfo: null,
+                configurationId: eventPayload.data.configurationId,
+                conversationId: eventPayload.data.conversationId,
+                created: eventPayload.data.created,
+                inputs: eventPayload.data.inputs,
+                messageId: eventPayload.data.messageId,
+                metadata: eventPayload.data.metadata,
+                stake: eventPayload.data.stake,
+                userId: eventPayload.data.userId,
+              },
+            });
+            break;
+
           case "agent_message_success":
           case "agent_message_gracefully_stopped":
           case "agent_generation_cancelled":
@@ -353,8 +374,6 @@ export function AgentMessage({
           case "tool_notification":
           case "tool_params":
           case "agent_context_pruned":
-          case "tool_ask_user_question":
-            // Do nothing
             break;
           default:
             assertNeverAndIgnore(eventPayload.data);
@@ -1196,6 +1215,17 @@ function AgentMessageContent({
                 messageId: blockedAction.messageId,
               })
             }
+          />
+        );
+
+      case "blocked_user_answer_required":
+        return (
+          <UserQuestionRequired
+            blockedAction={blockedAction}
+            triggeringUser={triggeringUser}
+            owner={owner}
+            conversationId={conversationId}
+            messageId={sId}
           />
         );
     }
