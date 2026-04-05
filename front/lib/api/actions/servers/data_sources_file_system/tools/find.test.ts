@@ -1,6 +1,7 @@
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { Ok } from "@app/types/shared/result";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -68,7 +69,18 @@ const FAKE_RENDERED_RESOURCE = {
   resultCount: 0,
 };
 
-const FAKE_DATA_SOURCES = [] as unknown as DataSourcesToolConfigurationType;
+const FAKE_DATA_SOURCES: DataSourcesToolConfigurationType = [
+  {
+    uri: "data_source_configuration://dust/w/ws/data_source_configurations/dsv",
+    mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+  },
+];
+
+const FAKE_AUTHENTICATOR = new Authenticator({
+  role: "none",
+  groupModelIds: [],
+  authMethod: "internal",
+});
 
 describe("data_sources_file_system.find", () => {
   beforeEach(() => {
@@ -88,7 +100,7 @@ describe("data_sources_file_system.find", () => {
         query: "product ideas feedback",
         dataSources: FAKE_DATA_SOURCES,
       },
-      { auth: {} as Authenticator }
+      { auth: FAKE_AUTHENTICATOR }
     );
 
     expect(result.isOk()).toBe(true);
@@ -113,7 +125,7 @@ describe("data_sources_file_system.find", () => {
         limit: 7,
         nextPageCursor: "next-page",
       },
-      { auth: {} as Authenticator }
+      { auth: FAKE_AUTHENTICATOR }
     );
 
     expect(result.isOk()).toBe(true);
