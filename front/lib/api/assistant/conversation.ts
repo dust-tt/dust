@@ -2,6 +2,7 @@
 
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
+import { isSidekickConversation } from "@app/lib/api/actions/servers/helpers";
 import {
   getAgentConfiguration,
   getAgentConfigurations,
@@ -603,7 +604,11 @@ export async function postUserMessage(
   }
 
   // Check plan and rate limit.
-  const limitResult = await checkMessagesLimit(auth, { mentions, context });
+  const limitResult = await checkMessagesLimit(auth, {
+    mentions,
+    context,
+    conversation,
+  });
   if (limitResult.isErr()) {
     return limitResult;
   }
@@ -1712,6 +1717,7 @@ export async function retryAgentMessage(
   const limitResult = await checkMessagesLimit(auth, {
     mentions,
     context: parentUserMessage.context,
+    conversation,
   });
   if (limitResult.isErr()) {
     return limitResult;
@@ -2240,9 +2246,11 @@ async function checkMessagesLimit(
   {
     mentions,
     context,
+    conversation,
   }: {
     mentions: MentionType[];
     context: UserMessageContext;
+    conversation: ConversationType;
   }
 ): Promise<Result<void, APIErrorWithStatusCode>> {
   // Skip rate limiting for system-initiated messages (e.g. reinforced agent workflows).
@@ -2253,6 +2261,7 @@ async function checkMessagesLimit(
   const messageLimit = await isMessagesLimitReached(auth, {
     mentions,
     context,
+    conversation,
   });
   if (messageLimit.isLimitReached && messageLimit.limitType) {
     return new Err({
@@ -2401,9 +2410,11 @@ async function isMessagesLimitReached(
   {
     mentions,
     context,
+    conversation,
   }: {
     mentions: MentionType[];
     context: UserMessageContext;
+    conversation: ConversationType;
   }
 ): Promise<MessageLimit> {
   const owner = auth.getNonNullableWorkspace();
@@ -2459,6 +2470,18 @@ async function isMessagesLimitReached(
     return {
       isLimitReached: true,
       limitType: "rate_limit_error",
+    };
+  }
+
+  // We don't want to count the first sidekick message towards the user's limit,
+  // since they have not yet made an explicit choice to use sidekick at that point.
+  if (
+    conversation.content.length === 0 &&
+    isSidekickConversation(conversation.metadata)
+  ) {
+    return {
+      isLimitReached: false,
+      limitType: null,
     };
   }
 
