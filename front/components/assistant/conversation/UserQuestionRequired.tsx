@@ -97,7 +97,7 @@ export function UserQuestionRequired({
 
   if (isSubmitting) {
     return (
-      <div className="s-flex s-justify-center s-py-4">
+      <div className="flex justify-center py-4">
         <Spinner size="sm" />
       </div>
     );
@@ -105,39 +105,39 @@ export function UserQuestionRequired({
 
   if (!isTriggeredByCurrentUser) {
     return (
-      <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         Waiting for{" "}
-        <span className="s-font-semibold">{triggeringUser?.fullName}</span> to
+        <span className="font-semibold">{triggeringUser?.fullName}</span> to
         answer.
       </div>
     );
   }
 
   return (
-    <Card variant="secondary" className="s-flex s-flex-col s-gap-3 s-p-4">
-      <div className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+    <Card variant="secondary" className="flex flex-col gap-3 p-4">
+      <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
         {question.question}
       </div>
       {question.options.map((option, index) => (
         <Card
           key={index}
           variant="secondary"
-          className="s-cursor-pointer s-p-3"
+          className="cursor-pointer p-3"
           onClick={() => handleOptionClick(index)}
         >
-          <div className="s-flex s-items-start s-gap-2">
+          <div className="flex items-start gap-2">
             {question.multiSelect && (
               <Checkbox
                 checked={selectedOptions.includes(index)}
                 onCheckedChange={() => handleOptionClick(index)}
               />
             )}
-            <div className="s-flex s-flex-col">
-              <span className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-foreground dark:text-foreground-night">
                 {option.label}
               </span>
               {option.description && (
-                <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                   {option.description}
                 </span>
               )}
@@ -158,11 +158,11 @@ export function UserQuestionRequired({
         name="custom-response"
       />
       {errorMessage && (
-        <div className="s-text-sm s-font-medium s-text-warning-800 dark:s-text-warning-800-night">
+        <div className="text-sm font-medium text-warning-800 dark:text-warning-800-night">
           {errorMessage}
         </div>
       )}
-      <div className="s-flex s-gap-2">
+      <div className="flex gap-2">
         {question.multiSelect && (
           <Button
             label="Submit"
@@ -172,12 +172,7 @@ export function UserQuestionRequired({
             onClick={handleMultiSelectSubmit}
           />
         )}
-        <Button
-          label="Skip"
-          variant="outline"
-          size="xs"
-          onClick={handleSkip}
-        />
+        <Button label="Skip" variant="outline" size="xs" onClick={handleSkip} />
       </div>
     </Card>
   );
