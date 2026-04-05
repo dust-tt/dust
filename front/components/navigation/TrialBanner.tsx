@@ -1,4 +1,7 @@
-import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
+import {
+  isEntreprisePlanPrefix,
+  isFreeTrialPhonePlan,
+} from "@app/lib/plans/plan_codes";
 import type { SubscriptionType } from "@app/types/plan";
 import { Button, cn, LinkWrapper } from "@dust-tt/sparkle";
 import { useMemo, useRef } from "react";
@@ -21,6 +24,7 @@ export function SubscriptionEndBanner({
 }: SubscriptionEndBannerProps) {
   const endDate = subscription.endDate;
   const isTrial = isFreeTrialPhonePlan(subscription.plan.code);
+  const isEnterprise = isEntreprisePlanPrefix(subscription.plan.code);
 
   // Capture initial timestamp in a ref to avoid re-computation on re-renders.
   // This is intentionally not reactive - the banner state is stable for the session.
@@ -51,14 +55,26 @@ export function SubscriptionEndBanner({
   const { hasEnded, daysRemaining } = bannerState;
 
   let title: string;
+  let description: string;
+
   if (isTrial) {
     title = hasEnded
       ? "Heads up, your trial has ended"
       : `Heads up, your trial ends in ${daysRemaining} day${daysRemaining !== 1 ? "s" : ""}`;
+    description =
+      "When your trial wraps up, your connections and team member access will be removed. Subscribe now to keep everything.";
+  } else if (isEnterprise) {
+    title = hasEnded
+      ? "Your current subscription period has ended"
+      : `Your current subscription period ends in ${daysRemaining} day${daysRemaining !== 1 ? "s" : ""}`;
+    description =
+      "Please reach out to your account manager to ensure continuity.";
   } else {
     title = hasEnded
       ? "Heads up, your subscription has ended"
       : `Heads up, your subscription ends in ${daysRemaining} day${daysRemaining !== 1 ? "s" : ""}`;
+    description =
+      "When your subscription wraps up, your connections and team member access will be removed. Subscribe now to keep everything.";
   }
 
   return (
@@ -78,12 +94,10 @@ export function SubscriptionEndBanner({
           {title}
         </span>
         <span className="text-sky-800 dark:text-sky-800-night">
-          When your {isTrial ? "trial" : "subscription"} wraps up, your
-          connections and team member access will be removed. Subscribe now to
-          keep everything.
+          {description}
         </span>
       </div>
-      {isAdmin && (
+      {isAdmin && !isEnterprise && (
         <LinkWrapper
           href={`/w/${owner.sId}/subscription`}
           className="shrink-0 no-underline"
