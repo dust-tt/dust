@@ -2704,11 +2704,6 @@ export async function updateAgentMessageWithFinalStatus(
         { conversationId: conversation.sId }
       );
     }
-
-    await triggerConversationUnreadNotifications(auth, {
-      conversationId: conversation.sId,
-      messageId: promotedUserMessages[promotedUserMessages.length - 1].sId,
-    });
   }
 
   if (newAgentMessage) {
