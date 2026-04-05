@@ -30,10 +30,15 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
         selections.push(`Other: ${answer.customResponse}`);
       }
 
+      const answerText =
+        selections.length > 0
+          ? selections.join(", ")
+          : "User declined to answer. Proceed with your best judgment.";
+
       return new Ok([
         {
           type: "text",
-          text: `User answered: ${typedQuestion.question}: ${selections.join(", ")}`,
+          text: `${typedQuestion.question}: ${answerText}`,
         },
       ]);
     }
