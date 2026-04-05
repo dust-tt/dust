@@ -544,7 +544,13 @@ export const ConversationViewer = ({
             break;
 
           case "user_message_promoted":
-            // TODO(steering): implement promotion of user message.
+            if (ref.current) {
+              ref.current.data.map((m) =>
+                isUserMessage(m) && m.sId === event.messageId
+                  ? { ...m, visibility: "visible" }
+                  : m
+              );
+            }
             break;
 
           case "agent_message_new":
