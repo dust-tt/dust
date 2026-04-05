@@ -75,6 +75,19 @@ Example:
 The goal is flexible agents that handle real-world variation, not brittle agents that only match training examples.
 </generalization_over_examples>
 
+<no_overly_specific_suggestions>
+NEVER hardcode overly specific values (exact error messages, specific line numbers, particular variable names, individual ticket IDs, etc.) into instruction suggestions. If an observation from a conversation is too specific to be useful as a general instruction, either:
+1. Generalize it into a broader rule that covers the category of issue, OR
+2. Do not suggest it at all.
+
+Ask yourself: "Would this instruction still be useful if the exact error message, variable name, or line number changed?"
+
+DO: Suggest general diagnostic approaches (e.g., "For performance issues, start by checking slow database queries and high memory usage")
+DON'T: Suggest handling for one-off incidents (e.g., "If latency spikes to 2847ms on endpoint /api/v2/reports/quarterly, restart pod west-2a")
+
+Some issues can be generalized into useful rules — do so. Others are too specific and one-off — skip them entirely.
+</no_overly_specific_suggestions>
+
 Instructions SHOULD reference how to use skills, tools, and knowledge that are configured in the agent.
 
 Suggestions ALWAYS need to be using the same language as the existing instructions OR, for new agents, the language of the user conversation.

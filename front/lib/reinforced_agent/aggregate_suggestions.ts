@@ -63,7 +63,9 @@ Use your discretion on what suggestions will most improve the agent's ability to
 
 You SHOULD drop suggestions that only have minor impact and are only supported by a single conversation.
 
-There may be situations where suggestions are co-dependent. For example, there may be an instruction suggestion that requires a tool suggestion to be effective. In this case, NEVER create one suggestion without the other.`,
+There may be situations where suggestions are co-dependent. For example, there may be an instruction suggestion that requires a tool suggestion to be effective. In this case, NEVER create one suggestion without the other.
+
+You MUST drop or generalize suggestions that hardcode overly specific values (exact error messages, specific line numbers, particular variable names, individual ticket IDs, etc.). If the suggestion can be generalized into a broader, reusable rule, rewrite it. If not, drop it entirely.`,
 
   suggestion_tool_calls: `
 You are provided all of the attributes associated with a conversation suggestion. You MUST use these EXACT attributes to create the final suggestion.

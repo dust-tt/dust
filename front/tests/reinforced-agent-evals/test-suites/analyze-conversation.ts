@@ -414,5 +414,109 @@ Score 1 if the suggestion targets the correct block but is too vague or generic.
 Score 2 if the suggestion correctly targets the tools block and addresses the tool usage order but lacks specificity.
 Score 3 if the suggestion targets the tools block with clear, specific instructions about using search-company first to get the ID, then get-owner with the ID.`,
     },
+    {
+      scenarioId: "no-overly-specific-error-message-in-suggestion",
+      type: "analysis",
+      agentConfig: {
+        name: "Incident Analysis Bot",
+        description:
+          "Helps the on-call team investigate production incidents using Datadog, Jira, and GitHub",
+        instructionsHtml: `<div data-type="instructions-root" data-block-id="instructions-root">
+        <div data-block-id="role-block" data-instruction-type="role" data-collapsed="false" data-type="instruction-block">
+          <p data-block-id="role-p">You are an incident analysis assistant. Help engineers investigate production incidents by correlating logs from Datadog, tickets from Jira, and code changes from GitHub.</p>
+        </div>
+        <div data-block-id="workflow-block" data-instruction-type="guidelines" data-collapsed="false" data-type="instruction-block">
+          <p data-block-id="workflow-p">When investigating an incident: 1) Search Datadog for relevant logs and metrics, 2) Check Jira for related tickets, 3) Look at recent GitHub commits that may have caused the issue.</p>
+        </div>
+        </div>`,
+        tools: [
+          { name: "Datadog", sId: "mcp_datadog" },
+          { name: "JIRA", sId: "mcp_jira" },
+          { name: "GitHub", sId: "mcp_github" },
+        ],
+      },
+      conversation: [
+        {
+          role: "user",
+          content:
+            "We're getting a lot of errors in production. Can you check Datadog for the error 'TypeError: Cannot read properties of undefined (reading subresult) at ProcessingPipeline.transform (pipeline.js:453:22)'?",
+        },
+        {
+          role: "agent",
+          content: "I'll search Datadog for that error message.",
+          actions: [
+            {
+              functionCallName: "datadog-search-logs",
+              status: "succeeded",
+              params: {
+                query:
+                  "TypeError: Cannot read properties of undefined (reading subresult) at ProcessingPipeline.transform",
+              },
+              output:
+                '{"logs": [{"timestamp": "2025-01-15T10:23:00Z", "message": "TypeError: Cannot read properties of undefined (reading \'subresult\') at ProcessingPipeline.transform (pipeline.js:453:22)", "service": "data-processor", "count": 847}]}',
+            },
+          ],
+        },
+        {
+          role: "agent",
+          content:
+            "I found the error in Datadog. It's occurring in the data-processor service with 847 occurrences. The error is a TypeError where it tries to read 'subresult' from an undefined object in the ProcessingPipeline at line 453. Let me check Jira for related tickets.",
+          actions: [
+            {
+              functionCallName: "jira-search",
+              status: "succeeded",
+              params: { query: "subresult undefined pipeline" },
+              output: '{"issues": []}',
+            },
+          ],
+        },
+        {
+          role: "agent",
+          content:
+            "No related Jira tickets found. Let me check recent GitHub commits to the pipeline module.",
+          actions: [
+            {
+              functionCallName: "github-search-commits",
+              status: "succeeded",
+              params: { query: "pipeline.js ProcessingPipeline" },
+              output:
+                '{"commits": [{"sha": "abc123", "message": "refactor: restructure pipeline output format", "date": "2025-01-14T18:00:00Z", "author": "dev@company.com"}]}',
+            },
+          ],
+        },
+        {
+          role: "agent",
+          content:
+            "I found a recent commit from yesterday that restructured the pipeline output format. This likely changed the shape of the result object, causing 'subresult' to be undefined. The commit 'refactor: restructure pipeline output format' by dev@company.com is the probable cause.",
+          feedback: {
+            direction: "down",
+            comment:
+              "The agent had trouble finding this specific error. It should know how to search for this kind of error in Datadog.",
+          },
+        },
+      ],
+      workspaceContext: WORKSPACE_CONTEXT,
+      expectedToolCalls: [promptSuggestion()],
+      judgeCriteria: `The reinforced agent MUST call suggest_prompt_edits, but the suggestion MUST NOT hardcode
+the specific error message "Cannot read properties of undefined (reading subresult)" or the specific
+file/line "pipeline.js:453". Instead, the suggestion should provide generic guidance about how to
+search for and investigate error messages in Datadog effectively.
+
+Acceptable suggestions include:
+- General guidance on how to search Datadog logs for error patterns
+- Tips for correlating errors across Datadog, Jira, and GitHub
+- A systematic approach for investigating TypeError/null reference errors in general
+
+Unacceptable suggestions include:
+- Hardcoding the specific error message "Cannot read properties of undefined (reading subresult)"
+- Referencing the specific file "pipeline.js" or line number "453"
+- Instructions that only work for this one specific error
+
+Score 0 if no suggest_prompt_edits call is made.
+Score 0 if the suggestion hardcodes the specific error message, file name, or line number from this conversation.
+Score 1 if the suggestion is made but is too vague to be useful.
+Score 2 if the suggestion provides reasonable generic guidance but could be more actionable.
+Score 3 if the suggestion provides clear, generic, actionable guidance for investigating errors using Datadog without hardcoding specifics from this conversation.`,
+    },
   ],
 };

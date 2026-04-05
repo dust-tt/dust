@@ -52,6 +52,7 @@ Subsequently, an aggregation workflow will use this analysis to determine which 
 
 Step 5: Make suggestions. You MUST refer to <instruction_suggestion_formatting> for instruction suggestions.
 ONLY make suggestions that will effect the agent behavior. NEVER suggest cosmetic-only fixes.
+Ensure suggestions are generic and reusable, not tied to specific values from this conversation. See <no_overly_specific_suggestions> and <generalization_over_examples> in <instructions_guidance>.
 `,
 
   conversation_analysis: `ALWAYS inspect the full conversation, which is a chronological timeline of messages. Each message has an index, sId, sender (user or
