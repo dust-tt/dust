@@ -41,6 +41,7 @@ import {
   LinkIcon,
   MoreIcon,
   PencilSquareIcon,
+  Spinner,
   Toolbar,
   Tooltip,
   TrashIcon,
@@ -350,15 +351,18 @@ export function UserMessage({
                 type="user"
                 className={cn(shouldShowBiggerUserMessage && "@sm:min-w-100")}
               >
-                {isDeleted ? (
-                  <DeletedMessage />
-                ) : (
-                  <UserMessageMarkdown
-                    owner={owner}
-                    message={message}
-                    isLastMessage={isLastMessage}
-                  />
-                )}
+                <div className="flex items-center gap-2">
+                  {message.visibility === "pending" && <Spinner size="xs" />}
+                  {isDeleted ? (
+                    <DeletedMessage />
+                  ) : (
+                    <UserMessageMarkdown
+                      owner={owner}
+                      message={message}
+                      isLastMessage={isLastMessage}
+                    />
+                  )}
+                </div>
               </ConversationMessageContent>
               {showBottomActionMenu && (
                 <ActionMenu
