@@ -2607,16 +2607,15 @@ export async function updateAgentMessageWithFinalStatus(
         }
       );
 
-      // Promote *all* pending messages when the agent loop ends. If a pending
-      // message exists it will be promoted and will trigger the ending
-      // agentMessage. The `enableSteering` invariants of postUserMessage ensure
-      // that we have only one running agentic loop so we can just recreate a
-      // new agentMessage for the same agent as the one that finished.
+      // Promote *all* pending messages when the agent loop ends. If a pending message exists it
+      // will be promoted and will trigger the ending agentMessage. The `enableSteering` invariants
+      // of postUserMessage ensure that we have only one running agentic loop so we can just
+      // recreate a new agentMessage for the same agent as the one that finished.
       //
-      // There is an edge case here for API interactions which are not subject
-      // to the steering invariant in which case we could have more than one
-      // running agent message and could pick the wrong agent compared to user
-      // attempt. But should ~never happen so the simplicity is worth it.
+      // There is an edge case here for API interactions which are not subject to the steering
+      // invariant in which case we could have more than one running agent message and could pick
+      // the wrong agent compared to user attempt. But should ~never happen so the simplicity is
+      // worth it.
       const pendingMessages = await MessageModel.findAll({
         where: {
           conversationId: conversation.id,
@@ -2705,10 +2704,29 @@ export async function updateAgentMessageWithFinalStatus(
         { conversationId: conversation.sId }
       );
     }
+
+    await triggerConversationUnreadNotifications(auth, {
+      conversationId: conversation.sId,
+      messageId: promotedUserMessages[promotedUserMessages.length - 1].sId,
+    });
   }
 
   if (newAgentMessage) {
     await publishAgentMessagesEvents(conversation, [newAgentMessage]);
+
+    void emitAuditLogEvent({
+      auth,
+      action: "agent.executed",
+      targets: [
+        buildAuditLogTarget("workspace", owner),
+        buildAuditLogTarget("agent", newAgentMessage.configuration),
+      ],
+      metadata: {
+        conversationId: conversation.sId,
+        agentName: newAgentMessage.configuration.name,
+        origin: "steering",
+      },
+    });
 
     await runAgentLoopWorkflow({
       auth,
