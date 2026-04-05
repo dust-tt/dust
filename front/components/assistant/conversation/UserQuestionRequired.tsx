@@ -115,7 +115,7 @@ export function UserQuestionRequired({
 
   return (
     <Card variant="secondary" className="flex flex-col gap-3 p-4">
-      <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+      <div className="text-sm text-foreground dark:text-foreground-night">
         {question.question}
       </div>
       {question.options.map((option, index) => (
