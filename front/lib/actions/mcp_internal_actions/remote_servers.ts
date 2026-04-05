@@ -1182,6 +1182,112 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10016,
+    name: "Notion",
+    description:
+      "Notion tools for searching, creating, and managing pages, databases, and comments in your Notion workspace.",
+    url: "https://mcp.notion.com/mcp",
+    icon: "NotionLogo",
+    documentationUrl:
+      "https://developers.notion.com/guides/mcp/get-started-with-mcp",
+    authMethod: "oauth-dynamic",
+    featureFlag: "official_notion_mcp",
+    toolStakes: {
+      "notion-search": "never_ask",
+      "notion-fetch": "never_ask",
+      "notion-get-comments": "never_ask",
+      "notion-get-teams": "never_ask",
+      "notion-get-users": "never_ask",
+      "notion-get-user": "never_ask",
+      "notion-get-self": "never_ask",
+      "notion-query-data-sources": "never_ask",
+      "notion-query-database-view": "never_ask",
+      "notion-create-pages": "low",
+      "notion-update-page": "low",
+      "notion-move-pages": "low",
+      "notion-duplicate-page": "low",
+      "notion-create-database": "low",
+      "notion-update-data-source": "low",
+      "notion-create-view": "low",
+      "notion-update-view": "low",
+      "notion-create-comment": "low",
+    },
+    toolDisplayLabels: {
+      "notion-search": {
+        running: "Searching in Notion",
+        done: "Searched in Notion",
+      },
+      "notion-fetch": {
+        running: "Fetching from Notion",
+        done: "Fetched from Notion",
+      },
+      "notion-create-pages": {
+        running: "Creating pages in Notion",
+        done: "Created pages in Notion",
+      },
+      "notion-update-page": {
+        running: "Updating page in Notion",
+        done: "Updated page in Notion",
+      },
+      "notion-move-pages": {
+        running: "Moving pages in Notion",
+        done: "Moved pages in Notion",
+      },
+      "notion-duplicate-page": {
+        running: "Duplicating page in Notion",
+        done: "Duplicated page in Notion",
+      },
+      "notion-create-database": {
+        running: "Creating database in Notion",
+        done: "Created database in Notion",
+      },
+      "notion-update-data-source": {
+        running: "Updating data source in Notion",
+        done: "Updated data source in Notion",
+      },
+      "notion-create-view": {
+        running: "Creating view in Notion",
+        done: "Created view in Notion",
+      },
+      "notion-update-view": {
+        running: "Updating view in Notion",
+        done: "Updated view in Notion",
+      },
+      "notion-query-data-sources": {
+        running: "Querying data sources in Notion",
+        done: "Queried data sources in Notion",
+      },
+      "notion-query-database-view": {
+        running: "Querying database view in Notion",
+        done: "Queried database view in Notion",
+      },
+      "notion-create-comment": {
+        running: "Creating comment in Notion",
+        done: "Created comment in Notion",
+      },
+      "notion-get-comments": {
+        running: "Loading comments from Notion",
+        done: "Loaded comments from Notion",
+      },
+      "notion-get-teams": {
+        running: "Loading teams from Notion",
+        done: "Loaded teams from Notion",
+      },
+      "notion-get-users": {
+        running: "Loading users from Notion",
+        done: "Loaded users from Notion",
+      },
+      "notion-get-user": {
+        running: "Loading user from Notion",
+        done: "Loaded user from Notion",
+      },
+      "notion-get-self": {
+        running: "Loading bot info from Notion",
+        done: "Loaded bot info from Notion",
+      },
+    },
+  },
 ];
 
 export const isDefaultRemoteMcpServerURL = (url: string | undefined) => {

@@ -275,6 +275,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Gong MCP tool for sales conversation analytics",
     stage: "dust_only",
   },
+  official_notion_mcp: {
+    description:
+      "Use the official Notion MCP server instead of the internal one",
+    stage: "dust_only",
+  },
   use_dust_keys: {
     description:
       "Force BYOK workspaces to use Dust-managed keys instead of customer-provided keys",
