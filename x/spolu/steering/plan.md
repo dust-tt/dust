@@ -120,7 +120,7 @@ the terminal event — this adds the promotion logic:
   publish `AgentMessageNewEvent`, launch new agent loop.
 - The `"succeeded"` path acts as safety net (graceful stop signal lost or arrived too late).
 
-### - [ ] PR 3.5 — Frontend: pending message display with spinner
+### - [x] PR 3.5 — Frontend: pending message display with spinner
 
 - In user message rendering component, when `visibility === "pending"`, render the message
   with a muted/greyed-out style and a spinner indicator.
