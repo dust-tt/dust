@@ -23,6 +23,7 @@ export function WorkspaceInfoTable({
   extensionConfig,
   dataRetention,
   workosEnvironmentId,
+  hasDummyFeature,
 }: {
   owner: WorkspaceType;
   metronomeCustomerId: string | null;
@@ -31,6 +32,7 @@ export function WorkspaceInfoTable({
   extensionConfig: ExtensionConfigurationType | null;
   dataRetention: DataRetentionConfig | undefined;
   workosEnvironmentId: string;
+  hasDummyFeature: boolean;
 }) {
   const { dsyncStatus } = usePokeWorkOSDSyncStatus({ owner });
 
@@ -216,6 +218,12 @@ export function WorkspaceInfoTable({
                   </PokeTableCell>
                 </PokeTableRow>
               </>
+            )}
+            {hasDummyFeature && (
+              <PokeTableRow>
+                <PokeTableCell>Dummy feature</PokeTableCell>
+                <PokeTableCell>Enabled</PokeTableCell>
+              </PokeTableRow>
             )}
           </PokeTableBody>
         </PokeTable>

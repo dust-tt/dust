@@ -127,6 +127,7 @@ export function WorkspacePage() {
 
   const {
     activeSubscription,
+    hasDummyFeature,
     metronomeCustomerId,
     stripeSubscription,
     subscriptions,
@@ -212,6 +213,7 @@ export function WorkspacePage() {
                   extensionConfig={extensionConfig}
                   dataRetention={dataRetention}
                   workosEnvironmentId={workosEnvironmentId}
+                  hasDummyFeature={hasDummyFeature}
                 />
               </TabsContent>
               <TabsContent value="subscriptions">

@@ -281,6 +281,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     // Not really on_demand but we want to be able to enable it for customers
     stage: "on_demand",
   },
+  dummy_feature_for_flag_testing: {
+    description: "Dummy feature flag used for testing feature flag behavior",
+    stage: "dust_only",
+  },
   enable_steering: {
     description:
       "Enable steering: pending user messages + graceful stop of running agent loops",
