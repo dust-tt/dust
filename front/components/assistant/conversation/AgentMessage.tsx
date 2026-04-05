@@ -16,7 +16,6 @@ import { GoogleDriveFileAuthorizationRequired } from "@app/components/assistant/
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
 import { MCPToolValidationRequired } from "@app/components/assistant/conversation/MCPToolValidationRequired";
-import { UserQuestionRequired } from "@app/components/assistant/conversation/UserQuestionRequired";
 import type {
   AgentMessageStateWithControlEvent,
   MessageTemporaryState,
@@ -29,6 +28,7 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
+import { UserQuestionRequired } from "@app/components/assistant/conversation/UserQuestionRequired";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   CitationsContext,
