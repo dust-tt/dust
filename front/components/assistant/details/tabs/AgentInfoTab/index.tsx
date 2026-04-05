@@ -1,9 +1,9 @@
 import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection";
 import { AssistantSkillsToolsSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantSkillsToolsSection";
-import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { preprocessMarkdownForEditor } from "@app/lib/editor/preprocessMarkdown";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";

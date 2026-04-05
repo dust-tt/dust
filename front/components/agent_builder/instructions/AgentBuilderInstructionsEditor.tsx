@@ -19,15 +19,13 @@ import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
-import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
-import {
-  cleanupPastedHTML,
-  stripHtmlAttributes,
-} from "@app/components/editor/input_bar/cleanupPastedHTML";
+import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
-import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
+import { ListItemExtension } from "@app/lib/editor/listItemExtension";
+import { preprocessMarkdownForEditor } from "@app/lib/editor/preprocessMarkdown";
+import { stripHtmlAttributes } from "@app/lib/editor/stripHtmlAttributes";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { ContainerWithTopBar, cn, markdownStyles } from "@dust-tt/sparkle";
 import type { Editor as CoreEditor, Extensions } from "@tiptap/core";

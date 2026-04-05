@@ -1,4 +1,4 @@
-import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
+import { preprocessMarkdownForEditor } from "@app/lib/editor/preprocessMarkdown";
 import type { JSONContent } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
 import type { Change } from "diff";

@@ -9,10 +9,10 @@ import {
   useSidekickHighlight,
 } from "@app/components/agent_builder/sidekick/SidekickHighlightContext";
 import { getSuggestionPosition } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
-import { stripHtmlAttributes } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { stripHtmlAttributes } from "@app/lib/editor/stripHtmlAttributes";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import {
   useAgentSuggestions,

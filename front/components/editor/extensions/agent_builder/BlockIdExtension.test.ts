@@ -1,6 +1,6 @@
 import { BlockIdExtension } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
-import { stripHtmlAttributes } from "@app/components/editor/input_bar/cleanupPastedHTML";
+import { stripHtmlAttributes } from "@app/lib/editor/stripHtmlAttributes";
 import type { Editor } from "@tiptap/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 

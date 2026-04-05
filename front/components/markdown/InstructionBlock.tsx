@@ -1,4 +1,4 @@
-import { TAG_NAME_PATTERN } from "@app/components/editor/extensions/agent_builder/instructionBlockUtils";
+import { TAG_NAME_PATTERN } from "@app/lib/editor/instructionBlockUtils";
 import { ChevronDownIcon, Chip, cn } from "@dust-tt/sparkle";
 import type React from "react";
 import { visit } from "unist-util-visit";
