@@ -3362,6 +3362,7 @@ export type GetMCPServerViewsQueryType = z.infer<
 export const CallMCPToolRequestBodySchema = z.object({
   toolName: z.string(),
   arguments: z.record(z.unknown()).optional(),
+  actionId: z.string().optional(),
 });
 
 export type CallMCPToolRequestBodyType = z.infer<

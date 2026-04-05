@@ -4,7 +4,11 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-export type SandboxStatus = "running" | "sleeping" | "deleted";
+export type SandboxStatus =
+  | "running"
+  | "sleeping"
+  | "deleted"
+  | "pending_approval";
 
 export class SandboxModel extends WorkspaceAwareModel<SandboxModel> {
   declare createdAt: CreationOptional<Date>;
