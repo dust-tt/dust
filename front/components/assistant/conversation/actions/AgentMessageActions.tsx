@@ -7,12 +7,12 @@ import type {
   PendingToolCall,
 } from "@app/components/assistant/conversation/types";
 import { GENERATE_IMAGE_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getToolCallDisplayLabel } from "@app/lib/api/assistant/tool_call_labels";
 import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
 } from "@app/types/assistant/conversation";
 import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
-import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   AnimatedText,
@@ -139,9 +139,9 @@ export function AgentMessageActions({
                   key={getPendingToolCallKey(pendingToolCall, index)}
                   className="text-sm text-muted-foreground dark:text-muted-foreground-night"
                 >
-                  Preparing to call{" "}
+                  Preparing to{" "}
                   <span className="font-medium text-foreground dark:text-foreground-night">
-                    {asDisplayName(pendingToolCall.toolName)}
+                    {getToolCallDisplayLabel(pendingToolCall.toolName)}
                   </span>
                   ...
                 </span>
