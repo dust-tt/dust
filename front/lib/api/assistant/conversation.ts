@@ -19,7 +19,10 @@ import {
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
-import { batchRenderMessages } from "@app/lib/api/assistant/messages";
+import {
+  batchRenderMessages,
+  batchRenderUserMessagesWithoutMentions,
+} from "@app/lib/api/assistant/messages";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
@@ -35,6 +38,7 @@ import {
 } from "@app/lib/api/assistant/rate_limits";
 import {
   publishAgentMessagesEvents,
+  publishConversationEvent,
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
@@ -118,6 +122,7 @@ import type {
   RichMentionWithStatus,
   UserMessageContext,
   UserMessageType,
+  UserMessageTypeWithoutMentions,
 } from "@app/types/assistant/conversation";
 import {
   ConversationError,
@@ -2555,7 +2560,7 @@ export async function isConversationEventAllowedForAuth(
  * Finalize an agent message terminal status behind the conversation advisory lock.
  *
  * This ensures the status transition is serialized against other conversation operations (e.g.
- * postUserMessage's pending path in the future).
+ * postUserMessage's pending path).
  */
 export async function updateAgentMessageWithFinalStatus(
   auth: Authenticator,
@@ -2575,31 +2580,162 @@ export async function updateAgentMessageWithFinalStatus(
   status: "succeeded" | "cancelled" | "failed" | "gracefully_stopped";
 }> {
   const completedAt = new Date();
+  const owner = auth.getNonNullableWorkspace();
 
-  await withTransaction(async (t) => {
-    await getConversationRankVersionLock(auth, conversation, t);
+  const { promotedUserMessages, agentMessage: newAgentMessage } =
+    await withTransaction(async (t) => {
+      await getConversationRankVersionLock(auth, conversation, t);
 
-    await AgentMessageModel.update(
-      {
-        status,
-        completedAt,
-        ...(error
-          ? {
-              errorCode: error.code,
-              errorMessage: error.message,
-              errorMetadata: error.metadata,
-            }
-          : {}),
-      },
-      {
+      await AgentMessageModel.update(
+        {
+          status,
+          completedAt,
+          ...(error
+            ? {
+                errorCode: error.code,
+                errorMessage: error.message,
+                errorMetadata: error.metadata,
+              }
+            : {}),
+        },
+        {
+          where: {
+            id: agentMessage.agentMessageId,
+            workspaceId: owner.id,
+          },
+          transaction: t,
+        }
+      );
+
+      // Promote *all* pending messages when the agent loop ends. If a pending message exists it
+      // will be promoted and will trigger the ending agentMessage. The `enableSteering` invariants
+      // of postUserMessage ensure that we have only one running agentic loop so we can just
+      // recreate a new agentMessage for the same agent as the one that finished.
+      //
+      // There is an edge case here for API interactions which are not subject to the steering
+      // invariant in which case we could have more than one running agent message and could pick
+      // the wrong agent compared to user attempt. But should ~never happen so the simplicity is
+      // worth it.
+      const pendingMessages = await MessageModel.findAll({
         where: {
-          id: agentMessage.agentMessageId,
-          workspaceId: auth.getNonNullableWorkspace().id,
+          conversationId: conversation.id,
+          workspaceId: owner.id,
+          visibility: "pending",
+        },
+        include: [
+          { model: UserMessageModel, as: "userMessage", required: false },
+        ],
+        order: [["rank", "ASC"]],
+        transaction: t,
+      });
+
+      if (pendingMessages.length === 0) {
+        return {
+          promotedUserMessages: [] as UserMessageTypeWithoutMentions[],
+          agentMessage: null as AgentMessageType | null,
+        };
+      }
+
+      await MessageModel.update(
+        { visibility: "visible" },
+        {
+          where: {
+            id: pendingMessages.map((m) => m.id),
+            workspaceId: owner.id,
+          },
+          // Skip validation: Sequelize bulk update constructs a dummy instance with only the
+          // updated fields, so the beforeValidate hook (which checks that exactly one of
+          // userMessageId/agentMessageId/ contentFragmentId is set) fails because all three are
+          // undefined. The rows are already valid, we're only updating visibility.
+          validate: false,
+          transaction: t,
+        }
+      );
+
+      const nextMessageRank =
+        ((await MessageModel.max<number | null, MessageModel>("rank", {
+          where: {
+            workspaceId: owner.id,
+            conversationId: conversation.id,
+            branchId: conversation.branchId
+              ? getResourceIdFromSId(conversation.branchId)
+              : null,
+          },
+          transaction: t,
+        })) ?? -1) + 1;
+
+      await ConversationResource.markAsUpdated(auth, { conversation, t });
+
+      // Render all promoted user messages.
+      const promotedUserMessages = await batchRenderUserMessagesWithoutMentions(
+        auth,
+        {
+          messages: pendingMessages,
+          transaction: t,
+        }
+      );
+
+      // Create a new agent message using the last promoted user message.
+      const { agentMessages } = await createAgentMessages(auth, {
+        conversation,
+        metadata: {
+          type: "create",
+          mentions: [{ configurationId: agentMessage.configuration.sId }],
+          agentConfigurations: [agentMessage.configuration],
+          skipToolsValidation: agentMessage.skipToolsValidation,
+          nextMessageRank,
+          userMessage: promotedUserMessages[promotedUserMessages.length - 1],
         },
         transaction: t,
-      }
-    );
-  });
+      });
 
-  return { completedTs: completedAt.getTime(), status };
+      return {
+        promotedUserMessages,
+        agentMessage: agentMessages[0] ?? null,
+      };
+    });
+
+  // Publish events and launch agent loop outside of the advisory lock.
+  if (promotedUserMessages.length > 0) {
+    for (const userMsg of promotedUserMessages) {
+      await publishConversationEvent(
+        {
+          type: "user_message_promoted",
+          created: Date.now(),
+          messageId: userMsg.sId,
+        },
+        { conversationId: conversation.sId }
+      );
+    }
+  }
+
+  if (newAgentMessage) {
+    await publishAgentMessagesEvents(conversation, [newAgentMessage]);
+
+    void emitAuditLogEvent({
+      auth,
+      action: "agent.executed",
+      targets: [
+        buildAuditLogTarget("workspace", owner),
+        buildAuditLogTarget("agent", newAgentMessage.configuration),
+      ],
+      metadata: {
+        conversationId: conversation.sId,
+        agentName: newAgentMessage.configuration.name,
+        origin: "steering",
+      },
+    });
+
+    await runAgentLoopWorkflow({
+      auth,
+      agentMessages: [newAgentMessage],
+      conversation,
+      userMessage: promotedUserMessages[promotedUserMessages.length - 1],
+    });
+  }
+
+  return {
+    completedTs: completedAt.getTime(),
+    status,
+  };
 }
