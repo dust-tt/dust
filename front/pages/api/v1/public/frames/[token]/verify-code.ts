@@ -1,4 +1,5 @@
 /** @ignoreswagger */
+import { getShareTokenRegionRedirectUrl } from "@app/lib/api/regions/lookup";
 import { createFrameSession } from "@app/lib/api/share/frame_session";
 import { validateFrameOtpChallenge } from "@app/lib/api/share/frame_sharing";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -62,6 +63,12 @@ async function handler(
 
   const result = await FileResource.fetchByShareToken(token);
   if (result.isErr()) {
+    const redirectUrl = await getShareTokenRegionRedirectUrl({ requestUrl: req.url ?? "", token });
+    if (redirectUrl) {
+      res.redirect(307, redirectUrl);
+      return;
+    }
+
     return apiError(req, res, {
       status_code: 404,
       api_error: {

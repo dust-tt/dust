@@ -1,13 +1,11 @@
-import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   getErrorFromResponse,
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import { isRegionRedirect } from "@app/lib/swr/workspaces";
 import type { GetShareFrameMetadataResponseBody } from "@app/pages/api/share/frame/[token]";
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
 export function useShareFrameMetadata({
@@ -18,11 +16,10 @@ export function useShareFrameMetadata({
   const { fetcher } = useFetcher();
   const shareMetadataFetcher: Fetcher<GetShareFrameMetadataResponseBody> =
     fetcher;
-  const regionContext = useRegionContext();
 
   const swrKey = shareToken ? `/api/share/frame/${shareToken}` : null;
 
-  const { data, error, isLoading, mutate } = useSWRWithDefaults(
+  const { data, error, isLoading } = useSWRWithDefaults(
     swrKey,
     shareMetadataFetcher,
     {
@@ -31,26 +28,10 @@ export function useShareFrameMetadata({
     }
   );
 
-  const isRegionRedirectResponse = error && isRegionRedirect(error.error);
-  const regionRedirect = isRegionRedirectResponse
-    ? error.error.redirect
-    : undefined;
-
-  // Handle region redirect.
-  useEffect(() => {
-    if (regionRedirect) {
-      regionContext.setRegionInfo({
-        name: regionRedirect.region,
-        url: regionRedirect.url,
-      });
-      void mutate();
-    }
-  }, [regionRedirect, mutate, regionContext]);
-
   return {
-    shareMetadata: isRegionRedirectResponse ? undefined : data,
-    isShareMetadataLoading: isLoading || !!isRegionRedirectResponse,
-    shareMetadataError: isRegionRedirectResponse ? undefined : error,
+    shareMetadata: data,
+    isShareMetadataLoading: isLoading,
+    shareMetadataError: error,
   };
 }
 

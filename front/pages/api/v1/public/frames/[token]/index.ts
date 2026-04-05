@@ -1,5 +1,6 @@
 import { getAuthForSharedEndpointWorkspaceMembersOnly } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import { getShareTokenRegionRedirectUrl } from "@app/lib/api/regions/lookup";
 import {
   FRAME_SESSION_COOKIE_NAME,
   getFrameSessionEmail,
@@ -10,7 +11,6 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
-import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isInteractiveContentType } from "@app/types/files";
@@ -49,14 +49,11 @@ async function handler(
 
   const result = await FileResource.fetchByShareToken(token);
   if (result.isErr()) {
-    logger.info(
-      {
-        token,
-        errorCode: result.error.code,
-        errorMessage: result.error.message,
-      },
-      "Public frame fetch failed"
-    );
+    const redirectUrl = await getShareTokenRegionRedirectUrl({ requestUrl: req.url ?? "", token });
+    if (redirectUrl) {
+      res.redirect(307, redirectUrl);
+      return;
+    }
 
     return apiError(req, res, {
       status_code: 404,
