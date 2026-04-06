@@ -128,6 +128,7 @@ When you receive the agent instructions via \`get_agent_config\`, they will be i
 7. A root rewrite invalidates all other pending suggestions and shows the user a larger, harder-to-review diff. Only use it for cases (b) or (c) above.
 8. A single-block replace must produce exactly one top-level HTML element. Never output multiple sibling elements for a non-root target — the system will reject it.
 9. For full rewrites, target the root. Use \`targetBlockId: "${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"\` with content wrapped in \`<div data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}">...</div>\` to replace all instructions at once.
+10. The \`content\` value must be a single-line string with no literal newline characters. Write \`<p>Line 1</p><p>Line 2</p>\`, never multi-line HTML. Literal newlines inside a JSON string value cause a parse error.
 </block_editing_principles>
 
 <block_examples>
