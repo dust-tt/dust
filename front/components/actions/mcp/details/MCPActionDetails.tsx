@@ -6,13 +6,13 @@ import {
   makeQueryTextForList,
 } from "@app/components/actions/mcp/details/input_rendering";
 import { MCPAgentManagementActionDetails } from "@app/components/actions/mcp/details/MCPAgentManagementActionDetails";
-import { MCPAskUserQuestionActionDetails } from "@app/components/actions/mcp/details/MCPAskUserQuestionActionDetails";
 import {
   MCPAgentMemoryEditActionDetails,
   MCPAgentMemoryEraseActionDetails,
   MCPAgentMemoryRecordActionDetails,
   MCPAgentMemoryRetrieveActionDetails,
 } from "@app/components/actions/mcp/details/MCPAgentMemoryActionDetails";
+import { MCPAskUserQuestionActionDetails } from "@app/components/actions/mcp/details/MCPAskUserQuestionActionDetails";
 import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPBrowseActionDetails";
 import { MCPConversationCatFileDetails } from "@app/components/actions/mcp/details/MCPConversationFilesActionDetails";
 import {

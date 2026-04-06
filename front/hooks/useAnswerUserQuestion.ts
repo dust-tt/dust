@@ -8,9 +8,7 @@ interface UseAnswerUserQuestionParams {
   owner: LightWorkspaceType;
 }
 
-export function useAnswerUserQuestion({
-  owner,
-}: UseAnswerUserQuestionParams) {
+export function useAnswerUserQuestion({ owner }: UseAnswerUserQuestionParams) {
   const { fetcher } = useFetcher();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

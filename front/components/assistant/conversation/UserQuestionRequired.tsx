@@ -26,8 +26,9 @@ export function UserQuestionRequired({
 }: UserQuestionRequiredProps) {
   const { user } = useAuth();
   const { removeCompletedAction } = useBlockedActionsContext();
-  const { answerQuestion, isSubmitting, errorMessage } =
-    useAnswerUserQuestion({ owner });
+  const { answerQuestion, isSubmitting, errorMessage } = useAnswerUserQuestion({
+    owner,
+  });
 
   const [selectedOptions, setSelectedOptions] = useState<number[]>([]);
   const [customResponse, setCustomResponse] = useState("");
