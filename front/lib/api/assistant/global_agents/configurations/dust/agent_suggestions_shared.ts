@@ -104,8 +104,15 @@ When you detect a conflict: flag it BEFORE suggesting.
   instructionSuggestionFormatting: `<block_aware_editing>
 The following information is for you to understand how to edit agent instructions. NEVER mention anything about these details or decisions in your response.
 
-Agent instructions are organized into a hierarchy of "blocks", logical containers that group related instructions.
-Blocks are the unit of user review: users accept or reject each suggestion independently, so block granularity defines how precisely they can review your edits.
+Agent instructions are organized as a hierarchy of blocks. You design this hierarchy
+so that future edits are precise: group related instructions under parent blocks,
+keep each leaf block to a single concern. A well-structured hierarchy means most
+changes target one block — a leaf to tweak wording, a parent to rework a concern,
+the root only for full rewrites.
+
+When you replace a block, you replace what's inside it — you cannot add siblings
+next to it. To add or remove blocks, target their parent.
+
 Each block has a unique \`data-block-id\` attribute, an 8-character random identifier (e.g., "7f3a2b1c").
 These IDs are persisted and stable across editing sessions.
 
@@ -115,20 +122,17 @@ When you receive the agent instructions via \`get_agent_config\`, they will be i
 \`\`\`
 
 <block_editing_principles>
-1. Think in blocks, not documents. Identify which block(s) your change affects before suggesting.
-2. Classify your edit before acting:
-   - (a) Modifying or expanding content within an existing concern → target that block directly
-   - (b) Adding a genuinely new independent concern → root rewrite to introduce a new block
-   - (c) Restructuring across multiple existing blocks → root rewrite
-   Never reach for a root rewrite if the change fits case (a).
-3. One block per suggestion. Users accept/reject each independently.
-4. One suggestion per block. Never send multiple suggestions targeting the same block ID.
-5. Copy block IDs exactly. They are random identifiers, never construct them yourself.
-6. Always include the HTML tag. Content must include the wrapping tag (e.g., \`<p>...</p>\`).
-7. A root rewrite invalidates all other pending suggestions and shows the user a larger, harder-to-review diff. Only use it for cases (b) or (c) above.
-8. A single-block replace must produce exactly one top-level HTML element. Never output multiple sibling elements for a non-root target — the system will reject it.
-9. For full rewrites, target the root. Use \`targetBlockId: "${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"\` with content wrapped in \`<div data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}">...</div>\` to replace all instructions at once.
-10. The \`content\` value must be a single-line string with no literal newline characters. Write \`<p>Line 1</p><p>Line 2</p>\`, never multi-line HTML. Literal newlines inside a JSON string value cause a parse error.
+1. Targeting a block means REPLACING its content. You cannot add siblings to it (the system will reject it).
+- If the change fits inside the existing block → target that block, return one HTML element.
+- If the change needs new sibling blocks → target the parent that contains them.
+  The parent might be an instruction block or the root (targetBlockId "${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}").
+  You should avoid re-writing the root unless you need to restructure the entire instructions.
+  For full rewrites, target the root. Use \`targetBlockId: "${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"\` with content wrapped in \`<div data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}">...</div>\` to replace all instructions at once.
+2. One block per suggestion. Users accept/reject each independently.
+3. One suggestion per block. Never send multiple suggestions targeting the same block ID.
+4. Copy block IDs exactly. They are random identifiers, never construct them yourself.
+5. Always include the HTML tag. Content must include the wrapping tag (e.g., \`<p>...</p>\`).
+6. The \`content\` value must be a single-line string with no literal newline characters. Write \`<p>Line 1</p><p>Line 2</p>\`, never multi-line HTML. Literal newlines inside a JSON string value cause a parse error.
 </block_editing_principles>
 
 <block_examples>
@@ -141,13 +145,19 @@ EXAMPLE 1: User says "change the output format to JSON"
 { "targetBlockId": "e5f6a7b8", "type": "replace", "content": "<p>Return results as JSON.</p>" }
 \`\`\`
 
-EXAMPLE 2: User says "add more detail to the role"
+EXAMPLE 2: User says "also mention the project_conversation tool"
 \`\`\`html
-<p data-block-id="a1b2c3d4">You analyze customer feedback.</p>
+<p data-block-id="a1b2c3d4">Use the "Dig in Logs" skill for Datadog searches.</p>
 \`\`\`
+WRONG — adds a sibling, system will reject:
 \`\`\`json
-{ "targetBlockId": "a1b2c3d4", "type": "replace", "content": "<p>You are an expert data analyst who analyzes customer feedback to identify trends, sentiment patterns, and actionable insights.</p>" }
+{ "targetBlockId": "a1b2c3d4", "type": "replace", "content": "<p>Use the \"Dig in Logs\" skill.</p><p>Use project_conversation to post results.</p>" }
 \`\`\`
+CORRECT — fold into the existing block:
+\`\`\`json
+{ "targetBlockId": "a1b2c3d4", "type": "replace", "content": "<p>Use the \"Dig in Logs\" skill for Datadog searches. To post results to a project, use the <code>project_conversation</code> tool.</p>" }
+\`\`\`
+Or, if truly a separate concern, target the parent to add a new sibling block.
 
 EXAMPLE 3: User says "make that a heading"
 \`\`\`html
@@ -182,10 +192,7 @@ When you create a new instruction suggestion, the system automatically marks exi
 This happens automatically. You do NOT need to call \`update_suggestions_state\` to mark suggestions as outdated.
 </suggestion_conflict_rules>
 </block_aware_editing>
-
-<newline_discipline>
-Be conservative with newlines. Only add them when they genuinely improve readability.
-</newline_discipline>`,
+`,
 
   skillsToolsGuidance: `
 - Tools = specific integrations (Jira, Gmail, Slack)

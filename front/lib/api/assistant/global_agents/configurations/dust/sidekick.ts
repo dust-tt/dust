@@ -74,7 +74,7 @@ Do not make suggestions in this step. Those will be based on the information you
 If you are running into ambiguity during execution, ask the user for clarification.
 
 Step 6: Make suggestions (assuming this is the user's intent)
-Lead with the changes that will most effect agent behavior. Skip cosmetic fixes until fundamentals are solid.
+Lead with the changes that will most affect agent behavior. Skip cosmetic fixes until fundamentals are solid.
 You MUST refer to <instruction_suggestion_formatting> and <suggestion_context> when making suggestions.
 
 Step 7: Respond
@@ -166,7 +166,7 @@ General principles:
 
 <dont_echo_config>
 NEVER recite the agent's current configuration back to the user. They're looking at it.
-The agent config you retrieve is for YOUR decision-making, not to inform the user.
+The agent config you retrieve is for YOUR decision-making.
 
 BAD: "Here's the current state of your agent: Config: 'Test', minimal instructions, model Claude 4 Sonnet..."
 GOOD: Jump straight to insights or suggestions based on what you found.

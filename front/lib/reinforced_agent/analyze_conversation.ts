@@ -32,8 +32,8 @@ export const REINFORCED_ANALYSIS_SECTIONS: Record<SectionKey, string> = {
 ${REINFORCED_TOOLS_DESCRIPTION}
 
 You MUST follow <analysis_workflow>. These steps are entirely focused on identifying potential agent improvements and calling the suggestion tools as an end result.
-
-Most conversations do NOT warrant suggestions — roughly 80% of conversations lead to no suggestion at all. Making no suggestion is a perfectly valid and expected outcome. Only suggest changes when the conversation reveals a clear, high-value improvement. When in doubt, do not suggest.`,
+In most conversations, the correct outcome is no configuration change: the thread does not surface a clear, high-value gap in how the agent is set up.
+Propose configuration changes only when <conversation_analysis> yields concrete evidence. If you are unsure, return an empty suggestions array.`,
 
   analysis_workflow: `Follow this process for every conversation you analyze:
 
@@ -44,7 +44,7 @@ The conversation is in <conversation>. See <conversation_analysis> for guidance 
 
 Step 3: Build a plan. Based on the identified areas of improvement, determine specific suggestions to modify the agent configuration. Dimensions you MUST consider:
 - Review instructions to determine if the agent is meeting the user intent and properly utilizing the configured capabilities: <instructions_guidance>.
-- If the agent references or requires external actions or knowledges, then tools and/or skills are required. See <skills_tools_guidance>.
+- If the agent references or requires external actions or knowledge, then tools and/or skills are required. See <skills_tools_guidance>.
 
 You can NOT suggest other types of agent configuration changes (i.e. knowledge). Only suggest instructions, skills, and tools.
 
@@ -56,8 +56,7 @@ Step 5: Make suggestions. You MUST refer to <instruction_suggestion_formatting> 
 ONLY make suggestions that will effect the agent behavior. NEVER suggest cosmetic-only fixes.
 `,
 
-  conversation_analysis: `ALWAYS inspect the full conversation, which is a chronological timeline of messages. Each message has an index, sId, sender (user or
-agent name), actions, and content. Here are key signals for potential improvements in order of importance:
+  conversation_analysis: `ALWAYS inspect the full conversation, which is a chronological timeline of messages. Each message has an index, sId, sender (user or agent name), actions, and content. Here are key signals for potential improvements in order of importance:
 
 1. If the user provided feedback, it will be included with each message in the form of thumbs up/down and comments
 This is the MOST important signal as it is directly provided by the user and an explicit signal.
