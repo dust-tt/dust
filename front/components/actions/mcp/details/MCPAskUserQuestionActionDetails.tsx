@@ -64,7 +64,7 @@ export function MCPAskUserQuestionActionDetails({
                     {label}
                   </span>
                   {description && (
-                    <span className="text-xs">{option.description}</span>
+                    <span className="text-xs">{description}</span>
                   )}
                 </div>
               );
