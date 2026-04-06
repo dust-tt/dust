@@ -1,10 +1,11 @@
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { MCPImageGenerationGroupedDetails } from "@app/components/actions/mcp/details/MCPImageGenerationActionDetails";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import type {
-  ActionProgressState,
-  AgentStateClassification,
-  PendingToolCall,
+import {
+  type ActionProgressState,
+  type AgentStateClassification,
+  getPendingToolCallKey,
+  type PendingToolCall,
 } from "@app/components/assistant/conversation/types";
 import { GENERATE_IMAGE_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getToolCallDisplayLabel } from "@app/lib/actions/tool_display_labels";
@@ -30,19 +31,6 @@ interface AgentMessageActionsProps {
   actionProgress: ActionProgressState;
   pendingToolCalls: PendingToolCall[];
   owner: LightWorkspaceType;
-}
-
-function getPendingToolCallKey(
-  pendingToolCall: PendingToolCall,
-  index: number
-): string {
-  if (pendingToolCall.toolCallId) {
-    return `id-${pendingToolCall.toolCallId}`;
-  }
-  if (pendingToolCall.toolCallIndex !== undefined) {
-    return `index-${pendingToolCall.toolCallIndex}`;
-  }
-  return `name-${pendingToolCall.toolName}-${index}`;
 }
 
 export function AgentMessageActions({

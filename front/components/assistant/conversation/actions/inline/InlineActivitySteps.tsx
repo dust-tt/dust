@@ -1,8 +1,9 @@
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import type {
-  AgentStateClassification,
-  PendingToolCall,
+import {
+  type AgentStateClassification,
+  getPendingToolCallKey,
+  type PendingToolCall,
 } from "@app/components/assistant/conversation/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import { getInternalMCPServerIconByName } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -289,11 +290,7 @@ export function InlineActivitySteps({
             {showPendingToolCalls &&
               pendingToolCalls.map((pendingToolCall, index) => (
                 <TimelineRow
-                  key={
-                    pendingToolCall.toolCallId ??
-                    pendingToolCall.toolCallIndex ??
-                    `${pendingToolCall.toolName}-${index}`
-                  }
+                  key={getPendingToolCallKey(pendingToolCall, index)}
                   icon={ToolsIcon}
                   isLast={!isDone && index === pendingToolCalls.length - 1}
                 >
