@@ -1,0 +1,8 @@
+{
+  "action": "audit_log.export_configured",
+  "targets": [
+    {
+      "type": "workspace"
+    }
+  ]
+}

@@ -7,7 +7,10 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
-import type { AuditLogsSetupResponse } from "@app/pages/api/w/[wId]/audit-logs";
+import type {
+  AuditLogsPortal,
+  AuditLogsPortalResponse,
+} from "@app/pages/api/w/[wId]/audit-logs";
 import type { GetWorkspaceDomainsResponseBody } from "@app/pages/api/w/[wId]/domains";
 import type { GetProvisioningStatusResponseBody } from "@app/pages/api/w/[wId]/provisioning-status";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -257,23 +260,39 @@ export function useProvisioningStatus({
  * Audit Logs
  */
 
-export function useAuditLogsStatus({
-  disabled,
+export function useOpenAuditLogsPortal({
   owner,
 }: {
-  disabled?: boolean;
   owner: LightWorkspaceType;
 }) {
-  const { fetcher } = useFetcher();
-  const { data, error, isLoading } = useSWRWithDefaults<
-    string,
-    AuditLogsSetupResponse
-  >(`/api/w/${owner.sId}/audit-logs`, fetcher, { disabled });
+  const sendNotification = useSendNotification();
 
-  return {
-    viewLogsLink: data?.viewLogsLink,
-    configureExportLink: data?.configureExportLink,
-    isLoading: !disabled && isLoading,
-    error,
+  const openPortal = async (portal: AuditLogsPortal) => {
+    // Open a blank window synchronously to avoid popup blockers.
+    const newWindow = window.open("", "_blank");
+
+    const response = await clientFetch(`/api/w/${owner.sId}/audit-logs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ portal }),
+    });
+
+    if (!response.ok) {
+      newWindow?.close();
+      const errorData = await getErrorFromResponse(response);
+      sendNotification({
+        type: "error",
+        title: "Failed to open audit logs portal",
+        description: errorData.message,
+      });
+      return;
+    }
+
+    const data: AuditLogsPortalResponse = await response.json();
+    if (newWindow) {
+      newWindow.location.href = data.portalUrl;
+    }
   };
+
+  return { openPortal };
 }

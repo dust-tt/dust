@@ -1,0 +1,14 @@
+{
+  "action": "conversation.accessed",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "conversation"
+    }
+  ],
+  "metadata": {
+    "conversationId": "string"
+  }
+}
