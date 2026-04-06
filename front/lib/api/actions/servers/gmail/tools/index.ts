@@ -35,9 +35,14 @@ import assert from "assert";
 function validateEmailAddresses(
   to: string[],
   cc?: string[],
-  bcc?: string[]
+  bcc?: string[],
+  from?: string
 ): Err<MCPError> | null {
-  for (const addr of [...to, ...(cc ?? []), ...(bcc ?? [])]) {
+  const allAddresses = [...to, ...(cc ?? []), ...(bcc ?? [])];
+  if (from) {
+    allAddresses.push(from);
+  }
+  for (const addr of allAddresses) {
     if (addr.includes("\r") || addr.includes("\n")) {
       return new Err(new MCPError("Invalid email address"));
     }
@@ -62,7 +67,8 @@ function buildAndEncodeEmail(params: {
   const validationError = validateEmailAddresses(
     params.to,
     params.cc,
-    params.bcc
+    params.bcc,
+    params.from
   );
   if (validationError) {
     return validationError;
@@ -526,8 +532,8 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     const originalDate = getHeaderValue(headers, "Date");
 
     // Validate user-provided email addresses to prevent header injection
-    if (to?.length || cc?.length || bcc?.length) {
-      const validationError = validateEmailAddresses(to ?? [], cc, bcc);
+    if (to?.length || cc?.length || bcc?.length || from) {
+      const validationError = validateEmailAddresses(to ?? [], cc, bcc, from);
       if (validationError) {
         return validationError;
       }
