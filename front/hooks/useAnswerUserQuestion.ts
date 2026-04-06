@@ -6,15 +6,14 @@ import { useCallback, useState } from "react";
 
 interface UseAnswerUserQuestionParams {
   owner: LightWorkspaceType;
-  onError: (errorMessage: string) => void;
 }
 
 export function useAnswerUserQuestion({
   owner,
-  onError,
 }: UseAnswerUserQuestionParams) {
   const { fetcher } = useFetcher();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const answerQuestion = useCallback(
     async ({
@@ -29,6 +28,7 @@ export function useAnswerUserQuestion({
       answer: UserQuestionAnswer;
     }) => {
       setIsSubmitting(true);
+      setErrorMessage(null);
 
       try {
         await fetcher(
@@ -50,14 +50,14 @@ export function useAnswerUserQuestion({
         if (isAPIErrorResponse(e) && e.error.type === "action_not_blocked") {
           return { success: true };
         }
-        onError("Failed to submit answer. Please try again.");
+        setErrorMessage("Failed to submit answer. Please try again.");
         return { success: false };
       } finally {
         setIsSubmitting(false);
       }
     },
-    [owner.sId, onError, fetcher]
+    [owner.sId, fetcher]
   );
 
-  return { answerQuestion, isSubmitting };
+  return { answerQuestion, isSubmitting, errorMessage };
 }
