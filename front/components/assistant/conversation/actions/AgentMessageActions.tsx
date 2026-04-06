@@ -4,8 +4,10 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import type {
   ActionProgressState,
   AgentStateClassification,
+  PendingToolCall,
 } from "@app/components/assistant/conversation/types";
 import { GENERATE_IMAGE_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getToolCallDisplayLabel } from "@app/lib/actions/tool_display_labels";
 import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
@@ -26,13 +28,28 @@ interface AgentMessageActionsProps {
   agentMessage: LightAgentMessageType | LightAgentMessageWithActionsType;
   lastAgentStateClassification: AgentStateClassification;
   actionProgress: ActionProgressState;
+  pendingToolCalls: PendingToolCall[];
   owner: LightWorkspaceType;
+}
+
+function getPendingToolCallKey(
+  pendingToolCall: PendingToolCall,
+  index: number
+): string {
+  if (pendingToolCall.toolCallId) {
+    return `id-${pendingToolCall.toolCallId}`;
+  }
+  if (pendingToolCall.toolCallIndex !== undefined) {
+    return `index-${pendingToolCall.toolCallIndex}`;
+  }
+  return `name-${pendingToolCall.toolName}-${index}`;
 }
 
 export function AgentMessageActions({
   agentMessage,
   lastAgentStateClassification,
   actionProgress,
+  pendingToolCalls,
   owner,
 }: AgentMessageActionsProps) {
   const { openPanel, currentPanel, data } = useConversationSidePanelContext();
@@ -84,6 +101,8 @@ export function AgentMessageActions({
 
   const showMessageBreakdownButton =
     lastAgentStateClassification === "done" || agentMessage.status === "failed";
+  const showPendingToolCalls =
+    lastAgentStateClassification !== "acting" && pendingToolCalls.length > 0;
 
   return !showMessageBreakdownButton ? (
     <div
@@ -111,6 +130,29 @@ export function AgentMessageActions({
             />
           )}
         </Card>
+      ) : showPendingToolCalls ? (
+        <ContentMessage variant="primary" className="min-h-fit p-3">
+          <div className="flex w-full flex-row">
+            <div className="flex flex-col gap-y-1">
+              {pendingToolCalls.map((pendingToolCall, index) => (
+                <span
+                  key={getPendingToolCallKey(pendingToolCall, index)}
+                  className="text-sm text-muted-foreground dark:text-muted-foreground-night"
+                >
+                  Preparing to{" "}
+                  <span className="font-medium text-foreground dark:text-foreground-night">
+                    {getToolCallDisplayLabel(pendingToolCall.toolName)}
+                  </span>
+                  ...
+                </span>
+              ))}
+            </div>
+            <span className="flex-grow"></span>
+            <div className="w-8 self-start pl-4 pt-0.5">
+              <Spinner size="xs" />
+            </div>
+          </div>
+        </ContentMessage>
       ) : (
         <div>
           <ContentMessage variant="primary" className="min-h-fit p-3">
