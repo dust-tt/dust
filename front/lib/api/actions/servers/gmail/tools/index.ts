@@ -645,6 +645,31 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       return new Err(new MCPError("Authentication required"));
     }
 
+    // If a from alias was requested, verify it's a configured send-as address
+    // before sending. Gmail silently falls back to the primary address if the
+    // alias isn't set up, so we fail early to surface the issue.
+    if (from) {
+      const sendAsResponse = await fetchFromGmail(
+        "/gmail/v1/users/me/settings/sendAs",
+        accessToken,
+        { method: "GET" }
+      );
+      if (sendAsResponse.ok) {
+        const sendAsResult = await sendAsResponse.json();
+        const aliases: { sendAsEmail: string }[] = sendAsResult.sendAs ?? [];
+        const aliasConfigured = aliases.some(
+          (a) => a.sendAsEmail.toLowerCase() === from.toLowerCase()
+        );
+        if (!aliasConfigured) {
+          return new Err(
+            new MCPError(
+              `"${from}" is not configured as a send-as alias in Gmail settings. The email was not sent.`
+            )
+          );
+        }
+      }
+    }
+
     // Build and encode the email message
     const encodedMessageResult = buildAndEncodeEmail({
       to,
