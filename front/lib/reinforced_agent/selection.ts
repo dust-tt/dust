@@ -277,7 +277,13 @@ function scoreAutoAgent(
     toolError: number;
     multiUser: number;
   },
-  maxes: {
+  {
+    maxFeedback,
+    maxHumanConversations,
+    maxToolError,
+    maxMultiUser,
+    now,
+  }: {
     maxFeedback: number;
     maxHumanConversations: number;
     maxToolError: number;
@@ -285,14 +291,6 @@ function scoreAutoAgent(
     now: number;
   }
 ): ScoredAgent {
-  const {
-    maxFeedback,
-    maxHumanConversations,
-    maxToolError,
-    maxMultiUser,
-    now,
-  } = maxes;
-
   const versionCreatedAt = agent.versionCreatedAt
     ? new Date(agent.versionCreatedAt).getTime()
     : null;
@@ -369,7 +367,7 @@ function recordAgentScoringMetrics(
         row.logKey,
         row.weight * row.value(normalized),
       ])
-    ) as Record<ContributionLogKey, number>;
+    );
 
     logger.info(
       {
