@@ -52,6 +52,8 @@ export class AgentConfigurationModel extends WorkspaceAwareModel<AgentConfigurat
 
   declare reinforcement: AgentReinforcementMode;
 
+  declare lastReinforcementAnalysisAt: Date | null;
+
   declare requestedSpaceIds: number[];
 
   declare author: NonAttribute<UserModel>;
@@ -163,6 +165,11 @@ AgentConfigurationModel.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "auto",
+    },
+    lastReinforcementAnalysisAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
     },
     requestedSpaceIds: {
       type: DataTypes.ARRAY(DataTypes.BIGINT),

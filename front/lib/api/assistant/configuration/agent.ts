@@ -1818,3 +1818,19 @@ export async function updateAgentReinforcementMode(
     }
   );
 }
+
+export async function recordAgentReinforcementAnalysisCompletion(
+  auth: Authenticator,
+  agentSId: string
+): Promise<void> {
+  await AgentConfigurationModel.update(
+    { lastReinforcementAnalysisAt: new Date() },
+    {
+      where: {
+        sId: agentSId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        status: "active",
+      },
+    }
+  );
+}
