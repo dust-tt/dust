@@ -10,6 +10,7 @@ import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
+import { isSingleAgentInputEnabled } from "@app/lib/development";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
 import { classNames } from "@app/lib/utils";
@@ -60,7 +61,8 @@ export function ConversationContainerVirtuoso({
 
   const [planLimitReached, setPlanLimitReached] = useState(false);
 
-  const { setSelectedAgent } = useContext(InputBarContext);
+  const { setSelectedAgent, setSelectedSingleAgent } =
+    useContext(InputBarContext);
 
   const router = useAppRouter();
 
@@ -230,7 +232,11 @@ export function ConversationContainerVirtuoso({
           )}
           <AgentBrowserContainer
             onAgentConfigurationClick={(agent) => {
-              setSelectedAgent(toRichAgentMentionType(agent));
+              if (isSingleAgentInputEnabled()) {
+                setSelectedSingleAgent(toRichAgentMentionType(agent));
+              } else {
+                setSelectedAgent(toRichAgentMentionType(agent));
+              }
             }}
             owner={owner}
             user={user}

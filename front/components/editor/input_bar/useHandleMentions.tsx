@@ -83,6 +83,10 @@ const useHandleMentions = (
 
   useEffect(() => {
     if (selectedAgent) {
+      if (singleAgentInput) {
+        setSelectedSingleAgent(selectedAgent);
+        return;
+      }
       if (!editorService.hasMention(selectedAgent)) {
         // Schedule insertion to avoid synchronous editor updates during React render/effects.
         queueMicrotask(() => {
@@ -98,7 +102,13 @@ const useHandleMentions = (
     } else if (pendingInputText) {
       queueMicrotask(() => editorService.insertText(pendingInputText));
     }
-  }, [selectedAgent, pendingInputText, editorService]);
+  }, [
+    selectedAgent,
+    pendingInputText,
+    editorService,
+    setSelectedSingleAgent,
+    singleAgentInput,
+  ]);
 
   return { stickyMentionsTextContent };
 };
