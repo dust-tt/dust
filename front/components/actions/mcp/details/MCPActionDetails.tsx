@@ -6,6 +6,7 @@ import {
   makeQueryTextForList,
 } from "@app/components/actions/mcp/details/input_rendering";
 import { MCPAgentManagementActionDetails } from "@app/components/actions/mcp/details/MCPAgentManagementActionDetails";
+import { MCPAskUserQuestionActionDetails } from "@app/components/actions/mcp/details/MCPAskUserQuestionActionDetails";
 import {
   MCPAgentMemoryEditActionDetails,
   MCPAgentMemoryEraseActionDetails,
@@ -381,6 +382,10 @@ export function MCPActionDetails({
 
   if (internalMCPServerName === "sandbox") {
     return <MCPSandboxActionDetails {...toolOutputDetailsProps} />;
+  }
+
+  if (internalMCPServerName === "ask_user_question") {
+    return <MCPAskUserQuestionActionDetails {...toolOutputDetailsProps} />;
   }
 
   return (
