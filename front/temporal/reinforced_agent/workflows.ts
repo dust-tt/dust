@@ -24,6 +24,12 @@ export const interceptors: WorkflowInterceptorsFactory = () => ({
   internals: [new OpenTelemetryInternalsInterceptor()],
 });
 
+const { isAgentReinforcementAllowedActivity } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "5 minutes",
+});
+
 const { getAgentConfigurationsActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
@@ -124,6 +130,11 @@ export async function reinforcedAgentWorkspaceWorkflow({
   useBatchMode: boolean;
   skipDelay?: boolean;
 }): Promise<void> {
+  const isAllowed = await isAgentReinforcementAllowedActivity({ workspaceId });
+  if (!isAllowed) {
+    return;
+  }
+
   if (!skipDelay) {
     const delayMs = computeWorkspaceDelayMs(workspaceId);
     if (delayMs > 0) {

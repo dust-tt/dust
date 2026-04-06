@@ -42,6 +42,7 @@ import {
   storeTerminalToolCallResults,
 } from "@app/lib/reinforced_agent/tool_execution";
 import type { ReinforcedOperationType } from "@app/lib/reinforced_agent/types";
+import { hasReinforcementEnabled } from "@app/lib/reinforced_agent/workspace_check";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -236,6 +237,18 @@ async function runReinforcedStep({
     reinforcementConversationId,
     toolActionInfo,
   };
+}
+
+/**
+ * Check whether the workspace has opted out of agent reinforcement.
+ */
+export async function isAgentReinforcementAllowedActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<boolean> {
+  const auth = await getAuthForWorkspace(workspaceId);
+  return hasReinforcementEnabled(auth);
 }
 
 /**

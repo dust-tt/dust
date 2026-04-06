@@ -1,5 +1,6 @@
 import { config, REGION_TIMEZONES } from "@app/lib/api/regions/config";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import { hasReinforcementEnabled } from "@app/lib/reinforced_agent/workspace_check";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -40,8 +41,7 @@ async function getFlaggedWorkspaceIds(): Promise<string[]> {
   for (const workspace of allWorkspaces) {
     try {
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-      const featureFlags = await getFeatureFlags(auth);
-      if (featureFlags.includes("reinforced_agents")) {
+      if (await hasReinforcementEnabled(auth)) {
         flaggedIds.push(workspace.sId);
       }
     } catch (e) {

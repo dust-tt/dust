@@ -239,6 +239,52 @@ describe("POST /api/w/[wId]", () => {
     expect(res._getJSONData().error.type).toBe("invalid_request_error");
   });
 
+  it("enables agent reinforcement", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    req.body = {
+      allowAgentReinforcement: true,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      workspace: expect.objectContaining({
+        id: workspace.id,
+        metadata: expect.objectContaining({
+          allowAgentReinforcement: true,
+        }),
+      }),
+    });
+  });
+
+  it("disables agent reinforcement", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    req.body = {
+      allowAgentReinforcement: false,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      workspace: expect.objectContaining({
+        id: workspace.id,
+        metadata: expect.objectContaining({
+          allowAgentReinforcement: false,
+        }),
+      }),
+    });
+  });
+
   it("returns 405 for non-POST methods", async () => {
     for (const method of ["PUT", "DELETE"] as const) {
       const { req, res } = await createPrivateApiMockRequest({
