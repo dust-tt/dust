@@ -33,7 +33,7 @@ export function MCPAskUserQuestionActionDetails({
           <div className="text-sm font-medium text-foreground dark:text-foreground-night">
             {userQuestion.question}
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1.5">
             {userQuestion.options.map(({ label, description }, index) => {
               const isSelected =
                 answerText !== null && answerText.includes(label);
