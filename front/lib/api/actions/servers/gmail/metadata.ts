@@ -39,13 +39,6 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .array(z.string())
         .optional()
         .describe("The email addresses to BCC"),
-      from: z
-        .string()
-        .email()
-        .optional()
-        .describe(
-          "Optional. The email address to send from. Must be configured as a send-as alias in the user's Gmail settings (e.g. a shared Google Group address like team@company.com). If omitted, Gmail will use the authenticated user's primary address."
-        ),
       subject: z.string().describe("The subject line of the email"),
       contentType: z
         .enum(["text/plain", "text/html"])
@@ -167,13 +160,6 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .array(z.string())
         .optional()
         .describe("Override the BCC recipients for the reply."),
-      from: z
-        .string()
-        .email()
-        .optional()
-        .describe(
-          "Optional. The email address to send from. Must be configured as a send-as alias in the user's Gmail settings (e.g. a shared Google Group address like team@company.com). If omitted, Gmail will use the authenticated user's primary address."
-        ),
     },
     stake: "medium",
     displayLabels: {

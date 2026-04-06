@@ -155,7 +155,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
   },
 
   create_draft: async (
-    { to, cc, bcc, from, subject, contentType, body },
+    { to, cc, bcc, subject, contentType, body },
     { authInfo }
   ) => {
     const accessToken = authInfo?.token;
@@ -168,7 +168,6 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       to,
       cc,
       bcc,
-      from,
       subject,
       contentType,
       body,
@@ -486,7 +485,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
   },
 
   create_reply_draft: async (
-    { messageId, body, contentType = "text/plain" as const, to, cc, bcc, from },
+    { messageId, body, contentType = "text/plain" as const, to, cc, bcc },
     { authInfo }
   ) => {
     const accessToken = authInfo?.token;
@@ -532,8 +531,8 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     const originalDate = getHeaderValue(headers, "Date");
 
     // Validate user-provided email addresses to prevent header injection
-    if (to?.length || cc?.length || bcc?.length || from) {
-      const validationError = validateEmailAddresses(to ?? [], cc, bcc, from);
+    if (to?.length || cc?.length || bcc?.length) {
+      const validationError = validateEmailAddresses(to ?? [], cc, bcc);
       if (validationError) {
         return validationError;
       }
@@ -575,7 +574,6 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     // Construct the reply message
     const messageLines = [
       `To: ${replyTo}`,
-      from ? `From: ${from}` : null,
       replyCc ? `Cc: ${replyCc}` : null,
       replyBcc ? `Bcc: ${replyBcc}` : null,
       `Subject: ${encodedSubject}`,
