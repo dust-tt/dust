@@ -131,6 +131,7 @@ export interface InputBarContainerProps {
   actions: InputBarAction[];
   allAgents: LightAgentConfigurationType[];
   attachedNodes: DataSourceViewContentNode[];
+  blockedByGeneratingAgentName: string | null;
   conversation?: ConversationWithoutContentType;
   space?: SpaceType;
   disableAutoFocus: boolean;
@@ -190,7 +191,9 @@ const InputBarContainer = ({
   selectedSkills,
   saveDraft,
   user,
+  blockedByGeneratingAgentName,
 }: InputBarContainerProps) => {
+  const isBlockedByAgentSwitch = blockedByGeneratingAgentName !== null;
   const { subscription } = useAuth();
   const isMobile = useIsMobile();
   const { hasFeature } = useFeatureFlags();
@@ -260,6 +263,7 @@ const InputBarContainer = ({
   const shouldSuggestAgentRef = useRef(true);
   const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
+  const [isShaking, setIsShaking] = useState(false);
   const plusButtonRef = useRef<HTMLDivElement>(null);
   const clientType = useClientType();
 
@@ -422,8 +426,21 @@ const InputBarContainer = ({
     [editorRef, fileUploaderService, sendNotification]
   );
 
+  // Wrap onEnterKeyDown so that a blocked Enter attempt triggers the shake animation.
+  const onEnterKeyDownWithShake: typeof onEnterKeyDown = useCallback(
+    (isEmpty, markdownAndMentions, resetEditorText, setLoading) => {
+      if (isBlockedByAgentSwitch) {
+        setIsShaking(true);
+        setTimeout(() => setIsShaking(false), 820);
+        return;
+      }
+      onEnterKeyDown(isEmpty, markdownAndMentions, resetEditorText, setLoading);
+    },
+    [isBlockedByAgentSwitch, onEnterKeyDown]
+  );
+
   const { editor, editorService } = useCustomEditor({
-    onEnterKeyDown,
+    onEnterKeyDown: onEnterKeyDownWithShake,
     disableAutoFocus,
     disableUserMentions,
     onUrlDetected: handleUrlDetected,
@@ -1184,13 +1201,23 @@ const InputBarContainer = ({
               isSubmitting && voiceTranscriberService.status !== "transcribing"
             }
             icon={ArrowUpIcon}
-            variant="highlight"
+            variant={isBlockedByAgentSwitch ? "ghost-secondary" : "highlight"}
             disabled={
               isEmpty ||
               isSubmitting ||
               disableInput ||
               voiceTranscriberService.status !== "idle"
             }
+            tooltip={
+              blockedByGeneratingAgentName
+                ? `Wait for @${blockedByGeneratingAgentName} to finish before switching agent`
+                : undefined
+            }
+            className={cn(
+              isShaking && "animate-shake",
+              isBlockedByAgentSwitch &&
+                "hover:s-bg-transparent dark:hover:s-bg-transparent hover:s-text-muted-foreground dark:hover:s-text-muted-foreground-night"
+            )}
             onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
               e.preventDefault();
               e.stopPropagation();

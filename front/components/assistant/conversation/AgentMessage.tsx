@@ -436,11 +436,18 @@ export function AgentMessage({
       generationContext.addGeneratingMessage({
         messageId: sId,
         conversationId,
+        agentId: agentMessage.configuration.sId,
       });
     } else {
       generationContext.removeGeneratingMessage({ messageId: sId });
     }
-  }, [shouldStream, generationContext, sId, conversationId]);
+  }, [
+    shouldStream,
+    generationContext,
+    sId,
+    conversationId,
+    agentMessage.configuration.sId,
+  ]);
 
   const isGlobalAgent = isGlobalAgentId(agentMessage.configuration.sId);
 

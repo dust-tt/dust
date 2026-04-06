@@ -4,6 +4,7 @@ import { createContext, useCallback, useMemo, useState } from "react";
 type GeneratingMessage = {
   messageId: string;
   conversationId: string;
+  agentId?: string;
 };
 
 type GenerationContextType = {
@@ -11,6 +12,7 @@ type GenerationContextType = {
   addGeneratingMessage: (params: {
     messageId: string;
     conversationId: string;
+    agentId?: string;
   }) => void;
   removeGeneratingMessage: (params: { messageId: string }) => void;
   getConversationGeneratingMessages: (
@@ -37,15 +39,17 @@ export const GenerationContextProvider = ({
     ({
       messageId,
       conversationId,
+      agentId,
     }: {
       messageId: string;
       conversationId: string;
+      agentId?: string;
     }) => {
       setGeneratingMessages((prev) => {
         if (prev.some((m) => m.messageId === messageId)) {
           return prev;
         }
-        return [...prev, { messageId, conversationId }];
+        return [...prev, { messageId, conversationId, agentId }];
       });
     },
     []

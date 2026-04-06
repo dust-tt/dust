@@ -1,4 +1,5 @@
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
+import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import InputBarContainer, {
@@ -127,6 +128,36 @@ export const InputBar = React.memo(function InputBar({
     [getAndClearPendingInputText]
   );
 
+  const generationContext = useContext(GenerationContext);
+
+  // In single-agent mode, block submission when the selected agent differs from
+  // the agent that is currently generating a response.
+  const blockedByGeneratingAgentName = useMemo(() => {
+    if (!isSingleAgentInputEnabled() || !selectedSingleAgent) {
+      return null;
+    }
+    const generatingMessages =
+      generationContext?.getConversationGeneratingMessages(
+        conversation?.sId ?? ""
+      ) ?? [];
+    const blockingAgentId = generatingMessages.find(
+      (gm) => gm.agentId && gm.agentId !== selectedSingleAgent.id
+    )?.agentId;
+    if (!blockingAgentId) {
+      return null;
+    }
+    return (
+      agentConfigurations.find((a) => a.sId === blockingAgentId)?.name ?? null
+    );
+  }, [
+    selectedSingleAgent,
+    generationContext,
+    conversation?.sId,
+    agentConfigurations,
+  ]);
+
+  const isBlockedByAgentSwitch = blockedByGeneratingAgentName !== null;
+
   // Tools selection
 
   const [selectedMCPServerViews, setSelectedMCPServerViews] = useState<
@@ -202,7 +233,12 @@ export const InputBar = React.memo(function InputBar({
     resetEditorText,
     setLoading
   ) => {
-    if (isLocalSubmitting || isEmpty || fileUploaderService.isProcessingFiles) {
+    if (
+      isLocalSubmitting ||
+      isEmpty ||
+      fileUploaderService.isProcessingFiles ||
+      isBlockedByAgentSwitch
+    ) {
       return;
     }
 
@@ -409,6 +445,7 @@ export const InputBar = React.memo(function InputBar({
             saveDraft={saveDraft}
             getDraft={getDraft}
             user={user}
+            blockedByGeneratingAgentName={blockedByGeneratingAgentName}
           />
         </div>
       </div>
