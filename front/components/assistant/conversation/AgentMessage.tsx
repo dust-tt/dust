@@ -1312,6 +1312,7 @@ function AgentMessageContent({
           agentMessage={agentMessage}
           lastAgentStateClassification={agentMessage.streaming.agentState}
           completedSteps={agentMessage.streaming.inlineActivitySteps}
+          pendingToolCalls={agentMessage.streaming.pendingToolCalls}
           onOpenDetails={onOpenDetails}
         />
       ) : (

@@ -1,8 +1,12 @@
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import type { AgentStateClassification } from "@app/components/assistant/conversation/types";
+import type {
+  AgentStateClassification,
+  PendingToolCall,
+} from "@app/components/assistant/conversation/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import { getInternalMCPServerIconByName } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getToolCallDisplayLabel } from "@app/lib/actions/tool_display_labels";
 import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
 import { formatDurationString } from "@app/lib/utils/timestamps";
 import type {
@@ -28,6 +32,7 @@ interface InlineActivityStepsProps {
   agentMessage: LightAgentMessageType | LightAgentMessageWithActionsType;
   lastAgentStateClassification: AgentStateClassification;
   completedSteps: InlineActivityStep[];
+  pendingToolCalls: PendingToolCall[];
   onOpenDetails?: (messageId: string) => void;
 }
 
@@ -66,6 +71,7 @@ export function InlineActivitySteps({
   agentMessage,
   lastAgentStateClassification,
   completedSteps,
+  pendingToolCalls,
   onOpenDetails,
 }: InlineActivityStepsProps) {
   const isAgentMessageWithActions =
@@ -94,6 +100,7 @@ export function InlineActivitySteps({
 
   const isThinking = lastAgentStateClassification === "thinking";
   const isActing = lastAgentStateClassification === "acting";
+  const showPendingToolCalls = pendingToolCalls.length > 0;
 
   const headerLabel =
     agentMessage.completionDurationMs !== null
@@ -123,7 +130,10 @@ export function InlineActivitySteps({
     isActing && isAgentMessageWithActions ? actions[actions.length - 1] : null;
 
   const hasContent =
-    completedSteps.length > 0 || showActiveThinking || activeAction;
+    completedSteps.length > 0 ||
+    showActiveThinking ||
+    activeAction ||
+    showPendingToolCalls;
 
   if (!hasContent) {
     return null;
@@ -276,10 +286,29 @@ export function InlineActivitySteps({
               </div>
             )}
 
+            {showPendingToolCalls &&
+              pendingToolCalls.map((pendingToolCall, index) => (
+                <TimelineRow
+                  key={
+                    pendingToolCall.toolCallId ??
+                    pendingToolCall.toolCallIndex ??
+                    `${pendingToolCall.toolName}-${index}`
+                  }
+                  icon={ToolsIcon}
+                  isLast={!isDone && index === pendingToolCalls.length - 1}
+                >
+                  <span className="text-muted-foreground dark:text-muted-foreground-night">
+                    Preparing to{" "}
+                    {getToolCallDisplayLabel(pendingToolCall.toolName)}...
+                  </span>
+                </TimelineRow>
+              ))}
+
             {/* Pending spinner — shown when between transitions (not done, nothing active) */}
-            {!isDone && !showActiveThinking && !activeAction && (
-              <TimelineRow spinner isLast />
-            )}
+            {!isDone &&
+              !showActiveThinking &&
+              !activeAction &&
+              !showPendingToolCalls && <TimelineRow spinner isLast />}
             {isDone &&
               completedSteps.length > 0 &&
               agentMessage.status !== "gracefully_stopped" && (
