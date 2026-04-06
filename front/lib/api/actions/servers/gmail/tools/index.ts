@@ -35,9 +35,14 @@ import assert from "assert";
 function validateEmailAddresses(
   to: string[],
   cc?: string[],
-  bcc?: string[]
+  bcc?: string[],
+  from?: string
 ): Err<MCPError> | null {
-  for (const addr of [...to, ...(cc ?? []), ...(bcc ?? [])]) {
+  const allAddresses = [...to, ...(cc ?? []), ...(bcc ?? [])];
+  if (from) {
+    allAddresses.push(from);
+  }
+  for (const addr of allAddresses) {
     if (addr.includes("\r") || addr.includes("\n")) {
       return new Err(new MCPError("Invalid email address"));
     }
@@ -51,6 +56,7 @@ function buildAndEncodeEmail(params: {
   to: string[];
   cc?: string[];
   bcc?: string[];
+  from?: string;
   subject: string;
   contentType: string;
   body: string;
@@ -61,7 +67,8 @@ function buildAndEncodeEmail(params: {
   const validationError = validateEmailAddresses(
     params.to,
     params.cc,
-    params.bcc
+    params.bcc,
+    params.from
   );
   if (validationError) {
     return validationError;
@@ -70,6 +77,7 @@ function buildAndEncodeEmail(params: {
   // Create the email message with proper headers and content.
   const messageLines = [
     `To: ${params.to.join(", ")}`,
+    params.from ? `From: ${params.from}` : null,
     params.cc?.length ? `Cc: ${params.cc.join(", ")}` : null,
     params.bcc?.length ? `Bcc: ${params.bcc.join(", ")}` : null,
     `Subject: ${encodedSubject}`,
@@ -629,7 +637,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
   },
 
   send_mail: async (
-    { to, cc, bcc, subject, contentType, body },
+    { to, cc, bcc, from, subject, contentType, body },
     { authInfo }
   ) => {
     const accessToken = authInfo?.token;
@@ -637,11 +645,37 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       return new Err(new MCPError("Authentication required"));
     }
 
+    // If a from alias was requested, verify it's a configured send-as address
+    // before sending. Gmail silently falls back to the primary address if the
+    // alias isn't set up, so we fail early to surface the issue.
+    if (from) {
+      const sendAsResponse = await fetchFromGmail(
+        "/gmail/v1/users/me/settings/sendAs",
+        accessToken,
+        { method: "GET" }
+      );
+      if (sendAsResponse.ok) {
+        const sendAsResult = await sendAsResponse.json();
+        const aliases: { sendAsEmail: string }[] = sendAsResult.sendAs ?? [];
+        const aliasConfigured = aliases.some(
+          (a) => a.sendAsEmail.toLowerCase() === from.toLowerCase()
+        );
+        if (!aliasConfigured) {
+          return new Err(
+            new MCPError(
+              `"${from}" is not configured as a send-as alias in Gmail settings. The email was not sent.`
+            )
+          );
+        }
+      }
+    }
+
     // Build and encode the email message
     const encodedMessageResult = buildAndEncodeEmail({
       to,
       cc,
       bcc,
+      from,
       subject,
       contentType,
       body,

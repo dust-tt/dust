@@ -378,7 +378,7 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_arguments_requiring_approval: {
       create_draft: ["to"],
-      send_mail: ["to"],
+      send_mail: ["to", "from"],
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
