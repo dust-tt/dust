@@ -25,7 +25,10 @@ import {
   buildAnalysisSystemPrompt,
   buildConversationAnalysisBatchMap,
 } from "@app/lib/reinforced_agent/analyze_conversation";
-import { filterEligibleAgents } from "@app/lib/reinforced_agent/eligibility";
+import {
+  DEFAULT_MAX_CONVERSATIONS_PER_AGENT,
+  DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS,
+} from "@app/lib/reinforced_agent/constants";
 import {
   buildReinforcedSpecifications,
   classifyToolCalls,
@@ -36,6 +39,7 @@ import {
   REINFORCEMENT_AGENT_ID,
   reinforcementConversationTitle,
 } from "@app/lib/reinforced_agent/run_reinforced_analysis";
+import { selectAgentsForReinforcementPipeline } from "@app/lib/reinforced_agent/selection";
 import {
   prepareReinforcedToolActions,
   type ReinforcedToolActionInfo,
@@ -240,7 +244,8 @@ async function runReinforcedStep({
 }
 
 /**
- * Check whether the workspace has opted out of agent reinforcement.
+ * Selects agent configuration sIds and per-agent conversation budgets for this
+ * workspace run.
  */
 export async function isAgentReinforcementAllowedActivity({
   workspaceId,
@@ -252,15 +257,14 @@ export async function isAgentReinforcementAllowedActivity({
 }
 
 /**
- * List agent configuration sIds for active (non-global) agents in a workspace.
+ * Selects agent configuration sIds and per-agent conversation budgets for this
+ * workspace run.
  */
 export async function getAgentConfigurationsActivity({
   workspaceId,
-  lookbackWindowDays = 1,
 }: {
   workspaceId: string;
-  lookbackWindowDays?: number;
-}): Promise<string[]> {
+}): Promise<{ agentConfigurationId: string; conversationsToSample: number }[]> {
   const auth = await getAuthForWorkspace(workspaceId);
 
   const agents = await getAgentConfigurationsForView({
@@ -269,17 +273,7 @@ export async function getAgentConfigurationsActivity({
     variant: "extra_light",
   });
 
-  const explicitOnAgents = agents.filter(
-    (a) => a.id > 0 && a.reinforcement === "on"
-  );
-
-  const eligible = await filterEligibleAgents(
-    auth,
-    explicitOnAgents,
-    lookbackWindowDays
-  );
-
-  return eligible.map((a) => a.sId);
+  return selectAgentsForReinforcementPipeline(auth, agents, {});
 }
 
 /**
@@ -288,11 +282,13 @@ export async function getAgentConfigurationsActivity({
 export async function getRecentConversationsForAgentActivity({
   workspaceId,
   agentConfigurationId,
-  conversationLookbackDays = 1,
+  conversationLookbackDays = DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS,
+  maxConversations = DEFAULT_MAX_CONVERSATIONS_PER_AGENT,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
   conversationLookbackDays?: number;
+  maxConversations?: number;
 }): Promise<string[]> {
   updateActiveTrace({
     name: "Reinforced Agent Workflow",
@@ -301,15 +297,20 @@ export async function getRecentConversationsForAgentActivity({
 
   const auth = await getAuthForWorkspace(workspaceId);
 
-  const updatedSince = new Date();
-  updatedSince.setHours(
-    updatedSince.getHours() - conversationLookbackDays * 24
-  );
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - conversationLookbackDays);
 
-  return ConversationResource.listRecentConversationsForAgent(auth, {
-    agentConfigurationId,
-    updatedSince,
-  });
+  const convSIdsByAgent = await ConversationResource.getConversationSIdsByAgent(
+    auth,
+    {
+      agentSIds: [agentConfigurationId],
+      cutoffDate,
+      excludeHumanOutOfTheLoop: true,
+    }
+  );
+  const conversationSIds = convSIdsByAgent.get(agentConfigurationId) ?? [];
+  // TODO(https://github.com/dust-tt/tasks/issues/7313): This is a placeholder for the actual sampling logic
+  return conversationSIds.slice(0, maxConversations);
 }
 
 /**
