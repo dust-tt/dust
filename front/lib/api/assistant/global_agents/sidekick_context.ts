@@ -58,13 +58,9 @@ export function formatAvailableModels(
 export function formatAvailableSkills(skills: AvailableSkill[]): string {
   const skillLines = skills
     .map((s) => {
-      const desc = (s.agentFacingDescription ?? "No description").replace(
-        /\n/g,
-        " "
-      );
-      let line = `- **${s.name}** (ID: ${s.sId}): ${desc}`;
-      if (s.toolSIds.length > 0) {
-        line += ` with tools: ${s.toolSIds.join(", ")}`;
+      let line = `- **${s.name}** (ID: ${s.sId}): ${s.agentFacingDescription}`;
+      if (s.toolIds.length > 0) {
+        line += ` with tool IDs: ${s.toolIds.join(", ")}`;
       }
       return line;
     })

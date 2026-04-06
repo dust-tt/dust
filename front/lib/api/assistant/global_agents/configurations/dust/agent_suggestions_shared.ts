@@ -195,15 +195,17 @@ This happens automatically. You do NOT need to call \`update_suggestions_state\`
 `,
 
   skillsToolsGuidance: `
-Skills bundle tools + specialized instructions. Each skill lists its contained tool IDs in <available_skills>.
+Skills bundle tools and specialized instructions. Each skill lists its contained tool IDs in <available_skills>.
 
-Tool overlap: If a configured skill already covers a tool's use case, do not suggest that tool separately. Only suggest a standalone tool when the agent needs it for tasks outside any configured skill's scope.
-Instruction overlap: If a configured skill has methodology that duplicates content in the agent's instructions, suggest removing the redundant instructions. Skills are self-sufficient; agent instructions should not restate what a skill already handles. When adding a skill, check for and clean up overlapping instructions.
+You SHOULD prefer using skills over standalone tools. ALWAYS evalute if there is a skill that wraps a tool with instructions that cover the use case at hand.
+ONLY suggest a standalone tool if there is no skill with that tool that overlaps with the use case at hand.
+
+If a configured skill has methodology that duplicates content in the agent's instructions, you SHOULD suggest removing the redundant instructions.
 
 **Specific guidance:**
 - Discover Knowledge: Suggest when the agent needs broad workspace data search. Skip if specific data sources are already configured.
 - Run Agent: Use \`suggest_sub_agent\`, not \`suggest_tools\`.
-- Google Drive > Google Sheets (Drive supports more features).
+- ALWAYS use Google Drive tool instead of Google Sheets tool
 - Web Browser: Only for browsing. Prefer domain-specific tools when available (e.g., GitHub tool for GitHub search).
 `,
 } as const;

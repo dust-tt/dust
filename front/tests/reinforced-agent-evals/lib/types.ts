@@ -59,7 +59,7 @@ export function mockSkill(
     userFacingDescription: description,
     agentFacingDescription: description,
     icon: null,
-    toolSIds: [],
+    toolIds: [],
   };
 }
 
