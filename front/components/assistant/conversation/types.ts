@@ -50,6 +50,21 @@ export type PendingToolCall = {
   toolCallIndex?: number;
 };
 
+export function getPendingToolCallKey(
+  pendingToolCall: PendingToolCall,
+  index: number
+): string {
+  if (pendingToolCall.toolCallId) {
+    return `id-${pendingToolCall.toolCallId}`;
+  }
+
+  if (pendingToolCall.toolCallIndex !== undefined) {
+    return `index-${pendingToolCall.toolCallIndex}`;
+  }
+
+  return `name-${pendingToolCall.toolName}-${index}`;
+}
+
 export type MessageTemporaryState = LightAgentMessageWithActionsType & {
   streaming: {
     agentState: AgentStateClassification;

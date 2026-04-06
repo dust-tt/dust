@@ -274,6 +274,7 @@ function AgentActionsPanelContent({
 
   const streamActionProgress =
     messageStreamState?.streaming.actionProgress ?? new Map();
+  const pendingToolCalls = messageStreamState?.streaming.pendingToolCalls ?? [];
   return (
     <div className="flex h-full flex-col bg-background dark:bg-background-night">
       <AgentActionsPanelHeader
@@ -320,6 +321,7 @@ function AgentActionsPanelContent({
                 isStreaming={
                   messageStreamState.streaming.agentState === "thinking"
                 }
+                pendingToolCalls={pendingToolCalls}
                 streamingActions={
                   messageStreamState.streaming.agentState === "acting"
                     ? messageStreamState.actions.filter((action) => {
