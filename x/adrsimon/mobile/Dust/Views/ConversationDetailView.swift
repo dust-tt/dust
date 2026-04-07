@@ -121,12 +121,12 @@ struct ConversationDetailView: View {
                             }
 
                             ForEach(viewModel.messages) { message in
+                                let isStreaming = message.id == viewModel.streamingMessageId
                                 MessageBubbleView(
                                     message: message,
                                     currentUserEmail: currentUserEmail,
-                                    streamingPhase: message.id == viewModel.streamingMessageId
-                                        ? viewModel.streamingPhase
-                                        : .idle
+                                    streamingPhase: isStreaming ? viewModel.streamingPhase : .idle,
+                                    activeActions: isStreaming ? viewModel.activeActions : []
                                 )
                                 .id(message.id)
                             }

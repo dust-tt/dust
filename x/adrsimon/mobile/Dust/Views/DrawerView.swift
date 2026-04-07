@@ -48,7 +48,7 @@ struct DrawerView: View {
                     Text("New")
                         .sparkleLabelSm()
                 }
-                .foregroundStyle(Color.white)
+                .foregroundStyle(Color.dustBackground)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .background(Color.gray950)
@@ -166,7 +166,7 @@ struct DrawerView: View {
             Button(action: onLogout) {
                 Text("Logout")
                     .sparkleLabelXs()
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(Color.dustBackground)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .background(Color.gray950)

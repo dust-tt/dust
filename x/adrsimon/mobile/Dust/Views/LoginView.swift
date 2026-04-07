@@ -25,25 +25,25 @@ struct LoginView: View {
                 Button(action: onLogin) {
                     Text("Log In")
                         .sparkleLabelBase()
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color.dustBackground)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                 }
-                .background(Color.black)
+                .background(Color.dustForeground)
                 .clipShape(RoundedRectangle(cornerRadius: 48))
 
                 Link(destination: URL(string: AppConfig.apiBaseURL)!) {
                     Text("Sign Up")
                         .sparkleLabelBase()
-                        .foregroundStyle(.black)
+                        .foregroundStyle(Color.dustForeground)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                 }
-                .background(Color.white)
+                .background(Color.dustBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 48))
                 .overlay(
                     RoundedRectangle(cornerRadius: 48)
-                        .stroke(Color.black.opacity(0.2), lineWidth: 1)
+                        .stroke(Color.dustForeground.opacity(0.2), lineWidth: 1)
                 )
             }
             .padding(.horizontal, 40)

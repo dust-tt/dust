@@ -42,4 +42,6 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - dust
+        NSMicrophoneUsageDescription: "Dust needs microphone access for voice input"
+        NSSpeechRecognitionUsageDescription: "Dust uses speech recognition to transcribe your voice messages"
         UILaunchScreen: {}

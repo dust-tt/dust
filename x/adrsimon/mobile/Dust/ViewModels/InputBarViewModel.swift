@@ -13,6 +13,9 @@ final class InputBarViewModel: ObservableObject {
     /// Set to true when user types '@' — triggers the agent picker sheet.
     @Published var showAgentPicker = false
 
+    @Published var isVoiceMode = false
+    lazy var speechService = SpeechService()
+
     private let workspaceId: String
     private let tokenProvider: TokenProvider
     private let user: User
@@ -69,7 +72,7 @@ final class InputBarViewModel: ObservableObject {
         let request = CreateConversationRequest(
             message: CreateMessagePayload(
                 content: text,
-                mentions: resolveMentions(in: text),
+                mentions: resolveMentionsWithDefault(in: text),
                 context: context
             )
         )
@@ -88,7 +91,7 @@ final class InputBarViewModel: ObservableObject {
 
         let request = PostMessageRequest(
             content: text,
-            mentions: resolveMentions(in: text),
+            mentions: resolveMentionsWithDefault(in: text),
             context: context
         )
 
@@ -102,6 +105,34 @@ final class InputBarViewModel: ObservableObject {
             return true
         }
         return result ?? false
+    }
+
+    // MARK: - Voice Input
+
+    func startVoiceInput() {
+        guard !isVoiceMode else { return }
+        Task {
+            let granted = await speechService.requestPermissions()
+            guard granted else {
+                logger.warning("Voice permissions not granted")
+                return
+            }
+            isVoiceMode = true
+            speechService.startRecording()
+        }
+    }
+
+    func stopVoiceInput() {
+        speechService.stopRecording()
+        messageText = speechService.transcribedText
+        speechService.transcribedText = ""
+        isVoiceMode = false
+    }
+
+    func cancelVoiceInput() {
+        speechService.stopRecording()
+        speechService.transcribedText = ""
+        isVoiceMode = false
     }
 
     // MARK: - Private
@@ -121,6 +152,11 @@ final class InputBarViewModel: ObservableObject {
 
     /// Resolve mentions by scanning the text for @agentName tokens
     /// and matching them against known agents.
+    private func resolveMentionsWithDefault(in text: String) -> [MentionPayload] {
+        let mentions = resolveMentions(in: text)
+        return mentions.isEmpty ? [MentionPayload(configurationId: "dust")] : mentions
+    }
+
     private func resolveMentions(in text: String) -> [MentionPayload] {
         var result: [MentionPayload] = []
         var seen = Set<String>()
