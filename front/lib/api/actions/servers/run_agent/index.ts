@@ -1,7 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolFileAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { AGENT_CONFIGURATION_URI_PATTERN } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { ToolFileAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type {
   MCPProgressNotificationType,
   RunAgentQueryProgressOutput,
