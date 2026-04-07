@@ -228,6 +228,9 @@ const InputBarContainer = ({
   const onFirstAgentMentionPasteRef = useRef<
     ((agentId: string) => void) | undefined
   >(undefined);
+  const onAgentMentionsStrippedRef = useRef<
+    ((count: number) => void) | undefined
+  >(undefined);
   const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
   const plusButtonRef = useRef<HTMLDivElement>(null);
@@ -413,6 +416,19 @@ const InputBarContainer = ({
       }
     : undefined;
 
+  onAgentMentionsStrippedRef.current = singleAgentInput
+    ? (count: number) => {
+        sendNotification({
+          type: "info",
+          title: "Agent mentions removed",
+          description:
+            count === 1
+              ? "1 agent mention was removed. Only one agent can be used at a time."
+              : `${count} agent mentions were removed. Only one agent can be used at a time.`,
+        });
+      }
+    : undefined;
+
   const { editor, editorService } = useCustomEditor({
     onEnterKeyDown: onEnterKeyDownWithShake,
     disableAutoFocus,
@@ -425,9 +441,8 @@ const InputBarContainer = ({
     spaceId: space?.sId,
     onInlineText: handleInlineText,
     shouldSuggestAgentRef: singleAgentInput ? shouldSuggestAgentRef : undefined,
-    onFirstAgentMentionPasteRef: singleAgentInput
-      ? onFirstAgentMentionPasteRef
-      : undefined,
+    onFirstAgentMentionPasteRef,
+    onAgentMentionsStrippedRef,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
       let inserted = false;

@@ -26,6 +26,9 @@ interface MentionExtensionOptions extends MentionOptions {
   onFirstAgentMentionPasteRef?: RefObject<
     ((agentId: string) => void) | undefined
   >;
+  onAgentMentionsStrippedRef?: RefObject<
+    ((count: number) => void) | undefined
+  >;
 }
 
 export const MentionExtension = Mention.extend<MentionExtensionOptions>({
@@ -34,6 +37,7 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
       ...this.parent?.(),
       owner: {} as WorkspaceType,
       onFirstAgentMentionPasteRef: undefined,
+      onAgentMentionsStrippedRef: undefined,
     } as MentionExtensionOptions;
   },
 
@@ -165,7 +169,8 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
   },
 
   addProseMirrorPlugins(this) {
-    const { owner, onFirstAgentMentionPasteRef } = this.options;
+    const { owner, onFirstAgentMentionPasteRef, onAgentMentionsStrippedRef } =
+      this.options;
     const editor = this.editor;
     const markdownManager = editor.markdown!; // we know it exists because we added the markdown plugin
 
@@ -246,6 +251,7 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
               // routed it from the rich-HTML slice check above).
               if (onFirstAgentMentionPasteRef?.current) {
                 let markdownAgentId: string | null = null;
+                let strippedCount = 0;
                 contentToInsert = processedMarkdown
                   .replaceAll(
                     AGENT_MENTION_REGEX,
@@ -253,12 +259,21 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
                       if (!markdownAgentId) {
                         markdownAgentId = agentId;
                       }
+                      strippedCount++;
                       return "";
                     }
                   )
                   .trim();
                 if (markdownAgentId && !richHtmlAgentId) {
                   onFirstAgentMentionPasteRef?.current(markdownAgentId);
+                }
+                // If richHtmlAgentId already claimed the first agent, all
+                // markdown-stripped mentions are extras; otherwise subtract one.
+                const extraStripped = richHtmlAgentId
+                  ? strippedCount
+                  : strippedCount - 1;
+                if (extraStripped > 0) {
+                  onAgentMentionsStrippedRef?.current?.(extraStripped);
                 }
               }
 
