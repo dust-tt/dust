@@ -4,6 +4,7 @@ enum AppConfig {
     static let domain = "dust.tt"
     static let apiBaseURL = "https://\(domain)"
     static let appURL = "https://app.\(domain)"
+    static let vizURL = "https://viz.\(domain)"
     static let bundleId = "com.dust.mobile"
     static let callbackURLScheme = "dust"
     static let callbackURL = "\(callbackURLScheme)://auth"
@@ -44,6 +45,22 @@ enum AppConfig {
 
         static func transcribe(workspaceId: String) -> String {
             "/api/w/\(workspaceId)/services/transcribe"
+        }
+
+        static func files(workspaceId: String) -> String {
+            "/api/w/\(workspaceId)/files"
+        }
+
+        static func conversationContentFragments(workspaceId: String, conversationId: String) -> String {
+            "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/content_fragment"
+        }
+
+        static func fileView(workspaceId: String, fileId: String) -> String {
+            "/api/w/\(workspaceId)/files/\(fileId)?action=view"
+        }
+
+        static func conversationAttachments(workspaceId: String, conversationId: String) -> String {
+            "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/attachments"
         }
     }
 }

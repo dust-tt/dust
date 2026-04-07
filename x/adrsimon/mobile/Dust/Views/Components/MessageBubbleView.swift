@@ -7,14 +7,15 @@ struct MessageBubbleView: View {
     let currentUserEmail: String
     var streamingPhase: AgentStreamingPhase = .idle
     var activeActions: [ActiveAction] = []
+    var onFragmentTap: ((ContentFragment) -> Void)?
 
     var body: some View {
         switch message {
         case let .user(msg):
             if msg.context?.email == currentUserEmail {
-                UserMessageBubble(message: msg)
+                UserMessageBubble(message: msg, onFragmentTap: onFragmentTap)
             } else {
-                OtherUserMessageBubble(message: msg)
+                OtherUserMessageBubble(message: msg, onFragmentTap: onFragmentTap)
             }
         case let .agent(msg):
             AgentMessageBubble(
@@ -28,25 +29,32 @@ struct MessageBubbleView: View {
 
 struct UserMessageBubble: View {
     let message: UserMessage
+    var onFragmentTap: ((ContentFragment) -> Void)?
 
     var body: some View {
-        HStack {
-            Spacer()
+        VStack(alignment: .trailing, spacing: 6) {
+            if let fragments = message.contentFragments, !fragments.isEmpty {
+                ContentFragmentList(fragments: fragments, onTap: onFragmentTap)
+            }
 
-            Markdown(preprocessDirectives(message.content))
-                .markdownTheme(.dust)
-                .lineSpacing(4)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Color.dustMutedBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+            if !message.content.isEmpty {
+                Markdown(preprocessDirectives(message.content))
+                    .markdownTheme(.dust)
+                    .lineSpacing(4)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(Color.dustMutedBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .trailing)
         .padding(.top, 12)
     }
 }
 
 struct OtherUserMessageBubble: View {
     let message: UserMessage
+    var onFragmentTap: ((ContentFragment) -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -58,10 +66,16 @@ struct OtherUserMessageBubble: View {
                     .foregroundStyle(Color.dustForeground)
             }
 
-            Markdown(preprocessDirectives(message.content))
-                .markdownTheme(.dust)
-                .lineSpacing(4)
-                .textSelection(.enabled)
+            if let fragments = message.contentFragments, !fragments.isEmpty {
+                ContentFragmentList(fragments: fragments, onTap: onFragmentTap)
+            }
+
+            if !message.content.isEmpty {
+                Markdown(preprocessDirectives(message.content))
+                    .markdownTheme(.dust)
+                    .lineSpacing(4)
+                    .textSelection(.enabled)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 16)
@@ -103,6 +117,103 @@ struct AgentMessageBubble: View {
         .padding(.top, 16)
     }
 }
+
+// MARK: - Content Fragments
+
+struct ContentFragmentList: View {
+    let fragments: [ContentFragment]
+    var onTap: ((ContentFragment) -> Void)?
+
+    var body: some View {
+        FlowLayout(spacing: 4) {
+            ForEach(fragments) { fragment in
+                ContentFragmentChip(fragment: fragment, onTap: onTap)
+            }
+        }
+    }
+}
+
+struct ContentFragmentChip: View {
+    let fragment: ContentFragment
+    var onTap: ((ContentFragment) -> Void)?
+
+    private var isTappable: Bool {
+        fragment.fileId != nil && onTap != nil
+    }
+
+    var body: some View {
+        Button {
+            onTap?(fragment)
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: Attachment.sfSymbol(for: fragment.contentType))
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color.highlight)
+
+                Text(fragment.title)
+                    .sparkleCopyXs()
+                    .foregroundStyle(Color.dustForeground)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(Color.dustMutedBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .disabled(!isTappable)
+    }
+}
+
+// swiftlint:disable identifier_name
+private struct FlowLayout: Layout {
+    var spacing: CGFloat = 4
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache _: inout ()) -> CGSize {
+        let rows = computeRows(proposal: proposal, subviews: subviews)
+        var height: CGFloat = 0
+        for (i, row) in rows.enumerated() {
+            let rowHeight = row.map { subviews[$0].sizeThatFits(.unspecified).height }.max() ?? 0
+            height += rowHeight + (i > 0 ? spacing : 0)
+        }
+        return CGSize(width: proposal.width ?? 0, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache _: inout ()) {
+        let rows = computeRows(proposal: proposal, subviews: subviews)
+        var y = bounds.minY
+        for row in rows {
+            let rowHeight = row.map { subviews[$0].sizeThatFits(.unspecified).height }.max() ?? 0
+            var x = bounds.maxX
+            for index in row.reversed() {
+                let size = subviews[index].sizeThatFits(.unspecified)
+                x -= size.width
+                subviews[index].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+                x -= spacing
+            }
+            y += rowHeight + spacing
+        }
+    }
+
+    private func computeRows(proposal: ProposedViewSize, subviews: Subviews) -> [[Int]] {
+        let maxWidth = proposal.width ?? .infinity
+        var rows: [[Int]] = [[]]
+        var rowWidth: CGFloat = 0
+        for (i, subview) in subviews.enumerated() {
+            let size = subview.sizeThatFits(.unspecified)
+            if !rows[rows.count - 1].isEmpty, rowWidth + spacing + size.width > maxWidth {
+                rows.append([])
+                rowWidth = 0
+            }
+            if rowWidth > 0 { rowWidth += spacing }
+            rowWidth += size.width
+            rows[rows.count - 1].append(i)
+        }
+        return rows
+    }
+}
+
+// swiftlint:enable identifier_name
 
 // MARK: - Streaming Status
 
