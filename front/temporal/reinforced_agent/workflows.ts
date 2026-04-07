@@ -125,10 +125,12 @@ export async function reinforcedAgentWorkspaceWorkflow({
   workspaceId,
   useBatchMode,
   skipDelay = false,
+  includeAutoAgents = true,
 }: {
   workspaceId: string;
   useBatchMode: boolean;
   skipDelay?: boolean;
+  includeAutoAgents?: boolean;
 }): Promise<void> {
   const isAllowed = await isAgentReinforcementAllowedActivity({ workspaceId });
   if (!isAllowed) {
@@ -142,7 +144,10 @@ export async function reinforcedAgentWorkspaceWorkflow({
     }
   }
 
-  const selections = await getAgentConfigurationsActivity({ workspaceId });
+  const selections = await getAgentConfigurationsActivity({
+    workspaceId,
+    includeAutoAgents,
+  });
 
   await concurrentExecutor(
     selections,

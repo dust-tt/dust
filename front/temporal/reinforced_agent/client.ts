@@ -182,15 +182,17 @@ export async function stopAllReinforcedAgentWorkspaceCrons(): Promise<void> {
 export async function startReinforcedAgentWorkspaceWorkflow({
   workspaceId,
   useBatchMode,
+  includeAutoAgents = true,
 }: {
   workspaceId: string;
   useBatchMode: boolean;
+  includeAutoAgents?: boolean;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClientForFrontNamespace();
   const workflowId = `reinforced-agent-workspace-${workspaceId}-manual-${Date.now()}`;
 
   await client.workflow.start(reinforcedAgentWorkspaceWorkflow, {
-    args: [{ workspaceId, useBatchMode, skipDelay: true }],
+    args: [{ workspaceId, useBatchMode, skipDelay: true, includeAutoAgents }],
     taskQueue: QUEUE_NAME,
     workflowId,
   });

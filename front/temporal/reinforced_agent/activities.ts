@@ -262,8 +262,10 @@ export async function isAgentReinforcementAllowedActivity({
  */
 export async function getAgentConfigurationsActivity({
   workspaceId,
+  includeAutoAgents = true,
 }: {
   workspaceId: string;
+  includeAutoAgents?: boolean;
 }): Promise<{ agentConfigurationId: string; conversationsToSample: number }[]> {
   const auth = await getAuthForWorkspace(workspaceId);
 
@@ -273,7 +275,9 @@ export async function getAgentConfigurationsActivity({
     variant: "extra_light",
   });
 
-  return selectAgentsForReinforcementPipeline(auth, agents, {});
+  return selectAgentsForReinforcementPipeline(auth, agents, {
+    includeAutoAgents,
+  });
 }
 
 /**

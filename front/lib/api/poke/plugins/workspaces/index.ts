@@ -19,11 +19,12 @@ export * from "./manage_conversation_kill_switch";
 export * from "./manage_programmatic_usage_configuration";
 export * from "./manage_workspace_kill_switch";
 export * from "./reinforced_agent_workflow";
-export * from "./rename_workspace";
-export * from "./reset_message_rate_limit";
-export * from "./reset_provisioned_members_not_in_directory";
-export * from "./restore_conversation";
-export * from "./revoke_users";
+export * from "./rename_workspace
+export * from "./reset_message_rate_limitte_limit";
+export * from "./reset_provisioned_members_not_in_directorys_not_in_directory";
+export * from "./restore_conversation
+export * from "./revoke_users
+export * from "./run_reinforced_agent_workflowed_agent_workflow";
 export * from "./send_onboarding_conversation";
 export * from "./soft_delete_conversation";
 export * from "./sync_missing_transcripts_date_range";
