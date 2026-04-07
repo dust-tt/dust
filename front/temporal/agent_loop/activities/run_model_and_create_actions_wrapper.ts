@@ -247,6 +247,12 @@ async function _runModelAndCreateActionsActivity({
     stepContexts,
   } = modelResult;
 
+  // Generation completed (text response, no tool calls) — runModel returns
+  // { actions: [], runId } so we still capture the runId for tracking.
+  if (actions.length === 0) {
+    return { runId, actionBlobs: [] };
+  }
+
   // Enforce a limit on actions per step, reducing by depth (8/8/4/2)
   // to contain cascading fan-out from nested run_agent calls.
   const actionsToRun = actions.slice(

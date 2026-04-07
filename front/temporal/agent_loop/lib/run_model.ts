@@ -770,7 +770,12 @@ export async function runModel(
     });
     localLogger.info("Agent message generation succeeded");
 
-    return null;
+    return {
+      actions: [],
+      runId: dustRunId,
+      functionCallStepContentIds: updatedFunctionCallStepContentIds,
+      stepContexts: [],
+    };
   }
 
   // We have actions.
