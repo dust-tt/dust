@@ -18,9 +18,10 @@ export function MCPAskUserQuestionActionDetails({
   const userQuestion = parsed.success ? parsed.data : null;
 
   const outputText = toolOutput?.find(isTextContent)?.text ?? null;
-  const { selectedLabels, customAnswer, isDeclined } = outputText
-    ? parseUserQuestionAnswer(outputText)
-    : { selectedLabels: [], customAnswer: null, isDeclined: false };
+  const { selectedLabels, customAnswer, isDeclined } =
+    outputText && userQuestion
+      ? parseUserQuestionAnswer(outputText, userQuestion.question)
+      : { selectedLabels: [], customAnswer: null, isDeclined: false };
 
   return (
     <ActionDetailsWrapper
@@ -44,28 +45,30 @@ export function MCPAskUserQuestionActionDetails({
               return (
                 <div
                   key={index}
-                  className="flex items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night"
+                  className="flex flex-col text-sm text-muted-foreground dark:text-muted-foreground-night"
                 >
-                  <Icon
-                    visual={CheckIcon}
-                    size="xs"
-                    className={
-                      isSelected
-                        ? "text-primary dark:text-primary-night"
-                        : "invisible"
-                    }
-                  />
-                  <span
-                    className={
-                      isSelected
-                        ? "font-medium text-foreground dark:text-foreground-night"
-                        : ""
-                    }
-                  >
-                    {label}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <Icon
+                      visual={CheckIcon}
+                      size="xs"
+                      className={
+                        isSelected
+                          ? "text-primary dark:text-primary-night"
+                          : "invisible"
+                      }
+                    />
+                    <span
+                      className={
+                        isSelected
+                          ? "font-medium text-foreground dark:text-foreground-night"
+                          : ""
+                      }
+                    >
+                      {label}
+                    </span>
+                  </div>
                   {description && (
-                    <span className="text-xs">{description}</span>
+                    <span className="ml-6 text-xs">{description}</span>
                   )}
                 </div>
               );
