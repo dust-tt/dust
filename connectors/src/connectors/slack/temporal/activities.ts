@@ -42,6 +42,7 @@ import {
 } from "@connectors/lib/data_sources";
 import {
   ExternalOAuthTokenError,
+  ProviderRateLimitError,
   ProviderWorkflowError,
 } from "@connectors/lib/error";
 import {
@@ -192,136 +193,144 @@ export async function syncChannel(
     });
   }
 
-  const threadsToSync: string[] = [];
-  let unthreadedTimeframesToSync: number[] = [];
-  let messages: ConversationsHistoryResponse;
   try {
-    messages = await getMessagesForChannel(
+    const threadsToSync: string[] = [];
+    let unthreadedTimeframesToSync: number[] = [];
+    const messages = await getMessagesForChannel(
       connectorId,
       channelId,
       50,
       messagesCursor
     );
+    if (!messages.messages) {
+      // This should never happen because we throw an exception in the activity if we get an error
+      // from the Slack API, but we need to make typescript happy.
+      return {
+        nextCursor: messages.response_metadata?.next_cursor,
+        weeksSynced: weeksSynced,
+      };
+    }
+
+    // `allSkip` and `skip` logic assumes that the messages are returned in recency order (newest
+    // first).
+    let allSkip = true;
+    for (const message of messages.messages) {
+      const isIndexable = await shouldIndexSlackMessage(
+        slackConfiguration,
+        message,
+        slackClient
+      );
+
+      if (!isIndexable) {
+        // Skip non-user messages unless from whitelisted bot/workflow.
+        continue;
+      }
+      let skip = false;
+      if (message.thread_ts) {
+        const threadTs = parseInt(message.thread_ts, 10) * 1000;
+        if (fromTs && threadTs < fromTs) {
+          skip = true;
+          logger.info(
+            {
+              workspaceId: dataSourceConfig.workspaceId,
+              channelId,
+              channelName: remoteChannel.name,
+              threadTs,
+              fromTs,
+            },
+            "FromTs Skipping thread"
+          );
+        }
+        if (!skip && threadsToSync.indexOf(message.thread_ts) === -1) {
+          // We can end up getting two messages from the same thread if a message from a thread
+          // has also been "posted to channel".
+          threadsToSync.push(message.thread_ts);
+        }
+      } else {
+        const messageTs = parseInt(message.ts as string, 10) * 1000;
+        const weekStartTsMs = getWeekStart(new Date(messageTs)).getTime();
+        const weekEndTsMs = getWeekEnd(new Date(messageTs)).getTime();
+        if (fromTs && weekEndTsMs < fromTs) {
+          skip = true;
+          logger.info(
+            {
+              workspaceId: dataSourceConfig.workspaceId,
+              channelId,
+              channelName: remoteChannel.name,
+              messageTs,
+              fromTs,
+              weekEndTsMs,
+              weekStartTsMs,
+            },
+            "FromTs Skipping non-thread"
+          );
+        }
+        if (!skip && unthreadedTimeframesToSync.indexOf(weekStartTsMs) === -1) {
+          unthreadedTimeframesToSync.push(weekStartTsMs);
+        }
+      }
+      if (!skip) {
+        allSkip = false;
+      }
+    }
+
+    unthreadedTimeframesToSync = unthreadedTimeframesToSync.filter(
+      (t) => !(t in weeksSynced)
+    );
+
+    logger.info(
+      {
+        connectorId,
+        channelId,
+        threadsToSyncCount: threadsToSync.length,
+        unthreadedTimeframesToSyncCount: unthreadedTimeframesToSync.length,
+      },
+      "syncChannel.splitMessages"
+    );
+
+    await syncThreads(
+      channelId,
+      remoteChannel.name,
+      threadsToSync,
+      connectorId
+    );
+
+    await syncMultipleNonThreaded(
+      channelId,
+      remoteChannel.name,
+      Array.from(unthreadedTimeframesToSync.values()),
+      connectorId
+    );
+    unthreadedTimeframesToSync.forEach((t) => (weeksSynced[t] = true));
+
+    return {
+      nextCursor: allSkip ? undefined : messages.response_metadata?.next_cursor,
+      weeksSynced: weeksSynced,
+    };
   } catch (e) {
-    if (
-      isWebAPIHTTPError(e) &&
-      e.statusCode >= 500 &&
-      Context.current().info.attempt > 20
-    ) {
+    // Give up after 20 attempts for persistent Slack server errors.
+    // This catches both raw HTTP 5xx errors (e.g. 500) that pass through
+    // withSlackErrorHandling, and ProviderWorkflowError (e.g. 503) that it converts.
+    // Rate limit errors are excluded as they resolve naturally.
+    const isPersistentServerError =
+      (isWebAPIHTTPError(e) && e.statusCode >= 500) ||
+      (e instanceof ProviderWorkflowError &&
+        !(e instanceof ProviderRateLimitError));
+
+    if (isPersistentServerError && Context.current().info.attempt > 20) {
       logger.error(
         {
           connectorId,
           channelId,
           attempt: Context.current().info.attempt,
-          statusCode: e.statusCode,
           error: normalizeError(e),
         },
-        "Slack API returned a server error after multiple retries. Giving up and moving on."
+        "Slack API returned a persistent server error after multiple retries. Giving up on this channel sync page."
       );
       return;
     }
     throw e;
   }
-  if (!messages.messages) {
-    // This should never happen because we throw an exception in the activity if we get an error
-    // from the Slack API, but we need to make typescript happy.
-    return {
-      nextCursor: messages.response_metadata?.next_cursor,
-      weeksSynced: weeksSynced,
-    };
-  }
-
-  // `allSkip` and `skip` logic assumes that the messages are returned in recency order (newest
-  // first).
-  let allSkip = true;
-  for (const message of messages.messages) {
-    const isIndexable = await shouldIndexSlackMessage(
-      slackConfiguration,
-      message,
-      slackClient
-    );
-
-    if (!isIndexable) {
-      // Skip non-user messages unless from whitelisted bot/workflow.
-      continue;
-    }
-    let skip = false;
-    if (message.thread_ts) {
-      const threadTs = parseInt(message.thread_ts, 10) * 1000;
-      if (fromTs && threadTs < fromTs) {
-        skip = true;
-        logger.info(
-          {
-            workspaceId: dataSourceConfig.workspaceId,
-            channelId,
-            channelName: remoteChannel.name,
-            threadTs,
-            fromTs,
-          },
-          "FromTs Skipping thread"
-        );
-      }
-      if (!skip && threadsToSync.indexOf(message.thread_ts) === -1) {
-        // We can end up getting two messages from the same thread if a message from a thread
-        // has also been "posted to channel".
-        threadsToSync.push(message.thread_ts);
-      }
-    } else {
-      const messageTs = parseInt(message.ts as string, 10) * 1000;
-      const weekStartTsMs = getWeekStart(new Date(messageTs)).getTime();
-      const weekEndTsMs = getWeekEnd(new Date(messageTs)).getTime();
-      if (fromTs && weekEndTsMs < fromTs) {
-        skip = true;
-        logger.info(
-          {
-            workspaceId: dataSourceConfig.workspaceId,
-            channelId,
-            channelName: remoteChannel.name,
-            messageTs,
-            fromTs,
-            weekEndTsMs,
-            weekStartTsMs,
-          },
-          "FromTs Skipping non-thread"
-        );
-      }
-      if (!skip && unthreadedTimeframesToSync.indexOf(weekStartTsMs) === -1) {
-        unthreadedTimeframesToSync.push(weekStartTsMs);
-      }
-    }
-    if (!skip) {
-      allSkip = false;
-    }
-  }
-
-  unthreadedTimeframesToSync = unthreadedTimeframesToSync.filter(
-    (t) => !(t in weeksSynced)
-  );
-
-  logger.info(
-    {
-      connectorId,
-      channelId,
-      threadsToSyncCount: threadsToSync.length,
-      unthreadedTimeframesToSyncCount: unthreadedTimeframesToSync.length,
-    },
-    "syncChannel.splitMessages"
-  );
-
-  await syncThreads(channelId, remoteChannel.name, threadsToSync, connectorId);
-
-  await syncMultipleNonThreaded(
-    channelId,
-    remoteChannel.name,
-    Array.from(unthreadedTimeframesToSync.values()),
-    connectorId
-  );
-  unthreadedTimeframesToSync.forEach((t) => (weeksSynced[t] = true));
-
-  return {
-    nextCursor: allSkip ? undefined : messages.response_metadata?.next_cursor,
-    weeksSynced: weeksSynced,
-  };
 }
 
 export async function syncChannelMetadata(
