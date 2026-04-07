@@ -110,7 +110,7 @@ export async function syncChannel(
   connectorId: ModelId,
   fromTs: number | null,
   weeksSynced: Record<number, boolean>,
-  messagesCursor?: string
+  messagesCursor?: string,
 ): Promise<SyncChannelRes | undefined> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -122,11 +122,11 @@ export async function syncChannel(
   });
 
   const remoteChannel = await withSlackErrorHandling(() =>
-    getChannelById(slackClient, connectorId, channelId)
+    getChannelById(slackClient, connectorId, channelId),
   );
   if (!remoteChannel || !remoteChannel.name) {
     throw new Error(
-      `Could not find channel or channel name for channel ${channelId}`
+      `Could not find channel or channel name for channel ${channelId}`,
     );
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
@@ -142,7 +142,7 @@ export async function syncChannel(
 
   if (!slackConfiguration) {
     throw new Error(
-      `Could not find slack configuration for connector ${connectorId}`
+      `Could not find slack configuration for connector ${connectorId}`,
     );
   }
 
@@ -162,7 +162,7 @@ export async function syncChannel(
         channelName: remoteChannel.name,
         skipReason: slackChannel.skipReason,
       },
-      `Skipping channel sync: ${slackChannel.skipReason}`
+      `Skipping channel sync: ${slackChannel.skipReason}`,
     );
     return;
   }
@@ -174,7 +174,7 @@ export async function syncChannel(
         channelId,
         channelName: remoteChannel.name,
       },
-      "Channel is not indexed, skipping"
+      "Channel is not indexed, skipping",
     );
     return;
   }
@@ -201,7 +201,7 @@ export async function syncChannel(
       connectorId,
       channelId,
       50,
-      messagesCursor
+      messagesCursor,
     );
     if (!messages.messages) {
       // This should never happen because we throw an exception in the activity if we get an error
@@ -219,7 +219,7 @@ export async function syncChannel(
       const isIndexable = await shouldIndexSlackMessage(
         slackConfiguration,
         message,
-        slackClient
+        slackClient,
       );
 
       if (!isIndexable) {
@@ -239,7 +239,7 @@ export async function syncChannel(
               threadTs,
               fromTs,
             },
-            "FromTs Skipping thread"
+            "FromTs Skipping thread",
           );
         }
         if (!skip && threadsToSync.indexOf(message.thread_ts) === -1) {
@@ -263,7 +263,7 @@ export async function syncChannel(
               weekEndTsMs,
               weekStartTsMs,
             },
-            "FromTs Skipping non-thread"
+            "FromTs Skipping non-thread",
           );
         }
         if (!skip && unthreadedTimeframesToSync.indexOf(weekStartTsMs) === -1) {
@@ -276,7 +276,7 @@ export async function syncChannel(
     }
 
     unthreadedTimeframesToSync = unthreadedTimeframesToSync.filter(
-      (t) => !(t in weeksSynced)
+      (t) => !(t in weeksSynced),
     );
 
     logger.info(
@@ -286,21 +286,21 @@ export async function syncChannel(
         threadsToSyncCount: threadsToSync.length,
         unthreadedTimeframesToSyncCount: unthreadedTimeframesToSync.length,
       },
-      "syncChannel.splitMessages"
+      "syncChannel.splitMessages",
     );
 
     await syncThreads(
       channelId,
       remoteChannel.name,
       threadsToSync,
-      connectorId
+      connectorId,
     );
 
     await syncMultipleNonThreaded(
       channelId,
       remoteChannel.name,
       Array.from(unthreadedTimeframesToSync.values()),
-      connectorId
+      connectorId,
     );
     unthreadedTimeframesToSync.forEach((t) => (weeksSynced[t] = true));
 
@@ -320,7 +320,7 @@ export async function syncChannel(
     if (isPersistentServerError && attempt > 20) {
       logger.error(
         { connectorId, channelId, attempt, error: normalizeError(e) },
-        "Slack API returned a persistent server error after multiple retries. Giving up on this channel sync page."
+        "Slack API returned a persistent server error after multiple retries. Giving up on this channel sync page.",
       );
       // Return a result that clears the cursor so the workflow stops paginating
       // (returning undefined would leave messagesCursor unchanged, causing an infinite loop).
@@ -333,7 +333,7 @@ export async function syncChannel(
 export async function syncChannelMetadata(
   connectorId: ModelId,
   channelId: string,
-  timestampsMs: number
+  timestampsMs: number,
 ) {
   await updateSlackChannelInCoreDb(connectorId, channelId, timestampsMs);
 }
@@ -342,7 +342,7 @@ export async function getMessagesForChannel(
   connectorId: ModelId,
   channelId: string,
   limit = 100,
-  nextCursor?: string
+  nextCursor?: string,
 ): Promise<ConversationsHistoryResponse> {
   const slackClient = await getSlackClient(connectorId, {
     rejectOnRateLimit: false,
@@ -364,21 +364,21 @@ export async function getMessagesForChannel(
           channel: channelId,
           limit: limit,
           cursor: nextCursor,
-        })
+        }),
       ),
-    { source: "getMessagesForChannel" }
+    { source: "getMessagesForChannel" },
   );
   // Despite the typing, in practice `conversations.history` can be undefined at times.
   if (!c) {
     throw new ProviderWorkflowError(
       "slack",
       "Received unexpected undefined replies from Slack API in getMessagesForChannel (generally transient)",
-      "transient_upstream_activity_error"
+      "transient_upstream_activity_error",
     );
   }
   if (c.error) {
     throw new Error(
-      `Failed getting messages for channel ${channelId}: ${c.error}`
+      `Failed getting messages for channel ${channelId}: ${c.error}`,
     );
   }
 
@@ -388,7 +388,7 @@ export async function getMessagesForChannel(
       channelId,
       connectorId,
     },
-    "getMessagesForChannel"
+    "getMessagesForChannel",
   );
   return c;
 }
@@ -417,7 +417,7 @@ export async function syncNonThreaded({
     await SlackConfigurationResource.fetchByConnectorId(connectorId);
   if (!slackConfiguration) {
     throw new Error(
-      `Could not find slack configuration for connector ${connector}`
+      `Could not find slack configuration for connector ${connector}`,
     );
   }
 
@@ -462,7 +462,7 @@ export async function syncNonThreaded({
           channelName,
           skipReason: existingMessage.skipReason,
         },
-        `Skipping non-thread sync: ${existingMessage.skipReason}`
+        `Skipping non-thread sync: ${existingMessage.skipReason}`,
       );
       return;
     }
@@ -476,7 +476,7 @@ export async function syncNonThreaded({
           channelName,
           updatedAt: existingMessage.updatedAt,
         },
-        "Skipping non-thread sync: already updated in the last hour"
+        "Skipping non-thread sync: already updated in the last hour",
       );
       return;
     }
@@ -509,9 +509,9 @@ export async function syncNonThreaded({
               oldest: `${startTsSec}`,
               latest: `${latestTsSec}`,
               inclusive: true,
-            })
+            }),
           ),
-        { source: "syncNonThreaded" }
+        { source: "syncNonThreaded" },
       );
     } catch (e) {
       const maybeSlackPlatformError = e as WebAPIPlatformError;
@@ -528,12 +528,12 @@ export async function syncNonThreaded({
 
     if (!c) {
       throw new Error(
-        `Failed getting messages for channel ${channelId}: response is undefined`
+        `Failed getting messages for channel ${channelId}: response is undefined`,
       );
     }
     if (c.error) {
       throw new Error(
-        `Failed getting messages for channel ${channelId}: ${c.error}`
+        `Failed getting messages for channel ${channelId}: ${c.error}`,
       );
     }
     if (c.messages === undefined) {
@@ -546,10 +546,10 @@ export async function syncNonThreaded({
           oldest: startTsSec,
           latest: latestTsSec,
         },
-        "Failed getting messages for channel"
+        "Failed getting messages for channel",
       );
       throw new Error(
-        `Failed getting messages for channel ${channelId}: messages is undefined`
+        `Failed getting messages for channel ${channelId}: messages is undefined`,
       );
     }
 
@@ -562,7 +562,7 @@ export async function syncNonThreaded({
       const isIndexable = await shouldIndexSlackMessage(
         slackConfiguration,
         message,
-        slackClient
+        slackClient,
       );
 
       if (!isIndexable) {
@@ -586,7 +586,7 @@ export async function syncNonThreaded({
           startTsMs,
           endTsMs,
         },
-        "Giving up on syncNonThreaded: too many messages"
+        "Giving up on syncNonThreaded: too many messages",
       );
       break;
     }
@@ -663,7 +663,7 @@ async function processAndUpsertNonThreadedMessages({
       isThread: false,
       connectorId,
       slackClient,
-    })
+    }),
   );
 
   const firstMessage = messages[0];
@@ -681,7 +681,7 @@ async function processAndUpsertNonThreadedMessages({
       slackClient.chat.getPermalink({
         channel: channelId,
         message_ts: ts,
-      })
+      }),
     );
     if (linkRes.ok && linkRes.permalink) {
       sourceUrl = linkRes.permalink;
@@ -694,7 +694,7 @@ async function processAndUpsertNonThreadedMessages({
           messageTs: firstMessage.ts,
           linkRes,
         },
-        "No documentUrl for Slack non threaded: Failed to get permalink"
+        "No documentUrl for Slack non threaded: Failed to get permalink",
       );
     }
   }
@@ -721,7 +721,10 @@ async function processAndUpsertNonThreadedMessages({
       timestampMs: updatedAt,
       tags,
       parentId: slackChannelInternalIdFromSlackChannelId(channelId),
-      parents: [documentId, slackChannelInternalIdFromSlackChannelId(channelId)],
+      parents: [
+        documentId,
+        slackChannelInternalIdFromSlackChannelId(channelId),
+      ],
       upsertContext: {
         sync_type: isBatchSync ? "batch" : "incremental",
       },
@@ -742,7 +745,7 @@ async function processAndUpsertNonThreadedMessages({
           channelId,
           channelName,
         },
-        "Skipping Slack non-threaded messages exceeding plan document size limit."
+        "Skipping Slack non-threaded messages exceeding plan document size limit.",
       );
       return;
     }
@@ -754,7 +757,7 @@ async function syncMultipleNonThreaded(
   channelId: string,
   channelName: string,
   timestampsMs: number[],
-  connectorId: ModelId
+  connectorId: ModelId,
 ) {
   await concurrentExecutor(
     timestampsMs,
@@ -770,7 +773,7 @@ async function syncMultipleNonThreaded(
         isBatchSync: true,
       });
     },
-    { concurrency: MAX_CONCURRENCY_LEVEL }
+    { concurrency: MAX_CONCURRENCY_LEVEL },
   );
 }
 
@@ -778,7 +781,7 @@ async function syncThreads(
   channelId: string,
   channelName: string,
   threadsTs: string[],
-  connectorId: ModelId
+  connectorId: ModelId,
 ) {
   await concurrentExecutor(
     threadsTs,
@@ -795,7 +798,7 @@ async function syncThreads(
 
       if (!channel) {
         throw new Error(
-          `Could not find channel ${channelId} in connectors db for connector ${connectorId}`
+          `Could not find channel ${channelId} in connectors db for connector ${connectorId}`,
         );
       }
 
@@ -807,7 +810,7 @@ async function syncThreads(
             channelName,
             skipReason: channel.skipReason,
           },
-          `Skipping thread sync: ${channel.skipReason}`
+          `Skipping thread sync: ${channel.skipReason}`,
         );
         return;
       }
@@ -819,7 +822,7 @@ async function syncThreads(
             channelId,
             channelName,
           },
-          "Channel is not indexed, skipping"
+          "Channel is not indexed, skipping",
         );
         return;
       }
@@ -829,7 +832,7 @@ async function syncThreads(
         channelName,
         threadTs,
         connectorId,
-        true // isBatchSync
+        true, // isBatchSync
       );
     },
     {
@@ -837,7 +840,7 @@ async function syncThreads(
       onBatchComplete: async () => {
         await heartbeat();
       },
-    }
+    },
   );
 }
 
@@ -846,7 +849,7 @@ export async function syncThread(
   channelName: string,
   threadTs: string,
   connectorId: ModelId,
-  isBatchSync = false
+  isBatchSync = false,
 ) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -866,7 +869,7 @@ export async function syncThread(
       channelId,
       threadTs,
     },
-    "syncThread.getRepliesFromThread.send"
+    "syncThread.getRepliesFromThread.send",
   );
 
   const now = new Date();
@@ -879,7 +882,7 @@ export async function syncThread(
         channelId,
         threadTs,
         useCase: isBatchSync ? "batch_sync" : "incremental_sync",
-      })
+      }),
     );
     allMessages = allMessages.filter((m) => !!m.user);
   } catch (e) {
@@ -911,7 +914,7 @@ export async function syncThread(
       threadTs,
       delayMs: new Date().getTime() - now.getTime(),
     },
-    "syncThread.getRepliesFromThread.done"
+    "syncThread.getRepliesFromThread.done",
   );
 
   const documentId = slackThreadInternalIdFromSlackThreadIdentifier({
@@ -938,7 +941,7 @@ export async function syncThread(
       isThread: true,
       connectorId,
       slackClient,
-    })
+    }),
   );
 
   const firstMessage = allMessages[0];
@@ -956,7 +959,7 @@ export async function syncThread(
       slackClient.chat.getPermalink({
         channel: channelId,
         message_ts: ts,
-      })
+      }),
     );
     if (linkRes.ok && linkRes.permalink) {
       sourceUrl = linkRes.permalink;
@@ -970,7 +973,7 @@ export async function syncThread(
           messageTs: firstMessage.ts,
           linkRes,
         },
-        "No documentUrl for Slack thread: Failed to get permalink"
+        "No documentUrl for Slack thread: Failed to get permalink",
       );
     }
   }
@@ -1004,7 +1007,7 @@ export async function syncThread(
         threadTs,
         skipReason: firstMessageObject.skipReason,
       },
-      `Skipping thread : ${firstMessageObject.skipReason}`
+      `Skipping thread : ${firstMessageObject.skipReason}`,
     );
     return;
   }
@@ -1041,7 +1044,10 @@ export async function syncThread(
       timestampMs: updatedAt,
       tags,
       parentId: slackChannelInternalIdFromSlackChannelId(channelId),
-      parents: [documentId, slackChannelInternalIdFromSlackChannelId(channelId)],
+      parents: [
+        documentId,
+        slackChannelInternalIdFromSlackChannelId(channelId),
+      ],
       upsertContext: {
         sync_type: isBatchSync ? "batch" : "incremental",
       },
@@ -1065,7 +1071,7 @@ export async function syncThread(
           channelName,
           threadTs,
         },
-        "Skipping Slack thread exceeding plan document size limit."
+        "Skipping Slack thread exceeding plan document size limit.",
       );
       return;
     }
@@ -1078,26 +1084,26 @@ export async function saveSuccessSyncActivity(connectorId: ModelId) {
     {
       connectorId,
     },
-    "Saving success sync activity for connector"
+    "Saving success sync activity for connector",
   );
   await syncSucceeded(connectorId);
 }
 
 export async function reportInitialSyncProgressActivity(
   connectorId: ModelId,
-  progress: string
+  progress: string,
 ) {
   await reportInitialSyncProgress(connectorId, progress);
 }
 
 export async function getChannel(
   connectorId: ModelId,
-  channelId: string
+  channelId: string,
 ): Promise<Channel> {
   const slackClient = await getSlackClient(connectorId);
 
   return withSlackErrorHandling(() =>
-    getChannelById(slackClient, connectorId, channelId)
+    getChannelById(slackClient, connectorId, channelId),
   );
 }
 
@@ -1147,7 +1153,7 @@ export function formatDateForThreadTitle(date: Date) {
 }
 
 export async function getChannelsToGarbageCollect(
-  connectorId: ModelId
+  connectorId: ModelId,
 ): Promise<{
   // either no longer visible to the integration, or bot no longer has read permission on
   channelsToDeleteFromDataSource: string[];
@@ -1164,9 +1170,9 @@ export async function getChannelsToGarbageCollect(
       .filter(
         (c) =>
           !["read", "read_write"].includes(c.permission) ||
-          c.skipReason !== null
+          c.skipReason !== null,
       )
-      .map((c) => c.slackChannelId)
+      .map((c) => c.slackChannelId),
   );
 
   const slackClient = await getSlackClient(connectorId);
@@ -1176,11 +1182,11 @@ export async function getChannelsToGarbageCollect(
   const remoteChannels = new Set(
     (
       await withSlackErrorHandling(() =>
-        getChannels(slackClient, connectorId, true)
+        getChannels(slackClient, connectorId, true),
       )
     )
       .filter((c) => c.id)
-      .map((c) => c.id as string)
+      .map((c) => c.id as string),
   );
 
   const localChannels = await SlackMessagesModel.findAll({
@@ -1233,7 +1239,7 @@ export async function deleteChannel(channelId: string, connectorId: ModelId) {
         nbMessages: slackMessages.length,
         ...loggerArgs,
       },
-      `Deleting ${slackMessages.length} messages from channel ${channelId}.`
+      `Deleting ${slackMessages.length} messages from channel ${channelId}.`,
     );
     for (const slackMessage of slackMessages) {
       // We delete from the remote datasource first because we would rather double delete remotely
@@ -1241,7 +1247,7 @@ export async function deleteChannel(channelId: string, connectorId: ModelId) {
       await deleteDataSourceDocument(
         dataSourceConfig,
         slackMessage.documentId,
-        loggerArgs
+        loggerArgs,
       );
       nbDeleted++;
 
@@ -1268,13 +1274,13 @@ export async function deleteChannel(channelId: string, connectorId: ModelId) {
 
   logger.info(
     { nbDeleted, ...loggerArgs },
-    "Deleted documents from datasource while garbage collecting."
+    "Deleted documents from datasource while garbage collecting.",
   );
 }
 
 export async function deleteChannelsFromConnectorDb(
   channelsToDeleteFromConnectorsDb: string[],
-  connectorId: ModelId
+  connectorId: ModelId,
 ) {
   await SlackChannelModel.destroy({
     where: {
@@ -1289,20 +1295,20 @@ export async function deleteChannelsFromConnectorDb(
       channelsToDeleteFromConnectorsDb,
       connectorId,
     },
-    "Deleted channels from connectors db while garbage collecting."
+    "Deleted channels from connectors db while garbage collecting.",
   );
 }
 
 export async function attemptChannelJoinActivity(
   connectorId: ModelId,
-  channelId: string
+  channelId: string,
 ) {
   logger.info(
     {
       connectorId,
       channelId,
     },
-    "Attempting to join channel"
+    "Attempting to join channel",
   );
 
   const res = await joinChannel(connectorId, channelId);
@@ -1318,7 +1324,7 @@ export async function attemptChannelJoinActivity(
         channel,
         connectorId,
       },
-      "Channel is archived, skipping sync."
+      "Channel is archived, skipping sync.",
     );
     return false;
   }
@@ -1328,7 +1334,7 @@ export async function attemptChannelJoinActivity(
 
 export async function migrateChannelsFromLegacyBotToNewBotActivity(
   slackConnectorId: ModelId,
-  slackBotConnectorId: ModelId
+  slackBotConnectorId: ModelId,
 ) {
   const slackConnector = await ConnectorResource.fetchById(slackConnectorId);
   assert(slackConnector, "Slack connector not found");
@@ -1359,13 +1365,13 @@ export async function migrateChannelsFromLegacyBotToNewBotActivity(
   try {
     await migrateChannelsFromLegacyBotToNewBot(
       slackConnector,
-      slackBotConnector
+      slackBotConnector,
     );
   } catch (e) {
     if (e instanceof ExternalOAuthTokenError) {
       logger.info(
         { error: e, slackConnectorId, slackBotConnectorId },
-        "Skipping migration of channels from legacy bot to new bot: external oauth token error"
+        "Skipping migration of channels from legacy bot to new bot: external oauth token error",
       );
 
       return;
@@ -1377,7 +1383,7 @@ export async function migrateChannelsFromLegacyBotToNewBotActivity(
 
 export async function autoReadChannelActivity(
   connectorId: ModelId,
-  channelId: string
+  channelId: string,
 ): Promise<boolean> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -1388,7 +1394,7 @@ export async function autoReadChannelActivity(
     await SlackConfigurationResource.fetchByConnectorId(connectorId);
   if (!slackConfiguration) {
     throw new Error(
-      `Slack configuration not found for connector ${connectorId}`
+      `Slack configuration not found for connector ${connectorId}`,
     );
   }
 
@@ -1417,7 +1423,7 @@ export async function autoReadChannelActivity(
           connectorId,
           channelId,
         },
-        "Channel not found, skipping auto-read activity."
+        "Channel not found, skipping auto-read activity.",
       );
       return false;
     }
@@ -1443,7 +1449,7 @@ export async function autoReadChannelActivity(
   const { autoReadChannelPatterns } = slackConfiguration;
   const matchingPatterns = findMatchingChannelPatterns(
     channelName,
-    autoReadChannelPatterns
+    autoReadChannelPatterns,
   );
 
   if (matchingPatterns.length === 0) {
@@ -1454,7 +1460,7 @@ export async function autoReadChannelActivity(
         channelName,
         autoReadChannelPatterns,
       },
-      "Channel does not match any auto-read patterns, skipping."
+      "Channel does not match any auto-read patterns, skipping.",
     );
     return false;
   }
@@ -1506,7 +1512,7 @@ export async function autoReadChannelActivity(
       workspaceId: connector.workspaceId,
       apiKey: connector.workspaceAPIKey,
     },
-    mainLogger.child({ provider: "slack" })
+    mainLogger.child({ provider: "slack" }),
   );
 
   const results = await concurrentExecutor(
@@ -1536,7 +1542,7 @@ export async function autoReadChannelActivity(
             "Failed to join Slack channel, there was an issue retrieving dataSourceViews",
         });
         return new Err(
-          new Error("There was an issue retrieving dataSourceViews")
+          new Error("There was an issue retrieving dataSourceViews"),
         );
       }
 
@@ -1552,19 +1558,19 @@ export async function autoReadChannelActivity(
                   slackChannelInternalIdFromSlackChannelId(channelId),
                 ],
                 parentsToRemove: undefined,
-              }
+              },
             );
 
             if (updateDataSourceViewRes.isErr()) {
               throw new Error(
-                `Failed to update Slack data source view for space ${p.spaceId}.`
+                `Failed to update Slack data source view for space ${p.spaceId}.`,
               );
             }
           },
           {
             retries: 3,
             delayBetweenRetriesMs: 5000,
-          }
+          },
         )(dataSourceView);
       } catch (e) {
         return new Err(normalizeError(e));
@@ -1572,7 +1578,7 @@ export async function autoReadChannelActivity(
 
       return new Ok(true);
     },
-    { concurrency: 5 }
+    { concurrency: 5 },
   );
 
   const firstError = results.find((r) => r.isErr());
