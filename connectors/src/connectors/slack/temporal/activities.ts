@@ -592,7 +592,7 @@ export async function syncNonThreaded({
     }
   } while (hasMore);
 
-  const skipReason = await processAndUpsertNonThreadedMessages({
+  await processAndUpsertNonThreadedMessages({
     channelId,
     channelName,
     connectorId,
@@ -621,17 +621,12 @@ export async function syncNonThreaded({
       channelId,
       messageTs: undefined,
       documentId,
-      skipReason,
     });
   } else {
-    if (skipReason) {
-      await existingMessage.update({ skipReason });
-    } else {
-      // We update updatedAt to avoid re-syncing the thread for the next hour (see earlier in the
-      // activity). updatedAt is not directly updatable with Sequelize but this will do it.
-      existingMessage.changed("updatedAt", true);
-      await existingMessage.save();
-    }
+    // We update updatedAt to avoid re-syncing the thread for the next hour (see earlier in the
+    // activity). updatedAt is not directly updatable with Sequelize but this will do it.
+    existingMessage.changed("updatedAt", true);
+    await existingMessage.save();
   }
 }
 
@@ -653,7 +648,7 @@ async function processAndUpsertNonThreadedMessages({
   messages: MessageElement[];
   slackClient: WebClient;
   documentId: string;
-}): Promise<string | undefined> {
+}) {
   if (messages.length === 0) {
     return;
   }
@@ -752,12 +747,12 @@ async function processAndUpsertNonThreadedMessages({
         },
         "Skipping Slack non-threaded messages exceeding plan document size limit."
       );
-      return "document_too_large";
+      // Not setting skipReason so the document is retried on future syncs
+      // (plan limits may increase or content may shrink).
+      return;
     }
     throw error;
   }
-
-  return undefined;
 }
 
 async function syncMultipleNonThreaded(
@@ -1080,16 +1075,8 @@ export async function syncThread(
         },
         "Skipping Slack thread exceeding plan document size limit."
       );
-      await SlackMessagesModel.update(
-        { skipReason: "document_too_large" },
-        {
-          where: {
-            connectorId,
-            channelId,
-            documentId,
-          },
-        }
-      );
+      // Not setting skipReason so the thread is retried on future syncs
+      // (plan limits may increase or content may shrink).
       return;
     }
     throw error;
