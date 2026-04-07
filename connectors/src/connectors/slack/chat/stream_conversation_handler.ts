@@ -395,7 +395,7 @@ async function streamAgentAnswerToSlack(
         }
 
         if (streamHandler) {
-          await streamHandler.startTask("Waiting for file authorization…");
+          await streamHandler.setThinking("Waiting for file authorization...");
         } else {
           await throttledPostSlackMessageUpdate({
             messageUpdate: {
