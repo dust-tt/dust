@@ -24,6 +24,8 @@ final class InputBarViewModel: ObservableObject {
 
     /// Continuations waiting for all uploads to finish.
     private var uploadWaiters: [CheckedContinuation<Void, Never>] = []
+    /// Active upload tasks, keyed by attachment ID for cancellation.
+    private var uploadTasks: [UUID: Task<Void, Never>] = [:]
 
     init(workspaceId: String, tokenProvider: TokenProvider, user: User) {
         self.workspaceId = workspaceId
@@ -69,6 +71,13 @@ final class InputBarViewModel: ObservableObject {
 
     // MARK: - Attachments
 
+    func cancelUploads() {
+        for task in uploadTasks.values {
+            task.cancel()
+        }
+        uploadTasks.removeAll()
+    }
+
     func addAttachment(data: Data, fileName: String, contentType: String, thumbnail: UIImage?) {
         let attachment = Attachment(
             fileName: fileName,
@@ -79,12 +88,15 @@ final class InputBarViewModel: ObservableObject {
         )
         attachments.append(attachment)
 
-        Task {
-            await uploadAttachment(id: attachment.id)
+        uploadTasks[attachment.id] = Task { [weak self] in
+            await self?.uploadAttachment(id: attachment.id)
+            self?.uploadTasks[attachment.id] = nil
         }
     }
 
     func removeAttachment(_ attachment: Attachment) {
+        uploadTasks[attachment.id]?.cancel()
+        uploadTasks[attachment.id] = nil
         attachments.removeAll { $0.id == attachment.id }
         notifyWaitersIfDone()
     }
@@ -214,7 +226,11 @@ final class InputBarViewModel: ObservableObject {
         speechService.stopRecording()
         Task {
             await speechService.transcribe()
-            messageText = speechService.transcribedText
+            if let transcriptionError = speechService.error {
+                error = transcriptionError
+            } else {
+                messageText = speechService.transcribedText
+            }
             speechService.transcribedText = ""
         }
     }
@@ -312,10 +328,12 @@ final class InputBarViewModel: ObservableObject {
     /// Suspends until all attachments have finished uploading (or failed).
     /// If all are already done, returns immediately.
     private func waitForUploads() async {
-        guard attachments.contains(where: { !$0.isFinished }) else { return }
-
         await withCheckedContinuation { continuation in
-            uploadWaiters.append(continuation)
+            if attachments.contains(where: { !$0.isFinished }) {
+                uploadWaiters.append(continuation)
+            } else {
+                continuation.resume()
+            }
         }
     }
 

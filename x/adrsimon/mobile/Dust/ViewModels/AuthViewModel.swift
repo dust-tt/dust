@@ -20,12 +20,17 @@ final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresen
 
     private var pkcePair: AuthService.PKCEPair?
     private var webAuthSession: ASWebAuthenticationSession?
+    private var restoreTask: Task<Void, Never>?
 
     override init() {
         super.init()
-        Task { [weak self] in
+        self.restoreTask = Task { [weak self] in
             await self?.restoreSession()
         }
+    }
+
+    deinit {
+        restoreTask?.cancel()
     }
 
     // MARK: - ASWebAuthenticationPresentationContextProviding

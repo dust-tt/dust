@@ -81,9 +81,8 @@ enum ConversationService {
             workspaceId: workspaceId,
             conversationId: conversationId
         )
-        let body = try JSONSerialization.data(withJSONObject: ["read": true])
         try await APIClient.authenticatedSend(
-            endpoint, method: "PATCH", body: body, tokenProvider: tokenProvider
+            endpoint, method: "PATCH", body: MarkAsReadRequest(read: true), tokenProvider: tokenProvider
         )
     }
 
@@ -93,18 +92,29 @@ enum ConversationService {
         tokenProvider: TokenProvider
     ) async throws {
         let endpoint = AppConfig.Endpoints.conversationsBulkActions(workspaceId: workspaceId)
-        let body = try JSONSerialization.data(
-            withJSONObject: ["action": "mark_as_read", "conversationIds": conversationIds]
-        )
         try await APIClient.authenticatedSend(
-            endpoint, method: "POST", body: body, tokenProvider: tokenProvider
+            endpoint,
+            method: "POST",
+            body: BulkMarkAsReadRequest(action: "mark_as_read", conversationIds: conversationIds),
+            tokenProvider: tokenProvider
         )
     }
 
+    // MARK: - Request Bodies
+
+    private struct MarkAsReadRequest: Encodable {
+        let read: Bool
+    }
+
+    private struct BulkMarkAsReadRequest: Encodable {
+        let action: String
+        let conversationIds: [String]
+    }
+
     private static func buildQuery(endpoint: String, params: [String: String]) -> String {
-        var components = URLComponents(string: "\(AppConfig.apiBaseURL)\(endpoint)")
-        components?.queryItems = params.map { URLQueryItem(name: $0.key, value: $0.value) }
-        // Strip the base URL prefix since APIClient prepends it
-        return components?.url?.absoluteString.replacingOccurrences(of: AppConfig.apiBaseURL, with: "") ?? endpoint
+        var components = URLComponents()
+        components.path = endpoint
+        components.queryItems = params.map { URLQueryItem(name: $0.key, value: $0.value) }
+        return components.string ?? endpoint
     }
 }

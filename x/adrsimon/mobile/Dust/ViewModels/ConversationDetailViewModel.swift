@@ -26,6 +26,8 @@ final class ConversationDetailViewModel: ObservableObject {
     private let workspaceId: String
     private let tokenProvider: TokenProvider
     private var lastValue: Int?
+    /// Monotonic counter to identify the active message stream generation.
+    private var streamGeneration: UInt64 = 0
 
     // Streaming tasks
     private var conversationEventsTask: Task<Void, Never>?
@@ -115,34 +117,44 @@ final class ConversationDetailViewModel: ObservableObject {
         conversationEventsTask?.cancel()
         conversationEventsTask = Task { [weak self] in
             guard let self else { return }
-            let endpoint = AppConfig.Endpoints.conversationEvents(
-                workspaceId: workspaceId,
-                conversationId: conversation.sId
-            )
+            var retryDelay: UInt64 = 1_000_000_000 // 1s
+            let maxDelay: UInt64 = 30_000_000_000 // 30s
 
-            let stream = StreamingService.eventStream(
-                endpoint: endpoint,
-                tokenProvider: tokenProvider
-            )
+            while !Task.isCancelled {
+                let endpoint = AppConfig.Endpoints.conversationEvents(
+                    workspaceId: workspaceId,
+                    conversationId: conversation.sId
+                )
 
-            let decoder = JSONDecoder()
+                let stream = StreamingService.eventStream(
+                    endpoint: endpoint,
+                    tokenProvider: tokenProvider
+                )
 
-            do {
-                for try await payload in stream {
-                    guard !Task.isCancelled else { break }
-                    guard let data = payload.data(using: .utf8) else { continue }
+                let decoder = JSONDecoder()
 
-                    do {
-                        let envelope = try decoder.decode(ConversationEventEnvelope.self, from: data)
-                        await handleConversationEvent(envelope.data)
-                    } catch {
-                        logger.debug("Skipping unhandled conversation event: \(error)")
+                do {
+                    for try await payload in stream {
+                        guard !Task.isCancelled else { return }
+                        retryDelay = 1_000_000_000 // reset on success
+                        guard let data = payload.data(using: .utf8) else { continue }
+
+                        do {
+                            let envelope = try decoder.decode(ConversationEventEnvelope.self, from: data)
+                            await handleConversationEvent(envelope.data)
+                        } catch {
+                            logger.debug("Skipping unhandled conversation event: \(error)")
+                        }
                     }
+                } catch {
+                    if Task.isCancelled { return }
+                    logger.error(
+                        "Conversation events stream error: \(error), retrying in \(retryDelay / 1_000_000_000)s"
+                    )
                 }
-            } catch {
-                if !Task.isCancelled {
-                    logger.error("Conversation events stream error: \(error)")
-                }
+
+                try? await Task.sleep(nanoseconds: retryDelay)
+                retryDelay = min(retryDelay * 2, maxDelay)
             }
         }
     }
@@ -184,6 +196,8 @@ final class ConversationDetailViewModel: ObservableObject {
         if streamingMessageId == messageId { return }
 
         messageStreamTask?.cancel()
+        streamGeneration += 1
+        let currentGeneration = streamGeneration
         streamingMessageId = messageId
         streamingPhase = .thinking
 
@@ -220,8 +234,8 @@ final class ConversationDetailViewModel: ObservableObject {
                 }
             }
 
-            // Stream ended
-            if streamingMessageId == messageId {
+            // Stream ended — only clean up if we're still the active generation
+            if streamGeneration == currentGeneration {
                 streamingPhase = .idle
                 streamingMessageId = nil
             }
@@ -245,7 +259,7 @@ final class ConversationDetailViewModel: ObservableObject {
 
         case let .agentActionSuccess(event):
             activeActions.removeAll { $0.id == event.action.id }
-            if activeActions.isEmpty {
+            if activeActions.isEmpty, streamingPhase != .generating {
                 streamingPhase = .thinking
             }
 
