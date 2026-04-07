@@ -947,7 +947,10 @@ const ContentFragmentNodeData = z.object({
   spaceName: z.string(),
 });
 
-const ContentFragmentExpiredReasonSchema = z.literal("data_source_deleted");
+const ContentFragmentExpiredReasonSchema = z.union([
+  z.literal("data_source_deleted"),
+  z.literal("file_deleted"),
+]);
 
 const BaseContentFragmentSchema = z.object({
   type: z.literal("content_fragment"),

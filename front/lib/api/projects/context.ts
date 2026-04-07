@@ -15,10 +15,12 @@ import { PROJECT_CONTEXT_FOLDER_ID } from "@app/lib/api/projects/constants";
 import { fetchProjectDataSource } from "@app/lib/api/projects/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
+import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import logger from "@app/logger/logger";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import { isSupportedDelimitedTextContentType } from "@app/types/files";
@@ -26,6 +28,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { slugify } from "@app/types/shared/utils/string_utils";
+import { Op } from "sequelize";
 
 export async function listProjectContentFragments(
   auth: Authenticator,
@@ -356,4 +359,85 @@ export async function addContentNodeToProject(
   }
 
   return new Ok(fragmentRes.value);
+}
+
+/**
+ * Removes a project-context file from a project space.
+ *
+ * - Always deletes the file itself.
+ * - Deletes associated ContentFragmentModel rows for this (space,file) pair when they are not
+ *   referenced by any conversation message.
+ * - If some fragments are referenced by messages, we keep them but detach them from the space
+ *   and mark them expired so conversation rendering can display an appropriate placeholder.
+ */
+export async function removeFileFromProject(
+  auth: Authenticator,
+  {
+    space,
+    fileId,
+  }: {
+    space: SpaceResource;
+    fileId: string; // file sId
+  }
+): Promise<Result<void, Error>> {
+  const file = await FileResource.fetchById(auth, fileId);
+  if (!file) {
+    return new Err(new Error("File not found."));
+  }
+
+  // Best-effort cleanup of the project content fragments for this file.
+  const workspaceId = auth.getNonNullableWorkspace().id;
+  const projectFragmentIds = await ContentFragmentModel.findAll({
+    attributes: ["id"],
+    where: {
+      workspaceId,
+      spaceId: space.id,
+      fileId: file.id,
+    },
+  }).then((rows) => rows.map((r) => r.id));
+
+  if (projectFragmentIds.length > 0) {
+    const messagesReferencing = await MessageModel.findAll({
+      attributes: ["contentFragmentId"],
+      where: {
+        workspaceId,
+        contentFragmentId: {
+          [Op.in]: projectFragmentIds,
+        },
+      },
+    });
+
+    const referencedIds = new Set(
+      removeNulls(messagesReferencing.map((m) => m.contentFragmentId))
+    );
+    const orphanIds = projectFragmentIds.filter((id) => !referencedIds.has(id));
+
+    if (orphanIds.length > 0) {
+      await ContentFragmentModel.destroy({
+        where: {
+          workspaceId,
+          id: { [Op.in]: orphanIds },
+        },
+      });
+    }
+
+    if (referencedIds.size > 0) {
+      await ContentFragmentModel.update(
+        { spaceId: null, expiredReason: "file_deleted" },
+        {
+          where: {
+            workspaceId,
+            id: { [Op.in]: Array.from(referencedIds) },
+          },
+        }
+      );
+    }
+  }
+
+  const deleteRes = await file.delete(auth);
+  if (deleteRes.isErr()) {
+    return new Err(deleteRes.error);
+  }
+
+  return new Ok(undefined);
 }

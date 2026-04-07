@@ -15,8 +15,8 @@ import {
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   useAddProjectContextContentNode,
-  useDeleteProjectFile,
   useProjectContextAttachments,
+  useRemoveProjectContextFile,
 } from "@app/lib/swr/projects";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { getSupportedFileExtensions } from "@app/types/files";
@@ -117,7 +117,10 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     spaceId: space.sId,
   });
 
-  const deleteProjectFile = useDeleteProjectFile({ owner });
+  const removeProjectContextFile = useRemoveProjectContextFile({
+    owner,
+    spaceId: space.sId,
+  });
 
   const addProjectContextContentNode = useAddProjectContextContentNode({
     owner,
@@ -173,7 +176,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     });
 
     if (confirmed) {
-      const result = await deleteProjectFile(item.fileId);
+      const result = await removeProjectContextFile(item.fileId);
       if (result.isOk()) {
         void mutateProjectContextAttachments();
       }

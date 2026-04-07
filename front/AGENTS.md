@@ -38,6 +38,9 @@ front/
     - Use `npm run lint` to run ESLint
 - Read `runbooks/TEST.md` for all things related to testing.
 
+# Running tests
+- Use `npm run test -- filetotest
+
 # Runbooks
 
 Runbooks for various typical development tasks are located under `runbooks/`:

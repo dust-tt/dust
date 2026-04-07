@@ -109,4 +109,4 @@ describe ("createConversation", () => {
 3. Identify the 2-4 most important functions/behaviors to test
 4. Find or create appropriate factories for test data
 5. Write concise, focused tests
-6. Run tests with `npm test` to verify they pass
+6. Run tests with `npm test -- filetotest` to verify they pass
