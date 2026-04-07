@@ -1,7 +1,9 @@
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { UserQuestion } from "@app/lib/actions/types";
-import { isUserQuestionResumeState } from "@app/lib/actions/types";
+import {
+  isUserQuestionResumeState,
+  USER_QUESTION_DECLINED_MESSAGE,
+} from "@app/lib/actions/types";
 import { ASK_USER_QUESTION_TOOLS_METADATA } from "@app/lib/api/actions/servers/ask_user_question/metadata";
 import { Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
@@ -11,19 +13,13 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
     { question, options, multiSelect },
     { agentLoopContext }
   ) => {
-    const typedQuestion: UserQuestion = {
-      question,
-      options,
-      multiSelect,
-    };
-
     const resumeState = agentLoopContext?.runContext?.stepContext?.resumeState;
     if (isUserQuestionResumeState(resumeState) && resumeState.answer) {
       const { answer } = resumeState;
       const selections: string[] = [];
       for (const idx of answer.selectedOptions) {
-        if (idx >= 0 && idx < typedQuestion.options.length) {
-          selections.push(typedQuestion.options[idx].label);
+        if (idx >= 0 && idx < options.length) {
+          selections.push(options[idx].label);
         }
       }
       if (answer.customResponse) {
@@ -49,8 +45,8 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
         resource: {
           mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,
           type: "tool_user_answer_required",
-          question: typedQuestion,
-          text: `Asking user: ${typedQuestion.question}`,
+          question: { question, options, multiSelect },
+          text: `Asking user: ${question}`,
           uri: "",
         },
       },
