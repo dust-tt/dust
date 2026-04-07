@@ -25,7 +25,6 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
 import { getManageSkillsRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
   RichAgentMention,
@@ -208,51 +207,6 @@ const InputBarContainer = ({
     () => new Map(allAgents.map((a) => [a.sId, a])),
     [allAgents]
   );
-
-  // Auto-select the agent in single-agent mode for new conversations on mount.
-  // Prefer the agent saved in the draft; fall back to "dust".
-  // The ref guard ensures this only runs once so it doesn't override manual agent changes.
-  const hasInitializedAgentRef = useRef(false);
-
-  useEffect(() => {
-    // Clear any stale selectedSingleAgent when entering the agent builder so the
-    // @dust selection from the conversation page doesn't briefly flash.
-    if (isAgentBuilder) {
-      setSelectedSingleAgent(null);
-      return;
-    }
-
-    if (
-      hasInitializedAgentRef.current ||
-      !singleAgentInput ||
-      conversation ||
-      hasUserMention ||
-      stickyMentions?.length
-    ) {
-      return;
-    }
-    const draft = getDraft();
-    if (draft?.agentMention) {
-      hasInitializedAgentRef.current = true;
-      setSelectedSingleAgent(draft.agentMention);
-      return;
-    }
-
-    const dustAgent = agentsBySId.get(GLOBAL_AGENTS_SID.DUST);
-    if (dustAgent) {
-      hasInitializedAgentRef.current = true;
-      setSelectedSingleAgent(toRichAgentMentionType(dustAgent));
-    }
-  }, [
-    singleAgentInput,
-    conversation,
-    hasUserMention,
-    stickyMentions?.length,
-    agentsBySId,
-    setSelectedSingleAgent,
-    getDraft,
-    isAgentBuilder,
-  ]);
 
   // Callback for the editor's @ mention suggestion — sets the selected agent
   // without focusing (the editor already has focus when the user types @).
@@ -804,15 +758,10 @@ const InputBarContainer = ({
     };
   }, [clientType, editorService]);
 
-  // Tracks whether the draft restore effect set the selected agent,
-  // so the sticky-mentions sync in useHandleMentions can skip overwriting it.
-  const draftAgentRestoredRef = useRef(false);
-
-  // Restore draft when switching conversations (including new conversations).
+  // Restore draft text when switching conversations (including new conversations).
+  // Agent selection is handled by useHandleMention.
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
-    draftAgentRestoredRef.current = false;
-
     if (
       !editor ||
       editor.isDestroyed ||
@@ -831,11 +780,6 @@ const InputBarContainer = ({
       draft &&
       (editorService.isEmpty() || editorContainsOnlyStickyMentions)
     ) {
-      // Restore the selected agent from the draft (single-agent mode).
-      if (singleAgentInput && draft.agentMention) {
-        setSelectedSingleAgent(draft.agentMention);
-        draftAgentRestoredRef.current = true;
-      }
       // TODO: cleanup once we ship the single agent mode
       // In single-agent mode, strip agent mentions from the draft text since
       // the agent is handled by the picker button, not inline in the editor.
@@ -858,14 +802,17 @@ const InputBarContainer = ({
     getDraft,
   ]);
 
-  const { stickyMentionsTextContent } = useHandleMentions(
-    editorService,
-    stickyMentions,
-    selectedAgent,
+  const { stickyMentionsTextContent } = useHandleMentions({
+    allAgents,
+    conversation,
     disableAutoFocus,
+    editorService,
+    getDraft,
+    isAgentBuilder,
     pendingInputText,
-    draftAgentRestoredRef
-  );
+    selectedAgent,
+    stickyMentions,
+  });
 
   const buttonSize = useMemo(() => {
     return isMobile ? "sm" : "xs";
