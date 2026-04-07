@@ -8,6 +8,7 @@ import {
 } from "@connectors/connectors/google_drive/temporal/mime_types";
 import { getInternalId } from "@connectors/connectors/google_drive/temporal/utils";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
+import { DataSourceQuotaExceededError } from "@connectors/lib/error";
 import type { GoogleDriveConfigModel } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
 import type {
@@ -73,18 +74,30 @@ export async function syncOneFileTextDocument(
   }
 
   if (documentContent) {
-    const upsertTimestampMs = await upsertGdriveDocument(
-      dataSourceConfig,
-      file,
-      documentContent,
-      documentId,
-      maxDocumentLen,
-      localLogger,
-      oauth2client,
-      connectorId,
-      startSyncTs,
-      isBatchSync
-    );
+    let upsertTimestampMs: number | undefined;
+    try {
+      upsertTimestampMs = await upsertGdriveDocument(
+        dataSourceConfig,
+        file,
+        documentContent,
+        documentId,
+        maxDocumentLen,
+        localLogger,
+        oauth2client,
+        connectorId,
+        startSyncTs,
+        isBatchSync
+      );
+    } catch (error) {
+      if (error instanceof DataSourceQuotaExceededError) {
+        localLogger.warn(
+          { documentId, fileId: file.id },
+          "File exceeds plan document size limit, skipping"
+        );
+        return false;
+      }
+      throw error;
+    }
 
     await updateGoogleDriveFiles(
       connectorId,
