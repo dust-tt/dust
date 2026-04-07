@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<properties>
+  <server>
+    <!-- If set to 'true', this runs tika server "in process"
+    in the legacy 1.x mode.
+    This means that the server will be susceptible to infinite loops
+    and crashes.
+    If set to 'false', the server will spawn a forked
+    process and restart the forked process on catastrophic failures
+    (this was called -spawnChild mode in 1.x).
+    noFork=false is the default in 2.x
+    -->
+    <noFork>true</noFork>
+  </server>
+  <parsers>
+    <parser class="org.apache.tika.parser.DefaultParser">
+      <parser-exclude class="org.apache.tika.parser.microsoft.ooxml.OOXMLParser"/>
+      <parser-exclude class="org.apache.tika.parser.microsoft.OfficeParser"/>
+    </parser>
+    <!-- Raise POI's byte array limit from 100MB to 250MB to handle large
+         Office documents with big embedded media (e.g. 14MB PPTX).
+         This is a temporary per-parse allocation, not persistent memory. -->
+    <parser class="org.apache.tika.parser.microsoft.ooxml.OOXMLParser">
+      <params>
+        <param name="byteArrayMaxOverride" type="int">250000000</param>
+      </params>
+    </parser>
+    <parser class="org.apache.tika.parser.microsoft.OfficeParser">
+      <params>
+        <param name="byteArrayMaxOverride" type="int">250000000</param>
+      </params>
+    </parser>
+  </parsers>
+</properties>

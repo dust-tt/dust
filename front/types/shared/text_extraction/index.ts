@@ -110,6 +110,11 @@ export class TextExtraction {
     } as RequestInitWithDuplex);
 
     if (!response.ok) {
+      if (response.status === 422) {
+        throw new Error(
+          "Text extraction failed: the file could not be processed. It may contain elements that are too large or complex to extract text from (e.g. large embedded media)."
+        );
+      }
       throw new Error(
         `Text extraction failed with status ${response.status} ${response.statusText}`
       );
