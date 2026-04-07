@@ -582,9 +582,11 @@ export async function listMetronomeBalances(
     return new Ok([]);
   }
 
+  const client = getClient();
+
   try {
     const balances: MetronomeBalance[] = [];
-    for await (const entry of getClient().v1.contracts.listBalances({
+    for await (const entry of client.v1.contracts.listBalances({
       customer_id: metronomeCustomerId,
       include_balance: true,
       include_contract_balances: true,
@@ -623,9 +625,11 @@ export async function listMetronomeUsage({
     return new Ok([]);
   }
 
+  const client = getClient();
+
   try {
     const results: MetronomeUsageListResponse[] = [];
-    for await (const entry of getClient().v1.usage.list({
+    for await (const entry of client.v1.usage.list({
       starting_on: startingOn,
       ending_before: endingBefore,
       window_size: windowSize,
@@ -670,9 +674,11 @@ export async function listMetronomeUsageWithGroups({
     return new Ok([]);
   }
 
+  const client = getClient();
+
   try {
     const results: MetronomeUsageWithGroupsResponse[] = [];
-    for await (const entry of getClient().v1.usage.listWithGroups({
+    for await (const entry of client.v1.usage.listWithGroups({
       customer_id: customerId,
       billable_metric_id: billableMetricId,
       starting_on: startingOn,
