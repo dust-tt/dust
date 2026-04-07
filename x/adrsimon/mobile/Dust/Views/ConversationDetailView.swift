@@ -7,8 +7,13 @@ struct ConversationDetailView: View {
     let currentUserEmail: String
     let onBack: () -> Void
 
+    private let workspaceId: String
+    private let tokenProvider: TokenProvider
+
     @StateObject private var viewModel: ConversationDetailViewModel
     @StateObject private var inputBarViewModel: InputBarViewModel
+    @State private var showFilesSheet = false
+    @State private var selectedFragment: ContentFragment?
 
     init(
         conversation: Conversation,
@@ -21,6 +26,8 @@ struct ConversationDetailView: View {
         self.conversation = conversation
         self.currentUserEmail = currentUserEmail
         self.onBack = onBack
+        self.workspaceId = workspaceId
+        self.tokenProvider = tokenProvider
         _viewModel = StateObject(
             wrappedValue: ConversationDetailViewModel(
                 conversation: conversation,
@@ -53,6 +60,26 @@ struct ConversationDetailView: View {
         .task {
             await inputBarViewModel.loadAgents()
         }
+        .sheet(isPresented: $showFilesSheet) {
+            ConversationFilesSheet(
+                workspaceId: workspaceId,
+                conversationId: conversation.sId,
+                tokenProvider: tokenProvider
+            )
+            .presentationDetents([.medium, .large])
+        }
+        .sheet(item: $selectedFragment) { fragment in
+            if let fileId = fragment.fileId {
+                AttachmentViewerView(
+                    title: fragment.title,
+                    contentType: fragment.contentType,
+                    fileId: fileId,
+                    workspaceId: workspaceId,
+                    tokenProvider: tokenProvider,
+                    sourceUrl: fragment.sourceUrl
+                )
+            }
+        }
     }
 
     // MARK: - Header
@@ -78,6 +105,14 @@ struct ConversationDetailView: View {
                 .liquidGlassCapsule()
 
             Spacer()
+
+            Button { showFilesSheet = true } label: {
+                Image(systemName: "paperclip")
+                    .font(.system(size: 16))
+                    .foregroundStyle(Color.dustForeground)
+                    .frame(width: 36, height: 36)
+            }
+            .liquidGlassCircle()
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -131,7 +166,11 @@ struct ConversationDetailView: View {
                                     message: message,
                                     currentUserEmail: currentUserEmail,
                                     streamingPhase: isStreaming ? viewModel.streamingPhase : .idle,
-                                    activeActions: isStreaming ? viewModel.activeActions : []
+                                    activeActions: isStreaming ? viewModel.activeActions : [],
+                                    onFragmentTap: { fragment in
+                                        guard fragment.fileId != nil else { return }
+                                        selectedFragment = fragment
+                                    }
                                 )
                                 .id(message.id)
                             }

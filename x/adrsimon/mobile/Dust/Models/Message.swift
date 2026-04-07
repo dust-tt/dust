@@ -22,6 +22,7 @@ struct UserMessage: Codable, Identifiable {
     let rank: Int
     let content: String
     let context: UserMessageContext?
+    let contentFragments: [ContentFragment]?
 
     var createdDate: Date {
         created.dateFromEpochMs
@@ -33,6 +34,23 @@ struct UserMessageContext: Codable {
     let fullName: String?
     let email: String?
     let profilePictureUrl: String?
+}
+
+// MARK: - Content Fragment (nested in UserMessage)
+
+struct ContentFragment: Codable, Identifiable, Hashable {
+    let id: Int
+    let sId: String
+    let created: Double
+    let title: String
+    let contentType: String
+    let fileId: String?
+    let snippet: String?
+    let sourceUrl: String?
+
+    var isImage: Bool {
+        contentType.hasPrefix("image/")
+    }
 }
 
 struct AgentConfiguration: Codable {
@@ -75,17 +93,11 @@ struct ActiveAction: Equatable, Identifiable {
 }
 
 enum AgentStreamingPhase: Equatable {
-    /// Not streaming (completed, failed, cancelled, or not started)
     case idle
-    /// Agent is thinking (chain of thought being generated)
     case thinking
-    /// Agent is generating response tokens
     case generating
-    /// Agent is waiting for the user to authenticate on a third-party service
     case personalAuthRequired(provider: String)
-    /// Agent is waiting for the user to grant file access
     case fileAuthRequired(fileName: String)
-    /// Agent is waiting for the user to approve a tool execution
     case approvalRequired
 }
 
