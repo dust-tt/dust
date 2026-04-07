@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ConversationTodoVersionedModel } from "@app/lib/resources/storage/models/conversation_todo_versioned";
@@ -15,7 +16,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
-import { col, fn } from "sequelize";
+import { col, fn, Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -147,6 +148,62 @@ export class ConversationTodoVersionedResource extends BaseResource<Conversation
     });
 
     return row ? new this(ConversationTodoVersionedModel, row.get()) : null;
+  }
+
+  // Returns the latest ConversationTodoVersioned snapshot for each active
+  // (non-deleted, non-test) conversation in the given space. Used by the
+  // project merge algorithm to scan all relevant conversation activity.
+  static async fetchLatestForSpace(
+    auth: Authenticator,
+    { spaceModelId }: { spaceModelId: ModelId }
+  ): Promise<ConversationTodoVersionedResource[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Step 1: Find all active conversations in the space.
+    const conversations = await ConversationModel.findAll({
+      where: {
+        workspaceId,
+        spaceId: spaceModelId,
+        visibility: { [Op.notIn]: ["deleted", "test"] },
+      },
+      attributes: ["id"],
+    });
+
+    if (conversations.length === 0) {
+      return [];
+    }
+
+    const conversationIds = conversations.map((c) => c.id);
+
+    // Step 2: Fetch all versioned snapshots for those conversations ordered by
+    // (conversationId ASC, version DESC) so the first occurrence per
+    // conversationId is the latest snapshot.
+    const rows = await ConversationTodoVersionedModel.findAll({
+      where: {
+        workspaceId,
+        conversationId: { [Op.in]: conversationIds },
+      },
+      order: [
+        ["conversationId", "ASC"],
+        ["version", "DESC"],
+      ],
+    });
+
+    // Deduplicate: keep the first (highest version) snapshot per conversation.
+    const latestByConversationId = new Map<
+      ModelId,
+      ConversationTodoVersionedResource
+    >();
+    for (const row of rows) {
+      if (!latestByConversationId.has(row.conversationId)) {
+        latestByConversationId.set(
+          row.conversationId,
+          new this(ConversationTodoVersionedModel, row.get())
+        );
+      }
+    }
+
+    return Array.from(latestByConversationId.values());
   }
 
   async delete(

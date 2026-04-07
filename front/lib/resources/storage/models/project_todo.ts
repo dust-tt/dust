@@ -334,6 +334,10 @@ export class ProjectTodoSourceModel extends WorkspaceAwareModel<ProjectTodoSourc
   declare projectTodoId: ForeignKey<ProjectTodoModel["id"]>;
   declare sourceType: ProjectTodoSourceType;
   declare sourceConversationId: ForeignKey<ConversationModel["id"]> | null;
+  // Stable sId of the ConversationTodoVersioned action item that produced this
+  // todo. Set when sourceType is "conversation" and the todo was created by the
+  // merge algorithm. Null for user-created todos and pre-migration rows.
+  declare conversationTodoItemSId: string | null;
 
   declare projectTodo: NonAttribute<ProjectTodoModel>;
   declare sourceConversation: NonAttribute<ConversationModel | null>;
@@ -360,6 +364,13 @@ ProjectTodoSourceModel.init(
       allowNull: true,
       comment: "Set when sourceType is conversation.",
     },
+    conversationTodoItemSId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment:
+        "Stable sId of the ConversationTodoVersioned action item that produced " +
+        "this todo. Null for user-created todos and pre-migration rows.",
+    },
   },
   {
     modelName: "project_todo_source",
@@ -378,6 +389,11 @@ ProjectTodoSourceModel.init(
       {
         name: "project_todo_sources_sourceConversationId_idx",
         fields: ["sourceConversationId"],
+        concurrently: true,
+      },
+      {
+        name: "project_todo_sources_conv_item_sId_idx",
+        fields: ["sourceConversationId", "conversationTodoItemSId"],
         concurrently: true,
       },
     ],

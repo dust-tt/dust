@@ -21,6 +21,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -189,6 +190,200 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     });
   }
 
+  // ── Merge helpers ────────────────────────────────────────────────────────
+
+  // Returns all follow_up todos for the current user in the space that are
+  // linked to a specific conversation action item via
+  // (sourceConversationId, conversationTodoItemSId). Used by Layer 1 of the
+  // merge algorithm.
+  //
+  // Sources are always attached to version-1 rows (created by makeNew). We
+  // look up the latest version for each linked sId so the caller always
+  // receives the current state of each todo.
+  static async fetchLinkedFollowUpsForSpace(
+    auth: Authenticator,
+    { spaceModelId }: { spaceModelId: ModelId }
+  ): Promise<
+    Array<{
+      todo: ProjectTodoResource;
+      sourceConversationModelId: ModelId;
+      conversationTodoItemSId: string;
+    }>
+  > {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const userId = auth.getNonNullableUser().id;
+
+    // Step 1: Get all version-1 follow_up rows for the user in this space.
+    const v1Rows = await ProjectTodoModel.findAll({
+      where: {
+        workspaceId,
+        spaceId: spaceModelId,
+        category: "follow_ups",
+        userId,
+        version: 1,
+      },
+    });
+
+    if (v1Rows.length === 0) {
+      return [];
+    }
+
+    const v1Ids = v1Rows.map((r) => r.id);
+
+    // Step 2: Find source links with a conversationTodoItemSId for those rows.
+    const sources = await ProjectTodoSourceModel.findAll({
+      where: {
+        workspaceId,
+        projectTodoId: { [Op.in]: v1Ids },
+        conversationTodoItemSId: { [Op.ne]: null },
+      },
+    });
+
+    if (sources.length === 0) {
+      return [];
+    }
+
+    // Step 3: Build (v1 row id → source) and (sId → source) mappings. Keep
+    // only the first source per v1 row in case there are duplicates.
+    const sourceByV1Id = new Map<
+      ModelId,
+      { sourceConversationModelId: ModelId; conversationTodoItemSId: string }
+    >();
+    for (const source of sources) {
+      if (
+        source.conversationTodoItemSId &&
+        source.sourceConversationId !== null &&
+        !sourceByV1Id.has(source.projectTodoId)
+      ) {
+        sourceByV1Id.set(source.projectTodoId, {
+          sourceConversationModelId: source.sourceConversationId,
+          conversationTodoItemSId: source.conversationTodoItemSId,
+        });
+      }
+    }
+
+    const sourceBySId = new Map<
+      string,
+      { sourceConversationModelId: ModelId; conversationTodoItemSId: string }
+    >();
+    for (const v1 of v1Rows) {
+      const src = sourceByV1Id.get(v1.id);
+      if (src) {
+        sourceBySId.set(v1.sId, src);
+      }
+    }
+
+    if (sourceBySId.size === 0) {
+      return [];
+    }
+
+    // Step 4: Fetch the latest version for each linked sId.
+    const sIds = Array.from(sourceBySId.keys());
+    const latestRows = await ProjectTodoModel.findAll({
+      where: {
+        workspaceId,
+        spaceId: spaceModelId,
+        userId,
+        sId: { [Op.in]: sIds },
+      },
+      order: [
+        ["sId", "ASC"],
+        ["version", "DESC"],
+      ],
+    });
+
+    // Deduplicate: keep the first occurrence per sId (highest version).
+    const latestBySId = new Map<string, ProjectTodoModel>();
+    for (const row of latestRows) {
+      if (!latestBySId.has(row.sId)) {
+        latestBySId.set(row.sId, row);
+      }
+    }
+
+    return Array.from(latestBySId.entries()).flatMap(([sId, row]) => {
+      const src = sourceBySId.get(sId);
+      if (!src) {
+        return [];
+      }
+      return [{ todo: new this(ProjectTodoModel, row.get()), ...src }];
+    });
+  }
+
+  // Returns the latest version of each open follow_up todo for the current
+  // user in the space that has NO conversationTodoItemSId source link —
+  // i.e., user-created (unlinked) todos. Used by Layer 2 of the merge
+  // algorithm to identify todos the AI can auto-close.
+  static async fetchOpenUnlinkedFollowUpsForSpace(
+    auth: Authenticator,
+    { spaceModelId }: { spaceModelId: ModelId }
+  ): Promise<ProjectTodoResource[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const userId = auth.getNonNullableUser().id;
+
+    // Step 1: Get all version-1 follow_up rows for the user in this space.
+    const v1Rows = await ProjectTodoModel.findAll({
+      where: {
+        workspaceId,
+        spaceId: spaceModelId,
+        category: "follow_ups",
+        userId,
+        version: 1,
+      },
+    });
+
+    if (v1Rows.length === 0) {
+      return [];
+    }
+
+    const v1Ids = v1Rows.map((r) => r.id);
+
+    // Step 2: Find which v1 rows have a conversationTodoItemSId source link.
+    const linkedSources = await ProjectTodoSourceModel.findAll({
+      where: {
+        workspaceId,
+        projectTodoId: { [Op.in]: v1Ids },
+        conversationTodoItemSId: { [Op.ne]: null },
+      },
+      attributes: ["projectTodoId"],
+    });
+
+    const linkedV1Ids = new Set(linkedSources.map((s) => s.projectTodoId));
+
+    // Step 3: Determine sIds for unlinked (user-created) todos.
+    const unlinkedSIds = v1Rows
+      .filter((r) => !linkedV1Ids.has(r.id))
+      .map((r) => r.sId);
+
+    if (unlinkedSIds.length === 0) {
+      return [];
+    }
+
+    // Step 4: Fetch all versions for unlinked sIds, ordered by (sId, version
+    // DESC) so we can deduplicate to the latest version per sId.
+    const allVersionRows = await ProjectTodoModel.findAll({
+      where: {
+        workspaceId,
+        spaceId: spaceModelId,
+        userId,
+        sId: { [Op.in]: unlinkedSIds },
+      },
+      order: [
+        ["sId", "ASC"],
+        ["version", "DESC"],
+      ],
+    });
+
+    const latestBySId = new Map<string, ProjectTodoResource>();
+    for (const row of allVersionRows) {
+      if (!latestBySId.has(row.sId)) {
+        latestBySId.set(row.sId, new this(ProjectTodoModel, row.get()));
+      }
+    }
+
+    // Return only open ones — "done" filter applied on the latest version.
+    return Array.from(latestBySId.values()).filter((t) => t.status === "todo");
+  }
+
   // ── Output conversation links (todo => conversation) ────────────────────
 
   async addOutputConversation(
@@ -228,9 +423,11 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     {
       sourceType,
       sourceConversationId,
+      conversationTodoItemSId,
     }: {
       sourceType: ProjectTodoSourceType;
       sourceConversationId: ModelId | null;
+      conversationTodoItemSId?: string;
     },
     transaction?: Transaction
   ): Promise<void> {
@@ -240,6 +437,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
         projectTodoId: this.id,
         sourceType,
         sourceConversationId: sourceConversationId ?? null,
+        conversationTodoItemSId: conversationTodoItemSId ?? null,
       },
       { transaction }
     );
