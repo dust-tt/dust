@@ -196,7 +196,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
         <DropdownMenuItem
           label="Dust Chrome Extension"
           icon={ChromeLogo}
-          href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn?authuser=0&hl=fr"
+          href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn"
           target="_blank"
         />
 
