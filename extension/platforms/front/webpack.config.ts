@@ -121,6 +121,8 @@ export const getConfig = ({ env }: { env: Environment }) => {
         DATADOG_ENV: isDevelopment ? "dev" : "prod",
         DUST_EXTENSION_VERSION: `front-${version}`,
         NEXT_PUBLIC_DUST_APP_URL: process.env.NEXT_PUBLIC_DUST_APP_URL || "",
+        NEXT_PUBLIC_DUST_CLIENT_FACING_URL:
+          process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL || "",
         NEXT_PUBLIC_NOVU_API_URL: process.env.NEXT_PUBLIC_NOVU_API_URL || "",
         NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER:
           process.env.NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER || "",
