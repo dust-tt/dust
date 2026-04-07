@@ -30,7 +30,7 @@ import { redactString } from "@app/types/shared/utils/string_utils";
 import { GoogleGenAI } from "@google/genai";
 import assert from "assert";
 import OpenAI from "openai";
-import type { Attributes, ModelStatic } from "sequelize";
+import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 const API_KEY_REVEAL_WINDOW_MINUTES = 2;
 const PROVIDER_CREDENTIALS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
@@ -374,9 +374,12 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
    * Bypasses auth check for use during Authenticator initialization.
    */
   static async fetchProvidersHealthByWorkspaceId(
-    workspaceId: ModelId
+    workspaceId: ModelId,
+    transaction?: Transaction
   ): Promise<Partial<Record<ByokModelProviderIdType, boolean>>> {
-    const cached = await this.baseFetchCached(workspaceId);
+    const cached = transaction
+      ? await this._baseFetchUncached(workspaceId)
+      : await this.baseFetchCached(workspaceId);
 
     return Object.fromEntries(cached.map((c) => [c.providerId, c.isHealthy]));
   }
