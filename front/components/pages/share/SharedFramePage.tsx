@@ -33,9 +33,10 @@ export function SharedFramePage() {
       shareToken: token,
     });
 
-  // Fetch the frame to check if the user is already authorized.
+  // Only fetch the frame once metadata has resolved. Metadata handles the region redirect, so we
+  // need to wait for the correct region to be established before firing this request.
   const { error: frameError, mutateFrame } = usePublicFrame({
-    shareToken: token,
+    shareToken: shareMetadata ? token : null,
   });
 
   // Show the email form when:
