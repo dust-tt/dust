@@ -139,6 +139,26 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       getMessageDate(prevData).toDateString() ===
         getMessageDate(data).toDateString();
 
+    const isSteeredAgentMessage = useMemo((): boolean => {
+      if (!isMessageTemporayState(data)) {
+        return false;
+      }
+      const messages = methods.data.get();
+      const currentIndex = messages.findIndex((m) => m.sId === data.sId);
+      for (let i = currentIndex - 1; i >= 0; i--) {
+        const m = messages[i];
+        if (isMessageTemporayState(m)) {
+          // An agent message is considered steered if the previous agent message (skipping user
+          // messages) is in gracefully_stopped or created state and from the same agent.
+          return (
+            (m.status === "gracefully_stopped" || m.status === "created") &&
+            m.configuration.sId === data.configuration.sId
+          );
+        }
+      }
+      return false;
+    }, [data, methods.data]);
+
     const triggeringUser = useMemo((): UserType | null => {
       if (isMessageTemporayState(data)) {
         const parentMessageId = data.parentMessageId;
@@ -157,8 +177,8 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     }
 
     if (isHiddenMessage(data)) {
-      // This is hacky but in case of handover we generate a user message from the agent and we want to hide it in the conversation
-      // because it has no value to display.
+      // This is hacky but in case of handover we generate a user message from the agent and we want
+      // to hide it in the conversation because it has no value to display.
       return null;
     }
 
@@ -195,6 +215,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               user={context.user}
               triggeringUser={triggeringUser}
               conversationId={context.conversation.sId}
+              hideHeader={isSteeredAgentMessage}
               isLastMessage={!nextData}
               agentMessage={data}
               messageFeedback={messageFeedbackWithSubmit}
