@@ -132,7 +132,7 @@ export function MCPRunAgentActionDetails({
     childStreamIds,
     owner,
     // We only stream when we are in the sidebar, in the conversation we only show the query.
-    disabled: displayContext !== "sidebar",
+    disabled: displayContext === "conversation",
   });
 
   const { agentConfiguration: childAgent } = useAgentConfiguration({
@@ -335,25 +335,24 @@ function MCPRunAgentActionDetailsDisplay({
               </div>
             )}
             {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-            {childAgent && (chainOfThought || response) && (
-              <Collapsible defaultOpen={true}>
-                <div className="flex items-center justify-between py-2">
-                  <CollapsibleTrigger>
-                    <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+            {childAgent &&
+              (chainOfThought || response) &&
+              (displayContext === "sidebar-single-action" ? (
+                <>
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
                       @{childAgent.name}'s Answer
                     </span>
-                  </CollapsibleTrigger>
-                  {conversationUrl && (
-                    <Button
-                      icon={ExternalLinkIcon}
-                      label="View full conversation"
-                      variant="outline"
-                      onClick={() => window.open(conversationUrl, "_blank")}
-                      size="xs"
-                    />
-                  )}
-                </div>
-                <CollapsibleContent>
+                    {conversationUrl && (
+                      <Button
+                        icon={ExternalLinkIcon}
+                        label="View full conversation"
+                        variant="outline"
+                        onClick={() => window.open(conversationUrl, "_blank")}
+                        size="xs"
+                      />
+                    )}
+                  </div>
                   <div className="flex flex-col gap-4">
                     {chainOfThought && (
                       <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
@@ -422,9 +421,97 @@ function MCPRunAgentActionDetailsDisplay({
                       </div>
                     )}
                   </div>
-                </CollapsibleContent>
-              </Collapsible>
-            )}
+                </>
+              ) : (
+                <Collapsible defaultOpen={true}>
+                  <div className="flex items-center justify-between py-2">
+                    <CollapsibleTrigger>
+                      <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                        @{childAgent.name}'s Answer
+                      </span>
+                    </CollapsibleTrigger>
+                    {conversationUrl && (
+                      <Button
+                        icon={ExternalLinkIcon}
+                        label="View full conversation"
+                        variant="outline"
+                        onClick={() => window.open(conversationUrl, "_blank")}
+                        size="xs"
+                      />
+                    )}
+                  </div>
+                  <CollapsibleContent>
+                    <div className="flex flex-col gap-4">
+                      {chainOfThought && (
+                        <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                          <ContentMessage
+                            title="Agent thoughts"
+                            variant="primary"
+                            size="lg"
+                          >
+                            <Markdown
+                              content={chainOfThought}
+                              isStreaming={isStreamingChainOfThought}
+                              forcedTextSize="text-sm"
+                              textColor="text-muted-foreground"
+                              isLastMessage={false}
+                            />
+                          </ContentMessage>
+                        </div>
+                      )}
+                      {response && (
+                        <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                          <ContentMessage
+                            title="Response"
+                            variant="primary"
+                            size="lg"
+                          >
+                            <CitationsContext.Provider
+                              value={{
+                                references,
+                                updateActiveReferences,
+                              }}
+                            >
+                              <Markdown
+                                content={response}
+                                isStreaming={isStreamingResponse}
+                                forcedTextSize="text-sm"
+                                textColor="text-muted-foreground"
+                                isLastMessage={false}
+                                additionalMarkdownPlugins={
+                                  additionalMarkdownPlugins
+                                }
+                                additionalMarkdownComponents={
+                                  additionalMarkdownComponents
+                                }
+                              />
+                            </CitationsContext.Provider>
+
+                            {activeReferences.length > 0 && (
+                              <div className="mt-4">
+                                <CitationGrid variant="grid">
+                                  {activeReferences
+                                    .sort((a, b) => a.index - b.index)
+                                    .map(({ document, index }) => (
+                                      <AttachmentCitation
+                                        key={index}
+                                        attachmentCitation={markdownCitationToAttachmentCitation(
+                                          document
+                                        )}
+                                        owner={owner}
+                                        conversationId={null}
+                                      />
+                                    ))}
+                                </CitationGrid>
+                              </div>
+                            )}
+                          </ContentMessage>
+                        </div>
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              ))}
             {generatedFiles.length > 0 && (
               <div className="flex flex-col gap-2">
                 {generatedFiles.map((file) => (

@@ -1,5 +1,8 @@
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
+import type {
+  ActionDetailsDisplayContext,
+  ToolExecutionDetailsProps,
+} from "@app/components/actions/mcp/details/types";
 import type {
   DatabaseSchemaResourceType,
   ExampleRowsResourceType,
@@ -37,14 +40,18 @@ export function MCPGetDatabaseSchemaActionDetails({
       }
       visual={TableIcon}
     >
-      {displayContext === "sidebar" && (
+      {displayContext !== "conversation" && (
         <div className="flex flex-col gap-4 pl-6 pt-4">
-          <>
-            <DatabaseSchemaSection schemas={schemaBlocks} />
-            {exampleRowsBlocks.length > 0 && (
-              <ExampleRowsSection examples={exampleRowsBlocks} />
-            )}
-          </>
+          <DatabaseSchemaSection
+            schemas={schemaBlocks}
+            displayContext={displayContext}
+          />
+          {exampleRowsBlocks.length > 0 && (
+            <ExampleRowsSection
+              examples={exampleRowsBlocks}
+              displayContext={displayContext}
+            />
+          )}
         </div>
       )}
     </ActionDetailsWrapper>
@@ -53,9 +60,32 @@ export function MCPGetDatabaseSchemaActionDetails({
 
 function DatabaseSchemaSection({
   schemas,
+  displayContext,
 }: {
   schemas: DatabaseSchemaResourceType[];
+  displayContext: ActionDetailsDisplayContext;
 }) {
+  if (displayContext === "sidebar-single-action") {
+    return (
+      <div>
+        <span className="text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
+          Database Schema
+        </span>
+        <div className="py-2">
+          {schemas.map((schema, idx) => (
+            <CodeBlock
+              key={idx}
+              className="language-sql max-h-96 overflow-y-auto"
+              wrapLongLines={true}
+            >
+              {schema.text}
+            </CodeBlock>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Collapsible defaultOpen={false}>
       <CollapsibleTrigger>
@@ -82,9 +112,32 @@ function DatabaseSchemaSection({
 
 function ExampleRowsSection({
   examples,
+  displayContext,
 }: {
   examples: ExampleRowsResourceType[];
+  displayContext: ActionDetailsDisplayContext;
 }) {
+  if (displayContext === "sidebar-single-action") {
+    return (
+      <div>
+        <span className="text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
+          Sample Data
+        </span>
+        <div className="py-2">
+          {examples.map((example, idx) => (
+            <CodeBlock
+              key={idx}
+              className="language-csv max-h-60 overflow-y-auto"
+              wrapLongLines={true}
+            >
+              {example.text}
+            </CodeBlock>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Collapsible defaultOpen={false}>
       <CollapsibleTrigger>

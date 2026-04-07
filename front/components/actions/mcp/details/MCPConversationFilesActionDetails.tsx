@@ -50,22 +50,35 @@ export function MCPConversationCatFileDetails({
       }
       visual={DocumentIcon}
     >
-      {displayContext === "sidebar" && (
+      {displayContext !== "conversation" && (
         <div className="flex flex-col gap-4 pl-6 pt-4">
-          <Collapsible defaultOpen={false}>
-            <CollapsibleTrigger>
-              <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+          {displayContext === "sidebar-single-action" ? (
+            <div>
+              <span className="text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
                 Preview
               </span>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
               <div className="py-2">
                 <CodeBlock className="language-text max-h-32 overflow-y-auto">
                   {truncatedContent}
                 </CodeBlock>
               </div>
-            </CollapsibleContent>
-          </Collapsible>
+            </div>
+          ) : (
+            <Collapsible defaultOpen={false}>
+              <CollapsibleTrigger>
+                <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                  Preview
+                </span>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="py-2">
+                  <CodeBlock className="language-text max-h-32 overflow-y-auto">
+                    {truncatedContent}
+                  </CodeBlock>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
         </div>
       )}
     </ActionDetailsWrapper>

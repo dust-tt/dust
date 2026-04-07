@@ -62,7 +62,7 @@ export function DataSourceNodeContentDetails({
           )}
         </div>
 
-        {displayContext === "sidebar" && sourceUrl && text && (
+        {displayContext !== "conversation" && sourceUrl && text && (
           <Markdown
             content={text}
             isStreaming={false}
