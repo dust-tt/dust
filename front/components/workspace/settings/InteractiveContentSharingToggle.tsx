@@ -39,13 +39,14 @@ const SHARING_POLICY_OPTIONS: {
     icon: UserGroupIcon,
     label: "Members + email invites",
     description:
-      "Frames are visible to all members and anyone invited by email",
+      "Frames can be shared with workspace members or via email invite",
     value: "workspace_and_emails",
   },
   {
     icon: GlobeAltIcon,
     label: "No restrictions",
-    description: "Frames can be shared publicly, with members, or by email",
+    description:
+      "Members can share Frames publicly, with the workspace, or via email invite",
     value: "all_scopes",
   },
 ];
