@@ -52,9 +52,13 @@ export async function publishConversationEvent(
     conversationChannel,
     JSON.stringify(event),
     "user_message_events",
-    // Conversation & message initial states are setup before starting to listen to events so we really care about getting new events.
-    // We are setting a low value to accommodate for reconnections to the event stream.
-    5
+    // Must survive SSE reconnection gaps. In production, load balancers close
+    // idle connections after 60-120s, and the conversation channel goes idle
+    // during agent execution (tokens use the per-message channel). The client
+    // reconnects with a 3-8s delay, so events must remain replayable for
+    // longer than that — especially for steering, where agent_message_new is
+    // the only way the new agent message reaches the UI.
+    60 * 10
   );
 }
 
