@@ -100,6 +100,7 @@ export function InlineActivitySteps({
   };
 
   const isThinking = lastAgentStateClassification === "thinking";
+  const isWriting = lastAgentStateClassification === "writing";
   const isActing = lastAgentStateClassification === "acting";
   const showPendingToolCalls = pendingToolCalls.length > 0;
 
@@ -127,12 +128,14 @@ export function InlineActivitySteps({
   // Show active thinking whenever the agent is thinking.
   // Dedup in appendThinkingStep handles duplicate content at capture time.
   const showActiveThinking = isThinking;
+  const showActiveWriting = isWriting;
   const activeAction =
     isActing && isAgentMessageWithActions ? actions[actions.length - 1] : null;
 
   const hasContent =
     completedSteps.length > 0 ||
     showActiveThinking ||
+    showActiveWriting ||
     activeAction ||
     showPendingToolCalls;
 
@@ -167,6 +170,7 @@ export function InlineActivitySteps({
               const isLast =
                 index === completedSteps.length - 1 &&
                 !showActiveThinking &&
+                !showActiveWriting &&
                 !activeAction &&
                 !isDone;
 
@@ -211,6 +215,16 @@ export function InlineActivitySteps({
                         isLastMessage={false}
                       />
                     </TimelineRow>
+                  );
+                case "content":
+                  return (
+                    <div key={step.id}>
+                      <Markdown
+                        content={step.content}
+                        isStreaming={false}
+                        isLastMessage={false}
+                      />
+                    </div>
                   );
                 case "action": {
                   const actionIcon = step.internalMCPServerName
@@ -268,6 +282,23 @@ export function InlineActivitySteps({
               </TimelineRow>
             )}
 
+            {/* Active writing (streaming content tokens) */}
+            {showActiveWriting && agentMessage.content ? (
+              <div>
+                <Markdown
+                  content={agentMessage.content}
+                  isStreaming={false}
+                  streamingState="streaming"
+                  enableAnimation
+                  animationDurationSeconds={0.3}
+                  delimiter=" "
+                  isLastMessage={false}
+                />
+              </div>
+            ) : showActiveWriting ? (
+              <TimelineRow spinner isLast={!activeAction && !isDone} />
+            ) : null}
+
             {/* Active action (tool in progress) */}
             {isActing && activeAction && (
               <div
@@ -304,6 +335,7 @@ export function InlineActivitySteps({
             {/* Pending spinner — shown when between transitions (not done, nothing active) */}
             {!isDone &&
               !showActiveThinking &&
+              !showActiveWriting &&
               !activeAction &&
               !showPendingToolCalls && <TimelineRow spinner isLast />}
             {isDone &&

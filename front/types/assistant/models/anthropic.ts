@@ -26,6 +26,8 @@ export const CLAUDE_SONNET_4_6_MODEL_ID = "claude-sonnet-4-6" as const;
 
 export const ANTHROPIC_TOKEN_COUNT_ADJUSTMENT = 1.3;
 
+// @todo isInlineActivityEnabled.
+// When it's ungated we can remove this meta prompt and let the model decide if it wants to output text before tool calls or not based on the activity type.
 export const CLAUDE_4_NATIVE_REASONING_META_PROMPT =
   `
 When executing multiple tool calls, output text only after all tools have completed.
