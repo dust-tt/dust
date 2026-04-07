@@ -96,20 +96,18 @@ export const AgentInputBar = ({
       return [toRichAgentMentionType(draftAgent)];
     }
 
-    // We only prefill if there are agent mentions (and only agent mentions) in user's previous message.
-    const shouldPrefill =
-      lastUserMessage &&
-      lastUserMessage.richMentions.length > 0 &&
-      lastUserMessage.richMentions.every(isRichAgentMention);
-
-    if (shouldPrefill) {
-      return lastUserMessage.richMentions;
-    }
-
-    // In single-agent mode, if the current user has no agent-only messages (e.g. opening
-    // someone else's conversation in a project), fall back to the last agent mentioned
-    // by anyone in the conversation — but only if the current user can access that agent.
+    // In single-agent mode, find the last agent mentioned in the conversation.
+    // First from the current user's messages, then from anyone's messages.
     if (singleAgentInput) {
+      const currentUserAgentMention =
+        lastUserMessage?.richMentions.find(isRichAgentMention);
+      if (
+        currentUserAgentMention &&
+        accessibleAgentIds.has(currentUserAgentMention.id)
+      ) {
+        return [currentUserAgentMention];
+      }
+
       const lastAgentMention = allMessages
         .filter(isUserMessage)
         .filter((m) => !isHandoverUserMessage(m) && m.visibility !== "deleted")
@@ -127,6 +125,18 @@ export const AgentInputBar = ({
       if (dustAgent) {
         return [toRichAgentMentionType(dustAgent)];
       }
+
+      return [];
+    }
+
+    // Non-steering mode: prefill all mentions if they are all agent mentions.
+    const shouldPrefill =
+      lastUserMessage &&
+      lastUserMessage.richMentions.length > 0 &&
+      lastUserMessage.richMentions.every(isRichAgentMention);
+
+    if (shouldPrefill) {
+      return lastUserMessage.richMentions;
     }
 
     return [];
