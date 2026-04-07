@@ -6,10 +6,9 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { toRichAgentMentionType } from "@app/types/assistant/mentions";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect } from "react";
 
 export function ConversationPage() {
-  const [conversationKey, setConversationKey] = useState<string | null>(null);
   const router = useAppRouter();
   const owner = useWorkspace();
   const { subscription, user } = useAuth();
@@ -52,25 +51,8 @@ export function ConversationPage() {
     }
   }, [selectedAgentConfiguration, setSelectedAgent]);
 
-  // This useEffect handles whether to change the key of the ConversationContainer
-  // or not. Altering the key forces a re-render of the component. A random number
-  // is used in the key to maintain the component during the transition from new
-  // to the conversation view. The key is reset when navigating to a new conversation.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  useEffect(() => {
-    if (activeConversationId) {
-      // Set conversation id as key if it exists.
-      setConversationKey(activeConversationId);
-    } else if (!activeConversationId) {
-      // Force re-render by setting a new key with a random number.
-      setConversationKey(`new_${Math.random() * 1000}`);
-    }
-  }, [setConversationKey, activeConversationId]);
-
   return (
     <ConversationContainerVirtuoso
-      // Key ensures the component re-renders when conversation changes except for shallow browse.
-      key={conversationKey}
       owner={owner}
       subscription={subscription}
       user={user}
