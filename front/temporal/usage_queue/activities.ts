@@ -22,6 +22,7 @@ import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { reportUsageForSubscriptionItems } from "@app/lib/plans/usage";
 import { countActiveUsersForPeriodInWorkspace } from "@app/lib/plans/usage/mau";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -259,6 +260,18 @@ export async function emitMetronomeUsageEventsActivity(
 
   const programmatic = isProgrammaticUsage(auth, { userMessageOrigin });
   const timestamp = agentMessageRow.createdAt.toISOString();
+  const authMethod = userMessage?.userContextAuthMethod ?? null;
+  const agentId = agentMessage.agentConfigurationId ?? null;
+  const messageStatus = agentMessage.status ?? "unknown";
+
+  // Resolve API key name from the stored numeric FK.
+  let apiKeyName: string | null = null;
+  if (userMessage?.userContextApiKeyId) {
+    const key = await KeyResource.fetchByModelId(
+      userMessage.userContextApiKeyId
+    );
+    apiKeyName = key?.name ?? null;
+  }
 
   // Get LLM run usages.
   const runs = await RunResource.listByDustRunIds(auth, {
@@ -300,11 +313,15 @@ export async function emitMetronomeUsageEventsActivity(
     conversationId,
     userId,
     agentMessageId,
+    agentId,
     parentAgentMessageId,
     runKey,
     runUsages,
     origin: userMessageOrigin,
     isProgrammaticUsage: programmatic,
+    authMethod,
+    apiKeyName,
+    messageStatus,
     isSubAgentMessage,
     timestamp,
   });
@@ -314,11 +331,15 @@ export async function emitMetronomeUsageEventsActivity(
     conversationId,
     userId,
     agentMessageId,
+    agentId,
     parentAgentMessageId,
     runKey,
     actions: toolActions,
     origin: userMessageOrigin,
     isProgrammaticUsage: programmatic,
+    authMethod,
+    apiKeyName,
+    messageStatus,
     isSubAgentMessage,
     timestamp,
   });
