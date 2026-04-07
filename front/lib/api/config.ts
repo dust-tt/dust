@@ -521,26 +521,6 @@ const config = {
   getMetronomeApiKey: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("METRONOME_API_KEY");
   },
-  getMetronomeFreeCreditProductId: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable(
-      "METRONOME_FREE_CREDIT_PRODUCT_ID"
-    );
-  },
-  getMetronomeCommitProductId: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable(
-      "METRONOME_COMMIT_PRODUCT_ID"
-    );
-  },
-  getMetronomeLlmUsageBillableMetricId: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable(
-      "METRONOME_LLM_USAGE_BILLABLE_METRIC_ID"
-    );
-  },
-  getMetronomeToolUseBillableMetricId: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable(
-      "METRONOME_TOOL_USE_BILLABLE_METRIC_ID"
-    );
-  },
   getMetronomeWebhookSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("METRONOME_WEBHOOK_SECRET");
   },
