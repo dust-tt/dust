@@ -100,6 +100,7 @@ async function handler(
         }
 
         const toolLatencyResult = await fetchToolLatencyMetricsByName(
+          auth,
           baseQuery,
           {
             view,

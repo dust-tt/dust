@@ -76,7 +76,10 @@ async function handler(
         version,
       });
 
-      const toolExecutionResult = await fetchToolExecutionMetrics(baseQuery);
+      const toolExecutionResult = await fetchToolExecutionMetrics(
+        auth,
+        baseQuery
+      );
 
       if (toolExecutionResult.isErr()) {
         return apiError(req, res, {

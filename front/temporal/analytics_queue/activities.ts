@@ -25,6 +25,7 @@ import { AgentMCPServerConfigurationResource } from "@app/lib/resources/agent_mc
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
@@ -302,20 +303,40 @@ async function collectToolUsageFromMessage(
     serverConfigs.map((cfg) => [cfg.id.toString(), cfg.sId])
   );
 
-  return actionResources.map((actionResource) => ({
-    step_index: actionResource.stepContent.step,
-    server_name:
-      actionResource.metadata.internalMCPServerName ??
-      actionResource.metadata.mcpServerId ??
-      "unknown",
-    tool_name:
-      actionResource.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
-      actionResource.functionCallName,
-    mcp_server_configuration_sid:
-      configIdToSId.get(actionResource.mcpServerConfigurationId) ?? undefined,
-    execution_time_ms: actionResource.executionDurationMs,
-    status: actionResource.status,
-  }));
+  const mcpServerIds = [
+    ...new Set(
+      actionResources.flatMap((a) =>
+        !a.metadata.internalMCPServerName && a.metadata.mcpServerId
+          ? [a.metadata.mcpServerId]
+          : []
+      )
+    ),
+  ];
+  const remoteServerNameMap = await RemoteMCPServerResource.resolveNamesBySIds(
+    auth,
+    mcpServerIds
+  );
+
+  return actionResources.map((actionResource) => {
+    const { internalMCPServerName, mcpServerId } = actionResource.metadata;
+    const serverName =
+      internalMCPServerName ??
+      (mcpServerId && remoteServerNameMap.get(mcpServerId)) ??
+      mcpServerId ??
+      "unknown";
+
+    return {
+      step_index: actionResource.stepContent.step,
+      server_name: serverName,
+      tool_name:
+        actionResource.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
+        actionResource.functionCallName,
+      mcp_server_configuration_sid:
+        configIdToSId.get(actionResource.mcpServerConfigurationId) ?? undefined,
+      execution_time_ms: actionResource.executionDurationMs,
+      status: actionResource.status,
+    };
+  });
 }
 
 /**

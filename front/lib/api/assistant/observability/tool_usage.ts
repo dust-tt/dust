@@ -3,8 +3,11 @@ import {
   formatUTCDateFromMillis,
   searchAnalytics,
 } from "@app/lib/api/elasticsearch";
+import type { Authenticator } from "@app/lib/auth";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { estypes } from "@elastic/elasticsearch";
 
 export type ToolUsagePoint = {
@@ -16,6 +19,7 @@ export type ToolUsagePoint = {
 
 export type AvailableTool = {
   serverName: string;
+  displayName: string;
   totalExecutions: number;
 };
 
@@ -202,8 +206,41 @@ export async function fetchAvailableTools(
 
   const tools: AvailableTool[] = toolBuckets.map((bucket) => ({
     serverName: bucket.key,
+    displayName: bucket.key,
     totalExecutions: bucket.doc_count,
   }));
 
   return new Ok(tools);
+}
+
+export async function resolveServerDisplayNames(
+  auth: Authenticator,
+  serverNames: string[]
+): Promise<Map<string, string>> {
+  const unique = [...new Set(serverNames)];
+  const remoteNameMap = await RemoteMCPServerResource.resolveNamesBySIds(
+    auth,
+    unique
+  );
+
+  const displayMap = new Map<string, string>();
+  for (const name of unique) {
+    displayMap.set(name, remoteNameMap.get(name) ?? asDisplayToolName(name));
+  }
+  return displayMap;
+}
+
+export async function resolveToolDisplayNames(
+  auth: Authenticator,
+  tools: AvailableTool[]
+): Promise<AvailableTool[]> {
+  const displayMap = await resolveServerDisplayNames(
+    auth,
+    tools.map((t) => t.serverName)
+  );
+
+  return tools.map((tool) => ({
+    ...tool,
+    displayName: displayMap.get(tool.serverName) ?? tool.serverName,
+  }));
 }

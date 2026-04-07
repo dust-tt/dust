@@ -4,7 +4,10 @@ import type {
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icons";
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
-import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import {
+  getServerTypeAndIdFromSId,
+  remoteMCPServerNameToSId,
+} from "@app/lib/actions/mcp_helper";
 import type { MCPToolType, RemoteMCPServerType } from "@app/lib/api/mcp";
 import type { MCPOAuthConnectionMetadataType } from "@app/lib/api/oauth/providers/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -19,7 +22,10 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import {
+  getResourceIdFromSId,
+  isResourceSId,
+} from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -180,6 +186,27 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     return this.baseFetch(auth, {
       where: { id: { [Op.in]: ids } },
     });
+  }
+
+  static async resolveNamesBySIds(
+    auth: Authenticator,
+    sIds: string[]
+  ): Promise<Map<string, string>> {
+    const remoteSIds = sIds.filter((sId) =>
+      isResourceSId("remote_mcp_server", sId)
+    );
+    if (remoteSIds.length === 0) {
+      return new Map();
+    }
+    const modelIds = remoteSIds.map((sId) => getServerTypeAndIdFromSId(sId).id);
+    const servers = await this.fetchByModelIds(auth, modelIds);
+    const nameMap = new Map<string, string>();
+    for (const server of servers) {
+      if (server.cachedName) {
+        nameMap.set(server.sId, server.cachedName);
+      }
+    }
+    return nameMap;
   }
 
   static async listByWorkspace(auth: Authenticator) {

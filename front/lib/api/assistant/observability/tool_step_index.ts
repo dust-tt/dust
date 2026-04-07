@@ -1,10 +1,11 @@
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
+import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { estypes } from "@elastic/elasticsearch";
 
 import { buildConfigBreakdown, MISSING_CONFIG_NAME } from "./tool_breakdown";
+import { resolveServerDisplayNames } from "./tool_usage";
 
 const DEFAULT_METRIC_VALUE = 0;
 
@@ -42,6 +43,7 @@ type ToolStepIndexAggs = {
 };
 
 export async function fetchToolStepIndexDistribution(
+  auth: Authenticator,
   baseQuery: estypes.QueryDslQueryContainer
 ): Promise<Result<ToolStepIndexByStep[], Error>> {
   const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
@@ -97,6 +99,11 @@ export async function fetchToolStepIndexDistribution(
     result.value.aggregations?.steps?.by_step?.buckets
   );
 
+  const allServerNames = stepBuckets.flatMap((sb) =>
+    bucketsToArray<ServerBucket>(sb.servers?.buckets).map((b) => b.key)
+  );
+  const displayMap = await resolveServerDisplayNames(auth, allServerNames);
+
   const byStep: ToolStepIndexByStep[] = stepBuckets.map((sb) => {
     const serverBuckets = bucketsToArray<ServerBucket>(sb.servers?.buckets);
 
@@ -104,7 +111,7 @@ export async function fetchToolStepIndexDistribution(
     serverBuckets.forEach((serverBucket) => {
       const breakdown = buildConfigBreakdown(serverBucket.configs);
 
-      tools[asDisplayToolName(serverBucket.key)] = {
+      tools[displayMap.get(serverBucket.key) ?? serverBucket.key] = {
         count: serverBucket.doc_count ?? DEFAULT_METRIC_VALUE,
         breakdown: Object.keys(breakdown).length > 0 ? breakdown : undefined,
       };
