@@ -1,8 +1,8 @@
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import {
-  type AgentStateClassification,
-  type PendingToolCall,
+import type {
+  AgentStateClassification,
+  PendingToolCall,
 } from "@app/components/assistant/conversation/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import { getInternalMCPServerIconByName } from "@app/lib/actions/mcp_internal_actions/constants";
