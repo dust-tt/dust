@@ -215,10 +215,16 @@ const InputBarContainer = ({
   const hasInitializedAgentRef = useRef(false);
 
   useEffect(() => {
+    // Clear any stale selectedSingleAgent when entering the agent builder so the
+    // @dust selection from the conversation page doesn't briefly flash.
+    if (isAgentBuilder) {
+      setSelectedSingleAgent(null);
+      return;
+    }
+
     if (
       hasInitializedAgentRef.current ||
       !singleAgentInput ||
-      isAgentBuilder ||
       conversation ||
       hasUserMention ||
       stickyMentions?.length
