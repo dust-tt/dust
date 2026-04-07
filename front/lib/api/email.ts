@@ -10,6 +10,7 @@ import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { WorkspaceType } from "@app/types/user";
 import sgMail from "@sendgrid/mail";
 import { escape } from "html-escaper";
 
@@ -59,7 +60,7 @@ export async function sendModjoDisconnectionEmail(
 
 export async function sendCancelSubscriptionEmail(
   email: string,
-  workspaceSId: string,
+  workspaceId: string,
   date: Date
 ): Promise<void> {
   const options: Intl.DateTimeFormatOptions = {
@@ -79,7 +80,7 @@ export async function sendCancelSubscriptionEmail(
       <li>all users will be removed from the workspace except for the most tenured admin (more about this <a href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription">here</a>);</li>
       <li>connections will be removed and data safety deleted from Dust;</li>
       <li>conversations, custom agents, and data sources will still be accessible with limitations;</li>
-      <li>your usage of Dust will have the <a href="https://dust.tt/w/${workspaceSId}/subscription">restrictions of the free plan</a>.</li>
+      <li>your usage of Dust will have the <a href="https://dust.tt/w/${workspaceId}/subscription">restrictions of the free plan</a>.</li>
       </ul>
       <p>Also note that if you have a data source (folder) with more than 50 MB of data, it will be deleted after the end of your billing period. </p>
       <p>More details are available on <a href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription">our subscription cancelling FAQ</a>.</p>
@@ -178,15 +179,13 @@ export async function sendProactiveTrialCancelledEmail(
 
 export async function sendCreditUsageAlertEmail({
   email,
-  workspaceName,
-  workspaceSId,
+  workspace,
   percentUsed,
   totalInitialMicroUsd,
   totalConsumedMicroUsd,
 }: {
   email: string;
-  workspaceName: string;
-  workspaceSId: string;
+  workspace: WorkspaceType;
   percentUsed: number;
   totalInitialMicroUsd: number;
   totalConsumedMicroUsd: number;
@@ -200,7 +199,7 @@ export async function sendCreditUsageAlertEmail({
     from: config.getSupportEmailAddress(),
     subject: `[Dust] Credit usage alert - ${percentUsed}% of your credits consumed`,
     body: `
-      <p>You're receiving this as Admin of the Dust workspace <strong>${workspaceName}</strong>.</p>
+      <p>You're receiving this as Admin of the Dust workspace <strong>${workspace.name}</strong>.</p>
       <p>Your workspace has consumed <strong>${percentUsed}%</strong> of its available programmatic usage credits.</p>
       <ul>
         <li>Total credits: ${formatCents(totalInitialMicroUsd)}</li>
@@ -209,7 +208,7 @@ export async function sendCreditUsageAlertEmail({
       </ul>
       <p>To avoid service interruption:</p>
       <ul>
-        <li><strong><a href="https://dust.tt/w/${workspaceSId}/developers/credits-usage">Purchase additional credits</a></strong> in the Developers > Credits section</li>
+        <li><strong><a href="https://dust.tt/w/${workspace.sId}/developers/credits-usage">Purchase additional credits</a></strong> in the Developers > Credits section</li>
         <li>Learn more about <a href="https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e">programmatic usage at Dust</a></li>
       </ul>
       <p>Please reply to this email if you have any questions.</p>`,
