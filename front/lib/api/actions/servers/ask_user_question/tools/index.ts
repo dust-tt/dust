@@ -1,9 +1,6 @@
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import {
-  isUserQuestionResumeState,
-  USER_QUESTION_DECLINED_MESSAGE,
-} from "@app/lib/actions/types";
+import { isUserQuestionResumeState } from "@app/lib/actions/types";
 import { ASK_USER_QUESTION_TOOLS_METADATA } from "@app/lib/api/actions/servers/ask_user_question/metadata";
 import { Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
@@ -30,7 +27,7 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
         return new Ok([
           {
             type: "text",
-            text: USER_QUESTION_DECLINED_MESSAGE,
+            text: "User declined to answer. Proceed with your best judgment.",
           },
         ]);
       }
