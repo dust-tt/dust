@@ -1,0 +1,16 @@
+{
+  "images": [
+    {
+      "filename": "square-3-stack-3d.svg",
+      "idiom": "universal"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  },
+  "properties": {
+    "preserves-vector-representation": true,
+    "template-rendering-intent": "template"
+  }
+}

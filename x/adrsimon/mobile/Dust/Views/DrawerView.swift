@@ -28,9 +28,10 @@ struct DrawerView: View {
     private var headerSection: some View {
         HStack(spacing: 8) {
             HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass")
+                SparkleIcon.magnifyingGlass.image
+                    .resizable()
+                    .frame(width: 14, height: 14)
                     .foregroundStyle(Color.dustFaint)
-                    .font(.system(size: 14))
                 TextField("Search", text: $searchText)
                     .sparkleCopySm()
                     .foregroundStyle(Color.dustForeground)
@@ -40,13 +41,18 @@ struct DrawerView: View {
             .modifier(GlassSearchBarModifier())
 
             Button(action: onNewConversation) {
-                Text("New")
-                    .sparkleLabelSm()
-                    .foregroundStyle(Color.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.gray950)
-                    .clipShape(RoundedRectangle(cornerRadius: 32))
+                HStack(spacing: 4) {
+                    SparkleIcon.chatBubbleBottomCenterPlus.image
+                        .resizable()
+                        .frame(width: 14, height: 14)
+                    Text("New")
+                        .sparkleLabelSm()
+                }
+                .foregroundStyle(Color.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.gray950)
+                .clipShape(RoundedRectangle(cornerRadius: 32))
             }
         }
         .padding(.horizontal, 12)
@@ -144,11 +150,12 @@ struct DrawerView: View {
                         Button {
                             onSwitchWorkspace(workspace)
                         } label: {
-                            Label(
-                                workspace.name,
-                                systemImage: workspace.sId == currentWorkspace?.sId
-                                    ? "checkmark.circle.fill" : "circle"
-                            )
+                            Label {
+                                Text(workspace.name)
+                            } icon: {
+                                (workspace.sId == currentWorkspace?.sId
+                                    ? SparkleIcon.checkCircle : SparkleIcon.circle).image
+                            }
                         }
                     }
                 }
