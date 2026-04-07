@@ -1,5 +1,5 @@
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
-import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import InputBarContainer, {
@@ -128,7 +128,7 @@ export const InputBar = React.memo(function InputBar({
     [getAndClearPendingInputText]
   );
 
-  const generationContext = useContext(GenerationContext);
+  const { getConversationGeneratingMessages } = useGenerationContext();
 
   // In single-agent mode, block submission when the selected agent differs from
   // the agent that is currently generating a response.
@@ -137,9 +137,7 @@ export const InputBar = React.memo(function InputBar({
       return null;
     }
     const generatingMessages =
-      generationContext?.getConversationGeneratingMessages(
-        conversation?.sId ?? ""
-      ) ?? [];
+      getConversationGeneratingMessages(conversation?.sId ?? "");
     const blockingAgentId = generatingMessages.find(
       (gm) => gm.agentId && gm.agentId !== selectedSingleAgent.id
     )?.agentId;
@@ -151,7 +149,7 @@ export const InputBar = React.memo(function InputBar({
     );
   }, [
     selectedSingleAgent,
-    generationContext,
+    getConversationGeneratingMessages,
     conversation?.sId,
     agentConfigurations,
   ]);

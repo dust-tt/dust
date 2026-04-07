@@ -1,5 +1,5 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import type {
   VirtuosoMessage,
@@ -35,7 +35,7 @@ import {
   useVirtuosoLocation,
   useVirtuosoMethods,
 } from "@virtuoso.dev/message-list";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 
@@ -46,7 +46,7 @@ export const AgentInputBar = ({
 }) => {
   const [blockedActionIndex, setBlockedActionIndex] = useState<number>(0);
   const [isStopping, setIsStopping] = useState<boolean>(false);
-  const generationContext = useContext(GenerationContext);
+  const generationContext = useGenerationContext();
   const { getBlockedActions, hasPendingValidations, startPulsingAction } =
     useBlockedActionsContext();
 

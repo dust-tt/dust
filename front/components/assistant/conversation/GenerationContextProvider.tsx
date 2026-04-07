@@ -1,5 +1,5 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { createContext, useCallback, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
 
 type GeneratingMessage = {
   messageId: string;
@@ -20,9 +20,21 @@ type GenerationContextType = {
   ) => GeneratingMessage[];
 };
 
-export const GenerationContext = createContext<
-  GenerationContextType | undefined
->(undefined);
+const GenerationContext = createContext<GenerationContextType | undefined>(
+  undefined
+);
+
+export function useGenerationContext(): GenerationContextType {
+  const context = useContext(GenerationContext);
+
+  if (!context) {
+    throw new Error(
+      "useGenerationContext must be used within a GenerationContextProvider"
+    );
+  }
+
+  return context;
+}
 
 export const GenerationContextProvider = ({
   children,
