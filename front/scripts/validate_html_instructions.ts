@@ -73,12 +73,15 @@ makeScript(
         } else {
           mismatchCount++;
 
-          // Find first divergence point for a concise diff.
+          // Diff on normalized HTML so block-id noise is removed.
+          const normalizedStored = normalizeBlockIds(agent.instructionsHtml);
+          const normalizedGenerated = normalizeBlockIds(generated);
+
           let diffIdx = 0;
           while (
-            diffIdx < generated.length &&
-            diffIdx < agent.instructionsHtml.length &&
-            generated[diffIdx] === agent.instructionsHtml[diffIdx]
+            diffIdx < normalizedGenerated.length &&
+            diffIdx < normalizedStored.length &&
+            normalizedGenerated[diffIdx] === normalizedStored[diffIdx]
           ) {
             diffIdx++;
           }
@@ -90,14 +93,14 @@ makeScript(
               agentSId: agent.sId,
               agentName: agent.name,
               workspaceId: workspace.sId,
-              storedLength: agent.instructionsHtml.length,
-              generatedLength: generated.length,
+              storedLength: normalizedStored.length,
+              generatedLength: normalizedGenerated.length,
               diffAtChar: diffIdx,
-              storedSnippet: agent.instructionsHtml.slice(
+              storedSnippet: normalizedStored.slice(contextStart, contextEnd),
+              generatedSnippet: normalizedGenerated.slice(
                 contextStart,
                 contextEnd
               ),
-              generatedSnippet: generated.slice(contextStart, contextEnd),
             },
             "HTML instructions mismatch"
           );
