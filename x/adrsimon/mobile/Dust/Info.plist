@@ -29,8 +29,6 @@
 	<string>1</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Dust needs microphone access for voice input</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Dust uses speech recognition to transcribe your voice messages</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 </dict>
