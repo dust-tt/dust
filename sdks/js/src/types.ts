@@ -756,6 +756,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "conversation_search_indexing"
   | "conversation_search_read"
   | "new_file_explorer"
+  | "use_vertex_for_claude_models"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
