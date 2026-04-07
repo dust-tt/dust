@@ -30,7 +30,6 @@ import type {
 } from "@temporalio/workflow";
 import {
   CancellationScope,
-  deprecatePatch,
   proxyActivities,
   proxySinks,
   setHandler,
@@ -273,7 +272,6 @@ export async function agentLoopWorkflow({
       // these runs (not all accumulated runs on the agent message).
       // Pass this execution's runIds and startStep to finalize so tracking
       // workflows only process this execution's runs and actions.
-      deprecatePatch("pass-dustRunIds-to-finalize");
       const argsWithRunIds = {
         ...agentLoopArgs,
         dustRunIds: runIds,
@@ -306,7 +304,6 @@ export async function agentLoopWorkflow({
     // Notify error in a non-cancellable scope to ensure it runs even if the workflow is canceled.
     // Pass this execution's runIds and startStep to finalize so tracking
     // workflows only process this execution's runs and actions.
-    deprecatePatch("pass-dustRunIds-to-finalize");
     const argsWithRunIds = {
       ...agentLoopArgs,
       dustRunIds: runIds,
