@@ -202,7 +202,9 @@ async function handler(
 
         // If the new policy restricts public sharing, downgrade existing public frames.
         if (body.sharingPolicy !== "all_scopes") {
-          await FileResource.revokePublicSharingInWorkspace(auth);
+          await FileResource.revokePublicSharingInWorkspace(auth, {
+            newPolicy: body.sharingPolicy,
+          });
         }
       } else if ("allowVoiceTranscription" in body) {
         const previousMetadata = owner.metadata ?? {};

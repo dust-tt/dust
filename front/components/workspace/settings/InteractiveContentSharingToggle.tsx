@@ -1,4 +1,5 @@
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceSharingPolicy, WorkspaceType } from "@app/types/user";
 import {
   ActionFrameIcon,
@@ -17,6 +18,7 @@ import {
   DropdownMenuTrigger,
   GlobeAltIcon,
   LockIcon,
+  SliderToggle,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -55,10 +57,78 @@ interface InteractiveContentSharingToggleProps {
 export function InteractiveContentSharingToggle({
   owner,
 }: InteractiveContentSharingToggleProps) {
+  const { hasFeature } = useFeatureFlags();
   const { isChanging, sharingPolicy, doUpdateSharingPolicy } =
     useFrameSharingToggle({ owner });
   const [pendingPolicy, setPendingPolicy] =
     useState<WorkspaceSharingPolicy | null>(null);
+
+  // Legacy toggle UI when the email_restricted_sharing FF is disabled.
+  if (!hasFeature("email_restricted_sharing")) {
+    const isEnabled = sharingPolicy === "all_scopes";
+
+    const handleToggleClick = () => {
+      if (isEnabled) {
+        setPendingPolicy("workspace_and_emails");
+      } else {
+        void doUpdateSharingPolicy("all_scopes");
+      }
+    };
+
+    return (
+      <>
+        <ContextItem
+          title="Public Frame sharing"
+          subElement="Allow Frames to be shared publicly via links"
+          visual={<ActionFrameIcon className="h-6 w-6" />}
+          hasSeparatorIfLast={true}
+          action={
+            <SliderToggle
+              selected={isEnabled}
+              disabled={isChanging}
+              onClick={handleToggleClick}
+            />
+          }
+        />
+        <Dialog
+          open={!!pendingPolicy}
+          onOpenChange={(open) => {
+            if (!open) {
+              setPendingPolicy(null);
+            }
+          }}
+        >
+          <DialogContent size="md" isAlertDialog>
+            <DialogHeader hideButton>
+              <DialogTitle>Disable public Frame sharing</DialogTitle>
+              <DialogDescription>
+                This will revoke public access to all currently shared Frames in
+                this workspace. Existing public links will stop working.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter
+              leftButtonProps={{
+                label: "Cancel",
+                disabled: isChanging,
+                variant: "outline",
+              }}
+              rightButtonProps={{
+                label: "Disable public sharing",
+                disabled: isChanging,
+                variant: "warning",
+                onClick: async () => {
+                  if (pendingPolicy) {
+                    await doUpdateSharingPolicy(pendingPolicy);
+                  }
+                  setPendingPolicy(null);
+                },
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
 
   const selectedOption = SHARING_POLICY_OPTIONS.find(
     (o) => o.value === sharingPolicy
