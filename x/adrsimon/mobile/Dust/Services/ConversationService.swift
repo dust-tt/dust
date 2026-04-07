@@ -1,0 +1,81 @@
+import Foundation
+
+enum ConversationService {
+    private static let defaultLimit = 100
+
+    static func fetchConversations(
+        workspaceId: String,
+        tokenProvider: TokenProvider,
+        limit: Int = defaultLimit
+    ) async throws -> ConversationsResponse {
+        let endpoint = AppConfig.Endpoints.conversations(workspaceId: workspaceId)
+        let query = buildQuery(endpoint: endpoint, params: [
+            "limit": "\(limit)",
+        ])
+        return try await APIClient.authenticatedGet(query, tokenProvider: tokenProvider, snakeCase: false)
+    }
+
+    static func fetchMessages(
+        workspaceId: String,
+        conversationId: String,
+        tokenProvider: TokenProvider,
+        limit: Int = 50,
+        lastValue: Int? = nil
+    ) async throws -> ConversationMessagesResponse {
+        let endpoint = AppConfig.Endpoints.conversationMessages(
+            workspaceId: workspaceId,
+            conversationId: conversationId
+        )
+        var params: [String: String] = [
+            "newResponseFormat": "1",
+            "orderDirection": "desc",
+            "orderColumn": "rank",
+            "limit": "\(limit)",
+        ]
+        if let lastValue {
+            params["lastValue"] = "\(lastValue)"
+        }
+        let query = buildQuery(endpoint: endpoint, params: params)
+        return try await APIClient.authenticatedGet(query, tokenProvider: tokenProvider, snakeCase: false)
+    }
+
+    static func createConversation(
+        workspaceId: String,
+        request: CreateConversationRequest,
+        tokenProvider: TokenProvider
+    ) async throws -> Conversation {
+        let endpoint = AppConfig.Endpoints.conversations(workspaceId: workspaceId)
+        let response: CreateConversationResponse = try await APIClient.authenticatedPost(
+            endpoint,
+            body: request,
+            tokenProvider: tokenProvider,
+            snakeCase: false
+        )
+        return response.conversation
+    }
+
+    static func postMessage(
+        workspaceId: String,
+        conversationId: String,
+        request: PostMessageRequest,
+        tokenProvider: TokenProvider
+    ) async throws {
+        let endpoint = AppConfig.Endpoints.conversationMessages(
+            workspaceId: workspaceId,
+            conversationId: conversationId
+        )
+        let _: PostMessageResponse = try await APIClient.authenticatedPost(
+            endpoint,
+            body: request,
+            tokenProvider: tokenProvider,
+            snakeCase: false
+        )
+    }
+
+    private static func buildQuery(endpoint: String, params: [String: String]) -> String {
+        var components = URLComponents(string: "\(AppConfig.apiBaseURL)\(endpoint)")
+        components?.queryItems = params.map { URLQueryItem(name: $0.key, value: $0.value) }
+        // Strip the base URL prefix since APIClient prepends it
+        return components?.url?.absoluteString.replacingOccurrences(of: AppConfig.apiBaseURL, with: "") ?? endpoint
+    }
+}
