@@ -140,7 +140,10 @@ export function MCPSandboxActionDetails({
       {displayContext === "conversation" ? (
         <ConversationView {...viewProps} />
       ) : (
-        <SidebarView {...viewProps} useCollapsible={displayContext === "sidebar-all-actions"} />
+        <SidebarView
+          {...viewProps}
+          useCollapsible={displayContext === "sidebar-all-actions"}
+        />
       )}
     </ActionDetailsWrapper>
   );
