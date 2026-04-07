@@ -33,34 +33,30 @@ function mapMetronomeType(
 
 function getScheduleTotals(entry: MetronomeCommit | MetronomeCredit): {
   initialAmountCents: number;
-  startDate: number | null;
-  expirationDate: number | null;
+  startDateMs: number | null;
+  expirationDateMs: number | null;
 } {
   const items = entry.access_schedule?.schedule_items ?? [];
   if (items.length === 0) {
-    return { initialAmountCents: 0, startDate: null, expirationDate: null };
+    return { initialAmountCents: 0, startDateMs: null, expirationDateMs: null };
   }
 
-  let totalAmount = 0;
-  let earliestStart = Infinity;
-  let latestEnd = -Infinity;
+  let totalAmountCents = 0;
+  let earliestStartMs = new Date(items[0].starting_at).getTime();
+  let latestEndMs = new Date(items[0].ending_before).getTime();
 
   for (const item of items) {
-    totalAmount += item.amount;
-    const start = new Date(item.starting_at).getTime();
-    const end = new Date(item.ending_before).getTime();
-    if (start < earliestStart) {
-      earliestStart = start;
-    }
-    if (end > latestEnd) {
-      latestEnd = end;
-    }
+    totalAmountCents += item.amount;
+    const startMs = new Date(item.starting_at).getTime();
+    const endMs = new Date(item.ending_before).getTime();
+    earliestStartMs = Math.min(earliestStartMs, startMs);
+    latestEndMs = Math.max(latestEndMs, endMs);
   }
 
   return {
-    initialAmountCents: totalAmount,
-    startDate: earliestStart === Infinity ? null : earliestStart,
-    expirationDate: latestEnd === -Infinity ? null : latestEnd,
+    initialAmountCents: totalAmountCents,
+    startDateMs: earliestStartMs,
+    expirationDateMs: latestEndMs,
   };
 }
 
@@ -68,7 +64,7 @@ function toDisplayData(
   entry: MetronomeCommit | MetronomeCredit
 ): CreditDisplayData {
   const type = mapMetronomeType(entry);
-  const { initialAmountCents, startDate, expirationDate } =
+  const { initialAmountCents, startDateMs, expirationDateMs } =
     getScheduleTotals(entry);
 
   const initialAmountMicroUsd =
@@ -86,8 +82,8 @@ function toDisplayData(
     initialAmountMicroUsd,
     remainingAmountMicroUsd,
     consumedAmountMicroUsd,
-    startDate,
-    expirationDate,
+    startDate: startDateMs,
+    expirationDate: expirationDateMs,
     boughtByUser: null,
   };
 }
