@@ -259,7 +259,8 @@ export async function emitMetronomeUsageEventsActivity(
   const isSubAgentMessage = userMessage?.agenticMessageType !== null;
 
   const programmatic = isProgrammaticUsage(auth, { userMessageOrigin });
-  const timestamp = agentMessageRow.createdAt.toISOString();
+  // Use updatedAt — this is when the agent message finished (not when it was created).
+  const timestamp = agentMessage.updatedAt.toISOString();
   const authMethod = userMessage?.userContextAuthMethod ?? null;
   const agentId = agentMessage.agentConfigurationId ?? null;
   const messageStatus = agentMessage.status ?? "unknown";

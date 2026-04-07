@@ -9,6 +9,7 @@ import { createHash } from "crypto";
 import type { MetronomeEvent } from "./types";
 
 const MAX_TRANSACTION_ID_LENGTH = 128;
+const MAX_PROPERTY_VALUE_BYTES = 256;
 
 /**
  * If a transaction_id exceeds Metronome's 128-char limit, keep the first
@@ -21,6 +22,21 @@ function truncateTransactionId(id: string): string {
   }
   const hash = createHash("sha256").update(id).digest("hex").slice(0, 12);
   return `${id.slice(0, MAX_TRANSACTION_ID_LENGTH - 13)}-${hash}`;
+}
+
+/**
+ * Truncate a string property value to fit Metronome's 256-byte limit.
+ */
+function truncatePropertyValue(value: string): string {
+  if (Buffer.byteLength(value, "utf8") <= MAX_PROPERTY_VALUE_BYTES) {
+    return value;
+  }
+  // Truncate conservatively — slice characters until within byte limit.
+  let truncated = value;
+  while (Buffer.byteLength(truncated, "utf8") > MAX_PROPERTY_VALUE_BYTES - 3) {
+    truncated = truncated.slice(0, truncated.length - 1);
+  }
+  return truncated + "...";
 }
 
 // ---------------------------------------------------------------------------
@@ -339,9 +355,11 @@ export function buildToolUseEvents({
         : {}),
       ...(authMethod ? { auth_method: authMethod } : {}),
       ...(apiKeyName ? { api_key_name: apiKeyName } : {}),
-      tool_name: action.toolName,
-      mcp_server_id: action.mcpServerId ?? "",
-      internal_mcp_server_name: action.internalMCPServerName ?? "",
+      tool_name: truncatePropertyValue(action.toolName),
+      mcp_server_id: truncatePropertyValue(action.mcpServerId ?? ""),
+      internal_mcp_server_name: truncatePropertyValue(
+        action.internalMCPServerName ?? ""
+      ),
       tool_category: getToolCategory(action.internalMCPServerName),
       // Constant grouping key — used as presentation_group_key in Metronome to
       // aggregate all tool categories into a single "Tool Usage" invoice line.
