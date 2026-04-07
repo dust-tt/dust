@@ -60,16 +60,6 @@ export function ConversationContainerVirtuoso({
       : conversationIdFromRouter;
 
   const [planLimitReached, setPlanLimitReached] = useState(false);
-
-  // Reset planLimitReached when conversation changes (previously handled by
-  // key-based remount in ConversationPage).
-  const [prevConversationId, setPrevConversationId] =
-    useState(activeConversationId);
-  if (activeConversationId !== prevConversationId) {
-    setPrevConversationId(activeConversationId);
-    setPlanLimitReached(false);
-  }
-
   const { hasFeature } = useFeatureFlags();
   const singleAgentInput = hasFeature("enable_steering");
 
