@@ -647,7 +647,8 @@ function productMatches(
   if (desiredQr && existingQr) {
     if (
       desiredQr.decimal_places !== existingQr.decimal_places ||
-      desiredQr.rounding_method !== existingQr.rounding_method
+      desiredQr.rounding_method.toUpperCase() !==
+        existingQr.rounding_method.toUpperCase()
     ) {
       return false;
     }
@@ -1111,6 +1112,24 @@ async function main(): Promise<void> {
       console.log(`  ${name}: ${id}`);
     }
   }
+
+  // Output constants for lib/metronome/constants.ts
+  const prefix = ENV === "production" ? "PROD" : "DEV";
+  console.log(
+    `\n=== Constants (${ENV}) — paste into lib/metronome/constants.ts ===`
+  );
+  console.log(
+    `const ${prefix}_FREE_CREDIT_PRODUCT_ID = "${ids.products["Free Monthly Credits"] ?? ""}";`
+  );
+  console.log(
+    `const ${prefix}_COMMIT_PRODUCT_ID = "${ids.products["Prepaid Commit"] ?? ""}";`
+  );
+  console.log(
+    `const ${prefix}_LLM_PROGRAMMATIC_BILLABLE_METRIC_ID =\n  "${ids.metrics["LLM Provider Cost (Programmatic)"] ?? ""}";`
+  );
+  console.log(
+    `const ${prefix}_TOOL_PROGRAMMATIC_BILLABLE_METRIC_ID =\n  "${ids.metrics["Tool Invocations (Programmatic)"] ?? ""}";`
+  );
 
   console.log("\n✓ Done");
 }

@@ -28,6 +28,7 @@ import {
   createMetronomeCredit,
   getMetronomeActiveContract,
 } from "@app/lib/metronome/client";
+import { getFreeCreditProductId } from "@app/lib/metronome/constants";
 import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
@@ -196,14 +197,7 @@ async function grantMetronomeFreeCredits({
       return;
     }
 
-    const productId = apiConfig.getMetronomeFreeCreditProductId();
-    if (!productId) {
-      logger.error(
-        { workspaceId: workspace.sId },
-        `[Stripe Webhook] Metronome product "Free Monthly Credits" not found`
-      );
-      return;
-    }
+    const productId = getFreeCreditProductId();
 
     // Count active members and compute bracket amount.
     const memberCount = await MembershipResource.countActiveSeatsInWorkspace(

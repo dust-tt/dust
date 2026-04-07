@@ -1,4 +1,3 @@
-import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import {
@@ -6,6 +5,10 @@ import {
   listMetronomeUsage,
   listMetronomeUsageWithGroups,
 } from "@app/lib/metronome/client";
+import {
+  getLlmProgrammaticBillableMetricId,
+  getToolProgrammaticBillableMetricId,
+} from "@app/lib/metronome/constants";
 import type { MetronomeBalance } from "@app/lib/metronome/types";
 import { METRONOME_CENTS_TO_MICRO_USD } from "@app/lib/metronome/types";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -188,17 +191,8 @@ export async function handleMetronomeUsageRequest(
         });
       }
 
-      const llmMetricId = config.getMetronomeLlmUsageBillableMetricId();
-      const toolMetricId = config.getMetronomeToolUseBillableMetricId();
-      if (!llmMetricId || !toolMetricId) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Metronome billable metric IDs are not configured.",
-          },
-        });
-      }
+      const llmMetricId = getLlmProgrammaticBillableMetricId();
+      const toolMetricId = getToolProgrammaticBillableMetricId();
 
       const {
         groupBy,
