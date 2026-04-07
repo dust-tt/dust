@@ -203,7 +203,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           key={`message-id-${sId}`}
           ref={ref}
           className={classNames(
-            "mx-auto max-w-3xl",
+            "mx-auto max-w-conversation",
             !isNextMessageSameSender && "mb-4"
           )}
         >

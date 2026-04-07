@@ -128,7 +128,7 @@ function PreviewContent({
         </div>
 
         {!conversation && (
-          <div className="mx-4 flex-shrink-0 py-4">
+          <div className="flex-shrink-0 px-5 py-4">
             <InputBar
               isSubmitting={isSavingDraftAgent}
               owner={owner}

@@ -350,6 +350,7 @@ module.exports = {
       },
       maxWidth: {
         48: "12rem",
+        conversation: "48rem", // max-w-3xl equivalent, used for conversation content area
       },
       scale: {
         99: ".99",

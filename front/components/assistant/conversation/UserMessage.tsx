@@ -340,7 +340,7 @@ export function UserMessage({
             type="user"
             className={cn(
               isCurrentUser ? "ml-auto" : undefined,
-              "relative max-w-3xl @xxxs/conversation:max-w-[95%] @xxs/conversation:max-w-[80%] @xs/conversation:max-w-[85%]",
+              "relative max-w-conversation @xxxs/conversation:max-w-[95%] @xxs/conversation:max-w-[80%] @xs/conversation:max-w-[85%]",
               actionMenuBottomMargin
             )}
             ref={userMessageHoveredRef}
