@@ -1,3 +1,4 @@
+import { ThinkingStep } from "@app/components/assistant/conversation/actions/inline/ThinkingStep";
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type {
@@ -18,7 +19,6 @@ import { isLightAgentMessageWithActionsType } from "@app/types/assistant/convers
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   AnimatedText,
-  ChatBubbleThoughtIcon,
   CheckIcon,
   ChevronRightIcon,
   cn,
@@ -211,45 +211,14 @@ export function InlineActivitySteps({
 
               switch (step.type) {
                 case "thinking":
-                  if (isDone) {
-                    return (
-                      <div
-                        key={step.id}
-                        className="cursor-pointer"
-                        onClick={() =>
-                          openPanel({
-                            type: "thinking",
-                            stepId: step.id,
-                            content: step.content,
-                          })
-                        }
-                      >
-                        <TimelineRow
-                          icon={ChatBubbleThoughtIcon}
-                          isLast={isLast}
-                        >
-                          <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
-                            Thinking
-                            <Icon
-                              size="xs"
-                              visual={ChevronRightIcon}
-                              className="shrink-0 opacity-50"
-                            />
-                          </span>
-                        </TimelineRow>
-                      </div>
-                    );
-                  }
                   return (
-                    <TimelineRow key={step.id} icon="circle" isLast={isLast}>
-                      <Markdown
-                        content={step.content}
-                        isStreaming={false}
-                        forcedTextSize="text-sm"
-                        textColor="text-muted-foreground dark:text-muted-foreground-night"
-                        isLastMessage={false}
-                      />
-                    </TimelineRow>
+                    <ThinkingStep
+                      key={step.id}
+                      content={step.content}
+                      isStreaming={false}
+                      isMessageDone={isDone}
+                      isLast={isLast}
+                    />
                   );
                 case "content":
                   return (
@@ -296,25 +265,12 @@ export function InlineActivitySteps({
 
             {/* Active thinking (streaming CoT) */}
             {showActiveThinking && (
-              <TimelineRow
-                icon={chainOfThought ? "circle" : null}
-                spinner={!chainOfThought}
+              <ThinkingStep
+                content={chainOfThought}
+                isStreaming
+                isMessageDone={false}
                 isLast={!activeAction && !isDone}
-              >
-                {chainOfThought ? (
-                  <Markdown
-                    content={chainOfThought}
-                    isStreaming={false}
-                    streamingState="streaming"
-                    enableAnimation
-                    animationDurationSeconds={0.3}
-                    delimiter=" "
-                    forcedTextSize="text-sm"
-                    textColor="text-muted-foreground dark:text-muted-foreground-night"
-                    isLastMessage={false}
-                  />
-                ) : null}
-              </TimelineRow>
+              />
             )}
 
             {/* Active writing (streaming content tokens) */}
