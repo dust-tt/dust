@@ -122,14 +122,17 @@ enum APIClient {
     static func authenticatedSend(
         _ endpoint: String,
         method: String,
-        body: Data,
-        tokenProvider: TokenProvider
+        body: some Encodable,
+        tokenProvider: TokenProvider,
+        snakeCase: Bool = false
     ) async throws {
+        let selectedEncoder = snakeCase ? encoder : camelCaseEncoder
+        let encodedBody = try selectedEncoder.encode(body)
         let _: Bool = try await withAuthRetry(tokenProvider: tokenProvider) { token in
             var request = try buildRequest(endpoint: endpoint, accessToken: token)
             request.httpMethod = method
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = body
+            request.httpBody = encodedBody
             _ = try await performRequest(request)
             return true
         }
@@ -213,6 +216,7 @@ enum APIClient {
             throw APIError.invalidURL
         }
         var request = URLRequest(url: url)
+        request.timeoutInterval = 30
         if let accessToken {
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         }
