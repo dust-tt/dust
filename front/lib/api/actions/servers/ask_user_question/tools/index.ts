@@ -37,7 +37,7 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
           type: "text",
           text:
             `User has answered your questions: "${question}"="${selections.join(", ")}". ` +
-            `You can now continue with the user's answers in mind`,
+            "You can now continue with the user's answers in mind",
         },
       ]);
     }
