@@ -65,7 +65,7 @@ async function handler(
 
       const configurations = await listAgentMcpConfigurationsForAgent({
         workspaceId: owner.id,
-        agentConfigurationSId: aId,
+        agentConfigurationId: aId,
       });
 
       return res.status(200).json({ configurations });

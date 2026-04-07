@@ -312,14 +312,14 @@ async function migrateWorkspaceProcessActions(
     });
 
     // Step 3: Find the corresponding AgentConfigurations.
-    const agentConfigurationSIds = [
+    const agentConfigurationIds = [
       ...new Set(agentMessages.map((message) => message.agentConfigurationId)),
     ];
 
     const agentConfigurations = await AgentConfigurationModel.findAll({
       where: {
         sId: {
-          [Op.in]: agentConfigurationSIds,
+          [Op.in]: agentConfigurationIds,
         },
         workspaceId: workspace.id,
       },
