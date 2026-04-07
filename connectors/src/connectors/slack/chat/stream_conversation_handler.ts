@@ -246,7 +246,11 @@ async function streamAgentAnswerToSlack(
         const thinkingAction = getActionRunningLabel(event.action);
 
         if (planHandler) {
-          planHandler.setDefaultTask(thinkingAction, "in_progress");
+          planHandler.setDefaultTask(
+            thinkingAction,
+            "in_progress",
+            event.action
+          );
           await planHandler.upsertPlanMessage(thinkingAction);
         } else {
           await throttledPostSlackMessageUpdate({
@@ -409,7 +413,7 @@ async function streamAgentAnswerToSlack(
         // Mark default task complete (for non-run_agent tools).
         if (planHandler && event.action.internalMCPServerName !== "run_agent") {
           const doneLabel = getActionDoneLabel(event.action);
-          planHandler.setDefaultTask(doneLabel, "complete");
+          planHandler.setDefaultTask(doneLabel, "complete", event.action);
           await planHandler.upsertPlanMessage(doneLabel);
         }
 

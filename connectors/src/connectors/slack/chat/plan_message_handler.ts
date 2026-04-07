@@ -1,6 +1,8 @@
 import {
+  getActionDetails,
   getActionDoneLabel,
   getActionRunningLabel,
+  getActionSources,
 } from "@connectors/connectors/slack/chat/action_utils";
 import {
   makePlanMessage,
@@ -9,6 +11,7 @@ import {
 } from "@connectors/connectors/slack/chat/blocks";
 import logger from "@connectors/logger/logger";
 import type {
+  AgentActionPublicType,
   AgentEvent,
   DustAPI,
   NotificationRunAgentContent,
@@ -94,8 +97,18 @@ export class PlanMessageHandler {
     await this.slackClient.chat.delete({ channel: this.slackChannelId, ts });
   }
 
-  setDefaultTask(title: string, status: TaskCardState["status"]): void {
-    this.taskCards.set("default", { taskId: "default", title, status });
+  setDefaultTask(
+    title: string,
+    status: TaskCardState["status"],
+    action?: AgentActionPublicType
+  ): void {
+    this.taskCards.set("default", {
+      taskId: "default",
+      title,
+      status,
+      details: action ? getActionDetails(action) : undefined,
+      sources: action ? getActionSources(action) : undefined,
+    });
   }
 
   private async handleChildStreamEvent(
@@ -106,13 +119,24 @@ export class PlanMessageHandler {
       case "tool_params":
       case "tool_notification": {
         const label = getActionRunningLabel(event.action);
-        this.taskCards.set(taskId, { taskId, title: label, status: "in_progress" });
+        this.taskCards.set(taskId, {
+          taskId,
+          title: label,
+          status: "in_progress",
+          details: getActionDetails(event.action),
+        });
         await this.upsertPlanMessage(label);
         return "continue";
       }
       case "agent_action_success": {
         const label = getActionDoneLabel(event.action);
-        this.taskCards.set(taskId, { taskId, title: label, status: "complete" });
+        this.taskCards.set(taskId, {
+          taskId,
+          title: label,
+          status: "complete",
+          details: getActionDetails(event.action),
+          sources: getActionSources(event.action),
+        });
         await this.upsertPlanMessage(label);
         return "continue";
       }

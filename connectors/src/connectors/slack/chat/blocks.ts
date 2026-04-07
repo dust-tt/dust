@@ -333,19 +333,49 @@ export function makeErrorBlock(
 
 export type TaskCardStatus = "pending" | "in_progress" | "complete" | "error";
 
+export interface TaskCardSource {
+  url: string;
+  text: string;
+}
+
 export interface TaskCardState {
   taskId: string;
   title: string;
   status: TaskCardStatus;
+  details?: string;
+  sources?: TaskCardSource[];
+}
+
+function makeRichTextBlock(text: string) {
+  return {
+    type: "rich_text",
+    elements: [
+      {
+        type: "rich_text_section",
+        elements: [{ type: "text", text }],
+      },
+    ],
+  };
 }
 
 function makeTaskCardBlock(t: TaskCardState) {
-  return {
+  const card: Record<string, unknown> = {
     type: "task_card",
     task_id: t.taskId,
     title: t.title,
     status: t.status,
   };
+  if (t.details) {
+    card.details = makeRichTextBlock(t.details);
+  }
+  if (t.sources && t.sources.length > 0) {
+    card.sources = t.sources.map((s) => ({
+      type: "url",
+      url: s.url,
+      text: s.text,
+    }));
+  }
+  return card;
 }
 
 export function makePlanMessage({
