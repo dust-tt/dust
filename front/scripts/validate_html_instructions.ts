@@ -6,8 +6,17 @@ import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
 
-function normalizeBlockIds(html: string): string {
-  return html.replace(/data-block-id="[^"]*"/g, 'data-block-id="xxx"');
+function normalizeHtml(html: string): string {
+  return (
+    html
+      // Normalize block-ids to a fixed value.
+      .replace(/data-block-id="[^"]*"/g, 'data-block-id="xxx"')
+      // Unwrap emoji spans: <span data-name="..." data-type="emoji">🟢</span> → 🟢
+      .replace(
+        /<span[^>]*data-type="emoji"[^>]*>([^<]*)<\/span>/g,
+        "$1"
+      )
+  );
 }
 
 makeScript(
@@ -53,29 +62,21 @@ makeScript(
 
         if (!agent.instructionsHtml) {
           noHtmlCount++;
-          logger.info(
-            {
-              agentSId: agent.sId,
-              agentName: agent.name,
-              workspaceId: workspace.sId,
-            },
-            "Agent has markdown but no HTML instructions"
-          );
           continue;
         }
 
         const generated = convertMarkdownToHtml(agent.instructions);
         if (
-          normalizeBlockIds(generated) ===
-          normalizeBlockIds(agent.instructionsHtml)
+          normalizeHtml(generated) ===
+          normalizeHtml(agent.instructionsHtml)
         ) {
           matchCount++;
         } else {
           mismatchCount++;
 
           // Diff on normalized HTML so block-id noise is removed.
-          const normalizedStored = normalizeBlockIds(agent.instructionsHtml);
-          const normalizedGenerated = normalizeBlockIds(generated);
+          const normalizedStored = normalizeHtml(agent.instructionsHtml);
+          const normalizedGenerated = normalizeHtml(generated);
 
           let diffIdx = 0;
           while (

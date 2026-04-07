@@ -1,9 +1,10 @@
 import { InstructionBlockBaseNode } from "@app/lib/md-to-html/instructionBlockNode";
 import { ListItemExtension } from "@app/lib/md-to-html/listItemExtension";
 import type { AnyExtension, Extensions } from "@tiptap/core";
-import { Extension } from "@tiptap/core";
+import { Extension, mergeAttributes } from "@tiptap/core";
 import { Heading } from "@tiptap/extension-heading";
 import Link from "@tiptap/extension-link";
+import { OrderedList } from "@tiptap/extension-list";
 import { Markdown } from "@tiptap/markdown";
 import { StarterKit } from "@tiptap/starter-kit";
 
@@ -60,12 +61,29 @@ export function buildServerSafeExtensions(): Extensions {
       heading: false,
       hardBreak: false,
       listItem: false,
+      orderedList: false,
       link: false,
       blockquote: false,
       horizontalRule: false,
       strike: false,
       // Keep default code extension enabled (frontend uses custom CodeExtension
       // for escaped backtick handling, but the default works for server-side).
+    }),
+    // Override OrderedList to suppress type="null" in static renderer output.
+    // The default extension has type with default null, which ProseMirror's DOM
+    // serializer omits but the static renderer serializes as the string "null".
+    OrderedList.extend({
+      renderHTML({ HTMLAttributes }) {
+        const { start, type, ...rest } = HTMLAttributes;
+        const attrs = { ...rest };
+        if (start !== 1) {
+          attrs.start = start;
+        }
+        if (type !== null && type !== undefined) {
+          attrs.type = type;
+        }
+        return ["ol", mergeAttributes(this.options.HTMLAttributes, attrs), 0];
+      },
     }),
     ListItemExtension,
     InstructionBlockBaseNode,

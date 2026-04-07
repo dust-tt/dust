@@ -51,6 +51,11 @@ describe("convertMarkdownToHtml", () => {
     expect(html).toContain("second");
   });
 
+  it("does not render type=\"null\" on ordered lists", () => {
+    const html = convertMarkdownToHtml("1. first\n2. second");
+    expect(html).not.toContain('type="null"');
+  });
+
   it("converts fenced code blocks", () => {
     const html = convertMarkdownToHtml("```\ncode block\n```");
     expect(html).toContain("<pre>");
