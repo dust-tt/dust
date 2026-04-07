@@ -24,6 +24,7 @@ export * from "./reset_message_rate_limit";
 export * from "./reset_provisioned_members_not_in_directory";
 export * from "./restore_conversation";
 export * from "./revoke_users";
+export * from "./run_reinforced_agent_workflow";
 export * from "./send_onboarding_conversation";
 export * from "./soft_delete_conversation";
 export * from "./sync_missing_transcripts_date_range";

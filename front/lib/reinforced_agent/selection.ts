@@ -30,6 +30,7 @@ export interface SelectionOptions {
   maxAutoAgentsPerRun?: number;
   totalAutoConversationPool?: number;
   minConversationsToInclude?: number;
+  includeAutoAgents?: boolean;
 }
 
 interface ReinforcementSelectionInput {
@@ -121,8 +122,24 @@ export async function selectAgentsForReinforcementPipeline(
   agents: LightAgentConfigurationType[],
   options: SelectionOptions = {}
 ): Promise<AgentSelectionResult[]> {
+  const includeAutoAgents = options.includeAutoAgents ?? true;
+
   const inScope = agents.filter((a) => a.id > 0 && a.reinforcement !== "off");
   const explicitOnAgents = inScope.filter((a) => a.reinforcement === "on");
+
+  if (!includeAutoAgents) {
+    return computeReinforcementSelections(auth, {
+      explicitOnAgents,
+      eligibleAutoAgents: [],
+      signals: {
+        feedbackCountByAgentSId: new Map(),
+        humanConversationSIdsByAgent: new Map(),
+        agentSIdsWithRecentPendingSuggestions: new Set(),
+      },
+      options,
+    });
+  }
+
   const autoAgents = inScope.filter((a) => a.reinforcement === "auto");
 
   const signals = await fetchReinforcementAutoTrackSignals(auth, {
