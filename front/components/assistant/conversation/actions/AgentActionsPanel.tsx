@@ -452,7 +452,7 @@ function AgentSingleActionPanel({
   );
 }
 
-// TODO(2026-04-07: inline activity): can be deprecated in favor of AgentSingleActionPanel with inline activity. 
+// TODO(2026-04-07: inline activity): can be deprecated in favor of AgentSingleActionPanel with inline activity.
 export function AgentActionsPanelForMessage({
   conversation,
   owner,
