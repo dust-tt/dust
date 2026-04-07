@@ -3,7 +3,6 @@ import { useHashParam } from "@app/hooks/useHashParams";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
-  AGENT_THINKING_SIDE_PANEL_TYPE,
   FILES_SIDE_PANEL_TYPE,
   INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
   SIDE_PANEL_HASH_PARAM,
@@ -26,20 +25,12 @@ type OpenPanelParams =
     }
   | {
       type: "files";
-    }
-  | {
-      type: "thinking";
-      stepId: string;
-      content: string;
     };
 
 const isSupportedPanelType = (
   type: string | undefined
 ): type is ConversationSidePanelType =>
-  type === "actions" ||
-  type === "interactive_content" ||
-  type === "files" ||
-  type === "thinking";
+  type === "actions" || type === "interactive_content" || type === "files";
 
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;
@@ -51,7 +42,6 @@ interface ConversationSidePanelContextType {
   setVirtuosoMsg: (msg: AgentMessageWithStreaming) => void;
   virtuosoMsg: AgentMessageWithStreaming | null;
   data: string | undefined;
-  thinkingContent: string | null;
 }
 
 const ConversationSidePanelContext = React.createContext<
@@ -98,10 +88,6 @@ export function ConversationSidePanelProvider({
   const panelRef = React.useRef<ImperativePanelHandle | null>(null);
   const [virtuosoMsg, setVirtuosoMsg] =
     React.useState<AgentMessageWithStreaming | null>(null);
-  const [thinkingContent, setThinkingContent] = React.useState<string | null>(
-    null
-  );
-
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const setPanelRef = useCallback(
     (ref: ImperativePanelHandle | null) => {
@@ -166,15 +152,6 @@ export function ConversationSidePanelProvider({
           setData("files");
           break;
 
-        case AGENT_THINKING_SIDE_PANEL_TYPE:
-          if (params.stepId === data) {
-            closePanel();
-            return;
-          }
-          setThinkingContent(params.content);
-          setData(params.stepId);
-          break;
-
         default:
           assertNever(params);
       }
@@ -204,7 +181,6 @@ export function ConversationSidePanelProvider({
       setVirtuosoMsg,
       virtuosoMsg,
       data,
-      thinkingContent,
     }),
     [
       currentPanel,
@@ -214,7 +190,6 @@ export function ConversationSidePanelProvider({
       setPanelRef,
       virtuosoMsg,
       data,
-      thinkingContent,
     ]
   );
 
