@@ -731,7 +731,7 @@ function AgentBuilderContent({
           >
             <ConversationSidePanelProvider>
               <AgentBuilderRightPanel
-                agentConfigurationSId={agentConfiguration?.sId}
+                agentConfigurationId={agentConfiguration?.sId}
               />
             </ConversationSidePanelProvider>
           </SidekickPanelProvider>

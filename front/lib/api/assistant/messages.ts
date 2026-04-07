@@ -278,7 +278,7 @@ async function batchRenderUserMessages(
     ),
   ];
 
-  const agentConfigurationSIds = [
+  const agentConfigurationIds = [
     ...new Set(
       removeNulls([...mentionRows.map((m) => m.agentConfigurationId)])
     ),
@@ -286,9 +286,9 @@ async function batchRenderUserMessages(
 
   const [users, agentConfigurations] = await Promise.all([
     userIds.length > 0 ? UserResource.fetchByModelIds(userIds) : [],
-    agentConfigurationSIds.length > 0
+    agentConfigurationIds.length > 0
       ? getAgentConfigurations(auth, {
-          agentIds: agentConfigurationSIds,
+          agentIds: agentConfigurationIds,
           variant: "extra_light",
         })
       : [],

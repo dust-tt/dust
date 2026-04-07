@@ -66,7 +66,7 @@ async function linkButlerSuggestionResult(
         auth,
         {
           conversationId: conversation.id,
-          agentConfigurationSId: message.agentMessage.agentConfigurationId,
+          agentConfigurationId: message.agentMessage.agentConfigurationId,
         }
       );
 

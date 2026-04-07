@@ -14,9 +14,9 @@ export type AgentMcpConfigurationSummary = z.infer<
 
 export async function listAgentMcpConfigurationsForAgent(params: {
   workspaceId: number;
-  agentConfigurationSId: string;
+  agentConfigurationId: string;
 }): Promise<AgentMcpConfigurationSummary[]> {
-  const { workspaceId, agentConfigurationSId } = params;
+  const { workspaceId, agentConfigurationId } = params;
 
   const mcpConfigurations = await AgentMCPServerConfigurationModel.findAll({
     where: {
@@ -27,7 +27,7 @@ export async function listAgentMcpConfigurationsForAgent(params: {
       {
         model: AgentConfigurationModel,
         where: {
-          sId: agentConfigurationSId,
+          sId: agentConfigurationId,
           status: {
             [Op.ne]: "draft",
           },

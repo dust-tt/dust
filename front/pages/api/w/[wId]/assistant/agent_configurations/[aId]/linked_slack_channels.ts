@@ -107,9 +107,9 @@ async function handler(
     throw new Error("Unreachable code: connectorId is null.");
   }
 
-  const agentConfigurationSid = req.query.aId as string;
+  const agentConfigurationId = req.query.aId as string;
   const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: agentConfigurationSid,
+    agentId: agentConfigurationId,
     variant: "light",
   });
   if (!agentConfiguration) {

@@ -126,12 +126,12 @@ function CollapsedTabs({ onTabSelect }: CollapsedTabsProps) {
 
 interface ExpandedContentProps {
   selectedTab: AgentBuilderRightPanelTabType;
-  agentConfigurationSId?: string;
+  agentConfigurationId?: string;
 }
 
 function ExpandedContent({
   selectedTab,
-  agentConfigurationSId,
+  agentConfigurationId,
 }: ExpandedContentProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -147,10 +147,8 @@ function ExpandedContent({
       )}
       <ObservabilityProvider>
         {selectedTab === "insights" &&
-          (agentConfigurationSId ? (
-            <AgentBuilderInsights
-              agentConfigurationSId={agentConfigurationSId}
-            />
+          (agentConfigurationId ? (
+            <AgentBuilderInsights agentConfigurationId={agentConfigurationId} />
           ) : (
             <TabContentLayout title="Insights">
               <EmptyPlaceholder
@@ -166,11 +164,11 @@ function ExpandedContent({
 }
 
 interface AgentBuilderRightPanelProps {
-  agentConfigurationSId?: string;
+  agentConfigurationId?: string;
 }
 
 export function AgentBuilderRightPanel({
-  agentConfigurationSId,
+  agentConfigurationId,
 }: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
@@ -204,7 +202,7 @@ export function AgentBuilderRightPanel({
       {isPreviewPanelOpen ? (
         <ExpandedContent
           selectedTab={selectedTab}
-          agentConfigurationSId={agentConfigurationSId}
+          agentConfigurationId={agentConfigurationId}
         />
       ) : (
         <CollapsedTabs onTabSelect={handleTabSelect} />

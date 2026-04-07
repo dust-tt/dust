@@ -12,14 +12,14 @@ makeScript(
       demandOption: true,
       description: "Workspace ID",
     },
-    agentConfigurationSIDs: {
+    agentConfigurationIds: {
       type: "string",
       demandOption: true,
       description:
         "Comma-separated list of agent configuration SIDs to favorite",
     },
   },
-  async ({ wId, agentConfigurationSIDs, execute }, logger) => {
+  async ({ wId, agentConfigurationIds, execute }, logger) => {
     // Find the workspace
     const workspace = await WorkspaceResource.fetchById(wId);
 
@@ -34,25 +34,25 @@ makeScript(
     });
 
     // Parse agent names
-    const agents = agentConfigurationSIDs.split(",").map((sid) => sid.trim());
+    const agents = agentConfigurationIds.split(",").map((sid) => sid.trim());
 
     // Check if all agents exist by looking up in AgentConfiguration and GlobalAgentSettings
-    for (const agentConfigurationSID of agents) {
+    for (const agentConfigurationId of agents) {
       // Skip check for global agents
-      if (agentConfigurationSID in GLOBAL_AGENTS_SID) {
+      if (agentConfigurationId in GLOBAL_AGENTS_SID) {
         continue;
       }
 
       const agentRelation = await AgentUserRelationModel.findOne({
         where: {
           workspaceId: workspace.id,
-          agentConfiguration: agentConfigurationSID,
+          agentConfiguration: agentConfigurationId,
         },
       });
 
       if (!agentRelation) {
         logger.error(
-          { agentConfigurationSID },
+          { agentConfigurationId },
           "Agent configuration not found in workspace"
         );
         return;
@@ -70,18 +70,18 @@ makeScript(
 
     // For each member and agent combination
     for (const membership of memberships) {
-      for (const agentConfigurationSID of agents) {
+      for (const agentConfigurationId of agents) {
         // Check if relation already exists
         const [, created] = await AgentUserRelationModel.findOrCreate({
           where: {
             workspaceId: workspace.id,
             userId: membership.userId,
-            agentConfiguration: agentConfigurationSID,
+            agentConfiguration: agentConfigurationId,
           },
           defaults: {
             workspaceId: workspace.id,
             userId: membership.userId,
-            agentConfiguration: agentConfigurationSID,
+            agentConfiguration: agentConfigurationId,
             favorite: true,
           },
         });
@@ -90,7 +90,7 @@ makeScript(
           logger.info(
             {
               userId: membership.userId,
-              agentConfigurationSID,
+              agentConfigurationId,
             },
             "Created agent favorite"
           );
@@ -98,7 +98,7 @@ makeScript(
           logger.info(
             {
               userId: membership.userId,
-              agentConfigurationSID,
+              agentConfigurationId,
             },
             "Agent relation already exists - skipping"
           );

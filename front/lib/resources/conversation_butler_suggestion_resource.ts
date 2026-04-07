@@ -296,10 +296,10 @@ export class ConversationButlerSuggestionResource extends BaseResource<Conversat
     auth: Authenticator,
     {
       conversationId,
-      agentConfigurationSId,
+      agentConfigurationId,
     }: {
       conversationId: ModelId;
-      agentConfigurationSId: string;
+      agentConfigurationId: string;
     }
   ): Promise<ConversationButlerSuggestionResource | null> {
     const results = await this.baseFetch(auth, {
@@ -321,7 +321,7 @@ export class ConversationButlerSuggestionResource extends BaseResource<Conversat
 
     // Verify the suggestion's agent matches the one that just responded.
     const metadata = suggestion.metadata as { agentSId: string };
-    if (metadata.agentSId !== agentConfigurationSId) {
+    if (metadata.agentSId !== agentConfigurationId) {
       return null;
     }
 

@@ -4,18 +4,18 @@ import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { cn, LoadingBlock } from "@dust-tt/sparkle";
 
 interface AgentBuilderInsightsProps {
-  agentConfigurationSId: string;
+  agentConfigurationId: string;
 }
 
 export function AgentBuilderInsights({
-  agentConfigurationSId,
+  agentConfigurationId,
 }: AgentBuilderInsightsProps) {
   const { owner } = useAgentBuilderContext();
 
   const { agentConfiguration, isAgentConfigurationLoading } =
     useAgentConfiguration({
       workspaceId: owner.sId,
-      agentConfigurationId: agentConfigurationSId,
+      agentConfigurationId,
     });
 
   if (isAgentConfigurationLoading || !agentConfiguration) {
