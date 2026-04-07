@@ -11,7 +11,7 @@ import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMe
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
-import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { GoogleDriveFileAuthorizationRequired } from "@app/components/assistant/conversation/GoogleDriveFileAuthorizationRequired";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
@@ -424,23 +424,25 @@ export function AgentMessage({
   );
 
   // GenerationContext: to know if we are generating or not.
-  const generationContext = useContext(GenerationContext);
-  if (!generationContext) {
-    throw new Error(
-      "AgentMessage must be used within a GenerationContextProvider"
-    );
-  }
+  const generationContext = useGenerationContext();
 
   useEffect(() => {
     if (shouldStream) {
       generationContext.addGeneratingMessage({
         messageId: sId,
         conversationId,
+        agentId: agentMessage.configuration.sId,
       });
     } else {
       generationContext.removeGeneratingMessage({ messageId: sId });
     }
-  }, [shouldStream, generationContext, sId, conversationId]);
+  }, [
+    shouldStream,
+    generationContext,
+    sId,
+    conversationId,
+    agentMessage.configuration.sId,
+  ]);
 
   const isGlobalAgent = isGlobalAgentId(agentMessage.configuration.sId);
 

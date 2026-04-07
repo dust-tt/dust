@@ -1,4 +1,5 @@
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
+import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import InputBarContainer, {
@@ -33,7 +34,13 @@ import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 // biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
@@ -82,6 +89,7 @@ export const InputBar = React.memo(function InputBar({
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
   const { hasFeature } = useFeatureFlags();
   const singleAgentInput = hasFeature("enable_steering");
+  const [isShaking, setIsShaking] = useState(false);
 
   const [attachedNodes, setAttachedNodes] = useState<
     DataSourceViewContentNode[]
@@ -126,6 +134,36 @@ export const InputBar = React.memo(function InputBar({
     () => getAndClearPendingInputText(),
     [getAndClearPendingInputText]
   );
+
+  const { getConversationGeneratingMessages } = useGenerationContext();
+
+  // In single-agent mode, block submission when the selected agent differs from
+  // the agent that is currently generating a response.
+  const blockedByGeneratingAgentName = useMemo(() => {
+    if (!singleAgentInput || !selectedSingleAgent) {
+      return null;
+    }
+    const generatingMessages = getConversationGeneratingMessages(
+      conversation?.sId ?? ""
+    );
+    const blockingAgentId = generatingMessages.find(
+      (gm) => gm.agentId && gm.agentId !== selectedSingleAgent.id
+    )?.agentId;
+    if (!blockingAgentId) {
+      return null;
+    }
+    return (
+      agentConfigurations.find((a) => a.sId === blockingAgentId)?.name ?? null
+    );
+  }, [
+    singleAgentInput,
+    selectedSingleAgent,
+    getConversationGeneratingMessages,
+    conversation?.sId,
+    agentConfigurations,
+  ]);
+
+  const isBlockedByAgentSwitch = blockedByGeneratingAgentName !== null;
 
   // Tools selection
 
@@ -202,7 +240,12 @@ export const InputBar = React.memo(function InputBar({
     resetEditorText,
     setLoading
   ) => {
-    if (isLocalSubmitting || isEmpty || fileUploaderService.isProcessingFiles) {
+    if (
+      isLocalSubmitting ||
+      isEmpty ||
+      fileUploaderService.isProcessingFiles ||
+      isBlockedByAgentSwitch
+    ) {
       return;
     }
 
@@ -338,6 +381,10 @@ export const InputBar = React.memo(function InputBar({
     setAttachedNodes([]);
   };
 
+  const handleShake = useCallback(() => {
+    setIsShaking(true);
+  }, []);
+
   useEffect(() => {
     setIsLocalSubmitting(isSubmitting);
   }, [isSubmitting]);
@@ -345,7 +392,9 @@ export const InputBar = React.memo(function InputBar({
   return (
     <div className="flex w-full flex-col">
       <div
+        onAnimationEnd={() => setIsShaking(false)}
         className={classNames(
+          isShaking && "animate-shake",
           "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch sm:flex-row",
           "rounded-2xl transition-all",
           "bg-muted-background dark:bg-muted-background-night",
@@ -409,6 +458,8 @@ export const InputBar = React.memo(function InputBar({
             saveDraft={saveDraft}
             getDraft={getDraft}
             user={user}
+            blockedByGeneratingAgentName={blockedByGeneratingAgentName}
+            onShake={handleShake}
           />
         </div>
       </div>

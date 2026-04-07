@@ -472,17 +472,14 @@ module.exports = {
           },
         },
         shake: {
-          "10%, 90%": {
-            transform: "translate3d(-1px, 0, 0)",
+          "0%, 100%": {
+            transform: "translate3d(0, 0, 0)",
           },
-          "20%, 80%": {
-            transform: "translate3d(2px, 0, 0)",
+          "20%, 60%": {
+            transform: "translate3d(-1.5px, 0, 0)",
           },
-          "30%, 50%, 70%": {
-            transform: "translate3d(-2px, 0, 0)",
-          },
-          "40%, 60%": {
-            transform: "translate3d(2px, 0, 0)",
+          "40%, 80%": {
+            transform: "translate3d(1.5px, 0, 0)",
           },
         },
         marquee: {
@@ -505,7 +502,7 @@ module.exports = {
         breathing: "breathing 4s infinite ease-in-out",
         "breathing-scale": "breathing-scale 3s infinite ease-in-out",
         "cursor-blink": "cursor-blink 0.9s infinite;",
-        shake: "shake 0.82s cubic-bezier(.36,.07,.19,.97) both",
+        shake: "shake 0.5s ease-in-out both",
         reload: "reload 1000ms ease-out",
         fadeout: "fadeout 500ms ease-out",
         marquee: "marquee 25s linear infinite",

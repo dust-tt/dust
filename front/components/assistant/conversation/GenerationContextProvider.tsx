@@ -1,9 +1,16 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { createContext, useCallback, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 
 type GeneratingMessage = {
   messageId: string;
   conversationId: string;
+  agentId?: string;
 };
 
 type GenerationContextType = {
@@ -11,6 +18,7 @@ type GenerationContextType = {
   addGeneratingMessage: (params: {
     messageId: string;
     conversationId: string;
+    agentId?: string;
   }) => void;
   removeGeneratingMessage: (params: { messageId: string }) => void;
   getConversationGeneratingMessages: (
@@ -18,9 +26,21 @@ type GenerationContextType = {
   ) => GeneratingMessage[];
 };
 
-export const GenerationContext = createContext<
-  GenerationContextType | undefined
->(undefined);
+const GenerationContext = createContext<GenerationContextType | undefined>(
+  undefined
+);
+
+export function useGenerationContext(): GenerationContextType {
+  const context = useContext(GenerationContext);
+
+  if (!context) {
+    throw new Error(
+      "useGenerationContext must be used within a GenerationContextProvider"
+    );
+  }
+
+  return context;
+}
 
 export const GenerationContextProvider = ({
   children,
@@ -37,15 +57,17 @@ export const GenerationContextProvider = ({
     ({
       messageId,
       conversationId,
+      agentId,
     }: {
       messageId: string;
       conversationId: string;
+      agentId?: string;
     }) => {
       setGeneratingMessages((prev) => {
         if (prev.some((m) => m.messageId === messageId)) {
           return prev;
         }
-        return [...prev, { messageId, conversationId }];
+        return [...prev, { messageId, conversationId, agentId }];
       });
     },
     []
