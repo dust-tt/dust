@@ -106,10 +106,13 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       isSubmittingThumb,
     };
 
+    const contentFragments = isUserMessage(data)
+      ? data.contentFragments
+      : undefined;
     const citations = useMemo(
       () =>
-        isUserMessage(data) && data.contentFragments.length > 0
-          ? data.contentFragments.map((contentFragment, index) => {
+        contentFragments && contentFragments.length > 0
+          ? contentFragments.map((contentFragment, index) => {
               const attachmentCitation =
                 contentFragmentToAttachmentCitation(contentFragment);
 
@@ -123,7 +126,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               );
             })
           : undefined,
-      [data, context.owner, context.conversation?.sId]
+      [contentFragments, context.owner, context.conversation?.sId]
     );
 
     const areSameDate =
