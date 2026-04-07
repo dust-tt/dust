@@ -43,7 +43,10 @@ function collectMatchedTagNames(str: string): Set<string> {
  * TODO: Remove when tiptap merges https://github.com/ueberdosis/tiptap/pull/7260
  */
 export function preprocessMarkdownForEditor(markdown: string): string {
-  const matchedPairs = collectMatchedTagNames(markdown);
+  // Strip fenced code blocks before collecting tag names so that HTML tags
+  // inside code (e.g. JSX/React snippets) are not treated as instruction blocks.
+  const withoutCodeBlocks = markdown.replace(/```[\s\S]*?```/g, "");
+  const matchedPairs = collectMatchedTagNames(withoutCodeBlocks);
 
   // Step 1: Escape `<` only when not already followed by ZWS (avoids double-escaping round-trips).
   let processed = markdown.replace(new RegExp(`<(?!${ZWS})`, "g"), `<${ZWS}`);

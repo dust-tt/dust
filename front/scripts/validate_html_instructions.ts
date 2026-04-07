@@ -28,10 +28,9 @@ function normalizeHtml(html: string): string {
       // The frontend editor may preserve trailing spaces that the
       // markdown parser trims.
       .replace(/ +(<\/(?:p|li|h[1-6])>)/g, "$1")
-      // Unwrap mailto links: <a ...href="mailto:x@y"...>x@y</a> → x@y
-      // The stored HTML may have auto-linked emails from the frontend editor.
+      // Unwrap links whose text matches the href (auto-linked URLs and emails).
       .replace(
-        /<a[^>]*href="mailto:([^"]*)"[^>]*>\1<\/a>/g,
+        /<a[^>]*href="(?:mailto:)?([^"]*)"[^>]*>\1<\/a>/g,
         "$1"
       )
       // Normalize leading whitespace after opening block tags.
