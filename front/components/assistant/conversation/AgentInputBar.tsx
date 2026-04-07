@@ -444,6 +444,7 @@ export const AgentInputBar = ({
         disableUserMentions={!!context.agentBuilderContext}
         actions={context.agentBuilderContext?.actionsToShow}
         isSubmitting={context.agentBuilderContext?.isSubmitting === true}
+        isAgentBuilder={!!context.agentBuilderContext}
       />
     </div>
   );
