@@ -94,8 +94,8 @@ const useHandleMentions = ({
       }
     }
 
-    // 3. New conversation → fall back to @dust.
-    if (!conversation) {
+    // 3. New conversation (not agent builder) → fall back to @dust.
+    if (!conversation && !isAgentBuilder) {
       const dustAgent = allAgents.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST);
       if (dustAgent) {
         hasInitializedRef.current = true;
