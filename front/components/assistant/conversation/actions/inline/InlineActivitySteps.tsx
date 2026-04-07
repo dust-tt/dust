@@ -131,13 +131,27 @@ export function InlineActivitySteps({
   const showActiveWriting = isWriting;
   const activeAction =
     isActing && isAgentMessageWithActions ? actions[actions.length - 1] : null;
+  const hasActiveThinkingContent =
+    showActiveThinking && Boolean(chainOfThought.trim());
+  const activeWritingContent =
+    showActiveWriting && agentMessage.content ? agentMessage.content : "";
+  const hasActiveWritingContent = activeWritingContent.length > 0;
+  const showTrailingLoader =
+    !isDone &&
+    ((showActiveThinking && !hasActiveThinkingContent) ||
+      (showActiveWriting && !hasActiveWritingContent) ||
+      (!showActiveThinking &&
+        !showActiveWriting &&
+        !activeAction &&
+        !showPendingToolCalls));
 
   const hasContent =
     completedSteps.length > 0 ||
-    showActiveThinking ||
-    showActiveWriting ||
+    hasActiveThinkingContent ||
+    hasActiveWritingContent ||
     activeAction ||
-    showPendingToolCalls;
+    showPendingToolCalls ||
+    showTrailingLoader;
 
   if (!hasContent) {
     return null;
@@ -169,9 +183,11 @@ export function InlineActivitySteps({
             {completedSteps.map((step, index) => {
               const isLast =
                 index === completedSteps.length - 1 &&
-                !showActiveThinking &&
-                !showActiveWriting &&
+                !hasActiveThinkingContent &&
+                !hasActiveWritingContent &&
                 !activeAction &&
+                !showPendingToolCalls &&
+                !showTrailingLoader &&
                 !isDone;
 
               switch (step.type) {
@@ -260,33 +276,35 @@ export function InlineActivitySteps({
             })}
 
             {/* Active thinking (streaming CoT) */}
-            {showActiveThinking && (
+            {hasActiveThinkingContent && (
               <TimelineRow
-                icon={chainOfThought ? "circle" : null}
-                spinner={!chainOfThought}
-                isLast={!activeAction && !isDone}
+                icon="circle"
+                isLast={
+                  !activeAction &&
+                  !showPendingToolCalls &&
+                  !showTrailingLoader &&
+                  !isDone
+                }
               >
-                {chainOfThought ? (
-                  <Markdown
-                    content={chainOfThought}
-                    isStreaming={false}
-                    streamingState="streaming"
-                    enableAnimation
-                    animationDurationSeconds={0.3}
-                    delimiter=" "
-                    forcedTextSize="text-sm"
-                    textColor="text-muted-foreground dark:text-muted-foreground-night"
-                    isLastMessage={false}
-                  />
-                ) : null}
+                <Markdown
+                  content={chainOfThought}
+                  isStreaming={false}
+                  streamingState="streaming"
+                  enableAnimation
+                  animationDurationSeconds={0.3}
+                  delimiter=" "
+                  forcedTextSize="text-sm"
+                  textColor="text-muted-foreground dark:text-muted-foreground-night"
+                  isLastMessage={false}
+                />
               </TimelineRow>
             )}
 
             {/* Active writing (streaming content tokens) */}
-            {showActiveWriting && agentMessage.content ? (
+            {hasActiveWritingContent ? (
               <div>
                 <Markdown
-                  content={agentMessage.content}
+                  content={activeWritingContent}
                   isStreaming={false}
                   streamingState="streaming"
                   enableAnimation
@@ -296,7 +314,15 @@ export function InlineActivitySteps({
                 />
               </div>
             ) : showActiveWriting ? (
-              <TimelineRow spinner isLast={!activeAction && !isDone} />
+              <TimelineRow
+                spinner
+                isLast={
+                  !activeAction &&
+                  !showPendingToolCalls &&
+                  !showTrailingLoader &&
+                  !isDone
+                }
+              />
             ) : null}
 
             {/* Active action (tool in progress) */}
@@ -305,7 +331,12 @@ export function InlineActivitySteps({
                 className="cursor-pointer"
                 onClick={() => openBreakdownPanel(activeAction.sId)}
               >
-                <TimelineRow spinner isLast={false}>
+                <TimelineRow
+                  spinner
+                  isLast={
+                    !showPendingToolCalls && !showTrailingLoader && !isDone
+                  }
+                >
                   <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
                     {getActionOneLineLabel(activeAction, "running")}
                     <Icon
@@ -323,7 +354,11 @@ export function InlineActivitySteps({
                 <TimelineRow
                   key={getPendingToolCallKey(pendingToolCall, index)}
                   icon={ToolsIcon}
-                  isLast={!isDone && index === pendingToolCalls.length - 1}
+                  isLast={
+                    !isDone &&
+                    !showTrailingLoader &&
+                    index === pendingToolCalls.length - 1
+                  }
                 >
                   <span className="text-muted-foreground dark:text-muted-foreground-night">
                     Preparing to{" "}
@@ -332,12 +367,7 @@ export function InlineActivitySteps({
                 </TimelineRow>
               ))}
 
-            {/* Pending spinner — shown when between transitions (not done, nothing active) */}
-            {!isDone &&
-              !showActiveThinking &&
-              !showActiveWriting &&
-              !activeAction &&
-              !showPendingToolCalls && <TimelineRow spinner isLast />}
+            {showTrailingLoader && <TimelineRow spinner isLast />}
             {isDone &&
               completedSteps.length > 0 &&
               agentMessage.status !== "gracefully_stopped" && (
