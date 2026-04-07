@@ -41,6 +41,7 @@ import {
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import {
+  DataSourceQuotaExceededError,
   ExternalOAuthTokenError,
   ProviderRateLimitError,
   ProviderWorkflowError,
@@ -711,25 +712,42 @@ async function processAndUpsertNonThreadedMessages({
     documentId,
   });
 
-  await upsertDataSourceDocument({
-    dataSourceConfig,
-    documentId,
-    documentContent: content,
-    documentUrl: sourceUrl,
-    timestampMs: updatedAt,
-    tags,
-    parentId: slackChannelInternalIdFromSlackChannelId(channelId),
-    parents: [documentId, slackChannelInternalIdFromSlackChannelId(channelId)],
-    upsertContext: {
-      sync_type: isBatchSync ? "batch" : "incremental",
-    },
-    title: extractFromTags({
-      tagPrefix: "title:",
+  try {
+    await upsertDataSourceDocument({
+      dataSourceConfig,
+      documentId,
+      documentContent: content,
+      documentUrl: sourceUrl,
+      timestampMs: updatedAt,
       tags,
-    }),
-    mimeType: INTERNAL_MIME_TYPES.SLACK.MESSAGES,
-    async: true,
-  });
+      parentId: slackChannelInternalIdFromSlackChannelId(channelId),
+      parents: [documentId, slackChannelInternalIdFromSlackChannelId(channelId)],
+      upsertContext: {
+        sync_type: isBatchSync ? "batch" : "incremental",
+      },
+      title: extractFromTags({
+        tagPrefix: "title:",
+        tags,
+      }),
+      mimeType: INTERNAL_MIME_TYPES.SLACK.MESSAGES,
+      async: true,
+    });
+  } catch (error) {
+    if (error instanceof DataSourceQuotaExceededError) {
+      logger.warn(
+        {
+          connectorId,
+          error,
+          documentId,
+          channelId,
+          channelName,
+        },
+        "Skipping Slack non-threaded messages exceeding plan document size limit."
+      );
+      return;
+    }
+    throw error;
+  }
 }
 
 async function syncMultipleNonThreaded(
@@ -1014,27 +1032,45 @@ export async function syncThread(
     });
   }
 
-  await upsertDataSourceDocument({
-    dataSourceConfig,
-    documentId,
-    documentContent: content,
-    documentUrl: sourceUrl,
-    timestampMs: updatedAt,
-    tags,
-    parentId: slackChannelInternalIdFromSlackChannelId(channelId),
-    parents: [documentId, slackChannelInternalIdFromSlackChannelId(channelId)],
-    upsertContext: {
-      sync_type: isBatchSync ? "batch" : "incremental",
-    },
-    title:
-      tags
-        .find((t) => t.startsWith("title:"))
-        ?.split(":")
-        .slice(1)
-        .join(":") ?? "",
-    mimeType: INTERNAL_MIME_TYPES.SLACK.THREAD,
-    async: true,
-  });
+  try {
+    await upsertDataSourceDocument({
+      dataSourceConfig,
+      documentId,
+      documentContent: content,
+      documentUrl: sourceUrl,
+      timestampMs: updatedAt,
+      tags,
+      parentId: slackChannelInternalIdFromSlackChannelId(channelId),
+      parents: [documentId, slackChannelInternalIdFromSlackChannelId(channelId)],
+      upsertContext: {
+        sync_type: isBatchSync ? "batch" : "incremental",
+      },
+      title:
+        tags
+          .find((t) => t.startsWith("title:"))
+          ?.split(":")
+          .slice(1)
+          .join(":") ?? "",
+      mimeType: INTERNAL_MIME_TYPES.SLACK.THREAD,
+      async: true,
+    });
+  } catch (error) {
+    if (error instanceof DataSourceQuotaExceededError) {
+      logger.warn(
+        {
+          connectorId,
+          error,
+          documentId,
+          channelId,
+          channelName,
+          threadTs,
+        },
+        "Skipping Slack thread exceeding plan document size limit."
+      );
+      return;
+    }
+    throw error;
+  }
 }
 
 export async function saveSuccessSyncActivity(connectorId: ModelId) {
