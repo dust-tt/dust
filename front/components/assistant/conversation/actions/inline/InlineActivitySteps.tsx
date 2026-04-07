@@ -322,12 +322,19 @@ export function InlineActivitySteps({
               pendingToolCalls.map((pendingToolCall, index) => (
                 <TimelineRow
                   key={getPendingToolCallKey(pendingToolCall, index)}
-                  icon={ToolsIcon}
+                  spinner
                   isLast={!isDone && index === pendingToolCalls.length - 1}
                 >
-                  <span className="text-muted-foreground dark:text-muted-foreground-night">
-                    Preparing to{" "}
-                    {getToolCallDisplayLabel(pendingToolCall.toolName)}...
+                  <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
+                    {getToolCallDisplayLabel(
+                      pendingToolCall.toolName,
+                      "running"
+                    )}
+                    <Icon
+                      size="xs"
+                      visual={ChevronRightIcon}
+                      className="shrink-0 opacity-0"
+                    />
                   </span>
                 </TimelineRow>
               ))}
