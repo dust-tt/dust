@@ -308,26 +308,22 @@ export async function syncChannel(
       weeksSynced: weeksSynced,
     };
   } catch (e) {
-    // Give up after 20 attempts for persistent Slack server errors.
-    // This catches both raw HTTP 5xx errors (e.g. 500) that pass through
-    // withSlackErrorHandling, and ProviderWorkflowError (e.g. 503) that it converts.
+    // Prevent infinite retries for persistent Slack server errors (5xx or converted 503).
     // Rate limit errors are excluded as they resolve naturally.
     const isPersistentServerError =
       (isWebAPIHTTPError(e) && e.statusCode >= 500) ||
       (e instanceof ProviderWorkflowError &&
         !(e instanceof ProviderRateLimitError));
+    const attempt = Context.current().info.attempt;
 
-    if (isPersistentServerError && Context.current().info.attempt > 20) {
+    if (isPersistentServerError && attempt > 20) {
       logger.error(
-        {
-          connectorId,
-          channelId,
-          attempt: Context.current().info.attempt,
-          error: normalizeError(e),
-        },
+        { connectorId, channelId, attempt, error: normalizeError(e) },
         "Slack API returned a persistent server error after multiple retries. Giving up on this channel sync page."
       );
-      return;
+      // Return a result that clears the cursor so the workflow stops paginating
+      // (returning undefined would leave messagesCursor unchanged, causing an infinite loop).
+      return { nextCursor: undefined, weeksSynced };
     }
     throw e;
   }
