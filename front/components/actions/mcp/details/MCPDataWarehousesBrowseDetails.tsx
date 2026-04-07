@@ -41,7 +41,7 @@ export function MCPDataWarehousesBrowseDetails({
           </div>
         )}
 
-        {displayContext === "sidebar" && data.length > 0 && (
+        {displayContext !== "conversation" && data.length > 0 && (
           <div className="flex flex-col gap-2">
             {data.map((node, index) => {
               const IconComponent = getDocumentIcon(node.connectorProvider);

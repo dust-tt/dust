@@ -140,7 +140,10 @@ export function MCPSandboxActionDetails({
       {displayContext === "conversation" ? (
         <ConversationView {...viewProps} />
       ) : (
-        <SidebarView {...viewProps} />
+        <SidebarView
+          {...viewProps}
+          useCollapsible={displayContext === "sidebar-all-actions"}
+        />
       )}
     </ActionDetailsWrapper>
   );
@@ -242,6 +245,10 @@ function ConversationView({
   );
 }
 
+interface SidebarViewFullProps extends SandboxViewProps {
+  useCollapsible: boolean;
+}
+
 function SidebarView({
   command,
   summary,
@@ -249,7 +256,8 @@ function SidebarView({
   isRawMode,
   isRunning,
   exitCode,
-}: SandboxViewProps) {
+  useCollapsible,
+}: SidebarViewFullProps) {
   return (
     <div className="flex flex-col gap-4 py-4 pl-6">
       {!isRawMode && (
@@ -264,8 +272,38 @@ function SidebarView({
 
       {isRawMode && (
         <>
-          {command && (
-            <Collapsible defaultOpen={true}>
+          {command &&
+            (useCollapsible ? (
+              <Collapsible defaultOpen={true}>
+                <CollapsibleTrigger>
+                  <div
+                    className={cn(
+                      "text-foreground dark:text-foreground-night",
+                      "flex flex-row items-center gap-x-2"
+                    )}
+                  >
+                    <span className="heading-base">Command</span>
+                  </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="py-2">
+                    <Markdown content={`\`\`\`bash\n${command}\n\`\`\``} />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            ) : (
+              <div>
+                <span className="font-medium text-foreground dark:text-foreground-night">
+                  Command
+                </span>
+                <div className="py-2">
+                  <Markdown content={`\`\`\`bash\n${command}\n\`\`\``} />
+                </div>
+              </div>
+            ))}
+
+          {useCollapsible ? (
+            <Collapsible defaultOpen={!!rawOutputText}>
               <CollapsibleTrigger>
                 <div
                   className={cn(
@@ -273,29 +311,26 @@ function SidebarView({
                     "flex flex-row items-center gap-x-2"
                   )}
                 >
-                  <span className="heading-base">Command</span>
+                  <span className="heading-base">Output</span>
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="py-2">
-                  <Markdown content={`\`\`\`bash\n${command}\n\`\`\``} />
+                  {rawOutputText ? (
+                    <Markdown content={`\`\`\`\n${rawOutputText}\n\`\`\``} />
+                  ) : (
+                    <p className="text-sm italic text-muted-foreground dark:text-muted-foreground-night">
+                      {isRunning ? "Waiting for output…" : "(no output)"}
+                    </p>
+                  )}
                 </div>
               </CollapsibleContent>
             </Collapsible>
-          )}
-
-          <Collapsible defaultOpen={!!rawOutputText}>
-            <CollapsibleTrigger>
-              <div
-                className={cn(
-                  "text-foreground dark:text-foreground-night",
-                  "flex flex-row items-center gap-x-2"
-                )}
-              >
-                <span className="heading-base">Output</span>
-              </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
+          ) : (
+            <div>
+              <span className="font-medium text-foreground dark:text-foreground-night">
+                Output
+              </span>
               <div className="py-2">
                 {rawOutputText ? (
                   <Markdown content={`\`\`\`\n${rawOutputText}\n\`\`\``} />
@@ -305,8 +340,8 @@ function SidebarView({
                   </p>
                 )}
               </div>
-            </CollapsibleContent>
-          </Collapsible>
+            </div>
+          )}
 
           <ExitCodeBadge exitCode={exitCode} />
         </>

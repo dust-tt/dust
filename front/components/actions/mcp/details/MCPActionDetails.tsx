@@ -423,50 +423,84 @@ export function GenericActionDetails({
     >
       {displayContext !== "conversation" && (
         <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
-          <Collapsible defaultOpen={false}>
-            <CollapsibleTrigger>
-              <div
-                className={cn(
-                  "text-foreground dark:text-foreground-night",
-                  "flex flex-row items-center gap-x-2"
-                )}
-              >
-                <span className="heading-base">Inputs</span>
+          {displayContext === "sidebar-single-action" ? (
+            <>
+              <div>
+                <span className="font-medium text-foreground dark:text-foreground-night">
+                  Inputs
+                </span>
+                <RenderToolItemMarkdown text={inputs} type="input" />
               </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <RenderToolItemMarkdown text={inputs} type="input" />
-            </CollapsibleContent>
-          </Collapsible>
+              {action.output && (
+                <div>
+                  <span className="font-medium text-foreground dark:text-foreground-night">
+                    Output
+                  </span>
+                  <div className="my-2 flex flex-col gap-2">
+                    {action.output
+                      .filter(
+                        (o) => isTextContent(o) || isResourceContentWithText(o)
+                      )
+                      .map((o, index) => (
+                        <RenderToolItemMarkdown
+                          key={index}
+                          text={getOutputText(o)}
+                          type="output"
+                        />
+                      ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <Collapsible defaultOpen={false}>
+                <CollapsibleTrigger>
+                  <div
+                    className={cn(
+                      "text-foreground dark:text-foreground-night",
+                      "flex flex-row items-center gap-x-2"
+                    )}
+                  >
+                    <span className="heading-base">Inputs</span>
+                  </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <RenderToolItemMarkdown text={inputs} type="input" />
+                </CollapsibleContent>
+              </Collapsible>
 
-          {action.output && (
-            <Collapsible defaultOpen={false}>
-              <CollapsibleTrigger>
-                <div
-                  className={cn(
-                    "text-foreground dark:text-foreground-night",
-                    "flex flex-row items-center gap-x-2"
-                  )}
-                >
-                  <span className="heading-base">Output</span>
-                </div>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="flex flex-col gap-2 my-2">
-                  {action.output
-                    .filter(
-                      (o) => isTextContent(o) || isResourceContentWithText(o)
-                    )
-                    .map((o, index) => (
-                      <RenderToolItemMarkdown
-                        key={index}
-                        text={getOutputText(o)}
-                        type="output"
-                      />
-                    ))}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
+              {action.output && (
+                <Collapsible defaultOpen={false}>
+                  <CollapsibleTrigger>
+                    <div
+                      className={cn(
+                        "text-foreground dark:text-foreground-night",
+                        "flex flex-row items-center gap-x-2"
+                      )}
+                    >
+                      <span className="heading-base">Output</span>
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="my-2 flex flex-col gap-2">
+                      {action.output
+                        .filter(
+                          (o) =>
+                            isTextContent(o) || isResourceContentWithText(o)
+                        )
+                        .map((o, index) => (
+                          <RenderToolItemMarkdown
+                            key={index}
+                            text={getOutputText(o)}
+                            type="output"
+                          />
+                        ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+            </>
           )}
 
           {action.generatedFiles.filter((f) => !f.hidden).length > 0 && (

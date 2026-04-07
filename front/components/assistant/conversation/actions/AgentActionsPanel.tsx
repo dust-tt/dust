@@ -443,7 +443,7 @@ function AgentSingleActionPanel({
       />
       <div className="flex-1 overflow-y-auto p-4 pb-12">
         <MCPActionDetails
-          displayContext="sidebar"
+          displayContext="sidebar-single-action"
           action={action}
           lastNotification={null}
           owner={owner}
