@@ -717,10 +717,6 @@ export async function listMetronomeUsageWithGroups({
   }
 }
 
-// ---------------------------------------------------------------------------
-// Credits
-// ---------------------------------------------------------------------------
-
 /**
  * Create a credit grant on a Metronome customer.
  * Used for monthly free programmatic credits on legacy plans.
