@@ -71,7 +71,6 @@ export function InputBarContextProvider({
   );
 
   // Persistent agent selection for single-agent input mode (displayed in the agent picker button).
-  // Reset logic on conversation/page changes is handled by useSingleAgentInit.
   const [selectedSingleAgent, setSelectedSingleAgent] =
     useState<RichAgentMention | null>(null);
 
