@@ -5,6 +5,7 @@ struct MainContainerView: View {
     let user: User
     let onLogout: () -> Void
 
+    @EnvironmentObject private var authViewModel: AuthViewModel
     @StateObject private var viewModel: ConversationListViewModel
     @Environment(\.scenePhase) private var scenePhase
     @State private var isDrawerOpen = false
@@ -93,8 +94,10 @@ struct MainContainerView: View {
                                 .resizable()
                                 .frame(width: 24, height: 24)
                                 .foregroundStyle(Color.dustForeground)
-                                .padding(16)
+                                .padding(12)
                         }
+                        .liquidGlassCircle()
+                        .padding(4)
                     }
                 }
             }
@@ -114,6 +117,14 @@ struct MainContainerView: View {
                         viewModel.markConversationsAsRead(markedIds)
                     }
                 )
+            }
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { authViewModel.pendingFrameToken != nil },
+            set: { if !$0 { authViewModel.pendingFrameToken = nil } }
+        )) {
+            if let token = authViewModel.pendingFrameToken {
+                FrameVisualizerView(frameToken: token)
             }
         }
         .onChange(of: scenePhase) {

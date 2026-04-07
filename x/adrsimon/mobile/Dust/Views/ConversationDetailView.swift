@@ -64,13 +64,18 @@ struct ConversationDetailView: View {
                     .resizable()
                     .frame(width: 16, height: 16)
                     .foregroundStyle(Color.dustForeground)
+                    .padding(10)
             }
+            .liquidGlassCircle()
 
             Text(conversation.title ?? "New conversation")
                 .sparkleCopySm()
                 .foregroundStyle(Color.dustForeground)
                 .lineLimit(1)
                 .truncationMode(.tail)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .liquidGlassCapsule()
 
             Spacer()
         }

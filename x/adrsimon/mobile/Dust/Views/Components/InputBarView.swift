@@ -123,9 +123,10 @@ struct InputBarView: View {
                     .frame(width: 10, height: 10)
             }
             .foregroundStyle(Color.dustForeground)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
         }
+        .liquidGlassCapsule()
         .disabled(viewModel.speechService.isRecording || viewModel.speechService.isTranscribing)
     }
 
@@ -179,16 +180,13 @@ struct InputBarView: View {
         Button {
             viewModel.startVoiceInput()
         } label: {
-            Circle()
-                .fill(Color.dustMutedBackground)
-                .frame(width: 36, height: 36)
-                .overlay {
-                    SparkleIcon.mic.image
-                        .resizable()
-                        .frame(width: 14, height: 14)
-                        .foregroundStyle(Color.dustForeground)
-                }
+            SparkleIcon.mic.image
+                .resizable()
+                .frame(width: 14, height: 14)
+                .foregroundStyle(Color.dustForeground)
+                .padding(11)
         }
+        .liquidGlassCircle()
     }
 
     // MARK: - Stop Button
