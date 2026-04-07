@@ -13,7 +13,10 @@ import {
 } from "@app/components/assistant/conversation/types";
 import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
 import { useCancelMessage, useConversation } from "@app/hooks/conversations";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   isRichAgentMention,
   toRichAgentMentionType,
@@ -61,11 +64,21 @@ export const AgentInputBar = ({
   });
 
   const isMobile = useIsMobile();
+  const { hasFeature } = useFeatureFlags();
+  const singleAgentInput = hasFeature("enable_steering");
+  const { agentConfigurations } = useUnifiedAgentConfigurations({
+    workspaceId: context.owner.sId,
+  });
+  const accessibleAgentIds = useMemo(
+    () => new Set(agentConfigurations.map((a) => a.sId)),
+    [agentConfigurations]
+  );
   const methods = useVirtuosoMethods<VirtuosoMessage>();
   const { bottomOffset, listOffset, visibleListHeight } = useVirtuosoLocation();
 
-  const lastUserMessage = methods.data
-    .get()
+  const allMessages = methods.data.get();
+
+  const lastUserMessage = allMessages
     .filter(isUserMessage)
     .findLast(
       (m) =>
@@ -83,16 +96,58 @@ export const AgentInputBar = ({
       return [toRichAgentMentionType(draftAgent)];
     }
 
-    // We only prefill if there is only agent mentions in user's previous message.
-    const shouldPrefill =
-      lastUserMessage && lastUserMessage.richMentions.every(isRichAgentMention);
+    // In single-agent mode, find the last agent mentioned in the conversation.
+    // First from the current user's messages, then from anyone's messages.
+    if (singleAgentInput) {
+      const currentUserAgentMention =
+        lastUserMessage?.richMentions.find(isRichAgentMention);
+      if (
+        currentUserAgentMention &&
+        accessibleAgentIds.has(currentUserAgentMention.id)
+      ) {
+        return [currentUserAgentMention];
+      }
 
-    if (!shouldPrefill) {
+      const lastAgentMention = allMessages
+        .filter(isUserMessage)
+        .filter((m) => !isHandoverUserMessage(m) && m.visibility !== "deleted")
+        .findLast((m) => m.richMentions.some(isRichAgentMention))
+        ?.richMentions.find(isRichAgentMention);
+
+      if (lastAgentMention && accessibleAgentIds.has(lastAgentMention.id)) {
+        return [lastAgentMention];
+      }
+
+      // Ultimate fallback: select the "dust" agent if available.
+      const dustAgent = agentConfigurations.find(
+        (a) => a.sId === GLOBAL_AGENTS_SID.DUST
+      );
+      if (dustAgent) {
+        return [toRichAgentMentionType(dustAgent)];
+      }
+
       return [];
     }
 
-    return lastUserMessage.richMentions;
-  }, [draftAgent, lastUserMessage]);
+    // Non-steering mode: prefill all mentions if they are all agent mentions.
+    const shouldPrefill =
+      lastUserMessage &&
+      lastUserMessage.richMentions.length > 0 &&
+      lastUserMessage.richMentions.every(isRichAgentMention);
+
+    if (shouldPrefill) {
+      return lastUserMessage.richMentions;
+    }
+
+    return [];
+  }, [
+    draftAgent,
+    lastUserMessage,
+    singleAgentInput,
+    allMessages,
+    accessibleAgentIds,
+    agentConfigurations,
+  ]);
 
   // Calculate positions and determine which user messages are navigable.
   const {
