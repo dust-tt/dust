@@ -6,6 +6,7 @@ export {
   listProjectContentFragments,
   listProjectContextAttachments,
   listProjectContextFiles,
+  removeContentNodeFromProject,
   removeFileFromProject,
 } from "./context";
 export {
