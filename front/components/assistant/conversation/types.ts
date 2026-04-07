@@ -65,7 +65,7 @@ export function getPendingToolCallKey(
   return `name-${pendingToolCall.toolName}-${index}`;
 }
 
-export type MessageTemporaryState = LightAgentMessageWithActionsType & {
+export type AgentMessageWithStreaming = LightAgentMessageWithActionsType & {
   streaming: {
     agentState: AgentStateClassification;
     isRetrying: boolean;
@@ -87,7 +87,7 @@ export type AgentMessageStateWithControlEvent =
   | { type: "end-of-stream" };
 
 export type VirtuosoMessage =
-  | MessageTemporaryState
+  | AgentMessageWithStreaming
   | UserMessageTypeWithContentFragments;
 
 export type VirtuosoMessageListContext = {
@@ -167,16 +167,16 @@ export const isUserMessage = (
 export const isHandoverUserMessage = (msg: VirtuosoMessage): boolean =>
   isUserMessage(msg) && msg.agenticMessageData?.type === "agent_handover";
 
-export const isMessageTemporayState = (
+export const isAgentMessageWithStreaming = (
   msg: VirtuosoMessage
-): msg is MessageTemporaryState => "streaming" in msg;
+): msg is AgentMessageWithStreaming => "streaming" in msg;
 
 export const getMessageDate = (msg: VirtuosoMessage): Date =>
   new Date(msg.created);
 
 export const makeInitialMessageStreamState = (
   message: LightAgentMessageType | LightAgentMessageWithActionsType
-): MessageTemporaryState => {
+): AgentMessageWithStreaming => {
   return {
     ...message,
     actions: isLightAgentMessageWithActionsType(message) ? message.actions : [],

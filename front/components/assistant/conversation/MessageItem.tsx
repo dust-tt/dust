@@ -12,8 +12,8 @@ import type {
 } from "@app/components/assistant/conversation/types";
 import {
   getMessageDate,
+  isAgentMessageWithStreaming,
   isHiddenMessage,
-  isMessageTemporayState,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
@@ -140,14 +140,14 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         getMessageDate(data).toDateString();
 
     const isSteeredAgentMessage = useMemo((): boolean => {
-      if (!isMessageTemporayState(data)) {
+      if (!isAgentMessageWithStreaming(data)) {
         return false;
       }
       const messages = methods.data.get();
       const currentIndex = messages.findIndex((m) => m.sId === data.sId);
       for (let i = currentIndex - 1; i >= 0; i--) {
         const m = messages[i];
-        if (isMessageTemporayState(m)) {
+        if (isAgentMessageWithStreaming(m)) {
           // An agent message is considered steered if the previous agent message (skipping user
           // messages) is in gracefully_stopped or created state and from the same agent.
           return (
@@ -164,12 +164,12 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     const isPreviousAgentMessageSteered =
       prevData !== null &&
       isUserMessage(data) &&
-      isMessageTemporayState(prevData) &&
+      isAgentMessageWithStreaming(prevData) &&
       (prevData.status === "gracefully_stopped" ||
         prevData.status === "created");
 
     const triggeringUser = useMemo((): UserType | null => {
-      if (isMessageTemporayState(data)) {
+      if (isAgentMessageWithStreaming(data)) {
         const parentMessageId = data.parentMessageId;
         const messages = methods.data.get();
         const parentUserMessage = messages
@@ -221,7 +221,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               onReactionToggle={(emoji: string) => onReactionToggle({ emoji })}
             />
           )}
-          {isMessageTemporayState(data) && (
+          {isAgentMessageWithStreaming(data) && (
             <AgentMessage
               user={context.user}
               triggeringUser={triggeringUser}
