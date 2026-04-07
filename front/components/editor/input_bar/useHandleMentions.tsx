@@ -76,8 +76,8 @@ const useHandleMentions = ({
     }
 
     // 2. Sticky mentions contain an agent (existing conversation / agent builder) → use it.
-    // TODO: In single-agent mode, stickyMentions is only used here to carry the agent builder's
-    // draft agent. Consider passing it as an explicit prop instead and removing stickyMentions.
+    // stickyMentions carries both the agent builder's draft agent
+    // and the last agent mention resolved from conversation history (computed in AgentInputBar).
     if (stickyMentions) {
       const agentMention = stickyMentions.find(isRichAgentMention) ?? null;
       if (agentMention) {
