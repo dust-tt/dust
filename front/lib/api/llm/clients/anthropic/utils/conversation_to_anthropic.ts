@@ -25,12 +25,28 @@ import type {
 } from "@app/types/assistant/generation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
+import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
 import assert from "assert";
 import compact from "lodash/compact";
 
-function userContentToParam(
-  content: Content
-): TextBlockParam | ImageBlockParam {
+const ACCEPTED_MEDIA_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+] as const;
+type AcceptedMediaType = (typeof ACCEPTED_MEDIA_TYPES)[number];
+
+function isAcceptedMediaType(
+  mediaType: string
+): mediaType is AcceptedMediaType {
+  return ACCEPTED_MEDIA_TYPES.includes(mediaType as AcceptedMediaType);
+}
+
+async function userContentToParam(
+  content: Content,
+  { convertToBase64 }: { convertToBase64?: boolean } = {}
+): Promise<TextBlockParam | ImageBlockParam> {
   switch (content.type) {
     case "text":
       return {
@@ -38,13 +54,36 @@ function userContentToParam(
         text: content.text,
       };
     case "image_url":
+      if (!convertToBase64) {
+        return {
+          type: "image",
+          source: {
+            type: "url",
+            url: content.image_url.url,
+          },
+        };
+      }
+
+      const { mediaType, data } = await trustedFetchImageBase64(
+        content.image_url.url
+      );
+
+      assert(
+        isAcceptedMediaType(mediaType),
+        `Unsupported media type: ${mediaType}`
+      );
+
       return {
         type: "image",
         source: {
-          type: "url",
-          url: content.image_url.url,
+          type: "base64",
+          media_type: mediaType,
+          data,
         },
       };
+
+    default:
+      assertNever(content);
   }
 }
 
@@ -90,30 +129,34 @@ function assistantContentToParam(
   }
 }
 
-function toolResultToParam(
+async function toolResultToParam(
   message: FunctionMessageTypeModel
-): ToolResultBlockParam {
+): Promise<ToolResultBlockParam> {
   return {
     type: "tool_result",
     tool_use_id: message.function_call_id,
     content: isString(message.content)
       ? message.content
-      : message.content.map(userContentToParam),
+      : await Promise.all(message.content.map((c) => userContentToParam(c))),
   };
 }
 
-function functionMessage(message: FunctionMessageTypeModel): MessageParam {
+async function functionMessage(
+  message: FunctionMessageTypeModel
+): Promise<MessageParam> {
   return {
     role: "user",
-    content: [toolResultToParam(message)],
+    content: [await toolResultToParam(message)],
   };
 }
 
-function userMessage(
+async function userMessage(
   message: UserMessageTypeModel,
-  { isLast }: { isLast: boolean }
-): MessageParam {
-  const content = message.content.map(userContentToParam);
+  { isLast, convertToBase64 }: { isLast: boolean; convertToBase64: boolean }
+): Promise<MessageParam> {
+  const content = await Promise.all(
+    message.content.map((c) => userContentToParam(c, { convertToBase64 }))
+  );
 
   // Add cache_control to the last content block if this is the last message.
   if (isLast && content.length > 0) {
@@ -144,16 +187,28 @@ function assistantMessage(
   };
 }
 
-export function toMessage(
+export async function toMessage(
   message: ModelMessageTypeMultiActionsWithoutContentFragment,
-  { isLast, omittedThinking }: { isLast: boolean; omittedThinking: boolean } = {
+  {
+    isLast,
+    omittedThinking,
+    convertToBase64,
+  }: {
+    isLast: boolean;
+    omittedThinking: boolean;
+    convertToBase64?: boolean;
+  } = {
     isLast: false,
     omittedThinking: false,
+    convertToBase64: false,
   }
-): MessageParam {
+): Promise<MessageParam> {
   switch (message.role) {
     case "user":
-      return userMessage(message, { isLast });
+      return userMessage(message, {
+        isLast,
+        convertToBase64: convertToBase64 ?? false,
+      });
     case "function":
       return functionMessage(message);
     case "assistant":
