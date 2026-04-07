@@ -1,5 +1,59 @@
 /**
- * @ignoreswagger
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/actions/{aId}:
+ *   get:
+ *     summary: Get a single action
+ *     description: Retrieve a single action by its ID within an agent message, along with the message status.
+ *     tags:
+ *       - Private Messages
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: mId
+ *         required: true
+ *         description: ID of the message
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: aId
+ *         required: true
+ *         description: ID of the action
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved the action
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 action:
+ *                   $ref: '#/components/schemas/PrivateAgentMCPAction'
+ *                 messageStatus:
+ *                   type: string
+ *                   enum: [created, succeeded, failed, cancelled, gracefully_stopped]
+ *       400:
+ *         description: Invalid request (missing parameters or message is not an agent message)
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Conversation, message, or action not found
+ *       405:
+ *         description: Method not supported
  */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
