@@ -1,0 +1,21 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "715abeff609cb72217a60fb6b3cc38b861871ae1",
+  "prompts": {
+    "833a10e1d8bc700a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca0ecb4b-da89-4c83-933d-4a9722e91595",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 27,
+      "overriden_lines": 0
+    }
+  }
+}
