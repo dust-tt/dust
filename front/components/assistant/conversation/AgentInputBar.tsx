@@ -87,6 +87,17 @@ export const AgentInputBar = ({
         m.visibility !== "deleted"
     );
 
+  // Last agent mentioned by anyone in the conversation. Computed outside useMemo so the
+  // result is a stable object reference (same mention object from the message list) that
+  // won't cause unnecessary recomputation of autoMentions when allMessages array ref changes.
+  const lastAgentMentionInConversation = singleAgentInput
+    ? (allMessages
+        .filter(isUserMessage)
+        .filter((m) => !isHandoverUserMessage(m) && m.visibility !== "deleted")
+        .findLast((m) => m.richMentions.some(isRichAgentMention))
+        ?.richMentions.find(isRichAgentMention) ?? null)
+    : null;
+
   const draftAgent = context.agentBuilderContext?.draftAgent;
 
   const autoMentions = useMemo(() => {
@@ -108,14 +119,11 @@ export const AgentInputBar = ({
         return [currentUserAgentMention];
       }
 
-      const lastAgentMention = allMessages
-        .filter(isUserMessage)
-        .filter((m) => !isHandoverUserMessage(m) && m.visibility !== "deleted")
-        .findLast((m) => m.richMentions.some(isRichAgentMention))
-        ?.richMentions.find(isRichAgentMention);
-
-      if (lastAgentMention && accessibleAgentIds.has(lastAgentMention.id)) {
-        return [lastAgentMention];
+      if (
+        lastAgentMentionInConversation &&
+        accessibleAgentIds.has(lastAgentMentionInConversation.id)
+      ) {
+        return [lastAgentMentionInConversation];
       }
 
       // Ultimate fallback: select the "dust" agent if available.
@@ -144,7 +152,7 @@ export const AgentInputBar = ({
     draftAgent,
     lastUserMessage,
     singleAgentInput,
-    allMessages,
+    lastAgentMentionInConversation,
     accessibleAgentIds,
     agentConfigurations,
   ]);
