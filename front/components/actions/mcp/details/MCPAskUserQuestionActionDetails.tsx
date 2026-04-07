@@ -87,7 +87,7 @@ export function MCPAskUserQuestionActionDetails({
             )}
           </div>
           {isDeclined && (
-            <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+            <div className="text-sm text-foreground dark:text-foreground-night">
               User declined to answer
             </div>
           )}
