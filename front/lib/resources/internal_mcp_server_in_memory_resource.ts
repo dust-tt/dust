@@ -34,6 +34,7 @@ import { destroyMCPServerViewDependencies } from "@app/lib/models/agent/actions/
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -75,6 +76,19 @@ export class InternalMCPServerInMemoryResource {
     }
 
     const name = r.value.name;
+
+    const isEnabled = await isEnabledForWorkspace(auth, name);
+    if (!isEnabled) {
+      // This means a server which could not be newly created is being used from an existing MCP server view.
+      // This is not a problem, but we log it to get a sense of whether it happens often and for which server names.
+      logger.info(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          serverName: name,
+        },
+        "Initializing restricted internal MCP server from existing view"
+      );
+    }
 
     const availability = getAvailabilityOfInternalMCPServerById(id);
 
