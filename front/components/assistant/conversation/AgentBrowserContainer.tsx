@@ -52,7 +52,7 @@ export function AgentBrowserContainer({
     <div
       id="agents-lists-container"
       className={classNames(
-        "duration-400 flex h-full w-full max-w-3xl flex-col gap-2 py-8"
+        "duration-400 flex h-full w-full max-w-conversation flex-col gap-2 py-8"
       )}
     >
       {!isMobileOrExtension && (

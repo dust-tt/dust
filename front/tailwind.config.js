@@ -354,6 +354,7 @@ module.exports = {
         100: "400px",
         125: "500px",
         150: "600px",
+        conversation: "48rem", // max-w-3xl equivalent, used for conversation content area
       },
       maxHeight: {
         100: "400px",
