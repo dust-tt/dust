@@ -139,12 +139,15 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       getMessageDate(prevData).toDateString() ===
         getMessageDate(data).toDateString();
 
+    const isAgentMessage = isAgentMessageWithStreaming(data);
+    const configurationId = isAgentMessage ? data.configuration.sId : undefined;
+
     const isSteeredAgentMessage = useMemo((): boolean => {
-      if (!isAgentMessageWithStreaming(data)) {
+      if (!isAgentMessage || !configurationId) {
         return false;
       }
       const messages = methods.data.get();
-      const currentIndex = messages.findIndex((m) => m.sId === data.sId);
+      const currentIndex = messages.findIndex((m) => m.sId === sId);
       for (let i = currentIndex - 1; i >= 0; i--) {
         const m = messages[i];
         if (isAgentMessageWithStreaming(m)) {
@@ -152,12 +155,15 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           // messages) is in gracefully_stopped or created state and from the same agent.
           return (
             (m.status === "gracefully_stopped" || m.status === "created") &&
-            m.configuration.sId === data.configuration.sId
+            m.configuration.sId === configurationId
           );
         }
       }
       return false;
-    }, [data, methods.data]);
+    }, [isAgentMessage, configurationId, sId, methods.data]);
+
+    const parentMessageId = isAgentMessage ? data.parentMessageId : undefined;
+    const messageUser = isUserMessage(data) ? data.user : null;
 
     // Hide the user message time header when it follows a created or gracefully stopped agent
     // message (steering flow) to save vertical space.
@@ -169,17 +175,15 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         prevData.status === "created");
 
     const triggeringUser = useMemo((): UserType | null => {
-      if (isAgentMessageWithStreaming(data)) {
-        const parentMessageId = data.parentMessageId;
+      if (isAgentMessage && parentMessageId) {
         const messages = methods.data.get();
         const parentUserMessage = messages
           .filter(isUserMessage)
           .find((m) => m.sId === parentMessageId);
         return parentUserMessage?.user ?? null;
-      } else {
-        return data.user;
       }
-    }, [data, methods.data]);
+      return messageUser;
+    }, [isAgentMessage, parentMessageId, messageUser, methods.data]);
 
     if (!allowBranchMessages && data.branchId) {
       return null;
