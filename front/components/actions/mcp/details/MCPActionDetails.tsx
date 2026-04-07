@@ -12,6 +12,7 @@ import {
   MCPAgentMemoryRecordActionDetails,
   MCPAgentMemoryRetrieveActionDetails,
 } from "@app/components/actions/mcp/details/MCPAgentMemoryActionDetails";
+import { MCPAskUserQuestionActionDetails } from "@app/components/actions/mcp/details/MCPAskUserQuestionActionDetails";
 import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPBrowseActionDetails";
 import { MCPConversationCatFileDetails } from "@app/components/actions/mcp/details/MCPConversationFilesActionDetails";
 import {
@@ -381,6 +382,10 @@ export function MCPActionDetails({
 
   if (internalMCPServerName === "sandbox") {
     return <MCPSandboxActionDetails {...toolOutputDetailsProps} />;
+  }
+
+  if (internalMCPServerName === "ask_user_question") {
+    return <MCPAskUserQuestionActionDetails {...toolOutputDetailsProps} />;
   }
 
   return (
