@@ -1018,8 +1018,8 @@ export class DustAPI {
 
     const agentMessage = agentMessages[0];
     return this.streamAgentMessageEvents({
-      conversation,
-      agentMessage,
+      conversationId: conversation.sId,
+      agentMessageId: agentMessage.sId,
       signal,
       options: {
         maxReconnectAttempts:
@@ -1031,13 +1031,13 @@ export class DustAPI {
   }
 
   async streamAgentMessageEvents({
-    conversation,
-    agentMessage,
+    conversationId,
+    agentMessageId,
     signal,
     options,
   }: {
-    conversation: Pick<ConversationPublicType, "sId">;
-    agentMessage: Pick<AgentMessagePublicType, "sId">;
+    conversationId: string;
+    agentMessageId: string;
     signal?: AbortSignal;
     options: {
       maxReconnectAttempts: number;
@@ -1064,7 +1064,7 @@ export class DustAPI {
     ];
 
     const createRequest = async (lastId?: string | null) => {
-      let path = `assistant/conversations/${conversation.sId}/messages/${agentMessage.sId}/events`;
+      let path = `assistant/conversations/${conversationId}/messages/${agentMessageId}/events`;
       if (lastId) {
         path += `?lastEventId=${lastId}`;
       }

@@ -169,8 +169,8 @@ export class PlanMessageHandler {
     controller: AbortController
   ): Promise<void> {
     const streamRes = await this.dustAPI.streamAgentMessageEvents({
-      conversation: { sId: conversationId },
-      agentMessage: { sId: agentMessageId },
+      conversationId,
+      agentMessageId,
       signal: controller.signal,
       options: {
         maxReconnectAttempts: CHILD_STREAM_MAX_RECONNECT_ATTEMPTS,
