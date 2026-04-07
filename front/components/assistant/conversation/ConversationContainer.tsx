@@ -10,7 +10,7 @@ import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
-import { isSingleAgentInputEnabled } from "@app/lib/development";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
 import { classNames } from "@app/lib/utils";
@@ -60,6 +60,8 @@ export function ConversationContainerVirtuoso({
       : conversationIdFromRouter;
 
   const [planLimitReached, setPlanLimitReached] = useState(false);
+  const { hasFeature } = useFeatureFlags();
+  const singleAgentInput = hasFeature("enable_steering");
 
   const { setSelectedAgent, setSelectedSingleAgent } =
     useContext(InputBarContext);
@@ -232,7 +234,7 @@ export function ConversationContainerVirtuoso({
           )}
           <AgentBrowserContainer
             onAgentConfigurationClick={(agent) => {
-              if (isSingleAgentInputEnabled()) {
+              if (singleAgentInput) {
                 setSelectedSingleAgent(toRichAgentMentionType(agent));
               } else {
                 setSelectedAgent(toRichAgentMentionType(agent));
