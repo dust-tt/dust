@@ -576,6 +576,10 @@ export async function startConversationAnalysisBatchActivity({
     "reinforced_agent_analyze_conversation"
   );
   if (!llm) {
+    logger.warn(
+      { workspaceId, agentConfigurationId },
+      "ReinforcedAgent: no LLM available for conversation analysis"
+    );
     return null;
   }
 
@@ -874,6 +878,10 @@ export async function startAggregationBatchActivity({
     "reinforced_agent_aggregate_suggestions"
   );
   if (!llm) {
+    logger.warn(
+      { workspaceId, agentConfigurationId },
+      "ReinforcedAgent: no LLM available for aggregation"
+    );
     return null;
   }
 
