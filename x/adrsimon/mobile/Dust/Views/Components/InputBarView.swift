@@ -36,23 +36,14 @@ struct InputBarView: View {
             .padding(.bottom, 8)
             .padding(.top, 4)
         }
-        .background(
-            Color.dustBackground
-                .clipShape(
-                    UnevenRoundedRectangle(
-                        topLeadingRadius: 20,
-                        bottomLeadingRadius: 0,
-                        bottomTrailingRadius: 0,
-                        topTrailingRadius: 20
-                    )
-                )
-                .shadow(color: .black.opacity(0.1), radius: 8, y: -4)
-        )
+        .liquidGlassRoundedRect(cornerRadius: 24)
+        .padding(.horizontal, 8)
+        .padding(.bottom, 8)
         .sheet(isPresented: $viewModel.showAgentPicker) {
             AgentPickerSheet(
                 agents: viewModel.agents,
                 onSelect: { agent in
-                    viewModel.insertMention(agent)
+                    viewModel.selectAgent(agent)
                 }
             )
             .presentationDetents([.medium, .large])
@@ -147,10 +138,19 @@ struct InputBarView: View {
         Button {
             viewModel.showAgentPicker = true
         } label: {
-            HStack(spacing: 4) {
-                SparkleIcon.robot.image
-                    .resizable()
-                    .frame(width: 14, height: 14)
+            HStack(spacing: 6) {
+                if let agent = viewModel.selectedAgent {
+                    Avatar(url: agent.pictureUrl, size: 18)
+                    Text(agent.name)
+                        .sparkleCopySm()
+                        .lineLimit(1)
+                } else {
+                    SparkleIcon.robot.image
+                        .resizable()
+                        .frame(width: 14, height: 14)
+                    Text("Agent")
+                        .sparkleCopySm()
+                }
                 SparkleIcon.chevronDown.image
                     .resizable()
                     .frame(width: 10, height: 10)

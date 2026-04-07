@@ -7,7 +7,7 @@ struct NavigationDrawerContainer<Drawer: View, Content: View>: View {
     let content: () -> Content
 
     private let drawerWidthRatio: CGFloat = 0.80
-    private let contentCornerRadius: CGFloat = 20
+    private let contentCornerRadius: CGFloat = 24
 
     var body: some View {
         GeometryReader { geo in

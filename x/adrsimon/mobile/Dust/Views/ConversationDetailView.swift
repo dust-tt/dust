@@ -5,7 +5,7 @@ import SwiftUI
 struct ConversationDetailView: View {
     let conversation: Conversation
     let currentUserEmail: String
-    let onBack: () -> Void
+    let onMenu: () -> Void
 
     private let workspaceId: String
     private let tokenProvider: TokenProvider
@@ -21,11 +21,11 @@ struct ConversationDetailView: View {
         tokenProvider: TokenProvider,
         user: User,
         currentUserEmail: String,
-        onBack: @escaping () -> Void
+        onMenu: @escaping () -> Void
     ) {
         self.conversation = conversation
         self.currentUserEmail = currentUserEmail
-        self.onBack = onBack
+        self.onMenu = onMenu
         self.workspaceId = workspaceId
         self.tokenProvider = tokenProvider
         _viewModel = StateObject(
@@ -89,12 +89,12 @@ struct ConversationDetailView: View {
 
     private var header: some View {
         HStack(spacing: 12) {
-            Button(action: onBack) {
-                SparkleIcon.chevronLeft.image
+            Button(action: onMenu) {
+                SparkleIcon.menu.image
                     .resizable()
-                    .frame(width: 16, height: 16)
+                    .frame(width: 24, height: 24)
                     .foregroundStyle(Color.dustForeground)
-                    .padding(10)
+                    .padding(12)
             }
             .liquidGlassCircle()
 

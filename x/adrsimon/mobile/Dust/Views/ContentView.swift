@@ -7,13 +7,13 @@ struct ContentView: View {
     var body: some View {
         switch authViewModel.state {
         case .loading:
-            ProgressView("Loading...")
+            LoadingView()
 
         case .unauthenticated:
             LoginView(onLogin: { authViewModel.login() })
 
         case .authenticating:
-            ProgressView("Signing in...")
+            LoadingView()
 
         case let .authenticated(user, tokenProvider):
             MainContainerView(

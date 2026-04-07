@@ -12,6 +12,7 @@ struct DustMobileApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .background(Color.dustBackground.ignoresSafeArea())
                 .environmentObject(authViewModel)
                 .onOpenURL { url in
                     authViewModel.handleCallbackURL(url)

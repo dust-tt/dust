@@ -22,6 +22,17 @@ struct MainContainerView: View {
     }
 
     var body: some View {
+        if isLoading {
+            LoadingView()
+                .task {
+                    await viewModel.load()
+                }
+        } else {
+            mainContent
+        }
+    }
+
+    private var mainContent: some View {
         NavigationDrawerContainer(
             isOpen: $isDrawerOpen,
             drawer: {
@@ -68,43 +79,39 @@ struct MainContainerView: View {
                             tokenProvider: tokenProvider,
                             user: user,
                             currentUserEmail: user.email,
-                            onBack: {
-                                selectedConversation = nil
-                                Task { await viewModel.refresh() }
+                            onMenu: {
+                                isDrawerOpen = true
                             }
                         )
                         .id(conversation.sId)
                     } else if let workspaceId = viewModel.workspace?.sId {
-                        NewConversationView(
-                            firstName: user.firstName,
-                            user: user,
-                            workspaceId: workspaceId,
-                            tokenProvider: tokenProvider,
-                            onConversationCreated: { conversation in
-                                selectedConversation = conversation
-                            }
-                        )
-                    }
+                        ZStack(alignment: .topLeading) {
+                            NewConversationView(
+                                firstName: user.firstName,
+                                user: user,
+                                workspaceId: workspaceId,
+                                tokenProvider: tokenProvider,
+                                onConversationCreated: { conversation in
+                                    selectedConversation = conversation
+                                }
+                            )
 
-                    if selectedConversation == nil {
-                        Button {
-                            isDrawerOpen = true
-                        } label: {
-                            SparkleIcon.menu.image
-                                .resizable()
-                                .frame(width: 24, height: 24)
-                                .foregroundStyle(Color.dustForeground)
-                                .padding(12)
+                            Button {
+                                isDrawerOpen = true
+                            } label: {
+                                SparkleIcon.menu.image
+                                    .resizable()
+                                    .frame(width: 24, height: 24)
+                                    .foregroundStyle(Color.dustForeground)
+                                    .padding(12)
+                            }
+                            .liquidGlassCircle()
+                            .padding(4)
                         }
-                        .liquidGlassCircle()
-                        .padding(4)
                     }
                 }
             }
         )
-        .task {
-            await viewModel.load()
-        }
         .fullScreenCover(isPresented: $showCatchUp) {
             if let workspaceId = viewModel.workspace?.sId {
                 CatchUpView(

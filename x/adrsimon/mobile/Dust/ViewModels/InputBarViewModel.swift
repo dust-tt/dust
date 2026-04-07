@@ -8,6 +8,7 @@ private let logger = Logger(subsystem: AppConfig.bundleId, category: "InputBar")
 @MainActor
 final class InputBarViewModel: ObservableObject {
     @Published var agents: [LightAgentConfiguration] = []
+    @Published var selectedAgent: LightAgentConfiguration?
     @Published var messageText: String = ""
     @Published var isSending = false
     @Published var error: String?
@@ -45,6 +46,9 @@ final class InputBarViewModel: ObservableObject {
                 }
                 return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
             }
+            if selectedAgent == nil {
+                selectedAgent = agents.first { $0.sId == "dust" } ?? agents.first
+            }
         } catch {
             logger.error("Failed to load agents: \(error)")
         }
@@ -59,13 +63,12 @@ final class InputBarViewModel: ObservableObject {
         }
     }
 
-    func insertMention(_ agent: LightAgentConfiguration) {
-        var base = messageText
-        if base.hasSuffix("@") {
-            base = String(base.dropLast())
+    func selectAgent(_ agent: LightAgentConfiguration) {
+        selectedAgent = agent
+        // Remove trailing @ if the picker was triggered by typing it
+        if messageText.hasSuffix("@") {
+            messageText = String(messageText.dropLast())
         }
-        let trimmed = base.trimmingCharacters(in: .whitespaces)
-        messageText = trimmed.isEmpty ? "@\(agent.name) " : "\(trimmed) @\(agent.name) "
         showAgentPicker = false
     }
 
@@ -147,7 +150,7 @@ final class InputBarViewModel: ObservableObject {
         let request = CreateConversationRequest(
             message: CreateMessagePayload(
                 content: text,
-                mentions: resolveMentionsWithDefault(in: text),
+                mentions: resolveMentions(),
                 context: context
             ),
             contentFragments: fragmentPayloads
@@ -170,7 +173,7 @@ final class InputBarViewModel: ObservableObject {
 
         let request = PostMessageRequest(
             content: text,
-            mentions: resolveMentionsWithDefault(in: text),
+            mentions: resolveMentions(),
             context: context
         )
 
@@ -255,22 +258,9 @@ final class InputBarViewModel: ObservableObject {
         return (text, messageContext)
     }
 
-    private func resolveMentionsWithDefault(in text: String) -> [MentionPayload] {
-        let mentions = resolveMentions(in: text)
-        return mentions.isEmpty ? [MentionPayload(configurationId: "dust")] : mentions
-    }
-
-    private func resolveMentions(in text: String) -> [MentionPayload] {
-        var result: [MentionPayload] = []
-        var seen = Set<String>()
-
-        for agent in agents {
-            if text.contains("@\(agent.name)"), !seen.contains(agent.sId) {
-                result.append(MentionPayload(configurationId: agent.sId))
-                seen.insert(agent.sId)
-            }
-        }
-        return result
+    private func resolveMentions() -> [MentionPayload] {
+        let agentId = selectedAgent?.sId ?? "dust"
+        return [MentionPayload(configurationId: agentId)]
     }
 
     private func performSend<T>(_ operation: () async throws -> T) async -> T? {
@@ -281,6 +271,7 @@ final class InputBarViewModel: ObservableObject {
             let result = try await operation()
             isSending = false
             messageText = ""
+            selectedAgent = nil
             attachments = []
             return result
         } catch {
