@@ -426,7 +426,9 @@ function AgentSingleActionPanel({
         onClose={onClose}
       >
         <div className="flex items-center justify-center">
-          <span className="text-muted-foreground dark:text-muted-foreground-night">Nothing to display.</span>
+          <span className="text-muted-foreground dark:text-muted-foreground-night">
+            Nothing to display.
+          </span>
         </div>
       </AgentActionsPanelHeader>
     );
@@ -510,7 +512,9 @@ export function AgentActionsPanelForMessage({
         onClose={onClose}
       >
         <div className="flex items-center justify-center">
-          <span className="text-muted-foreground dark:text-muted-foreground-night">Nothing to display.</span>
+          <span className="text-muted-foreground dark:text-muted-foreground-night">
+            Nothing to display.
+          </span>
         </div>
       </AgentActionsPanelHeader>
     );
