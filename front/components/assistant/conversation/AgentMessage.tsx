@@ -54,7 +54,6 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { isInlineActivityEnabled as isDevInlineActivityEnabled } from "@app/lib/development";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
@@ -204,7 +203,7 @@ export function AgentMessage({
   const [streamId, setStreamId] = useState<string>(`message-${sId}`);
   const { hasFeature } = useFeatureFlags();
   const isCollapsibleEnabled = hasFeature("collapsible_messages");
-  const isInlineActivityEnabled = isDevInlineActivityEnabled();
+  const isInlineActivityEnabled = hasFeature("enable_steering");
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     useState<boolean>(false);
@@ -1069,7 +1068,8 @@ function AgentMessageContent({
   >();
 
   const { vizUrl } = useAuth();
-  const isInlineActivityEnabled = isDevInlineActivityEnabled();
+  const { hasFeature } = useFeatureFlags();
+  const isInlineActivityEnabled = hasFeature("enable_steering");
   const { sId, configuration: agentConfiguration } = agentMessage;
 
   const { postFollowUp } = usePostOnboardingFollowUp({
