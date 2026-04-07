@@ -526,6 +526,16 @@ const config = {
       "METRONOME_COMMIT_PRODUCT_ID"
     );
   },
+  getMetronomeLlmUsageBillableMetricId: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "METRONOME_LLM_USAGE_BILLABLE_METRIC_ID"
+    );
+  },
+  getMetronomeToolUseBillableMetricId: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "METRONOME_TOOL_USE_BILLABLE_METRIC_ID"
+    );
+  },
 };
 
 export default config;
