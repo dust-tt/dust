@@ -44,6 +44,12 @@ const { finalizeAggregationActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
 
+const { recordReinforcementWorkflowCompletionActivity } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "5 minutes",
+});
+
 const { startConversationAnalysisBatchActivity } = proxyActivities<
   typeof activities
 >({
@@ -316,6 +322,11 @@ export async function reinforcedAgentForAgentWorkflow({
       disableNotifications,
     });
   }
+
+  await recordReinforcementWorkflowCompletionActivity({
+    workspaceId,
+    agentConfigurationId,
+  });
 }
 
 interface ReinforcedToolActionInfo {

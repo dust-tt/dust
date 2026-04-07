@@ -1,4 +1,7 @@
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import {
+  getAgentConfigurations,
+  recordAgentReinforcementAnalysisCompletion,
+} from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
@@ -457,6 +460,17 @@ export async function finalizeAggregationActivity({
     },
     "ReinforcedAgent: finalized aggregation"
   );
+}
+
+export async function recordReinforcementWorkflowCompletionActivity({
+  workspaceId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+}): Promise<void> {
+  const auth = await getAuthForWorkspace(workspaceId);
+  await recordAgentReinforcementAnalysisCompletion(auth, agentConfigurationId);
 }
 
 /**
