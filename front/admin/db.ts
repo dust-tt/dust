@@ -61,6 +61,7 @@ import {
   ConversationSkillModel,
 } from "@app/lib/models/skill/conversation_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
+import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { TagModel } from "@app/lib/models/tags";
 import { AcademyChapterVisitModel } from "@app/lib/resources/storage/models/academy_chapter_visit";
 import { AcademyQuizAttemptModel } from "@app/lib/resources/storage/models/academy_quiz_attempt";
@@ -216,6 +217,7 @@ export function loadAllModels() {
     AgentMessageSkillModel,
     SkillMCPServerConfigurationModel,
     SkillFileAttachmentModel,
+    SkillSuggestionModel,
     WorkspaceVerificationAttemptModel,
     AgentSuggestionModel,
     UserProjectDigestModel,
