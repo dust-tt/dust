@@ -578,12 +578,18 @@ export async function listMetronomeProducts(): Promise<
 export async function listMetronomeBalances(
   metronomeCustomerId: string
 ): Promise<Result<MetronomeBalance[], Error>> {
+  if (!config.getMetronomeApiKey()) {
+    return new Ok([]);
+  }
+
   try {
     const balances: MetronomeBalance[] = [];
     for await (const entry of getClient().v1.contracts.listBalances({
       customer_id: metronomeCustomerId,
       include_balance: true,
       include_contract_balances: true,
+      covering_date: new Date().toISOString(),
+      exclude_zero_balances: true,
     })) {
       balances.push(entry);
     }
@@ -613,6 +619,10 @@ export async function listMetronomeUsage({
   endingBefore: string;
   windowSize: WindowSize;
 }): Promise<Result<MetronomeUsageListResponse[], Error>> {
+  if (!config.getMetronomeApiKey()) {
+    return new Ok([]);
+  }
+
   try {
     const results: MetronomeUsageListResponse[] = [];
     for await (const entry of getClient().v1.usage.list({
@@ -656,6 +666,10 @@ export async function listMetronomeUsageWithGroups({
   windowSize: WindowSize;
   groupKey: string[];
 }): Promise<Result<MetronomeUsageWithGroupsResponse[], Error>> {
+  if (!config.getMetronomeApiKey()) {
+    return new Ok([]);
+  }
+
   try {
     const results: MetronomeUsageWithGroupsResponse[] = [];
     for await (const entry of getClient().v1.usage.listWithGroups({
