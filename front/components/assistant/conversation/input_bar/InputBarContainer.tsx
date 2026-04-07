@@ -1207,6 +1207,7 @@ const InputBarContainer = ({
               isEmpty ||
               isSubmitting ||
               disableInput ||
+              isBlockedByAgentSwitch ||
               voiceTranscriberService.status !== "idle"
             }
             tooltip={
