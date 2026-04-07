@@ -79,49 +79,54 @@ struct CatchUpView: View {
                     .resizable()
                     .frame(width: 16, height: 16)
                     .foregroundStyle(Color.dustForeground)
-                    .padding(8)
+                    .padding(10)
             }
+            .liquidGlassCircle()
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
     }
 
+    // MARK: - Conversation Title
+
+    private var conversationTitle: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(viewModel.currentConversation?.actionRequired == true
+                    ? Color.golden400 : Color.highlight500)
+                .frame(width: 8, height: 8)
+
+            Text(viewModel.currentConversation?.title ?? "New conversation")
+                .sparkleLabelSm()
+                .foregroundStyle(Color.dustForeground)
+                .lineLimit(1)
+                .truncationMode(.tail)
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial, in: .capsule)
+        .padding(.horizontal, 8)
+        .padding(.top, 8)
+    }
+
     // MARK: - Card
 
     private var conversationCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Card header
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(viewModel.currentConversation?.actionRequired == true
-                        ? Color.golden400 : Color.highlight500)
-                    .frame(width: 8, height: 8)
-
-                Text(viewModel.currentConversation?.title ?? "New conversation")
-                    .sparkleLabelSm()
-                    .foregroundStyle(Color.dustForeground)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-
-            Divider().foregroundStyle(Color.dustBorder)
-
+        ZStack(alignment: .top) {
             // Messages
             ScrollView {
                 if viewModel.isLoadingMessages, viewModel.messages.isEmpty {
                     ProgressView()
                         .frame(maxWidth: .infinity)
-                        .padding(.top, 32)
+                        .padding(.top, 56)
                 } else if viewModel.messages.isEmpty {
                     Text("No messages")
                         .sparkleCopyXs()
                         .foregroundStyle(Color.dustFaint)
                         .frame(maxWidth: .infinity)
-                        .padding(.top, 32)
+                        .padding(.top, 56)
                 } else {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(viewModel.messages) { message in
@@ -131,15 +136,18 @@ struct CatchUpView: View {
                             )
                         }
                     }
+                    .padding(.top, 48)
                     .padding(.horizontal, 16)
                     .padding(.bottom, 12)
                 }
             }
             .defaultScrollAnchor(.bottom)
-            .background(Color.dustBackground)
+
+            // Floating glass title
+            conversationTitle
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.dustMutedBackground)
+        .background(Color.dustBackground)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
