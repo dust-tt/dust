@@ -43,41 +43,33 @@ const useHandleMentions = ({
   const stickyMentionsTextContent = useRef<string | null>(null);
   const { hasFeature } = useFeatureFlags();
   const singleAgentInput = hasFeature("enable_steering");
-  const { setSelectedSingleAgent } = useContext(InputBarContext);
+  const { setSelectedSingleAgent } =
+    useContext(InputBarContext);
 
   // Priority: draft > sticky mentions > @dust fallback.
   // Also resets when the conversation changes so stale state doesn't leak.
   const prevConversationIdRef = useRef(conversation?.sId ?? null);
-  const hasInitializedRef = useRef(false);
 
   useEffect(() => {
     if (!singleAgentInput) {
       return;
     }
 
-    // Reset when conversation changes.
     const currentId = conversation?.sId ?? null;
     if (currentId !== prevConversationIdRef.current) {
       prevConversationIdRef.current = currentId;
-      hasInitializedRef.current = false;
       setSelectedSingleAgent(null);
     }
 
-    if (hasInitializedRef.current) {
-      return;
-    }
 
     // Agent builder: wait for the draft agent to arrive via stickyMentions.
-    // Clear any stale selection but don't mark as initialized so we re-run.
     if (isAgentBuilder && (!stickyMentions || stickyMentions.length === 0)) {
-      setSelectedSingleAgent(null);
       return;
     }
 
     // 1. Draft has a saved agent → use it.
     const draft = getDraft();
     if (draft?.agentMention) {
-      hasInitializedRef.current = true;
       setSelectedSingleAgent(draft.agentMention);
       return;
     }
@@ -88,7 +80,6 @@ const useHandleMentions = ({
     if (stickyMentions) {
       const agentMention = stickyMentions.find(isRichAgentMention) ?? null;
       if (agentMention) {
-        hasInitializedRef.current = true;
         setSelectedSingleAgent(agentMention);
         return;
       }
@@ -98,7 +89,6 @@ const useHandleMentions = ({
     if (!conversation && !isAgentBuilder) {
       const dustAgent = allAgents.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST);
       if (dustAgent) {
-        hasInitializedRef.current = true;
         setSelectedSingleAgent(toRichAgentMentionType(dustAgent));
       }
     }
