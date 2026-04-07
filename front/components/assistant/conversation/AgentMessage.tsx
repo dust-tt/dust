@@ -169,6 +169,7 @@ function PrunedContextChip() {
 
 interface AgentMessageProps {
   conversationId: string;
+  hideHeader: boolean;
   isLastMessage: boolean;
   agentMessage: MessageTemporaryState;
   messageFeedback: FeedbackSelectorBaseProps;
@@ -188,6 +189,7 @@ interface AgentMessageProps {
 
 export function AgentMessage({
   conversationId,
+  hideHeader,
   isLastMessage,
   agentMessage,
   messageFeedback,
@@ -970,35 +972,37 @@ export function AgentMessage({
 
   return (
     <ConversationMessageContainer messageType="agent" type="agent">
-      <div className="inline-flex items-center gap-2 px-5">
-        <ConversationMessageAvatar
-          avatarUrl={agentConfiguration.pictureUrl}
-          name={agentConfiguration.name}
-          isBusy={agentMessage.status === "created"}
-          isDisabled={isArchived}
-          type="agent"
-        />
-        <ConversationMessageTitle
-          name={agentConfiguration.name}
-          timestamp={timestamp}
-          infoChip={
-            agentMessage.prunedContext ? <PrunedContextChip /> : undefined
-          }
-          completionStatus={
-            hideCompletionStatus ? undefined : (
-              <AgentMessageCompletionStatus
-                agentMessage={agentMessage}
-                onClick={
-                  onCompletionStatusClick
-                    ? () => onCompletionStatusClick(agentMessage.sId)
-                    : undefined
-                }
-              />
-            )
-          }
-          renderName={renderName}
-        />
-      </div>
+      {!hideHeader && (
+        <div className="inline-flex items-center gap-2 px-5">
+          <ConversationMessageAvatar
+            avatarUrl={agentConfiguration.pictureUrl}
+            name={agentConfiguration.name}
+            isBusy={agentMessage.status === "created"}
+            isDisabled={isArchived}
+            type="agent"
+          />
+          <ConversationMessageTitle
+            name={agentConfiguration.name}
+            timestamp={timestamp}
+            infoChip={
+              agentMessage.prunedContext ? <PrunedContextChip /> : undefined
+            }
+            completionStatus={
+              hideCompletionStatus ? undefined : (
+                <AgentMessageCompletionStatus
+                  agentMessage={agentMessage}
+                  onClick={
+                    onCompletionStatusClick
+                      ? () => onCompletionStatusClick(agentMessage.sId)
+                      : undefined
+                  }
+                />
+              )
+            }
+            renderName={renderName}
+          />
+        </div>
+      )}
 
       <div className="group flex w-full min-w-0 flex-col gap-2 @sm:px-5 px-5">
         {renderMessageContent()}
