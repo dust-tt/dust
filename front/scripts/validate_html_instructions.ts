@@ -16,6 +16,14 @@ function normalizeHtml(html: string): string {
         /<span[^>]*data-type="emoji"[^>]*>([^<]*)<\/span>/g,
         "$1"
       )
+      // Remove zero-width spaces inserted by preprocessMarkdownForEditor
+      // for standalone < characters that aren't matched tag pairs.
+      .replace(/\u200B/g, "")
+      // Normalize whitespace around inline formatting tags (strong, em, code, a).
+      // The frontend editor and markdown parser may place spaces inside or outside
+      // marks differently, e.g. "✅<strong> Verified</strong>" vs "✅ <strong>Verified</strong>".
+      .replace(/ (<(?:strong|em|code|a\b)[^>]*>)/g, "$1 ")
+      .replace(/(<\/(?:strong|em|code|a)>) /g, " $1")
   );
 }
 

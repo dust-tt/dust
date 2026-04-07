@@ -91,7 +91,18 @@ export function buildServerSafeExtensions(): Extensions {
     Heading.configure({
       levels: [1, 2, 3, 4, 5, 6],
     }),
-    Link.configure({
+    // Override Link to suppress title="null" in static renderer output
+    // (same null-attribute issue as OrderedList).
+    Link.extend({
+      renderHTML({ HTMLAttributes }) {
+        const { title, ...rest } = HTMLAttributes;
+        const attrs = { ...rest };
+        if (title !== null && title !== undefined) {
+          attrs.title = title;
+        }
+        return ["a", mergeAttributes(this.options.HTMLAttributes, attrs), 0];
+      },
+    }).configure({
       autolink: false,
       openOnClick: false,
     }),
