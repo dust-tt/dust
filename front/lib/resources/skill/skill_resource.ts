@@ -1407,6 +1407,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   canWrite(auth: Authenticator): boolean {
+    // API keys with at least builder role can write to any skill.
+    if (auth.isKey() && auth.isBuilder()) {
+      return true;
+    }
+
     if (!this.editorGroup) {
       return false;
     }
