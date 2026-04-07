@@ -1,4 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { ToolFileAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { AGENT_CONFIGURATION_URI_PATTERN } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   MCPProgressNotificationType,
@@ -68,6 +69,17 @@ import _ from "lodash";
 import type z from "zod";
 
 const ABORT_SIGNAL_CANCEL_REASON = "CancelledFailure: CANCELLED";
+
+function isToolFileAuthRequiredEvent(
+  event: unknown
+): event is ToolFileAuthRequiredEvent {
+  return (
+    typeof event === "object" &&
+    event !== null &&
+    "type" in event &&
+    event.type === "tool_file_auth_required"
+  );
+}
 
 function parseAgentConfigurationUri(uri: string): Result<string, Error> {
   const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
@@ -523,23 +535,13 @@ const runAgent = async (
           action.generatedFiles.filter((f) => !f.hidden)
         );
         break;
-      } else if (event.type === "tool_approve_execution") {
-        // Collect this blocking event.
-        collectedBlockingEvents.push(event);
-
-        // If this is the last blocking event for the step, throw an error to break the agent
-        // loop until the user approves the execution.
-        if (event.isLastBlockingEventForStep) {
-          const blockedResponse = makeToolBlockedAwaitingInputResponse(
-            collectedBlockingEvents,
-            {
-              conversationId: conversation.sId,
-              userMessageId,
-            }
-          );
-          return await finalizeAndReturn(new Ok(blockedResponse.content));
-        }
-      } else if (event.type === "tool_personal_auth_required") {
+      } else if (
+        event.type === "tool_approve_execution" ||
+        event.type === "tool_personal_auth_required" ||
+        isToolFileAuthRequiredEvent(event)
+      ) {
+        // Collect blocking events until the child marks one as the last blocking event for this
+        // step, then stop the parent run_agent call and return a blocked response upstream.
         collectedBlockingEvents.push(event);
 
         if (event.isLastBlockingEventForStep) {
