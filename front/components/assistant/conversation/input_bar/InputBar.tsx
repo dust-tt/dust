@@ -13,7 +13,7 @@ import {
   useConversationTools,
 } from "@app/hooks/conversations";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { isSingleAgentInputEnabled } from "@app/lib/development";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
@@ -80,6 +80,8 @@ export const InputBar = React.memo(function InputBar({
   shouldUseDraft = true,
 }: InputBarProps) {
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
+  const { hasFeature } = useFeatureFlags();
+  const singleAgentInput = hasFeature("enable_steering");
 
   const [attachedNodes, setAttachedNodes] = useState<
     DataSourceViewContentNode[]
@@ -205,7 +207,6 @@ export const InputBar = React.memo(function InputBar({
     }
 
     const { mentions: rawMentions, markdown } = markdownAndMentions;
-    const singleAgentInput = isSingleAgentInputEnabled();
     // When single-agent input is enabled, inject the selected agent into mentions
     // since it's no longer in the editor as a mention node.
     const hasUserMention = rawMentions.some((m) => m.type === "user");

@@ -1,6 +1,6 @@
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
-import { isSingleAgentInputEnabled } from "@app/lib/development";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type {
   RichAgentMention,
   RichMention,
@@ -18,7 +18,8 @@ const useHandleMentions = (
   draftAgentRestoredRef?: MutableRefObject<boolean>
 ) => {
   const stickyMentionsTextContent = useRef<string | null>(null);
-  const singleAgentInput = isSingleAgentInputEnabled();
+  const { hasFeature } = useFeatureFlags();
+  const singleAgentInput = hasFeature("enable_steering");
   const { setSelectedSingleAgent } = useContext(InputBarContext);
 
   // In single agent mode, sync the selected agent from sticky mentions

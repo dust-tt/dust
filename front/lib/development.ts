@@ -8,21 +8,6 @@ export function showDebugTools(flags: WhitelistableFeature[]) {
   return isDevelopment() || flags.includes("show_debug_tools");
 }
 
-const SINGLE_AGENT_INPUT_KEY = "dust_single_agent_input";
-
-export function isSingleAgentInputEnabled(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-  return localStorage.getItem(SINGLE_AGENT_INPUT_KEY) === "true";
-}
-
-export function toggleSingleAgentInput(): boolean {
-  const next = !isSingleAgentInputEnabled();
-  localStorage.setItem(SINGLE_AGENT_INPUT_KEY, next ? "true" : "false");
-  return next;
-}
-
 export async function forceUserRole(
   user: UserType,
   owner: LightWorkspaceType,
