@@ -158,7 +158,7 @@ function isTransientHttpStatus(status: number): boolean {
 const DEFAULT_MAX_RECONNECT_ATTEMPTS = 10;
 const DEFAULT_RECONNECT_DELAY = 5000;
 
-type AgentEvent =
+export type AgentEvent =
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | AgentContextPrunedEvent
@@ -1036,8 +1036,8 @@ export class DustAPI {
     signal,
     options,
   }: {
-    conversation: ConversationPublicType;
-    agentMessage: AgentMessagePublicType;
+    conversation: Pick<ConversationPublicType, "sId">;
+    agentMessage: Pick<AgentMessagePublicType, "sId">;
     signal?: AbortSignal;
     options: {
       maxReconnectAttempts: number;

@@ -3,16 +3,11 @@ import { throttleWithRedis } from "@connectors/lib/throttle";
 import type { ChatStreamer, WebClient } from "@slack/web-api";
 import type { ChatAppendStreamArguments } from "@slack/web-api/dist/types/request/chat";
 
-// Single task id reused for every task so only the latest is visible.
-// Later, if we adapt the tool call output a bit further, we can use this
-// to show multiple tasks in a single plan block (see: https://docs.slack.dev/reference/block-kit/blocks/plan-block).
-const ACTIVE_TASK_ID = "active-task-id";
-
 export class SlackStreamHandler {
-  private streamer: ChatStreamer | undefined;
-  private hasTask = false;
+  private streamer: ChatStreamer;
   private stopped = false;
-  private channelId: string | undefined;
+  private channelId: string;
+  private slackMessageTs: string;
   private threadTs: string | undefined;
   messageTs: string | undefined;
 
@@ -22,23 +17,23 @@ export class SlackStreamHandler {
 
   constructor(
     private readonly slackClient: WebClient,
-    private readonly connectorId: number
-  ) {}
-
-  public start({
-    slackChannel,
-    slackMessageTs,
-    slackThreadTs,
-    slackTeamId,
-    slackUserId,
-  }: {
-    slackChannel: string;
-    slackMessageTs: string;
-    slackThreadTs?: string;
-    slackTeamId: string;
-    slackUserId?: string;
-  }) {
+    private readonly connectorId: number,
+    {
+      slackChannel,
+      slackMessageTs,
+      slackThreadTs,
+      slackTeamId,
+      slackUserId,
+    }: {
+      slackChannel: string;
+      slackMessageTs: string;
+      slackThreadTs?: string;
+      slackTeamId: string;
+      slackUserId: string;
+    }
+  ) {
     this.channelId = slackChannel;
+    this.slackMessageTs = slackMessageTs;
     this.threadTs = slackThreadTs;
     this.streamer = this.slackClient.chatStream({
       channel: slackChannel,
@@ -50,12 +45,9 @@ export class SlackStreamHandler {
   }
 
   async setThinking(status: string) {
-    if (!this.channelId || !this.threadTs) {
-      return;
-    }
     await this.slackClient.assistant.threads.setStatus({
       channel_id: this.channelId,
-      thread_ts: this.threadTs,
+      thread_ts: this.threadTs ?? this.slackMessageTs,
       status,
       loading_messages: ["Thinking..."],
     });
@@ -68,7 +60,7 @@ export class SlackStreamHandler {
       RATE_LIMITS["chat.appendStream"],
       `${this.connectorId}-chat-appendStream`,
       { canBeIgnored: false },
-      () => this.streamer?.append(payload) ?? Promise.resolve(undefined),
+      () => this.streamer.append(payload),
       {}
     );
     if (!this.messageTs && res?.ts) {
@@ -76,40 +68,15 @@ export class SlackStreamHandler {
     }
   }
 
-  async startTask(title: string) {
-    this.hasTask = true;
-    await this.append({
-      chunks: [
-        {
-          type: "task_update",
-          id: ACTIVE_TASK_ID,
-          title,
-          status: "in_progress",
-        },
-      ],
-    });
-  }
-
   async appendText(text: string) {
-    if (this.hasTask) {
-      this.hasTask = false;
-      await this.append({
-        chunks: [
-          {
-            type: "task_update",
-            id: ACTIVE_TASK_ID,
-            title: "Done",
-            status: "complete",
-          },
-        ],
-      });
-    }
     await this.append({ markdown_text: text });
   }
 
   async stop() {
-    this.hasTask = false;
     this.stopped = true;
-    await this.streamer?.stop();
+    const res = await this.streamer.stop();
+    if (!this.messageTs && res?.ts) {
+      this.messageTs = res.ts;
+    }
   }
 }

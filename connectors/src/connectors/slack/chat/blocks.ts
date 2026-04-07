@@ -331,6 +331,58 @@ export function makeErrorBlock(
   };
 }
 
+export type TaskCardStatus = "pending" | "in_progress" | "complete" | "error";
+
+export interface TaskCardState {
+  taskId: string;
+  title: string;
+  status: TaskCardStatus;
+}
+
+function makeTaskCardBlock(t: TaskCardState) {
+  return {
+    type: "task_card",
+    task_id: t.taskId,
+    title: t.title,
+    status: t.status,
+  };
+}
+
+export function makePlanMessage({
+  planTitle,
+  tasks,
+  conversationUrl,
+  assistantName,
+  workspaceId,
+}: {
+  planTitle: string;
+  tasks: TaskCardState[];
+  conversationUrl: string | null;
+  assistantName: string;
+  workspaceId: string;
+}) {
+  return {
+    blocks: [
+      {
+        type: "plan",
+        block_id: "agent-plan",
+        title: planTitle,
+        tasks: tasks.map(makeTaskCardBlock),
+      },
+      makeDividerBlock(),
+      makeFooterBlock({
+        state: "thinking",
+        assistantName,
+        conversationUrl,
+        workspaceId,
+      }),
+    ],
+    text: planTitle,
+    mrkdwn: true,
+    unfurl_links: false,
+  };
+}
+
 /**
  * Creates Slack blocks with buttons for validating a tool execution.
  * This is used when an agent sends a tool_approve_execution event to Slack.
