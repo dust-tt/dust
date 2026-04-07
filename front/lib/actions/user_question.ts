@@ -3,6 +3,9 @@ import type { UserQuestion, UserQuestionAnswer } from "@app/lib/actions/types";
 export const USER_QUESTION_DECLINED_MESSAGE =
   "User declined to answer. Proceed with your best judgment.";
 
+const ANSWER_PREFIX = 'User has answered your question: "';
+const ANSWER_SUFFIX =
+  "\". You can now continue with the user's answers in mind.";
 const CUSTOM_ANSWER_PREFIX = "Other: ";
 
 export function getUserQuestionSelections(
@@ -25,39 +28,36 @@ export function formatUserQuestionAnswer(
   question: string,
   selections: string[]
 ): string {
-  return (
-    `User has answered your questions: "${question}"="${selections.join(", ")}". ` +
-    `You can now continue with the user's answers in mind`
-  );
+  return `${ANSWER_PREFIX}${question}"="${selections.join(", ")}${ANSWER_SUFFIX}`;
 }
 
-export function parseUserQuestionAnswer(outputText: string): {
+export function parseUserQuestionAnswer(
+  outputText: string,
+  question: string
+): {
   selectedLabels: string[];
   customAnswer: string | null;
   isDeclined: boolean;
 } {
-  let  selectedLabels: string[] = [];
+  const selectedLabels: string[] = [];
   let customAnswer: string | null = null;
-  let isDeclined = true;
-  
+  let isDeclined = false;
+
   if (outputText === USER_QUESTION_DECLINED_MESSAGE) {
-    isDeclined = true;
+    return { selectedLabels, customAnswer, isDeclined: true };
+  }
+
+  const prefix = `${ANSWER_PREFIX}${question}"="`;
+  if (!outputText.startsWith(prefix) || !outputText.endsWith(ANSWER_SUFFIX)) {
     return { selectedLabels, customAnswer, isDeclined };
   }
 
-  const selectionsStart = outputText.indexOf('"="');
-  if (selectionsStart === -1) {
-    return { selectedLabels, customAnswer, isDeclined };
-  }
-  const start = selectionsStart + 3;
-  const end = outputText.indexOf('".', start);
-  if (end === -1) {
-    return { selectedLabels, customAnswer, isDeclined };
-  }
+  const selectionsText = outputText.slice(
+    prefix.length,
+    outputText.length - ANSWER_SUFFIX.length
+  );
 
-  const parts = outputText.slice(start, end).split(", ");
-
-  for (const part of parts) {
+  for (const part of selectionsText.split(", ")) {
     if (part.startsWith(CUSTOM_ANSWER_PREFIX)) {
       customAnswer = part;
     } else {
