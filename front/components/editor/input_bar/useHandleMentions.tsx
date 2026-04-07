@@ -1,53 +1,110 @@
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
   RichAgentMention,
   RichMention,
 } from "@app/types/assistant/mentions";
-import { isRichAgentMention } from "@app/types/assistant/mentions";
-import type { MutableRefObject } from "react";
+import {
+  isRichAgentMention,
+  toRichAgentMentionType,
+} from "@app/types/assistant/mentions";
 import { useContext, useEffect, useRef } from "react";
 
-const useHandleMentions = (
-  editorService: EditorService,
-  stickyMentions: RichMention[] | undefined,
-  selectedAgent: RichAgentMention | null,
-  disableAutoFocus: boolean,
-  pendingInputText?: string | null,
-  draftAgentRestoredRef?: MutableRefObject<boolean>
-) => {
+interface UseHandleMentionsOptions {
+  allAgents: LightAgentConfigurationType[];
+  conversation?: ConversationWithoutContentType;
+  disableAutoFocus: boolean;
+  editorService: EditorService;
+  getDraft: () => {
+    text: string;
+    agentMention?: RichAgentMention | null;
+  } | null;
+  isAgentBuilder: boolean;
+  pendingInputText?: string | null;
+  selectedAgent: RichAgentMention | null;
+  stickyMentions?: RichMention[];
+}
+
+const useHandleMentions = ({
+  allAgents,
+  conversation,
+  disableAutoFocus,
+  editorService,
+  getDraft,
+  isAgentBuilder,
+  pendingInputText,
+  selectedAgent,
+  stickyMentions,
+}: UseHandleMentionsOptions) => {
   const stickyMentionsTextContent = useRef<string | null>(null);
   const { hasFeature } = useFeatureFlags();
   const singleAgentInput = hasFeature("enable_steering");
   const { setSelectedSingleAgent } = useContext(InputBarContext);
 
-  // In single agent mode, sync the selected agent from sticky mentions
-  // so the agent picker button shows the correct agent on existing conversations.
-  // Only sync when sticky mentions are provided (existing conversations); skip for
-  // new conversations (undefined stickyMentions) to avoid overriding the auto-selected default.
-  // Also skip when the draft restore already set the agent to avoid overwriting the user's draft.
+  // Priority: draft > sticky mentions > @dust fallback.
+  // Also resets when the conversation changes so stale state doesn't leak.
+  const prevConversationIdRef = useRef(conversation?.sId ?? null);
+
   useEffect(() => {
-    if (!singleAgentInput || !stickyMentions) {
+    if (!singleAgentInput) {
       return;
     }
-    // Skip if the draft restore effect already set the selected agent.
-    if (draftAgentRestoredRef?.current) {
+
+    const currentId = conversation?.sId ?? null;
+    if (currentId !== prevConversationIdRef.current) {
+      prevConversationIdRef.current = currentId;
+      setSelectedSingleAgent(null);
+    }
+
+    // Agent builder: wait for the draft agent to arrive via stickyMentions.
+    if (isAgentBuilder && (!stickyMentions || stickyMentions.length === 0)) {
       return;
     }
-    const agentMention = stickyMentions.find(isRichAgentMention) ?? null;
-    if (agentMention) {
-      setSelectedSingleAgent(agentMention);
+
+    // 1. Draft has a saved agent → use it.
+    const draft = getDraft();
+    if (draft?.agentMention) {
+      setSelectedSingleAgent(draft.agentMention);
+      return;
+    }
+
+    // 2. Sticky mentions contain an agent (existing conversation / agent builder) → use it.
+    // stickyMentions carries both the agent builder's draft agent
+    // and the last agent mention resolved from conversation history (computed in AgentInputBar).
+    if (stickyMentions) {
+      const agentMention = stickyMentions.find(isRichAgentMention) ?? null;
+      if (agentMention) {
+        setSelectedSingleAgent(agentMention);
+        return;
+      }
+    }
+
+    // 3. New conversation (not agent builder) → fall back to @dust.
+    if (!conversation && !isAgentBuilder) {
+      const dustAgent = allAgents.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST);
+      if (dustAgent) {
+        setSelectedSingleAgent(toRichAgentMentionType(dustAgent));
+      }
     }
   }, [
     singleAgentInput,
+    isAgentBuilder,
+    conversation,
     stickyMentions,
+    allAgents,
+    getDraft,
     setSelectedSingleAgent,
-    draftAgentRestoredRef,
   ]);
 
+  // In single-agent mode, agent mentions are handled via the agent picker button,
+  // not inserted into the editor. Sticky mentions only contain agent mentions in
+  // single-agent mode, so we skip editor insertion entirely.
   useEffect(() => {
-    if (!stickyMentions || stickyMentions.length === 0) {
+    if (singleAgentInput || !stickyMentions || stickyMentions.length === 0) {
       return;
     }
 
@@ -61,45 +118,33 @@ const useHandleMentions = (
     // 2. The editor contains only the sticky mention from a previously selected agent.
     // This ensures that sticky mentions are maintained but not duplicated.
     if (editorIsEmpty || onlyContainsPreviousStickyMention) {
-      const mentionsToInsert: RichMention[] = [];
-
-      if (singleAgentInput) {
-        // Only insert user mentions into the editor; agent mentions are handled via singleAgentSelection.
-        mentionsToInsert.push(
-          ...stickyMentions.filter((m) => m.type !== "agent")
-        );
-      } else {
-        mentionsToInsert.push(...stickyMentions);
-      }
-
-      if (mentionsToInsert.length !== 0) {
-        queueMicrotask(() => {
-          editorService.resetWithMentions(mentionsToInsert, disableAutoFocus);
-          stickyMentionsTextContent.current =
-            editorService.getTrimmedText() ?? null;
-        });
-      }
+      queueMicrotask(() => {
+        editorService.resetWithMentions(stickyMentions, disableAutoFocus);
+        stickyMentionsTextContent.current =
+          editorService.getTrimmedText() ?? null;
+      });
     }
   }, [editorService, stickyMentions, disableAutoFocus, singleAgentInput]);
 
   useEffect(() => {
     if (selectedAgent) {
       if (singleAgentInput) {
+        // @TODO we should handle this in each event handler and not inside the useEffect
         setSelectedSingleAgent(selectedAgent);
         return;
       }
       if (!editorService.hasMention(selectedAgent)) {
-        // Schedule insertion to avoid synchronous editor updates during React render/effects.
         queueMicrotask(() => {
           editorService.insertMention(selectedAgent);
-          // If there's pending input text (e.g. from a butler suggestion), insert it after the mention.
           if (pendingInputText) {
             editorService.insertText(pendingInputText);
           }
         });
       } else if (pendingInputText) {
+        // Schedule insertion to avoid synchronous editor updates during React render/effects.
         queueMicrotask(() => editorService.insertText(pendingInputText));
       }
+      // If there's pending input text (e.g. from a butler suggestion), insert it after the mention.
     } else if (pendingInputText) {
       queueMicrotask(() => editorService.insertText(pendingInputText));
     }

@@ -131,6 +131,7 @@ function PreviewContent({
           <div className="flex-shrink-0 px-5 py-4">
             <InputBar
               isSubmitting={isSavingDraftAgent}
+              isAgentBuilder
               owner={owner}
               user={user}
               onSubmit={createConversation}
