@@ -68,6 +68,7 @@ import {
   cacheWithRedis,
   INTERNAL_MIME_TYPES,
   isDevelopment,
+  normalizeError,
 } from "@connectors/types";
 import type { LoggerInterface } from "@dust-tt/client";
 import { removeNulls } from "@dust-tt/client";
@@ -879,7 +880,18 @@ export async function syncDeltaForRootNodesInDrive({
       "No delta link for root node, populating delta"
     );
     const internalId = node.internalId;
-    await populateDeltas(connectorId, [internalId]);
+    try {
+      await populateDeltas(connectorId, [internalId]);
+    } catch (error) {
+      if (isItemNotFoundError(error) || isMalformedDriveError(error)) {
+        logger.info(
+          { error: normalizeError(error).message, driveId },
+          "Drive not found or malformed during delta population, skipping"
+        );
+        return;
+      }
+      throw error;
+    }
     node =
       (await MicrosoftNodeResource.fetchByInternalId(
         connectorId,
@@ -891,12 +903,26 @@ export async function syncDeltaForRootNodesInDrive({
       );
     }
   }
-  const { results, deltaLink } = await getDeltaData({
-    logger,
-    client,
-    node,
-    heartbeat,
-  });
+
+  let results: DriveItem[];
+  let deltaLink: string;
+  try {
+    ({ results, deltaLink } = await getDeltaData({
+      logger,
+      client,
+      node,
+      heartbeat,
+    }));
+  } catch (error) {
+    if (isItemNotFoundError(error) || isMalformedDriveError(error)) {
+      logger.info(
+        { error: normalizeError(error).message, driveId },
+        "Drive not found or malformed, skipping"
+      );
+      return;
+    }
+    throw error;
+  }
   const uniqueChangedItems = removeAllButLastOccurences(results);
 
   const sortedChangedItems: DriveItem[] = [];
@@ -1210,7 +1236,18 @@ export async function fetchDeltaForRootNodesInDrive({
       "No delta link for root node, populating delta"
     );
     const internalId = node.internalId;
-    await populateDeltas(connectorId, [internalId]);
+    try {
+      await populateDeltas(connectorId, [internalId]);
+    } catch (error) {
+      if (isItemNotFoundError(error) || isMalformedDriveError(error)) {
+        logger.info(
+          { error: normalizeError(error).message, driveId },
+          "Drive not found or malformed during delta population, skipping"
+        );
+        return { gcsFilePath: null };
+      }
+      throw error;
+    }
     node =
       (await MicrosoftNodeResource.fetchByInternalId(
         connectorId,
