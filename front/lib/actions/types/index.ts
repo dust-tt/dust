@@ -59,9 +59,6 @@ export const UserQuestionAnswerSchema = z.object({
 
 export type UserQuestionAnswer = z.infer<typeof UserQuestionAnswerSchema>;
 
-export const USER_QUESTION_DECLINED_MESSAGE =
-  "User declined to answer. Proceed with your best judgment.";
-
 const UserQuestionResumeStateSchema = z.object({
   type: z.literal("user_question"),
   question: UserQuestionSchema,
