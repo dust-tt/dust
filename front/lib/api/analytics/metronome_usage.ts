@@ -15,12 +15,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
-const METRONOME_USAGE_GROUP_BY_KEYS = [
-  "user",
-  "model",
-  "tool",
-  "origin",
-] as const;
+const METRONOME_USAGE_GROUP_BY_KEYS = ["user", "model", "origin"] as const;
 
 export type MetronomeUsageGroupByType =
   (typeof METRONOME_USAGE_GROUP_BY_KEYS)[number];
@@ -60,17 +55,12 @@ export interface GetMetronomeUsageResponse {
 const GROUP_BY_TO_EVENT_PROPERTY: Record<MetronomeUsageGroupByType, string> = {
   user: "user_id",
   model: "model_id",
-  tool: "tool_name",
   origin: "origin",
 };
 
-const GROUP_BY_TO_METRICS: Record<
-  MetronomeUsageGroupByType,
-  "llm" | "tool" | "both"
-> = {
+const GROUP_BY_TO_METRICS: Record<MetronomeUsageGroupByType, "llm" | "both"> = {
   user: "both",
   model: "llm",
-  tool: "tool",
   origin: "both",
 };
 
@@ -304,7 +294,7 @@ export async function handleMetronomeUsageRequest(
             : null;
 
         const toolGroupedPromise =
-          metricTarget === "tool" || metricTarget === "both"
+          metricTarget === "both"
             ? listMetronomeUsageWithGroups({
                 ...groupedQueryBase,
                 billableMetricId: toolMetricId,
@@ -488,7 +478,6 @@ async function resolveGroupLabels(
       break;
     }
     case "model":
-    case "tool":
     case "origin":
       for (const key of groupKeys) {
         labelMap.set(key, key);
