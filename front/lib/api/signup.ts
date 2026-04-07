@@ -1,7 +1,7 @@
 import {
-  buildAuditLogTarget,
-  emitAuditLogEventDirect,
-} from "@app/lib/api/audit/workos_audit";
+  createAndTrackMembership,
+  updateMembershipRoleAndTrack,
+} from "@app/lib/api/membership";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { AuthFlowError, SSOEnforcedError } from "@app/lib/iam/errors";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -11,77 +11,15 @@ import {
 } from "@app/lib/iam/workspaces";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { ServerSideTracking } from "@app/lib/tracking/server";
 import type { UTMParams } from "@app/lib/utils/utm";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
-import type { MembershipOriginType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import type { ActiveRoleType, LightWorkspaceType } from "@app/types/user";
-
-export async function createAndLogMembership({
-  user,
-  workspace,
-  role,
-  origin,
-}: {
-  user: UserResource;
-  workspace: WorkspaceResource | WorkspaceModel | LightWorkspaceType;
-  role: ActiveRoleType;
-  origin: MembershipOriginType;
-}) {
-  const w =
-    workspace instanceof WorkspaceModel ||
-    workspace instanceof WorkspaceResource
-      ? renderLightWorkspaceType({ workspace })
-      : workspace;
-  const m = await MembershipResource.createMembership({
-    role,
-    user,
-    workspace: w,
-    origin,
-  });
-
-  void ServerSideTracking.trackCreateMembership({
-    user: user.toJSON(),
-    workspace: w,
-    role: m.role,
-    startAt: m.startAt,
-  });
-
-  void emitAuditLogEventDirect({
-    workspace: w,
-    action: "membership.created",
-    actor: {
-      type: "user",
-      id: user.sId,
-      name: user.fullName() ?? "unknown",
-    },
-    targets: [
-      buildAuditLogTarget("workspace", w),
-      buildAuditLogTarget("user", {
-        sId: user.sId,
-        name: user.fullName() ?? "unknown",
-      }),
-    ],
-    context: { location: "internal" },
-    metadata: {
-      role,
-      origin,
-    },
-  });
-
-  // Update workspace subscription usage when a new user joins.
-  await launchUpdateUsageWorkflow({ workspaceId: workspace.sId });
-
-  return m;
-}
+import type { LightWorkspaceType } from "@app/types/user";
 
 // `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as all the
 // checks (decoding the JWT) have been run before. Simply create the membership if it does not
@@ -144,7 +82,7 @@ export async function handleMembershipInvite({
   });
 
   if (m?.isRevoked()) {
-    const updateRes = await MembershipResource.updateMembershipRole({
+    const updateRes = await updateMembershipRoleAndTrack({
       user,
       workspace: lightWorkspace,
       newRole: membershipInvite.initialRole,
@@ -160,17 +98,10 @@ export async function handleMembershipInvite({
         )
       );
     }
-
-    void ServerSideTracking.trackUpdateMembershipRole({
-      user: user.toJSON(),
-      workspace: lightWorkspace,
-      previousRole: updateRes.value.previousRole,
-      role: updateRes.value.newRole,
-    });
   }
 
   if (!m) {
-    await createAndLogMembership({
+    await createAndTrackMembership({
       workspace: lightWorkspace,
       user,
       role: membershipInvite.initialRole,
@@ -226,7 +157,7 @@ export async function handleEnterpriseSignUpFlow(
   // Initialize membership if it's not present or has been previously revoked. In the case of
   // enterprise connections, Dust access is overridden by the identity management service.
   if (!membership || membership.isRevoked()) {
-    await createAndLogMembership({
+    await createAndTrackMembership({
       workspace: lightWorkspace,
       user,
       role: pendingMembershipInvitation?.initialRole ?? "user",
@@ -339,7 +270,7 @@ export async function handleRegularSignupFlow(
     }
 
     if (!m) {
-      await createAndLogMembership({
+      await createAndTrackMembership({
         workspace: lightWorkspace,
         user,
         role: "user",
@@ -351,7 +282,7 @@ export async function handleRegularSignupFlow(
   } else if (!targetWorkspace && activeMemberships.length === 0) {
     const workspace = await createWorkspace(session, utmParams);
     const lightWorkspace = renderLightWorkspaceType({ workspace });
-    await createAndLogMembership({
+    await createAndTrackMembership({
       workspace: lightWorkspace,
       user,
       role: "admin",

@@ -12,6 +12,8 @@
  * Without --execute, runs in dry-run mode (logs what would happen, no changes).
  */
 
+import { getMetronomeClient } from "@app/lib/metronome/client";
+import { provisionSeatsForContract } from "@app/lib/metronome/seats";
 import {
   LEGACY_BUSINESS_39_PACKAGE_ALIAS,
   LEGACY_PRO_29_PACKAGE_ALIAS,
@@ -26,7 +28,6 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import type { LightWorkspaceType } from "@app/types/user";
-import Metronome from "@metronome/sdk";
 import { makeScript } from "./helpers";
 import { runOnAllWorkspaces } from "./workspace_helpers";
 
@@ -34,10 +35,6 @@ const plansCodeToPackageAlias: Record<string, string> = {
   [PRO_PLAN_SEAT_29_CODE]: LEGACY_PRO_29_PACKAGE_ALIAS,
   [PRO_PLAN_SEAT_39_CODE]: LEGACY_BUSINESS_39_PACKAGE_ALIAS,
 };
-
-const client = new Metronome({
-  bearerToken: process.env.METRONOME_API_KEY,
-});
 
 // Map from old alias → current alias.
 const ALIAS_MIGRATION: Record<string, string> = {
@@ -54,6 +51,7 @@ async function getPackageInfo(): Promise<{
   aliasToPackageId: Record<string, string>;
   packageIdToAlias: Record<string, string>;
 }> {
+  const client = getMetronomeClient();
   const aliasToPackageId: Record<string, string> = {};
   const packageIdToAlias: Record<string, string> = {};
 
@@ -141,6 +139,7 @@ async function migrateWorkspace(
   },
   packageAliasFilter?: string
 ): Promise<void> {
+  const client = getMetronomeClient();
   const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
   if (!workspaceResource?.metronomeCustomerId) {
     return; // No Metronome customer — skip.
@@ -221,6 +220,14 @@ async function migrateWorkspace(
       },
       "New contract created (aligned to Stripe subscription start)"
     );
+
+    // Provision seats for all existing members.
+    await provisionSeatsForContract({
+      metronomeCustomerId,
+      contractId: newContractId,
+      workspace,
+      startingAt: subInfo.startDate,
+    });
 
     // Update metronomeContractId on the subscription.
     await SubscriptionResource.updateMetronomeContractId(
@@ -350,6 +357,14 @@ async function migrateWorkspace(
       "New contract created (supersedes old, credits/commits rolled over)"
     );
 
+    // Provision seats for all existing members on the new contract.
+    await provisionSeatsForContract({
+      metronomeCustomerId,
+      contractId: newContractId,
+      workspace,
+      startingAt: contract.starting_at,
+    });
+
     // Update metronomeContractId on the active subscription.
     const activeSubscription =
       await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
@@ -393,11 +408,6 @@ makeScript(
     },
   },
   async (args, logger) => {
-    if (!process.env.METRONOME_API_KEY) {
-      logger.error("METRONOME_API_KEY env var required");
-      return;
-    }
-
     const packageAliasFilter = args.packageAlias;
     if (packageAliasFilter) {
       logger.info(

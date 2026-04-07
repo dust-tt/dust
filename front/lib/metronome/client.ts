@@ -169,13 +169,15 @@ export async function createMetronomeContract({
   metronomeCustomerId: string;
   packageAlias: string;
   uniquenessKey: string;
-}): Promise<Result<{ contractId: string }, Error>> {
+}): Promise<Result<{ contractId: string; startingAt: string }, Error>> {
+  // Metronome requires starting_at on an hour boundary — round down to current hour.
+  const startingAt = floorToHourISO(new Date());
+
   try {
     const response = await getMetronomeClient().v1.contracts.create({
       customer_id: metronomeCustomerId,
       package_alias: packageAlias,
-      // Metronome requires starting_at on an hour boundary — round down to current hour.
-      starting_at: floorToHourISO(new Date()),
+      starting_at: startingAt,
       uniqueness_key: uniquenessKey,
     });
 
@@ -187,13 +189,16 @@ export async function createMetronomeContract({
       },
       "[Metronome] Contract created"
     );
-    return new Ok({ contractId: response.data.id });
+    return new Ok({ contractId: response.data.id, startingAt });
   } catch (err) {
     if (err instanceof ConflictError) {
       const existingContract =
         await getMetronomeActiveContract(metronomeCustomerId);
       if (existingContract.isOk() && existingContract.value) {
-        return new Ok({ contractId: existingContract.value.contractId });
+        return new Ok({
+          contractId: existingContract.value.contractId,
+          startingAt,
+        });
       }
     }
 
@@ -204,61 +209,6 @@ export async function createMetronomeContract({
     );
     return new Err(error);
   }
-}
-
-/**
- * Ensure a Metronome customer and contract exist for a workspace.
- * Creates the customer if missing, then creates a contract via the package alias.
- * Used from both Stripe webhook (checkout) and Poke (admin upgrade).
- */
-export async function provisionMetronomeCustomerAndContract({
-  workspaceId,
-  workspaceName,
-  stripeCustomerId,
-  packageAlias,
-  uniquenessKey,
-}: {
-  workspaceId: string;
-  workspaceName: string;
-  stripeCustomerId: string;
-  packageAlias: string;
-  uniquenessKey: string;
-}): Promise<
-  Result<{ metronomeCustomerId: string; metronomeContractId: string }, Error>
-> {
-  // Find or create customer.
-  let metronomeCustomerId: string | null = null;
-
-  const findResult = await findMetronomeCustomerByAlias(workspaceId);
-  if (findResult.isOk()) {
-    metronomeCustomerId = findResult.value;
-  }
-
-  if (!metronomeCustomerId) {
-    const createResult = await createMetronomeCustomer({
-      workspaceId,
-      workspaceName,
-      stripeCustomerId,
-    });
-    if (createResult.isErr()) {
-      return new Err(createResult.error);
-    }
-    metronomeCustomerId = createResult.value.metronomeCustomerId;
-  }
-
-  const contractResult = await createMetronomeContract({
-    metronomeCustomerId,
-    packageAlias,
-    uniquenessKey,
-  });
-  if (contractResult.isErr()) {
-    return new Err(contractResult.error);
-  }
-
-  return new Ok({
-    metronomeCustomerId,
-    metronomeContractId: contractResult.value.contractId,
-  });
 }
 
 /**
@@ -311,27 +261,26 @@ export async function getMetronomeActiveContract(
 }
 
 /**
- * End (cancel) a Metronome contract.
- * Pass endingBefore to end at a specific time, or omit to make the contract open-ended.
+ * End (cancel) a Metronome contract at the next hour boundary.
+ * Metronome requires ending_before on an hour boundary; we ceil to avoid
+ * dropping usage in the current partial hour.
  */
 export async function endMetronomeContract({
   metronomeCustomerId,
   contractId,
-  endingBefore,
 }: {
   metronomeCustomerId: string;
   contractId: string;
-  endingBefore?: string;
 }): Promise<Result<void, Error>> {
   try {
     await getMetronomeClient().v1.contracts.updateEndDate({
       customer_id: metronomeCustomerId,
       contract_id: contractId,
-      ...(endingBefore ? { ending_before: endingBefore } : {}),
+      ending_before: ceilToHourISO(new Date()),
     });
 
     logger.info(
-      { metronomeCustomerId, contractId, endingBefore },
+      { metronomeCustomerId, contractId },
       "[Metronome] Contract ended"
     );
     return new Ok(undefined);
@@ -404,12 +353,15 @@ export async function editMetronomeContractSeats({
   metronomeCustomerId,
   contractId,
   edits,
+  startingAt,
 }: {
   metronomeCustomerId: string;
   contractId: string;
   edits: SeatSubscriptionEdit[];
+  startingAt?: string;
 }): Promise<Result<void, Error>> {
-  const now = new Date().toISOString();
+  // Metronome requires starting_at on an hour boundary — round down to current hour.
+  const now = startingAt ?? floorToHourISO(new Date());
 
   try {
     await getMetronomeClient().v2.contracts.edit({

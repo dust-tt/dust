@@ -27,8 +27,8 @@ import { handleMetronomeSetupCheckout } from "@app/lib/metronome/checkout";
 import {
   createMetronomeCredit,
   getMetronomeActiveContract,
-  provisionMetronomeCustomerAndContract,
 } from "@app/lib/metronome/client";
+import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
@@ -126,8 +126,7 @@ async function shadowProvisionMetronome({
 }): Promise<void> {
   try {
     const result = await provisionMetronomeCustomerAndContract({
-      workspaceId: workspace.sId,
-      workspaceName: workspace.name,
+      workspace: renderLightWorkspaceType({ workspace }),
       stripeCustomerId,
       packageAlias: metronomePackageAlias,
       uniquenessKey: sessionId,
