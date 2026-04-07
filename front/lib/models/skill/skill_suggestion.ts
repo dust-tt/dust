@@ -112,6 +112,11 @@ SkillSuggestionModel.init(
         concurrently: true,
       },
       {
+        name: "idx_skill_suggestions_source_conversation_id",
+        fields: ["sourceConversationId"],
+        concurrently: true,
+      },
+      {
         name: "idx_skill_suggestions_group",
         fields: ["groupId"],
         concurrently: true,

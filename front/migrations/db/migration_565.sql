@@ -33,6 +33,8 @@ CREATE INDEX CONCURRENTLY "skill_suggestions_workspace_skill_config_kind"
     ON "skill_suggestions" ("skillConfigurationId");
 CREATE INDEX CONCURRENTLY "skill_suggestions_workspace_skill_version"
     ON "skill_suggestions" ("skillVersionId");
+CREATE INDEX CONCURRENTLY "idx_skill_suggestions_source_conversation_id"
+    ON "skill_suggestions" ("sourceConversationId");
 CREATE INDEX CONCURRENTLY "idx_skill_suggestions_group"
     ON "skill_suggestions" ("groupId")
     WHERE "groupId" IS NOT NULL;
