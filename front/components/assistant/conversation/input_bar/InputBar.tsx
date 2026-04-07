@@ -34,7 +34,13 @@ import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 // biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
-import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
@@ -137,8 +143,9 @@ export const InputBar = React.memo(function InputBar({
     if (!singleAgentInput || !selectedSingleAgent) {
       return null;
     }
-    const generatingMessages =
-      getConversationGeneratingMessages(conversation?.sId ?? "");
+    const generatingMessages = getConversationGeneratingMessages(
+      conversation?.sId ?? ""
+    );
     const blockingAgentId = generatingMessages.find(
       (gm) => gm.agentId && gm.agentId !== selectedSingleAgent.id
     )?.agentId;
