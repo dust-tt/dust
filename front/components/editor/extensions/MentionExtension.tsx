@@ -1,6 +1,7 @@
 import { MentionComponent } from "@app/components/editor/input_bar/MentionComponent";
 import { clientFetch } from "@app/lib/egress/client";
 import {
+  AGENT_MENTION_REGEX,
   AGENT_MENTION_REGEX_BEGINNING,
   USER_MENTION_REGEX_BEGINNING,
 } from "@app/lib/mentions/format";
@@ -21,6 +22,7 @@ const LEGACY_TYPE_ATTRIBUTE = "data-type";
 
 interface MentionExtensionOptions extends MentionOptions {
   owner: WorkspaceType;
+  onFirstAgentMentionPaste?: (agentId: string) => void;
 }
 
 export const MentionExtension = Mention.extend<MentionExtensionOptions>({
@@ -28,6 +30,7 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
     return {
       ...this.parent?.(),
       owner: {} as WorkspaceType,
+      onFirstAgentMentionPaste: undefined,
     } as MentionExtensionOptions;
   },
 
@@ -159,7 +162,7 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
   },
 
   addProseMirrorPlugins(this) {
-    const { owner } = this.options;
+    const { owner, onFirstAgentMentionPaste } = this.options;
     const editor = this.editor;
     const markdownManager = editor.markdown!; // we know it exists because we added the markdown plugin
 
@@ -170,8 +173,28 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
           // Get text from the slice after TipTap processing.
           const text = slice.content.textBetween(0, slice.content.size, "\n");
 
-          // Only process if text contains @.
-          if (!text.includes("@")) {
+          // In single-agent mode, check if the slice has agent mention nodes
+          // (rich HTML paste). If so, route the first to the picker — then fall
+          // through to parseMentionsOnBackend which will strip them from the
+          // serialized markdown before inserting.
+          let richHtmlAgentId: string | null = null;
+          if (onFirstAgentMentionPaste) {
+            slice.content.descendants((node) => {
+              if (
+                !richHtmlAgentId &&
+                node.type.name === "mention" &&
+                node.attrs.type === "agent"
+              ) {
+                richHtmlAgentId = node.attrs.id;
+              }
+            });
+            if (richHtmlAgentId) {
+              onFirstAgentMentionPaste(richHtmlAgentId);
+            }
+          }
+
+          // Only process if text contains @ or we have agent mention nodes to strip.
+          if (!text.includes("@") && !richHtmlAgentId) {
             return false;
           }
 
@@ -213,16 +236,36 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
           // Send to backend to parse mentions.
           parseMentionsOnBackend(markdown, owner.sId)
             .then((processedMarkdown: string) => {
-              // Use Tiptap's insertContent with JSON structure.
-              // This uses Tiptap's built-in content parsing and validation.
-              editor
-                .chain()
-                .focus()
-                .deleteRange({ from, to })
-                .insertContentAt(from, processedMarkdown, {
+              let contentToInsert = processedMarkdown;
+
+              // In single-agent mode, strip all agent mentions from the pasted
+              // content and route the first one to the picker (unless we already
+              // routed it from the rich-HTML slice check above).
+              if (onFirstAgentMentionPaste) {
+                let markdownAgentId: string | null = null;
+                contentToInsert = processedMarkdown
+                  .replaceAll(
+                    AGENT_MENTION_REGEX,
+                    (_match, _label, agentId) => {
+                      if (!markdownAgentId) {
+                        markdownAgentId = agentId;
+                      }
+                      return "";
+                    }
+                  )
+                  .trim();
+                if (markdownAgentId && !richHtmlAgentId) {
+                  onFirstAgentMentionPaste(markdownAgentId);
+                }
+              }
+
+              const chain = editor.chain().focus().deleteRange({ from, to });
+              if (contentToInsert) {
+                chain.insertContentAt(from, contentToInsert, {
                   contentType: "markdown",
-                })
-                .run();
+                });
+              }
+              chain.run();
             })
             .catch((error: unknown) => {
               logger.error("Failed to parse mentions:", error);

@@ -411,6 +411,14 @@ const InputBarContainer = ({
     spaceId: space?.sId,
     onInlineText: handleInlineText,
     shouldSuggestAgentRef: singleAgentInput ? shouldSuggestAgentRef : undefined,
+    onFirstAgentMentionPaste: singleAgentInput
+      ? (agentId: string) => {
+          const agent = agentsBySId.get(agentId);
+          if (agent) {
+            setSelectedSingleAgent(toRichAgentMentionType(agent));
+          }
+        }
+      : undefined,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
       let inserted = false;
