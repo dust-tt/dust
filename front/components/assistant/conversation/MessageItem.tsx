@@ -159,6 +159,15 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return false;
     }, [data, methods.data]);
 
+    // Hide the user message time header when it follows a created or gracefully stopped agent
+    // message (steering flow) to save vertical space.
+    const isPreviousAgentMessageSteered =
+      prevData !== null &&
+      isUserMessage(data) &&
+      isMessageTemporayState(prevData) &&
+      (prevData.status === "gracefully_stopped" ||
+        prevData.status === "created");
+
     const triggeringUser = useMemo((): UserType | null => {
       if (isMessageTemporayState(data)) {
         const parentMessageId = data.parentMessageId;
@@ -203,7 +212,9 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               citations={citations}
               conversationId={context.conversation.sId}
               currentUserId={context.user.sId}
-              isFirstInGroup={!isPreviousMessageSameSender}
+              isFirstInGroup={
+                !isPreviousMessageSameSender && !isPreviousAgentMessageSteered
+              }
               isLastMessage={!nextData}
               message={data}
               owner={context.owner}
