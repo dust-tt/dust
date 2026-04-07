@@ -21,3 +21,13 @@ export function isMembershipOriginType(
 ): value is MembershipOriginType {
   return MEMBERSHIP_ORIGIN_TYPES.includes(value as MembershipOriginType);
 }
+
+export const MEMBERSHIP_SEAT_TYPES = ["free", "pro", "max"] as const;
+
+export type MembershipSeatType = (typeof MEMBERSHIP_SEAT_TYPES)[number];
+
+export function isMembershipSeatType(
+  value: unknown
+): value is MembershipSeatType {
+  return MEMBERSHIP_SEAT_TYPES.includes(value as MembershipSeatType);
+}
