@@ -9,6 +9,7 @@ import {
 import type { MetronomeBalance } from "@app/lib/metronome/types";
 import { METRONOME_CENTS_TO_MICRO_USD } from "@app/lib/metronome/types";
 import { UserResource } from "@app/lib/resources/user_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -277,14 +278,6 @@ export async function handleMetronomeUsageRequest(
           groupKey: [eventProperty],
         };
 
-        const totalPromise = listMetronomeUsage({
-          customerIds: [metronomeCustomerId],
-          billableMetricIds: [llmMetricId, toolMetricId],
-          startingOn,
-          endingBefore,
-          windowSize,
-        });
-
         const llmGroupedPromise =
           metricTarget === "llm" || metricTarget === "both"
             ? listMetronomeUsageWithGroups({
@@ -301,29 +294,10 @@ export async function handleMetronomeUsageRequest(
               })
             : null;
 
-        const [totalResult, llmGroupedResult, toolGroupedResult] =
-          await Promise.all([
-            totalPromise,
-            llmGroupedPromise,
-            toolGroupedPromise,
-          ]);
-
-        if (totalResult.isErr()) {
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: `Failed to retrieve Metronome usage totals: ${totalResult.error.message}`,
-            },
-          });
-        }
-
-        const totalMap = new Map<number, number>();
-        for (const entry of totalResult.value) {
-          const ts = new Date(entry.startTimestamp).getTime();
-          totalMap.set(ts, (totalMap.get(ts) ?? 0) + (entry.value ?? 0));
-        }
-        groupValues["total"] = totalMap;
+        const [llmGroupedResult, toolGroupedResult] = await Promise.all([
+          llmGroupedPromise,
+          toolGroupedPromise,
+        ]);
 
         const mergedGroupMap = new Map<string, Map<number, number>>();
         const groupedResults = [llmGroupedResult, toolGroupedResult];
@@ -362,6 +336,14 @@ export async function handleMetronomeUsageRequest(
           }
         }
 
+        const totalMap = new Map<number, number>();
+        for (const tsMap of mergedGroupMap.values()) {
+          for (const [ts, value] of tsMap) {
+            totalMap.set(ts, (totalMap.get(ts) ?? 0) + value);
+          }
+        }
+        groupValues["total"] = totalMap;
+
         const groupTotals = [...mergedGroupMap.entries()]
           .map(([key, tsMap]) => ({
             key,
@@ -387,6 +369,12 @@ export async function handleMetronomeUsageRequest(
       }
 
       const balancesResult = await balancesPromise;
+      if (balancesResult.isErr()) {
+        logger.error(
+          { error: balancesResult.error, metronomeCustomerId },
+          "[Metronome] Failed to fetch balances for credit overlay"
+        );
+      }
       const balances = balancesResult.isOk() ? balancesResult.value : [];
       const creditTotalsMap = calculateCreditTotalsFromBalances(
         balances,
