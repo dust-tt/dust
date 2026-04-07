@@ -1,9 +1,8 @@
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import {
-  type AgentStateClassification,
-  getPendingToolCallKey,
-  type PendingToolCall,
+import type {
+  AgentStateClassification,
+  PendingToolCall,
 } from "@app/components/assistant/conversation/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import { getInternalMCPServerIconByName } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -129,6 +128,9 @@ export function InlineActivitySteps({
   // Dedup in appendThinkingStep handles duplicate content at capture time.
   const showActiveThinking = isThinking;
   const showActiveWriting = isWriting;
+  const latestPendingToolCall = showPendingToolCalls
+    ? pendingToolCalls[pendingToolCalls.length - 1]
+    : null;
   const activeAction =
     isActing && isAgentMessageWithActions ? actions[actions.length - 1] : null;
 
@@ -142,6 +144,39 @@ export function InlineActivitySteps({
   if (!hasContent) {
     return null;
   }
+
+  const renderRunningToolRow = ({
+    isLast,
+    label,
+    onClick,
+  }: {
+    isLast: boolean;
+    label: string;
+    onClick?: () => void;
+  }) => {
+    const row = (
+      <TimelineRow spinner isLast={isLast}>
+        <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
+          {label}
+          <Icon
+            size="xs"
+            visual={ChevronRightIcon}
+            className={cn("shrink-0", onClick ? "opacity-50" : "opacity-0")}
+          />
+        </span>
+      </TimelineRow>
+    );
+
+    if (!onClick) {
+      return row;
+    }
+
+    return (
+      <div className="cursor-pointer" onClick={onClick}>
+        {row}
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-col text-sm">
@@ -300,44 +335,29 @@ export function InlineActivitySteps({
             ) : null}
 
             {/* Active action (tool in progress) */}
-            {isActing && activeAction && (
-              <div
-                className="cursor-pointer"
-                onClick={() => openBreakdownPanel(activeAction.sId)}
-              >
-                <TimelineRow spinner isLast={false}>
-                  <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
-                    {getActionOneLineLabel(activeAction, "running")}
-                    <Icon
-                      size="xs"
-                      visual={ChevronRightIcon}
-                      className="shrink-0 opacity-50"
-                    />
-                  </span>
-                </TimelineRow>
-              </div>
-            )}
+            {isActing &&
+              activeAction &&
+              renderRunningToolRow({
+                isLast: false,
+                label: getActionOneLineLabel(activeAction, "running"),
+                onClick: () => openBreakdownPanel(activeAction.sId),
+              })}
 
-            {showPendingToolCalls &&
-              pendingToolCalls.map((pendingToolCall, index) => (
-                <TimelineRow
-                  key={getPendingToolCallKey(pendingToolCall, index)}
-                  icon={ToolsIcon}
-                  isLast={!isDone && index === pendingToolCalls.length - 1}
-                >
-                  <span className="text-muted-foreground dark:text-muted-foreground-night">
-                    Preparing to{" "}
-                    {getToolCallDisplayLabel(pendingToolCall.toolName)}...
-                  </span>
-                </TimelineRow>
-              ))}
+            {latestPendingToolCall &&
+              renderRunningToolRow({
+                isLast: !isDone,
+                label: getToolCallDisplayLabel(
+                  latestPendingToolCall.toolName,
+                  "running"
+                ),
+              })}
 
             {/* Pending spinner — shown when between transitions (not done, nothing active) */}
             {!isDone &&
               !showActiveThinking &&
               !showActiveWriting &&
               !activeAction &&
-              !showPendingToolCalls && <TimelineRow spinner isLast />}
+              !latestPendingToolCall && <TimelineRow spinner isLast />}
             {isDone &&
               completedSteps.length > 0 &&
               agentMessage.status !== "gracefully_stopped" && (
