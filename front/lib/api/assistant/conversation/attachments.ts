@@ -59,6 +59,7 @@ export type ContentNodeAttachmentType = BaseConversationAttachmentType & {
   nodeDataSourceViewId: string;
   nodeType: ContentNodeType;
   sourceUrl: string | null;
+  lastUpdatedAt?: number | null; //Last sync / update timestamp for the underlying data source node (Core node timestamp).
 };
 
 export type LargePasteType = {
