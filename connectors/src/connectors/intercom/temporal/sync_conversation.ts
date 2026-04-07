@@ -234,19 +234,21 @@ export async function syncConversation({
   const customAttributes = conversation.custom_attributes;
   const tags = conversation.tags?.tags ?? [];
   const tagsAsString = tags.map((tag: IntercomTagType) => tag.name).join(", ");
-  const source = conversation.source.type;
-
-  const firstMessageAuthor = conversation.source.author;
-  const firstMessageContent = turndownService.turndown(
-    conversation.source.body
-  );
+  const source = conversation.source?.type ?? null;
+  const firstMessageAuthor = conversation.source?.author ?? null;
+  const firstMessageContent = conversation.source?.body
+    ? turndownService.turndown(conversation.source.body)
+    : null;
 
   markdown += `# ${convoTitle}\n\n`;
   markdown += `**TAGS: ${tagsAsString ?? "no tags"}**\n`;
   markdown += `**SOURCE: ${source || "unknown"}**\n`;
   markdown += `**CUSTOM ATTRIBUTES: ${JSON.stringify(customAttributes)}**\n\n`;
-  markdown += `**[Message] ${firstMessageAuthor.name} (${firstMessageAuthor.type})**\n`;
-  markdown += `${firstMessageContent}\n\n`;
+
+  if (firstMessageAuthor && firstMessageContent) {
+    markdown += `**[Message] ${firstMessageAuthor.name} (${firstMessageAuthor.type})**\n`;
+    markdown += `${firstMessageContent}\n\n`;
+  }
 
   conversation.conversation_parts.conversation_parts.forEach(
     (part: ConversationPartType) => {
