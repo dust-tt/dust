@@ -1,5 +1,8 @@
 import { AnthropicLLM } from "@app/lib/api/llm/clients/anthropic";
-import { isAnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
+import {
+  isAnthropicWhitelistedModelId,
+  isVertexWhitelistedModelId,
+} from "@app/lib/api/llm/clients/anthropic/types";
 import { FireworksLLM } from "@app/lib/api/llm/clients/fireworks";
 import { isFireworksWhitelistedModelId } from "@app/lib/api/llm/clients/fireworks/types";
 import { GoogleLLM } from "@app/lib/api/llm/clients/google";
@@ -15,6 +18,7 @@ import { isXaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 
 export async function getLLM(
@@ -80,7 +84,17 @@ export async function getLLM(
   }
 
   if (isAnthropicWhitelistedModelId(modelId)) {
+    const featureFlags = await getFeatureFlags(auth);
+
+    const vertex =
+      // Vertex does not support structured outputs yet
+      !responseFormat &&
+      featureFlags.includes("use_vertex_for_claude_models") &&
+      !auth.getNonNullablePlan().isByok &&
+      isVertexWhitelistedModelId(modelId);
+
     return new AnthropicLLM(auth, {
+      vertex,
       credentials,
       getTraceInput,
       getTraceOutput,
