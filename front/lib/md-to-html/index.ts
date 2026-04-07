@@ -48,34 +48,6 @@ function addBlockIds(node: JSONContent): JSONContent {
 }
 
 /**
- * Removes auto-linked email addresses from the JSON tree. The markdown
- * parser (marked) auto-links bare emails like user@example.com into link
- * nodes with mailto: hrefs, but the frontend editor doesn't — so we
- * unwrap them back to plain text to match.
- */
-function removeAutoLinkedEmails(node: JSONContent): JSONContent {
-  if (node.content) {
-    return {
-      ...node,
-      content: node.content.flatMap((child) => {
-        if (
-          child.type === "text" &&
-          child.marks?.length === 1 &&
-          child.marks[0].type === "link" &&
-          child.marks[0].attrs?.href?.startsWith("mailto:")
-        ) {
-          const { marks: _, ...rest } = child;
-          return [rest];
-        }
-        return [removeAutoLinkedEmails(child)];
-      }),
-    };
-  }
-
-  return node;
-}
-
-/**
  * Wraps rendered HTML in the instructions-root div, matching the
  * frontend editor's InstructionsRootExtension output.
  */
@@ -95,7 +67,7 @@ export function convertMarkdownToHtml(markdown: string): string {
   const preprocessed = preprocessMarkdownForEditor(markdown);
 
   const manager = new MarkdownManager({ extensions });
-  const json = addBlockIds(removeAutoLinkedEmails(manager.parse(preprocessed)));
+  const json = addBlockIds(manager.parse(preprocessed));
 
   const innerHtml = renderToHTMLString({ extensions, content: json });
 

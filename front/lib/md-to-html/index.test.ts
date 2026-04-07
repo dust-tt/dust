@@ -56,13 +56,6 @@ describe("convertMarkdownToHtml", () => {
     expect(html).not.toContain('type="null"');
   });
 
-  it("does not auto-link email addresses", () => {
-    const html = convertMarkdownToHtml("Contact amelie@dust.tt for help");
-    expect(html).not.toContain("mailto:");
-    expect(html).not.toContain("<a");
-    expect(html).toContain("amelie@dust.tt");
-  });
-
   it("converts fenced code blocks", () => {
     const html = convertMarkdownToHtml("```\ncode block\n```");
     expect(html).toContain("<pre>");

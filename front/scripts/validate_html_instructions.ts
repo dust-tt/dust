@@ -30,7 +30,7 @@ function normalizeHtml(html: string): string {
       .replace(/ +(<\/(?:p|li|h[1-6])>)/g, "$1")
       // Unwrap links whose text matches the href (auto-linked URLs and emails).
       .replace(
-        /<a[^>]*href="(?:mailto:)?([^"]*)"[^>]*>\1<\/a>/g,
+        /<a[^>]*href="(?:mailto:)?([^"]*)"[^>]*>\s*\1\s*<\/a>/g,
         "$1"
       )
       // Normalize leading whitespace after opening block tags.
