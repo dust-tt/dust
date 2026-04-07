@@ -1,4 +1,8 @@
 import {
+  isSearchInputType,
+  isWebsearchInputType,
+} from "@app/lib/actions/mcp_internal_actions/types";
+import {
   AgentMessageContentParser,
   getCoTDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
@@ -13,6 +17,27 @@ import {
 import type { InlineActivityStep } from "@app/types/assistant/conversation";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
+const MAX_QUERY_DISPLAY_LENGTH = 60;
+
+function truncateQuery(query: string): string {
+  return query.length > MAX_QUERY_DISPLAY_LENGTH
+    ? query.slice(0, MAX_QUERY_DISPLAY_LENGTH) + "…"
+    : query;
+}
+
+function getQueryLabel(action: AgentMCPActionWithOutputType): string | null {
+  if (action.toolName === "websearch" && isWebsearchInputType(action.params)) {
+    return truncateQuery(action.params.query);
+  }
+  if (
+    action.toolName === "semantic_search" &&
+    isSearchInputType(action.params)
+  ) {
+    return truncateQuery(action.params.query);
+  }
+  return null;
+}
+
 /**
  * Compute the display label for an action (one-line summary).
  * Pure function with no browser dependencies — usable server-side and client-side.
@@ -21,6 +46,13 @@ export function getActionOneLineLabel(
   action: AgentMCPActionWithOutputType,
   context: "running" | "done" = "done"
 ): string {
+  const queryLabel = getQueryLabel(action);
+  if (queryLabel) {
+    return context === "running"
+      ? `Searching "${queryLabel}"`
+      : `Searched "${queryLabel}"`;
+  }
+
   if (action.displayLabels) {
     return action.displayLabels[context];
   }
