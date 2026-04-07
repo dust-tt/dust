@@ -29,9 +29,10 @@ function normalizeHtml(html: string): string {
       // markdown parser trims.
       .replace(/ +(<\/(?:p|li|h[1-6])>)/g, "$1")
       // Unwrap links whose text matches the href (auto-linked URLs and emails).
+      // Capture surrounding whitespace inside the tag and preserve it.
       .replace(
-        /<a[^>]*href="(?:mailto:)?([^"]*)"[^>]*>\s*\1\s*<\/a>/g,
-        "$1"
+        /<a[^>]*href="(?:mailto:)?([^"]*)"[^>]*>(\s*)\1(\s*)<\/a>/g,
+        "$2$1$3"
       )
       // Normalize leading whitespace after opening block tags.
       .replace(/(<(?:p|li|h[1-6])\b[^>]*>) +/g, "$1")
