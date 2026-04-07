@@ -4,7 +4,7 @@ import type {
   LightWorkspaceType,
   WorkspaceSharingPolicy,
 } from "@app/types/user";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 interface UseFrameSharingToggleProps {
   owner: LightWorkspaceType;
@@ -16,10 +16,6 @@ export function useFrameSharingToggle({ owner }: UseFrameSharingToggleProps) {
     owner.sharingPolicy ?? "all_scopes"
   );
   const sendNotification = useSendNotification();
-
-  useEffect(() => {
-    setSharingPolicy(owner.sharingPolicy ?? "all_scopes");
-  }, [owner.sharingPolicy]);
 
   const doUpdateSharingPolicy = useCallback(
     async (newPolicy: WorkspaceSharingPolicy) => {
