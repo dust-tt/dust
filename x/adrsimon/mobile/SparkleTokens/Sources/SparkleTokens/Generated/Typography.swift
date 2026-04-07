@@ -4,72 +4,72 @@
 
 import SwiftUI
 
-/// Font size definitions matching Sparkle's typography scale.
+/// Font size definitions matching Sparkle's mobile typography scale.
 public enum SparkleFont {
-    /// 12px / 16px line-height / normal tracking
-    public static let xsSize: CGFloat = 12
-    public static let xsLineHeight: CGFloat = 16
+    /// xs: mobile 15px / 23px line-height / normal tracking
+    public static let xsSize: CGFloat = 15
+    public static let xsLineHeight: CGFloat = 23
     public static let xsTracking: CGFloat = 0
 
-    /// 14px / 20px line-height / -0.28px tracking
-    public static let smSize: CGFloat = 14
-    public static let smLineHeight: CGFloat = 20
-    public static let smTracking: CGFloat = -0.28
+    /// sm: mobile 17px / 26px line-height / -0.34px tracking
+    public static let smSize: CGFloat = 17
+    public static let smLineHeight: CGFloat = 26
+    public static let smTracking: CGFloat = -0.34
 
-    /// 16px / 24px line-height / -0.32px tracking
-    public static let baseSize: CGFloat = 16
-    public static let baseLineHeight: CGFloat = 24
-    public static let baseTracking: CGFloat = -0.32
+    /// base: mobile 19px / 29px line-height / -0.38px tracking
+    public static let baseSize: CGFloat = 19
+    public static let baseLineHeight: CGFloat = 29
+    public static let baseTracking: CGFloat = -0.38
 
-    /// 18px / 26px line-height / -0.36px tracking
-    public static let lgSize: CGFloat = 18
-    public static let lgLineHeight: CGFloat = 26
-    public static let lgTracking: CGFloat = -0.36
+    /// lg: mobile 22px / 32px line-height / -0.44px tracking
+    public static let lgSize: CGFloat = 22
+    public static let lgLineHeight: CGFloat = 32
+    public static let lgTracking: CGFloat = -0.44
 
-    /// 20px / 28px line-height / -0.4px tracking
-    public static let xlSize: CGFloat = 20
-    public static let xlLineHeight: CGFloat = 28
-    public static let xlTracking: CGFloat = -0.4
+    /// xl: mobile 24px / 36px line-height / -0.48px tracking
+    public static let xlSize: CGFloat = 24
+    public static let xlLineHeight: CGFloat = 36
+    public static let xlTracking: CGFloat = -0.48
 
-    /// 24px / 30px line-height / -0.96px tracking
-    public static let _2xlSize: CGFloat = 24
-    public static let _2xlLineHeight: CGFloat = 30
-    public static let _2xlTracking: CGFloat = -0.96
+    /// 2xl: mobile 30px / 44px line-height / -1.2px tracking
+    public static let _2xlSize: CGFloat = 30
+    public static let _2xlLineHeight: CGFloat = 44
+    public static let _2xlTracking: CGFloat = -1.2
 
-    /// 32px / 36px line-height / -1.28px tracking
-    public static let _3xlSize: CGFloat = 32
-    public static let _3xlLineHeight: CGFloat = 36
-    public static let _3xlTracking: CGFloat = -1.28
+    /// 3xl: mobile 39px / 50px line-height / -1.56px tracking
+    public static let _3xlSize: CGFloat = 39
+    public static let _3xlLineHeight: CGFloat = 50
+    public static let _3xlTracking: CGFloat = -1.56
 
-    /// 40px / 42px line-height / -2.4px tracking
-    public static let _4xlSize: CGFloat = 40
-    public static let _4xlLineHeight: CGFloat = 42
-    public static let _4xlTracking: CGFloat = -2.4
+    /// 4xl: mobile 49px / 64px line-height / -2.94px tracking
+    public static let _4xlSize: CGFloat = 49
+    public static let _4xlLineHeight: CGFloat = 64
+    public static let _4xlTracking: CGFloat = -2.94
 
-    /// 48px / 52px line-height / -2.88px tracking
-    public static let _5xlSize: CGFloat = 48
-    public static let _5xlLineHeight: CGFloat = 52
-    public static let _5xlTracking: CGFloat = -2.88
+    /// 5xl: mobile 59px / 77px line-height / -3.54px tracking
+    public static let _5xlSize: CGFloat = 59
+    public static let _5xlLineHeight: CGFloat = 77
+    public static let _5xlTracking: CGFloat = -3.54
 
-    /// 56px / 60px line-height / -3.36px tracking
-    public static let _6xlSize: CGFloat = 56
-    public static let _6xlLineHeight: CGFloat = 60
-    public static let _6xlTracking: CGFloat = -3.36
+    /// 6xl: mobile 68px / 89px line-height / -4.08px tracking
+    public static let _6xlSize: CGFloat = 68
+    public static let _6xlLineHeight: CGFloat = 89
+    public static let _6xlTracking: CGFloat = -4.08
 
-    /// 64px / 68px line-height / -3.84px tracking
-    public static let _7xlSize: CGFloat = 64
-    public static let _7xlLineHeight: CGFloat = 68
-    public static let _7xlTracking: CGFloat = -3.84
+    /// 7xl: mobile 78px / 102px line-height / -4.68px tracking
+    public static let _7xlSize: CGFloat = 78
+    public static let _7xlLineHeight: CGFloat = 102
+    public static let _7xlTracking: CGFloat = -4.68
 
-    /// 72px / 76px line-height / -4.32px tracking
-    public static let _8xlSize: CGFloat = 72
-    public static let _8xlLineHeight: CGFloat = 76
-    public static let _8xlTracking: CGFloat = -4.32
+    /// 8xl: mobile 88px / 115px line-height / -5.28px tracking
+    public static let _8xlSize: CGFloat = 88
+    public static let _8xlLineHeight: CGFloat = 115
+    public static let _8xlTracking: CGFloat = -5.28
 
-    /// 80px / 84px line-height / -4.8px tracking
-    public static let _9xlSize: CGFloat = 80
-    public static let _9xlLineHeight: CGFloat = 84
-    public static let _9xlTracking: CGFloat = -4.8
+    /// 9xl: mobile 98px / 128px line-height / -5.88px tracking
+    public static let _9xlSize: CGFloat = 98
+    public static let _9xlLineHeight: CGFloat = 128
+    public static let _9xlTracking: CGFloat = -5.88
 
 }
 

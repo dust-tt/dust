@@ -77,13 +77,6 @@ struct NewConversationView: View {
                         handleLogoTap()
                     }
 
-                    Text("Hey \(firstName ?? "there"), how can I help you today?")
-                        .sparkleCopyXl()
-                        .foregroundStyle(Color.dustForeground)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-                        .opacity(uiOpacity)
-
                     Spacer()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
