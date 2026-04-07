@@ -45,8 +45,7 @@ export async function sendCreditAlertEmailActivity({
   for (const admin of admins) {
     await sendCreditUsageAlertEmail({
       email: admin.email,
-      workspaceName: workspace.name,
-      workspaceSId: workspace.sId,
+      workspace,
       percentUsed,
       totalInitialMicroUsd,
       totalConsumedMicroUsd,
