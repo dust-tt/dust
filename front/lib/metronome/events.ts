@@ -152,11 +152,15 @@ export function buildLlmUsageEvents({
   conversationId,
   userId,
   agentMessageId,
+  agentId,
   parentAgentMessageId,
   runKey,
   runUsages,
   origin,
   isProgrammaticUsage,
+  authMethod,
+  apiKeyName,
+  messageStatus,
   isSubAgentMessage,
   timestamp,
 }: {
@@ -164,11 +168,15 @@ export function buildLlmUsageEvents({
   conversationId: string;
   userId: string | null;
   agentMessageId: string;
+  agentId: string | null;
   parentAgentMessageId: string | null;
   runKey: string;
   runUsages: RunUsageType[];
   origin: UserMessageOrigin;
   isProgrammaticUsage: boolean;
+  authMethod: string | null;
+  apiKeyName: string | null;
+  messageStatus: string;
   isSubAgentMessage: boolean;
   timestamp: string;
 }): MetronomeEvent[] {
@@ -217,6 +225,8 @@ export function buildLlmUsageEvents({
       workspace_id: workspaceId,
       ...(userId ? { user_id: userId } : {}),
       agent_message_id: agentMessageId,
+      conversation_id: conversationId,
+      ...(agentId ? { agent_id: agentId } : {}),
       ...(parentAgentMessageId
         ? { parent_agent_message_id: parentAgentMessageId }
         : {}),
@@ -229,6 +239,9 @@ export function buildLlmUsageEvents({
       // Provider cost without markup — markup is applied in Metronome rate card.
       cost_micro_usd: group.costMicroUsd,
       is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
+      ...(authMethod ? { auth_method: authMethod } : {}),
+      ...(apiKeyName ? { api_key_name: apiKeyName } : {}),
+      message_status: messageStatus,
       is_sub_agent_message: isSubAgentMessage ? "true" : "false",
       origin,
     },
@@ -260,11 +273,15 @@ export function buildToolUseEvents({
   conversationId,
   userId,
   agentMessageId,
+  agentId,
   parentAgentMessageId,
   runKey,
   actions,
   origin,
   isProgrammaticUsage,
+  authMethod,
+  apiKeyName,
+  messageStatus,
   isSubAgentMessage,
   timestamp,
 }: {
@@ -272,11 +289,15 @@ export function buildToolUseEvents({
   conversationId: string;
   userId: string | null;
   agentMessageId: string;
+  agentId: string | null;
   parentAgentMessageId: string | null;
   runKey: string;
   actions: ToolAction[];
   origin: UserMessageOrigin;
   isProgrammaticUsage: boolean;
+  authMethod: string | null;
+  apiKeyName: string | null;
+  messageStatus: string;
   isSubAgentMessage: boolean;
   timestamp: string;
 }): MetronomeEvent[] {
@@ -311,9 +332,13 @@ export function buildToolUseEvents({
       workspace_id: workspaceId,
       ...(userId ? { user_id: userId } : {}),
       agent_message_id: agentMessageId,
+      conversation_id: conversationId,
+      ...(agentId ? { agent_id: agentId } : {}),
       ...(parentAgentMessageId
         ? { parent_agent_message_id: parentAgentMessageId }
         : {}),
+      ...(authMethod ? { auth_method: authMethod } : {}),
+      ...(apiKeyName ? { api_key_name: apiKeyName } : {}),
       tool_name: action.toolName,
       mcp_server_id: action.mcpServerId ?? "",
       internal_mcp_server_name: action.internalMCPServerName ?? "",
@@ -325,6 +350,7 @@ export function buildToolUseEvents({
       count,
       total_execution_duration_ms: totalDurationMs,
       is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
+      message_status: messageStatus,
       is_sub_agent_message: isSubAgentMessage ? "true" : "false",
       origin,
     },
