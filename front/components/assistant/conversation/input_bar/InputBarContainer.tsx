@@ -514,6 +514,11 @@ const InputBarContainer = ({
     },
   });
 
+  // Ref to expose the current selectedSingleAgent to the editor update listener
+  // without re-registering it on every selection change.
+  const selectedSingleAgentRef = useRef(selectedSingleAgent);
+  selectedSingleAgentRef.current = selectedSingleAgent;
+
   // When a user is mentioned in single-agent mode, deselect the agent and clear capabilities.
   // Uses a ref so the editor listener (registered once in the useEffect below) always calls
   // the latest closure without re-registering the listener on every render.
@@ -542,8 +547,10 @@ const InputBarContainer = ({
       setIsEmpty(editorService.isEmpty());
 
       // Auto-save draft when content changes and track user mentions.
+      // Include the selected single agent so the debounced save doesn't
+      // overwrite the agent mention saved by the single-agent effect.
       const { markdown, mentions } = editorService.getMarkdownAndMentions();
-      saveDraft(markdown);
+      saveDraft(markdown, selectedSingleAgentRef.current);
       const userMentioned = mentions.some((m) => m.type === "user");
       setHasUserMention(userMentioned);
       onEditorMentionsChangedRef.current(userMentioned);
