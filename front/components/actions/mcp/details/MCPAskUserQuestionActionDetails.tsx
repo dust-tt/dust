@@ -28,7 +28,7 @@ export function MCPAskUserQuestionActionDetails({
       }
       visual={ChatBubbleBottomCenterTextIcon}
     >
-      {displayContext !== "conversation" && userQuestion && (
+      {displayContext !== "conversation" && userQuestion && outputText && (
         <div className="flex flex-col gap-3 pl-6 pt-4">
           <div className="text-sm font-medium text-foreground dark:text-foreground-night">
             {userQuestion.question}

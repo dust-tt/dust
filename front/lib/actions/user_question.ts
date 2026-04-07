@@ -31,25 +31,31 @@ export function formatUserQuestionAnswer(
   );
 }
 
-export function parseUserQuestionAnswer(
-  outputText: string
-): {
+export function parseUserQuestionAnswer(outputText: string): {
   selectedLabels: string[];
   customAnswer: string | null;
+  isDeclined: boolean;
 } {
+  let  selectedLabels: string[] = [];
+  let customAnswer: string | null = null;
+  let isDeclined = true;
+  
+  if (outputText === USER_QUESTION_DECLINED_MESSAGE) {
+    isDeclined = true;
+    return { selectedLabels, customAnswer, isDeclined };
+  }
+
   const selectionsStart = outputText.indexOf('"="');
   if (selectionsStart === -1) {
-    return { selectedLabels: [], customAnswer: null };
+    return { selectedLabels, customAnswer, isDeclined };
   }
   const start = selectionsStart + 3;
   const end = outputText.indexOf('".', start);
   if (end === -1) {
-    return { selectedLabels: [], customAnswer: null };
+    return { selectedLabels, customAnswer, isDeclined };
   }
 
   const parts = outputText.slice(start, end).split(", ");
-  const selectedLabels: string[] = [];
-  let customAnswer: string | null = null;
 
   for (const part of parts) {
     if (part.startsWith(CUSTOM_ANSWER_PREFIX)) {
@@ -59,5 +65,5 @@ export function parseUserQuestionAnswer(
     }
   }
 
-  return { selectedLabels, customAnswer };
+  return { selectedLabels, customAnswer, isDeclined };
 }
