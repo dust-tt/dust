@@ -223,9 +223,96 @@ struct ToolFileAuthError: Decodable {
     let message: String
 }
 
-struct ToolApproveExecutionEvent: Decodable {}
+struct ToolApproveExecutionEvent: Decodable {
+    let created: Double?
+    let conversationId: String?
+    let messageId: String?
+    let actionId: String?
+    let configurationId: String?
+    let stake: String?
+    let metadata: ToolApprovalMetadata?
+    let inputs: [String: ToolInputValue]?
+    let argumentsRequiringApproval: [String]?
+}
+
+struct ToolApprovalMetadata: Decodable {
+    let toolName: String?
+    let mcpServerName: String?
+    let agentName: String?
+}
+
+/// Lightweight wrapper for heterogeneous JSON values in tool inputs.
+enum ToolInputValue: Decodable, Equatable {
+    case string(String)
+    case number(Double)
+    case bool(Bool)
+    case null
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if container.decodeNil() {
+            self = .null
+        } else if let str = try? container.decode(String.self) {
+            self = .string(str)
+        } else if let bool = try? container.decode(Bool.self) {
+            self = .bool(bool)
+        } else if let num = try? container.decode(Double.self) {
+            self = .number(num)
+        } else {
+            self = .null
+        }
+    }
+
+    var displayValue: String? {
+        switch self {
+        case let .string(str): str.isEmpty ? nil : str
+        case let .number(num): String(num)
+        case let .bool(val): val ? "Yes" : "No"
+        case .null: nil
+        }
+    }
+}
 
 struct StreamingError: Decodable {
     let code: String?
     let message: String
+    let metadata: StreamingErrorMetadata?
+}
+
+struct StreamingErrorMetadata: Decodable {
+    let category: String?
+    let errorTitle: String?
+}
+
+// MARK: - Blocked Actions (fetched on conversation load)
+
+struct BlockedActionsResponse: Decodable {
+    let blockedActions: [BlockedAction]
+}
+
+enum BlockedActionStatus: String, Decodable {
+    case blockedValidationRequired = "blocked_validation_required"
+    case blockedAuthenticationRequired = "blocked_authentication_required"
+    case blockedFileAuthorizationRequired = "blocked_file_authorization_required"
+    case blockedChildActionInputRequired = "blocked_child_action_input_required"
+    case blockedUserAnswerRequired = "blocked_user_answer_required"
+}
+
+struct BlockedAction: Decodable {
+    let status: BlockedActionStatus
+    let conversationId: String?
+    let messageId: String?
+    let actionId: String?
+    let configurationId: String?
+    let stake: String?
+    let metadata: ToolApprovalMetadata?
+    let inputs: [String: ToolInputValue]?
+    let argumentsRequiringApproval: [String]?
+    let authError: ToolPersonalAuthError?
+    let fileAuthorizationInfo: BlockedFileAuthInfo?
+}
+
+struct BlockedFileAuthInfo: Decodable {
+    let fileName: String?
+    let toolName: String?
 }

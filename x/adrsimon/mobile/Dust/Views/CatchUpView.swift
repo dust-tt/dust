@@ -13,6 +13,7 @@ struct CatchUpView: View {
 
     let currentUserEmail: String
     let onDismiss: (Set<String>) -> Void
+    var onOpenConversation: ((Conversation) -> Void)?
 
     private static let swipeHintStart: CGFloat = 30
     private static let swipeCommitThreshold: CGFloat = 80
@@ -23,7 +24,8 @@ struct CatchUpView: View {
         workspaceId: String,
         tokenProvider: TokenProvider,
         currentUserEmail: String,
-        onDismiss: @escaping (Set<String>) -> Void
+        onDismiss: @escaping (Set<String>) -> Void,
+        onOpenConversation: ((Conversation) -> Void)? = nil
     ) {
         _viewModel = StateObject(
             wrappedValue: CatchUpViewModel(
@@ -34,6 +36,7 @@ struct CatchUpView: View {
         )
         self.currentUserEmail = currentUserEmail
         self.onDismiss = onDismiss
+        self.onOpenConversation = onOpenConversation
     }
 
     var body: some View {
@@ -90,23 +93,36 @@ struct CatchUpView: View {
     // MARK: - Conversation Title
 
     private var conversationTitle: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(viewModel.currentConversation?.actionRequired == true
-                    ? Color.golden400 : Color.highlight500)
-                .frame(width: 8, height: 8)
+        Button {
+            guard let conversation = viewModel.currentConversation else { return }
+            onDismiss(viewModel.markedAsReadIds)
+            onOpenConversation?(conversation)
+        } label: {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(viewModel.currentConversation?.actionRequired == true
+                        ? Color.golden400 : Color.highlight500)
+                    .frame(width: 8, height: 8)
 
-            Text(viewModel.currentConversation?.title ?? "New conversation")
-                .sparkleLabelSm()
-                .foregroundStyle(Color.dustForeground)
-                .lineLimit(1)
-                .truncationMode(.tail)
+                Text(viewModel.currentConversation?.title ?? "New conversation")
+                    .sparkleLabelSm()
+                    .foregroundStyle(Color.dustForeground)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
 
-            Spacer()
+                Spacer()
+
+                SparkleIcon.arrowRight.image
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 12, height: 12)
+                    .foregroundStyle(Color.dustFaint)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(.ultraThinMaterial, in: .capsule)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(.ultraThinMaterial, in: .capsule)
+        .buttonStyle(.plain)
         .padding(.horizontal, 8)
         .padding(.top, 8)
     }
@@ -134,6 +150,10 @@ struct CatchUpView: View {
                                 message: message,
                                 currentUserEmail: currentUserEmail
                             )
+                        }
+
+                        if viewModel.currentConversation?.actionRequired == true {
+                            ActionRequiredBanner()
                         }
                     }
                     .padding(.top, 48)
@@ -311,5 +331,28 @@ struct CatchUpView: View {
             guard viewModel.isDone else { return }
             onDismiss(viewModel.markedAsReadIds)
         }
+    }
+}
+
+// MARK: - Action Required Banner
+
+struct ActionRequiredBanner: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            SparkleIcon.stopSign.image
+                .resizable()
+                .scaledToFit()
+                .frame(width: 14, height: 14)
+                .foregroundStyle(Color.golden500)
+
+            Text("This conversation needs your action. Open it to respond.")
+                .sparkleCopyXs()
+                .foregroundStyle(Color.dustFaint)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dustMutedBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.top, 12)
     }
 }

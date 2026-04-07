@@ -4,6 +4,7 @@ import os
 private let logger = Logger(subsystem: AppConfig.bundleId, category: "ConversationDetail")
 
 @MainActor
+// swiftlint:disable:next type_body_length
 final class ConversationDetailViewModel: ObservableObject {
     enum State {
         case loading
@@ -21,6 +22,10 @@ final class ConversationDetailViewModel: ObservableObject {
     @Published var activeActions: [ActiveAction] = []
     /// sId of the message currently being streamed.
     @Published var streamingMessageId: String?
+    /// Error info for the last failed agent message (if any).
+    @Published var lastError: ErrorInfo?
+    /// Whether a validate-action request is in-flight.
+    @Published var isValidatingAction = false
 
     private let conversation: Conversation
     private let workspaceId: String
@@ -61,11 +66,9 @@ final class ConversationDetailViewModel: ObservableObject {
             lastValue = response.lastValue
             state = .loaded
 
-            // Start streaming for any in-progress agent message
             startStreamingIfNeeded()
-
-            // Start listening for conversation-level events (new messages, title changes)
             startConversationEvents()
+            await reconcileBlockedActions()
 
             markAsRead()
         } catch {
@@ -153,7 +156,7 @@ final class ConversationDetailViewModel: ObservableObject {
                     )
                 }
 
-                try? await Task.sleep(nanoseconds: retryDelay)
+                try? await Task.sleep(for: .nanoseconds(retryDelay))
                 retryDelay = min(retryDelay * 2, maxDelay)
             }
         }
@@ -191,8 +194,8 @@ final class ConversationDetailViewModel: ObservableObject {
         }
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     private func startMessageStream(for messageId: String) {
-        // Don't restart if already streaming this message
         if streamingMessageId == messageId { return }
 
         messageStreamTask?.cancel()
@@ -200,6 +203,7 @@ final class ConversationDetailViewModel: ObservableObject {
         let currentGeneration = streamGeneration
         streamingMessageId = messageId
         streamingPhase = .thinking
+        lastError = nil
 
         messageStreamTask = Task { [weak self] in
             guard let self else { return }
@@ -235,13 +239,20 @@ final class ConversationDetailViewModel: ObservableObject {
             }
 
             // Stream ended — only clean up if we're still the active generation
+            // and not in a blocking state (approval/auth persist until resolved)
             if streamGeneration == currentGeneration {
-                streamingPhase = .idle
-                streamingMessageId = nil
+                switch streamingPhase {
+                case .approvalRequired, .personalAuthRequired, .fileAuthRequired:
+                    break
+                case .idle, .thinking, .generating:
+                    streamingPhase = .idle
+                    streamingMessageId = nil
+                }
             }
         }
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     private func handleMessageEvent(_ event: StreamingEventData, messageId: String) async {
         switch event {
         case let .generationTokens(tokens):
@@ -259,27 +270,43 @@ final class ConversationDetailViewModel: ObservableObject {
 
         case let .agentActionSuccess(event):
             activeActions.removeAll { $0.id == event.action.id }
-            if activeActions.isEmpty, streamingPhase != .generating {
+            if activeActions.isEmpty, streamingPhase != .generating, streamingPhase != .thinking {
                 streamingPhase = .thinking
             }
 
         case let .agentMessageSuccess(success):
             finalizeMessage(messageId: messageId, status: .succeeded, from: success.message)
 
-        case .agentError, .toolError:
+        case let .agentError(event):
+            lastError = ErrorInfo(from: event.error, messageId: messageId)
+            finalizeMessage(messageId: messageId, status: .failed)
+
+        case let .toolError(event):
+            lastError = ErrorInfo(from: event.error, messageId: messageId)
             finalizeMessage(messageId: messageId, status: .failed)
 
         case .agentGenerationCancelled:
             finalizeMessage(messageId: messageId, status: .cancelled)
 
         case let .toolPersonalAuthRequired(event):
-            streamingPhase = .personalAuthRequired(provider: event.authError.provider)
+            streamingPhase = .personalAuthRequired(
+                provider: event.authError.provider,
+                toolName: event.authError.toolName
+            )
 
         case let .toolFileAuthRequired(event):
-            streamingPhase = .fileAuthRequired(fileName: event.fileAuthError.fileName)
+            streamingPhase = .fileAuthRequired(
+                fileName: event.fileAuthError.fileName,
+                toolName: event.fileAuthError.toolName
+            )
 
-        case .toolApproveExecution:
-            streamingPhase = .approvalRequired
+        case let .toolApproveExecution(event):
+            let approval = ToolApprovalInfo(
+                from: event,
+                fallbackMessageId: messageId,
+                fallbackConversationId: conversation.sId
+            )
+            streamingPhase = .approvalRequired(approval: approval)
 
         case .toolNotification, .agentContextPruned, .endOfStream, .unknown:
             break
@@ -297,13 +324,13 @@ final class ConversationDetailViewModel: ObservableObject {
                 break
             }
         }
-        switch tokens.classification {
-        case .chainOfThought:
-            streamingPhase = .thinking
-        case .tokens:
-            streamingPhase = .generating
-        case .openingDelimiter, .closingDelimiter:
-            break
+        let newPhase: AgentStreamingPhase? = switch tokens.classification {
+        case .chainOfThought: .thinking
+        case .tokens: .generating
+        case .openingDelimiter, .closingDelimiter: nil
+        }
+        if let newPhase, streamingPhase != newPhase {
+            streamingPhase = newPhase
         }
     }
 
@@ -320,7 +347,6 @@ final class ConversationDetailViewModel: ObservableObject {
         streamingMessageId = nil
     }
 
-    /// Mutate the agent message with the given sId in-place and trigger a publish.
     private func updateAgentMessage(id: String, mutate: (inout AgentMessage) -> Void) {
         guard let index = messages.firstIndex(where: { $0.id == id }),
               case var .agent(agentMsg) = messages[index]
@@ -328,5 +354,86 @@ final class ConversationDetailViewModel: ObservableObject {
 
         mutate(&agentMsg)
         messages[index] = .agent(agentMsg)
+    }
+
+    // MARK: - Tool Approval
+
+    func validateAction(approved: ActionApproval) async {
+        guard case let .approvalRequired(info) = streamingPhase else { return }
+        isValidatingAction = true
+        defer { isValidatingAction = false }
+
+        do {
+            try await ConversationService.validateAction(
+                workspaceId: workspaceId,
+                conversationId: info.conversationId,
+                messageId: info.messageId,
+                actionId: info.actionId,
+                approved: approved,
+                tokenProvider: tokenProvider
+            )
+            streamingPhase = .thinking
+        } catch {
+            logger.error("Failed to validate action: \(error)")
+        }
+    }
+
+    // MARK: - Blocked Actions Reconciliation
+
+    /// Fetches any blocked actions from the server and sets the streaming phase accordingly.
+    /// This handles the case where we attach to a conversation that's already blocked.
+    private func reconcileBlockedActions() async {
+        do {
+            let blocked = try await ConversationService.fetchBlockedActions(
+                workspaceId: workspaceId,
+                conversationId: conversation.sId,
+                tokenProvider: tokenProvider
+            )
+            guard let action = blocked.first else { return }
+
+            // Find the message this action belongs to and ensure we're tracking it
+            if let messageId = action.messageId {
+                if streamingMessageId == nil {
+                    streamingMessageId = messageId
+                }
+            }
+
+            switch action.status {
+            case .blockedValidationRequired:
+                let approval = ToolApprovalInfo(from: action, fallbackConversationId: conversation.sId)
+                streamingPhase = .approvalRequired(approval: approval)
+
+            case .blockedAuthenticationRequired:
+                let provider = action.metadata?.mcpServerName ?? "Unknown"
+                let toolName = action.metadata?.toolName ?? ""
+                streamingPhase = .personalAuthRequired(provider: provider, toolName: toolName)
+
+            case .blockedFileAuthorizationRequired:
+                let fileName = action.fileAuthorizationInfo?.fileName ?? "Unknown"
+                let toolName = action.fileAuthorizationInfo?.toolName ?? action.metadata?.toolName ?? ""
+                streamingPhase = .fileAuthRequired(fileName: fileName, toolName: toolName)
+
+            case .blockedChildActionInputRequired, .blockedUserAnswerRequired:
+                break
+            }
+        } catch {
+            logger.error("Failed to fetch blocked actions: \(error)")
+        }
+    }
+
+    // MARK: - Retry
+
+    func retryMessage(messageId: String) async {
+        lastError = nil
+        do {
+            try await ConversationService.retryMessage(
+                workspaceId: workspaceId,
+                conversationId: conversation.sId,
+                messageId: messageId,
+                tokenProvider: tokenProvider
+            )
+        } catch {
+            logger.error("Failed to retry message: \(error)")
+        }
     }
 }
