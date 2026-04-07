@@ -12,6 +12,7 @@ import {
   useAgentMessageSkills,
   useAgentMessageTools,
   useConversationMessage,
+  useConversationMessageAction,
 } from "@app/hooks/conversations";
 import {
   AgentMessageContentParser,
@@ -380,18 +381,90 @@ function AgentActionsPanelContent({
   );
 }
 
+interface AgentSingleActionPanelProps extends AgentActionsPanelProps {
+  messageId: string;
+  actionId: string;
+  closeIcon?: React.ComponentType;
+  onClose: () => void;
+}
+
+function AgentSingleActionPanel({
+  conversation,
+  owner,
+  messageId,
+  actionId,
+  closeIcon = XMarkIcon,
+  onClose,
+}: AgentSingleActionPanelProps) {
+  const { action, messageStatus, isActionLoading } =
+    useConversationMessageAction({
+      conversationId: conversation.sId,
+      workspaceId: owner.sId,
+      messageId,
+      actionId,
+    });
+
+  if (isActionLoading) {
+    return (
+      <AgentActionsPanelHeader
+        title="Tool detail"
+        closeIcon={closeIcon}
+        onClose={onClose}
+      >
+        <div className="flex items-center justify-center">
+          <Spinner variant="color" />
+        </div>
+      </AgentActionsPanelHeader>
+    );
+  }
+
+  if (!action) {
+    return (
+      <AgentActionsPanelHeader
+        title="Tool detail"
+        closeIcon={closeIcon}
+        onClose={onClose}
+      >
+        <div className="flex items-center justify-center">
+          <span className="text-muted-foreground dark:text-muted-foreground-night">
+            Nothing to display.
+          </span>
+        </div>
+      </AgentActionsPanelHeader>
+    );
+  }
+
+  return (
+    <div className="flex h-full flex-col bg-background dark:bg-background-night">
+      <AgentActionsPanelHeader
+        title="Tool detail"
+        closeIcon={closeIcon}
+        onClose={onClose}
+      />
+      <div className="flex-1 overflow-y-auto p-4 pb-12">
+        <MCPActionDetails
+          displayContext="sidebar"
+          action={action}
+          lastNotification={null}
+          owner={owner}
+          messageStatus={messageStatus}
+        />
+      </div>
+    </div>
+  );
+}
+
+// TODO(2026-04-07: inline activity): can be deprecated in favor of AgentSingleActionPanel with inline activity.
 export function AgentActionsPanelForMessage({
   conversation,
   owner,
   messageId,
   virtuosoMsg,
-  targetActionId,
   closeIcon = XMarkIcon,
   onClose,
 }: AgentActionsPanelProps & {
   messageId: string;
   virtuosoMsg: MessageTemporaryState | null;
-  targetActionId?: string;
   closeIcon?: React.ComponentType<{}>;
   onClose: () => void;
 }) {
@@ -439,37 +512,12 @@ export function AgentActionsPanelForMessage({
         onClose={onClose}
       >
         <div className="flex items-center justify-center">
-          <span className="text-muted-foreground">Nothing to display.</span>
+          <span className="text-muted-foreground dark:text-muted-foreground-night">
+            Nothing to display.
+          </span>
         </div>
       </AgentActionsPanelHeader>
     );
-  }
-
-  // Single action detail view when an action is targeted from inline activity.
-  if (targetActionId) {
-    const action = fullAgentMessage.actions.find(
-      (a) => a.sId === targetActionId
-    );
-    if (action) {
-      return (
-        <div className="flex h-full flex-col bg-background dark:bg-background-night">
-          <AgentActionsPanelHeader
-            title="Tool detail"
-            closeIcon={closeIcon}
-            onClose={onClose}
-          />
-          <div className="flex-1 overflow-y-auto p-4 pb-12">
-            <MCPActionDetails
-              displayContext="sidebar"
-              action={action}
-              lastNotification={null}
-              owner={owner}
-              messageStatus={fullAgentMessage.status}
-            />
-          </div>
-        </div>
-      );
-    }
   }
 
   // Use key to force remount when the message changes for proper state reset.
@@ -503,13 +551,24 @@ export function AgentActionsPanel({
     return null;
   }
 
+  if (actionId) {
+    return (
+      <AgentSingleActionPanel
+        conversation={conversation}
+        owner={owner}
+        messageId={messageId}
+        actionId={actionId}
+        onClose={onPanelClosed}
+      />
+    );
+  }
+
   return (
     <AgentActionsPanelForMessage
       conversation={conversation}
       owner={owner}
       messageId={messageId}
       virtuosoMsg={virtuosoMsg}
-      targetActionId={actionId}
       onClose={onPanelClosed}
     />
   );

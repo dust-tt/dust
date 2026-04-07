@@ -5,6 +5,7 @@ import {
 } from "@app/lib/swr/swr";
 import type { FetchConversationMessagesResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
 import type { FetchConversationMessageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
+import type { FetchConversationMessageActionResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/actions/[aId]";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
@@ -92,5 +93,36 @@ export function useConversationMessage({
     isMessageLoading: isLoading,
     isValidating,
     mutateMessage: mutate,
+  };
+}
+
+export function useConversationMessageAction({
+  conversationId,
+  workspaceId,
+  messageId,
+  actionId,
+}: {
+  conversationId: string;
+  workspaceId: string;
+  messageId: string;
+  actionId: string | null;
+}) {
+  const { fetcher } = useFetcher();
+  const actionFetcher: Fetcher<FetchConversationMessageActionResponse> =
+    fetcher;
+
+  const { data, error, mutate, isLoading } = useSWRWithDefaults(
+    actionId
+      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/actions/${actionId}`
+      : null,
+    actionFetcher
+  );
+
+  return {
+    action: data?.action,
+    messageStatus: data?.messageStatus,
+    isActionLoading: isLoading,
+    isActionError: error,
+    mutateAction: mutate,
   };
 }
