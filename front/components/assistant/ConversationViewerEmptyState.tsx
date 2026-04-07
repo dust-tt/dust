@@ -2,7 +2,7 @@ import { LoadingBlock } from "@dust-tt/sparkle";
 
 export function ConversationViewerEmptyState() {
   return (
-    <div className="mx-auto flex h-full w-full min-w-60 max-w-4xl flex-col pt-6 md:pt-10">
+    <div className="mx-auto flex h-full w-full min-w-60 max-w-3xl flex-col pt-6 md:pt-10">
       <FakeUserMessage />
       <FakeAgentMessage />
     </div>
