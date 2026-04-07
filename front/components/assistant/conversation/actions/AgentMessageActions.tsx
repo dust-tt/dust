@@ -1,13 +1,19 @@
+import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { MCPImageGenerationGroupedDetails } from "@app/components/actions/mcp/details/MCPImageGenerationActionDetails";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import {
-  type ActionProgressState,
-  type AgentStateClassification,
-  getPendingToolCallKey,
-  type PendingToolCall,
+import type {
+  ActionProgressState,
+  AgentStateClassification,
+  PendingToolCall,
 } from "@app/components/assistant/conversation/types";
-import { GENERATE_IMAGE_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import { InternalActionIcons } from "@app/components/resources/resources_icons";
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
+import {
+  GENERATE_IMAGE_TOOL_NAME,
+  getInternalMCPServerIconByName,
+  isInternalMCPServerName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { getToolCallDisplayLabel } from "@app/lib/actions/tool_display_labels";
 import type {
   LightAgentMessageType,
@@ -22,6 +28,7 @@ import {
   cn,
   Markdown,
   Spinner,
+  ToolsIcon,
 } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
 
@@ -31,6 +38,32 @@ interface AgentMessageActionsProps {
   actionProgress: ActionProgressState;
   pendingToolCalls: PendingToolCall[];
   owner: LightWorkspaceType;
+}
+
+function getPendingToolCallVisual(functionCallName: string) {
+  const separatorIndex = functionCallName.lastIndexOf(TOOL_NAME_SEPARATOR);
+
+  if (separatorIndex === -1) {
+    return ToolsIcon;
+  }
+
+  const serverName = functionCallName.slice(0, separatorIndex);
+  const candidates = [serverName];
+  const nestedSeparatorIndex = serverName.lastIndexOf(TOOL_NAME_SEPARATOR);
+
+  if (nestedSeparatorIndex !== -1) {
+    candidates.push(
+      serverName.slice(nestedSeparatorIndex + TOOL_NAME_SEPARATOR.length)
+    );
+  }
+
+  for (const candidate of candidates) {
+    if (isInternalMCPServerName(candidate)) {
+      return InternalActionIcons[getInternalMCPServerIconByName(candidate)];
+    }
+  }
+
+  return ToolsIcon;
 }
 
 export function AgentMessageActions({
@@ -91,6 +124,9 @@ export function AgentMessageActions({
     lastAgentStateClassification === "done" || agentMessage.status === "failed";
   const showPendingToolCalls =
     lastAgentStateClassification !== "acting" && pendingToolCalls.length > 0;
+  const latestPendingToolCall = showPendingToolCalls
+    ? pendingToolCalls[pendingToolCalls.length - 1]
+    : null;
 
   return !showMessageBreakdownButton ? (
     <div
@@ -118,29 +154,17 @@ export function AgentMessageActions({
             />
           )}
         </Card>
-      ) : showPendingToolCalls ? (
-        <ContentMessage variant="primary" className="min-h-fit p-3">
-          <div className="flex w-full flex-row">
-            <div className="flex flex-col gap-y-1">
-              {pendingToolCalls.map((pendingToolCall, index) => (
-                <span
-                  key={getPendingToolCallKey(pendingToolCall, index)}
-                  className="text-sm text-muted-foreground dark:text-muted-foreground-night"
-                >
-                  Preparing to{" "}
-                  <span className="font-medium text-foreground dark:text-foreground-night">
-                    {getToolCallDisplayLabel(pendingToolCall.toolName)}
-                  </span>
-                  ...
-                </span>
-              ))}
-            </div>
-            <span className="flex-grow"></span>
-            <div className="w-8 self-start pl-4 pt-0.5">
-              <Spinner size="xs" />
-            </div>
-          </div>
-        </ContentMessage>
+      ) : latestPendingToolCall ? (
+        <Card variant="secondary" className="max-w-xl">
+          <ActionDetailsWrapper
+            displayContext="conversation"
+            actionName={getToolCallDisplayLabel(
+              latestPendingToolCall.toolName,
+              "running"
+            )}
+            visual={getPendingToolCallVisual(latestPendingToolCall.toolName)}
+          />
+        </Card>
       ) : (
         <div>
           <ContentMessage variant="primary" className="min-h-fit p-3">
