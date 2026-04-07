@@ -59,9 +59,30 @@ export async function ingestMetronomeEvents(
     return;
   }
 
+  // Metronome rejects events older than 34 days — filter them out before
+  // sending to avoid rejecting the entire batch. This happens when Temporal
+  // retries old workflows.
+  const maxAgeMs = 34 * 24 * 60 * 60 * 1000;
+  const cutoff = Date.now() - maxAgeMs;
+  const validEvents = events.filter((e) => {
+    const ts = new Date(e.timestamp).getTime();
+    if (ts < cutoff) {
+      logger.warn(
+        { transactionId: e.transaction_id, timestamp: e.timestamp },
+        "[Metronome] Dropping event — older than 34 days"
+      );
+      return false;
+    }
+    return true;
+  });
+
+  if (validEvents.length === 0) {
+    return;
+  }
+
   const client = getMetronomeClient();
-  for (let i = 0; i < events.length; i += METRONOME_INGEST_BATCH_SIZE) {
-    const batch = events.slice(i, i + METRONOME_INGEST_BATCH_SIZE);
+  for (let i = 0; i < validEvents.length; i += METRONOME_INGEST_BATCH_SIZE) {
+    const batch = validEvents.slice(i, i + METRONOME_INGEST_BATCH_SIZE);
     await client.v1.usage.ingest({ usage: batch });
   }
 }
