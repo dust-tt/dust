@@ -105,12 +105,17 @@ import {
   ProjectTodoSourceModel,
 } from "@app/lib/resources/storage/models/project_todo";
 import { ProjectTodoStateModel } from "@app/lib/resources/storage/models/project_todo_state";
+import { ProjectTodoTakeawaySourcesModel } from "@app/lib/resources/storage/models/project_todo_takeaway_sources";
 import {
   RunModel,
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
 import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import {
+  TakeawaySourcesModel,
+  TakeawaysModel,
+} from "@app/lib/resources/storage/models/takeaways";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import {
   UserMetadataModel,
@@ -231,6 +236,9 @@ export function loadAllModels() {
     ProjectTodoConversationModel,
     ProjectTodoSourceModel,
     ProjectTodoStateModel,
+    TakeawaysModel,
+    TakeawaySourcesModel,
+    ProjectTodoTakeawaySourcesModel,
   ];
 }
 

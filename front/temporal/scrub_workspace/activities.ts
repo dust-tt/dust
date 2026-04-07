@@ -29,6 +29,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
+import { TakeawaysResource } from "@app/lib/resources/takeaways_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -124,6 +125,7 @@ export async function scrubWorkspaceData({
     dangerouslyRequestAllGroups: true,
   });
   await deleteAllConversations(auth);
+  await deleteTakeaways(auth);
   await deleteKeys(auth);
   await archiveAssistants(auth);
   await deleteAgentMemories(auth);
@@ -171,6 +173,10 @@ export async function pauseAllTriggers({
       "Failed to disable workspace triggers during scrub"
     );
   }
+}
+
+async function deleteTakeaways(auth: Authenticator) {
+  await TakeawaysResource.deleteAllForWorkspace(auth);
 }
 
 export async function deleteKeys(auth: Authenticator) {
