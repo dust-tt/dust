@@ -120,6 +120,11 @@ export function getLocationForDataSourceViewContentNode(
 ) {
   const { dataSource } = node.dataSourceView;
   const { connectorProvider } = dataSource;
+
+  if (connectorProvider === "dust_project" && node.parentTitle) {
+    return node.parentTitle;
+  }
+
   const providerName = connectorProvider
     ? CONNECTOR_CONFIGURATIONS[connectorProvider].name
     : "Folders";

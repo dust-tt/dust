@@ -71,6 +71,9 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   space,
   user,
 }: InputBarButtonsProps) {
+  // Current space is taken from the conversation (if already set) or from the space prop (if provided).
+  const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
+
   const agentButton = (actions.includes("agents-list") ||
     actions.includes("agents-list-with-actions")) && (
     <AgentPicker
@@ -163,7 +166,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
               conversationId: conversation?.sId,
             },
           }}
-          space={space}
+          spaceId={spaceId}
           type="dropdown"
         />
       </>
