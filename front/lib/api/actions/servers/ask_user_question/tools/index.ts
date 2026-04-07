@@ -13,15 +13,10 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
     const resumeState = agentLoopContext?.runContext?.stepContext?.resumeState;
     if (isUserQuestionResumeState(resumeState) && resumeState.answer) {
       const { answer } = resumeState;
-      const selections: string[] = [];
-      for (const idx of answer.selectedOptions) {
-        if (idx >= 0 && idx < options.length) {
-          selections.push(options[idx].label);
-        }
-      }
-      if (answer.customResponse) {
-        selections.push(`Other: ${answer.customResponse}`);
-      }
+      const selections = getUserQuestionSelections(
+        { question, options, multiSelect },
+        answer
+      );
 
       if (selections.length === 0) {
         return new Ok([
@@ -35,9 +30,7 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text",
-          text:
-            `User has answered your questions: "${question}"="${selections.join(", ")}". ` +
-            "You can now continue with the user's answers in mind",
+          text: formatUserQuestionAnswer(question, selections),
         },
       ]);
     }
