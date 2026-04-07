@@ -1,7 +1,10 @@
 /** @ignoreswagger */
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import type { AvailableTool } from "@app/lib/api/assistant/observability/tool_usage";
-import { fetchAvailableTools } from "@app/lib/api/assistant/observability/tool_usage";
+import {
+  fetchAvailableTools,
+  resolveToolDisplayNames,
+} from "@app/lib/api/assistant/observability/tool_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -67,8 +70,10 @@ async function handler(
         });
       }
 
+      const tools = await resolveToolDisplayNames(auth, toolsResult.value);
+
       return res.status(200).json({
-        tools: toolsResult.value,
+        tools,
       });
     }
     default:

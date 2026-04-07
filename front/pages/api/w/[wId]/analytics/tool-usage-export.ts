@@ -3,6 +3,7 @@ import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability
 import {
   fetchAvailableTools,
   fetchToolUsageMetrics,
+  resolveToolDisplayNames,
 } from "@app/lib/api/assistant/observability/tool_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -70,7 +71,7 @@ async function handler(
         });
       }
 
-      const tools = toolsResult.value;
+      const tools = await resolveToolDisplayNames(auth, toolsResult.value);
       const rows: ToolUsageExportRow[] = [];
 
       for (const tool of tools) {
@@ -91,7 +92,7 @@ async function handler(
         for (const point of usageResult.value) {
           rows.push({
             date: point.date,
-            toolName: tool.serverName,
+            toolName: tool.displayName,
             executions: point.executionCount,
             uniqueUsers: point.uniqueUsers,
           });

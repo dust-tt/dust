@@ -9,12 +9,12 @@ import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
+import type { AvailableTool } from "@app/lib/api/assistant/observability/tool_usage";
 import {
   useWorkspaceTools,
   useWorkspaceToolUsage,
 } from "@app/lib/swr/workspaces";
 import { formatShortDate } from "@app/lib/utils/timestamps";
-import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import {
   Button,
   ButtonsSwitch,
@@ -46,24 +46,33 @@ interface ToolUsageChartPoint {
   values: Record<string, number>;
 }
 
-function getToolSelectorLabel(selectedTools: string[]): string {
+function getToolSelectorLabel(
+  selectedTools: string[],
+  displayNameMap: Map<string, string>
+): string {
   if (selectedTools.length === 0) {
     return "Select tools";
   }
   if (selectedTools.length === 1) {
-    return asDisplayToolName(selectedTools[0]);
+    return displayNameMap.get(selectedTools[0]) ?? selectedTools[0];
   }
   return `${selectedTools.length} tools`;
+}
+
+function buildDisplayNameMap(tools: AvailableTool[]): Map<string, string> {
+  return new Map(tools.map((t) => [t.serverName, t.displayName]));
 }
 
 interface ToolUsageTooltipProps extends TooltipContentProps<number, string> {
   displayMode: ToolUsageDisplayMode;
   toolsWithData: string[];
+  displayNameMap: Map<string, string>;
 }
 
 function ToolUsageTooltip({
   displayMode,
   toolsWithData,
+  displayNameMap,
   active,
   payload,
 }: ToolUsageTooltipProps) {
@@ -82,7 +91,7 @@ function ToolUsageTooltip({
 
   const values = toolsWithData.map((tool) => point.values[tool] ?? 0);
   const rows = toolsWithData.map((tool, idx) => ({
-    label: asDisplayToolName(tool),
+    label: displayNameMap.get(tool) ?? tool,
     value: values[idx].toLocaleString(),
     colorClassName: getIndexedColor(tool, toolsWithData),
   }));
@@ -117,6 +126,11 @@ export function WorkspaceToolUsageChart({
     days: period,
     disabled: !workspaceId,
   });
+
+  const displayNameMap = useMemo(
+    () => buildDisplayNameMap(availableTools),
+    [availableTools]
+  );
 
   // Auto-select first 3 tools when available tools are loaded
   useEffect(() => {
@@ -223,7 +237,7 @@ export function WorkspaceToolUsageChart({
 
   const legendItems: LegendItem[] = toolsWithData.map((tool) => ({
     key: tool,
-    label: asDisplayToolName(tool),
+    label: displayNameMap.get(tool) ?? tool,
     colorClassName: getIndexedColor(tool, toolsWithData),
   }));
 
@@ -231,7 +245,7 @@ export function WorkspaceToolUsageChart({
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
-          label={getToolSelectorLabel(selectedTools)}
+          label={getToolSelectorLabel(selectedTools, displayNameMap)}
           size="xs"
           variant="outline"
           isSelect
@@ -246,7 +260,7 @@ export function WorkspaceToolUsageChart({
           {availableTools.map((tool) => (
             <DropdownMenuCheckboxItem
               key={tool.serverName}
-              label={asDisplayToolName(tool.serverName)}
+              label={displayNameMap.get(tool.serverName) ?? tool.serverName}
               checked={selectedTools.includes(tool.serverName)}
               disabled={
                 !selectedTools.includes(tool.serverName) &&
@@ -338,6 +352,7 @@ export function WorkspaceToolUsageChart({
               {...props}
               displayMode={displayMode}
               toolsWithData={toolsWithData}
+              displayNameMap={displayNameMap}
             />
           )}
           cursor={false}
@@ -355,7 +370,7 @@ export function WorkspaceToolUsageChart({
             type={period === 7 || period === 14 ? "linear" : "monotone"}
             strokeWidth={2}
             dataKey={(point: ToolUsageChartPoint) => point.values[tool] ?? 0}
-            name={asDisplayToolName(tool)}
+            name={displayNameMap.get(tool) ?? tool}
             className={getIndexedColor(tool, toolsWithData)}
             stroke="currentColor"
             dot={false}
