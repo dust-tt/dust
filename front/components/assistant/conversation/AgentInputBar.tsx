@@ -6,9 +6,9 @@ import type {
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
 import {
+  isAgentMessageWithStreaming,
   isHandoverUserMessage,
   isHiddenMessage,
-  isMessageTemporayState,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
@@ -407,7 +407,7 @@ export const AgentInputBar = ({
 
                 const blockedActionMessageIndex = methods.data.findIndex(
                   (m) =>
-                    isMessageTemporayState(m) &&
+                    isAgentMessageWithStreaming(m) &&
                     blockedActionTargetMessageId === m.sId
                 );
 

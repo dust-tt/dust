@@ -1,5 +1,5 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import type { MessageTemporaryState } from "@app/components/assistant/conversation/types";
+import type { AgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
 import { isInteractiveContentFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isInteractiveContentType } from "@app/types/files";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -7,7 +7,7 @@ import React from "react";
 
 interface useAutoOpenInteractiveContentProps {
   isLastMessage: boolean;
-  agentMessage: MessageTemporaryState;
+  agentMessage: AgentMessageWithStreaming;
 }
 
 /**

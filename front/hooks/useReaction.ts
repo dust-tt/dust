@@ -1,6 +1,6 @@
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import {
-  isMessageTemporayState,
+  isAgentMessageWithStreaming,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { useAuth } from "@app/lib/auth/AuthContext";
@@ -20,7 +20,7 @@ export function useReaction({
 
   const { submit: onReactionToggle } = useSubmitFunction(
     async ({ emoji }: { emoji: string }) => {
-      if (!isUserMessage(message) && !isMessageTemporayState(message)) {
+      if (!isUserMessage(message) && !isAgentMessageWithStreaming(message)) {
         return;
       }
 
@@ -29,7 +29,7 @@ export function useReaction({
       }
 
       const currentReactions =
-        isUserMessage(message) || isMessageTemporayState(message)
+        isUserMessage(message) || isAgentMessageWithStreaming(message)
           ? (message.reactions ?? [])
           : [];
 

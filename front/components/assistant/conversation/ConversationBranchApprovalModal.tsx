@@ -1,8 +1,8 @@
 import { AgentActionsPanelForMessage } from "@app/components/assistant/conversation/actions/AgentActionsPanel";
 import { MessageItem } from "@app/components/assistant/conversation/MessageItem";
 import {
-  isMessageTemporayState,
-  type MessageTemporaryState,
+  type AgentMessageWithStreaming,
+  isAgentMessageWithStreaming,
   type VirtuosoMessage,
   type VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
@@ -40,7 +40,7 @@ export function ConversationBranchApprovalModal({
   const title = useMemo(() => {
     // Find the name of the agent(s) in the branch messages
     const agentNames = branchMessagesToApprove
-      .filter(isMessageTemporayState)
+      .filter(isAgentMessageWithStreaming)
       .map((m) => {
         return `@${m.configuration.name}`;
       });
@@ -49,7 +49,7 @@ export function ConversationBranchApprovalModal({
 
   const description = useMemo(() => {
     const hasMultipleAgents =
-      branchMessagesToApprove.filter(isMessageTemporayState).length > 1;
+      branchMessagesToApprove.filter(isAgentMessageWithStreaming).length > 1;
     if (hasMultipleAgents) {
       return `Your agents have access to sensitive data. Review the Agent messages before publishing them in the conversation.`;
     }
@@ -60,7 +60,7 @@ export function ConversationBranchApprovalModal({
     "messages"
   );
   const [selectedMessage, setSelectedMessage] =
-    useState<MessageTemporaryState | null>(null);
+    useState<AgentMessageWithStreaming | null>(null);
 
   const { mergeBranch, closeBranch, isMerging, isClosing } =
     useConversationBranchActions({
@@ -84,7 +84,7 @@ export function ConversationBranchApprovalModal({
 
   const allAgentMessagesSucceeded = useMemo(() => {
     const agentMessages = branchMessagesToApprove.filter(
-      isMessageTemporayState
+      isAgentMessageWithStreaming
     );
     return (
       agentMessages.length > 0 &&
@@ -94,7 +94,7 @@ export function ConversationBranchApprovalModal({
 
   const cancelOngoingAgentGenerations = async () => {
     const inFlightAgentMessageIds = branchMessagesToApprove
-      .filter(isMessageTemporayState)
+      .filter(isAgentMessageWithStreaming)
       .filter((m) => m.status === "created")
       .map((m) => m.sId);
 
@@ -131,7 +131,7 @@ export function ConversationBranchApprovalModal({
                       onAgentMessageCompletionStatusClick={(messageId) => {
                         setSelectedMessage(
                           branchMessagesToApprove
-                            .filter(isMessageTemporayState)
+                            .filter(isAgentMessageWithStreaming)
                             .find((m) => m.sId === messageId) ?? null
                         );
                         setSelectedTab("details");

@@ -1,4 +1,4 @@
-import type { MessageTemporaryState } from "@app/components/assistant/conversation/types";
+import type { AgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
 import type { UserMessageType } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import { toMentionType } from "@app/types/assistant/mentions";
@@ -146,7 +146,7 @@ export function createPlaceholderAgentMessage({
   mention: RichMention & { pictureUrl: string };
   rank: number;
   branchId: string | null;
-}): MessageTemporaryState {
+}): AgentMessageWithStreaming {
   const createdAt = new Date().getTime();
   return {
     sId: `placeholder-agent-message-${createdAt.toString()}`,

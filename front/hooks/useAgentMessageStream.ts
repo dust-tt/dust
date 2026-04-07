@@ -1,11 +1,11 @@
 import type {
   AgentMessageStateWithControlEvent,
-  MessageTemporaryState,
+  AgentMessageWithStreaming,
   PendingToolCall,
   VirtuosoMessage,
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
-import { isMessageTemporayState } from "@app/components/assistant/conversation/types";
+import { isAgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
 import { useEventSource } from "@app/hooks/useEventSource";
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import {
@@ -44,7 +44,7 @@ const updateMessageThrottled = _.throttle(
     sId: string;
   }) => {
     methods.data.map((m) => {
-      if (isMessageTemporayState(m) && m.sId === sId) {
+      if (isAgentMessageWithStreaming(m) && m.sId === sId) {
         return {
           ...m,
           content,
@@ -121,9 +121,9 @@ export function updateMessageWithAction(
 }
 
 export function updateProgress(
-  agentMessage: MessageTemporaryState,
+  agentMessage: AgentMessageWithStreaming,
   event: ToolNotificationEvent
-): MessageTemporaryState {
+): AgentMessageWithStreaming {
   const actionId = event.action.id;
   const currentProgress = agentMessage.streaming.actionProgress.get(actionId);
 
@@ -272,7 +272,7 @@ function flushPendingSegment({
 }
 
 interface UseAgentMessageStreamParams {
-  agentMessage: MessageTemporaryState;
+  agentMessage: AgentMessageWithStreaming;
   conversationId: string | null;
   isInlineActivityEnabled: boolean;
   owner: LightWorkspaceType;
@@ -383,7 +383,7 @@ export function useAgentMessageStream({
                   ? "writing"
                   : "thinking";
               methods.data.map((m) => {
-                if (!isMessageTemporayState(m) || m.sId !== sId) {
+                if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
                   return m;
                 }
                 const { steps, contentCleared } = flushPendingSegment({
@@ -411,7 +411,7 @@ export function useAgentMessageStream({
             ) {
               // First tokens event in inline mode — set agentState to writing.
               methods.data.map((m) => {
-                if (!isMessageTemporayState(m) || m.sId !== sId) {
+                if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
                   return m;
                 }
                 return {
@@ -440,7 +440,7 @@ export function useAgentMessageStream({
         case "agent_action_success":
           const action = eventPayload.data.action;
           methods.data.map((m) => {
-            if (!isMessageTemporayState(m) || m.sId !== sId) {
+            if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
             }
             // Add the completed action to inline activity steps.
@@ -484,7 +484,7 @@ export function useAgentMessageStream({
         case "tool_params":
           const toolParams = eventPayload.data;
           methods.data.map((m) => {
-            if (!isMessageTemporayState(m) || m.sId !== sId) {
+            if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
             }
             const { steps, contentCleared } = flushPendingSegment({
@@ -515,7 +515,7 @@ export function useAgentMessageStream({
         case "tool_notification":
           const toolNotification = eventPayload.data;
           methods.data.map((m) =>
-            isMessageTemporayState(m) && m.sId === sId
+            isAgentMessageWithStreaming(m) && m.sId === sId
               ? updateProgress(m, toolNotification)
               : m
           );
@@ -527,7 +527,7 @@ export function useAgentMessageStream({
             break;
           }
           methods.data.map((m) => {
-            if (!isMessageTemporayState(m) || m.sId !== sId) {
+            if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
             }
 
@@ -552,7 +552,7 @@ export function useAgentMessageStream({
         case "agent_error":
           const error = eventPayload.data.error;
           methods.data.map((m) => {
-            if (!isMessageTemporayState(m) || m.sId !== sId) {
+            if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
             }
             const { steps, contentCleared } = flushPendingSegment({
@@ -580,7 +580,7 @@ export function useAgentMessageStream({
 
         case "agent_context_pruned":
           methods.data.map((m) =>
-            isMessageTemporayState(m) && m.sId === sId
+            isAgentMessageWithStreaming(m) && m.sId === sId
               ? {
                   ...m,
                   prunedContext: true,
@@ -591,7 +591,7 @@ export function useAgentMessageStream({
 
         case "agent_generation_cancelled": {
           methods.data.map((m) => {
-            if (!isMessageTemporayState(m) || m.sId !== sId) {
+            if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
             }
             const { steps, contentCleared } = flushPendingSegment({
@@ -631,7 +631,7 @@ export function useAgentMessageStream({
           const finalSegment = content.current;
           lastClassification.current = null;
           methods.data.map((m) => {
-            if (!isMessageTemporayState(m) || m.sId !== sId) {
+            if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
             }
             const steps = cotAtSuccess

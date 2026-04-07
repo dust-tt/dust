@@ -18,13 +18,13 @@ import { MCPServerPersonalAuthenticationRequired } from "@app/components/assista
 import { MCPToolValidationRequired } from "@app/components/assistant/conversation/MCPToolValidationRequired";
 import type {
   AgentMessageStateWithControlEvent,
-  MessageTemporaryState,
+  AgentMessageWithStreaming,
   VirtuosoMessage,
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
 import {
+  isAgentMessageWithStreaming,
   isHandoverUserMessage,
-  isMessageTemporayState,
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
@@ -170,7 +170,7 @@ interface AgentMessageProps {
   conversationId: string;
   hideHeader: boolean;
   isLastMessage: boolean;
-  agentMessage: MessageTemporaryState;
+  agentMessage: AgentMessageWithStreaming;
   messageFeedback: FeedbackSelectorBaseProps;
   owner: WorkspaceType;
   user: UserType;
@@ -568,11 +568,12 @@ export function AgentMessage({
     .get()
     .find(
       (m) =>
-        isMessageTemporayState(m) && m.sId === agentMessage.parentAgentMessageId
+        isAgentMessageWithStreaming(m) &&
+        m.sId === agentMessage.parentAgentMessageId
     );
 
   const parentAgent =
-    parentAgentMessage && isMessageTemporayState(parentAgentMessage)
+    parentAgentMessage && isAgentMessageWithStreaming(parentAgentMessage)
       ? parentAgentMessage.configuration
       : null;
 
@@ -1052,7 +1053,7 @@ function AgentMessageContent({
     messageId: string;
   }) => Promise<void>;
   isRetryHandlerProcessing: boolean;
-  agentMessage: MessageTemporaryState;
+  agentMessage: AgentMessageWithStreaming;
   references: { [key: string]: MCPReferenceCitation };
   streaming: boolean;
   streamError: Error | null;
@@ -1094,7 +1095,7 @@ function AgentMessageContent({
       messageId: string;
     }) => {
       methods.data.map((m) =>
-        isMessageTemporayState(m) && m.sId === sId
+        isAgentMessageWithStreaming(m) && m.sId === sId
           ? {
               ...m,
               status: "created",

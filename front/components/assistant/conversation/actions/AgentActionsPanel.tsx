@@ -6,7 +6,7 @@ import {
   parseDataAsMessageIdAndActionId,
   useConversationSidePanelContext,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import type { MessageTemporaryState } from "@app/components/assistant/conversation/types";
+import type { AgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
 import { getIcon } from "@app/components/resources/resources_icons";
 import {
   useAgentMessageSkills,
@@ -45,7 +45,7 @@ interface AgentActionsPanelContentProps {
   conversation: ConversationWithoutContentType | null;
   owner: LightWorkspaceType;
   fullAgentMessage: AgentMessageType;
-  virtuosoMsg?: MessageTemporaryState | null;
+  virtuosoMsg?: AgentMessageWithStreaming | null;
   closeIcon: React.ComponentType<{}>;
   closePanel: () => void;
   mutateMessage: () => void;
@@ -464,7 +464,7 @@ export function AgentActionsPanelForMessage({
   onClose,
 }: AgentActionsPanelProps & {
   messageId: string;
-  virtuosoMsg: MessageTemporaryState | null;
+  virtuosoMsg: AgentMessageWithStreaming | null;
   closeIcon?: React.ComponentType<{}>;
   onClose: () => void;
 }) {

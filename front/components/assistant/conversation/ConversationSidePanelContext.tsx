@@ -1,4 +1,4 @@
-import type { MessageTemporaryState } from "@app/components/assistant/conversation/types";
+import type { AgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
 import { useHashParam } from "@app/hooks/useHashParams";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
@@ -48,8 +48,8 @@ interface ConversationSidePanelContextType {
   onPanelClosed: () => void;
   setPanelRef: (ref: ImperativePanelHandle | null) => void;
   panelRef: React.MutableRefObject<ImperativePanelHandle | null>;
-  setVirtuosoMsg: (msg: MessageTemporaryState) => void;
-  virtuosoMsg: MessageTemporaryState | null;
+  setVirtuosoMsg: (msg: AgentMessageWithStreaming) => void;
+  virtuosoMsg: AgentMessageWithStreaming | null;
   data: string | undefined;
   thinkingContent: string | null;
 }
@@ -97,7 +97,7 @@ export function ConversationSidePanelProvider({
 
   const panelRef = React.useRef<ImperativePanelHandle | null>(null);
   const [virtuosoMsg, setVirtuosoMsg] =
-    React.useState<MessageTemporaryState | null>(null);
+    React.useState<AgentMessageWithStreaming | null>(null);
   const [thinkingContent, setThinkingContent] = React.useState<string | null>(
     null
   );

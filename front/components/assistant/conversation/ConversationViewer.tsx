@@ -20,7 +20,7 @@ import {
   areSameRankAndBranch,
   convertLightMessageTypeToVirtuosoMessages,
   getPredicateForRankAndBranch,
-  isMessageTemporayState,
+  isAgentMessageWithStreaming,
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
@@ -346,7 +346,7 @@ export const ConversationViewer = ({
           return;
         }
         const message = renderedData
-          .filter(isMessageTemporayState)
+          .filter(isAgentMessageWithStreaming)
           .find((m) => m.sId === messageId);
         if (message) {
           setVirtuosoMsg(message);

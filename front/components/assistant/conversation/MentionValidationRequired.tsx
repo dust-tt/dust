@@ -1,5 +1,5 @@
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
-import { isMessageTemporayState } from "@app/components/assistant/conversation/types";
+import { isAgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useMentionValidation } from "@app/lib/swr/mentions";
 import type {
@@ -77,7 +77,7 @@ export function MentionValidationRequired({
     ? `Add ${mention.label} to this project?`
     : `Invite ${mention.label} to this conversation?`;
 
-  const description = isMessageTemporayState(message) ? (
+  const description = isAgentMessageWithStreaming(message) ? (
     <>
       <span className="font-semibold">@{message.configuration.name}</span>{" "}
       mentioned <span className="font-semibold">{mention.label}</span>.
