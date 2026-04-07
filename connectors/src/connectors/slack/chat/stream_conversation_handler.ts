@@ -6,6 +6,7 @@ import {
 import {
   MAX_SLACK_MESSAGE_LENGTH,
   makeAssistantSelectionBlock,
+  makeMarkdownBlock,
   makeMessageUpdateBlocksAndText,
   makeToolAuthenticationBlock,
   makeToolValidationBlock,
@@ -959,7 +960,7 @@ async function postThreadFollowUpMessages(
   for (let i = 0; i < followUpMessages.length; i++) {
     const threadResponse = await slackClient.chat.postMessage({
       channel: slackChannelId,
-      text: followUpMessages[i] || "",
+      blocks: makeMarkdownBlock(followUpMessages[i] || ""),
       thread_ts: threadTs,
     });
 
