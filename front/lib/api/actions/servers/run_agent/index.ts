@@ -1,5 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { AGENT_CONFIGURATION_URI_PATTERN } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { ToolFileAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type {
   MCPProgressNotificationType,
   RunAgentQueryProgressOutput,
@@ -68,6 +69,17 @@ import _ from "lodash";
 import type z from "zod";
 
 const ABORT_SIGNAL_CANCEL_REASON = "CancelledFailure: CANCELLED";
+
+function isToolFileAuthRequiredEvent(
+  event: unknown
+): event is ToolFileAuthRequiredEvent {
+  return (
+    typeof event === "object" &&
+    event !== null &&
+    "type" in event &&
+    event.type === "tool_file_auth_required"
+  );
+}
 
 function parseAgentConfigurationUri(uri: string): Result<string, Error> {
   const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
@@ -526,7 +538,7 @@ const runAgent = async (
       } else if (
         event.type === "tool_approve_execution" ||
         event.type === "tool_personal_auth_required" ||
-        event.type === "tool_file_auth_required"
+        isToolFileAuthRequiredEvent(event)
       ) {
         // Collect blocking events until the child marks one as the last blocking event for this
         // step, then stop the parent run_agent call and return a blocked response upstream.
