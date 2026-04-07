@@ -340,7 +340,7 @@ describe("agent_sidekick_context tools", () => {
   });
 
   describe("get_available_skills", () => {
-    it("returns skills in markdown format", async () => {
+    it("returns skills in available_skills XML", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
       // Create a skill.
@@ -359,7 +359,8 @@ describe("agent_sidekick_context tools", () => {
         expect(content.type).toBe("text");
         if (content.type === "text") {
           expect(content.text).toContain("<available_skills>");
-          expect(content.text).toContain(`**Test Skill** (ID: ${skill.sId})`);
+          expect(content.text).toContain(`ID="${skill.sId}"`);
+          expect(content.text).toContain('name="Test Skill"');
           expect(content.text).toContain("Agent facing description");
         }
       }
