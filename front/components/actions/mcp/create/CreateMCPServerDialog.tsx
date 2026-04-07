@@ -248,6 +248,7 @@ export function CreateMCPServerDialog({
     const submitRes = await submitCreateMCPServerDialogForm({
       owner,
       internalMCPServer,
+      defaultServerId: defaultServerConfig?.id,
       values,
       // Pass workflow state as separate params (not from form).
       authorization,
