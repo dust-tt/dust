@@ -21,19 +21,28 @@ const MAX_QUERY_DISPLAY_LENGTH = 60;
 
 function truncateQuery(query: string): string {
   return query.length > MAX_QUERY_DISPLAY_LENGTH
-    ? query.slice(0, MAX_QUERY_DISPLAY_LENGTH) + "…"
+    ? query.slice(0, MAX_QUERY_DISPLAY_LENGTH) + "\u2026"
     : query;
 }
 
-function getQueryLabel(action: AgentMCPActionWithOutputType): string | null {
+function getToolInlineLabel(
+  action: AgentMCPActionWithOutputType,
+  context: "running" | "done"
+): string | null {
   if (action.toolName === "websearch" && isWebsearchInputType(action.params)) {
-    return truncateQuery(action.params.query);
+    const q = truncateQuery(action.params.query);
+    return context === "running"
+      ? `Searching \u201c${q}\u201d`
+      : `Searched \u201c${q}\u201d`;
   }
   if (
     action.toolName === "semantic_search" &&
     isSearchInputType(action.params)
   ) {
-    return truncateQuery(action.params.query);
+    const q = truncateQuery(action.params.query);
+    return context === "running"
+      ? `Searching \u201c${q}\u201d`
+      : `Searched \u201c${q}\u201d`;
   }
   return null;
 }
@@ -46,19 +55,11 @@ export function getActionOneLineLabel(
   action: AgentMCPActionWithOutputType,
   context: "running" | "done" = "done"
 ): string {
-  const queryLabel = getQueryLabel(action);
-  if (queryLabel) {
-    return context === "running"
-      ? `Searching "${queryLabel}"`
-      : `Searched "${queryLabel}"`;
-  }
-
-  if (action.displayLabels) {
-    return action.displayLabels[context];
-  }
-  return action.functionCallName
-    ? asDisplayName(action.functionCallName)
-    : "Tool";
+  return (
+    getToolInlineLabel(action, context) ??
+    action.displayLabels?.[context] ??
+    (action.functionCallName ? asDisplayName(action.functionCallName) : "Tool")
+  );
 }
 
 /**
