@@ -26,15 +26,21 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
         selections.push(`Other: ${answer.customResponse}`);
       }
 
-      const answerText =
-        selections.length > 0
-          ? selections.join(", ")
-          : "User declined to answer. Proceed with your best judgment.";
+      if (selections.length === 0) {
+        return new Ok([
+          {
+            type: "text",
+            text: USER_QUESTION_DECLINED_MESSAGE,
+          },
+        ]);
+      }
 
       return new Ok([
         {
           type: "text",
-          text: `${typedQuestion.question}: ${answerText}`,
+          text:
+            `User has answered your questions: "${question}"="${selections.join(", ")}". ` +
+            `You can now continue with the user's answers in mind`,
         },
       ]);
     }
