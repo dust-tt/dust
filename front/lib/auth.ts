@@ -208,9 +208,11 @@ export class Authenticator {
   private static async fetchRoleGroupsAndSubscription({
     user,
     workspace,
+    transaction,
   }: {
     user: UserResource;
     workspace: WorkspaceResource;
+    transaction?: Transaction;
   }): Promise<{
     role: RoleType;
     groupModelIds: ModelId[];
@@ -222,12 +224,17 @@ export class Authenticator {
       MembershipResource.getActiveRoleForUserInWorkspace({
         user,
         workspace: lightWorkspace,
+        transaction,
       }),
       GroupResource.dangerouslyListUserGroupsForAuth({
         user,
         workspace: lightWorkspace,
+        transaction,
       }),
-      SubscriptionResource.fetchActiveByWorkspaceModelId(lightWorkspace.id),
+      SubscriptionResource.fetchActiveByWorkspaceModelId(
+        lightWorkspace.id,
+        transaction
+      ),
     ]);
 
     return {
@@ -296,13 +303,15 @@ export class Authenticator {
 
   private static async fetchByokProvidersHealth(
     workspace: WorkspaceResource | null | undefined,
-    subscription: SubscriptionResource | null
+    subscription: SubscriptionResource | null,
+    transaction?: Transaction
   ): Promise<ProvidersHealth | null> {
     if (!workspace || !subscription?.getPlan().isByok) {
       return null;
     }
     return ProviderCredentialResource.fetchProvidersHealthByWorkspaceId(
-      workspace.id
+      workspace.id,
+      transaction
     );
   }
 
@@ -375,11 +384,12 @@ export class Authenticator {
    */
   static async fromUserIdAndWorkspaceId(
     uId: string,
-    wId: string
+    wId: string,
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
-      WorkspaceResource.fetchById(wId),
-      UserResource.fetchById(uId),
+      WorkspaceResource.fetchById(wId, transaction),
+      UserResource.fetchById(uId, transaction),
     ]);
 
     let role: RoleType = "none";
@@ -390,6 +400,7 @@ export class Authenticator {
       const authData = await this.fetchRoleGroupsAndSubscription({
         user,
         workspace,
+        transaction,
       });
       role = authData.role;
       groupModelIds = authData.groupModelIds;
@@ -398,7 +409,8 @@ export class Authenticator {
 
     const providersHealth = await this.fetchByokProvidersHealth(
       workspace,
-      subscription
+      subscription,
+      transaction
     );
 
     return new Authenticator({
