@@ -5,6 +5,7 @@ import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import {
+  isEntreprisePlanPrefix,
   isProPlan,
   isUpgraded,
   isWhitelistedBusinessPlan,
@@ -378,7 +379,8 @@ export function SubscriptionPage() {
     });
 
   const plan = subscription.plan;
-  const isWorkspaceOnProPlan = isProPlan(plan);
+  const isWorkspaceOnProPlan =
+    isProPlan(plan) || isEntreprisePlanPrefix(plan.code);
   const isWorkspaceWhitelistedBusinessPlan = isWhitelistedBusinessPlan(owner);
   const canUpsellToBusinessPlan =
     isWorkspaceOnProPlan && isWorkspaceWhitelistedBusinessPlan;

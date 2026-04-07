@@ -786,8 +786,9 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     }
 
     const isOnProPlan = await this.isSubscriptionOnProOrBusinessPlan(owner);
-    if (!isOnProPlan) {
-      return new Err(new Error("Workspace is not on a Pro plan"));
+    const isOnEnterprisePlan = isEntreprisePlanPrefix(this.plan.code);
+    if (!isOnProPlan && !isOnEnterprisePlan) {
+      return new Err(new Error("Workspace is not on a Pro or Enterprise plan"));
     }
 
     const businessPlan = await SubscriptionResource.findPlanOrThrow(
