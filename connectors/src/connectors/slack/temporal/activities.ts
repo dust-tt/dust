@@ -592,7 +592,7 @@ export async function syncNonThreaded({
     }
   } while (hasMore);
 
-  await processAndUpsertNonThreadedMessages({
+  const skipReason = await processAndUpsertNonThreadedMessages({
     channelId,
     channelName,
     connectorId,
@@ -621,12 +621,17 @@ export async function syncNonThreaded({
       channelId,
       messageTs: undefined,
       documentId,
+      skipReason,
     });
   } else {
-    // We update updatedAt to avoid re-syncing the thread for the next hour (see earlier in the
-    // activity). updatedAt is not directly updatable with Sequelize but this will do it.
-    existingMessage.changed("updatedAt", true);
-    await existingMessage.save();
+    if (skipReason) {
+      await existingMessage.update({ skipReason });
+    } else {
+      // We update updatedAt to avoid re-syncing the thread for the next hour (see earlier in the
+      // activity). updatedAt is not directly updatable with Sequelize but this will do it.
+      existingMessage.changed("updatedAt", true);
+      await existingMessage.save();
+    }
   }
 }
 
@@ -648,7 +653,7 @@ async function processAndUpsertNonThreadedMessages({
   messages: MessageElement[];
   slackClient: WebClient;
   documentId: string;
-}) {
+}): Promise<string | undefined> {
   if (messages.length === 0) {
     return;
   }
@@ -747,10 +752,12 @@ async function processAndUpsertNonThreadedMessages({
         },
         "Skipping Slack non-threaded messages exceeding plan document size limit."
       );
-      return;
+      return "document_too_large";
     }
     throw error;
   }
+
+  return undefined;
 }
 
 async function syncMultipleNonThreaded(
@@ -1072,6 +1079,16 @@ export async function syncThread(
           threadTs,
         },
         "Skipping Slack thread exceeding plan document size limit."
+      );
+      await SlackMessagesModel.update(
+        { skipReason: "document_too_large" },
+        {
+          where: {
+            connectorId,
+            channelId,
+            documentId,
+          },
+        }
       );
       return;
     }
