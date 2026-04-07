@@ -49,37 +49,40 @@ export function getMockToolResponse(
 
     get_available_models: () =>
       [
-        "## AVAILABLE MODELS",
-        "4 models available.",
-        "",
-        "### openai",
+        "<available_models>",
+        '<provider id="openai">',
         "- **GPT-4 Turbo** (modelId: gpt-4-turbo): GPT-4 Turbo (no vision)",
         "- **GPT-5 Mini** (modelId: gpt-5-mini): GPT-5 Mini (no vision)",
+        "</provider>",
         "",
-        "### anthropic",
+        '<provider id="anthropic">',
         "- **Claude Sonnet 4.5** (modelId: claude-sonnet-4-5-20250929): Claude Sonnet 4.5 (no vision)",
         "- **Claude Opus 4** (modelId: claude-opus-4-20250514): Claude Opus 4 (no vision)",
+        "</provider>",
+        "</available_models>",
       ].join("\n"),
 
     get_available_skills: () =>
       [
-        "## AVAILABLE SKILLS",
-        "2 skills available.",
-        "",
-        "- **Web Search** (ID: skill_web_search): Search the web for information",
-        "- **Data Analysis** (ID: skill_data_analysis): Analyze data and generate insights",
+        "<available_skills>",
+        '<skill ID="skill_web_search" name="Web Search">',
+        "  Search the web for information",
+        "</skill>",
+        '<skill ID="skill_data_analysis" name="Data Analysis">',
+        "  Analyze data and generate insights",
+        "</skill>",
+        "</available_skills>",
       ].join("\n"),
 
     get_available_tools: () =>
       [
-        "## AVAILABLE TOOLS",
-        "5 tools available.",
-        "",
-        "- **Slack** (ID: mcp_slack): Read and send Slack messages",
-        "- **Notion** (ID: mcp_notion): Search Notion workspace",
-        "- **GitHub** (ID: mcp_github): Access GitHub repositories",
-        "- **Datadog** (ID: mcp_datadog): Search and query Datadog logs and metrics",
-        "- **JIRA** (ID: mcp_jira): Search and manage JIRA issues and projects",
+        "<available_tools>",
+        '<tool ID="mcp_slack" name="Slack">Read and send Slack messages</tool>',
+        '<tool ID="mcp_notion" name="Notion">Search Notion workspace</tool>',
+        '<tool ID="mcp_github" name="GitHub">Access GitHub repositories</tool>',
+        '<tool ID="mcp_datadog" name="Datadog">Search and query Datadog logs and metrics</tool>',
+        '<tool ID="mcp_jira" name="JIRA">Search and manage JIRA issues and projects</tool>',
+        "</available_tools>",
       ].join("\n"),
 
     get_available_knowledge: () => ({

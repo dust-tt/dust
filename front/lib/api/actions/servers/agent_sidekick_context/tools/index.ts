@@ -680,12 +680,15 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   },
 
   get_available_skills: async (_, { auth }) => {
-    const skillList = await listAvailableSkills(auth);
+    const [skillList, toolList] = await Promise.all([
+      listAvailableSkills(auth),
+      listAvailableTools(auth),
+    ]);
 
     return new Ok([
       {
         type: "text" as const,
-        text: formatAvailableSkills(skillList),
+        text: formatAvailableSkills(skillList, toolList),
       },
     ]);
   },

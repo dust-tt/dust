@@ -41,38 +41,48 @@ export function formatAvailableModels(
   }
 
   const sections = Array.from(byProvider.entries()).map(
-    ([provider, models]) => {
-      const modelLines = models
+    ([provider, providerModels]) => {
+      const modelLines = providerModels
         .map(
           (m) =>
             `- **${m.displayName}** (modelId: ${m.modelId}): ${m.description}${m.supportsVision ? " (vision)" : " (no vision)"}`
         )
         .join("\n");
-      return `### ${provider}\n${modelLines}`;
+      return `<provider id="${provider}">\n${modelLines}\n</provider>`;
     }
   );
 
-  return `## AVAILABLE MODELS\n${models.length} models available.\n\n${sections.join("\n\n")}`;
+  return `<available_models>\n${sections.join("\n\n")}\n</available_models>`;
 }
 
-export function formatAvailableSkills(skills: AvailableSkill[]): string {
-  const skillLines = skills
-    .map(
-      (s) =>
-        `- **${s.name}** (ID: ${s.sId}): ${(s.agentFacingDescription ?? "No description").replace(/\n/g, " ")}`
-    )
-    .join("\n");
-  return `## AVAILABLE SKILLS IN WORKSPACE\n${skills.length} skills available.\n\n${skillLines}`;
+export function formatAvailableSkills(
+  skills: AvailableSkill[],
+  tools: AvailableTool[]
+): string {
+  const toolNameById = new Map(tools.map((t) => [t.sId, t.name]));
+
+  const blocks = skills.map((s) => {
+    const toolsBlock =
+      s.toolIds.length > 0
+        ? `<tools>${s.toolIds
+            .map((id) => {
+              const name = toolNameById.get(id) ?? id;
+              return `<tool sId="${id}" name="${name}"/>`;
+            })
+            .join("")}</tools>`
+        : "";
+
+    return `<skill ID="${s.sId}" name="${s.name}">${toolsBlock}\n  ${s.agentFacingDescription}\n</skill>`;
+  });
+
+  return `<available_skills>\n${blocks.join("\n")}\n</available_skills>`;
 }
 
 export function formatAvailableTools(tools: AvailableTool[]): string {
-  const toolLines = tools
-    .map(
-      (t) =>
-        `- **${t.name}** (ID: ${t.sId}): ${t.description.replace(/\n/g, " ")}`
-    )
-    .join("\n");
-  return `## AVAILABLE TOOLS IN WORKSPACE\n${tools.length} tools available.\n\n${toolLines}`;
+  const blocks = tools.map(
+    (t) => `<tool ID="${t.sId}" name="${t.name}">${t.description}</tool>`
+  );
+  return `<available_tools>\n${blocks.join("\n")}\n</available_tools>`;
 }
 
 async function fetchSidekickUserMetadata(
@@ -133,7 +143,7 @@ function formatWorkspaceContext(
 ): string {
   return [
     formatAvailableModels(models),
-    formatAvailableSkills(skills),
+    formatAvailableSkills(skills, tools),
     formatAvailableTools(tools),
   ].join("\n\n");
 }
@@ -156,9 +166,10 @@ export async function buildToolsAndSkillsContext(
     listAvailableSkills(auth),
     listAvailableTools(auth),
   ]);
-  return [formatAvailableSkills(skills), formatAvailableTools(tools)].join(
-    "\n\n"
-  );
+  return [
+    formatAvailableSkills(skills, tools),
+    formatAvailableTools(tools),
+  ].join("\n\n");
 }
 
 export async function buildWorkspaceContext(

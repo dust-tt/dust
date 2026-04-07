@@ -25,10 +25,10 @@ export interface AvailableTool {
 export interface AvailableSkill {
   sId: string;
   name: string;
-  userFacingDescription: string | null;
-  agentFacingDescription: string | null;
+  userFacingDescription: string;
+  agentFacingDescription: string;
   icon: string | null;
-  toolSIds: string[];
+  toolIds: string[];
 }
 
 /**
@@ -102,6 +102,6 @@ export async function listAvailableSkills(
     userFacingDescription: skill.userFacingDescription,
     agentFacingDescription: skill.agentFacingDescription,
     icon: skill.icon,
-    toolSIds: skill.mcpServerViews.map((v) => v.sId),
+    toolIds: skill.mcpServerViews.map((v) => v.sId),
   }));
 }

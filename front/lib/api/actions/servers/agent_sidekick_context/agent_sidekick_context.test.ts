@@ -284,12 +284,14 @@ describe("agent_sidekick_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          // Output is markdown. Should contain anthropic models only.
-          expect(content.text).toContain("## AVAILABLE MODELS");
-          expect(content.text).toContain("### anthropic");
+          // Structured listing: models grouped by provider in XML.
+          expect(content.text).toContain("<available_models>");
+          expect(content.text).toContain('<provider id="anthropic">');
           // Should not contain other providers.
-          expect(content.text).not.toContain("### openai");
-          expect(content.text).not.toContain("### google_ai_studio");
+          expect(content.text).not.toContain('<provider id="openai">');
+          expect(content.text).not.toContain(
+            '<provider id="google_ai_studio">'
+          );
         }
       }
     });
@@ -305,12 +307,10 @@ describe("agent_sidekick_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          // Output is markdown. Should contain models from multiple providers.
-          expect(content.text).toContain("## AVAILABLE MODELS");
-          expect(content.text).toContain("models available.");
-          // Should have multiple provider sections.
-          const providerSections = content.text.match(/^### /gm) ?? [];
-          expect(providerSections.length).toBeGreaterThan(1);
+          // Models from multiple providers, each in a provider block.
+          expect(content.text).toContain("<available_models>");
+          const providerBlocks = content.text.match(/<provider id="/g) ?? [];
+          expect(providerBlocks.length).toBeGreaterThan(1);
         }
       }
     });
@@ -329,18 +329,18 @@ describe("agent_sidekick_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          // Output is markdown. Should only contain openai models.
-          expect(content.text).toContain("## AVAILABLE MODELS");
-          expect(content.text).toContain("### openai");
+          // Only openai provider block.
+          expect(content.text).toContain("<available_models>");
+          expect(content.text).toContain('<provider id="openai">');
           // Should not contain other providers.
-          expect(content.text).not.toContain("### anthropic");
+          expect(content.text).not.toContain('<provider id="anthropic">');
         }
       }
     });
   });
 
   describe("get_available_skills", () => {
-    it("returns skills in markdown format", async () => {
+    it("returns skills in available_skills XML", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
       // Create a skill.
@@ -358,10 +358,9 @@ describe("agent_sidekick_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          // Output is markdown.
-          expect(content.text).toContain("## AVAILABLE SKILLS");
-          expect(content.text).toContain("skills available.");
-          expect(content.text).toContain(`**Test Skill** (ID: ${skill.sId})`);
+          expect(content.text).toContain("<available_skills>");
+          expect(content.text).toContain(`ID="${skill.sId}"`);
+          expect(content.text).toContain('name="Test Skill"');
           expect(content.text).toContain("Agent facing description");
         }
       }
@@ -400,8 +399,7 @@ describe("agent_sidekick_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          // Output is markdown.
-          expect(content.text).toContain("## AVAILABLE TOOLS");
+          expect(content.text).toContain("<available_tools>");
           // server1 view should be present (in global space).
           expect(content.text).toContain(view1.sId);
           // The tool from restricted space should not be returned.
@@ -429,9 +427,7 @@ describe("agent_sidekick_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          // Output is markdown.
-          expect(content.text).toContain("## AVAILABLE TOOLS");
-          expect(content.text).toContain("tools available.");
+          expect(content.text).toContain("<available_tools>");
           // Should find the tool view.
           expect(content.text).toContain(view.sId);
         }
@@ -452,10 +448,9 @@ describe("agent_sidekick_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          // Output is markdown.
-          expect(content.text).toContain("## AVAILABLE TOOLS");
+          expect(content.text).toContain("<available_tools>");
 
-          // Knowledge tools should be excluded from markdown output.
+          // Knowledge tools should be excluded from listing.
           const knowledgeToolNames = [
             "Search",
             "Query Tables",
@@ -465,9 +460,6 @@ describe("agent_sidekick_context tools", () => {
           for (const knowledgeName of knowledgeToolNames) {
             expect(content.text).not.toContain(`**${knowledgeName}**`);
           }
-
-          // Non-knowledge auto tools should still be present.
-          expect(content.text).toContain("tools available.");
         }
       }
     });

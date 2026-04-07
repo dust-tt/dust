@@ -59,7 +59,7 @@ export function mockSkill(
     userFacingDescription: description,
     agentFacingDescription: description,
     icon: null,
-    toolSIds: [],
+    toolIds: [],
   };
 }
 
@@ -67,7 +67,10 @@ export function mockSkill(
 export function buildToolsAndSkillsContextFromWorkspace(
   ctx: WorkspaceContext
 ): string {
-  return [formatAvailableSkills(ctx.skills), formatAvailableTools(ctx.tools)]
+  return [
+    formatAvailableSkills(ctx.skills, ctx.tools),
+    formatAvailableTools(ctx.tools),
+  ]
     .filter(Boolean)
     .join("\n\n");
 }
