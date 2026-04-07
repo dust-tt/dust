@@ -76,7 +76,7 @@ async function handler(
         version,
       });
 
-      const result = await fetchToolStepIndexDistribution(baseQuery);
+      const result = await fetchToolStepIndexDistribution(auth, baseQuery);
 
       if (result.isErr()) {
         return apiError(req, res, {

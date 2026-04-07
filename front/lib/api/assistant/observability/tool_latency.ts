@@ -1,7 +1,10 @@
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
+import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
+
+import { resolveServerDisplayNames } from "./tool_usage";
 
 const DEFAULT_METRIC_VALUE = 0;
 
@@ -94,6 +97,7 @@ function buildLatencyRows(
 }
 
 export async function fetchToolLatencyMetricsByName(
+  auth: Authenticator,
   baseQuery: estypes.QueryDslQueryContainer,
   { view, serverName }: { view: ToolLatencyView; serverName?: string }
 ): Promise<Result<ToolLatencyRow[], Error>> {
@@ -162,6 +166,16 @@ export async function fetchToolLatencyMetricsByName(
   const rows = buildLatencyRows(
     result.value.aggregations?.tools?.succeeded?.by_name
   );
+
+  if (view === "server") {
+    const displayMap = await resolveServerDisplayNames(
+      auth,
+      rows.map((r) => r.name)
+    );
+    for (const row of rows) {
+      row.name = displayMap.get(row.name) ?? row.name;
+    }
+  }
 
   return new Ok(rows);
 }

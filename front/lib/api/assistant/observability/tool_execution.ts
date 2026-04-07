@@ -1,10 +1,11 @@
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
+import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { estypes } from "@elastic/elasticsearch";
 
 import { buildConfigBreakdown, MISSING_CONFIG_NAME } from "./tool_breakdown";
+import { resolveServerDisplayNames } from "./tool_usage";
 
 const DEFAULT_METRIC_VALUE = 0;
 
@@ -45,6 +46,7 @@ type ToolExecutionAggs = {
 };
 
 export async function fetchToolExecutionMetrics(
+  auth: Authenticator,
   baseQuery: estypes.QueryDslQueryContainer
 ): Promise<Result<ToolExecutionByVersion[], Error>> {
   const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
@@ -99,6 +101,11 @@ export async function fetchToolExecutionMetrics(
     result.value.aggregations?.by_version?.buckets
   );
 
+  const allServerNames = versionBuckets.flatMap((vb) =>
+    bucketsToArray<ServerBucket>(vb.tools?.servers?.buckets).map((b) => b.key)
+  );
+  const displayMap = await resolveServerDisplayNames(auth, allServerNames);
+
   const byVersion: ToolExecutionByVersion[] = versionBuckets.map((vb) => {
     const serverBuckets = bucketsToArray<ServerBucket>(
       vb.tools?.servers?.buckets
@@ -118,10 +125,9 @@ export async function fetchToolExecutionMetrics(
           ? Math.round((succeeded / total) * 100)
           : DEFAULT_METRIC_VALUE;
 
-      const serverDisplayName = asDisplayToolName(sb.key);
       const breakdown = buildConfigBreakdown(sb.configs);
 
-      tools[serverDisplayName] = {
+      tools[displayMap.get(sb.key) ?? sb.key] = {
         count: total,
         successRate,
         mcpViewBreakdown:

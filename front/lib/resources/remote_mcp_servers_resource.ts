@@ -188,11 +188,6 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     });
   }
 
-  /**
-   * Resolve a list of MCP server sIds to their cached human-readable names.
-   * Non-remote sIds are silently ignored.
-   * Returns a Map from sId to cachedName (only includes servers with a cachedName).
-   */
   static async resolveNamesBySIds(
     auth: Authenticator,
     sIds: string[]

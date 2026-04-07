@@ -213,18 +213,34 @@ export async function fetchAvailableTools(
   return new Ok(tools);
 }
 
+export async function resolveServerDisplayNames(
+  auth: Authenticator,
+  serverNames: string[]
+): Promise<Map<string, string>> {
+  const unique = [...new Set(serverNames)];
+  const remoteNameMap = await RemoteMCPServerResource.resolveNamesBySIds(
+    auth,
+    unique
+  );
+
+  const displayMap = new Map<string, string>();
+  for (const name of unique) {
+    displayMap.set(name, remoteNameMap.get(name) ?? asDisplayToolName(name));
+  }
+  return displayMap;
+}
+
 export async function resolveToolDisplayNames(
   auth: Authenticator,
   tools: AvailableTool[]
 ): Promise<AvailableTool[]> {
-  const remoteNameMap = await RemoteMCPServerResource.resolveNamesBySIds(
+  const displayMap = await resolveServerDisplayNames(
     auth,
     tools.map((t) => t.serverName)
   );
 
   return tools.map((tool) => ({
     ...tool,
-    displayName:
-      remoteNameMap.get(tool.serverName) ?? asDisplayToolName(tool.serverName),
+    displayName: displayMap.get(tool.serverName) ?? tool.serverName,
   }));
 }

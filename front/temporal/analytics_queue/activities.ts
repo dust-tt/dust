@@ -303,7 +303,6 @@ async function collectToolUsageFromMessage(
     serverConfigs.map((cfg) => [cfg.id.toString(), cfg.sId])
   );
 
-  // Resolve remote MCP server IDs to human-readable names.
   const mcpServerIds = [
     ...new Set(
       actionResources.flatMap((a) =>
