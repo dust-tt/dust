@@ -119,6 +119,13 @@ export const AgentInputBar = ({
         return [currentUserAgentMention];
       }
 
+      // @sidekick is not available in accessibleAgentIds so we need to skip it
+      if (context.agentBuilderContext) {
+        return lastAgentMentionInConversation
+          ? [lastAgentMentionInConversation]
+          : [];
+      }
+
       if (
         lastAgentMentionInConversation &&
         accessibleAgentIds.has(lastAgentMentionInConversation.id)
@@ -155,6 +162,7 @@ export const AgentInputBar = ({
     lastAgentMentionInConversation,
     accessibleAgentIds,
     agentConfigurations,
+    context.agentBuilderContext,
   ]);
 
   // Calculate positions and determine which user messages are navigable.

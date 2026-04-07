@@ -43,8 +43,7 @@ const useHandleMentions = ({
   const stickyMentionsTextContent = useRef<string | null>(null);
   const { hasFeature } = useFeatureFlags();
   const singleAgentInput = hasFeature("enable_steering");
-  const { setSelectedSingleAgent } =
-    useContext(InputBarContext);
+  const { setSelectedSingleAgent } = useContext(InputBarContext);
 
   // Priority: draft > sticky mentions > @dust fallback.
   // Also resets when the conversation changes so stale state doesn't leak.
@@ -60,7 +59,6 @@ const useHandleMentions = ({
       prevConversationIdRef.current = currentId;
       setSelectedSingleAgent(null);
     }
-
 
     // Agent builder: wait for the draft agent to arrive via stickyMentions.
     if (isAgentBuilder && (!stickyMentions || stickyMentions.length === 0)) {
