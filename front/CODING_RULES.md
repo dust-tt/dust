@@ -769,8 +769,9 @@ value, require the author to memoize it.
 
 When creating a React context, always provide a custom hook that calls `useContext` internally,
 throws a descriptive error if used outside the provider, and returns the typed context value.
-Never consume context directly via `useContext(SomeContext)` in components — always use the
-custom hook.
+The hook name must include "Context" (e.g., `useAuthContext`, `useThemeContext`) to make it
+clear that it consumes a React context. Never consume context directly via
+`useContext(SomeContext)` in components — always use the custom hook.
 
 Example:
 
@@ -782,18 +783,22 @@ function Component() {
   const ctx = useContext(AuthContext); // no safety check, no encapsulation
 }
 
-// GOOD — custom hook with safety check
-export function useAuth(): AuthContextValue {
+// BAD — hook name doesn't include "Context"
+export function useAuth(): AuthContextValue { ... }
+
+// GOOD — custom hook with safety check and "Context" in the name
+export function useAuthContext(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) {
-    throw new Error("useAuth must be used within AuthProvider");
+    throw new Error("useAuthContext must be used within AuthProvider");
   }
   return ctx;
 }
 ```
 
 Reviewer: If you see `useContext(SomeContext)` called directly in a component instead of through
-a dedicated hook, require the author to create or use the corresponding custom hook.
+a dedicated hook, require the author to create or use the corresponding custom hook. If the
+hook name does not include "Context", require the author to rename it.
 
 ### [REACT6] Never use an entire context object as a hook dependency
 
@@ -822,3 +827,58 @@ useEffect(() => {
 
 Reviewer: If you see a context hook return value used directly as a dependency (e.g.,
 `[auth]`, `[ctx]`) instead of destructured fields, require the author to destructure.
+
+### [REACT7] Prefer state adjustment during render over useEffect for prop changes
+
+When state needs to be reset or adjusted in response to a prop change, set state directly
+during render inside a condition — do not use `useEffect`. `useEffect` runs after the render
+and browser paint, causing an unnecessary extra render cycle and potential visual flicker.
+Setting state during render causes React to discard the in-progress render and immediately
+retry with the updated state, so children never see stale values.
+
+This pattern should be rare. First consider whether you can derive the value directly during
+render without state, or use a `key` prop to reset state entirely. Only use this pattern when
+you genuinely need to know that a prop changed and cannot derive the new state from props alone.
+
+Rules:
+- The `setState` call **must** be inside a condition to avoid infinite loops.
+- Only update the **current** component's state during render.
+
+Example:
+
+```tsx
+// BAD — useEffect causes an extra render cycle and potential flicker
+function List({ items }: ListProps) {
+  const [selection, setSelection] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelection(null);
+  }, [items]);
+
+  // ...
+}
+
+// GOOD — state adjustment during render, no extra cycle
+function List({ items }: ListProps) {
+  const [prevItems, setPrevItems] = useState(items);
+  const [selection, setSelection] = useState<string | null>(null);
+
+  if (items !== prevItems) {
+    setPrevItems(items);
+    setSelection(null);
+  }
+
+  // ...
+}
+
+// BEST — derive directly without state when possible
+function List({ items }: ListProps) {
+  const selection = items.length > 0 ? items[0] : null;
+
+  // ...
+}
+```
+
+Reviewer: If you see a `useEffect` whose only purpose is to reset or adjust state when a prop
+changes, require the author to either derive the value directly, use a `key` prop, or move
+the state update into the render body with a condition.
