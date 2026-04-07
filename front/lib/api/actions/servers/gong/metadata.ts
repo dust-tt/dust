@@ -77,7 +77,7 @@ export const GONG_SERVER = {
     description: "Access sales calls, transcripts, and conversation analytics.",
     authorization: {
       provider: "gong" as const,
-      supported_use_cases: ["personal_actions"] as const,
+      supported_use_cases: ["personal_actions", "platform_actions"] as const,
     },
     icon: "GongLogo",
     documentationUrl: null,
