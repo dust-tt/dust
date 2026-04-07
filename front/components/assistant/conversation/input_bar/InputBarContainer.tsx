@@ -15,11 +15,10 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
-import { isSingleAgentInputEnabled } from "@app/lib/development";
 import { getSkillIcon } from "@app/lib/skill";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
@@ -194,7 +193,8 @@ const InputBarContainer = ({
 }: InputBarContainerProps) => {
   const { subscription } = useAuth();
   const isMobile = useIsMobile();
-  const singleAgentInput = isSingleAgentInputEnabled();
+  const { hasFeature } = useFeatureFlags();
+  const singleAgentInput = hasFeature("enable_steering");
   const { selectedSingleAgent, setSelectedSingleAgent } =
     useContext(InputBarContext);
   const [hasUserMention, setHasUserMention] = useState(false);

@@ -6,10 +6,8 @@ import config from "@app/lib/api/config";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   forceUserRole,
-  isSingleAgentInputEnabled,
   sendOnboardingConversation,
   showDebugTools,
-  toggleSingleAgentInput,
 } from "@app/lib/development";
 import { useAppRouter } from "@app/lib/platform";
 import type { SubscriptionType } from "@app/types/plan";
@@ -42,7 +40,7 @@ import {
   TestTubeIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 interface UserMenuProps {
   user: UserTypeWithWorkspaces;
@@ -56,19 +54,6 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
 
   const sendNotification = useSendNotification();
   const privacyMask = usePrivacyMask();
-  const [singleAgentInput, setSingleAgentInput] = useState(() =>
-    isSingleAgentInputEnabled()
-  );
-  const handleToggleSingleAgentInput = () => {
-    const next = toggleSingleAgentInput();
-    setSingleAgentInput(next);
-    sendNotification({
-      title: `Single agent input ${next ? "enabled" : "disabled"}`,
-      description: "Reload the page to apply.",
-      type: "success",
-    });
-  };
-
   const { clearAllDraftsFromUser } = useConversationDrafts({
     workspaceId: owner.sId,
     userId: user.sId,
@@ -277,11 +262,6 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
                     label={`${privacyMask.isEnabled ? "Disable" : "Enable"} Privacy Mask`}
                     onClick={privacyMask.toggle}
                     icon={privacyMask.isEnabled ? EyeSlashIcon : EyeIcon}
-                  />
-                  <DropdownMenuItem
-                    label={`${singleAgentInput ? "Disable" : "Enable"} Single Agent Input`}
-                    onClick={handleToggleSingleAgentInput}
-                    icon={TestTubeIcon}
                   />
                   {owner.role === "admin" && (
                     <DropdownMenuItem
