@@ -1,7 +1,7 @@
-front/types/assistant/assistant.ts
-  d7bfc585242fab5e 25-33,36,38
 front/pages/api/w/[wId]/assistant/agent_configurations/text_as_cron_rule.ts
   fc6bafbfa4016eec 37
+front/types/assistant/assistant.ts
+  d7bfc585242fab5e 25-33,36,38
 ---
 {
   "schema_version": "authorship/3.0.0",
