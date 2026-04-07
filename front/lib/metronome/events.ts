@@ -9,7 +9,7 @@ import { createHash } from "crypto";
 import type { MetronomeEvent } from "./types";
 
 const MAX_TRANSACTION_ID_LENGTH = 128;
-const MAX_PROPERTY_VALUE_BYTES = 256;
+const MAX_PROPERTY_VALUE_BYTES = 128;
 
 /**
  * If a transaction_id exceeds Metronome's 128-char limit, keep the first
