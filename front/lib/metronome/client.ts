@@ -5,7 +5,12 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import Metronome, { ConflictError } from "@metronome/sdk";
 
-import type { MetronomeEvent } from "./types";
+import type {
+  MetronomeBalance,
+  MetronomeEvent,
+  MetronomeUsageListResponse,
+  MetronomeUsageWithGroupsResponse,
+} from "./types";
 
 let cachedClient: Metronome | null = null;
 
@@ -566,6 +571,135 @@ export async function listMetronomeProducts(): Promise<
   } catch (err) {
     const error = normalizeError(err);
     logger.error({ error }, "[Metronome] Failed to list products");
+    return new Err(error);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Balances (commits + credits)
+// ---------------------------------------------------------------------------
+
+/**
+ * List all commits and credits for a customer with current balances.
+ * Returns a union of Commit | Credit from the contracts.listBalances API.
+ */
+export async function listMetronomeBalances(
+  metronomeCustomerId: string
+): Promise<Result<MetronomeBalance[], Error>> {
+  try {
+    const balances: MetronomeBalance[] = [];
+    for await (const entry of getClient().v1.contracts.listBalances({
+      customer_id: metronomeCustomerId,
+      include_balance: true,
+      include_contract_balances: true,
+    })) {
+      balances.push(entry);
+    }
+    return new Ok(balances);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId },
+      "[Metronome] Failed to list balances"
+    );
+    return new Err(error);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Usage queries
+// ---------------------------------------------------------------------------
+
+type WindowSize = "HOUR" | "DAY" | "NONE";
+
+/**
+ * Retrieve aggregated usage data for given customers and metrics.
+ * Uses v1.usage.list — suitable for ungrouped aggregate views.
+ */
+export async function listMetronomeUsage({
+  customerIds,
+  billableMetricIds,
+  startingOn,
+  endingBefore,
+  windowSize,
+}: {
+  customerIds: string[];
+  billableMetricIds?: string[];
+  startingOn: string;
+  endingBefore: string;
+  windowSize: WindowSize;
+}): Promise<Result<MetronomeUsageListResponse[], Error>> {
+  try {
+    const results: MetronomeUsageListResponse[] = [];
+    for await (const entry of getClient().v1.usage.list({
+      starting_on: startingOn,
+      ending_before: endingBefore,
+      window_size: windowSize,
+      customer_ids: customerIds,
+      ...(billableMetricIds
+        ? { billable_metrics: billableMetricIds.map((id) => ({ id })) }
+        : {}),
+    })) {
+      results.push({
+        billableMetricId: entry.billable_metric_id,
+        billableMetricName: entry.billable_metric_name,
+        customerId: entry.customer_id,
+        startTimestamp: entry.start_timestamp,
+        endTimestamp: entry.end_timestamp,
+        value: entry.value,
+      });
+    }
+    return new Ok(results);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error({ error }, "[Metronome] Failed to list usage");
+    return new Err(error);
+  }
+}
+
+/**
+ * Retrieve usage data for a single customer and metric, broken down by group keys.
+ * Uses v1.usage.listWithGroups — requires group keys pre-configured on the metric.
+ */
+export async function listMetronomeUsageWithGroups({
+  customerId,
+  billableMetricId,
+  startingOn,
+  endingBefore,
+  windowSize,
+  groupKey,
+}: {
+  customerId: string;
+  billableMetricId: string;
+  startingOn: string;
+  endingBefore: string;
+  windowSize: WindowSize;
+  groupKey: string[];
+}): Promise<Result<MetronomeUsageWithGroupsResponse[], Error>> {
+  try {
+    const results: MetronomeUsageWithGroupsResponse[] = [];
+    for await (const entry of getClient().v1.usage.listWithGroups({
+      customer_id: customerId,
+      billable_metric_id: billableMetricId,
+      starting_on: startingOn,
+      ending_before: endingBefore,
+      window_size: windowSize,
+      group_key: groupKey,
+    })) {
+      results.push({
+        startingOn: entry.starting_on,
+        endingBefore: entry.ending_before,
+        value: entry.value,
+        group: entry.group ?? null,
+      });
+    }
+    return new Ok(results);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, customerId, billableMetricId },
+      "[Metronome] Failed to list usage with groups"
+    );
     return new Err(error);
   }
 }
