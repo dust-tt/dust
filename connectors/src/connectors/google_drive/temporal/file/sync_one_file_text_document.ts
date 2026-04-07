@@ -92,15 +92,7 @@ export async function syncOneFileTextDocument(
       if (error instanceof DataSourceQuotaExceededError) {
         localLogger.warn(
           { documentId, fileId: file.id },
-          "File exceeds plan document size limit, marking as skipped"
-        );
-        skipReason = "payload_too_large";
-        await updateGoogleDriveFiles(
-          connectorId,
-          documentId,
-          file,
-          skipReason,
-          undefined
+          "File exceeds plan document size limit, skipping"
         );
         return false;
       }
