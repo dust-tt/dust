@@ -70,7 +70,7 @@ export type IntercomConversationType = {
     subject: string;
     body: string;
     author: IntercomAuthor;
-  };
+  } | null;
   statistics?: {
     last_close_at?: number;
   };
