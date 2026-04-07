@@ -27,21 +27,10 @@ export interface MetronomeEvent {
   properties: Record<string, string | number>;
 }
 
-// ---------------------------------------------------------------------------
-// Balances — re-export the SDK union type for commits + credits.
-// ---------------------------------------------------------------------------
-
 export type MetronomeBalance = Commit | Credit;
-
-// Re-export for convenience in handlers.
 export type { Commit as MetronomeCommit, Credit as MetronomeCredit };
 
-// Metronome stores USD amounts in cents. Dust uses microUsd (1 dollar = 1_000_000).
 export const METRONOME_CENTS_TO_MICRO_USD = 10_000;
-
-// ---------------------------------------------------------------------------
-// Usage query responses
-// ---------------------------------------------------------------------------
 
 export interface MetronomeUsageListResponse {
   billableMetricId: string;

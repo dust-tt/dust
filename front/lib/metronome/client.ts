@@ -575,14 +575,6 @@ export async function listMetronomeProducts(): Promise<
   }
 }
 
-// ---------------------------------------------------------------------------
-// Balances (commits + credits)
-// ---------------------------------------------------------------------------
-
-/**
- * List all commits and credits for a customer with current balances.
- * Returns a union of Commit | Credit from the contracts.listBalances API.
- */
 export async function listMetronomeBalances(
   metronomeCustomerId: string
 ): Promise<Result<MetronomeBalance[], Error>> {
@@ -606,16 +598,8 @@ export async function listMetronomeBalances(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Usage queries
-// ---------------------------------------------------------------------------
-
 type WindowSize = "HOUR" | "DAY" | "NONE";
 
-/**
- * Retrieve aggregated usage data for given customers and metrics.
- * Uses v1.usage.list — suitable for ungrouped aggregate views.
- */
 export async function listMetronomeUsage({
   customerIds,
   billableMetricIds,
@@ -657,10 +641,6 @@ export async function listMetronomeUsage({
   }
 }
 
-/**
- * Retrieve usage data for a single customer and metric, broken down by group keys.
- * Uses v1.usage.listWithGroups — requires group keys pre-configured on the metric.
- */
 export async function listMetronomeUsageWithGroups({
   customerId,
   billableMetricId,
