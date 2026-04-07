@@ -125,7 +125,7 @@ run_migration() {
     while IFS= read -r workspace_sid; do
         if [ -n "$workspace_sid" ]; then
             echo "    Processing workspace: $workspace_sid"
-            npx tsx "$migration_script" --workspaceSid="$workspace_sid" $EXECUTE_FLAG
+            npx tsx "$migration_script" --workspaceId="$workspace_sid" $EXECUTE_FLAG
         fi
     done < "$workspace_file"
     
@@ -173,7 +173,7 @@ run_migration_with_arg "20250516_migrate_retrieval_to_mcp.ts" "$RETRIEVAL_WORKSP
 echo "Migrating WEBSEARCH and BROWSE configurations..."
 # Note: websearch and browse are handled by the same migration script
 cat "$WEBSEARCH_WORKSPACES" "$BROWSE_WORKSPACES" | sort -u > "${WEBSEARCH_WORKSPACES}.combined"
-run_migration_with_arg "20250513_migrate_browse_websearch_to_mcp.ts" "${WEBSEARCH_WORKSPACES}.combined" "websearch/browse" "workspaceSid"
+run_migration_with_arg "20250513_migrate_browse_websearch_to_mcp.ts" "${WEBSEARCH_WORKSPACES}.combined" "websearch/browse" "workspaceId"
 rm -f "${WEBSEARCH_WORKSPACES}.combined"
 
 echo "Migrating TABLES_QUERY configurations..."

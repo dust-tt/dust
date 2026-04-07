@@ -3,13 +3,13 @@ import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 
 interface MetricContext {
-  workspaceSId: string;
+  workspaceId: string;
   region?: string;
 }
 
 function buildTags(ctx: MetricContext): string[] {
   return [
-    `workspace_id:${ctx.workspaceSId}`,
+    `workspace_id:${ctx.workspaceId}`,
     `region:${ctx.region ?? regionConfig.getCurrentRegion()}`,
   ];
 }

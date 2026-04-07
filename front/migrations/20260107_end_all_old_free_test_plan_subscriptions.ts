@@ -45,7 +45,7 @@ makeScript({}, async ({ execute }) => {
       {
         subscriptionId: subscription.id,
         subscriptionSId: subscription.sId,
-        workspaceSId: workspace.sId,
+        workspaceId: workspace.sId,
         execute,
       },
       "Ending subscription"

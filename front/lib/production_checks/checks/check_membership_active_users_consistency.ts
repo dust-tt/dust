@@ -55,7 +55,7 @@ export const checkMembershipActiveUsersConsistency: CheckFunction = async (
       )
       SELECT
         w.id as "workspaceId",
-        w."sId" as "workspaceSId",
+        w."sId" as "workspaceId",
         w."name" as "workspaceName",
         p."code" as "planCode",
         s."stripeSubscriptionId",

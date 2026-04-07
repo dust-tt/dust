@@ -5,21 +5,21 @@ import { makeScript } from "@app/scripts/helpers";
 
 makeScript(
   {
-    workspaceSId: {
+    workspaceId: {
       alias: "w",
       type: "string",
       description: "Workspace sID",
       demandOption: true,
     },
   },
-  async ({ execute, workspaceSId }, logger) => {
-    const workspace = await WorkspaceResource.fetchById(workspaceSId);
+  async ({ execute, workspaceId }, logger) => {
+    const workspace = await WorkspaceResource.fetchById(workspaceId);
     if (!workspace) {
-      logger.error({ workspaceSId }, "Workspace not found");
+      logger.error({ workspaceId }, "Workspace not found");
       return;
     }
 
-    logger.info({ workspaceSId, workspace: workspace.name }, "Found workspace");
+    logger.info({ workspaceId, workspace: workspace.name }, "Found workspace");
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
@@ -29,7 +29,7 @@ makeScript(
 
     logger.info(
       {
-        workspaceSId,
+        workspaceId,
         provisionedGroupCount: provisionedGroups.length,
         groupNames: provisionedGroups.map((g) => g.name),
       },

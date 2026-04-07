@@ -38,13 +38,13 @@ final class ConversationListViewModel: ObservableObject {
             let dustUser = try await AuthService.fetchDustUser(tokenProvider: tokenProvider)
             workspaces = dustUser.workspaces
 
-            let workspaceSId = dustUser.selectedWorkspace ?? dustUser.workspaces.first?.sId
-            guard let workspaceSId else {
+            let workspaceId = dustUser.selectedWorkspace ?? dustUser.workspaces.first?.sId
+            guard let workspaceId else {
                 state = .error("No workspace found")
                 return
             }
 
-            workspace = dustUser.workspaces.first { $0.sId == workspaceSId }
+            workspace = dustUser.workspaces.first { $0.sId == workspaceId }
             try await loadConversations()
         } catch {
             logger.error("Failed to load conversations: \(error)")
@@ -73,9 +73,9 @@ final class ConversationListViewModel: ObservableObject {
     }
 
     private func loadConversations() async throws {
-        guard let workspaceSId = workspace?.sId else { return }
+        guard let workspaceId = workspace?.sId else { return }
         let response = try await ConversationService.fetchConversations(
-            workspaceId: workspaceSId,
+            workspaceId: workspaceId,
             tokenProvider: tokenProvider
         )
         conversations = response.conversations

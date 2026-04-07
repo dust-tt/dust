@@ -92,7 +92,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     );
 
     recordLifecycleOperation("create", {
-      workspaceSId: auth.getNonNullableWorkspace().sId,
+      workspaceId: auth.getNonNullableWorkspace().sId,
     });
 
     return new this(this.model, sandbox.get());
@@ -199,7 +199,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   async updateStatus(
     newStatus: SandboxStatus,
     opts?: {
-      ctx?: { workspaceSId: string };
+      ctx?: { workspaceId: string };
       transaction?: Transaction;
     }
   ): Promise<void> {
@@ -265,7 +265,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
       if (sandbox.status !== "deleted") {
         const tracingOpts = {
-          workspaceSId: auth.getNonNullableWorkspace().sId,
+          workspaceId: auth.getNonNullableWorkspace().sId,
         };
         const result = await provider.destroy(sandbox.providerId, tracingOpts);
         if (result.isErr() && !(result.error instanceof SandboxNotFoundError)) {
@@ -320,8 +320,8 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     );
 
     return this.withLifecycleLock(conversation.sId, async (provider) => {
-      const ctx = { workspaceSId: auth.getNonNullableWorkspace().sId };
-      const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
+      const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
+      const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
       const existing = await SandboxResource.fetchByConversationId(
         auth,
         conversation.sId
@@ -496,8 +496,8 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return new Ok(undefined);
       }
 
-      const ctx = { workspaceSId: auth.getNonNullableWorkspace().sId };
-      const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
+      const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
+      const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
 
       const result = await provider.sleep(sandbox.providerId, tracingOpts);
       if (result.isErr()) {
@@ -538,8 +538,8 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return new Ok(undefined);
       }
 
-      const ctx = { workspaceSId: auth.getNonNullableWorkspace().sId };
-      const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
+      const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
+      const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
 
       const result = await provider.destroy(sandbox.providerId, tracingOpts);
       if (result.isErr()) {
@@ -574,7 +574,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       return new Err(new Error("Sandbox provider not configured."));
     }
 
-    const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
+    const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
     const result = await provider.exec(
       this.providerId,
       command,
@@ -607,7 +607,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     }
 
     try {
-      const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
+      const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
       const entries = await provider.listFiles(
         this.providerId,
         path,
@@ -640,7 +640,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       return new Err(new Error("Sandbox provider not configured."));
     }
 
-    const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
+    const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
     const result = await provider.writeFile(
       this.providerId,
       path,

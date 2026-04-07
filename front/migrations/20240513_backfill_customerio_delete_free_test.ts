@@ -16,7 +16,7 @@ const backfillCustomerIo = async (execute: boolean) => {
   const allUserModels = await UserModel.findAll();
   const users = allUserModels.map((u) => u);
   const chunks = _.chunk(users, 16);
-  const deletedWorkspaceSids = new Set<string>();
+  const deletedWorkspaceIds = new Set<string>();
   for (const [i, c] of chunks.entries()) {
     logger.info(
       `[execute=${execute}] Processing chunk of ${c.length} users... (${
@@ -92,7 +92,7 @@ const backfillCustomerIo = async (execute: boolean) => {
         );
       });
       for (const ws of workspacesWithoutRealSubscriptions) {
-        if (!deletedWorkspaceSids.has(ws.sId)) {
+        if (!deletedWorkspaceIds.has(ws.sId)) {
           logger.info(
             { workspaceId: ws.sId },
             "Workspace does not have a real subscription, deleting from Customer.io"
@@ -109,7 +109,7 @@ const backfillCustomerIo = async (execute: boolean) => {
               })
             );
           }
-          deletedWorkspaceSids.add(ws.sId);
+          deletedWorkspaceIds.add(ws.sId);
         }
       }
     }

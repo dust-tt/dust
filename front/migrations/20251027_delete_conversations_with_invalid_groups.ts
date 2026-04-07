@@ -88,7 +88,7 @@ makeScript({}, async ({ execute }, logger) => {
       if (conversations.length !== conversationIds.size) {
         logger.warn(
           {
-            workspaceId: workspaceId,
+            workspaceId,
             missingConversationIds: Array.from(conversationIds).filter(
               (id) => !conversations.some((c) => c.sId === id)
             ),
@@ -101,7 +101,7 @@ makeScript({}, async ({ execute }, logger) => {
         logger.info(
           {
             sId: conversation.sId,
-            workspaceId: workspaceId,
+            workspaceId,
           },
           execute
             ? "Deleting conversation"

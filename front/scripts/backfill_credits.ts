@@ -16,7 +16,7 @@ import { runOnAllWorkspaces } from "./workspace_helpers";
 
 async function reconcilePAYGConfig(
   auth: Authenticator,
-  workspaceSId: string,
+  workspaceId: string,
   stripeSubscription: Stripe.Subscription | null,
   execute: boolean,
   logger: Logger
@@ -34,7 +34,7 @@ async function reconcilePAYGConfig(
   if (!isEnterprise) {
     logger.info(
       {
-        workspaceId: workspaceSId,
+        workspaceId,
         paygCapMicroUsd: config.paygCapMicroUsd,
         hasStripeSubscription: !!stripeSubscription,
         execute,
@@ -52,7 +52,7 @@ async function reconcilePAYGConfig(
 
   logger.info(
     {
-      workspaceId: workspaceSId,
+      workspaceId,
       paygCapMicroUsd: config.paygCapMicroUsd,
       execute,
     },
@@ -71,7 +71,7 @@ async function reconcilePAYGConfig(
     if (result.isErr()) {
       logger.error(
         {
-          workspaceId: workspaceSId,
+          workspaceId,
           error: result.error.message,
         },
         "[Backfill credits] Failed to ensure PAYG credit"
@@ -82,7 +82,7 @@ async function reconcilePAYGConfig(
 
 async function backfillFreeCredits(
   auth: Authenticator,
-  workspaceSId: string,
+  workspaceId: string,
   stripeSubscription: Stripe.Subscription | null,
   execute: boolean,
   logger: Logger
@@ -93,7 +93,7 @@ async function backfillFreeCredits(
 
   logger.info(
     {
-      workspaceId: workspaceSId,
+      workspaceId,
       execute,
     },
     execute
@@ -110,7 +110,7 @@ async function backfillFreeCredits(
     if (result.isErr()) {
       logger.error(
         {
-          workspaceId: workspaceSId,
+          workspaceId,
           error: result.error.message,
         },
         "[Backfill credits] Free credits grant result"
@@ -120,11 +120,11 @@ async function backfillFreeCredits(
 }
 
 async function reconcileWorkspaceCredits(
-  workspaceSId: string,
+  workspaceId: string,
   execute: boolean,
   logger: Logger
 ): Promise<void> {
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceSId);
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
   const workspace = auth.getNonNullableWorkspace();
   const lightWorkspace = renderLightWorkspaceType({ workspace });
@@ -139,14 +139,14 @@ async function reconcileWorkspaceCredits(
 
   await reconcilePAYGConfig(
     auth,
-    workspaceSId,
+    workspaceId,
     stripeSubscription,
     execute,
     logger
   );
   await backfillFreeCredits(
     auth,
-    workspaceSId,
+    workspaceId,
     stripeSubscription,
     execute,
     logger

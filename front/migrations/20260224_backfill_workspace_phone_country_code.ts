@@ -126,7 +126,7 @@ makeScript(
       if (existingCountry !== undefined) {
         logger.info(
           {
-            workspaceSId: workspace.sId,
+            workspaceId: workspace.sId,
             existingCountry,
             csvCountry: entry.country,
             result: "skipped_already_has_country",
@@ -139,7 +139,7 @@ makeScript(
 
       logger.info(
         {
-          workspaceSId: workspace.sId,
+          workspaceId: workspace.sId,
           workspaceName: workspace.name,
           csvCountry: entry.country,
           csvStatus: entry.status,

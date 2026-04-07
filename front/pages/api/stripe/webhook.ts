@@ -171,7 +171,7 @@ async function shadowProvisionMetronome({
 /**
  * Grant monthly free programmatic credits to a Metronome-billed workspace.
  * Uses the same bracket formula as the Stripe credit system.
- * Idempotent via uniqueness_key: free-legacy-{workspaceSId}-{YYYY-MM}.
+ * Idempotent via uniqueness_key: free-legacy-{workspaceId}-{YYYY-MM}.
  */
 async function grantMetronomeFreeCredits({
   workspace,

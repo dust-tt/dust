@@ -140,7 +140,7 @@ makeScript(
 
       logger.info(
         {
-          workspaceSId: workspace.sId,
+          workspaceId: workspace.sId,
           workspaceName: workspace.name,
           directoryId: directory.id,
           directoryName: directory.name,
@@ -153,7 +153,7 @@ makeScript(
 
       logger.info(
         {
-          workspaceSId: workspace.sId,
+          workspaceId: workspace.sId,
           directoryId: directory.id,
           userCount: directoryUsers.length,
         },
@@ -235,7 +235,7 @@ makeScript(
 
       logger.info(
         {
-          workspaceSId: workspace.sId,
+          workspaceId: workspace.sId,
           directoryId: directory.id,
           total: directoryUsers.length,
           updated,

@@ -60,7 +60,7 @@ async function addCreditToWorkspace(
   );
   if (!subscription) {
     logger.info(
-      { workspaceSId: workspace.sId, workspaceId: workspace.id },
+      { workspaceId: workspace.sId, workspaceModelId: workspace.id },
       "Skipping workspace: no active subscription"
     );
     return "skipped";
@@ -77,7 +77,7 @@ async function addCreditToWorkspace(
 
   if (existingCredit) {
     logger.info(
-      { workspaceSId: workspace.sId, workspaceId: workspace.id },
+      { workspaceId: workspace.sId, workspaceModelId: workspace.id },
       "Skipping workspace: credit already exists"
     );
     return "skipped";
@@ -85,7 +85,7 @@ async function addCreditToWorkspace(
 
   if (!execute) {
     logger.info(
-      { workspaceSId: workspace.sId, workspaceId: workspace.id },
+      { workspaceId: workspace.sId, workspaceModelId: workspace.id },
       "Would add credit to workspace"
     );
     return "added";
@@ -109,8 +109,8 @@ async function addCreditToWorkspace(
   logger.info(
     {
       creditId: credit.id,
-      workspaceSId: workspace.sId,
-      workspaceId: workspace.id,
+      workspaceId: workspace.sId,
+      workspaceModelId: workspace.id,
     },
     "Added credit to workspace"
   );

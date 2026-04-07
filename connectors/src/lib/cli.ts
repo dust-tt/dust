@@ -108,7 +108,7 @@ export async function getConnectorOrThrow({
   }
   const connector = await ConnectorModel.findOne({
     where: {
-      workspaceId: workspaceId,
+      workspaceId,
       dataSourceId: dataSourceId,
     },
   });

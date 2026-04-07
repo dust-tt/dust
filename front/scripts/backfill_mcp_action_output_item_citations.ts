@@ -49,21 +49,20 @@ makeScript(
     );
 
     for (const workspace of workspaces) {
-      const workspaceSId = workspace.sId;
-      const workspaceId = workspace.id;
+      const workspaceId = workspace.sId;
+      const workspaceModelId = workspace.id;
 
       logger.info(
-        { workspaceId: workspaceSId, batchSize, execute },
+        { workspaceId, workspaceModelId, batchSize, execute },
         "[Backfill MCP output citations] Starting workspace"
       );
 
-      const auth =
-        await Authenticator.internalBuilderForWorkspace(workspaceSId);
+      const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
 
       const actionRows = await AgentMCPActionModel.findAll({
         attributes: ["id"],
         where: {
-          workspaceId,
+          workspaceId: workspaceModelId,
           citationsAllocated: { [Op.gt]: 0 },
         },
         raw: true,
@@ -72,7 +71,7 @@ makeScript(
       const actionIds = actionRows.map((r) => r.id);
       if (actionIds.length === 0) {
         logger.info(
-          { workspaceId: workspaceSId },
+          { workspaceId },
           "[Backfill MCP output citations] No actions with citationsAllocated > 0; skipping workspace"
         );
         continue;
@@ -81,7 +80,7 @@ makeScript(
       const actionIdChunks = chunkArray(actionIds, ACTION_IDS_CHUNK_SIZE);
       logger.info(
         {
-          workspaceId: workspaceSId,
+          workspaceId,
           actionCount: actionIds.length,
           chunkCount: actionIdChunks.length,
         },
@@ -93,7 +92,7 @@ makeScript(
         // eslint-disable-next-line no-constant-condition
         while (true) {
           const whereBase: Record<string, unknown> = {
-            workspaceId,
+            workspaceId: workspaceModelId,
             citations: null,
             agentMCPActionId: {
               [Op.in]: chunkActionIds,
@@ -154,7 +153,7 @@ makeScript(
             } else {
               logger.error(
                 {
-                  workspaceId: workspaceSId,
+                  workspaceId,
                   chunkIdx,
                   error: contentResult.error.message,
                 },
@@ -173,7 +172,7 @@ makeScript(
               if (execute) {
                 await AgentMCPActionOutputItemModel.update(
                   { citations },
-                  { where: { id: item.id, workspaceId } }
+                  { where: { id: item.id, workspaceId: workspaceModelId } }
                 );
               }
               updated += 1;
@@ -182,7 +181,7 @@ makeScript(
           );
 
           logger.info(
-            { workspaceId: workspaceSId, chunkIdx, lastId, updated, execute },
+            { workspaceId, chunkIdx, lastId, updated, execute },
             execute
               ? "[Backfill MCP output citations] Updated batch"
               : "[Backfill MCP output citations] [DRY RUN] Would update batch"
@@ -191,7 +190,7 @@ makeScript(
       }
 
       logger.info(
-        { workspaceId: workspaceSId, execute },
+        { workspaceId, execute },
         "[Backfill MCP output citations] Completed workspace"
       );
     }

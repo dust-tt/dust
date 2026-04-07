@@ -102,46 +102,46 @@ export class SandboxNotFoundError extends Error {
 export interface SandboxProvider {
   create(
     config: SandboxCreateConfig,
-    tracingOpts: { workspaceSId: string }
+    tracingOpts: { workspaceId: string }
   ): Promise<Result<SandboxHandle, Error>>;
   wake(
     providerId: string,
-    tracingOpts: { workspaceSId: string }
+    tracingOpts: { workspaceId: string }
   ): Promise<Result<SandboxHandle, Error>>;
   sleep(
     providerId: string,
-    tracingOpts: { workspaceSId: string }
+    tracingOpts: { workspaceId: string }
   ): Promise<Result<void, Error>>;
   destroy(
     providerId: string,
-    tracingOpts: { workspaceSId: string }
+    tracingOpts: { workspaceId: string }
   ): Promise<Result<void, Error>>;
 
   exec(
     providerId: string,
     command: string,
     execOpts: ExecOptions | undefined,
-    tracingOpts: { workspaceSId: string }
+    tracingOpts: { workspaceId: string }
   ): Promise<Result<ExecResult, Error>>;
 
   writeFile(
     providerId: string,
     path: string,
     data: ArrayBuffer,
-    tracingOpts: { workspaceSId: string }
+    tracingOpts: { workspaceId: string }
   ): Promise<Result<void, Error>>;
 
   readFile(
     providerId: string,
     path: string,
-    tracingOpts: { workspaceSId: string }
+    tracingOpts: { workspaceId: string }
   ): Promise<Buffer>;
 
   listFiles(
     providerId: string,
     path: string,
     opts: { recursive?: boolean } | undefined,
-    tracingOpts: { workspaceSId: string }
+    tracingOpts: { workspaceId: string }
   ): Promise<FileEntry[]>;
 }
 

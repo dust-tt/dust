@@ -105,7 +105,7 @@ async function checkWorkspace(
 
   logger.info(
     {
-      workspaceSId: workspace.sId,
+      workspaceId: workspace.sId,
       childAgentCount: childAgents.length,
       dataSourceCount: dataSources.length,
       tableConfigCount: tableConfigs.length,
@@ -160,7 +160,7 @@ makeScript(
         const errorMessage =
           err instanceof Error ? err.message : "Unknown error";
         logger.error(
-          { workspaceSId: workspace.sId, error: errorMessage },
+          { workspaceId: workspace.sId, error: errorMessage },
           "Failed to check workspace"
         );
         failedWorkspaces.push({
