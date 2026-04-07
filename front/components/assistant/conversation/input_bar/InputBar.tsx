@@ -383,7 +383,6 @@ export const InputBar = React.memo(function InputBar({
 
   const handleShake = useCallback(() => {
     setIsShaking(true);
-    setTimeout(() => setIsShaking(false), 520);
   }, []);
 
   useEffect(() => {
@@ -393,6 +392,7 @@ export const InputBar = React.memo(function InputBar({
   return (
     <div className="flex w-full flex-col">
       <div
+        onAnimationEnd={() => setIsShaking(false)}
         className={classNames(
           isShaking && "animate-shake",
           "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch sm:flex-row",
