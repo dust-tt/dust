@@ -541,6 +541,9 @@ const config = {
       "METRONOME_TOOL_USE_BILLABLE_METRIC_ID"
     );
   },
+  getMetronomeWebhookSecret: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("METRONOME_WEBHOOK_SECRET");
+  },
 };
 
 export default config;
