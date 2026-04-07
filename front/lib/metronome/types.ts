@@ -19,6 +19,8 @@ export const PRO_OR_BUSINESS_PACKAGE_ALIASES: ReadonlySet<string> = new Set([
   LEGACY_BUSINESS_39_PACKAGE_ALIAS,
 ]);
 
+import type { Commit, Credit } from "@metronome/sdk/resources/shared";
+
 export interface MetronomeEvent {
   transaction_id: string;
   customer_id: string;
