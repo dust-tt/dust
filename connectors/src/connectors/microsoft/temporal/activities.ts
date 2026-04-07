@@ -68,6 +68,7 @@ import {
   cacheWithRedis,
   INTERNAL_MIME_TYPES,
   isDevelopment,
+  normalizeError,
 } from "@connectors/types";
 import type { LoggerInterface } from "@dust-tt/client";
 import { removeNulls } from "@dust-tt/client";
@@ -884,7 +885,7 @@ export async function syncDeltaForRootNodesInDrive({
     } catch (error) {
       if (isItemNotFoundError(error) || isMalformedDriveError(error)) {
         logger.info(
-          { error: error.message, driveId },
+          { error: normalizeError(error).message, driveId },
           "Drive not found or malformed during delta population, skipping"
         );
         return;
@@ -915,7 +916,7 @@ export async function syncDeltaForRootNodesInDrive({
   } catch (error) {
     if (isItemNotFoundError(error) || isMalformedDriveError(error)) {
       logger.info(
-        { error: error.message, driveId },
+        { error: normalizeError(error).message, driveId },
         "Drive not found or malformed, skipping"
       );
       return;
@@ -1240,7 +1241,7 @@ export async function fetchDeltaForRootNodesInDrive({
     } catch (error) {
       if (isItemNotFoundError(error) || isMalformedDriveError(error)) {
         logger.info(
-          { error: error.message, driveId },
+          { error: normalizeError(error).message, driveId },
           "Drive not found or malformed during delta population, skipping"
         );
         return { gcsFilePath: null };
