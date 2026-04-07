@@ -58,16 +58,17 @@ interface ConversationMessageContentProps
   citations?: React.ReactElement[];
   type: ConversationMessageType;
   infoChip?: React.ReactNode;
+  reversed?: boolean;
 }
 
 export const ConversationMessageContent = React.forwardRef<
   HTMLDivElement,
   ConversationMessageContentProps
->(({ children, citations, className, type, ...props }, ref) => {
+>(({ children, citations, className, type, reversed, ...props }, ref) => {
   return (
     <>
       {type === "user" && citations && citations.length > 0 && (
-        <CitationGrid reversed>{citations}</CitationGrid>
+        <CitationGrid reversed={reversed}>{citations}</CitationGrid>
       )}
       <div
         ref={ref}

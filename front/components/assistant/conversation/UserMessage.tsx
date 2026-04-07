@@ -314,7 +314,7 @@ export function UserMessage({
           {isCurrentUser && isFirstInGroup && (
             <div className="inline-flex items-center justify-between gap-0.5 self-end">
               <ConversationMessageTitle
-                name={"Me"}
+                name={undefined}
                 timestamp={timestamp}
                 infoChip={
                   displayChip ? (
@@ -332,7 +332,7 @@ export function UserMessage({
                     </>
                   ) : undefined
                 }
-                renderName={() => <div>Me</div>}
+                renderName={() => null}
               />
             </div>
           )}
@@ -351,6 +351,7 @@ export function UserMessage({
                 citations={citations}
                 type="user"
                 className={cn(shouldShowBiggerUserMessage && "@sm:min-w-100")}
+                reversed={isCurrentUser}
               >
                 <div className="flex items-center gap-2">
                   {message.visibility === "pending" && <Spinner size="xs" />}
