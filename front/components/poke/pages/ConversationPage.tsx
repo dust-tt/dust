@@ -305,15 +305,14 @@ const ContentFragmentView = ({ message }: ContentFragmentViewProps) => {
   );
 };
 
-function getDatadogSandboxLogsUrl(
-  conversationId: string,
-  conversationCreatedMs: number
-): string {
+const ONE_HOUR_MS = 60 * 60 * 1000;
+
+function getDatadogSandboxLogsUrl(conversationId: string): string {
   const nowMs = Date.now();
-  const fromMs = conversationCreatedMs;
+  const fromMs = nowMs - ONE_HOUR_MS;
   const query = `service:sandbox-runner @conversation_id:${conversationId}`;
 
-  return `https://app.datadoghq.eu/logs?query=${encodeURIComponent(query)}&from_ts=${fromMs}&to_ts=${nowMs}&live=true`;
+  return `https://app.datadoghq.eu/logs?query=${encodeURIComponent(query)}&cols=service,@timestamp_utc&from_ts=${fromMs}&to_ts=${nowMs}&live=true`;
 }
 
 export function ConversationPage() {
@@ -472,10 +471,7 @@ export function ConversationPage() {
               target="_blank"
             />
             <Button
-              href={getDatadogSandboxLogsUrl(
-                conversationId,
-                conversation.created
-              )}
+              href={getDatadogSandboxLogsUrl(conversationId)}
               label="Sandbox Logs"
               variant="primary"
               size="xs"

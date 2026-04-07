@@ -65,5 +65,7 @@ function enrich_message(tag, timestamp, record)
         record["message"] = command
     end
 
+    record["timestamp_utc"] = os.date("!%Y-%m-%d %H:%M:%S", timestamp)
+
     return 2, timestamp, record
 end
