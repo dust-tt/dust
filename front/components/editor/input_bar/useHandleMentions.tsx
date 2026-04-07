@@ -96,9 +96,7 @@ const useHandleMentions = ({
 
     // 4. New conversation → fall back to @dust.
     if (!conversation) {
-      const dustAgent = allAgents.find(
-        (a) => a.sId === GLOBAL_AGENTS_SID.DUST
-      );
+      const dustAgent = allAgents.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST);
       if (dustAgent) {
         hasInitializedRef.current = true;
         setSelectedSingleAgent(toRichAgentMentionType(dustAgent));
@@ -155,8 +153,10 @@ const useHandleMentions = ({
           }
         });
       } else if (pendingInputText) {
+        // Schedule insertion to avoid synchronous editor updates during React render/effects.
         queueMicrotask(() => editorService.insertText(pendingInputText));
       }
+      // If there's pending input text (e.g. from a butler suggestion), insert it after the mention.
     } else if (pendingInputText) {
       queueMicrotask(() => editorService.insertText(pendingInputText));
     }
