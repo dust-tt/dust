@@ -23,7 +23,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { classNames } from "@app/lib/utils";
 import type { UserType } from "@app/types/user";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 
 interface MessageItemProps {
   allowBranchMessages?: boolean;
@@ -87,6 +87,11 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       message: data,
     });
 
+    const handleUserReactionToggle = useCallback(
+      (emoji: string) => onReactionToggle({ emoji }),
+      [onReactionToggle]
+    );
+
     const messageFeedback = context.feedbacksByMessageId[sId];
 
     const messageFeedbackWithSubmit: FeedbackSelectorBaseProps = {
@@ -101,22 +106,25 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       isSubmittingThumb,
     };
 
-    const citations =
-      isUserMessage(data) && data.contentFragments.length > 0
-        ? data.contentFragments.map((contentFragment, index) => {
-            const attachmentCitation =
-              contentFragmentToAttachmentCitation(contentFragment);
+    const citations = useMemo(
+      () =>
+        isUserMessage(data) && data.contentFragments.length > 0
+          ? data.contentFragments.map((contentFragment, index) => {
+              const attachmentCitation =
+                contentFragmentToAttachmentCitation(contentFragment);
 
-            return (
-              <AttachmentCitation
-                owner={context.owner}
-                key={index}
-                attachmentCitation={attachmentCitation}
-                conversationId={context.conversation?.sId}
-              />
-            );
-          })
-        : undefined;
+              return (
+                <AttachmentCitation
+                  owner={context.owner}
+                  key={index}
+                  attachmentCitation={attachmentCitation}
+                  conversationId={context.conversation?.sId}
+                />
+              );
+            })
+          : undefined,
+      [data, context.owner, context.conversation?.sId]
+    );
 
     const areSameDate =
       prevData &&
@@ -218,7 +226,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               isLastMessage={!nextData}
               message={data}
               owner={context.owner}
-              onReactionToggle={(emoji: string) => onReactionToggle({ emoji })}
+              onReactionToggle={handleUserReactionToggle}
             />
           )}
           {isAgentMessageWithStreaming(data) && (
