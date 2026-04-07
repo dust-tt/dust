@@ -57,7 +57,6 @@ export interface GetMetronomeUsageResponse {
   availableGroups: MetronomeUsageAvailableGroup[];
 }
 
-// Maps groupBy to the Metronome event property name.
 const GROUP_BY_TO_EVENT_PROPERTY: Record<MetronomeUsageGroupByType, string> = {
   user: "user_id",
   model: "model_id",
@@ -65,7 +64,6 @@ const GROUP_BY_TO_EVENT_PROPERTY: Record<MetronomeUsageGroupByType, string> = {
   origin: "origin",
 };
 
-// Maps groupBy to which billable metrics to query.
 const GROUP_BY_TO_METRICS: Record<
   MetronomeUsageGroupByType,
   "llm" | "tool" | "both"
@@ -91,11 +89,6 @@ function getTimestampsForWindow(
   return timestamps;
 }
 
-/**
- * Calculate credit totals per timestamp from Metronome balances.
- * A balance is considered active at a timestamp if any of its schedule items
- * cover that timestamp (started and not expired).
- */
 interface ParsedBalance {
   initialAmountCents: number;
   balanceCents: number;
@@ -174,9 +167,6 @@ function calculateCreditTotalsFromBalances(
   return result;
 }
 
-/**
- * Handler for Metronome-backed usage data.
- */
 export async function handleMetronomeUsageRequest(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetMetronomeUsageResponse>>,
@@ -227,7 +217,6 @@ export async function handleMetronomeUsageRequest(
         windowSize,
       } = q.data;
 
-      // Compute billing cycle range.
       const referenceDate = selectedPeriod
         ? new Date(selectedPeriod)
         : new Date();
@@ -251,14 +240,12 @@ export async function handleMetronomeUsageRequest(
         windowSize
       );
 
-      // Start credit balances fetch in parallel with usage queries.
       const balancesPromise = listMetronomeBalances(metronomeCustomerId);
 
       const groupValues: Record<string, Map<number, number>> = {};
       const availableGroups: MetronomeUsageAvailableGroup[] = [];
 
       if (!groupBy) {
-        // Ungrouped aggregate view.
         const result = await listMetronomeUsage({
           customerIds: [metronomeCustomerId],
           billableMetricIds: [llmMetricId, toolMetricId],
@@ -289,7 +276,6 @@ export async function handleMetronomeUsageRequest(
           groupLabel: "Total usage",
         });
       } else {
-        // Grouped view.
         const metricTarget = GROUP_BY_TO_METRICS[groupBy];
         const eventProperty = GROUP_BY_TO_EVENT_PROPERTY[groupBy];
 
@@ -309,8 +295,6 @@ export async function handleMetronomeUsageRequest(
           windowSize,
         });
 
-        // Build grouped queries based on which metrics are relevant.
-        // Static array structure (max 2 elements) to comply with BACK7.
         const llmGroupedPromise =
           metricTarget === "llm" || metricTarget === "both"
             ? listMetronomeUsageWithGroups({
@@ -351,7 +335,6 @@ export async function handleMetronomeUsageRequest(
         }
         groupValues["total"] = totalMap;
 
-        // Check grouped results and merge.
         const mergedGroupMap = new Map<string, Map<number, number>>();
         const groupedResults = [llmGroupedResult, toolGroupedResult];
 
@@ -389,7 +372,6 @@ export async function handleMetronomeUsageRequest(
           }
         }
 
-        // Sort by total, keep top N.
         const groupTotals = [...mergedGroupMap.entries()]
           .map(([key, tsMap]) => ({
             key,
@@ -414,7 +396,6 @@ export async function handleMetronomeUsageRequest(
         }
       }
 
-      // Await balances for credit overlay.
       const balancesResult = await balancesPromise;
       const balances = balancesResult.isOk() ? balancesResult.value : [];
       const creditTotalsMap = calculateCreditTotalsFromBalances(
@@ -422,7 +403,6 @@ export async function handleMetronomeUsageRequest(
         timestamps
       );
 
-      // Build response with cumulative values and "others" group.
       const cumulatedValues: Record<string, number> = {};
       for (const key of Object.keys(groupValues)) {
         cumulatedValues[key] = 0;
