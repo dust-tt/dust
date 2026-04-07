@@ -12,6 +12,7 @@ import type { MentionOptions } from "@tiptap/extension-mention";
 import Mention from "@tiptap/extension-mention";
 import { Plugin, TextSelection } from "@tiptap/pm/state";
 import { ReactNodeViewRenderer } from "@tiptap/react";
+import type { RefObject } from "react";
 
 const MENTION_TYPE_ATTRIBUTE = "data-mention-type";
 const MENTION_DESCRIPTION_ATTRIBUTE = "data-description";
@@ -22,7 +23,9 @@ const LEGACY_TYPE_ATTRIBUTE = "data-type";
 
 interface MentionExtensionOptions extends MentionOptions {
   owner: WorkspaceType;
-  onFirstAgentMentionPaste?: (agentId: string) => void;
+  onFirstAgentMentionPasteRef?: RefObject<
+    ((agentId: string) => void) | undefined
+  >;
 }
 
 export const MentionExtension = Mention.extend<MentionExtensionOptions>({
@@ -30,7 +33,7 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
     return {
       ...this.parent?.(),
       owner: {} as WorkspaceType,
-      onFirstAgentMentionPaste: undefined,
+      onFirstAgentMentionPasteRef: undefined,
     } as MentionExtensionOptions;
   },
 
@@ -162,7 +165,7 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
   },
 
   addProseMirrorPlugins(this) {
-    const { owner, onFirstAgentMentionPaste } = this.options;
+    const { owner, onFirstAgentMentionPasteRef } = this.options;
     const editor = this.editor;
     const markdownManager = editor.markdown!; // we know it exists because we added the markdown plugin
 
@@ -178,7 +181,7 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
           // through to parseMentionsOnBackend which will strip them from the
           // serialized markdown before inserting.
           let richHtmlAgentId: string | null = null;
-          if (onFirstAgentMentionPaste) {
+          if (onFirstAgentMentionPasteRef?.current) {
             slice.content.descendants((node) => {
               if (
                 !richHtmlAgentId &&
@@ -189,7 +192,7 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
               }
             });
             if (richHtmlAgentId) {
-              onFirstAgentMentionPaste(richHtmlAgentId);
+              onFirstAgentMentionPasteRef?.current(richHtmlAgentId);
             }
           }
 
@@ -241,7 +244,7 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
               // In single-agent mode, strip all agent mentions from the pasted
               // content and route the first one to the picker (unless we already
               // routed it from the rich-HTML slice check above).
-              if (onFirstAgentMentionPaste) {
+              if (onFirstAgentMentionPasteRef?.current) {
                 let markdownAgentId: string | null = null;
                 contentToInsert = processedMarkdown
                   .replaceAll(
@@ -255,7 +258,7 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
                   )
                   .trim();
                 if (markdownAgentId && !richHtmlAgentId) {
-                  onFirstAgentMentionPaste(markdownAgentId);
+                  onFirstAgentMentionPasteRef?.current(markdownAgentId);
                 }
               }
 

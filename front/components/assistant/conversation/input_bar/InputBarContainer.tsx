@@ -223,6 +223,11 @@ const InputBarContainer = ({
   const [isEmpty, setIsEmpty] = useState(true);
   // A ref so the mention suggestion plugin (which lives outside React) can read it synchronously.
   const shouldSuggestAgentRef = useRef(true);
+  // The editor plugin captures its options once at initialization. Passing a ref lets the plugin
+  // always invoke the latest closure without needing to reinitialize the editor.
+  const onFirstAgentMentionPasteRef = useRef<
+    ((agentId: string) => void) | undefined
+  >(undefined);
   const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
   const plusButtonRef = useRef<HTMLDivElement>(null);
@@ -399,6 +404,15 @@ const InputBarContainer = ({
     [isBlockedByAgentSwitch, onEnterKeyDown, onShake]
   );
 
+  onFirstAgentMentionPasteRef.current = singleAgentInput
+    ? (agentId: string) => {
+        const agent = agentsBySId.get(agentId);
+        if (agent) {
+          setSelectedSingleAgent(toRichAgentMentionType(agent));
+        }
+      }
+    : undefined;
+
   const { editor, editorService } = useCustomEditor({
     onEnterKeyDown: onEnterKeyDownWithShake,
     disableAutoFocus,
@@ -411,13 +425,8 @@ const InputBarContainer = ({
     spaceId: space?.sId,
     onInlineText: handleInlineText,
     shouldSuggestAgentRef: singleAgentInput ? shouldSuggestAgentRef : undefined,
-    onFirstAgentMentionPaste: singleAgentInput
-      ? (agentId: string) => {
-          const agent = agentsBySId.get(agentId);
-          if (agent) {
-            setSelectedSingleAgent(toRichAgentMentionType(agent));
-          }
-        }
+    onFirstAgentMentionPasteRef: singleAgentInput
+      ? onFirstAgentMentionPasteRef
       : undefined,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
