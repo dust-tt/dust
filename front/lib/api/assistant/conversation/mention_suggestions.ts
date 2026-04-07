@@ -12,6 +12,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   RichAgentMentionInConversation,
   RichMention,
@@ -253,8 +254,6 @@ export const suggestionsOfMentions = async (
       variant: "light",
     });
 
-    const activeAgentIds = new Set(agentConfigurations.map((a) => a.sId));
-
     const activeAgents: RichAgentMentionInConversation[] = agentConfigurations
       .filter((a) => a.status === "active")
       .map((a) => ({
@@ -264,12 +263,14 @@ export const suggestionsOfMentions = async (
           participantAgents.find((pa) => pa.id === a.sId)?.lastActivityAt ?? 0,
       }));
 
-    // Include participant agents not already in the fetched configurations
-    // (e.g. the sidekick agent which is excluded from global agent listings).
-    const missingParticipants = participantAgents.filter(
-      (pa) => !activeAgentIds.has(pa.id)
+    // The sidekick agent is excluded from default global agent listings but should
+    // be mentionable when it's a conversation participant.
+    const sidekickParticipant = participantAgents.find(
+      (pa) => pa.id === GLOBAL_AGENTS_SID.SIDEKICK
     );
-    activeAgents.push(...missingParticipants);
+    if (sidekickParticipant) {
+      activeAgents.push(sidekickParticipant);
+    }
 
     const filteredAgents = filterAndSortEditorSuggestionAgents(
       normalizedQuery,
