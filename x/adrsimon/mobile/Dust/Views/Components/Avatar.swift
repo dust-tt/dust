@@ -14,8 +14,9 @@ struct Avatar: View {
             Circle()
                 .fill(Color.dustFaint.opacity(0.3))
                 .overlay {
-                    Image(systemName: "person.fill")
-                        .font(.system(size: size * 0.5))
+                    SparkleIcon.user.image
+                        .resizable()
+                        .frame(width: size * 0.5, height: size * 0.5)
                         .foregroundStyle(Color.dustFaint)
                 }
         }
