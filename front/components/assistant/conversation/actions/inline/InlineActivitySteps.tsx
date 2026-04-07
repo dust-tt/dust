@@ -84,7 +84,11 @@ export function InlineActivitySteps({
   const isDone =
     lastAgentStateClassification === "done" || agentMessage.status === "failed";
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  // Collapse by default for completed messages (existing conversations),
+  // but keep expanded for active/streaming and steered messages.
+  const [isCollapsed, setIsCollapsed] = useState(
+    isDone && agentMessage.status !== "gracefully_stopped"
+  );
 
   const openBreakdownPanel = (actionId?: string) => {
     if (onOpenDetails) {
