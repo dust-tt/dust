@@ -42,7 +42,7 @@
  *               type: object
  *               properties:
  *                 action:
- *                   type: object
+ *                   $ref: '#/components/schemas/PrivateAgentMCPAction'
  *                 messageStatus:
  *                   type: string
  *                   enum: [created, succeeded, failed, cancelled, gracefully_stopped]
