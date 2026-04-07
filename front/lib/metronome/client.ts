@@ -14,7 +14,7 @@ import type {
 
 let cachedClient: Metronome | null = null;
 
-function getClient(): Metronome {
+export function getMetronomeClient(): Metronome {
   if (!cachedClient) {
     const bearerToken = config.getMetronomeApiKey();
     if (!bearerToken) {
@@ -59,7 +59,7 @@ export async function ingestMetronomeEvents(
     return;
   }
 
-  const client = getClient();
+  const client = getMetronomeClient();
   for (let i = 0; i < events.length; i += METRONOME_INGEST_BATCH_SIZE) {
     const batch = events.slice(i, i + METRONOME_INGEST_BATCH_SIZE);
     await client.v1.usage.ingest({ usage: batch });
@@ -87,7 +87,7 @@ export async function createMetronomeCustomer({
   stripeCustomerId: string;
 }): Promise<Result<{ metronomeCustomerId: string }, Error>> {
   try {
-    const response = await getClient().v1.customers.create({
+    const response = await getMetronomeClient().v1.customers.create({
       name: workspaceName,
       ingest_aliases: [workspaceId],
       ...(stripeCustomerId
@@ -136,7 +136,7 @@ export async function findMetronomeCustomerByAlias(
   workspaceId: string
 ): Promise<Result<string | null, Error>> {
   try {
-    const page = await getClient().v1.customers.list({
+    const page = await getMetronomeClient().v1.customers.list({
       ingest_alias: workspaceId,
     });
     const first = page.data[0];
@@ -171,7 +171,7 @@ export async function createMetronomeContract({
   uniquenessKey: string;
 }): Promise<Result<{ contractId: string }, Error>> {
   try {
-    const response = await getClient().v1.contracts.create({
+    const response = await getMetronomeClient().v1.contracts.create({
       customer_id: metronomeCustomerId,
       package_alias: packageAlias,
       // Metronome requires starting_at on an hour boundary — round down to current hour.
@@ -278,7 +278,7 @@ export async function getMetronomeActiveContract(
   >
 > {
   try {
-    const response = await getClient().v2.contracts.list({
+    const response = await getMetronomeClient().v2.contracts.list({
       customer_id: metronomeCustomerId,
     });
 
@@ -324,7 +324,7 @@ export async function endMetronomeContract({
   endingBefore?: string;
 }): Promise<Result<void, Error>> {
   try {
-    await getClient().v1.contracts.updateEndDate({
+    await getMetronomeClient().v1.contracts.updateEndDate({
       customer_id: metronomeCustomerId,
       contract_id: contractId,
       ...(endingBefore ? { ending_before: endingBefore } : {}),
@@ -358,7 +358,7 @@ export async function getMetronomeContractPackageAliases({
   metronomeContractId: string;
 }): Promise<Result<string[], Error>> {
   try {
-    const contractResponse = await getClient().v1.contracts.retrieve({
+    const contractResponse = await getMetronomeClient().v1.contracts.retrieve({
       customer_id: metronomeCustomerId,
       contract_id: metronomeContractId,
     });
@@ -368,7 +368,7 @@ export async function getMetronomeContractPackageAliases({
       return new Ok([]);
     }
 
-    const packageResponse = await getClient().v1.packages.retrieve({
+    const packageResponse = await getMetronomeClient().v1.packages.retrieve({
       package_id: packageId,
     });
 
@@ -412,7 +412,7 @@ export async function editMetronomeContractSeats({
   const now = new Date().toISOString();
 
   try {
-    await getClient().v2.contracts.edit({
+    await getMetronomeClient().v2.contracts.edit({
       customer_id: metronomeCustomerId,
       contract_id: contractId,
       update_subscriptions: edits.map((edit) => ({
@@ -503,7 +503,7 @@ export async function createMetronomeCommit({
       "[Metronome] Adding commits to contract"
     );
 
-    await getClient().v2.contracts.edit(
+    await getMetronomeClient().v2.contracts.edit(
       {
         customer_id: metronomeCustomerId,
         contract_id: contractId,
@@ -577,7 +577,7 @@ export async function listMetronomeProducts(): Promise<
 > {
   try {
     const products: MetronomeProduct[] = [];
-    for await (const product of getClient().v1.contracts.products.list()) {
+    for await (const product of getMetronomeClient().v1.contracts.products.list()) {
       products.push({ id: product.id, name: product.current.name });
     }
     return new Ok(products);
@@ -595,7 +595,7 @@ export async function listMetronomeBalances(
     return new Ok([]);
   }
 
-  const client = getClient();
+  const client = getMetronomeClient();
 
   try {
     const balances: MetronomeBalance[] = [];
@@ -638,7 +638,7 @@ export async function listMetronomeUsage({
     return new Ok([]);
   }
 
-  const client = getClient();
+  const client = getMetronomeClient();
 
   try {
     const results: MetronomeUsageListResponse[] = [];
@@ -687,7 +687,7 @@ export async function listMetronomeUsageWithGroups({
     return new Ok([]);
   }
 
-  const client = getClient();
+  const client = getMetronomeClient();
 
   try {
     const results: MetronomeUsageWithGroupsResponse[] = [];
@@ -745,7 +745,7 @@ export async function createMetronomeCredit({
   const roundedEndingBefore = ceilToHourISO(new Date(endingBefore));
 
   try {
-    const response = await getClient().v2.contracts.edit(
+    const response = await getMetronomeClient().v2.contracts.edit(
       {
         customer_id: metronomeCustomerId,
         contract_id: contractId,
