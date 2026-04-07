@@ -340,7 +340,7 @@ function MCPRunAgentActionDetailsDisplay({
               (displayContext === "sidebar-single-action" ? (
                 <>
                   <div className="flex items-center justify-between py-2">
-                    <span className="text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
+                    <span className="font-medium text-foreground dark:text-foreground-night">
                       @{childAgent.name}'s Answer
                     </span>
                     {conversationUrl && (

@@ -426,14 +426,14 @@ export function GenericActionDetails({
           {displayContext === "sidebar-single-action" ? (
             <>
               <div>
-                <span className="text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
+                <span className="font-medium text-foreground dark:text-foreground-night">
                   Inputs
                 </span>
                 <RenderToolItemMarkdown text={inputs} type="input" />
               </div>
               {action.output && (
                 <div>
-                  <span className="text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
+                  <span className="font-medium text-foreground dark:text-foreground-night">
                     Output
                   </span>
                   <div className="my-2 flex flex-col gap-2">

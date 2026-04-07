@@ -81,7 +81,7 @@ export function MCPExtractActionDetails({
         {jsonSchema &&
           (displayContext === "sidebar-single-action" ? (
             <div>
-              <span className="text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
+              <span className="font-medium text-foreground dark:text-foreground-night">
                 Schema
               </span>
               <div className="py-2">
@@ -119,7 +119,7 @@ export function MCPExtractActionDetails({
           <div>
             {displayContext === "sidebar-single-action" ? (
               <>
-                <span className="text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
+                <span className="font-medium text-foreground dark:text-foreground-night">
                   Results
                 </span>
                 <MCPExtractActionResults
@@ -224,7 +224,7 @@ function MCPExtractActionResults({
       {resultResource.snippet &&
         (displayContext === "sidebar-single-action" ? (
           <div>
-            <span className="text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
+            <span className="font-medium text-foreground dark:text-foreground-night">
               Preview
             </span>
             <div className="py-2">

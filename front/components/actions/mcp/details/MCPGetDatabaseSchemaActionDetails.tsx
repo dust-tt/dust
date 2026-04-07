@@ -68,7 +68,7 @@ function DatabaseSchemaSection({
   if (displayContext === "sidebar-single-action") {
     return (
       <div>
-        <span className="text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
+        <span className="font-medium text-foreground dark:text-foreground-night">
           Database Schema
         </span>
         <div className="py-2">
@@ -120,7 +120,7 @@ function ExampleRowsSection({
   if (displayContext === "sidebar-single-action") {
     return (
       <div>
-        <span className="text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
+        <span className="font-medium text-foreground dark:text-foreground-night">
           Sample Data
         </span>
         <div className="py-2">
