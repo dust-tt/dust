@@ -26,6 +26,22 @@ function getClient(): Metronome {
 }
 
 // ---------------------------------------------------------------------------
+// Metronome requires dates on hour boundaries.
+// ---------------------------------------------------------------------------
+
+function floorToHourISO(date: Date): string {
+  return new Date(
+    Math.floor(date.getTime() / 3_600_000) * 3_600_000
+  ).toISOString();
+}
+
+function ceilToHourISO(date: Date): string {
+  return new Date(
+    Math.ceil(date.getTime() / 3_600_000) * 3_600_000
+  ).toISOString();
+}
+
+// ---------------------------------------------------------------------------
 // Event ingestion
 // ---------------------------------------------------------------------------
 
@@ -159,9 +175,7 @@ export async function createMetronomeContract({
       customer_id: metronomeCustomerId,
       package_alias: packageAlias,
       // Metronome requires starting_at on an hour boundary — round down to current hour.
-      starting_at: new Date(
-        Math.floor(Date.now() / 3_600_000) * 3_600_000
-      ).toISOString(),
+      starting_at: floorToHourISO(new Date()),
       uniqueness_key: uniquenessKey,
     });
 
@@ -264,7 +278,7 @@ export async function getMetronomeActiveContract(
   >
 > {
   try {
-    const response = await getClient().v1.contracts.list({
+    const response = await getClient().v2.contracts.list({
       customer_id: metronomeCustomerId,
     });
 
@@ -472,12 +486,8 @@ export async function createMetronomeCommit({
   name?: string;
 }): Promise<Result<void, Error>> {
   // Metronome requires dates on hour boundaries — round down start, round up end.
-  const roundedStartingAt = new Date(
-    Math.floor(startingAt.getTime() / 3_600_000) * 3_600_000
-  );
-  const roundedEndingBefore = new Date(
-    Math.ceil(endingBefore.getTime() / 3_600_000) * 3_600_000
-  );
+  const roundedStartingAt = floorToHourISO(startingAt);
+  const roundedEndingBefore = ceilToHourISO(endingBefore);
   try {
     logger.info(
       {
@@ -505,8 +515,8 @@ export async function createMetronomeCommit({
               schedule_items: [
                 {
                   amount: amountCents,
-                  starting_at: roundedStartingAt.toISOString(),
-                  ending_before: roundedEndingBefore.toISOString(),
+                  starting_at: roundedStartingAt,
+                  ending_before: roundedEndingBefore,
                 },
               ],
             },
@@ -731,6 +741,10 @@ export async function createMetronomeCredit({
   name: string;
   idempotencyKey: string;
 }): Promise<Result<{ creditId: string }, Error>> {
+  // Metronome requires dates on hour boundaries — round down start, round up end.
+  const roundedStartingAt = floorToHourISO(new Date(startingAt));
+  const roundedEndingBefore = ceilToHourISO(new Date(endingBefore));
+
   try {
     const response = await getClient().v2.contracts.edit(
       {
@@ -746,8 +760,8 @@ export async function createMetronomeCredit({
               schedule_items: [
                 {
                   amount: amountCents,
-                  starting_at: startingAt,
-                  ending_before: endingBefore,
+                  starting_at: roundedStartingAt,
+                  ending_before: roundedEndingBefore,
                 },
               ],
             },

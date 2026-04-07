@@ -27,7 +27,6 @@ import { handleMetronomeSetupCheckout } from "@app/lib/metronome/checkout";
 import {
   createMetronomeCredit,
   getMetronomeActiveContract,
-  listMetronomeProducts,
   provisionMetronomeCustomerAndContract,
 } from "@app/lib/metronome/client";
 import { PlanModel } from "@app/lib/models/plan";
@@ -198,15 +197,6 @@ async function grantMetronomeFreeCredits({
       return;
     }
 
-    // Resolve the "Free Monthly Credits" product ID.
-    const productsResult = await listMetronomeProducts();
-    if (productsResult.isErr()) {
-      logger.error(
-        { workspaceId: workspace.sId, error: productsResult.error.message },
-        "[Stripe Webhook] Failed to list Metronome products for free credit grant"
-      );
-      return;
-    }
     const productId = apiConfig.getMetronomeFreeCreditProductId();
     if (!productId) {
       logger.error(
