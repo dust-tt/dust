@@ -275,7 +275,9 @@ export default function AgentBuilder({
             editor: user.id,
           }))
         : [],
-      triggersToUpdate: duplicateAgentId ? [] : triggers,
+      triggersToUpdate: duplicateAgentId
+        ? []
+        : triggers.filter((t) => t.editor === user.id),
       triggersToDelete: [],
       agentSettings: {
         ...currentValues.agentSettings,

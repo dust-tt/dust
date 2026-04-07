@@ -196,9 +196,9 @@ async function handler(
 
       // Batch update triggers
       for (const triggerData of triggers) {
-        const triggerToUpdate = auth.isAdmin()
-          ? allTriggers.find((t) => t.sId === triggerData.sId)
-          : userTriggers.find((t) => t.sId === triggerData.sId);
+        const triggerToUpdate = userTriggers.find(
+          (t) => t.sId === triggerData.sId
+        );
 
         if (!triggerToUpdate) {
           continue; // Skip triggers that the user cannot edit
@@ -206,7 +206,7 @@ async function handler(
 
         const triggerValidation = TriggerSchema.safeParse({
           ...triggerData,
-          editor: auth.getNonNullableUser().id,
+          editor: triggerToUpdate.editor,
         });
 
         if (!triggerValidation.success) {
