@@ -55,27 +55,34 @@ export function formatAvailableModels(
   return `<available_models>\n${sections.join("\n\n")}\n</available_models>`;
 }
 
-export function formatAvailableSkills(skills: AvailableSkill[]): string {
-  const skillLines = skills
-    .map((s) => {
-      let line = `- **${s.name}** (ID: ${s.sId}): ${s.agentFacingDescription}`;
-      if (s.toolIds.length > 0) {
-        line += ` with tool IDs: ${s.toolIds.join(", ")}`;
-      }
-      return line;
-    })
-    .join("\n");
-  return `<available_skills>\n${skillLines}\n</available_skills>`;
+export function formatAvailableSkills(
+  skills: AvailableSkill[],
+  tools: AvailableTool[]
+): string {
+  const toolNameById = new Map(tools.map((t) => [t.sId, t.name]));
+
+  const blocks = skills.map((s) => {
+    const toolsBlock =
+      s.toolIds.length > 0
+        ? `<tools>${s.toolIds
+            .map((id) => {
+              const name = toolNameById.get(id) ?? id;
+              return `<tool sId="${id}" name="${name}"/>`;
+            })
+            .join("")}</tools>`
+        : "";
+
+    return `<skill ID="${s.sId}" name="${s.name}">${toolsBlock}\n  ${s.agentFacingDescription}\n</skill>`;
+  });
+
+  return `<available_skills>\n${blocks.join("\n")}\n</available_skills>`;
 }
 
 export function formatAvailableTools(tools: AvailableTool[]): string {
-  const toolLines = tools
-    .map(
-      (t) =>
-        `- **${t.name}** (ID: ${t.sId}): ${t.description.replace(/\n/g, " ")}`
-    )
-    .join("\n");
-  return `<available_tools>\n${toolLines}\n</available_tools>`;
+  const blocks = tools.map(
+    (t) => `<tool ID="${t.sId}" name="${t.name}">${t.description}</tool>`
+  );
+  return `<available_tools>\n${blocks.join("\n")}\n</available_tools>`;
 }
 
 async function fetchSidekickUserMetadata(
@@ -136,7 +143,7 @@ function formatWorkspaceContext(
 ): string {
   return [
     formatAvailableModels(models),
-    formatAvailableSkills(skills),
+    formatAvailableSkills(skills, tools),
     formatAvailableTools(tools),
   ].join("\n\n");
 }
@@ -159,9 +166,10 @@ export async function buildToolsAndSkillsContext(
     listAvailableSkills(auth),
     listAvailableTools(auth),
   ]);
-  return [formatAvailableSkills(skills), formatAvailableTools(tools)].join(
-    "\n\n"
-  );
+  return [
+    formatAvailableSkills(skills, tools),
+    formatAvailableTools(tools),
+  ].join("\n\n");
 }
 
 export async function buildWorkspaceContext(

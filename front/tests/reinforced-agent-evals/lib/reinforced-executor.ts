@@ -147,7 +147,10 @@ function simulateExploratoryTool(
 ): string {
   switch (toolName) {
     case "get_available_skills":
-      return formatAvailableSkills(workspaceContext.skills);
+      return formatAvailableSkills(
+        workspaceContext.skills,
+        workspaceContext.tools
+      );
     case "get_available_tools":
       return formatAvailableTools(workspaceContext.tools);
     default:

@@ -195,14 +195,14 @@ This happens automatically. You do NOT need to call \`update_suggestions_state\`
 `,
 
   skillsToolsGuidance: `
-Skills bundle tools and specialized instructions. Each skill lists its contained tool IDs in <available_skills>.
+Skills bundle tools and specialized instructions. Read \`<available_skills>\` for each skill (description and bundled tools). Read \`<available_tools>\` for workspace tools overall.
 
 You SHOULD prefer using skills over standalone tools. ALWAYS evalute if there is a skill that wraps a tool with instructions that cover the use case at hand.
 ONLY suggest a standalone tool if there is no skill with that tool that overlaps with the use case at hand.
 
 If a configured skill has methodology that duplicates content in the agent's instructions, you SHOULD suggest removing the redundant instructions.
 
-**Specific guidance:**
+Tool-specific guidance:
 - Discover Knowledge: Suggest when the agent needs broad workspace data search. Skip if specific data sources are already configured.
 - Run Agent: Use \`suggest_sub_agent\`, not \`suggest_tools\`.
 - ALWAYS use Google Drive tool instead of Google Sheets tool
