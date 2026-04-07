@@ -81,6 +81,9 @@ interface ConnectViaMCPServerId {
   type: "mcpServerId";
   mcpServerId: string;
   oAuthUseCase: MCPOAuthUseCase | null;
+  // Admin-configured scope restriction stored on the MCP server view. When set,
+  // this overrides the hardcoded metadata scope for personal connection prompts.
+  oauthScope?: string | null;
 }
 
 export function isConnectViaMCPServerId(
@@ -461,7 +464,10 @@ export async function connectToMCPServer(
                   "Internal server workspace authentication failed"
                 );
 
-                const scope = serverInfo.authorization.scope;
+                // Use the admin-configured scope restriction if set, otherwise
+                // fall back to the full scope from server metadata.
+                const scope =
+                  params.oauthScope ?? serverInfo.authorization.scope;
 
                 if (params.oAuthUseCase === "personal_actions") {
                   // Check if admin connection exists for the server.

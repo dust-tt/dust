@@ -175,8 +175,8 @@ inserted_subscription AS (
 
 -- Step 8a: Create membership (user → workspace as admin)
 inserted_membership AS (
-  INSERT INTO memberships ("workspaceId", "userId", role, origin, "startAt", "endAt", "createdAt", "updatedAt")
-  SELECT w.id, u.id, 'admin', 'invited', NOW(), NULL, NOW(), NOW()
+  INSERT INTO memberships ("workspaceId", "userId", role, origin, "startAt", "endAt", "firstUsedAt", "createdAt", "updatedAt")
+  SELECT w.id, u.id, 'admin', 'invited', NOW(), NULL, NOW(), NOW(), NOW()
   FROM inserted_workspace w
   CROSS JOIN existing_user u
   RETURNING id

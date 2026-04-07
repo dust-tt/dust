@@ -26,11 +26,7 @@ export const agentYAMLTagSchema = z.object({
   kind: z.enum(["standard", "protected"]),
 });
 
-export const agentYAMLEditorSchema = z.object({
-  user_id: z.string().min(1, "User ID is required"),
-  email: z.string().email("Invalid email address"),
-  full_name: z.string().min(1, "Full name is required"),
-});
+export const agentYAMLEditorSchema = z.string().email("Invalid email address");
 
 export const agentYAMLTimeFrameSchema = z
   .object({

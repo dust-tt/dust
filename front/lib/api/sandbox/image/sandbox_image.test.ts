@@ -348,7 +348,7 @@ describe("SandboxImage.withToolManifest()", () => {
     expect(image.operations[0].type).toBe("copy");
     if (image.operations[0].type === "copy") {
       expect(image.operations[0].src.type).toBe("content");
-      expect(image.operations[0].dest).toBe("/home/user/tool-manifest.yaml");
+      expect(image.operations[0].dest).toBe("/tool-manifest.yaml");
       if (image.operations[0].src.type === "content") {
         const content = image.operations[0].src.getContent();
         expect(typeof content).toBe("string");
@@ -379,9 +379,7 @@ describe("SandboxImage.withToolManifest()", () => {
     });
 
     if (jsonImage.operations[0].type === "copy") {
-      expect(jsonImage.operations[0].dest).toBe(
-        "/home/user/tool-manifest.json"
-      );
+      expect(jsonImage.operations[0].dest).toBe("/tool-manifest.json");
     }
   });
 

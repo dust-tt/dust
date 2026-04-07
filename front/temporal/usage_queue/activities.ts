@@ -4,6 +4,15 @@ import {
 } from "@app/lib/api/programmatic_usage/tracking";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import { ingestMetronomeEvents } from "@app/lib/metronome/client";
+import {
+  buildLlmUsageEvents,
+  buildToolUseEvents,
+  buildWorkspaceGaugeEvent,
+  classifyMessageTier,
+  getToolCategory,
+} from "@app/lib/metronome/events";
+import type { MetronomeEvent } from "@app/lib/metronome/types";
 import {
   AgentMessageModel,
   MessageModel,
@@ -13,13 +22,21 @@ import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { reportUsageForSubscriptionItems } from "@app/lib/plans/usage";
+import { countActiveUsersForPeriodInWorkspace } from "@app/lib/plans/usage/mau";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { RunResource } from "@app/lib/resources/run_resource";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import mainLogger from "@app/logger/logger";
 import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
+import { isDevelopment } from "@app/types/shared/env";
+import { Context } from "@temporalio/activity";
 
 export async function recordUsageActivity(workspaceId: string) {
   const workspace = await WorkspaceResource.fetchById(workspaceId);
@@ -174,4 +191,247 @@ export async function trackProgrammaticUsageActivity(
   }
 
   return { tracked: false, origin: userMessageOrigin };
+}
+
+/**
+ * Emit Metronome llm_usage and tool_use events for an agent message.
+ * Called for ALL messages (not just programmatic) — always-on, fire-and-forget.
+ * Metronome failures don't affect the agent loop.
+ */
+export async function emitMetronomeUsageEventsActivity(
+  authType: AuthenticatorType,
+  { agentLoopArgs }: { agentLoopArgs: AgentLoopArgs }
+): Promise<void> {
+  const authResult = await Authenticator.fromJSON(authType);
+  if (authResult.isErr()) {
+    logger.warn(
+      { error: authResult.error.code },
+      "[Metronome] Failed to deserialize authenticator for usage events"
+    );
+    return;
+  }
+  const auth = authResult.value;
+  const workspace = auth.getNonNullableWorkspace();
+  const { agentMessageId, conversationId, userMessageId } = agentLoopArgs;
+  const userMessageOrigin = agentLoopArgs.userMessageOrigin ?? "web";
+
+  // Query agent message with its run IDs.
+  const agentMessageRow = await MessageModel.findOne({
+    where: {
+      sId: agentMessageId,
+      workspaceId: workspace.id,
+    },
+    include: [
+      {
+        model: AgentMessageModel,
+        as: "agentMessage",
+        required: true,
+      },
+    ],
+  });
+
+  const agentMessage = agentMessageRow?.agentMessage;
+  if (!agentMessage || !agentMessage.runIds) {
+    return;
+  }
+
+  // Get user ID for the event.
+  const userMessageRow = await MessageModel.findOne({
+    where: {
+      sId: userMessageId,
+      workspaceId: workspace.id,
+    },
+    include: [
+      {
+        model: UserMessageModel,
+        as: "userMessage",
+        required: true,
+        include: [{ model: UserModel, required: false }],
+      },
+    ],
+  });
+
+  const userId = userMessageRow?.userMessage?.user?.sId ?? null;
+
+  // Sub-agent messages have agenticMessageType set (e.g. "run_agent", "agent_handover").
+  // agenticOriginMessageId is the sId of the parent agent message that spawned this one.
+  const userMessage = userMessageRow?.userMessage;
+  const parentAgentMessageId = userMessage?.agenticOriginMessageId ?? null;
+  const isSubAgentMessage = userMessage?.agenticMessageType !== null;
+
+  const programmatic = isProgrammaticUsage(auth, { userMessageOrigin });
+  const timestamp = agentMessageRow.createdAt.toISOString();
+
+  // Get LLM run usages.
+  const runs = await RunResource.listByDustRunIds(auth, {
+    dustRunIds: agentMessage.runIds,
+  });
+  const runUsages = (
+    await concurrentExecutor(
+      runs,
+      (run) => {
+        return run.listRunUsages(auth);
+      },
+      { concurrency: 10 }
+    )
+  ).flat();
+
+  // Get MCP actions.
+  const mcpActions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
+    agentMessage.id,
+  ]);
+  const toolActions = mcpActions.map((a) => {
+    const json = a.toJSON();
+    return {
+      toolName: json.toolName,
+      mcpServerId: json.mcpServerId,
+      internalMCPServerName: json.internalMCPServerName,
+      status: json.status,
+      executionDurationMs: json.executionDurationMs,
+    };
+  });
+
+  // Classify message tier.
+  const modelIds = runUsages.map((u) => u.modelId);
+  const toolCategories = toolActions.map((a) =>
+    getToolCategory(a.internalMCPServerName)
+  );
+  const messageTier = classifyMessageTier({ modelIds, toolCategories });
+
+  // Use the Temporal workflow run ID as the unique key — each workflow execution
+  // gets a unique runId, even when the workflow ID is reused across retries.
+  const { runId: workflowRunId } = Context.current().info.workflowExecution;
+  const runKey = workflowRunId.slice(0, 12);
+
+  // Build and ingest events.
+  const llmEvents = buildLlmUsageEvents({
+    workspaceId: workspace.sId,
+    conversationId,
+    userId,
+    agentMessageId,
+    parentAgentMessageId,
+    runKey,
+    runUsages,
+    origin: userMessageOrigin,
+    isProgrammaticUsage: programmatic,
+    messageTier,
+    isSubAgentMessage,
+    timestamp,
+  });
+
+  const toolEvents = buildToolUseEvents({
+    workspaceId: workspace.sId,
+    conversationId,
+    userId,
+    agentMessageId,
+    parentAgentMessageId,
+    runKey,
+    actions: toolActions,
+    origin: userMessageOrigin,
+    isProgrammaticUsage: programmatic,
+    messageTier,
+    isSubAgentMessage,
+    timestamp,
+  });
+
+  await ingestMetronomeEvents([...llmEvents, ...toolEvents]);
+}
+
+/**
+ * Emit a single workspace_gauge event for each Metronome-enabled workspace.
+ * Collects all events first, then ingests in batches.
+ * Called daily by the Metronome gauge schedule.
+ */
+export async function emitMetronomeGaugeEventsForAllWorkspacesActivity(): Promise<void> {
+  // Only workspaces with a metronomeCustomerId.
+  const allWorkspaces = await WorkspaceResource.listAll();
+  const workspaces = allWorkspaces.filter(
+    (w) => w.metronomeCustomerId !== null
+  );
+
+  const now = new Date();
+  // In dev (hourly schedule), include the hour so re-runs aren't deduplicated.
+  // In prod (daily), use YYYY-MM-DD only.
+  const dateKey = isDevelopment()
+    ? now.toISOString().slice(0, 13) // YYYY-MM-DDTHH
+    : now.toISOString().slice(0, 10); // YYYY-MM-DD
+  const timestamp = now.toISOString();
+
+  logger.info(
+    { workspaceCount: workspaces.length, dateKey },
+    "[Metronome] Emitting gauge events for Metronome-enabled workspaces"
+  );
+
+  // Process workspaces in chunks: build events concurrently, then ingest
+  // each chunk before moving to the next. Avoids holding all events in memory.
+  const CHUNK_SIZE = 100;
+  for (let i = 0; i < workspaces.length; i += CHUNK_SIZE) {
+    const chunk = workspaces.slice(i, i + CHUNK_SIZE);
+    const events: MetronomeEvent[] = [];
+
+    await concurrentExecutor(
+      chunk,
+      async (workspace) => {
+        try {
+          const event = await buildGaugeEventForWorkspace(
+            workspace,
+            timestamp,
+            dateKey
+          );
+          events.push(event);
+        } catch (err) {
+          logger.error(
+            { workspaceId: workspace.sId, error: err },
+            "[Metronome] Failed to build gauge event for workspace"
+          );
+        }
+      },
+      { concurrency: 10 }
+    );
+
+    await ingestMetronomeEvents(events);
+  }
+}
+
+async function buildGaugeEventForWorkspace(
+  workspace: WorkspaceResource,
+  timestamp: string,
+  dateKey: string
+): Promise<MetronomeEvent> {
+  const lightWorkspace = renderLightWorkspaceType({ workspace });
+
+  // Active member count.
+  const memberCount = await MembershipResource.countActiveMembersForWorkspace({
+    workspace: lightWorkspace,
+  });
+
+  // MAU counts — rolling 30-day window with different message thresholds.
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const [mau1Count, mau5Count, mau10Count] = await Promise.all([
+    countActiveUsersForPeriodInWorkspace({
+      messagesPerMonthForMau: 1,
+      since: thirtyDaysAgo,
+      workspace: lightWorkspace,
+    }),
+    countActiveUsersForPeriodInWorkspace({
+      messagesPerMonthForMau: 5,
+      since: thirtyDaysAgo,
+      workspace: lightWorkspace,
+    }),
+    countActiveUsersForPeriodInWorkspace({
+      messagesPerMonthForMau: 10,
+      since: thirtyDaysAgo,
+      workspace: lightWorkspace,
+    }),
+  ]);
+
+  return buildWorkspaceGaugeEvent({
+    workspaceId: workspace.sId,
+    memberCount,
+    mau1Count,
+    mau5Count,
+    mau10Count,
+    timestamp,
+    dateKey,
+  });
 }

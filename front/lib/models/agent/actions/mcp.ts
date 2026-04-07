@@ -9,6 +9,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
+import type { CitationType } from "@app/types/assistant/conversation";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import { isTimeFrame } from "@app/types/shared/utils/time_frame";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -336,6 +337,7 @@ export class AgentMCPActionOutputItemModel extends WorkspaceAwareModel<AgentMCPA
   declare content: CallToolResult["content"][number];
   declare contentGcsPath: string | null;
   declare fileId: ForeignKey<FileModel["id"]> | null;
+  declare citations: Record<string, CitationType> | null;
 
   declare file: NonAttribute<FileModel>;
 }
@@ -370,6 +372,21 @@ AgentMCPActionOutputItemModel.init(
     contentGcsPath: {
       type: DataTypes.TEXT,
       allowNull: true,
+    },
+    citations: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+      validate: {
+        isValidCitations(value: unknown) {
+          if (value === null) {
+            return;
+          }
+          if (!value || typeof value !== "object") {
+            throw new Error("Citations must be an object or null");
+          }
+        },
+      },
     },
   },
   {

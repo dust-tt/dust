@@ -78,6 +78,8 @@ function makeWorkspace(
     whiteListedProviders: null,
     defaultEmbeddingProvider: null,
     metadata: null,
+    metronomeCustomerId: null,
+    sharingPolicy: "all_scopes",
     ...overrides,
   };
 }

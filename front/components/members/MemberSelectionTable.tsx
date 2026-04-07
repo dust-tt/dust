@@ -81,37 +81,15 @@ export function MemberSelectionTable({
     }
   }
 
-  // Selected members resolved from the internal map, filtered by search text.
-  const selectedRows = useMemo(() => {
-    const selected = Array.from(selectedMemberIds)
-      .map((sId) => userMapRef.current.get(sId))
-      .filter((u): u is UserType => !!u);
-
-    if (!searchText) {
-      return getMemberTableRows(selected);
-    }
-
-    const lower = searchText.toLowerCase();
-    return getMemberTableRows(
-      selected.filter(
-        (u) =>
-          u.fullName.toLowerCase().includes(lower) ||
-          (u.email ?? "").toLowerCase().includes(lower)
-      )
-    );
-  }, [selectedMemberIds, searchText]);
-
-  // On page 0, prepend selected members and remove duplicates from API results.
-  // On other pages, only show unselected API results.
+  // Selected users first, then unselected
   const rows = useMemo(() => {
-    const unselected = getMemberTableRows(
-      members.filter((m) => !selectedMemberIds.has(m.sId))
+    const selectedMembers = members.filter((m) => selectedMemberIds.has(m.sId));
+    const unselectedMembers = members.filter(
+      (m) => !selectedMemberIds.has(m.sId)
     );
-    if (pagination.pageIndex === 0) {
-      return [...selectedRows, ...unselected];
-    }
-    return unselected;
-  }, [members, selectedMemberIds, selectedRows, pagination.pageIndex]);
+    const sortedMembers = [...selectedMembers, ...unselectedMembers];
+    return getMemberTableRows(sortedMembers);
+  }, [members, selectedMemberIds]);
 
   const rowSelectionState: RowSelectionState = useMemo(
     () =>
@@ -139,7 +117,9 @@ export function MemberSelectionTable({
 
   const columns: ColumnDef<MemberRowData>[] = useMemo(() => {
     return [
-      createSelectionColumn<MemberRowData>(),
+      createSelectionColumn<MemberRowData>({
+        hideSelectAll: !!searchText && rows.length <= 1,
+      }),
       {
         accessorKey: "fullName",
         header: "Name",
@@ -160,7 +140,7 @@ export function MemberSelectionTable({
       },
       ...(extraColumns ?? []),
     ];
-  }, [extraColumns]);
+  }, [extraColumns, rows.length, searchText]);
 
   return (
     <>

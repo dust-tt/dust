@@ -653,7 +653,7 @@ export const NotificationPreferences = forwardRef<
           </DropdownMenu>
           {notifyCondition !== "never" && (
             <>
-              <span className="text-foreground dark:text-foreground-night">
+              <span className="text-foreground dark:text-foreground-night ml-0.5">
                 , by&nbsp;
               </span>
               <DropdownMenu>
@@ -704,7 +704,7 @@ export const NotificationPreferences = forwardRef<
               </DropdownMenu>
               {isConversationEmailEnabled && (
                 <>
-                  <span className="text-foreground dark:text-foreground-night">
+                  <span className="text-foreground dark:text-foreground-night ml-0.5">
                     . Email me max once&nbsp;
                   </span>
                   <DropdownMenu>
@@ -794,7 +794,7 @@ export const NotificationPreferences = forwardRef<
 
             {projectNewConversationNotifyCondition !== "never" && (
               <>
-                <span className="text-foreground dark:text-foreground-night">
+                <span className="text-foreground dark:text-foreground-night ml-0.5">
                   , by&nbsp;
                 </span>
                 <DropdownMenu>
@@ -857,7 +857,7 @@ export const NotificationPreferences = forwardRef<
                 </DropdownMenu>
                 {isProjectNewConversationEmailEnabled && (
                   <>
-                    <span className="text-foreground dark:text-foreground-night">
+                    <span className="text-foreground dark:text-foreground-night ml-0.5">
                       . Email me max once&nbsp;
                     </span>
                     <DropdownMenu>

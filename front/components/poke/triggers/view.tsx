@@ -75,16 +75,37 @@ export function ViewTriggerTable({
               {/* Configuration - structured by kind */}
               {trigger.kind === "schedule" ? (
                 <>
-                  <PokeTableRow>
-                    <PokeTableHead>Cron</PokeTableHead>
-                    <PokeTableCell>{trigger.configuration.cron}</PokeTableCell>
-                  </PokeTableRow>
-                  <PokeTableRow>
-                    <PokeTableHead>Timezone</PokeTableHead>
-                    <PokeTableCell>
-                      {trigger.configuration.timezone}
-                    </PokeTableCell>
-                  </PokeTableRow>
+                  {trigger.configuration.type === "interval" ? (
+                    <>
+                      <PokeTableRow>
+                        <PokeTableHead>Interval</PokeTableHead>
+                        <PokeTableCell>
+                          Every {trigger.configuration.intervalDays} days
+                        </PokeTableCell>
+                      </PokeTableRow>
+                      <PokeTableRow>
+                        <PokeTableHead>Timezone</PokeTableHead>
+                        <PokeTableCell>
+                          {trigger.configuration.timezone}
+                        </PokeTableCell>
+                      </PokeTableRow>
+                    </>
+                  ) : (
+                    <>
+                      <PokeTableRow>
+                        <PokeTableHead>Cron</PokeTableHead>
+                        <PokeTableCell>
+                          {trigger.configuration.cron}
+                        </PokeTableCell>
+                      </PokeTableRow>
+                      <PokeTableRow>
+                        <PokeTableHead>Timezone</PokeTableHead>
+                        <PokeTableCell>
+                          {trigger.configuration.timezone}
+                        </PokeTableCell>
+                      </PokeTableRow>
+                    </>
+                  )}
                 </>
               ) : (
                 <>
@@ -113,11 +134,11 @@ export function ViewTriggerTable({
                         `Default (${DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT})`}
                     </PokeTableCell>
                   </PokeTableRow>
-                  {trigger.webhookSourceViewSId && (
+                  {trigger.webhookSourceViewId && (
                     <PokeTableRow>
                       <PokeTableHead>Webhook Source View</PokeTableHead>
                       <PokeTableCellWithCopy
-                        label={trigger.webhookSourceViewSId}
+                        label={trigger.webhookSourceViewId}
                       />
                     </PokeTableRow>
                   )}

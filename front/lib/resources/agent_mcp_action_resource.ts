@@ -1,25 +1,26 @@
-import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import {
   getInternalMCPServerNameFromSId,
-  getInternalMCPServerToolDisplayLabels,
   type InternalMCPServerNameType,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { isToolGeneratedFile } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
   isToolExecutionStatusBlocked,
   TOOL_EXECUTION_BLOCKED_STATUSES,
 } from "@app/lib/actions/statuses";
-import type { StepContext } from "@app/lib/actions/types";
-import { isFileAuthorizationInfo } from "@app/lib/actions/types";
 import {
-  isLightClientSideMCPToolConfiguration,
-  isLightServerSideMCPToolConfiguration,
-} from "@app/lib/actions/types/guards";
+  getStaticToolDisplayLabels,
+  getToolNameFromFunctionCallName,
+} from "@app/lib/actions/tool_display_labels";
+import type { StepContext } from "@app/lib/actions/types";
+import {
+  isFileAuthorizationInfo,
+  isUserQuestionResumeState,
+} from "@app/lib/actions/types";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import { getCitationsFromToolOutput } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -80,14 +81,6 @@ const OUTPUT_ITEMS_BATCH_SIZE = 32;
 const FETCH_OUTPUT_ITEMS_CONCURRENCY = 2;
 
 const CONCURRENCY_UPDATE_OUTPUT_ITEMS = 16;
-
-function getDefaultRemoteDisplayLabels(
-  mcpServerName: string,
-  toolName: string
-): ToolDisplayLabels | null {
-  const server = getDefaultRemoteMCPServerByName(mcpServerName);
-  return server?.toolDisplayLabels?.[toolName] ?? null;
-}
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -486,6 +479,27 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
             mcpServerDisplayName,
           },
         });
+      } else if (action.status === "blocked_user_answer_required") {
+        const { resumeState } = action.stepContext;
+        if (!isUserQuestionResumeState(resumeState)) {
+          logger.warn(
+            {
+              actionId: action.id,
+              conversationId: conversation.sId,
+              messageId: agentMessage.message.sId,
+              workspaceId: owner.id,
+            },
+            `User question resume state not found for blocked action ${action.id}`
+          );
+          continue;
+        }
+
+        blockedActionsList.push({
+          ...baseActionParams,
+          status: action.status,
+          question: resumeState.question,
+          authorizationInfo: null,
+        });
       } else if (action.status === "blocked_child_action_input_required") {
         const conversationId = action.stepContext.resumeState?.conversationId;
 
@@ -648,6 +662,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         agentMCPActionId: this.id,
         // Write content to DB (kept during migration period to ease rollback).
         content: c.content,
+        citations: getCitationsFromToolOutput([c.content]),
         fileId: c.fileId,
         workspaceId: this.workspaceId,
       }))
@@ -690,113 +705,130 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   static async fetchOutputItemsByActionIds(
     auth: Authenticator,
-    actionIds: ModelId[]
+    {
+      actionIds,
+      ignoreContent,
+    }: { actionIds: ModelId[]; ignoreContent: boolean }
   ): Promise<Map<number, AgentMCPActionOutputItemModel[]>> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    // Batch queries to avoid loading too many large (potentially TOASTed) rows at once.
-    const batches = _.chunk(actionIds, OUTPUT_ITEMS_BATCH_SIZE);
-    const batchResults = await concurrentExecutor(
-      batches,
-      async (batchActionIds) => {
-        // Split into two parallel queries:
-        // 1. GCS-backed rows: EXCLUDE content column (avoids TOAST decompression)
-        // 2. Legacy rows: INCLUDE content (old rows without GCS path)
-        const [gcsItems, legacyItems] = await Promise.all([
-          AgentMCPActionOutputItemModel.findAll({
-            attributes: { exclude: ["content"] },
-            where: {
-              workspaceId,
-              agentMCPActionId: { [Op.in]: batchActionIds },
-              contentGcsPath: { [Op.ne]: null },
-            },
-          }),
-          AgentMCPActionOutputItemModel.findAll({
-            where: {
-              workspaceId,
-              agentMCPActionId: { [Op.in]: batchActionIds },
-              contentGcsPath: null,
-            },
-          }),
-        ]);
+    let outputItems: AgentMCPActionOutputItemModel[] = [];
 
-        getStatsDClient().increment(
-          "mcp_output_items.fetch.count",
-          gcsItems.length,
-          ["storage:gcs"]
-        );
-        getStatsDClient().increment(
-          "mcp_output_items.fetch.count",
-          legacyItems.length,
-          ["storage:legacy"]
-        );
-
-        // Hydrate GCS-backed items from cache/GCS.
-        if (gcsItems.length > 0) {
-          const gcsStartMs = Date.now();
-          const contentResult = await batchFetchContentsFromGcs(
-            auth,
-            gcsItems.map((item) => ({
-              itemId: item.id,
-              gcsPath: item.contentGcsPath!,
-            }))
-          );
-          getStatsDClient().distribution(
-            "mcp_output_items.gcs_hydrate.duration_ms",
-            Date.now() - gcsStartMs
-          );
-
-          if (contentResult.isOk()) {
-            for (const item of gcsItems) {
-              const content = contentResult.value.get(item.id);
-              if (content) {
-                item.content = content;
-              }
-            }
-          } else {
-            getStatsDClient().increment(
-              "mcp_output_items.gcs_fallback_db.count",
-              gcsItems.length
-            );
-            // TODO(2026-02-25 PERF): Remove this post-migration.
-            // GCS read failed. We re-fetch from DB with content included.
-            // This is a temporary fallback during the migration period while content is still in
-            // DB. Once content column is dropped, this will become a hard error.
-            logger.error(
-              {
-                action: "mcp_output_items",
-                err: contentResult.error,
-                itemCount: gcsItems.length,
-                workspaceId,
-              },
-              "GCS read failed for MCP output items — falling back to DB"
-            );
-            const dbItems = await AgentMCPActionOutputItemModel.findAll({
+    if (ignoreContent) {
+      outputItems = await AgentMCPActionOutputItemModel.findAll({
+        attributes: { exclude: ["content", "contentGcsPath"] },
+        where: {
+          workspaceId,
+          agentMCPActionId: { [Op.in]: actionIds },
+        },
+      });
+    } else {
+      // Batch queries to avoid loading too many large (potentially TOASTed) rows at once.
+      const batches = _.chunk(actionIds, OUTPUT_ITEMS_BATCH_SIZE);
+      const batchResults = await concurrentExecutor(
+        batches,
+        async (batchActionIds) => {
+          // Split into two parallel queries:
+          // 1. GCS-backed rows: EXCLUDE content column (avoids TOAST decompression)
+          // 2. Legacy rows: INCLUDE content (old rows without GCS path)
+          const [gcsItems, legacyItems] = await Promise.all([
+            AgentMCPActionOutputItemModel.findAll({
+              attributes: { exclude: ["content"] },
               where: {
                 workspaceId,
-                id: { [Op.in]: gcsItems.map((item) => item.id) },
+                agentMCPActionId: { [Op.in]: batchActionIds },
+                contentGcsPath: { [Op.ne]: null },
               },
-            });
-            const dbMap = new Map(dbItems.map((item) => [item.id, item]));
-            for (const item of gcsItems) {
-              const dbItem = dbMap.get(item.id);
-              if (dbItem) {
-                item.content = dbItem.content;
+            }),
+            AgentMCPActionOutputItemModel.findAll({
+              where: {
+                workspaceId,
+                agentMCPActionId: { [Op.in]: batchActionIds },
+                contentGcsPath: null,
+              },
+            }),
+          ]);
+
+          getStatsDClient().increment(
+            "mcp_output_items.fetch.count",
+            gcsItems.length,
+            ["storage:gcs"]
+          );
+          getStatsDClient().increment(
+            "mcp_output_items.fetch.count",
+            legacyItems.length,
+            ["storage:legacy"]
+          );
+
+          // Hydrate GCS-backed items from cache/GCS.
+          if (gcsItems.length > 0) {
+            const gcsStartMs = Date.now();
+            const contentResult = await batchFetchContentsFromGcs(
+              auth,
+              gcsItems.map((item) => ({
+                itemId: item.id,
+                gcsPath: item.contentGcsPath!,
+              }))
+            );
+            getStatsDClient().distribution(
+              "mcp_output_items.gcs_hydrate.duration_ms",
+              Date.now() - gcsStartMs
+            );
+
+            if (contentResult.isOk()) {
+              for (const item of gcsItems) {
+                const content = contentResult.value.get(item.id);
+                if (content) {
+                  item.content = content;
+                }
+              }
+            } else {
+              getStatsDClient().increment(
+                "mcp_output_items.gcs_fallback_db.count",
+                gcsItems.length
+              );
+              // TODO(2026-02-25 PERF): Remove this post-migration.
+              // GCS read failed. We re-fetch from DB with content included.
+              // This is a temporary fallback during the migration period while content is still in
+              // DB. Once content column is dropped, this will become a hard error.
+              logger.error(
+                {
+                  action: "mcp_output_items",
+                  err: contentResult.error,
+                  itemCount: gcsItems.length,
+                  workspaceId,
+                },
+                "GCS read failed for MCP output items — falling back to DB"
+              );
+              const dbItems = await AgentMCPActionOutputItemModel.findAll({
+                where: {
+                  workspaceId,
+                  id: { [Op.in]: gcsItems.map((item) => item.id) },
+                },
+              });
+              const dbMap = new Map(dbItems.map((item) => [item.id, item]));
+              for (const item of gcsItems) {
+                const dbItem = dbMap.get(item.id);
+                if (dbItem) {
+                  item.content = dbItem.content;
+                }
               }
             }
           }
-        }
 
-        return [...gcsItems, ...legacyItems];
-      },
-      { concurrency: FETCH_OUTPUT_ITEMS_CONCURRENCY }
-    );
+          return [...gcsItems, ...legacyItems];
+        },
+        { concurrency: FETCH_OUTPUT_ITEMS_CONCURRENCY }
+      );
+
+      outputItems.push(...batchResults.flat());
+    }
 
     const outputItemsByActionId = new Map<
       number,
       AgentMCPActionOutputItemModel[]
     >();
-    for (const item of batchResults.flat()) {
+    for (const item of outputItems) {
       const existing = outputItemsByActionId.get(item.agentMCPActionId);
       if (existing) {
         existing.push(item);
@@ -849,7 +881,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   static async enrichActionsWithOutputItems(
     auth: Authenticator,
-    actions: AgentMCPActionResource[]
+    {
+      actions,
+      ignoreContent,
+    }: {
+      actions: AgentMCPActionResource[];
+      ignoreContent: boolean;
+    }
   ): Promise<AgentMCPActionWithOutputType[]> {
     return tracer.trace(
       "agent_mcp_action.enrich_with_output_items",
@@ -862,10 +900,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         const outputItemsByActionId = _.groupBy(
           Array.from(
             (
-              await this.fetchOutputItemsByActionIds(
-                auth,
-                actions.map((a) => a.id)
-              )
+              await this.fetchOutputItemsByActionIds(auth, {
+                actionIds: actions.map((a) => a.id),
+                ignoreContent,
+              })
             ).values()
           ).flat(),
           "agentMCPActionId"
@@ -904,18 +942,24 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           return {
             ...action.toJSON(),
             output: removeNulls(outputItems.map(hideFileFromActionOutput)),
+            citations: outputItems.some(
+              (o) => o.citations !== null && o.citations !== undefined
+            )
+              ? outputItems.reduce(
+                  (acc, o) => ({
+                    ...acc,
+                    ...(o.citations ?? {}),
+                  }),
+                  {}
+                )
+              : null,
             generatedFiles: removeNulls(
               outputItems.map((o) => {
-                if (!o.file) {
-                  return null;
-                }
-
                 const file = o.file;
 
-                const hidden =
-                  o.content.type === "resource" &&
-                  isToolGeneratedFile(o.content) &&
-                  o.content.resource.hidden === true;
+                if (!file) {
+                  return null;
+                }
 
                 return {
                   fileId: FileResource.modelIdToSId({
@@ -928,7 +972,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
                   createdAt: file.createdAt.getTime(),
                   updatedAt: file.updatedAt.getTime(),
                   isInProjectContext: file.useCase === "project_context",
-                  ...(hidden ? { hidden: true } : {}),
+                  hidden: file.useCaseMetadata?.hideFromUser ?? false,
                 };
               })
             ),
@@ -949,21 +993,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     // Extract the unprefixed tool name from the function call name (e.g. "server__tool" -> "tool").
     const toolName =
       this.toolConfiguration.originalName ??
-      this.functionCallName.split(TOOL_NAME_SEPARATOR).at(-1) ??
-      this.functionCallName;
+      getToolNameFromFunctionCallName(this.functionCallName);
     const mcpServerId = this.metadata.mcpServerId ?? null;
 
-    const displayLabels = internalMCPServerName
-      ? (getInternalMCPServerToolDisplayLabels(internalMCPServerName)?.[
-          toolName
-        ] ?? null)
-      : isLightClientSideMCPToolConfiguration(this.toolConfiguration) &&
-          this.toolConfiguration.displayLabels
-        ? this.toolConfiguration.displayLabels
-        : getDefaultRemoteDisplayLabels(
-            this.toolConfiguration.mcpServerName,
-            toolName
-          );
+    const displayLabels = this.resolveDisplayLabels(
+      internalMCPServerName,
+      toolName
+    );
 
     return {
       id: this.id,
@@ -983,6 +1019,26 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       executionDurationMs: this.executionDurationMs,
       displayLabels,
     };
+  }
+
+  /**
+   * Resolve displayLabels for this action. Checks the persisted toolConfiguration
+   * first (handles dynamic tool names), then falls back to static metadata for
+   * older DB records or remote server defaults.
+   */
+  private resolveDisplayLabels(
+    internalMCPServerName: InternalMCPServerNameType | null,
+    toolName: string
+  ): ToolDisplayLabels | null {
+    if (this.toolConfiguration.displayLabels) {
+      return this.toolConfiguration.displayLabels;
+    }
+
+    return getStaticToolDisplayLabels({
+      internalMCPServerName,
+      mcpServerName: this.toolConfiguration.mcpServerName,
+      toolName,
+    });
   }
 
   async updateStatus(

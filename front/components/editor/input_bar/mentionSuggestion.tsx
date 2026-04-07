@@ -11,6 +11,7 @@ import type {
   SuggestionKeyDownProps,
   SuggestionProps,
 } from "@tiptap/suggestion";
+import type React from "react";
 import type { RefAttributes } from "react";
 
 export const mentionPluginKey = new PluginKey("mention-suggestion");
@@ -20,7 +21,10 @@ export function createMentionSuggestion({
   conversationId,
   spaceId,
   select,
+  shouldSuggestAgentRef,
   includeCurrentUser = false,
+  onAgentSelect,
+  singleAgentInputEnabled,
 }: {
   owner: WorkspaceType;
   conversationId?: string | null;
@@ -30,12 +34,41 @@ export function createMentionSuggestion({
     agents: boolean;
     users: boolean;
   };
+  // Optional ref that gates select.agents at render time (used to hide agents dynamically in single-agent mode).
+  shouldSuggestAgentRef?: React.RefObject<boolean>;
+  onAgentSelect?: (mention: RichMention) => void;
+  singleAgentInputEnabled?: boolean;
 }) {
   return {
     pluginKey: mentionPluginKey,
     // Ensure queries can contain spaces (e.g., @Sales Team → decomposes to
     // text and keeps the dropdown active over the full label).
     allowSpaces: true,
+
+    // Override the default command to intercept agent mentions and redirect them
+    // to the picker button instead of inserting them into the editor.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    command: ({ editor, range, props }: any) => {
+      const mention = props as RichMention;
+      if (
+        mention.type === "agent" &&
+        singleAgentInputEnabled &&
+        onAgentSelect
+      ) {
+        // Delete the @query text without inserting a mention node.
+        editor.chain().focus().deleteRange(range).run();
+        onAgentSelect(mention);
+      } else {
+        // Default: insert mention node (user mentions).
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .insertContent({ type: "mention", attrs: props })
+          .insertContent(" ")
+          .run();
+      }
+    },
 
     render: () => {
       let component: ReactRenderer<
@@ -61,7 +94,11 @@ export function createMentionSuggestion({
               spaceId,
               includeCurrentUser,
               onClose: closeDropdown,
-              select,
+              select: {
+                agents:
+                  select.agents && (shouldSuggestAgentRef?.current ?? true),
+                users: select.users,
+              },
             },
           });
 
@@ -75,6 +112,10 @@ export function createMentionSuggestion({
             owner,
             conversationId,
             spaceId,
+            select: {
+              agents: select.agents && (shouldSuggestAgentRef?.current ?? true),
+              users: select.users,
+            },
           });
         },
 

@@ -7,6 +7,7 @@ import {
   getAccessibleSourcesAndAppsForActions,
 } from "@app/lib/agent_builder/server_side_props_helpers";
 import { AgentYAMLConverter } from "@app/lib/agent_yaml_converter/converter";
+import type { AgentYAMLConfig } from "@app/lib/agent_yaml_converter/schemas";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -23,12 +24,10 @@ import type { UserType } from "@app/types/user";
 
 const AGENT_NAME_SANITATION_REGEX = /[^a-zA-Z0-9-_]/g;
 
-export async function exportAgentConfigurationAsYAML(
+export async function getAgentConfigurationAsYAMLConfig(
   auth: Authenticator,
   agentId: string
-): Promise<
-  Result<{ yamlContent: string; filename: string }, APIErrorWithStatusCode>
-> {
+): Promise<Result<AgentYAMLConfig, APIErrorWithStatusCode>> {
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId,
     variant: "full",
@@ -168,6 +167,24 @@ export async function exportAgentConfigurationAsYAML(
     });
   }
 
+  return new Ok(yamlConfigResult.value);
+}
+
+export async function exportAgentConfigurationAsYAML(
+  auth: Authenticator,
+  agentId: string
+): Promise<
+  Result<{ yamlContent: string; filename: string }, APIErrorWithStatusCode>
+> {
+  const yamlConfigResult = await getAgentConfigurationAsYAMLConfig(
+    auth,
+    agentId
+  );
+
+  if (yamlConfigResult.isErr()) {
+    return yamlConfigResult;
+  }
+
   const yamlStringResult = AgentYAMLConverter.toYAMLString(
     yamlConfigResult.value
   );
@@ -182,7 +199,7 @@ export async function exportAgentConfigurationAsYAML(
     });
   }
 
-  const sanitizedName = agentConfiguration.name.replace(
+  const sanitizedName = yamlConfigResult.value.agent.handle.replace(
     AGENT_NAME_SANITATION_REGEX,
     "_"
   );

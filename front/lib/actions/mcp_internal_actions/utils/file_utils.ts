@@ -3,8 +3,8 @@ import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversa
 import {
   conversationAttachmentId,
   getAttachmentFromContentFragment,
-  getAttachmentFromFile,
   isFileAttachmentType,
+  makeFileAttachment,
 } from "@app/lib/api/assistant/conversation/attachments";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -68,7 +68,7 @@ export async function getFileFromConversationAttachment(
 
       for (const f of generatedFiles) {
         if (f.fileId === fileId) {
-          attachment = getAttachmentFromFile({
+          attachment = makeFileAttachment({
             fileId: f.fileId,
             source: "agent",
             createdAt: f.createdAt,
@@ -77,6 +77,7 @@ export async function getFileFromConversationAttachment(
             title: f.title,
             snippet: f.snippet,
             isInProjectContext: f.isInProjectContext ?? false,
+            hideFromUser: f.hidden ?? false,
           });
           break;
         }

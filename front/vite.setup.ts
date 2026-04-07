@@ -4,8 +4,8 @@ import "vitest-canvas-mock";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { createNamespace } from "@app/tests/utils/test_cls";
 import { cleanup } from "@testing-library/react";
-import { default as cls } from "cls-hooked";
 import { Sequelize } from "sequelize";
 import { afterEach, beforeEach, vi } from "vitest";
 
@@ -197,7 +197,7 @@ beforeEach(async (c) => {
   fileStorageMock.reset();
   redisStore.clear();
 
-  const namespace = cls.createNamespace("test-namespace");
+  const namespace = createNamespace("test-namespace");
 
   // We use CLS to create a namespace and a transaction to isolate each test.
   // See https://github.com/sequelize/sequelize/issues/11408#issuecomment-563962996

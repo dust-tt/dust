@@ -6,11 +6,13 @@ import {
 } from "@app/components/workspace/api-keys/utils";
 import type { GroupType } from "@app/types/groups";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
+import type { ModelId } from "@app/types/shared/model_id";
 import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSearchbar,
   DropdownMenuTrigger,
   Input,
   Label,
@@ -22,16 +24,18 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { FormProvider, useController, useForm } from "react-hook-form";
 import { z } from "zod";
 
 const formSchema = z.object({
   name: z.string().min(1, "API key name is required"),
   monthlyCapDollars: monthlyCapDollarsSchema,
+  selectedGroupIds: z.array(z.number()),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -42,7 +46,7 @@ interface NewAPIKeyDialogProps {
   isRevoking: boolean;
   onCreate: (params: {
     name: string;
-    group: GroupType | null;
+    groups: GroupType[];
     monthlyCapMicroUsd: number | null;
   }) => Promise<void>;
 }
@@ -54,9 +58,7 @@ export const NewAPIKeyDialog = ({
   onCreate,
 }: NewAPIKeyDialogProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [restrictedGroup, setRestrictedGroup] = useState<GroupType | null>(
-    null
-  );
+  const [spaceSearch, setSpaceSearch] = useState("");
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -64,19 +66,45 @@ export const NewAPIKeyDialog = ({
     defaultValues: {
       name: "",
       monthlyCapDollars: "",
+      selectedGroupIds: [],
     },
   });
 
   const { handleSubmit, reset, formState } = form;
 
+  const {
+    field: { value: selectedGroupIds, onChange: setSelectedGroupIds },
+  } = useController<FormValues, "selectedGroupIds">({
+    name: "selectedGroupIds",
+    control: form.control,
+  });
+
+  const removeGroupId = (groupId: ModelId) => {
+    setSelectedGroupIds(selectedGroupIds.filter((id) => id !== groupId));
+  };
+
+  const groupsById = useMemo(() => {
+    const map: Record<ModelId, GroupType> = {};
+    for (const g of groups) {
+      map[g.id] = g;
+    }
+    return map;
+  }, [groups]);
+
   const nonGlobalGroups = useMemo(
-    () => groups.filter((g) => g.kind !== "global"),
+    () =>
+      groups
+        .filter((g) => g.kind !== "global")
+        .sort((a, b) =>
+          prettifyGroupName(a)
+            .toLowerCase()
+            .localeCompare(prettifyGroupName(b).toLowerCase())
+        ),
     [groups]
   );
 
   const handleClose = () => {
     reset();
-    setRestrictedGroup(null);
     setIsOpen(false);
   };
 
@@ -84,9 +112,13 @@ export const NewAPIKeyDialog = ({
     const dollars =
       data.monthlyCapDollars === "" ? null : parseFloat(data.monthlyCapDollars);
 
+    const selectedGroups = data.selectedGroupIds
+      .map((id) => groupsById[id])
+      .filter(Boolean);
+
     await onCreate({
       name: data.name,
-      group: restrictedGroup,
+      groups: selectedGroups,
       monthlyCapMicroUsd: dollarsToMicroUsd(dollars),
     });
     handleClose();
@@ -101,7 +133,7 @@ export const NewAPIKeyDialog = ({
           disabled={isGenerating || isRevoking}
         />
       </SheetTrigger>
-      <SheetContent>
+      <SheetContent size="lg">
         <SheetHeader>
           <SheetTitle>New API Key</SheetTitle>
         </SheetHeader>
@@ -123,50 +155,85 @@ export const NewAPIKeyDialog = ({
               </BaseFormFieldSection>
 
               <div className="flex flex-col gap-2">
-                <Label>Default Space</Label>
-                <div>
-                  <Button
-                    label={GLOBAL_SPACE_NAME}
-                    size="sm"
-                    variant="outline"
-                    disabled={true}
-                    tooltip={`${GLOBAL_SPACE_NAME} is mandatory.`}
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label>Add optional additional Space</Label>
+                <Label>Spaces</Label>
                 <div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
-                        label={
-                          restrictedGroup
-                            ? prettifyGroupName(restrictedGroup)
-                            : "Add a space"
-                        }
-                        size="sm"
                         variant="outline"
+                        label="Add Spaces"
+                        size="sm"
                         isSelect
                       />
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
+                    <DropdownMenuContent
+                      className="w-72"
+                      align="start"
+                      dropdownHeaders={
+                        <DropdownMenuSearchbar
+                          name="spaceSearch"
+                          placeholder="Search spaces"
+                          value={spaceSearch}
+                          onChange={setSpaceSearch}
+                        />
+                      }
+                    >
+                      {nonGlobalGroups.filter((g) =>
+                        prettifyGroupName(g)
+                          .toLowerCase()
+                          .includes(spaceSearch.toLowerCase())
+                      ).length === 0 && (
+                        <div className="flex items-center justify-center py-4 text-sm">
+                          No spaces found
+                        </div>
+                      )}
                       {nonGlobalGroups
-                        .sort((a, b) =>
-                          prettifyGroupName(a)
-                            .toLowerCase()
-                            .localeCompare(prettifyGroupName(b).toLowerCase())
+                        .filter(
+                          (g) =>
+                            !selectedGroupIds.includes(g.id) &&
+                            prettifyGroupName(g)
+                              .toLowerCase()
+                              .includes(spaceSearch.toLowerCase())
                         )
-                        .map((group: GroupType) => (
+                        .map((group) => (
                           <DropdownMenuItem
                             key={group.id}
                             label={prettifyGroupName(group)}
-                            onClick={() => setRestrictedGroup(group)}
+                            onSelect={(e) => e.preventDefault()}
+                            onClick={() =>
+                              setSelectedGroupIds([
+                                ...selectedGroupIds,
+                                group.id,
+                              ])
+                            }
                           />
                         ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  <Button
+                    label={GLOBAL_SPACE_NAME}
+                    size="xs"
+                    variant="outline"
+                    disabled
+                  />
+                  {selectedGroupIds.map((gId) => {
+                    const group = groupsById[gId];
+                    if (!group) {
+                      return null;
+                    }
+                    return (
+                      <Button
+                        key={gId}
+                        label={prettifyGroupName(group)}
+                        icon={XMarkIcon}
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => removeGroupId(gId)}
+                      />
+                    );
+                  })}
                 </div>
               </div>
 

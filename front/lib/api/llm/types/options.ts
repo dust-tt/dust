@@ -131,3 +131,12 @@ export interface LLMStreamParameters {
   forceToolCall?: ForceToolCall;
   omittedThinking?: boolean;
 }
+
+export interface LLMStreamMetadata {
+  conversationId: string;
+}
+
+export type LLMParametersWithoutConversation = Omit<
+  LLMStreamParameters,
+  "conversation"
+>;

@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import config from "@app/lib/api/config";
+import { isGoogleAuthenticationErrorMessage } from "@app/lib/api/llm/clients/google/utils/errors";
 import type { Authenticator } from "@app/lib/auth";
 import { ProviderCredentialModel } from "@app/lib/models/provider_credential";
 import { notifyProviderCredentialsHealthUpdated } from "@app/lib/notifications/workflows/provider-credential-updated";
@@ -26,6 +27,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { redactString } from "@app/types/shared/utils/string_utils";
+import { GoogleGenAI } from "@google/genai";
 import assert from "assert";
 import OpenAI from "openai";
 import type { Attributes, ModelStatic } from "sequelize";
@@ -228,6 +230,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     const isHealthy = await isCredentialHealthy({
       provider: providerId,
       credentials: { api_key: apiKey },
+      workspaceId: workspace.sId,
     });
 
     if (!isHealthy) {
@@ -299,6 +302,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     const isHealthy = await isCredentialHealthy({
       provider: this.providerId,
       credentials: { api_key: apiKey },
+      workspaceId: workspace.sId,
     });
 
     if (!isHealthy) {
@@ -486,7 +490,10 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
 async function isCredentialHealthy({
   provider,
   credentials,
-}: ModelProviderPostCredentialsBody): Promise<boolean> {
+  workspaceId,
+}: ModelProviderPostCredentialsBody & {
+  workspaceId: string;
+}): Promise<boolean> {
   switch (provider) {
     case "anthropic": {
       const client = new Anthropic({
@@ -494,7 +501,11 @@ async function isCredentialHealthy({
       });
       try {
         await client.models.list();
-      } catch (_error) {
+      } catch (error) {
+        logger.warn(
+          { error, workspaceId },
+          "Error while validating Anthropic credentials"
+        );
         return false;
       }
 
@@ -511,7 +522,28 @@ async function isCredentialHealthy({
 
       try {
         await client.models.list();
-      } catch (_error) {
+      } catch (error) {
+        logger.warn(
+          { error, workspaceId },
+          "Error while validating OpenAI credentials"
+        );
+        return false;
+      }
+
+      return true;
+    }
+    case "google_ai_studio": {
+      const client = new GoogleGenAI({
+        apiKey: credentials.api_key,
+      });
+
+      try {
+        await client.models.list();
+      } catch (error) {
+        logger.warn(
+          { error, workspaceId },
+          "Error while validating Google AI Studio credentials"
+        );
         return false;
       }
 
@@ -551,6 +583,19 @@ async function hasCredentialAuthError({
         return false;
       } catch (error) {
         return error instanceof OpenAI.AuthenticationError;
+      }
+    }
+    case "google_ai_studio": {
+      const client = new GoogleGenAI({
+        apiKey: credentials.api_key,
+      });
+      try {
+        await client.models.list();
+        return false;
+      } catch (error) {
+        const normalized = normalizeError(error);
+
+        return isGoogleAuthenticationErrorMessage(normalized.message);
       }
     }
     default:

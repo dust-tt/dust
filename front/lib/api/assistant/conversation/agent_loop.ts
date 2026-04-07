@@ -4,7 +4,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
   AgentMessageType,
-  ConversationType,
+  ConversationWithoutContentType,
   UserMessageTypeWithoutMentions,
 } from "@app/types/assistant/conversation";
 import assert from "assert";
@@ -20,7 +20,7 @@ export const runAgentLoopWorkflow = async ({
 }: {
   auth: Authenticator;
   agentMessages: AgentMessageType[];
-  conversation: ConversationType;
+  conversation: ConversationWithoutContentType;
   userMessage: UserMessageTypeWithoutMentions;
 }) => {
   await concurrentExecutor(

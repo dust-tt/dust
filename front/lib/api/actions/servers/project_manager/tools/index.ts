@@ -16,7 +16,10 @@ import { PROJECT_MANAGER_TOOLS_METADATA } from "@app/lib/api/actions/servers/pro
 import { formatConversationsForDisplay } from "@app/lib/api/actions/servers/project_manager/tools/conversation_formatting";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import config from "@app/lib/api/config";
-import { upsertProjectContextFile } from "@app/lib/api/projects";
+import {
+  addFileToProject,
+  listProjectContextFiles,
+} from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -159,7 +162,11 @@ export function createProjectManagerTools(
           );
         }
 
-        const upsertRes = await upsertProjectContextFile(auth, file);
+        const upsertRes = await addFileToProject(auth, {
+          file,
+          space,
+          sourceConversationId: agentLoopContext?.runContext?.conversation?.sId,
+        });
 
         if (upsertRes.isErr()) {
           logger.warn(
@@ -167,9 +174,9 @@ export function createProjectManagerTools(
               error: upsertRes.error,
               fileId: file.sId,
             },
-            "Failed to upsert file to datasource"
+            "Failed to add file to project (datasource or content fragment)"
           );
-          // Don't fail - file is uploaded, just not indexed yet.
+          // Don't fail - file is uploaded, just not fully indexed yet.
         }
 
         // Adapt the message based on the input
@@ -269,7 +276,11 @@ export function createProjectManagerTools(
         await file.uploadContent(auth, fileContent);
 
         // Re-upsert to datasource to update search index.
-        const upsertRes = await upsertProjectContextFile(auth, file);
+        const upsertRes = await addFileToProject(auth, {
+          file,
+          space,
+          sourceConversationId: agentLoopContext?.runContext?.conversation?.sId,
+        });
 
         if (upsertRes.isErr()) {
           logger.error(
@@ -357,10 +368,7 @@ export function createProjectManagerTools(
           space
         );
 
-        // Fetch files
-        const files = await FileResource.listByProject(auth, {
-          projectId: space.sId,
-        });
+        const files = await listProjectContextFiles(auth, space);
 
         const fileList = files
           .filter((file) => isSupportedFileContentType(file.contentType))

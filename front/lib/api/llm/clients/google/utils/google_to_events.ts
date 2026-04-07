@@ -12,7 +12,7 @@ import { hash as blake3 } from "blake3";
 import crypto from "crypto";
 import flatMap from "lodash/flatMap";
 
-function newId(): string {
+export function newId(): string {
   const uuid = crypto.randomUUID();
   return blake3(uuid).toString("hex");
 }

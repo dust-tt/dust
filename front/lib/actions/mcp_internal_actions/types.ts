@@ -118,13 +118,6 @@ export const WebbrowseInputSchema = z.object({
     .array()
     .max(MAX_BROWSE_URLS)
     .describe(`List of urls to browse (max: ${MAX_BROWSE_URLS})`),
-  format: z
-    .enum(["markdown", "html"])
-    .optional()
-    .describe(
-      "Format to return content: 'markdown' (default) or 'html'. " +
-        "Markdown is the default choice and should be used unless there's a specific reason for using HTML."
-    ),
   screenshotMode: z
     .enum(["none", "viewport", "fullPage"])
     .optional()

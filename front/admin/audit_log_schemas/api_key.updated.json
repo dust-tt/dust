@@ -1,0 +1,15 @@
+{
+  "action": "api_key.updated",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "api_key"
+    }
+  ],
+  "metadata": {
+    "previousSpendingCap": "string",
+    "newSpendingCap": "string"
+  }
+}

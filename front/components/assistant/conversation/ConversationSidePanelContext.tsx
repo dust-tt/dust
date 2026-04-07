@@ -3,6 +3,7 @@ import { useHashParam } from "@app/hooks/useHashParams";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
+  AGENT_THINKING_SIDE_PANEL_TYPE,
   FILES_SIDE_PANEL_TYPE,
   INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
   SIDE_PANEL_HASH_PARAM,
@@ -16,6 +17,7 @@ type OpenPanelParams =
   | {
       type: "actions";
       messageId: string;
+      actionId?: string;
     }
   | {
       type: "interactive_content";
@@ -24,12 +26,20 @@ type OpenPanelParams =
     }
   | {
       type: "files";
+    }
+  | {
+      type: "thinking";
+      stepId: string;
+      content: string;
     };
 
 const isSupportedPanelType = (
   type: string | undefined
 ): type is ConversationSidePanelType =>
-  type === "actions" || type === "interactive_content" || type === "files";
+  type === "actions" ||
+  type === "interactive_content" ||
+  type === "files" ||
+  type === "thinking";
 
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;
@@ -41,6 +51,7 @@ interface ConversationSidePanelContextType {
   setVirtuosoMsg: (msg: MessageTemporaryState) => void;
   virtuosoMsg: MessageTemporaryState | null;
   data: string | undefined;
+  thinkingContent: string | null;
 }
 
 const ConversationSidePanelContext = React.createContext<
@@ -58,6 +69,20 @@ export function useConversationSidePanelContext() {
   return context;
 }
 
+export function parseDataAsMessageIdAndActionId(data?: string): {
+  messageId?: string;
+  actionId?: string;
+} {
+  // data can be "messageId" or "messageId@actionId" for single-action view.
+  // TODO: Clean up once inline activity is rolled out -- the single-action view
+  // should fetch only the action it needs, not the full message.
+  const [messageId, actionId] = data?.includes("@")
+    ? data.split("@")
+    : [data, undefined];
+
+  return { messageId, actionId };
+}
+
 interface ConversationSidePanelProviderProps {
   children: React.ReactNode;
 }
@@ -73,6 +98,9 @@ export function ConversationSidePanelProvider({
   const panelRef = React.useRef<ImperativePanelHandle | null>(null);
   const [virtuosoMsg, setVirtuosoMsg] =
     React.useState<MessageTemporaryState | null>(null);
+  const [thinkingContent, setThinkingContent] = React.useState<string | null>(
+    null
+  );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const setPanelRef = useCallback(
@@ -105,16 +133,20 @@ export function ConversationSidePanelProvider({
 
       switch (params.type) {
         case AGENT_ACTIONS_SIDE_PANEL_TYPE: {
+          const newData = params.actionId
+            ? `${params.messageId}@${params.actionId}`
+            : params.messageId;
+
           /**
-           * If the panel is already open for the same messageId,
+           * If the panel is already open for the same data,
            * we close it.
            */
-          if (params.messageId === data) {
+          if (newData === data) {
             closePanel();
             return;
           }
 
-          setData(params.messageId);
+          setData(newData);
           break;
         }
 
@@ -132,6 +164,15 @@ export function ConversationSidePanelProvider({
             return;
           }
           setData("files");
+          break;
+
+        case AGENT_THINKING_SIDE_PANEL_TYPE:
+          if (params.stepId === data) {
+            closePanel();
+            return;
+          }
+          setThinkingContent(params.content);
+          setData(params.stepId);
           break;
 
         default:
@@ -163,6 +204,7 @@ export function ConversationSidePanelProvider({
       setVirtuosoMsg,
       virtuosoMsg,
       data,
+      thinkingContent,
     }),
     [
       currentPanel,
@@ -172,6 +214,7 @@ export function ConversationSidePanelProvider({
       setPanelRef,
       virtuosoMsg,
       data,
+      thinkingContent,
     ]
   );
 

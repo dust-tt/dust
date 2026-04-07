@@ -1,10 +1,13 @@
 import config from "@app/lib/api/config";
 import {
+  BUSINESS_PLAN_COST_MONTHLY,
   getPriceWithCurrency,
   PRO_PLAN_COST_MONTHLY,
   PRO_PLAN_COST_YEARLY,
 } from "@app/lib/client/subscription";
+import { isWhitelistedBusinessPlan } from "@app/lib/plans/plan_codes";
 import type { BillingPeriod } from "@app/types/plan";
+import type { WorkspaceType } from "@app/types/user";
 import { Button, CheckIcon, Icon } from "@dust-tt/sparkle";
 
 const PRO_FEATURES = [
@@ -14,6 +17,12 @@ const PRO_FEATURES = [
   "Native integrations (Zendesk, Slack, Chrome Extension)",
   "Email support: Get help when you need it",
   "Free credits for programmatic usage (API, GSheet, Zapier)",
+];
+
+const BUSINESS_EXTRA_FEATURES = [
+  "US / EU data hosting",
+  "Single Sign-On (SSO) (Okta, Entra ID, Jumpcloud)",
+  "Advanced connections (Salesforce, etc)",
 ];
 
 const ENTERPRISE_FEATURES = [
@@ -35,15 +44,19 @@ interface SubscriptionPlanCardsProps {
   billingPeriod: BillingPeriod;
   onSubscribe: () => void;
   isProcessing: boolean;
+  owner?: WorkspaceType;
 }
 
 export function SubscriptionPlanCards({
   billingPeriod,
   onSubscribe,
   isProcessing,
+  owner,
 }: SubscriptionPlanCardsProps) {
-  const price =
-    billingPeriod === "monthly"
+  const isBusiness = isWhitelistedBusinessPlan(owner);
+  const price = isBusiness
+    ? getPriceWithCurrency(BUSINESS_PLAN_COST_MONTHLY)
+    : billingPeriod === "monthly"
       ? getPriceWithCurrency(PRO_PLAN_COST_MONTHLY)
       : getPriceWithCurrency(PRO_PLAN_COST_YEARLY);
 
@@ -53,7 +66,7 @@ export function SubscriptionPlanCards({
       <div className="flex flex-col rounded-[20px] border border-border p-5">
         <div className="mb-4">
           <h3 className="text-lg font-medium text-foreground dark:text-foreground-night">
-            Pro
+            {isBusiness ? "Enterprise (Seat-based)" : "Pro"}
           </h3>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="text-3xl font-bold tabular-nums text-foreground dark:text-foreground-night">
@@ -66,7 +79,10 @@ export function SubscriptionPlanCards({
         </div>
         <div className="mb-4 border-t border-border" />
         <ul className="flex flex-1 flex-col gap-3">
-          {PRO_FEATURES.map((feature, index) => (
+          {[
+            ...PRO_FEATURES,
+            ...(isBusiness ? BUSINESS_EXTRA_FEATURES : []),
+          ].map((feature, index) => (
             <li key={index} className="flex items-start gap-2">
               <Icon
                 visual={CheckIcon}
@@ -83,7 +99,11 @@ export function SubscriptionPlanCards({
           <Button
             variant="highlight"
             size="md"
-            label="Subscribe to Pro"
+            label={
+              isBusiness
+                ? "Subscribe to Enterprise (Seat-based)"
+                : "Subscribe to Pro"
+            }
             onClick={onSubscribe}
             disabled={isProcessing}
             className="w-full"

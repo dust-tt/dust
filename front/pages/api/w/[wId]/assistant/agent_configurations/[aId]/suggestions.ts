@@ -2,15 +2,13 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
+import { hasReinforcementEnabled } from "@app/lib/reinforced_agent/workspace_check";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-import type {
-  AgentSuggestionSource,
-  AgentSuggestionType,
-} from "@app/types/suggestions/agent_suggestion";
+import type { AgentSuggestionSource } from "@app/types/suggestions/agent_suggestion";
+import { AgentSuggestionSchema } from "@app/types/suggestions/agent_suggestion";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
@@ -23,9 +21,12 @@ export type PatchSuggestionRequestBody = z.infer<
   typeof PatchSuggestionRequestBodySchema
 >;
 
-export interface PatchSuggestionResponseBody {
-  suggestions: AgentSuggestionType[];
-}
+export const PatchSuggestionResponseBodySchema = z.object({
+  suggestions: z.array(AgentSuggestionSchema),
+});
+export type PatchSuggestionResponseBody = z.infer<
+  typeof PatchSuggestionResponseBodySchema
+>;
 
 const StateSchema = z.enum(["pending", "approved", "rejected", "outdated"]);
 
@@ -43,9 +44,12 @@ const GetSuggestionsQuerySchema = z.object({
 
 export type GetSuggestionsQuery = z.infer<typeof GetSuggestionsQuerySchema>;
 
-export interface GetSuggestionsResponseBody {
-  suggestions: AgentSuggestionType[];
-}
+export const GetSuggestionsResponseBodySchema = z.object({
+  suggestions: z.array(AgentSuggestionSchema),
+});
+export type GetSuggestionsResponseBody = z.infer<
+  typeof GetSuggestionsResponseBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,
@@ -119,9 +123,8 @@ async function handler(
         });
       }
 
-      const sources: AgentSuggestionSource[] = (await hasFeatureFlag(
-        auth,
-        "reinforced_agents"
+      const sources: AgentSuggestionSource[] = (await hasReinforcementEnabled(
+        auth
       ))
         ? ["sidekick", "reinforcement"]
         : ["sidekick"];

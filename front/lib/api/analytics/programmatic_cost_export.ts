@@ -1,3 +1,4 @@
+import { sanitizeCsvCell } from "@app/lib/api/analytics/csv_utils";
 import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { toCsv } from "@app/lib/api/csv";
 import {
@@ -199,10 +200,6 @@ export async function handleProgrammaticCostExportRequest(
 
       const markupMultiplier = 1 + DUST_MARKUP_PERCENT / 100;
 
-      // Sanitize CSV cells to prevent formula injection when opened in spreadsheets.
-      const sanitizeCsvCell = (value: string) =>
-        /^[=+\-@]/.test(value) ? `'${value}` : value;
-
       const rows: ExportRow[] = allBuckets.map((bucket) => {
         const costMicroUsd = (bucket.total_cost.value ?? 0) * markupMultiplier;
         const costUsd = costMicroUsd / 1_000_000;
@@ -215,9 +212,9 @@ export async function handleProgrammaticCostExportRequest(
 
         return {
           date: formatUTCDateFromMillis(bucket.key.date),
-          agent_name: sanitizeCsvCell(agentName),
-          api_key: sanitizeCsvCell(bucket.key.api_key ?? "N/A"),
-          source: sanitizeCsvCell(bucket.key.origin ?? "N/A"),
+          agent_name: agentName,
+          api_key: bucket.key.api_key ?? "N/A",
+          source: bucket.key.origin ?? "N/A",
           total_spend_usd: costUsd.toFixed(2),
         };
       });
@@ -234,7 +231,12 @@ export async function handleProgrammaticCostExportRequest(
         return a.source.localeCompare(b.source);
       });
 
-      const csv = await toCsv(rows);
+      const sanitizedRows = rows.map((row) =>
+        Object.fromEntries(
+          Object.entries(row).map(([k, v]) => [k, sanitizeCsvCell(v)])
+        )
+      );
+      const csv = await toCsv(sanitizedRows);
       const filename = `programmatic-cost-${selectedPeriod ?? formatUTCDateFromMillis(Date.now()).slice(0, 7)}.csv`;
 
       res.setHeader("Content-Type", "text/csv");

@@ -87,6 +87,7 @@ export function createPlaceholderUserMessage({
             sourceProvider: null,
             sourceIcon: null,
             isInProjectContext: false,
+            hidden: false,
           }) satisfies FileContentFragmentType
       ),
       ...(contentFragments?.contentNodes ?? []).map(
@@ -171,6 +172,7 @@ export function createPlaceholderAgentMessage({
     },
     citations: {},
     generatedFiles: [],
+    activitySteps: [],
     actions: [],
     richMentions: [],
     completionDurationMs: null,
@@ -182,6 +184,7 @@ export function createPlaceholderAgentMessage({
       isRetrying: false,
       lastUpdated: new Date(),
       actionProgress: new Map(),
+      pendingToolCalls: [],
       useFullChainOfThought: false,
     },
   };

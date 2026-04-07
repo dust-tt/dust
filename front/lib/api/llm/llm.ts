@@ -8,12 +8,17 @@ import type {
   LLMTraceContext,
   LLMTraceCustomization,
 } from "@app/lib/api/llm/traces/types";
-import type { BatchResult, BatchStatus } from "@app/lib/api/llm/types/batch";
+import type {
+  BatchResult,
+  BatchResultWithRunIds,
+  BatchStatus,
+} from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type {
   LLMClientMetadata,
   LLMParameters,
+  LLMStreamMetadata,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
@@ -89,10 +94,11 @@ export abstract class LLM<TPayload = unknown> {
   }
 
   private async *completeStream(
-    streamParameters: LLMStreamParameters
+    streamParameters: LLMStreamParameters,
+    metadata?: LLMStreamMetadata
   ): AsyncGenerator<LLMEvent> {
     let currentEvent: LLMEvent | null = null;
-    for await (const event of this.internalStream(streamParameters)) {
+    for await (const event of this.internalStream(streamParameters, metadata)) {
       currentEvent = event;
       yield event;
     }
@@ -115,10 +121,11 @@ export abstract class LLM<TPayload = unknown> {
    * Private method that wraps the abstract internalStream() with tracing functionality
    */
   private async *streamWithTracing(
-    streamParameters: LLMStreamParameters
+    streamParameters: LLMStreamParameters,
+    metadata?: LLMStreamMetadata
   ): AsyncGenerator<LLMEvent> {
     if (!this.context) {
-      yield* this.completeStream(streamParameters);
+      yield* this.completeStream(streamParameters, metadata);
       return;
     }
     const { conversation, prompt, specifications } = streamParameters;
@@ -201,7 +208,10 @@ export abstract class LLM<TPayload = unknown> {
     let timeToFirstEventMs: number | undefined = undefined;
 
     try {
-      for await (const event of this.completeStream(streamParameters)) {
+      for await (const event of this.completeStream(
+        streamParameters,
+        metadata
+      )) {
         if (currentEvent === null) {
           timeToFirstEventMs = Date.now() - startTime;
         }
@@ -349,10 +359,15 @@ export abstract class LLM<TPayload = unknown> {
     return this.metadata;
   }
 
+  getModelConfig(): ModelConfigurationType {
+    return this.modelConfig;
+  }
+
   async *stream(
-    streamParameters: LLMStreamParameters
+    streamParameters: LLMStreamParameters,
+    metadata?: LLMStreamMetadata
   ): AsyncGenerator<LLMEvent> {
-    yield* this.streamWithTracing(streamParameters);
+    yield* this.streamWithTracing(streamParameters, metadata);
   }
 
   /**
@@ -394,7 +409,7 @@ export abstract class LLM<TPayload = unknown> {
       const payload = this.buildStreamRequestPayload(params);
 
       const generation = startObservation(
-        "llm-batch-input",
+        `llm-batch-input-${customId}`,
         {
           input: payload,
           model: this.modelId,
@@ -444,12 +459,12 @@ export abstract class LLM<TPayload = unknown> {
    * Only call this when getBatchStatus returns "ready".
    * Results are automatically traced when a tracing context is set.
    */
-  async getBatchResult(batchId: string): Promise<BatchResult> {
+  async getBatchResult(batchId: string): Promise<BatchResultWithRunIds> {
     const results = await this.internalGetBatchResult(batchId);
-    if (!this.context) {
-      return results;
+    if (this.context) {
+      await this.traceBatchResults(results);
     }
-    return this.traceBatchResults(results);
+    return this.createRunsForBatchResults(results);
   }
 
   /**
@@ -464,9 +479,47 @@ export abstract class LLM<TPayload = unknown> {
   }
 
   /**
+   * Creates RunResource entries and records token usage for each batch entry.
+   * This enables cost tracking by linking batch results to run_usages.
+   */
+  private async createRunsForBatchResults(
+    results: BatchResult
+  ): Promise<BatchResultWithRunIds> {
+    const enrichedResults: BatchResultWithRunIds = new Map();
+
+    for (const [customId, events] of results) {
+      const traceId = createLLMTraceId(randomUUID());
+
+      const run = await RunResource.makeNew({
+        appId: null,
+        dustRunId: traceId,
+        runType: "deploy",
+        useWorkspaceCredentials: false,
+        workspaceId: this.authenticator.getNonNullableWorkspace().id,
+      });
+
+      // Record token usage from events.
+      for (const event of events) {
+        if (event.type === "token_usage") {
+          await run.recordTokenUsage(
+            this.authenticator,
+            event.content,
+            this.modelId,
+            { isBatch: true }
+          );
+        }
+      }
+
+      enrichedResults.set(customId, { events, dustRunId: traceId });
+    }
+
+    return enrichedResults;
+  }
+
+  /**
    * Traces batch results by creating one Langfuse generation per batch entry.
    */
-  private async traceBatchResults(results: BatchResult): Promise<BatchResult> {
+  private async traceBatchResults(results: BatchResult): Promise<void> {
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
 
     for (const [customId, events] of results) {
@@ -474,7 +527,7 @@ export abstract class LLM<TPayload = unknown> {
       const buffer = new LLMTraceBuffer(traceId, workspaceId, this.context!);
 
       const generation = startObservation(
-        "llm-batch-completion",
+        `llm-batch-completion-${customId}`,
         {
           input: { batchCustomId: customId },
           model: this.modelId,
@@ -570,8 +623,6 @@ export abstract class LLM<TPayload = unknown> {
 
       generation.end();
     }
-
-    return results;
   }
 
   /**
@@ -581,7 +632,8 @@ export abstract class LLM<TPayload = unknown> {
    * The payload is automatically captured for tracing.
    */
   protected abstract buildStreamRequestPayload(
-    streamParameters: LLMStreamParameters
+    streamParameters: LLMStreamParameters,
+    metadata?: LLMStreamMetadata
   ): TPayload;
 
   /**
@@ -596,9 +648,10 @@ export abstract class LLM<TPayload = unknown> {
    * Orchestrates the request lifecycle: build -> capture for tracing -> send.
    */
   protected async *internalStream(
-    streamParameters: LLMStreamParameters
+    streamParameters: LLMStreamParameters,
+    metadata?: LLMStreamMetadata
   ): AsyncGenerator<LLMEvent> {
-    const payload = this.buildStreamRequestPayload(streamParameters);
+    const payload = this.buildStreamRequestPayload(streamParameters, metadata);
 
     // Update the generation span with the actual payload.
     this.generation?.update({ input: payload });

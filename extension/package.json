@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/extension",
-  "version": "0.1.1",
+  "version": "0.1.4",
   "description": "Dust Chrome Extension",
   "scripts": {
     "clean": "rm -rf build/*",
@@ -8,7 +8,10 @@
     "dev:front": "tsx run/watch.ts --platform=front --mode=development",
     "package:chrome:production": "tsx run/build.ts --platform=chrome",
     "package:front:production": "tsx run/build.ts --platform=front",
+    "dev:firefox": "tsx run/watch.ts --platform=firefox --mode=development",
+    "package:firefox:production": "tsx run/build.ts --platform=firefox",
     "package:chrome:release": "tsx run/build.ts --platform=chrome --release",
+    "package:firefox:release": "tsx run/build.ts --platform=firefox --release",
     "analyze:chrome": "tsx run/build.ts --platform=chrome --analyze",
     "tsgo": "tsgo"
   },
@@ -25,6 +28,7 @@
     "@types/node": "^24.12.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
+    "@types/webextension-polyfill": "^0.10.7",
     "@types/webpack-bundle-analyzer": "^4.7.0",
     "@types/zip-webpack-plugin": "^3.0.6",
     "assert": "^2.1.0",

@@ -17,18 +17,20 @@ import {
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { ConversationButlerSuggestionModel } from "@app/lib/resources/storage/models/conversation_butler_suggestion";
+import { ConversationTodoVersionedModel } from "@app/lib/resources/storage/models/conversation_todo_versioned";
+import {
+  ProjectTodoConversationModel,
+  ProjectTodoSourceModel,
+} from "@app/lib/resources/storage/models/project_todo";
 import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_project_digest";
-import type {
-  ConversationError,
-  ConversationWithoutContentType,
-} from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import chunk from "lodash/chunk";
 import type { WhereOptions } from "sequelize";
@@ -177,29 +179,12 @@ async function destroyConversationDataSource(
 export async function destroyConversation(
   auth: Authenticator,
   {
-    conversationId,
+    conversation,
   }: {
-    conversationId: string;
+    conversation: ConversationResource;
   }
-): Promise<Result<void, ConversationError>> {
+): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
-
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId,
-      // We skip access checks as some conversations associated with deleted spaces may have become
-      // inaccessible, yet we want to be able to delete them here.
-      {
-        includeDeleted: true,
-        dangerouslySkipPermissionFiltering: true,
-      }
-    );
-  if (conversationRes.isErr()) {
-    return new Err(conversationRes.error);
-  }
-
-  const conversation = conversationRes.value;
 
   // Clean up all branches attached to this conversation before deleting messages.
   await ConversationBranchModel.destroy({
@@ -227,10 +212,14 @@ export async function destroyConversation(
   const messagesChunks = chunk(messages, DESTROY_MESSAGE_BATCH);
   for (const messagesChunk of messagesChunks) {
     const messageIds = messagesChunk.map((m) => m.id);
-    const userMessageIds = removeNulls(messages.map((m) => m.userMessageId));
-    const agentMessageIds = removeNulls(messages.map((m) => m.agentMessageId));
+    const userMessageIds = removeNulls(
+      messagesChunk.map((m) => m.userMessageId)
+    );
+    const agentMessageIds = removeNulls(
+      messagesChunk.map((m) => m.agentMessageId)
+    );
     const messageAndContentFragmentIds = removeNulls(
-      messages.map((m) => {
+      messagesChunk.map((m) => {
         if (m.contentFragmentId) {
           return { contentFragmentId: m.contentFragmentId, messageId: m.sId };
         }
@@ -279,7 +268,9 @@ export async function destroyConversation(
     await destroyMessageRelatedResources(auth, messageIds);
   }
 
-  await destroyConversationDataSource(auth, { conversation });
+  await destroyConversationDataSource(auth, {
+    conversation: conversation.toJSON(),
+  });
 
   await UserProjectDigestModel.destroy({
     where: {
@@ -289,6 +280,13 @@ export async function destroyConversation(
   });
 
   await ConversationButlerSuggestionModel.destroy({
+    where: {
+      workspaceId: owner.id,
+      conversationId: conversation.id,
+    },
+  });
+
+  await ConversationTodoVersionedModel.destroy({
     where: {
       workspaceId: owner.id,
       conversationId: conversation.id,
@@ -309,6 +307,13 @@ export async function destroyConversation(
     },
   });
 
+  await ProjectTodoConversationModel.destroy({
+    where: { workspaceId: owner.id, conversationId: conversation.id },
+  });
+  await ProjectTodoSourceModel.destroy({
+    where: { workspaceId: owner.id, sourceConversationId: conversation.id },
+  });
+
   await SandboxResource.deleteByConversationId(auth, conversation.sId);
 
   // TODO(2026-03-09 SANDBOX): Implement proper file deletion.
@@ -323,16 +328,9 @@ export async function destroyConversation(
   //     conversationId: conversation.sId,
   //   })
   // );
-
-  const c = await ConversationResource.fetchById(auth, conversation.sId, {
-    includeDeleted: true,
-    dangerouslySkipPermissionFiltering: true,
-  });
-  if (c) {
-    const r = await c.delete(auth);
-    if (r.isErr()) {
-      throw r.error;
-    }
+  const result = await conversation.delete(auth);
+  if (result.isErr()) {
+    return result;
   }
 
   return new Ok(undefined);

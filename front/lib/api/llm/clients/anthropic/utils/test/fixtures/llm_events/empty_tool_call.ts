@@ -11,6 +11,18 @@ export const emptyToolCallLLMEvents: LLMEvent[] = [
     },
   },
   {
+    type: "tool_call_started",
+    content: {
+      id: "EmptyToolCall1",
+      index: 0,
+      name: "test_tool",
+    },
+    metadata: {
+      clientId: "anthropic" as const,
+      modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
+    },
+  },
+  {
     type: "tool_call_delta",
     metadata: {
       clientId: "anthropic" as const,

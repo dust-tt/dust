@@ -35,6 +35,8 @@ export class HubspotOAuthProvider implements BaseOAuthStrategyProvider {
       "crm.objects.owners.read",
       "crm.schemas.custom.read",
       "crm.objects.custom.read",
+      "crm.objects.quotes.read",
+      "crm.objects.line_items.read",
       "files",
       "sales-email-read",
       "timeline",

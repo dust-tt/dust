@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {

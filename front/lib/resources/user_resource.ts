@@ -141,11 +141,15 @@ export class UserResource extends BaseResource<UserModel> {
     return users.map((user) => new UserResource(UserModel, user.get()));
   }
 
-  static async fetchByModelIds(ids: ModelId[]): Promise<UserResource[]> {
+  static async fetchByModelIds(
+    ids: ModelId[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<UserResource[]> {
     const users = await UserModel.findAll({
       where: {
         id: ids,
       },
+      transaction,
     });
 
     return users.map((user) => new UserResource(UserModel, user.get()));
@@ -283,6 +287,20 @@ export class UserResource extends BaseResource<UserModel> {
 
     // Most recently updated user if any.
     return sortedUsers[0] ?? null;
+  }
+
+  static async fetchByEmails(emails: string[]): Promise<UserResource[]> {
+    if (emails.length === 0) {
+      return [];
+    }
+
+    const users = await UserModel.findAll({
+      where: {
+        email: emails.map((e) => e.toLowerCase()),
+      },
+    });
+
+    return users.map((user) => new UserResource(UserModel, user.get()));
   }
 
   static async getWorkspaceFirstAdmin(

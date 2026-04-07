@@ -330,6 +330,35 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   }
 
   /**
+   * Bulk delete a list of suggestion resources.
+   * Requires super user permissions.
+   */
+  static async bulkDelete(
+    auth: Authenticator,
+    suggestions: AgentSuggestionResource[]
+  ): Promise<Result<number, Error>> {
+    if (!auth.isDustSuperUser()) {
+      return new Err(new Error("Only super users can bulk delete suggestions"));
+    }
+
+    if (suggestions.length === 0) {
+      return new Ok(0);
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+    const ids = suggestions.map((s) => s.id);
+
+    const deletedCount = await AgentSuggestionModel.destroy({
+      where: {
+        workspaceId: owner.id,
+        id: ids,
+      },
+    });
+
+    return new Ok(deletedCount);
+  }
+
+  /**
    * WARNING: This method deletes ALL suggestions for a workspace.
    * Only workspace admins can perform this operation.
    * This is intended for internal use only (e.g., workspace deletion workflows).
@@ -417,11 +446,92 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   }
 
   /**
+   * Deletes all synthetic suggestions older than the given cutoff date.
+   * Requires admin permissions. Returns the number of deleted rows.
+   */
+  static async deleteExpiredSynthetic(
+    auth: Authenticator,
+    cutoffDate: Date,
+    { limit }: { limit?: number } = {}
+  ): Promise<number> {
+    if (!auth.isAdmin()) {
+      throw new Error(
+        "Only workspace admins can delete expired synthetic suggestions"
+      );
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+
+    return AgentSuggestionModel.destroy({
+      where: {
+        workspaceId: owner.id,
+        source: "synthetic",
+        createdAt: { [Op.lt]: cutoffDate },
+      },
+      limit,
+    });
+  }
+
+  /**
    * Lists all suggestions for the workspace.
    */
   static async listAll(
     auth: Authenticator
   ): Promise<AgentSuggestionResource[]> {
     return this.baseFetch(auth, {});
+  }
+
+  /**
+   * Lists suggestions across multiple agents identified by their sIds.
+   */
+  static async listByAgentConfigurationIds(
+    auth: Authenticator,
+    agentIds: string[],
+    filters?: {
+      states?: AgentSuggestionState[];
+      sources?: AgentSuggestionSource[];
+      kind?: AgentSuggestionKind;
+      limit?: number;
+      createdAfter?: Date;
+    }
+  ): Promise<AgentSuggestionResource[]> {
+    if (agentIds.length === 0) {
+      return [];
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+
+    const agentConfigs = await AgentConfigurationModel.findAll({
+      where: {
+        sId: { [Op.in]: agentIds },
+        workspaceId: owner.id,
+        status: "active",
+      },
+      attributes: ["id", "sId"],
+    });
+
+    if (agentConfigs.length === 0) {
+      return [];
+    }
+
+    const agentConfigIds = agentConfigs.map((ac) => ac.id);
+
+    const whereClause: WhereOptions<AgentSuggestionModel> = {
+      agentConfigurationId: agentConfigIds,
+      ...(filters?.states &&
+        filters.states.length > 0 && { state: filters.states }),
+      ...(filters?.sources &&
+        filters.sources.length > 0 && { source: filters.sources }),
+      ...(filters?.kind && { kind: filters.kind }),
+      ...(filters?.createdAfter && {
+        createdAt: { [Op.gte]: filters.createdAfter },
+      }),
+    };
+
+    return this.baseFetch(auth, {
+      where: whereClause,
+      order: [["createdAt", "DESC"]],
+      limit: filters?.limit,
+    });
   }
 }

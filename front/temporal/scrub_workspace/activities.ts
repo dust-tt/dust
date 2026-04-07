@@ -191,26 +191,13 @@ export async function deleteAllConversations(auth: Authenticator) {
   await concurrentExecutor(
     uniqueConversations,
     async (conversation) => {
-      const result = await destroyConversation(auth, {
-        conversationId: conversation.sId,
-      });
+      const result = await destroyConversation(auth, { conversation });
       if (result.isErr()) {
-        if (result.error.type === "conversation_not_found") {
-          logger.warn(
-            {
-              workspaceId: workspace.sId,
-              conversationId: conversation.sId,
-              error: result.error,
-            },
-            "Attempting to delete a non-existing conversation."
-          );
-          return;
-        }
         throw result.error;
       }
     },
     {
-      concurrency: 8,
+      concurrency: 4,
     }
   );
 }

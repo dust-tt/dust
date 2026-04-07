@@ -79,6 +79,7 @@ export function DataSourceViewPage() {
       useBackendSearch
     >
       <SpaceDataSourceViewContentList
+        key={`${dataSourceView.sId}:${parentId ?? ""}`}
         owner={owner}
         space={space}
         plan={plan}

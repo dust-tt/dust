@@ -7,7 +7,12 @@ export type ActionDetailsDisplayContext = "conversation" | "sidebar";
 // Generic interface for every component that displays details for a certain type of tool output.
 export interface ToolExecutionDetailsProps {
   lastNotification: ProgressNotificationContentType | null;
-  messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
+  messageStatus?:
+    | "created"
+    | "succeeded"
+    | "failed"
+    | "cancelled"
+    | "gracefully_stopped";
   owner: LightWorkspaceType;
   toolOutput: CallToolResult["content"] | null;
   toolParams: Record<string, unknown>;

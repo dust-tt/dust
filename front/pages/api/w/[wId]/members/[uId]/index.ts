@@ -1,4 +1,9 @@
 /** @ignoreswagger */
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import { getUserForWorkspace } from "@app/lib/api/user";
@@ -244,6 +249,23 @@ async function handler(
             workspace: owner,
             previousRole: updateRes.value.previousRole,
             role: updateRes.value.newRole,
+          });
+
+          void emitAuditLogEvent({
+            auth,
+            action: "membership.role_updated",
+            targets: [
+              buildAuditLogTarget("workspace", owner),
+              buildAuditLogTarget("user", {
+                sId: user.sId,
+                name: user.fullName() ?? "unknown",
+              }),
+            ],
+            context: getAuditLogContext(auth, req),
+            metadata: {
+              previousRole: updateRes.value.previousRole,
+              newRole: updateRes.value.newRole,
+            },
           });
         }
       }

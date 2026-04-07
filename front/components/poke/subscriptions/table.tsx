@@ -235,6 +235,20 @@ export function ActiveSubscriptionTable({
                   )}
                 </PokeTableCell>
               </PokeTableRow>
+              {subscription.metronomeContractId && (
+                <PokeTableRow>
+                  <PokeTableCell>Metronome Contract</PokeTableCell>
+                  <PokeTableCell>
+                    <LinkWrapper
+                      href={`https://app.metronome.com/${isDevelopment() ? "sandbox/" : ""}contracts/${subscription.metronomeContractId}`}
+                      target="_blank"
+                      className="text-xs text-highlight-400"
+                    >
+                      {subscription.metronomeContractId}
+                    </LinkWrapper>
+                  </PokeTableCell>
+                </PokeTableRow>
+              )}
               <PokeTableRow>
                 <PokeTableCell>Start Date</PokeTableCell>
                 <PokeTableCell>

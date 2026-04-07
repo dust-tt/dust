@@ -1,6 +1,7 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
+import { getFastestWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import type { BuilderSuggestionInputType } from "@app/types/api/internal/assistant";
@@ -8,7 +9,6 @@ import type {
   ModelConversationTypeMultiActions,
   UserMessageTypeModel,
 } from "@app/types/assistant/generation";
-import { MISTRAL_SMALL_MODEL_ID } from "@app/types/assistant/models/mistral";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isStringArray } from "@app/types/shared/utils/general";
@@ -103,12 +103,19 @@ export async function getBuilderNameSuggestions(
     "- The name should immediately convey what the agent does.";
   const conversation: ModelConversationTypeMultiActions =
     getConversationContext(inputs);
+  const model = getFastestWhitelistedModel(auth);
+  if (!model) {
+    return new Err(
+      new Error("Failed to find a whitelisted model for name suggestions")
+    );
+  }
+
   const res = await runMultiActionsAgent(
     auth,
     {
       functionCall: FUNCTION_NAME,
-      modelId: MISTRAL_SMALL_MODEL_ID,
-      providerId: "mistral",
+      modelId: model.modelId,
+      providerId: model.providerId,
       temperature: 0.7,
       useCache: false,
     },

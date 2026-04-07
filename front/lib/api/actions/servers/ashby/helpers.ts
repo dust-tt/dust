@@ -45,10 +45,10 @@ export async function findHiredApplication(
       continue;
     }
 
-    if (appInfoResult.value.results.status === "Hired") {
+    if (appInfoResult.value.status === "Hired") {
       return new Ok({
         applicationId,
-        jobId: appInfoResult.value.results.job?.id,
+        jobId: appInfoResult.value.job?.id,
       });
     }
   }
@@ -80,7 +80,7 @@ export async function assertCandidateNotHired(
       );
     }
 
-    if (appInfoResult.value.results.status === "Hired") {
+    if (appInfoResult.value.status === "Hired") {
       return new Err(
         new MCPError(
           `Candidate ${candidate.name} was hired, this operation is not permitted for hired candidates.`,
@@ -115,7 +115,7 @@ export async function findUniqueCandidate(
     );
   }
 
-  const candidates = searchResult.value.results;
+  const candidates = searchResult.value;
   if (!candidates || candidates.length === 0) {
     return new Err(
       new MCPError("No candidates found matching the search criteria.", {
@@ -175,7 +175,7 @@ export async function resolveAshbyUser(
     );
   }
 
-  const ashbyUsers = ashbyUserResult.value.results;
+  const ashbyUsers = ashbyUserResult.value;
   if (ashbyUsers.length === 0) {
     return new Err(
       new MCPError(

@@ -57,33 +57,7 @@ export interface ContactSubmitResponse {
     regenerateCommand: "npm run generate:hubspot-forms",
     // Extra Zod fields to add to the schema (not in HubSpot)
     extraSchemaFields: [],
-    // Extra code to add before the field definitions (step constants for multi-step wizard)
-    preOptionsCode: `
-// Step 1 fields: "Become a Partner"
-export const STEP_1_FIELDS = [
-  "firstname",
-  "lastname",
-  "email",
-  "company",
-  "company_size",
-  "headquarters_region",
-] as const;
-
-// Step 2 fields: "About a partnership"
-export const STEP_2_FIELDS = [
-  "partner_type",
-  "partner_services",
-  "partner_is_dust_user",
-  "partner_additionnal_details",
-] as const;
-
-// Step 3 fields: "About your customers"
-export const STEP_3_FIELDS = [
-  "partner_customer_sizes",
-  "enterprise_tool_stack",
-  "any_existing_lead_to_share_",
-] as const;
-`,
+    preOptionsCode: "",
     // Extra code to add after the type definition
     extraCode: `
 // Response from the partner submit API
@@ -167,14 +141,24 @@ function mapFieldType(hubspotType: string): string {
   return typeMap[hubspotType] || "text";
 }
 
+// Sanitize a HubSpot label for use inside a JS string literal.
+function sanitizeLabel(label: string): string {
+  return label
+    .replace(/[\n\r]+/g, " ")
+    .replace(/"/g, '\\"')
+    .trim();
+}
+
 // Generate Zod validation for a field
 function generateZodValidation(field: HubSpotFormField): string {
-  const { name, fieldType, required } = field;
+  const { name, fieldType } = field;
+  const label = sanitizeLabel(field.label);
+  const required = field.required;
 
   // Handle checkbox (multi-select) fields
   if (fieldType === "checkbox") {
     if (required) {
-      return `z.array(z.string()).min(1, "${field.label} is required")`;
+      return `z.array(z.string()).min(1, "${label} is required")`;
     }
     return `z.array(z.string()).optional()`;
   }
@@ -182,7 +166,7 @@ function generateZodValidation(field: HubSpotFormField): string {
   // Handle boolean checkbox fields
   if (fieldType === "booleancheckbox") {
     if (required) {
-      return `z.boolean().refine(val => val === true, { message: "${field.label} is required" })`;
+      return `z.boolean().refine((val) => val === true, { message: "${label} is required" })`;
     }
     return `z.boolean().optional()`;
   }
@@ -191,18 +175,17 @@ function generateZodValidation(field: HubSpotFormField): string {
 
   if (fieldType === "email") {
     if (required) {
-      validation = `z.string().min(1, "${field.label} is required").email("Please enter a valid email address")`;
+      validation = `z.string().min(1, "${label} is required").email("Please enter a valid email address")`;
     } else {
       validation = `z.string().email("Please enter a valid email address").optional()`;
     }
   } else if (required) {
-    // Generate appropriate error message based on field name
     const labelMap: Record<string, string> = {
       language: "Language is required",
       company_headcount_form: "Company headcount is required",
       partner_type: "Partner type is required",
     };
-    const errorMsg = labelMap[name] || `${field.label} is required`;
+    const errorMsg = labelMap[name] || `${label} is required`;
     validation = `z.string().min(1, "${errorMsg}")`;
   } else {
     validation = "z.string().optional()";
@@ -359,8 +342,7 @@ import { z } from "zod";
 
 // Field options from HubSpot dropdown/checkbox/radio fields
 ${optionsConsts.join("\n")}
-${config.preOptionsCode}
-// Field definitions for dynamic form rendering
+${config.preOptionsCode}// Field definitions for dynamic form rendering
 export const ${config.fieldDefsName} = [
 ${fieldDefs},
 ] as const;

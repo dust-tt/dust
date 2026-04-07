@@ -6,6 +6,7 @@ import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
 import { OpenDustButton } from "@app/components/home/OpenDustButton";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
 import UTMButton from "@app/components/UTMButton";
+import { useStripUtmParams } from "@app/hooks/useStripUtmParams";
 import {
   DUST_COOKIES_ACCEPTED,
   DUST_HAS_SESSION,
@@ -48,6 +49,8 @@ export default function LandingLayout({
     hideNavigation,
     fullWidth,
   } = pageProps;
+
+  useStripUtmParams();
 
   const [cookies, setCookie] = useCookies(
     [DUST_COOKIES_ACCEPTED, DUST_HAS_SESSION],
@@ -146,7 +149,7 @@ export default function LandingLayout({
               <PublicWebsiteLogo />
             </div>
             <MainNavigation />
-            <div className="flex flex-grow justify-end gap-4">
+            <div className="flex flex-grow items-center justify-end gap-4">
               {hasSession && (isAuthLoading || isAuthenticated) ? (
                 <OpenDustButton
                   variant="highlight"
@@ -156,21 +159,26 @@ export default function LandingLayout({
                 />
               ) : (
                 <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    label="Sign in"
-                    onClick={withTracking(
-                      TRACKING_AREAS.NAVIGATION,
-                      "sign_in",
-                      () => {
-                        // eslint-disable-next-line react-hooks/immutability
-                        window.location.href = appendUTMParams(
-                          `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`
-                        );
-                      }
+                  <a
+                    href={appendUTMParams(
+                      `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`
                     )}
-                  />
+                    onClick={withTracking(TRACKING_AREAS.NAVIGATION, "sign_in")}
+                    className="hidden xl:inline-flex h-9 w-max items-center justify-center rounded-md pl-4 pr-1 py-2 text-base font-medium font-sans text-primary-700 hover:text-primary-600 active:text-primary-800 transition-colors hover:underline hover:underline-offset-4"
+                  >
+                    Sign in
+                  </a>
+                  <Link href="/sign-up">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      label="Try for free"
+                      onClick={withTracking(
+                        TRACKING_AREAS.NAVIGATION,
+                        "sign_up"
+                      )}
+                    />
+                  </Link>
                   <UTMButton
                     href="/home/contact"
                     className="hidden xs:inline-flex"

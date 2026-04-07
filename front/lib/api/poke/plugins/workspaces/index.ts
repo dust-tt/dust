@@ -18,6 +18,7 @@ export * from "./manage_authorized_domains";
 export * from "./manage_conversation_kill_switch";
 export * from "./manage_programmatic_usage_configuration";
 export * from "./manage_workspace_kill_switch";
+export * from "./reinforced_agent_workflow";
 export * from "./rename_workspace";
 export * from "./reset_message_rate_limit";
 export * from "./reset_provisioned_members_not_in_directory";

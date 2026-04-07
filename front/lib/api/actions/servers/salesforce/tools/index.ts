@@ -17,7 +17,6 @@ import {
 } from "@app/lib/api/actions/servers/salesforce/helpers";
 import { SALESFORCE_TOOLS_METADATA } from "@app/lib/api/actions/servers/salesforce/metadata";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { Err, Ok } from "@app/types/shared/result";
 import type { DescribeSObjectResult } from "jsforce";
 
@@ -201,17 +200,35 @@ export function createSalesforceTools(auth: Authenticator): ToolDefinition[] {
       });
     },
 
+    create_object: async ({ objectName, records, allOrNone }, extra) => {
+      return withAuth(extra, async (conn) => {
+        try {
+          const result = await conn.sobject(objectName).create(records, {
+            allOrNone,
+          });
+
+          const results = Array.isArray(result) ? result : [result];
+          const successCount = results.filter((r) => r.success).length;
+          const failureCount = results.length - successCount;
+
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Create completed: ${successCount} successful, ${failureCount} failed`,
+            },
+            { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          ]);
+        } catch (error) {
+          return logAndReturnError({
+            error,
+            params: { objectName, recordCount: records.length, allOrNone },
+            message: "Error creating Salesforce records",
+          });
+        }
+      });
+    },
+
     update_object: async ({ objectName, records, allOrNone }, extra) => {
-      const featureFlags = await getFeatureFlags(auth);
-
-      if (!featureFlags.includes("salesforce_tool_write")) {
-        return new Err(
-          new MCPError(
-            "Salesforce write operations are not enabled for this workspace."
-          )
-        );
-      }
-
       return withAuth(extra, async (conn) => {
         try {
           const result = await conn.sobject(objectName).update(records, {

@@ -1,9 +1,9 @@
 import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
 import logger from "@app/logger/logger";
 import type { WorkspaceType } from "@app/types/user";
-import { registerAllTools } from "@extension/platforms/chrome/tools";
 import type { CaptureService } from "@extension/shared/services/capture";
 import { McpService } from "@extension/shared/services/mcp";
+import { registerAllTools } from "@extension/shared/tools";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 /**

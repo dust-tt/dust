@@ -90,6 +90,7 @@ describe("getJITServers", () => {
           isSearchable: true,
           isQueryable: true,
           isInProjectContext: false,
+          hidden: false,
           creator: null,
         },
       ];
@@ -347,6 +348,7 @@ describe("getJITServers", () => {
           isSearchable: true,
           isQueryable: true,
           isInProjectContext: false,
+          hidden: false,
           creator: null,
         },
       ];
@@ -401,6 +403,7 @@ describe("getJITServers", () => {
           isSearchable: true,
           isQueryable: false,
           isInProjectContext: false,
+          hidden: false,
           creator: null,
         },
       ];
@@ -451,6 +454,7 @@ describe("getJITServers", () => {
           isSearchable: true,
           isQueryable: false,
           isInProjectContext: false,
+          hidden: false,
           creator: null,
         },
       ];
@@ -492,6 +496,7 @@ describe("getJITServers", () => {
           isSearchable: false,
           isQueryable: true,
           isInProjectContext: false,
+          hidden: false,
           creator: null,
         },
       ];
@@ -536,6 +541,7 @@ describe("getJITServers", () => {
           isSearchable: false,
           isQueryable: true,
           isInProjectContext: false,
+          hidden: false,
           creator: null,
         },
       ];
@@ -588,6 +594,7 @@ describe("getJITServers", () => {
           isSearchable: true,
           isQueryable: true,
           isInProjectContext: false,
+          hidden: false,
           creator: null,
         },
       ];
@@ -668,6 +675,7 @@ describe("getJITServers", () => {
           isSearchable: true,
           isQueryable: true,
           isInProjectContext: false,
+          hidden: false,
           creator: null,
         },
       ];

@@ -8,6 +8,8 @@ RUN apt-get update && \
 ARG COMMIT_HASH
 ARG COMMIT_HASH_LONG
 
+RUN npm install -g npm@11.11.0
+
 WORKDIR /app
 
 # Copy all package.json files and lockfile
@@ -124,9 +126,8 @@ RUN --mount=type=cache,id=next-cache,target=/app/front/.next/cache \
   --service=${svc} || exit 1; \
   done && \
   find .next -type f -name "*.map" -print -delete; \
-  fi
-
-RUN npm run sitemap
+  fi && \
+  npm run sitemap
 
 # Workers-specific build stage
 FROM base-deps AS workers-build

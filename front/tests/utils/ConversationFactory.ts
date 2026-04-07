@@ -10,7 +10,8 @@ import {
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { frontSequelize } from "@app/lib/resources/storage";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -94,6 +95,72 @@ export class ConversationFactory {
     }
 
     return conversation;
+  }
+
+  static async setTriggerIdForTest(
+    conversationId: ModelId,
+    workspaceId: ModelId,
+    triggerId: ModelId
+  ): Promise<void> {
+    await ConversationModel.update(
+      { triggerId },
+      { where: { id: conversationId, workspaceId } }
+    );
+  }
+
+  static async setUpdatedAtForTest(
+    auth: Authenticator,
+    conversationId: ModelId,
+    updatedAt: Date
+  ): Promise<void> {
+    // Sequelize's `silent: true` suppresses both the automatic updatedAt and any
+    // explicitly-provided value for managed timestamp fields, so the column never
+    // gets updated. Raw SQL is the only reliable way to backdate timestamps in tests.
+    // biome-ignore lint/plugin/noRawSql: see comment above
+    await frontSequelize.query(
+      `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id AND "workspaceId" = :workspaceId`,
+      {
+        replacements: {
+          updatedAt: updatedAt.toISOString(),
+          id: conversationId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+  }
+
+  static async createFunctionCallStepForTest(
+    auth: Authenticator,
+    agentMessageId: ModelId,
+    { createdAt }: { createdAt: Date }
+  ): Promise<void> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const step = await AgentStepContentResource.createNewVersion({
+      workspaceId,
+      agentMessageId,
+      step: 0,
+      index: 0,
+      type: "function_call",
+      value: {
+        type: "function_call",
+        value: {
+          id: generateRandomModelSId(),
+          name: "test_tool",
+          arguments: "{}",
+        },
+      },
+    });
+    // biome-ignore lint/plugin/noRawSql: Raw SQL is the only reliable way to backdate timestamps in tests.
+    await frontSequelize.query(
+      `UPDATE agent_step_contents SET "createdAt" = :createdAt, "updatedAt" = :createdAt WHERE id = :id AND "workspaceId" = :workspaceId`,
+      {
+        replacements: {
+          createdAt: createdAt.toISOString(),
+          id: step.id,
+          workspaceId,
+        },
+      }
+    );
   }
 
   /**

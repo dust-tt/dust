@@ -1,3 +1,8 @@
+import { isLightClientSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEventDirect,
+} from "@app/lib/api/audit/workos_audit";
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
@@ -283,6 +288,7 @@ async function executeToolStreaming(
       case "tool_personal_auth_required":
       case "tool_file_auth_required":
       case "tool_approve_execution":
+      case "tool_ask_user_question":
         updateActiveObservation(
           {
             output: { status: event.type },
@@ -317,6 +323,34 @@ async function executeToolStreaming(
           },
           { asType: "tool" }
         );
+
+        void emitAuditLogEventDirect({
+          workspace: conversation.owner,
+          action: "tool.executed",
+          actor: {
+            type: "agent",
+            id: agentConfiguration.sId,
+            name: agentConfiguration.name,
+          },
+          targets: [
+            buildAuditLogTarget("workspace", conversation.owner),
+            buildAuditLogTarget("agent", agentConfiguration),
+            buildAuditLogTarget("tool", {
+              sId: action.toolConfiguration.name,
+              name: action.toolConfiguration.originalName,
+            }),
+          ],
+          context: { location: auth.clientIp() ?? "internal" },
+          metadata: {
+            toolName: action.toolConfiguration.originalName,
+            toolType: isLightClientSideMCPToolConfiguration(
+              action.toolConfiguration
+            )
+              ? "remote"
+              : "internal",
+            conversationId: conversation.sId,
+          },
+        });
 
         await updateResourceAndPublishEvent(auth, {
           event: {

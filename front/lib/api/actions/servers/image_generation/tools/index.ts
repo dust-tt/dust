@@ -8,23 +8,20 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   checkImageGenerationRateLimit,
   computeImageGenerationCostDetails,
-  geminiPartsToBase64Images,
   processImageFileIds,
-  QUALITY_TO_IMAGE_SIZE,
   sendImageProgressNotification,
-  trackGeminiTokenUsage,
+  trackTokenUsage,
   uploadAndFormatImageResponse,
-  validateGeminiImageResponse,
 } from "@app/lib/api/actions/servers/image_generation/helpers";
 import { IMAGE_GENERATION_TOOLS_METADATA } from "@app/lib/api/actions/servers/image_generation/metadata";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import { getImageGenerationLLM } from "@app/lib/api/llm/getImageGenerationLLM";
+import type { ImageGenerationInput } from "@app/lib/api/llm/imageGeneration";
 import type { Authenticator } from "@app/lib/auth";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import { Err } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { GoogleGenAI, type Part } from "@google/genai";
 import { startObservation } from "@langfuse/tracing";
 
 export function createImageGenerationTools(
@@ -44,42 +41,54 @@ export function createImageGenerationTools(
         "Generating image..."
       );
 
+      const imageGenerationModel = await getImageGenerationLLM(auth);
+
+      if (!imageGenerationModel) {
+        const errorMessage =
+          "No image generation model available for this workspace.";
+        logger.error({ workspaceId: workspace.sId }, errorMessage);
+        return new Err(new MCPError(errorMessage, { tracked: false }));
+      }
+
+      const { providerId } = imageGenerationModel;
+
       getStatsDClient().increment("tools.image_generation.generated", 1, [
         `aspect_ratio:${aspectRatio}`,
         `image_count:${referenceImages?.length ?? 0}`,
         `quality:${quality}`,
-        "provider:gemini",
+        `provider:${providerId}`,
       ]);
 
       const rateLimitResult = await checkImageGenerationRateLimit(
         auth,
-        workspace
+        workspace,
+        providerId
       );
       if (rateLimitResult.isErr()) {
         return rateLimitResult;
       }
 
-      const credentials = await getLlmCredentials(auth, {
-        skipEmbeddingApiKeyRequirement: true,
-      });
-      const gemini = new GoogleGenAI({
-        apiKey: credentials.GOOGLE_AI_STUDIO_API_KEY,
-      });
-
-      let referenceImageParts: Part[] = [];
+      let referenceFileResources: FileResource[] = [];
 
       if (referenceImages && referenceImages.length > 0) {
         const processResult = await processImageFileIds(auth, {
           imageFileIds: referenceImages,
           agentLoopContext,
+          supportedContentTypes: imageGenerationModel.supportedContentTypes,
+          providerId,
         });
         if (processResult.isErr()) {
           return processResult;
         }
-        referenceImageParts = processResult.value;
+        referenceFileResources = processResult.value;
       }
 
-      const imageSize = QUALITY_TO_IMAGE_SIZE[quality ?? "low"];
+      const generationInput = {
+        prompt,
+        aspectRatio,
+        fileResources: referenceFileResources,
+        quality,
+      } satisfies ImageGenerationInput;
 
       const generation = startObservation(
         "image-generation",
@@ -91,8 +100,9 @@ export function createImageGenerationTools(
             imageFileIds: referenceImages,
             quality,
           },
-          model: GEMINI_3_PRO_IMAGE_MODEL_ID,
-          modelParameters: { aspectRatio, imageSize, temperature: 0.7 },
+          model: imageGenerationModel.modelId,
+          modelParameters:
+            imageGenerationModel.getModelParameters(generationInput),
         },
         { asType: "generation" }
       );
@@ -109,34 +119,16 @@ export function createImageGenerationTools(
         userId: workspace.sId,
       });
 
-      const contents =
-        referenceImageParts.length > 0
-          ? [
-              {
-                parts: [...referenceImageParts, { text: prompt }],
-              },
-            ]
-          : prompt;
+      const generationResult =
+        await imageGenerationModel.generateImage(generationInput);
 
-      let response;
-      try {
-        response = await gemini.models.generateContent({
-          model: GEMINI_3_PRO_IMAGE_MODEL_ID,
-          contents,
-          config: {
-            temperature: 0.7,
-            responseModalities: ["IMAGE"],
-            candidateCount: 1,
-            imageConfig: {
-              aspectRatio,
-              imageSize,
-            },
-          },
-        });
-      } catch (error) {
+      if (generationResult.isErr()) {
+        const genError = generationResult.error;
+        const tracked = genError.code !== "safety_blocked";
+
         logger.error(
           {
-            error,
+            error: genError,
           },
           "Error generating image."
         );
@@ -144,55 +136,44 @@ export function createImageGenerationTools(
           level: "ERROR",
           statusMessage: "Error generating image",
           metadata: {
-            error: normalizeError(error),
+            error: normalizeError(genError),
           },
         });
         generation.end();
-        return new Err(new MCPError("Error generating image."));
-      }
 
-      const validationResult = validateGeminiImageResponse(
-        response,
-        "generation",
-        prompt
-      );
-      if (validationResult.isErr()) {
-        logger.error(
-          {
-            error: validationResult.error,
-          },
-          "Error generating image."
+        return new Err(
+          new MCPError(genError.message, { tracked, cause: genError })
         );
-        generation.update({
-          level: "ERROR",
-          statusMessage: validationResult.error.message,
-        });
-        generation.end();
-        return validationResult;
       }
 
-      const imageParts = validationResult.value;
+      const { images, usageMetadata } = generationResult.value;
 
-      trackGeminiTokenUsage(response);
+      trackTokenUsage({
+        ...usageMetadata,
+        providerId: imageGenerationModel.providerId,
+      });
 
-      if (response.usageMetadata) {
-        const { inputTokens, outputTokens, totalTokens, costDetails } =
-          computeImageGenerationCostDetails(response.usageMetadata);
+      const { inputTokens, outputTokens, totalTokens, costDetails } =
+        computeImageGenerationCostDetails(
+          usageMetadata,
+          imageGenerationModel.modelId
+        );
 
-        generation.update({
-          usageDetails: {
-            input: inputTokens,
-            output: outputTokens,
-            total: totalTokens,
-          },
-          costDetails,
-        });
-      }
+      generation.update({
+        usageDetails: {
+          input: inputTokens,
+          output: outputTokens,
+          total: totalTokens,
+        },
+        costDetails,
+      });
+
       generation.end();
+
       return uploadAndFormatImageResponse(
         auth,
         agentLoopContext,
-        geminiPartsToBase64Images(imageParts),
+        images,
         outputName
       );
     },

@@ -289,7 +289,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       return new Err(new Error(`Trigger with sId ${sId} not found`));
     }
 
-    if (!trigger.editor || trigger.editor !== auth.getNonNullableUser().id) {
+    if (
+      !auth.isAdmin() &&
+      (!trigger.editor || trigger.editor !== auth.getNonNullableUser().id)
+    ) {
       return new Err(
         new Error("Only the editor of the trigger can update the trigger")
       );
@@ -882,7 +885,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         configuration: this.configuration as WebhookConfig,
         executionPerDayLimitOverride: this.executionPerDayLimitOverride,
         executionMode: this.executionMode,
-        webhookSourceViewSId: this.webhookSourceViewId
+        webhookSourceViewId: this.webhookSourceViewId
           ? makeSId("webhook_sources_view", {
               id: this.webhookSourceViewId,
               workspaceId: this.workspaceId,

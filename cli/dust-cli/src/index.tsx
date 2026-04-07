@@ -97,6 +97,12 @@ const cli = meow({
       type: "string",
       description: "Create conversation in a project by space ID",
     },
+    withTools: {
+      type: "boolean",
+      shortFlag: "t",
+      description:
+        "Enable file system tools in non-interactive mode (requires OAuth). WARNING: automatically approves ALL tool executions without prompting.",
+    },
   },
 });
 

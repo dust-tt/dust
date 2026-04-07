@@ -13,13 +13,15 @@ export type LLMCredentialsType = {
   MISTRAL_API_KEY?: string;
   GOOGLE_AI_STUDIO_API_KEY?: string;
   DEEPSEEK_API_KEY?: string;
-  FIREWORKS_API_KEY?: string;
   XAI_API_KEY?: string;
   TOGETHERAI_API_KEY?: string;
   // Azure OpenAI and TextSynth are not in ModelProviderIdType yet.
   AZURE_OPENAI_API_KEY?: string;
   AZURE_OPENAI_ENDPOINT?: string;
   TEXTSYNTH_API_KEY?: string;
+  COHERE_API_KEY?: string;
+  AI21_API_KEY?: string;
+  FIREWORKS_API_KEY?: string;
 };
 
 export type ProviderCredentialType = {
@@ -45,4 +47,8 @@ export type ApiKeyCredentialsType = z.infer<
 export const PROVIDER_TO_CREDENTIAL_KEY = {
   openai: "OPENAI_API_KEY",
   anthropic: "ANTHROPIC_API_KEY",
+  google_ai_studio: "GOOGLE_AI_STUDIO_API_KEY",
 } as const satisfies Record<ByokModelProviderIdType, keyof LLMCredentialsType>;
+
+export type ProviderCredentialKey =
+  (typeof PROVIDER_TO_CREDENTIAL_KEY)[keyof typeof PROVIDER_TO_CREDENTIAL_KEY];

@@ -90,6 +90,7 @@ function extractUsageFromExecutions(
             cachedTokens: cachedTokens ?? null,
             cacheCreationTokens: cacheCreationTokens ?? null,
             costMicroUsd: usageCostMicroUsd,
+            isBatch: false,
           });
         }
       }

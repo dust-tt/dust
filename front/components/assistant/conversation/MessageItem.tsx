@@ -26,16 +26,24 @@ import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import React, { useMemo } from "react";
 
 interface MessageItemProps {
+  allowBranchMessages?: boolean;
   data: VirtuosoMessage;
   context: VirtuosoMessageListContext;
-  index: number;
   nextData: VirtuosoMessage | null;
   prevData: VirtuosoMessage | null;
+  onAgentMessageCompletionStatusClick?: (messageId: string) => void;
 }
 
 export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
   function MessageItem(
-    { data, context, prevData, nextData }: MessageItemProps,
+    {
+      allowBranchMessages,
+      data,
+      context,
+      prevData,
+      nextData,
+      onAgentMessageCompletionStatusClick,
+    }: MessageItemProps,
     ref
   ) {
     const sId = data.sId;
@@ -115,6 +123,22 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       getMessageDate(prevData).toDateString() ===
         getMessageDate(data).toDateString();
 
+    const isNextMessageSameSender =
+      nextData &&
+      isUserMessage(data) &&
+      isUserMessage(nextData) &&
+      data.user?.sId !== undefined &&
+      data.user.sId === nextData.user?.sId;
+
+    const isPreviousMessageSameSender =
+      prevData &&
+      isUserMessage(data) &&
+      isUserMessage(prevData) &&
+      data.user?.sId !== undefined &&
+      data.user.sId === prevData.user?.sId &&
+      getMessageDate(prevData).toDateString() ===
+        getMessageDate(data).toDateString();
+
     const triggeringUser = useMemo((): UserType | null => {
       if (isMessageTemporayState(data)) {
         const parentMessageId = data.parentMessageId;
@@ -127,6 +151,10 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         return data.user;
       }
     }, [data, methods.data]);
+
+    if (!allowBranchMessages && data.branchId) {
+      return null;
+    }
 
     if (isHiddenMessage(data)) {
       // This is hacky but in case of handover we generate a user message from the agent and we want to hide it in the conversation
@@ -145,13 +173,17 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         <div
           key={`message-id-${sId}`}
           ref={ref}
-          className={classNames("mx-auto min-w-60", "mb-4", "max-w-4xl")}
+          className={classNames(
+            "mx-auto max-w-3xl",
+            !isNextMessageSameSender && "mb-4"
+          )}
         >
           {isUserMessage(data) && (
             <UserMessage
               citations={citations}
               conversationId={context.conversation.sId}
               currentUserId={context.user.sId}
+              isFirstInGroup={!isPreviousMessageSameSender}
               isLastMessage={!nextData}
               message={data}
               owner={context.owner}
@@ -169,6 +201,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               owner={context.owner}
               handleSubmit={context.handleSubmit}
               isOnboardingConversation={context.isOnboardingConversation}
+              onCompletionStatusClick={onAgentMessageCompletionStatusClick}
               additionalMarkdownComponents={
                 context.additionalMarkdownComponents
               }

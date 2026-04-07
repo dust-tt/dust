@@ -83,22 +83,9 @@ export async function purgeConversationsBatchActivity({
     let deletedCount = 0;
     await concurrentExecutor(
       conversations,
-      async (c) => {
-        const result = await destroyConversation(auth, {
-          conversationId: c.sId,
-        });
+      async (conversation) => {
+        const result = await destroyConversation(auth, { conversation });
         if (result.isErr()) {
-          if (result.error.type === "conversation_not_found") {
-            logger.warn(
-              {
-                workspaceId,
-                conversationId: c.sId,
-                error: result.error,
-              },
-              "Attempting to delete a non-existing conversation."
-            );
-            return;
-          }
           throw result.error;
         }
         deletedCount++;
@@ -168,7 +155,7 @@ export async function purgeAgentConversationsBatchActivity({
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
-  const conversationIds =
+  const conversations =
     await ConversationResource.listConversationWithAgentCreatedBeforeDate(
       auth,
       {
@@ -183,23 +170,10 @@ export async function purgeAgentConversationsBatchActivity({
     );
 
   await concurrentExecutor(
-    conversationIds,
-    async (conversationId) => {
-      const result = await destroyConversation(auth, {
-        conversationId,
-      });
+    conversations,
+    async (conversation) => {
+      const result = await destroyConversation(auth, { conversation });
       if (result.isErr()) {
-        if (result.error.type === "conversation_not_found") {
-          logger.warn(
-            {
-              workspaceId,
-              conversationId,
-              error: result.error,
-            },
-            "Attempting to delete a non-existing conversation."
-          );
-          return;
-        }
         throw result.error;
       }
     },
@@ -213,6 +187,6 @@ export async function purgeAgentConversationsBatchActivity({
     workspaceModelId: workspace.id,
     workspaceId: workspace.sId,
     retentionDays,
-    nbConversationsDeleted: conversationIds.length,
+    nbConversationsDeleted: conversations.length,
   };
 }

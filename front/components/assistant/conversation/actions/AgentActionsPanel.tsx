@@ -1,7 +1,12 @@
+import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/actions/AgentActionsPanelHeader";
 import { AgentActionSummary } from "@app/components/assistant/conversation/actions/AgentActionsPanelSummary";
 import { PanelAgentStep } from "@app/components/assistant/conversation/actions/PanelAgentStep";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import {
+  parseDataAsMessageIdAndActionId,
+  useConversationSidePanelContext,
+} from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import type { MessageTemporaryState } from "@app/components/assistant/conversation/types";
 import { getIcon } from "@app/components/resources/resources_icons";
 import {
   useAgentMessageSkills,
@@ -25,7 +30,7 @@ import type {
   ParsedContentItem,
 } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Chip, Spinner } from "@dust-tt/sparkle";
+import { Chip, Spinner, XMarkIcon } from "@dust-tt/sparkle";
 
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
@@ -39,7 +44,8 @@ interface AgentActionsPanelContentProps {
   conversation: ConversationWithoutContentType | null;
   owner: LightWorkspaceType;
   fullAgentMessage: AgentMessageType;
-  messageId: string;
+  virtuosoMsg?: MessageTemporaryState | null;
+  closeIcon: React.ComponentType<{}>;
   closePanel: () => void;
   mutateMessage: () => void;
 }
@@ -48,11 +54,12 @@ function AgentActionsPanelContent({
   conversation,
   owner,
   fullAgentMessage,
-  messageId,
+  virtuosoMsg,
+  closeIcon,
   closePanel,
   mutateMessage,
 }: AgentActionsPanelContentProps) {
-  const { virtuosoMsg } = useConversationSidePanelContext();
+  const messageId = fullAgentMessage.sId;
   const [currentStreamingStep, setCurrentStreamingStep] = useState(1);
   const [successActionIds, setSuccessActionIds] = useState<string[]>([]);
   const [lastMessageStreamStatus, setLastMessageStreamStatus] =
@@ -267,9 +274,11 @@ function AgentActionsPanelContent({
 
   const streamActionProgress =
     messageStreamState?.streaming.actionProgress ?? new Map();
+  const pendingToolCalls = messageStreamState?.streaming.pendingToolCalls ?? [];
   return (
     <div className="flex h-full flex-col bg-background dark:bg-background-night">
       <AgentActionsPanelHeader
+        closeIcon={closeIcon}
         title="Breakdown of the tools used"
         onClose={closePanel}
       />
@@ -312,6 +321,7 @@ function AgentActionsPanelContent({
                 isStreaming={
                   messageStreamState.streaming.agentState === "thinking"
                 }
+                pendingToolCalls={pendingToolCalls}
                 streamingActions={
                   messageStreamState.streaming.agentState === "acting"
                     ? messageStreamState.actions.filter((action) => {
@@ -370,12 +380,21 @@ function AgentActionsPanelContent({
   );
 }
 
-export function AgentActionsPanel({
+export function AgentActionsPanelForMessage({
   conversation,
   owner,
-}: AgentActionsPanelProps) {
-  const { onPanelClosed, data: messageId } = useConversationSidePanelContext();
-
+  messageId,
+  virtuosoMsg,
+  targetActionId,
+  closeIcon = XMarkIcon,
+  onClose,
+}: AgentActionsPanelProps & {
+  messageId: string;
+  virtuosoMsg: MessageTemporaryState | null;
+  targetActionId?: string;
+  closeIcon?: React.ComponentType<{}>;
+  onClose: () => void;
+}) {
   const {
     message: fullAgentMessage,
     isMessageLoading,
@@ -383,7 +402,7 @@ export function AgentActionsPanel({
   } = useConversationMessage({
     conversationId: conversation.sId,
     workspaceId: owner.sId,
-    messageId: messageId ?? null,
+    messageId,
   });
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -398,17 +417,12 @@ export function AgentActionsPanel({
     }
   }, [fullAgentMessage]);
 
-  useEffect(() => {
-    if (!messageId) {
-      onPanelClosed();
-    }
-  }, [messageId, onPanelClosed]);
-
   if (isMessageLoading) {
     return (
       <AgentActionsPanelHeader
         title="Breakdown of the tools used"
-        onClose={onPanelClosed}
+        closeIcon={closeIcon}
+        onClose={onClose}
       >
         <div className="flex items-center justify-center">
           <Spinner variant="color" />
@@ -417,21 +431,45 @@ export function AgentActionsPanel({
     );
   }
 
-  if (
-    !messageId ||
-    !fullAgentMessage ||
-    fullAgentMessage.type !== "agent_message"
-  ) {
+  if (!fullAgentMessage || fullAgentMessage.type !== "agent_message") {
     return (
       <AgentActionsPanelHeader
         title="Breakdown of the tools used"
-        onClose={onPanelClosed}
+        closeIcon={closeIcon}
+        onClose={onClose}
       >
         <div className="flex items-center justify-center">
           <span className="text-muted-foreground">Nothing to display.</span>
         </div>
       </AgentActionsPanelHeader>
     );
+  }
+
+  // Single action detail view when an action is targeted from inline activity.
+  if (targetActionId) {
+    const action = fullAgentMessage.actions.find(
+      (a) => a.sId === targetActionId
+    );
+    if (action) {
+      return (
+        <div className="flex h-full flex-col bg-background dark:bg-background-night">
+          <AgentActionsPanelHeader
+            title="Tool detail"
+            closeIcon={closeIcon}
+            onClose={onClose}
+          />
+          <div className="flex-1 overflow-y-auto p-4 pb-12">
+            <MCPActionDetails
+              displayContext="sidebar"
+              action={action}
+              lastNotification={null}
+              owner={owner}
+              messageStatus={fullAgentMessage.status}
+            />
+          </div>
+        </div>
+      );
+    }
   }
 
   // Use key to force remount when the message changes for proper state reset.
@@ -441,9 +479,38 @@ export function AgentActionsPanel({
       conversation={conversation}
       owner={owner}
       fullAgentMessage={fullAgentMessage}
-      messageId={messageId}
-      closePanel={onPanelClosed}
+      virtuosoMsg={virtuosoMsg}
+      closeIcon={closeIcon}
+      closePanel={onClose}
       mutateMessage={mutateMessage}
+    />
+  );
+}
+
+export function AgentActionsPanel({
+  conversation,
+  owner,
+}: AgentActionsPanelProps) {
+  const {
+    onPanelClosed,
+    virtuosoMsg,
+    data: rawData,
+  } = useConversationSidePanelContext();
+
+  const { messageId, actionId } = parseDataAsMessageIdAndActionId(rawData);
+
+  if (!messageId) {
+    return null;
+  }
+
+  return (
+    <AgentActionsPanelForMessage
+      conversation={conversation}
+      owner={owner}
+      messageId={messageId}
+      virtuosoMsg={virtuosoMsg}
+      targetActionId={actionId}
+      onClose={onPanelClosed}
     />
   );
 }

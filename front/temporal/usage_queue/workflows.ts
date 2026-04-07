@@ -14,6 +14,18 @@ const { trackProgrammaticUsageActivity } = proxyActivities<typeof activities>({
   },
 });
 
+const { emitMetronomeUsageEventsActivity } = proxyActivities<typeof activities>(
+  {
+    startToCloseTimeout: "5 minutes",
+  }
+);
+
+const { emitMetronomeGaugeEventsForAllWorkspacesActivity } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "30 minutes",
+});
+
 export async function updateWorkspaceUsageWorkflow(workspaceId: string) {
   // Sleep for one hour before computing usage.
   await sleep(60 * 60 * 1000);
@@ -30,6 +42,23 @@ export async function trackProgrammaticUsageWorkflow(
   }
 ): Promise<void> {
   await trackProgrammaticUsageActivity(authType, {
+    agentLoopArgs,
+  });
+}
+
+export async function emitMetronomeGaugeEventsWorkflow(): Promise<void> {
+  await emitMetronomeGaugeEventsForAllWorkspacesActivity();
+}
+
+export async function emitMetronomeUsageEventsWorkflow(
+  authType: AuthenticatorType,
+  {
+    agentLoopArgs,
+  }: {
+    agentLoopArgs: AgentLoopArgs;
+  }
+): Promise<void> {
+  await emitMetronomeUsageEventsActivity(authType, {
     agentLoopArgs,
   });
 }

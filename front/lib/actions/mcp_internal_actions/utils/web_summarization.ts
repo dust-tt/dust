@@ -36,7 +36,7 @@ export async function summarizeWithLLM({
 }): Promise<Result<string, Error>> {
   const toSummarize = content.slice(0, MAX_CHARACTERS_TO_SUMMARIZE);
 
-  const model = await getFastModelConfigForSummarization(auth);
+  const model = getFastModelConfigForSummarization(auth);
   if (!model) {
     return new Err(
       new Error("Failed to find a whitelisted model to generate summary")
@@ -96,9 +96,9 @@ export async function summarizeWithLLM({
   return new Ok(summary);
 }
 
-async function getFastModelConfigForSummarization(
+function getFastModelConfigForSummarization(
   auth: Authenticator
-): Promise<ModelConfigurationType | null> {
+): ModelConfigurationType | null {
   const providers = getWhitelistedProviders(auth);
 
   if (providers.has("anthropic")) {

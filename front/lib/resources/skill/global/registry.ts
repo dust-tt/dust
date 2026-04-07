@@ -45,7 +45,10 @@ type WithDynamicInstructions<T extends BaseGlobalSkillDefinition> = T & {
   readonly instructions?: never;
   readonly fetchInstructions: (
     auth: Authenticator,
-    spaceIds: string[]
+    params: {
+      spaceIds: string[];
+      agentLoopData?: AgentLoopExecutionData;
+    }
   ) => Promise<string>;
 };
 

@@ -1,4 +1,5 @@
 import type {
+  ToolAskUserQuestionEvent,
   ToolEarlyExitEvent,
   ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
@@ -37,6 +38,7 @@ export async function getExitOrPauseEvents(
 ): Promise<
   (
     | MCPApproveExecutionEvent
+    | ToolAskUserQuestionEvent
     | ToolPersonalAuthRequiredEvent
     | ToolFileAuthRequiredEvent
     | ToolEarlyExitEvent
@@ -161,6 +163,35 @@ export async function getExitOrPauseEvents(
               toolName: action.functionCallName ?? "unknown",
               message: fileAuthErrorMessage,
             },
+          },
+        ];
+      }
+      case "tool_user_answer_required": {
+        const { question } = exitOutputItem;
+
+        await action.updateStatus("blocked_user_answer_required");
+
+        await action.updateStepContext({
+          ...action.stepContext,
+          resumeState: { type: "user_question", question },
+        });
+
+        return [
+          {
+            type: "tool_ask_user_question",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            userId: auth.user()?.sId,
+            messageId: agentMessage.sId,
+            conversationId: conversation.sId,
+            actionId: action.sId,
+            metadata: {
+              toolName: action.toolConfiguration.originalName,
+              mcpServerName: action.toolConfiguration.mcpServerName,
+              agentName: agentConfiguration.name,
+            },
+            inputs: action.augmentedInputs,
+            question,
           },
         ];
       }

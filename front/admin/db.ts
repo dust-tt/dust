@@ -45,6 +45,7 @@ import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
+import { GlobalFeatureFlagModel } from "@app/lib/models/global_feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { ProviderCredentialModel } from "@app/lib/models/provider_credential";
@@ -72,6 +73,7 @@ import {
 } from "@app/lib/resources/storage/models/apps";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { ConversationButlerSuggestionModel } from "@app/lib/resources/storage/models/conversation_butler_suggestion";
+import { ConversationTodoVersionedModel } from "@app/lib/resources/storage/models/conversation_todo_versioned";
 import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
@@ -96,6 +98,12 @@ import { OnboardingTaskModel } from "@app/lib/resources/storage/models/onboardin
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
+import {
+  ProjectTodoConversationModel,
+  ProjectTodoModel,
+  ProjectTodoSourceModel,
+} from "@app/lib/resources/storage/models/project_todo";
+import { ProjectTodoStateModel } from "@app/lib/resources/storage/models/project_todo_state";
 import {
   RunModel,
   RunUsageModel,
@@ -191,6 +199,7 @@ export function loadAllModels() {
     AgentMCPActionOutputItemModel,
     AgentChildAgentConfigurationModel,
     FeatureFlagModel,
+    GlobalFeatureFlagModel,
     KillSwitchModel,
     LabsTranscriptsConfigurationModel,
     LabsTranscriptsHistoryModel,
@@ -214,7 +223,12 @@ export function loadAllModels() {
     AcademyChapterVisitModel,
     SandboxModel,
     ConversationButlerSuggestionModel,
+    ConversationTodoVersionedModel,
     ConversationBranchModel,
+    ProjectTodoModel,
+    ProjectTodoConversationModel,
+    ProjectTodoSourceModel,
+    ProjectTodoStateModel,
   ];
 }
 

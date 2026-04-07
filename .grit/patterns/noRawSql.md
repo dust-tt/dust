@@ -10,22 +10,9 @@ Matches raw SQL query calls on Sequelize instances. Use Sequelize models and met
 ```grit
 language js
 
-pattern raw_sql_obj() {
-    or {
-        `frontSequelize`,
-        `getFrontReplicaDbConnection()`,
-        `getConnectorsPrimaryDbConnection()`,
-        r".*[Ss]equelize.*",
-        r".*[Rr]eplica.*",
-        r".*Db$"
-    }
-}
-
 // Note: The Biome plugin also matches `$obj.query<$_>($args)` for TypeScript
 // generic calls, but grit CLI does not support generic syntax.
-`$obj.query($args)` where {
-    $obj <: raw_sql_obj()
-} => `RAW_SQL_FORBIDDEN`
+raw_sql_query() => `RAW_SQL_FORBIDDEN`
 ```
 
 ## Should flag frontSequelize.query

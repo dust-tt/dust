@@ -10,7 +10,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { UserType } from "@app/types/user";
+import { UserSchema } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
@@ -33,13 +33,19 @@ export type PatchAgentEditorsRequestBody = z.infer<
   typeof PatchAgentEditorsRequestBodySchema
 >;
 
-export interface GetAgentEditorsResponseBody {
-  editors: UserType[];
-}
+export const GetAgentEditorsResponseBodySchema = z.object({
+  editors: z.array(UserSchema),
+});
+export type GetAgentEditorsResponseBody = z.infer<
+  typeof GetAgentEditorsResponseBodySchema
+>;
 
-export interface PatchAgentEditorsResponseBody {
-  editors: UserType[];
-}
+export const PatchAgentEditorsResponseBodySchema = z.object({
+  editors: z.array(UserSchema),
+});
+export type PatchAgentEditorsResponseBody = z.infer<
+  typeof PatchAgentEditorsResponseBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,

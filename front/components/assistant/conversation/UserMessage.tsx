@@ -1,11 +1,9 @@
-import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { MessageEmojiPicker } from "@app/components/assistant/conversation/MessageEmojiPicker";
 import { MessageReactions } from "@app/components/assistant/conversation/MessageReactions";
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import {
-  hasHumansInteracting,
   isTriggeredOrigin,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
@@ -28,9 +26,9 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import {
+  Avatar,
   BoltIcon,
   Button,
-  ConversationMessageAvatar,
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
@@ -43,6 +41,7 @@ import {
   LinkIcon,
   MoreIcon,
   PencilSquareIcon,
+  Spinner,
   Toolbar,
   Tooltip,
   TrashIcon,
@@ -51,8 +50,9 @@ import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
+import { cva } from "class-variance-authority";
 import type React from "react";
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useContext, useState } from "react";
 
 interface UserMessageEditorProps {
   editor: Editor | null;
@@ -122,6 +122,7 @@ interface UserMessageProps {
   citations?: React.ReactElement[];
   conversationId: string;
   currentUserId: string;
+  isFirstInGroup: boolean;
   isLastMessage: boolean;
   message: UserMessageTypeWithContentFragments;
   owner: WorkspaceType;
@@ -132,6 +133,7 @@ export function UserMessage({
   citations,
   conversationId,
   currentUserId,
+  isFirstInGroup,
   isLastMessage,
   message,
   owner,
@@ -189,21 +191,6 @@ export function UserMessage({
 
   const methods = useVirtuosoMethods<VirtuosoMessage>();
 
-  const showAgentSuggestions = useMemo(() => {
-    return (
-      message.mentions.length === 0 &&
-      isLastMessage &&
-      !hasHumansInteracting(methods.data.get()) &&
-      message.user?.sId === currentUserId
-    );
-  }, [
-    message.mentions.length,
-    message.user?.sId,
-    isLastMessage,
-    methods.data,
-    currentUserId,
-  ]);
-
   const isDeleted = message.visibility === "deleted";
   const isCurrentUser = message.user?.sId === currentUserId;
   const canDelete = (isCurrentUser || isAdmin) && !isDeleted;
@@ -251,7 +238,20 @@ export function UserMessage({
     editorService.setContent(message.content);
   };
 
+  const isMobile = useIsMobile();
   const showActions = !isDeleted && !shouldShowEditor;
+  const hasReactions = (message.reactions ?? []).length > 0;
+  // On mobile or when there are reactions, show the action menu below the message.
+  // Otherwise, show it to the side of the message.
+  const showBottomActionMenu = !isDeleted && (hasReactions || isMobile);
+  const showSideActionMenu = !isDeleted && !hasReactions && !isMobile;
+  // With reactions the button is always below; without, CSS container query floats it to the side.
+  // Deleted messages have no action menu → tight spacing.
+  const actionMenuBottomMargin = isDeleted
+    ? "mb-1"
+    : hasReactions
+      ? "mb-8"
+      : "mb-8 @sm/conversation:mb-1";
 
   const displayChip =
     message.version > 0 || isTriggeredOrigin(message.context.origin);
@@ -273,23 +273,20 @@ export function UserMessage({
           isSaving={isSaving}
         />
       ) : (
-        <ConversationMessageContainer
-          messageType={isCurrentUser ? "me" : "user"}
-          type="user"
+        <div
           className={cn(
-            isCurrentUser ? "ml-auto" : undefined,
-            "relative min-w-60 max-w-3xl"
+            "flex flex-col",
+            isCurrentUser ? "flex-end gap-1" : "flex-start"
           )}
-          ref={userMessageHoveredRef}
         >
-          <ConversationMessageAvatar
-            className="flex"
-            avatarUrl={pictureUrl}
-            name={name}
-            type="user"
-          />
-          <div className="flex min-w-0 flex-col gap-1">
-            <div className="inline-flex items-center justify-between gap-0.5">
+          {!isCurrentUser && isFirstInGroup && (
+            <div className="mb-1 flex items-center gap-1.5">
+              <Avatar
+                visual={pictureUrl}
+                name={name ?? ""}
+                isRounded
+                size="xs"
+              />
               <ConversationMessageTitle
                 name={name}
                 timestamp={timestamp}
@@ -301,7 +298,7 @@ export function UserMessage({
                           <TriggerChip message={message} />
                         </span>
                       )}
-                      {message.version > 0 && (
+                      {message.version > 0 && !isDeleted && (
                         <span className="text-xs text-faint dark:text-muted-foreground-night">
                           (edited)
                         </span>
@@ -312,44 +309,98 @@ export function UserMessage({
                 renderName={renderName}
               />
             </div>
-            <ConversationMessageContent
-              citations={citations}
-              type="user"
-              className={cn(shouldShowBiggerUserMessage && "@sm:min-w-100")}
-            >
-              {isDeleted ? (
-                <DeletedMessage />
-              ) : (
-                <UserMessageMarkdown
-                  owner={owner}
+          )}
+          {isCurrentUser && isFirstInGroup && (
+            <div className="inline-flex items-center justify-between gap-0.5 self-end">
+              <ConversationMessageTitle
+                name={undefined}
+                timestamp={timestamp}
+                infoChip={
+                  displayChip ? (
+                    <>
+                      {isTriggeredOrigin(message.context.origin) && (
+                        <span className="inline-block leading-none text-muted-foreground dark:text-muted-foreground-night">
+                          <TriggerChip message={message} />
+                        </span>
+                      )}
+                      {message.version > 0 && !isDeleted && (
+                        <span className="text-xs text-faint dark:text-muted-foreground-night">
+                          (edited)
+                        </span>
+                      )}
+                    </>
+                  ) : undefined
+                }
+                renderName={() => null}
+              />
+            </div>
+          )}
+          <ConversationMessageContainer
+            messageType={isCurrentUser ? "me" : "user"}
+            type="user"
+            className={cn(
+              isCurrentUser ? "ml-auto" : undefined,
+              "relative max-w-3xl @xxxs/conversation:max-w-[95%] @xxs/conversation:max-w-[80%] @xs/conversation:max-w-[85%]",
+              actionMenuBottomMargin
+            )}
+            ref={userMessageHoveredRef}
+          >
+            <div className="flex min-w-0 flex-col gap-1">
+              <ConversationMessageContent
+                citations={citations}
+                type="user"
+                className={cn(shouldShowBiggerUserMessage && "@sm:min-w-100")}
+              >
+                <div className="flex items-center gap-2">
+                  {message.visibility === "pending" && <Spinner size="xs" />}
+                  {isDeleted ? (
+                    <DeletedMessage />
+                  ) : (
+                    <UserMessageMarkdown
+                      owner={owner}
+                      message={message}
+                      isLastMessage={isLastMessage}
+                    />
+                  )}
+                </div>
+              </ConversationMessageContent>
+              {showBottomActionMenu && (
+                <ActionMenu
+                  mode="bottom"
+                  isCurrentUser={isCurrentUser}
+                  isDeleted={isDeleted}
+                  showActions={showActions}
+                  isUserMessageHovered={isUserMessageHovered}
                   message={message}
-                  isLastMessage={isLastMessage}
+                  onReactionToggle={onReactionToggle}
+                  handleEditMessage={handleEditMessage}
+                  handleDeleteMessage={handleDeleteMessage}
+                  canDelete={canDelete}
+                  canEdit={canEdit}
+                  conversationId={conversationId}
+                  owner={owner}
                 />
               )}
-            </ConversationMessageContent>
-          </div>
-          <ActionMenu
-            isDeleted={isDeleted}
-            showActions={showActions}
-            isUserMessageHovered={isUserMessageHovered}
-            message={message}
-            onReactionToggle={onReactionToggle}
-            handleEditMessage={handleEditMessage}
-            handleDeleteMessage={handleDeleteMessage}
-            canDelete={canDelete}
-            canEdit={canEdit}
-            conversationId={conversationId}
-            owner={owner}
-          />
-        </ConversationMessageContainer>
-      )}
-
-      {showAgentSuggestions && (
-        <AgentSuggestion
-          conversationId={conversationId}
-          owner={owner}
-          userMessage={message}
-        />
+            </div>
+            {showSideActionMenu && (
+              <ActionMenu
+                mode="side"
+                isCurrentUser={isCurrentUser}
+                isDeleted={isDeleted}
+                showActions={showActions}
+                isUserMessageHovered={isUserMessageHovered}
+                message={message}
+                onReactionToggle={onReactionToggle}
+                handleEditMessage={handleEditMessage}
+                handleDeleteMessage={handleDeleteMessage}
+                canDelete={canDelete}
+                canEdit={canEdit}
+                conversationId={conversationId}
+                owner={owner}
+              />
+            )}
+          </ConversationMessageContainer>
+        </div>
       )}
     </>
   );
@@ -394,24 +445,44 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
   return (
     <Tooltip
       label={<Label message={message} />}
-      trigger={<Icon size="xs" visual={BoltIcon} />}
+      trigger={<Icon size="xs" visual={BoltIcon} className="h-3.5 w-3.5" />}
     />
   );
 }
 
-function ActionMenu({
-  isDeleted,
-  showActions,
-  canEdit,
-  canDelete,
-  handleEditMessage,
-  handleDeleteMessage,
-  message,
-  onReactionToggle,
-  isUserMessageHovered,
-  conversationId,
-  owner,
-}: {
+// When the conversation container is narrow, the action menu sits below the message bubble.
+// When the conversation container is wider, it floats to the left (current user) or right (other user).
+const actionMenuContainerVariants = cva(
+  "flex items-center gap-1 absolute left-0 bottom-0",
+  {
+    variants: {
+      mode: {
+        side: "",
+        bottom: "translate-y-[calc(100%+4px)]",
+      },
+      isCurrentUser: {
+        true: "",
+        false: "",
+      },
+    },
+    compoundVariants: [
+      {
+        mode: "side",
+        isCurrentUser: true,
+        className: "-translate-x-full pr-2",
+      },
+      {
+        mode: "side",
+        isCurrentUser: false,
+        className: "left-auto right-0 translate-x-full pl-2",
+      },
+    ],
+  }
+);
+
+interface ActionMenuProps {
+  mode: "side" | "bottom";
+  isCurrentUser: boolean;
   isDeleted: boolean;
   showActions: boolean;
   canEdit: boolean;
@@ -423,13 +494,36 @@ function ActionMenu({
   isUserMessageHovered: boolean;
   conversationId: string;
   owner: WorkspaceType;
-}) {
+}
+
+function ActionMenu({
+  mode,
+  isCurrentUser,
+  isDeleted,
+  showActions,
+  canEdit,
+  canDelete,
+  handleEditMessage,
+  handleDeleteMessage,
+  message,
+  onReactionToggle,
+  isUserMessageHovered,
+  conversationId,
+  owner,
+}: ActionMenuProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const sendNotification = useSendNotification();
   const { ref: isReactionsHoveredRef, isHovering: isReactionsHovered } =
     useHover();
+  // In bottom mode (reactions or mobile), buttons are always visible.
+  // In side mode, buttons fade in/out on hover.
   const shouldHideActions =
-    !isUserMessageHovered && !isReactionsHovered && !isMenuOpen;
+    mode === "side" &&
+    !isUserMessageHovered &&
+    !isReactionsHovered &&
+    !isMenuOpen &&
+    !isEmojiPickerOpen;
 
   const handleCopyMessageLink = () => {
     const messageUrl = `${getConversationRoute(
@@ -473,57 +567,57 @@ function ActionMenu({
       ]
     : [];
 
+  // In a wide conversation container, side mode buttons float beside the bubble — fade in/out on hover.
+  // In a narrow container (and in bottom mode), buttons sit below the bubble — always visible.
+  const sideItemVisibilityClass = cn(
+    "transition-opacity duration-300",
+    mode === "side" && shouldHideActions && "@sm/conversation:opacity-0"
+  );
+
   return (
     <div
-      className={cn(
-        "absolute -bottom-6 left-2.5 flex flex-wrap items-center gap-1 pb-3"
-      )}
+      className={actionMenuContainerVariants({ mode, isCurrentUser })}
       ref={isReactionsHoveredRef}
     >
+      {mode === "bottom" && (
+        <MessageReactions
+          reactions={message.reactions ?? []}
+          onReactionClick={onReactionToggle}
+        />
+      )}
       {!isDeleted && (
-        <>
-          <MessageReactions
-            reactions={message.reactions ?? []}
-            onReactionClick={onReactionToggle}
-          />
+        <div className={cn("flex items-center gap-1", sideItemVisibilityClass)}>
           <MessageEmojiPicker
             key="emoji-picker"
             onEmojiSelect={onReactionToggle}
-            className={cn(
-              "opacity-100 transition-opacity duration-200",
-              shouldHideActions && "sm:opacity-0"
-            )}
+            onOpenChange={setIsEmojiPickerOpen}
           />
-        </>
-      )}
-      {!isDeleted && actions && actions.length > 0 && (
-        <DropdownMenu
-          open={isMenuOpen}
-          onOpenChange={(open) => setIsMenuOpen(open)}
-        >
-          <DropdownMenuTrigger asChild>
-            <Button
-              icon={MoreIcon}
-              size="icon-xs"
-              variant="outline"
-              aria-label="Message actions"
-              className={cn(
-                "opacity-100 transition-opacity duration-200",
-                shouldHideActions && "sm:opacity-0"
-              )}
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            {actions.map((action, index) => (
-              <DropdownMenuItem
-                key={index}
-                icon={action.icon}
-                label={action.label}
-                onClick={action.onClick}
-              />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          {actions.length > 0 && (
+            <DropdownMenu
+              open={isMenuOpen}
+              onOpenChange={(open) => setIsMenuOpen(open)}
+            >
+              <DropdownMenuTrigger asChild>
+                <Button
+                  icon={MoreIcon}
+                  size="icon-xs"
+                  variant="outline"
+                  aria-label="Message actions"
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {actions.map((action, index) => (
+                  <DropdownMenuItem
+                    key={index}
+                    icon={action.icon}
+                    label={action.label}
+                    onClick={action.onClick}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       )}
     </div>
   );

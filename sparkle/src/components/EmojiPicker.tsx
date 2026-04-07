@@ -31,4 +31,4 @@ function EmojiPicker({
   );
 }
 
-export { emojiData as DataEmojiMart, EmojiMartData, EmojiPicker };
+export { EmojiMartData, EmojiPicker, emojiData as DataEmojiMart };

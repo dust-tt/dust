@@ -511,6 +511,14 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "An agent that suggests improvements for another agent.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.REINFORCEMENT:
+      return {
+        sId: GLOBAL_AGENTS_SID.REINFORCEMENT,
+        name: "Reinforcement",
+        description:
+          "Internal agent used as a placeholder for reinforcement conversations.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.NOOP:
       return {
         sId: GLOBAL_AGENTS_SID.NOOP,

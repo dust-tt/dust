@@ -1,3 +1,4 @@
+import { useMarkdownStyle } from "@sparkle/components/markdown/MarkdownStyleContext";
 import {
   type MarkdownNode,
   sameNodePosition,
@@ -10,11 +11,11 @@ interface StrongBlockProps {
 }
 
 export const StrongBlock = memo(
-  ({ children }: StrongBlockProps) => (
-    <strong className="s-font-semibold s-text-foreground dark:s-text-foreground-night">
-      {children}
-    </strong>
-  ),
+  function StrongBlock({ children }: StrongBlockProps) {
+    const { textColor } = useMarkdownStyle();
+    return (
+      <strong className={`s-font-semibold ${textColor}`}>{children}</strong>
+    );
+  },
   (prev, next) => sameNodePosition(prev.node, next.node)
 );
-StrongBlock.displayName = "StrongBlock";

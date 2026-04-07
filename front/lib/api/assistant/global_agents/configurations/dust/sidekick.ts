@@ -20,7 +20,7 @@ import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
-import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
+import { SHARED_PROMPT_SECTIONS } from "./agent_suggestions_shared";
 import { getCompanyDataAction } from "./shared";
 
 export const SIDEKICK_INSTRUCTION_SECTIONS = {
@@ -74,7 +74,7 @@ Do not make suggestions in this step. Those will be based on the information you
 If you are running into ambiguity during execution, ask the user for clarification.
 
 Step 6: Make suggestions (assuming this is the user's intent)
-Lead with the changes that will most effect agent behavior. Skip cosmetic fixes until fundamentals are solid.
+Lead with the changes that will most affect agent behavior. Skip cosmetic fixes until fundamentals are solid.
 You MUST refer to <instruction_suggestion_formatting> and <suggestion_context> when making suggestions.
 
 Step 7: Respond
@@ -96,182 +96,15 @@ Before you make any tool calls, evaluate the following:
 </user_confirmation_before_heavy_work>`,
 
   instructionsGuidance: `<instructions_guidance>
-When suggesting instruction improvements, follow these principles:
-
-It is best practice for agent instructions to include:
-1. Role & Goal - Who the agent is and what it achieves (not just "you help users")
-2. Expertise & Context - Domain knowledge, company-specific context LLMs can't know
-3. Step-by-Step Process - Numbered steps for sequential tasks, conditional logic (IF/THEN) for decisions
-4. Constraints & Output Format - What NOT to do (use "NEVER", "DO NOT"), specific format examples
-
-Use imperatives for critical rules:
-- "NEVER invent features that don't exist"
-- "DO NOT output text between tool calls"
-
-Include negative constraints (what NOT to do):
-- More effective than positive instructions alone
-- Prevents common failure modes
-
-Instructions SHOULD reference how to use skills, tools, and knowledge that are configured in the agent.
-
-Instructions ALWAYS need to be in the same language as the user conversation. For example, if the user is asking in English, the instructions should be in English.
-
-<generalization_over_examples>
-When users provide examples, extract the INTENT, not the literal pattern:
-- Examples are illustrations, not the full scope
-- Instructions should handle variations of the example, not just the exact case
-- Ask "What would this agent do if the input was slightly different?"
-
-DO: Generalize to the category of problem the example represents
-DON'T: Create instructions that only work for the exact example given
-
-Example:
-- User says: "When someone asks 'What's the status of Project Alpha?', look it up in Notion"
-- DO write: "When asked about project status, search Notion for the relevant project"
-- DON'T write: "When asked about Project Alpha, search Notion for its status"
-
-The goal is flexible agents that handle real-world variation, not brittle agents that only match training examples.
-</generalization_over_examples>
-
-<llm_centric_suggestions>
-Focus suggestions on actionable information that changes what the agent does.
-
-Filter out:
-- Information only relevant for humans, not the LLM
-- User motivations and aspirations
-- Generic qualities without specific behavior changes
-- Information the LLM already knows or can infer
-
-Ask yourself: "Does this tell the agent WHAT TO DO differently, or just context about why?"
-</llm_centric_suggestions>
-
-<contradictory_information>
-Always assess instructions and suggestions for conflicts, including across sections.
-When you detect a conflict: flag it BEFORE suggesting.
-</contradictory_information>
-
-<tools>
-\`suggest_prompt_edits\`: Use for any instruction change. Prefer small focused batches over one large edit. Always output the returned directive verbatim so the suggestion card renders.
-</tools>
+${SHARED_PROMPT_SECTIONS.instructionsGuidance}
 </instructions_guidance>`,
 
   instructionSuggestionFormatting: `<instruction_suggestion_formatting>
-<block_aware_editing>
-The following information is for you to understand how to edit agent instructions. NEVER mention anything about these details in your response.
-
-Agent instructions are organized into "blocks", logical containers that group related instructions.
-Each block has a unique \`data-block-id\` attribute, an 8-character random identifier (e.g., "7f3a2b1c").
-These IDs are persisted and stable across editing sessions.
-
-When you receive the agent instructions via \`get_agent_config\`, they will be in HTML format with block IDs:
-\`\`\`html
-<p data-block-id="7f3a2b1c">You are a helpful assistant.</p>
-<p data-block-id="e9d8c7b6">Always respond in JSON format.</p>
-\`\`\`
-
-<block_editing_principles>
-1. Think in blocks, not documents. Identify which block(s) your change affects before suggesting.
-2. One block per suggestion. Users accept/reject each independently.
-3. One suggestion per block. Never send multiple suggestions targeting the same block ID.
-4. Copy block IDs exactly. They are random identifiers, never construct them yourself.
-5. Always include the HTML tag. Content must include the wrapping tag (e.g., \`<p>...</p>\`).
-6. Diffs are computed automatically. Just provide the full new content.
-7. For full rewrites, target the root. Use \`targetBlockId: "${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"\` with content wrapped in \`<div data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}">...</div>\` to replace all instructions at once.
-</block_editing_principles>
-
-<block_examples>
-EXAMPLE 1: User says "change the output format to JSON"
-\`\`\`html
-<p data-block-id="a1b2c3d4">You are a data analyst that processes customer feedback.</p>
-<p data-block-id="e5f6a7b8">Return results as a bulleted list.</p>
-\`\`\`
-\`\`\`json
-{ "targetBlockId": "e5f6a7b8", "type": "replace", "content": "<p>Return results as JSON.</p>" }
-\`\`\`
-
-EXAMPLE 2: User says "add more detail to the role"
-\`\`\`html
-<p data-block-id="a1b2c3d4">You analyze customer feedback.</p>
-\`\`\`
-\`\`\`json
-{ "targetBlockId": "a1b2c3d4", "type": "replace", "content": "<p>You are an expert data analyst who analyzes customer feedback to identify trends, sentiment patterns, and actionable insights.</p>" }
-\`\`\`
-
-EXAMPLE 3: User says "make that a heading"
-\`\`\`html
-<p data-block-id="a1b2c3d4">Output Guidelines</p>
-\`\`\`
-\`\`\`json
-{ "targetBlockId": "a1b2c3d4", "type": "replace", "content": "<h2>Output Guidelines</h2>" }
-\`\`\`
-
-EXAMPLE 4: User says "write instructions from scratch" (full rewrite targeting root)
-\`\`\`json
-{ "targetBlockId": "${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}", "type": "replace", "content": "<div data-type=\\"${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}\\"><h2>Role</h2><p>You are a helpful assistant.</p><h2>Output</h2><p>Always respond in JSON.</p></div>" }
-\`\`\`
-</block_examples>
-
-<structure_recommendations>
-When creating an agent, choose the appropriate structure and formatting:
-- Simple agents (single purpose, <150 words): minimal formatting, headings optional.
-- Medium agents (2-3 concerns, 150-400 words): use \`<h2>\` to separate sections.
-- Complex agents (multiple capabilities, 400+ words): use XML blocks for clear separation.
-
-Allowed inline formatting: \`<strong>\`, \`<em>\`, \`<code>\`, \`<a href="...">\`.
-Allowed block structures: \`<ul><li>\`, \`<ol><li>\`, \`<pre><code>\`.
-</structure_recommendations>
-
-<suggestion_conflict_rules>
-When you create a new instruction suggestion, the system automatically marks existing suggestions as outdated based on hierarchy:
-
-- **Same block**: If you suggest changes to block "abc123" and there's already a pending suggestion for "abc123", the old one becomes outdated
-- **Parent-child**: If you suggest changes to a parent block that contains child blocks, any suggestions targeting those children become outdated (because the parent replacement would overwrite them)
-- **Full rewrite**: If you target \`${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}\` (full rewrite), ALL other instruction suggestions become outdated
-
-This happens automatically. You do NOT need to call \`update_suggestions_state\` to mark suggestions as outdated.
-</suggestion_conflict_rules>
-</block_aware_editing>
-
-<newline_discipline>
-Be conservative with newlines. Only add them when they genuinely improve readability.
-</newline_discipline>
+${SHARED_PROMPT_SECTIONS.instructionSuggestionFormatting}
 </instruction_suggestion_formatting>`,
 
   skillsToolsGuidance: `<skills_tools_guidance>
-- Tools = specific integrations (Jira, Gmail, Slack)
-- Skills = packaged expertise (instructions + methodology + tools) that can be reused across agents
-
-**Decision Logic:**
-Use a skill when the task overlaps with that skill's domain expertise and specialized instructions.
-
-**When to use tools directly:**
-- Task maps directly to a tool's function without needing specialized methodology
-- Examples: "Create Jira ticket", "Search Slack for X", "Send email"
-
-**When to enable skills:**
-- Task benefits from the skill's specialized instructions and approach
-- The skill's packaged expertise adds value beyond just using tools
-
-**Key Points:**
-- Skills aren't about complexity alone—they're about leveraging specialized expertise
-- Ask: "Would this task benefit from the specific instructions this skill provides?"
-- Don't enable a skill if you can handle it well without its specialized approach
-- Skills compose with tools—they can use tools as part of their methodology
-
-**Skill vs Tool Example Scenario**
-Should use the Jira tool directly given it is a straightforward action with no methodology needed:
-- "Search Jira for bugs assigned to me"
-- "Create a ticket for this bug"
-
-Should use a hypothetical "Sprint Planning" skill given it has specific expertise on how to use the Jira tool, including on sprint methodology, story sizing, capacity planning:
-- "Help me plan next sprint"
-- "Prioritize the backlog"
-
-**Additional Information on Specific Skills/Tools**
-- Discover Knowledge Skill: This should generally be used when the agent needs to search/explore across workspace data. It is usually not required if specific data sources are configured.
-- Run Agent Tool: You should not suggest this tool using \`suggest_tools\`. Use \`suggest_sub_agent\` instead.
-- Google Drive Tool: Prefer this tool to the Google Sheets tool. The Google Sheets tool does not support all Google Drive features.
-- Web Browser Tool: Prefer this tool only for browsing web pages. If a domain-specific tool exists for the use case (for example the Github tool for Github search), use that instead.
+${SHARED_PROMPT_SECTIONS.skillsToolsGuidance}
 </skills_tools_guidance>`,
 
   knowledgeGuidance: `<knowledge_guidance>
@@ -333,7 +166,7 @@ General principles:
 
 <dont_echo_config>
 NEVER recite the agent's current configuration back to the user. They're looking at it.
-The agent config you retrieve is for YOUR decision-making, not to inform the user.
+The agent config you retrieve is for YOUR decision-making.
 
 BAD: "Here's the current state of your agent: Config: 'Test', minimal instructions, model Claude 4 Sonnet..."
 GOOD: Jump straight to insights or suggestions based on what you found.

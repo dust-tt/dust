@@ -8,7 +8,6 @@ import type {
   AgentYAMLAction,
   AgentYAMLConfig,
   AgentYAMLDataSourceConfiguration,
-  AgentYAMLEditor,
   AgentYAMLSkill,
   AgentYAMLSlackIntegration,
   AgentYAMLSpace,
@@ -57,7 +56,7 @@ export class AgentYAMLConverter {
           response_format: formData.generationSettings.responseFormat,
         },
         tags: this.convertTags(formData.agentSettings.tags),
-        editors: this.convertEditors(formData.agentSettings.editors),
+        editors: this.convertEditorEmails(formData.agentSettings.editors),
         toolset: actionsResult.value,
         spaces,
         skills: skills.length > 0 ? skills : undefined,
@@ -82,16 +81,12 @@ export class AgentYAMLConverter {
       }));
   }
 
-  private static convertEditors(
+  private static convertEditorEmails(
     editors: AgentBuilderFormData["agentSettings"]["editors"]
-  ): AgentYAMLEditor[] {
+  ): string[] {
     return editors
-      .filter((editor) => editor.sId && editor.email)
-      .map((editor) => ({
-        user_id: editor.sId,
-        email: editor.email,
-        full_name: editor.fullName,
-      }));
+      .filter((editor) => editor.email)
+      .map((editor) => editor.email);
   }
 
   private static convertSkills(

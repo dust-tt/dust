@@ -16,9 +16,12 @@ const BatchUpdateAgentScopeRequestBodySchema = z.object({
   scope: z.enum(["hidden", "visible"]),
 });
 
-type BatchUpdateAgentTagsResponseBody = {
-  success: boolean;
-};
+const BatchUpdateAgentTagsResponseBodySchema = z.object({
+  success: z.boolean(),
+});
+type BatchUpdateAgentTagsResponseBody = z.infer<
+  typeof BatchUpdateAgentTagsResponseBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,

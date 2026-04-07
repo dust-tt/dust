@@ -11,7 +11,7 @@ import {
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -440,9 +440,10 @@ describe("Output items with GCS storage", () => {
     gcsStore.set(gcsPath, Buffer.from(modified, "utf-8"));
 
     const outputItemsByActionId =
-      await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, [
-        action.id,
-      ]);
+      await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+        actionIds: [action!.id],
+        ignoreContent: false,
+      });
 
     const items = outputItemsByActionId.get(action.id);
     expect(items).toBeDefined();
@@ -493,10 +494,10 @@ describe("Output items with GCS storage", () => {
     expect(gcsStore.size).toBe(2);
 
     const outputItemsByActionId =
-      await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, [
-        action1.id,
-        action2.id,
-      ]);
+      await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+        actionIds: [action1.id, action2.id],
+        ignoreContent: false,
+      });
 
     expect(outputItemsByActionId.get(action1.id)).toHaveLength(1);
     expect(outputItemsByActionId.get(action2.id)).toHaveLength(1);
@@ -511,7 +512,10 @@ describe("Output items with GCS storage", () => {
     // action2's items should still be fetchable.
     const remaining = await AgentMCPActionResource.fetchOutputItemsByActionIds(
       auth,
-      [action2.id]
+      {
+        actionIds: [action2.id],
+        ignoreContent: false,
+      }
     );
     const items = remaining.get(action2.id);
     expect(items).toHaveLength(1);
@@ -519,5 +523,125 @@ describe("Output items with GCS storage", () => {
       type: "text",
       text: "Action 2 content",
     });
+  });
+
+  it("fetchOutputItemsByActionIds returns an empty map when both id lists are empty", async () => {
+    const map = await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+      actionIds: [],
+      ignoreContent: false,
+    });
+
+    expect(map.size).toBe(0);
+  });
+
+  it("fetchOutputItemsByActionIds with actionIdsWithoutContent does not load content or GCS path", async () => {
+    const { action, outputItems } = await createActionWithOutputItems([
+      { type: "text", text: "not loaded" },
+    ]);
+
+    const map = await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+      actionIds: [action.id],
+      ignoreContent: true,
+    });
+
+    const items = map.get(action.id);
+    expect(items).toHaveLength(1);
+    expect(items![0].id).toBe(outputItems[0].id);
+    expect(items![0].content).toBeUndefined();
+    expect(items![0].contentGcsPath).toBeUndefined();
+  });
+
+  it("fetchOutputItemsByActionIds mixes metadata-only and full-content actions in one call", async () => {
+    const { action: actionMetadataOnly } = await createActionWithOutputItems([
+      { type: "text", text: "should not appear on row" },
+    ]);
+
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+
+    const { action: actionWithContent } = await createActionWithOutputItems([
+      { type: "text", text: "loaded from GCS" },
+    ]);
+
+    const [a, b] = await Promise.all([
+      AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+        actionIds: [actionWithContent.id],
+        ignoreContent: false,
+      }),
+      AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+        actionIds: [actionMetadataOnly.id],
+        ignoreContent: true,
+      }),
+    ]);
+
+    const map = new Map<number, AgentMCPActionOutputItemModel[]>(
+      [...a, ...b].map(([actionId, items]) => [actionId, items])
+    );
+
+    const metaItems = map.get(actionMetadataOnly.id);
+    expect(metaItems).toHaveLength(1);
+    expect(metaItems![0].content).toBeUndefined();
+    expect(metaItems![0].contentGcsPath).toBeUndefined();
+
+    const fullItems = map.get(actionWithContent.id);
+    expect(fullItems).toHaveLength(1);
+    expect(fullItems![0].content).toEqual({
+      type: "text",
+      text: "loaded from GCS",
+    });
+    expect(fullItems![0].contentGcsPath).toBeTruthy();
+  });
+
+  it("fetchOutputItemsByActionIds loads legacy rows (no GCS path) from DB content", async () => {
+    const { action } = await ConversationFactory.createAgentMessage(auth, {
+      workspace,
+      conversation,
+      agentConfig,
+      mcpAction: { toolConfiguration },
+    });
+    expect(action).toBeDefined();
+
+    await AgentMCPActionOutputItemModel.create({
+      workspaceId: workspace.id,
+      agentMCPActionId: action!.id,
+      content: { type: "text", text: "db-only legacy" },
+      contentGcsPath: null,
+      citations: null,
+    });
+
+    const map = await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+      actionIds: [action!.id],
+      ignoreContent: false,
+    });
+
+    const items = map.get(action!.id);
+    expect(items).toHaveLength(1);
+    expect(items![0].content).toEqual({
+      type: "text",
+      text: "db-only legacy",
+    });
+    expect(items![0].contentGcsPath).toBeNull();
+  });
+
+  it("fetchOutputItemsByActionIds returns all output items for one action", async () => {
+    const { action } = await createActionWithOutputItems([
+      { type: "text", text: "first" },
+      { type: "text", text: "second" },
+    ]);
+
+    const map = await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+      actionIds: [action.id],
+      ignoreContent: false,
+    });
+
+    const items = map.get(action.id)!;
+    expect(items).toHaveLength(2);
+    const texts = items
+      .map((i) => (i.content as { type: "text"; text: string }).text)
+      .sort();
+    expect(texts).toEqual(["first", "second"]);
   });
 });

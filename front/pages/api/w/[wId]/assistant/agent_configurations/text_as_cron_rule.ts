@@ -1,22 +1,50 @@
 /** @ignoreswagger */
 import {
   GENERIC_ERROR_MESSAGE,
-  generateCronRule,
+  generateScheduleRule,
   INVALID_TIMEZONE_MESSAGE,
   TOO_FREQUENT_MESSAGE,
 } from "@app/lib/api/assistant/configuration/triggers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import type { ScheduleConfig } from "@app/types/assistant/triggers";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
-export type PostTextAsCronRuleResponseBody = {
-  cronRule: string;
-  timezone: string;
-};
+// Backward-compatible: cron responses include cronRule, interval responses include interval fields.
+export type PostTextAsCronRuleResponseBody =
+  | { type?: "cron"; cronRule: string; timezone: string }
+  | {
+      type: "interval";
+      intervalDays: number;
+      dayOfWeek: number | null;
+      hour: number;
+      minute: number;
+      timezone: string;
+    };
+
+function scheduleConfigToResponse(
+  config: ScheduleConfig
+): PostTextAsCronRuleResponseBody {
+  if (config.type === "interval") {
+    return {
+      type: "interval",
+      intervalDays: config.intervalDays,
+      dayOfWeek: config.dayOfWeek,
+      hour: config.hour,
+      minute: config.minute,
+      timezone: config.timezone,
+    };
+  }
+  return {
+    type: "cron",
+    cronRule: "cron" in config ? config.cron : "",
+    timezone: config.timezone,
+  };
+}
 
 const PostTextAsCronRuleRequestBodySchema = z.object({
   naturalDescription: z.string(),
@@ -65,7 +93,7 @@ async function handler(
         });
       }
 
-      const r = await generateCronRule(auth, bodyValidation.data);
+      const r = await generateScheduleRule(auth, bodyValidation.data);
 
       if (r.isErr()) {
         const cleanMessage = [
@@ -83,10 +111,7 @@ async function handler(
         });
       }
 
-      return res.status(200).json({
-        cronRule: r.value.cron,
-        timezone: r.value.timezone,
-      });
+      return res.status(200).json(scheduleConfigToResponse(r.value));
     }
 
     default:

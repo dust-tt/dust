@@ -1,4 +1,5 @@
 import { createPlugin } from "@app/lib/api/poke/types";
+import { DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS } from "@app/lib/reinforced_agent/constants";
 import { startReinforcedAgentForAgentWorkflow } from "@app/temporal/reinforced_agent/client";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -21,7 +22,7 @@ export const runReinforcedAgentPlugin = createPlugin({
         variant: "text",
         label: "Days of conversations to analyze",
         description: "Number of past days of conversations to analyze.",
-        default: 1,
+        default: DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS,
       },
       disableNotifications: {
         type: "boolean",

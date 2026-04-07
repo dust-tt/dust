@@ -16,6 +16,7 @@ import type {
   AgentMessageDoneEvent,
   AgentMessagePublicType,
   AgentMessageSuccessEvent,
+  AgentToolCallStartedEvent,
   APIError,
   AppsCheckRequestType,
   BlockedActionsResponseType,
@@ -165,6 +166,7 @@ type AgentEvent =
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
   | AgentMessageDoneEvent
+  | AgentToolCallStartedEvent
   | GenerationTokensEvent
   | UserMessageErrorEvent
   | ToolErrorEvent;

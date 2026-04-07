@@ -6,8 +6,8 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { Button, MenuIcon } from "@dust-tt/sparkle";
-import { sendGetSessionInfoMessage } from "@extension/platforms/chrome/messages";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
+import { sendGetSessionInfoMessage } from "@extension/shared/messages";
 import { ExtensionInputBarProvider } from "@extension/ui/components/conversation/ExtensionInputBarProvider";
 import { useContext, useEffect, useMemo, useState } from "react";
 
@@ -23,13 +23,15 @@ interface ConversationContainerProps {
 const SUGGESTIONS = {
   formHelper: {
     id: "form_helper",
-    title: "Dust can help you fill out forms",
-    description: "Ask an agent to get started",
+    title: "Fill forms with Dust extension",
+    description:
+      "No more copy-pasting. Fill out forms directly from your agents.",
   },
   multiTab: {
     id: "multi_tab",
-    title: "Dust can work across all your open tabs",
-    description: "Ask an agent to get started",
+    title: "Bring any tab into your conversation",
+    description:
+      "Ask an agent to read, summarize, or act on any of your open tabs.",
   },
 } as const;
 

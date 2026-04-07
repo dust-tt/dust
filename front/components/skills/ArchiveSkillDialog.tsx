@@ -65,6 +65,7 @@ export function ArchiveSkillDialog({
           rightButtonProps={{
             label: "Archive for everyone",
             disabled: isArchiving,
+            isLoading: isArchiving,
             variant: "warning",
             onClick: async (e: React.MouseEvent) => {
               e.preventDefault();

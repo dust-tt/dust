@@ -647,6 +647,10 @@ async function streamAgentAnswerToSlack(
 
       case "agent_context_pruned":
       case "agent_message_done":
+      case "tool_call_started":
+      // TODO(2026-04-02 ask-user-question): add support for the AskUserQuestion tool on Slack.
+      // Temporarily we will not add the tool for messages coming from Slack to avoid receiving this event at all here.
+      case "tool_ask_user_question":
         // No-op.
         break;
 
@@ -899,10 +903,9 @@ async function postThreadFollowUpMessages(
   followUpMessages: string[],
   conversationData: StreamConversationToSlackParams
 ): Promise<void> {
-  const { slack, connector, conversation, mainMessage, streamHandler } =
-    conversationData;
-  const { slackChannelId, slackClient } = slack;
-  const threadTs = mainMessage?.ts ?? streamHandler?.messageTs;
+  const { slack, connector, conversation, mainMessage } = conversationData;
+  const { slackChannelId, slackClient, slackMessageTs } = slack;
+  const threadTs = mainMessage?.message?.thread_ts ?? slackMessageTs;
 
   for (let i = 0; i < followUpMessages.length; i++) {
     const threadResponse = await slackClient.chat.postMessage({

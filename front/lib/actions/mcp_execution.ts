@@ -4,9 +4,9 @@ import {
 } from "@app/lib/actions/action_file_helpers";
 import {
   computeTextByteSize,
-  MAX_RESOURCE_CONTENT_SIZE,
-  MAX_TEXT_CONTENT_SIZE_BYTES,
-  MAXED_OUTPUT_FILE_SNIPPET_LENGTH,
+  FILE_OFFLOAD_RESOURCE_SIZE_BYTES,
+  FILE_OFFLOAD_SNIPPET_LENGTH,
+  FILE_OFFLOAD_TEXT_SIZE_BYTES,
 } from "@app/lib/actions/action_output_limits";
 import type {
   LightMCPToolConfigurationType,
@@ -170,12 +170,12 @@ export async function processToolResults(
         case "text": {
           // If the text is too large we create a file and return a resource block that references the file.
           if (
-            computeTextByteSize(block.text) > MAX_TEXT_CONTENT_SIZE_BYTES &&
+            computeTextByteSize(block.text) > FILE_OFFLOAD_TEXT_SIZE_BYTES &&
             toolConfiguration.mcpServerName !== "conversation_files"
           ) {
             const fileName = `${toolConfiguration.mcpServerName}_${timestamp}_${idx}.txt`;
             const snippet =
-              block.text.substring(0, MAXED_OUTPUT_FILE_SNIPPET_LENGTH) +
+              block.text.substring(0, FILE_OFFLOAD_SNIPPET_LENGTH) +
               "... (truncated)";
 
             const file = await generatePlainTextFile(auth, {
@@ -183,6 +183,7 @@ export async function processToolResults(
               conversationId: conversation.sId,
               content: block.text,
               snippet,
+              hideFromUser: true,
             });
             return {
               content: {
@@ -325,12 +326,15 @@ export async function processToolResults(
             const sanitizedResource = sanitizeStringsDeep(block.resource);
 
             // If the resource text is too large, we create a file and return a resource block that references the file.
-            if (text && computeTextByteSize(text) > MAX_RESOURCE_CONTENT_SIZE) {
+            if (
+              text &&
+              computeTextByteSize(text) > FILE_OFFLOAD_RESOURCE_SIZE_BYTES
+            ) {
               const fileName =
                 block.resource.uri?.split("/").pop() ??
                 `resource_${Date.now()}.txt`;
               const snippet =
-                text.substring(0, MAXED_OUTPUT_FILE_SNIPPET_LENGTH) +
+                text.substring(0, FILE_OFFLOAD_SNIPPET_LENGTH) +
                 "... (truncated)";
 
               const file = await generatePlainTextFile(auth, {
@@ -338,6 +342,7 @@ export async function processToolResults(
                 conversationId: conversation.sId,
                 content: text,
                 snippet,
+                hideFromUser: true,
               });
               return {
                 content: {
@@ -390,10 +395,7 @@ export async function processToolResults(
       if (!c.file) {
         return null;
       }
-      const isHidden =
-        c.content.type === "resource" &&
-        isToolGeneratedFile(c.content) &&
-        c.content.resource.hidden === true;
+
       return {
         contentType: c.file.contentType,
         fileId: c.file.sId,
@@ -402,7 +404,7 @@ export async function processToolResults(
         createdAt: c.file.createdAt.getTime(),
         updatedAt: c.file.updatedAt.getTime(),
         isInProjectContext: c.file.useCase === "project_context",
-        ...(isHidden ? { hidden: true } : {}),
+        hidden: c.file.useCaseMetadata?.hideFromUser ?? false,
       } satisfies ActionGeneratedFileType;
     })
   );

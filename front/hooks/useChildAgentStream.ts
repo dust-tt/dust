@@ -51,6 +51,7 @@ function childAgentStreamReducer(
       return state;
     }
 
+    case "agent_message_gracefully_stopped":
     case "agent_message_success":
       return {
         response: event.message.content ?? state.response,
@@ -68,12 +69,14 @@ function childAgentStreamReducer(
     // Events we don't use for the child stream display.
     case "end-of-stream":
     case "agent_action_success":
+    case "tool_call_started":
     case "tool_params":
     case "tool_notification":
     case "agent_context_pruned":
     case "tool_approve_execution":
     case "tool_personal_auth_required":
     case "tool_file_auth_required":
+    case "tool_ask_user_question":
       return state;
 
     default:

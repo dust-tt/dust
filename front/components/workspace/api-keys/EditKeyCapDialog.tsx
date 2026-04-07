@@ -15,8 +15,7 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { z } from "zod";
 

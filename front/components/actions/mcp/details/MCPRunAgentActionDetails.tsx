@@ -85,10 +85,7 @@ export function MCPRunAgentActionDetails({
     toolOutput?.find(isAgentPauseOutputResourceType) ?? null;
 
   const generatedFiles =
-    toolOutput
-      ?.filter(isToolGeneratedFile)
-      .map((o) => o.resource)
-      .filter((r) => !r.hidden) ?? [];
+    toolOutput?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
 
   const [query, setQuery] = useState<string | null>(null);
   const [childAgentId, setChildAgentId] = useState<string | null>(null);

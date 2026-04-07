@@ -119,6 +119,11 @@
 import { deleteOrLeaveConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { moveConversationToProject } from "@app/lib/api/projects/conversations";
 import type { Authenticator } from "@app/lib/auth";
@@ -196,6 +201,23 @@ async function handler(
       }
 
       const conversation = conversationRes.value;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "conversation.accessed",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("conversation", {
+            sId: conversation.sId,
+            name: conversation.title ?? "",
+          }),
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          conversationId: conversation.sId,
+        },
+      });
+
       res.status(200).json({ conversation });
       return;
     }

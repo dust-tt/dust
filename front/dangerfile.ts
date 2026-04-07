@@ -244,7 +244,7 @@ async function checkWorkspaceAwareModels(filePaths: string[]) {
 /**
  * Triggers related checks based on modified files
  */
-async function warnTriggersWorkflowChanges() {
+function warnTriggersWorkflowChanges() {
   warn(
     `Files in \`front/temporal/agent_schedules/\` have been modified.
     Be careful modifying workflows/activities signatures.
@@ -321,7 +321,7 @@ async function checkDiffFiles() {
     return path.startsWith("front/temporal/agent_schedules/");
   });
   if (modifiedWorkflowFiles.length > 0) {
-    await warnTriggersWorkflowChanges();
+    warnTriggersWorkflowChanges();
   }
 
   // SSE endpoint files — changes here require a front-sse deploy too.
@@ -339,6 +339,19 @@ async function checkDiffFiles() {
       "SSE endpoint files have been modified. These endpoints are served by " +
         "both `front` and `front-sse` pods (via `/api/sse/` re-exports). " +
         "A `front-sse` deploy is required alongside the `front` deploy."
+    );
+  }
+
+  // Shared code used by front-sse — changes here require a front-sse deploy too.
+  const sseSharedFiles = ["front/lib/auth.ts"];
+  const modifiedSseSharedFiles = diffFiles.filter((path) =>
+    sseSharedFiles.includes(path)
+  );
+  if (modifiedSseSharedFiles.length > 0) {
+    warn(
+      "`front/lib/auth.ts` (Authenticator) has been modified. This code runs " +
+        "on `front-sse` pods as well. A `front-sse` deploy is required " +
+        "alongside the `front` deploy."
     );
   }
 }

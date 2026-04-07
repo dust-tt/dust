@@ -2,12 +2,7 @@ import type { ImportFormValues } from "@app/components/skills/import/formSchema"
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DetectedSkillSummary } from "@app/lib/skill_detection";
-import {
-  emptyArray,
-  getErrorFromResponse,
-  useFetcher,
-  useSWRWithDefaults,
-} from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   GetSkillsResponseBody,
   GetSkillsWithRelationsResponseBody,
@@ -227,13 +222,13 @@ export function useArchiveSkill({
 
   const doArchive = async () => {
     if (!skill.sId) {
-      return;
+      return false;
     }
-    const res = await fetcher(`/api/w/${owner.sId}/skills/${skill.sId}`, {
-      method: "DELETE",
-    });
+    try {
+      await fetcher(`/api/w/${owner.sId}/skills/${skill.sId}`, {
+        method: "DELETE",
+      });
 
-    if (res.ok) {
       void mutateArchivedSkills();
       void mutateActiveSkills();
       void mutateSuggestedSkills();
@@ -243,16 +238,15 @@ export function useArchiveSkill({
         title: `Successfully archived ${skill.name}`,
         description: `${skill.name} was successfully archived.`,
       });
-    } else {
-      const errorData = await getErrorFromResponse(res);
-
+      return true;
+    } catch (err) {
       sendNotification({
         type: "error",
         title: `Error archiving ${skill.name}`,
-        description: `Error: ${errorData.message}`,
+        description: `Error: ${isAPIErrorResponse(err) ? err.error.message : "An unexpected error occurred."}`,
       });
+      return false;
     }
-    return res.ok;
   };
 
   return doArchive;
@@ -283,16 +277,13 @@ export function useRestoreSkill({
 
   const doRestore = async () => {
     if (!skill.sId) {
-      return;
+      return false;
     }
-    const res = await fetcher(
-      `/api/w/${owner.sId}/skills/${skill.sId}/restore`,
-      {
+    try {
+      await fetcher(`/api/w/${owner.sId}/skills/${skill.sId}/restore`, {
         method: "POST",
-      }
-    );
+      });
 
-    if (res.ok) {
       void mutateArchivedSkills();
       void mutateActiveSkills();
 
@@ -301,16 +292,15 @@ export function useRestoreSkill({
         title: `Successfully restored ${skill.name}`,
         description: `${skill.name} was successfully restored.`,
       });
-    } else {
-      const errorData = await getErrorFromResponse(res);
-
+      return true;
+    } catch (err) {
       sendNotification({
         type: "error",
         title: `Error restoring ${skill.name}`,
-        description: `Error: ${errorData.message}`,
+        description: `Error: ${isAPIErrorResponse(err) ? err.error.message : "An unexpected error occurred."}`,
       });
+      return false;
     }
-    return res.ok;
   };
 
   return doRestore;
@@ -436,12 +426,12 @@ function notifyImportResult(
   sendNotification: ReturnType<typeof useSendNotification>
 ): {
   successCount: number;
-  errors: string[];
+  skipped: string[];
 } {
   const importedCount = data.imported.length;
   const updatedCount = data.updated.length;
   const successCount = importedCount + updatedCount;
-  const errors = data.errored.map((e) => e.message);
+  const skipped = data.skipped.map((e) => e.message);
 
   if (successCount > 0) {
     const parts: string[] = [];
@@ -451,8 +441,8 @@ function notifyImportResult(
     if (updatedCount > 0) {
       parts.push(`${updatedCount} skill${pluralize(updatedCount)} updated`);
     }
-    if (errors.length > 0) {
-      parts.push(`${errors.length} skill${pluralize(errors.length)} failed`);
+    if (skipped.length > 0) {
+      parts.push(`${skipped.length} skill${pluralize(skipped.length)} skipped`);
     }
     sendNotification({
       type: "success",
@@ -463,11 +453,11 @@ function notifyImportResult(
     sendNotification({
       type: "error",
       title: "Import failed",
-      description: errors[0] ?? "Failed to import skills.",
+      description: skipped[0] ?? "Failed to import skills.",
     });
   }
 
-  return { successCount, errors };
+  return { successCount, skipped };
 }
 
 export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
@@ -486,10 +476,10 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
     async (formData: ImportFormValues, files: File[]) => {
       setIsImporting(true);
       try {
-        let res: Response;
+        let data: ImportSkillsResponseBody;
         switch (formData.importType) {
           case "repository": {
-            res = await fetcher(`/api/w/${owner.sId}/skills/import`, {
+            data = await fetcher(`/api/w/${owner.sId}/skills/import`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -507,7 +497,7 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
             for (const name of formData.selectedSkillNames) {
               body.append("names", name);
             }
-            res = await fetcher(`/api/w/${owner.sId}/skills/import/upload`, {
+            data = await fetcher(`/api/w/${owner.sId}/skills/import/upload`, {
               method: "POST",
               body,
             });
@@ -515,21 +505,19 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
           }
         }
 
-        if (!res.ok) {
-          const errorData = await getErrorFromResponse(res);
-          sendNotification({
-            type: "error",
-            title: "Import failed",
-            description: errorData.message,
-          });
-          return { successCount: 0, errors: [errorData.message] };
-        }
-
-        const data: ImportSkillsResponseBody = await res.json();
-
         void mutateActiveSkills();
 
         return notifyImportResult(data, sendNotification);
+      } catch (err) {
+        const message = isAPIErrorResponse(err)
+          ? err.error.message
+          : "Failed to import skills.";
+        sendNotification({
+          type: "error",
+          title: "Import failed",
+          description: message,
+        });
+        return { successCount: 0, errors: [message] };
       } finally {
         setIsImporting(false);
       }
@@ -565,18 +553,13 @@ export function useDetectSkillsFromFiles({
       }
 
       try {
-        const res = await fetcher(`/api/w/${owner.sId}/skills/detect/upload`, {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!res.ok) {
-          const errorData = await getErrorFromResponse(res);
-          setDetectError(errorData.message);
-          return;
-        }
-
-        const data: DetectSkillsResponseBody = await res.json();
+        const data: DetectSkillsResponseBody = await fetcher(
+          `/api/w/${owner.sId}/skills/detect/upload`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
         setDetectedSkills(data.skills);
       } catch (err) {
         setDetectError(

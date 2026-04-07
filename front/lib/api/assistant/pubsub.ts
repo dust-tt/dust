@@ -9,13 +9,18 @@ import { createCallbackReader } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
-import { cancelAgentLoopSignal } from "@app/temporal/agent_loop/signals";
+import {
+  cancelAgentLoopSignal,
+  gracefullyStopAgentLoopSignal,
+} from "@app/temporal/agent_loop/signals";
 import type {
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
+  AgentToolCallStartedEvent,
 } from "@app/types/assistant/agent";
 import type { GenerationTokensEvent } from "@app/types/assistant/generation";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export async function* getConversationEvents({
   conversationId,
@@ -122,11 +127,47 @@ export async function cancelMessageGenerationEvent(
       try {
         const handle = client.workflow.getHandle(workflowId);
         await handle.signal(cancelAgentLoopSignal);
-      } catch (signalError) {
+      } catch (err) {
+        const signalError = normalizeError(err);
         // Swallow errors from signaling (workflow might not exist anymore)
         logger.warn(
           { error: signalError, messageId },
           "Failed to signal agent loop workflow for cancellation"
+        );
+      }
+    },
+    { concurrency: 8 }
+  );
+}
+
+export async function gracefullyStopAgentLoop(
+  auth: Authenticator,
+  {
+    messageIds,
+    conversationId,
+  }: { messageIds: string[]; conversationId: string }
+): Promise<void> {
+  const client = await getTemporalClientForAgentNamespace();
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+
+  await concurrentExecutor(
+    messageIds,
+    async (messageId) => {
+      const agentMessageId = messageId;
+      const workflowId = makeAgentLoopWorkflowId({
+        workspaceId,
+        conversationId,
+        agentMessageId,
+      });
+      try {
+        const handle = client.workflow.getHandle(workflowId);
+        await handle.signal(gracefullyStopAgentLoopSignal);
+      } catch (err) {
+        const signalError = normalizeError(err);
+        // Swallow errors from signaling (workflow might not exist anymore)
+        logger.warn(
+          { error: signalError, messageId },
+          "Failed to signal agent loop workflow for graceful stop"
         );
       }
     },
@@ -149,6 +190,7 @@ export async function* getMessagesEvents(
       | AgentActionRunningEvents
       | AgentActionSuccessEvent
       | AgentGenerationCancelledEvent
+      | AgentToolCallStartedEvent
       | GenerationTokensEvent
     ) & {
       step: number;

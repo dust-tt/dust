@@ -16,7 +16,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
  * /api/v1/w/{wId}/assistant/conversations/{cId}:
  *   get:
  *     summary: Get a conversation
- *     description: Get a conversation in the workspace identified by {wId}.
+ *     description: Get a conversation in the workspace identified by {wId}. Supports optional pagination of message content via limit and lastValue query parameters.
  *     tags:
  *       - Conversations
  *     security:
@@ -32,6 +32,18 @@ import type { NextApiRequest, NextApiResponse } from "next";
  *         name: cId
  *         required: true
  *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         description: Maximum number of messages to return. When omitted, all messages are returned.
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: lastValue
+ *         required: false
+ *         description: Cursor value (message rank) from a previous response to fetch the next page of messages.
  *         schema:
  *           type: string
  *     responses:
@@ -123,22 +135,60 @@ async function handler(
     });
   }
 
-  const conversationRes = await getConversation(auth, cId);
-
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
-  }
-
-  const conversation = conversationRes.value;
-
   switch (req.method) {
     case "GET": {
-      return res.status(200).json({
+      // Build optional message pagination from query params.
+      // When omitted, all messages are returned (backward compatible).
+      const { limit, lastValue } = req.query;
+      const messagePagination =
+        typeof limit === "string"
+          ? {
+              limit: parseInt(limit, 10),
+              lastRank:
+                typeof lastValue === "string" ? parseInt(lastValue, 10) : null,
+            }
+          : undefined;
+
+      const conversationRes = await getConversation(
+        auth,
+        cId,
+        false,
+        null,
+        null,
+        messagePagination
+      );
+
+      if (conversationRes.isErr()) {
+        return apiErrorForConversation(req, res, conversationRes.error);
+      }
+
+      const {
+        hasMore,
+        lastValue: paginationLastValue,
+        ...conversation
+      } = conversationRes.value;
+
+      const response: GetConversationResponseType = {
         conversation: addBackwardCompatibleConversationFields(conversation),
-      });
+      };
+
+      if (hasMore !== undefined) {
+        response.hasMore = hasMore;
+        response.lastValue =
+          paginationLastValue !== undefined && paginationLastValue !== null
+            ? String(paginationLastValue)
+            : null;
+      }
+
+      return res.status(200).json(response);
     }
 
     case "PATCH": {
+      const conversationRes = await getConversation(auth, cId);
+      if (conversationRes.isErr()) {
+        return apiErrorForConversation(req, res, conversationRes.error);
+      }
+
       const r = PatchConversationRequestSchema.safeParse(req.body);
       if (!r.success) {
         return apiError(req, res, {
@@ -152,7 +202,7 @@ async function handler(
       const { read } = r.data;
       if (read) {
         await ConversationResource.markAsReadForAuthUser(auth, {
-          conversation,
+          conversation: conversationRes.value,
         });
       }
       return res.status(200).json({ success: true });

@@ -600,24 +600,27 @@ export function SubscriptionPage() {
                   <Page.H variant="h5">Choose a plan</Page.H>
                   <Page.P>Pick a plan that best suits your team.</Page.P>
                 </div>
-                <ButtonsSwitchList
-                  defaultValue={billingPeriod}
-                  size="xs"
-                  onValueChange={(v) => {
-                    if (v === "monthly" || v === "yearly") {
-                      setBillingPeriod(v);
-                    }
-                  }}
-                >
-                  <ButtonsSwitch value="monthly" label="Monthly billing" />
-                  <ButtonsSwitch value="yearly" label="Yearly billing" />
-                </ButtonsSwitchList>
+                {!isWorkspaceWhitelistedBusinessPlan && (
+                  <ButtonsSwitchList
+                    defaultValue={billingPeriod}
+                    size="xs"
+                    onValueChange={(v) => {
+                      if (v === "monthly" || v === "yearly") {
+                        setBillingPeriod(v);
+                      }
+                    }}
+                  >
+                    <ButtonsSwitch value="monthly" label="Monthly billing" />
+                    <ButtonsSwitch value="yearly" label="Yearly billing" />
+                  </ButtonsSwitchList>
+                )}
               </div>
               <div className="pt-4">
                 <SubscriptionPlanCards
                   billingPeriod={billingPeriod}
                   onSubscribe={handleSubscribePlan}
                   isProcessing={isProcessing}
+                  owner={owner}
                 />
               </div>
             </div>

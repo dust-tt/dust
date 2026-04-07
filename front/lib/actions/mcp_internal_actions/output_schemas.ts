@@ -3,6 +3,7 @@ import {
   INTERNAL_ALLOWED_ICONS,
 } from "@app/components/resources/resources_icon_names";
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
+import { UserQuestionSchema } from "@app/lib/actions/types";
 import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { ALL_FILE_FORMATS } from "@app/types/files";
@@ -54,17 +55,18 @@ const ToolGeneratedFileSchema = z.object({
     ]
   ),
   snippet: z.string().nullable(),
-  // Optional UI hint to hide file from generic generated files sections.
-  hidden: z.boolean().optional(),
   isInProjectContext: z.boolean().optional(),
+  // DEPRECATED, only kept for backwards compatibility. Optional UI hint to hide file from generic generated files sections.
+  hidden: z.boolean().optional(),
 });
 
 export type ToolGeneratedFileType = z.infer<typeof ToolGeneratedFileSchema>;
 
 export function isToolGeneratedFile(
-  outputBlock: CallToolResult["content"][number]
+  outputBlock: CallToolResult["content"][number] | null
 ): outputBlock is { type: "resource"; resource: ToolGeneratedFileType } {
   return (
+    !!outputBlock &&
     outputBlock.type === "resource" &&
     ToolGeneratedFileSchema.safeParse(outputBlock.resource).success
   );
@@ -1068,11 +1070,24 @@ export type EarlyExitOutputResourceType = z.infer<
   typeof EarlyExitOutputResourceSchema
 >;
 
+export const UserAnswerRequiredOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
+  type: z.literal("tool_user_answer_required"),
+  question: UserQuestionSchema,
+  text: z.string(),
+  uri: z.string(),
+});
+
+export type UserAnswerRequiredOutputResourceType = z.infer<
+  typeof UserAnswerRequiredOutputResourceSchema
+>;
+
 export const AgentPauseOutputResourceSchema = z.union([
   AuthRequiredOutputResourceSchema,
   BlockedAwaitingInputOutputResourceSchema,
   EarlyExitOutputResourceSchema,
   FileAuthRequiredOutputResourceSchema,
+  UserAnswerRequiredOutputResourceSchema,
 ]);
 
 export type AgentPauseOutputResourceType = z.infer<

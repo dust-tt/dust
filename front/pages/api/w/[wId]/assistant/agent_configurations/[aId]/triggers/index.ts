@@ -7,19 +7,28 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { TriggerType } from "@app/types/assistant/triggers";
-import { TriggerSchema } from "@app/types/assistant/triggers";
+import {
+  FullTriggerSchema,
+  TriggerSchema,
+} from "@app/types/assistant/triggers";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
-export interface GetTriggersResponseBody {
-  triggers: (TriggerType & {
-    isSubscriber: boolean;
-    isEditor: boolean;
-    editorName?: string;
-  })[];
-}
+export const GetTriggersResponseBodySchema = z.object({
+  triggers: z.array(
+    FullTriggerSchema.and(
+      z.object({
+        isSubscriber: z.boolean(),
+        isEditor: z.boolean(),
+        editorName: z.string().optional(),
+      })
+    )
+  ),
+});
+export type GetTriggersResponseBody = z.infer<
+  typeof GetTriggersResponseBodySchema
+>;
 
 const DeleteTriggersRequestBodyCodec = z.object({
   triggerIds: z.array(z.string()),
@@ -45,11 +54,11 @@ export type PostTriggersRequestBody = z.infer<
 // Helper type guard for decoded trigger data from TriggerSchema
 function isWebhookTriggerData(trigger: {
   kind: string;
-  webhookSourceViewSId?: unknown;
-}): trigger is { kind: "webhook"; webhookSourceViewSId: string } {
+  webhookSourceViewId?: unknown;
+}): trigger is { kind: "webhook"; webhookSourceViewId: string } {
   return (
     trigger.kind === "webhook" &&
-    typeof trigger.webhookSourceViewSId === "string"
+    typeof trigger.webhookSourceViewId === "string"
   );
 }
 
@@ -171,16 +180,6 @@ async function handler(
     }
 
     case "PATCH": {
-      if (!agentConfiguration.canEdit) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message: "Only editors can update triggers for this agent.",
-          },
-        });
-      }
-
       const patchDecoded = PatchTriggersRequestBodyCodec.safeParse(req.body);
       if (!patchDecoded.success) {
         return apiError(req, res, {
@@ -197,9 +196,9 @@ async function handler(
 
       // Batch update triggers
       for (const triggerData of triggers) {
-        const triggerToUpdate = userTriggers.find(
-          (t) => t.sId === triggerData.sId
-        );
+        const triggerToUpdate = auth.isAdmin()
+          ? allTriggers.find((t) => t.sId === triggerData.sId)
+          : userTriggers.find((t) => t.sId === triggerData.sId);
 
         if (!triggerToUpdate) {
           continue; // Skip triggers that the user cannot edit
@@ -223,7 +222,7 @@ async function handler(
         const validatedTrigger = triggerValidation.data;
 
         const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
-          ? getResourceIdFromSId(validatedTrigger.webhookSourceViewSId)
+          ? getResourceIdFromSId(validatedTrigger.webhookSourceViewId)
           : null;
 
         const updatedTrigger = await TriggerResource.update(
@@ -261,16 +260,6 @@ async function handler(
     }
 
     case "POST": {
-      if (!agentConfiguration.canEdit) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message: "Only editors can create triggers for this agent.",
-          },
-        });
-      }
-
       const postDecoded = PostTriggersRequestBodyCodec.safeParse(req.body);
       if (!postDecoded.success) {
         return apiError(req, res, {
@@ -305,7 +294,7 @@ async function handler(
         const validatedTrigger = triggerValidation.data;
 
         const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
-          ? getResourceIdFromSId(validatedTrigger.webhookSourceViewSId)
+          ? getResourceIdFromSId(validatedTrigger.webhookSourceViewId)
           : null;
 
         const executionPerDay = isWebhookTriggerData(validatedTrigger)

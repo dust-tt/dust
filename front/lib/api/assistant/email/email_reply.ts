@@ -11,11 +11,7 @@ import {
   storeEmailReplyContext,
 } from "@app/lib/api/assistant/email/email_trigger";
 import config from "@app/lib/api/config";
-import {
-  Authenticator,
-  type AuthenticatorType,
-  getFeatureFlags,
-} from "@app/lib/auth";
+import { Authenticator, type AuthenticatorType } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -33,48 +29,40 @@ function reconstructEmailFromContext(context: EmailReplyContext): InboundEmail {
   return {
     subject: context.subject,
     text: context.originalText,
-    auth: { SPF: "", dkim: "" },
+    auth: { SPF: "", dkim: [], dkimRaw: "" },
     threadingHeaders: {
       messageId: context.threadingMessageId,
       inReplyTo: context.threadingInReplyTo,
       references: context.threadingReferences,
+    },
+    sender: {
+      email: context.fromEmail,
+      full: context.fromFull,
     },
     envelope: {
       to: [],
       cc: [],
       bcc: [],
       from: context.fromEmail,
-      full: context.fromFull,
     },
     attachments: [],
   };
 }
 
 /**
- * Defense-in-depth: check feature flag before sending email replies.
- * Duplicates the webhook handler check in case Redis data is manipulated
- * or context is stored incorrectly.
+ * Defense-in-depth: check the workspace toggle before sending email replies.
+ * Duplicates the webhook handler check in case Redis data is manipulated or
+ * context is stored incorrectly.
  */
 async function isEmailAgentsEnabled(
   authType: AuthenticatorType
 ): Promise<boolean> {
   const authResult = await Authenticator.fromJSON(authType);
   if (authResult.isErr()) {
-    logger.warn(
-      "[email] Failed to create authenticator for feature flag check"
-    );
+    logger.warn("[email] Failed to create authenticator for email reply check");
     return false;
   }
-  const auth = authResult.value;
-  const workspace = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(auth);
-  if (!featureFlags.includes("email_agents")) {
-    logger.info(
-      { workspaceId: authType.workspaceId },
-      "[email] email_agents feature flag not enabled, skipping reply"
-    );
-    return false;
-  }
+  const workspace = authResult.value.getNonNullableWorkspace();
   if (workspace.metadata?.allowEmailAgents !== true) {
     logger.info(
       { workspaceId: authType.workspaceId },
@@ -254,7 +242,19 @@ export async function sendEmailReplyOnCompletion(
       undefined,
       config.getAppUrl()
     );
-    const fullHtmlContent = `<div><div>${htmlContent}</div><br/><a href="${conversationLink}">Open in Dust</a></div>`;
+    const agentName = agentConfiguration
+      ? sanitizeHtml(agentConfiguration.name, {
+          allowedTags: [],
+          allowedAttributes: {},
+        })
+      : null;
+    const attribution = agentName
+      ? `Answered by <strong>${agentName}</strong>`
+      : "Answered";
+    const fullHtmlContent =
+      `<div><div>${htmlContent}</div>` +
+      `<p style="color: #666; font-size: 13px; margin-top: 16px;">${attribution} · <a href="${conversationLink}" style="color: #2563eb;">View full conversation</a></p>` +
+      `</div>`;
 
     // Reconstruct the email and send reply.
     const email = reconstructEmailFromContext(context);
@@ -262,18 +262,14 @@ export async function sendEmailReplyOnCompletion(
       email,
       agentConfiguration: agentConfiguration ?? undefined,
       htmlContent: fullHtmlContent,
-      recipients: {
-        to: context.replyTo,
-        cc: context.replyCc,
-      },
+      recipient: context.fromEmail,
     });
 
     logger.info(
       {
         agentMessageId: agentLoopArgs.agentMessageId,
         conversationId: conversation.sId,
-        to: context.replyTo,
-        cc: context.replyCc,
+        to: context.fromEmail,
       },
       "[email] Sent email reply on agent completion"
     );
@@ -331,10 +327,7 @@ export async function sendEmailReplyOnError(
     await replyToEmail({
       email,
       htmlContent,
-      recipients: {
-        to: [context.fromEmail],
-        cc: [],
-      },
+      recipient: context.fromEmail,
     });
 
     logger.info(

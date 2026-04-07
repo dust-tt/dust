@@ -112,7 +112,12 @@ export interface MCPActionDetailsProps {
   action: AgentMCPActionWithOutputType;
   owner: LightWorkspaceType;
   lastNotification: ProgressNotificationContentType | null;
-  messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
+  messageStatus?:
+    | "created"
+    | "succeeded"
+    | "failed"
+    | "cancelled"
+    | "gracefully_stopped";
   displayContext: ActionDetailsDisplayContext;
 }
 
@@ -464,7 +469,7 @@ export function GenericActionDetails({
               <span className="heading-base">Generated Files</span>
               <div className="flex flex-wrap gap-2">
                 {action.generatedFiles
-                  .filter((file) => !file.hidden)
+                  .filter((f) => !f.hidden)
                   .map((file) => {
                     if (isSupportedImageContentType(file.contentType)) {
                       return (

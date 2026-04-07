@@ -1,0 +1,124 @@
+import { createMetronomeCustomer } from "@app/lib/metronome/client";
+import { SubscriptionModel } from "@app/lib/models/plan";
+import { getStripeSubscription } from "@app/lib/plans/stripe";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
+import type { Logger } from "@app/logger/logger";
+import type { LightWorkspaceType } from "@app/types/user";
+
+import { makeScript } from "./helpers";
+import { runOnAllWorkspaces } from "./workspace_helpers";
+
+async function provisionCustomer(
+  workspace: LightWorkspaceType,
+  execute: boolean,
+  logger: Logger
+) {
+  // Get Stripe customer ID from the active subscription.
+  // Skip workspaces without a Stripe customer — only paying workspaces get a Metronome customer.
+  let stripeCustomerId = "";
+  const subscription = await SubscriptionModel.findOne({
+    where: { workspaceId: workspace.id, status: "active" },
+  });
+  if (subscription?.stripeSubscriptionId) {
+    const stripeSubscription = await getStripeSubscription(
+      subscription.stripeSubscriptionId
+    );
+    if (
+      stripeSubscription?.customer &&
+      typeof stripeSubscription.customer === "string"
+    ) {
+      stripeCustomerId = stripeSubscription.customer;
+    }
+  }
+
+  if (!stripeCustomerId) {
+    logger.info(
+      { workspaceId: workspace.sId },
+      "Skipping — no Stripe customer"
+    );
+    return;
+  }
+
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      workspaceName: workspace.name,
+      stripeCustomerId,
+    },
+    `${execute ? "" : "[DRYRUN] "}Provisioning Metronome customer`
+  );
+
+  if (!execute) {
+    return;
+  }
+
+  const result = await createMetronomeCustomer({
+    workspaceId: workspace.sId,
+    workspaceName: workspace.name,
+    stripeCustomerId,
+  });
+
+  if (result.isOk()) {
+    const { metronomeCustomerId } = result.value;
+
+    const updateResult = await WorkspaceResource.updateMetronomeCustomerId(
+      workspace.id,
+      metronomeCustomerId
+    );
+    if (updateResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          metronomeCustomerId,
+          error: updateResult.error.message,
+        },
+        "Failed to persist metronomeCustomerId on workspace"
+      );
+      return;
+    }
+
+    // Explicitly await cache invalidation — the fire-and-forget invalidation
+    // in update() may not complete before the script calls process.exit().
+    await WorkspaceResource.invalidateCache(workspace.sId);
+
+    logger.info(
+      { workspaceId: workspace.sId, metronomeCustomerId },
+      "Metronome customer provisioned and workspace updated"
+    );
+  } else {
+    logger.error(
+      { workspaceId: workspace.sId, error: result.error.message },
+      "Failed to provision Metronome customer"
+    );
+  }
+}
+
+makeScript(
+  {
+    workspaceId: {
+      alias: "w",
+      describe: "Workspace sId to provision. Omit to provision all workspaces.",
+      type: "string" as const,
+    },
+  },
+  async (args, logger) => {
+    if (args.workspaceId) {
+      const workspace = await WorkspaceResource.fetchById(args.workspaceId);
+      if (!workspace) {
+        logger.error({ workspaceId: args.workspaceId }, "Workspace not found");
+        return;
+      }
+      await provisionCustomer(
+        renderLightWorkspaceType({ workspace }),
+        args.execute,
+        logger
+      );
+    } else {
+      await runOnAllWorkspaces(
+        (workspace) => provisionCustomer(workspace, args.execute, logger),
+        { concurrency: 4 }
+      );
+    }
+  }
+);

@@ -1,0 +1,147 @@
+import logger from "@app/logger/logger";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { datadogLogs } from "@datadog/browser-logs";
+import {
+  sendAuthMessage,
+  sendRefreshTokenMessage,
+  sentLogoutMessage,
+} from "@extension/shared/messages";
+import type { StoredTokens } from "@extension/shared/services/auth";
+import {
+  AuthError,
+  AuthService,
+  getRegionInfoFromClaims,
+} from "@extension/shared/services/auth";
+import type { StorageService } from "@extension/shared/services/storage";
+import { jwtDecode } from "jwt-decode";
+
+export class ChromeFirefoxAuthService extends AuthService {
+  constructor(storage: StorageService) {
+    super(storage);
+  }
+
+  // Refresh token sends a message to the background script to call the workos refresh token endpoint.
+  // It updates the stored tokens with the new access token.
+  // If the refresh token is invalid, it will call handleLogout.
+  async refreshToken(
+    tokens: StoredTokens | null
+  ): Promise<Result<StoredTokens, AuthError>> {
+    try {
+      tokens = tokens ?? (await this.getStoredTokens());
+      if (!tokens) {
+        return new Err(new AuthError("not_authenticated", "No tokens found."));
+      }
+      const response = await sendRefreshTokenMessage(this, tokens.refreshToken);
+      if (!response.success) {
+        logger.error({ response: response.error }, "Refresh token failed");
+        return new Err(new AuthError("not_authenticated", response.error));
+      }
+      if (!response?.accessToken) {
+        logger.error("Refresh failed: No access token received");
+
+        return new Err(
+          new AuthError("not_authenticated", "No access token received")
+        );
+      }
+
+      const storedTokens = await this.saveTokens(response);
+      return new Ok(storedTokens);
+    } catch (error) {
+      return new Err(
+        new AuthError("invalid_oauth_token_error", error?.toString())
+      );
+    }
+  }
+
+  // Login sends a message to the background script to call the workos login endpoint.
+  // It saves the tokens and auth metadata (regionInfo).
+  async login({
+    forcedConnection,
+    organizationId,
+  }: {
+    forcedConnection?: string;
+    organizationId?: string;
+  }) {
+    try {
+      const response = await sendAuthMessage(forcedConnection, organizationId);
+      if (!response.success) {
+        logger.error({ error: response.error }, "Authentication error");
+        throw new Error(response.error);
+      }
+      if (!response.accessToken) {
+        logger.error("Login failed: No access token received");
+        throw new Error("No access token received.");
+      }
+      const tokens = await this.saveTokens(response);
+
+      const claims = jwtDecode<Record<string, string>>(tokens.accessToken);
+
+      const regionInfo = getRegionInfoFromClaims(claims);
+
+      await this.storage.set("regionInfo", regionInfo);
+
+      return new Ok({ tokens, regionInfo });
+    } catch (error) {
+      return new Err(new AuthError("not_authenticated", error?.toString()));
+    }
+  }
+
+  // Logout sends a message to the background script to call the workos logout endpoint.
+  // It also clears the stored tokens in the extension.
+  async logout() {
+    try {
+      const response = await sentLogoutMessage();
+      if (!response?.success) {
+        throw new Error("No success response received.");
+      }
+
+      return true;
+    } catch (error) {
+      logger.error({ err: error }, "Logout failed: Unknown error.");
+      return false;
+    } finally {
+      datadogLogs.clearUser();
+      datadogLogs.setGlobalContext({
+        extensionVersion: process.env.DUST_EXTENSION_VERSION,
+        commitHash: process.env.COMMIT_HASH,
+      });
+      await this.storage.clear();
+    }
+  }
+
+  async getAccessToken(forceRefresh?: boolean): Promise<string | null> {
+    let tokens = await this.getStoredTokens();
+    if (
+      !tokens ||
+      !tokens.accessToken ||
+      tokens.expiresAt < Date.now() ||
+      forceRefresh
+    ) {
+      const refreshRes = await this.refreshToken(tokens);
+      if (refreshRes.isOk()) {
+        tokens = refreshRes.value;
+      } else {
+        tokens = null;
+      }
+    }
+
+    return tokens?.accessToken ?? null;
+  }
+
+  async getStoredTokens(): Promise<StoredTokens | null> {
+    const accessToken = await this.storage.get<string>("accessToken");
+    const refreshToken = await this.storage.get<string>("refreshToken");
+    const expiresAt = await this.storage.get<number>("expiresAt");
+
+    if (!accessToken || !expiresAt) {
+      return null;
+    }
+
+    return {
+      accessToken,
+      refreshToken: refreshToken || "",
+      expiresAt,
+    };
+  }
+}

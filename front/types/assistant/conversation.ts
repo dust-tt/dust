@@ -1,3 +1,4 @@
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
@@ -15,7 +16,7 @@ import type {
 } from "./agent";
 import type { MentionType, RichMention } from "./mentions";
 
-export type MessageVisibility = "visible" | "deleted";
+export type MessageVisibility = "visible" | "deleted" | "pending";
 
 export type ConversationMessageReactions = {
   messageId: string;
@@ -107,7 +108,9 @@ export type UserMessageOrigin =
   // (to be created).
   | "onboarding_conversation"
   // for internal use, for the butler in projects
-  | "project_butler";
+  | "project_butler"
+  // for internal use, for reinforced agent batch LLM operations
+  | "reinforcement";
 
 /**
  * @swaggerschema Context (swagger_schemas.ts), PrivateUserMessageContext (swagger_private_schemas.ts)
@@ -201,11 +204,13 @@ export type AgentMessageStatus =
   | "created"
   | "succeeded"
   | "failed"
-  | "cancelled";
+  | "cancelled"
+  | "gracefully_stopped";
 
 export const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
   "succeeded",
   "cancelled",
+  "gracefully_stopped",
 ];
 
 export interface CitationType {
@@ -244,6 +249,17 @@ export type BaseAgentMessageType = {
   prunedContext?: boolean;
 };
 
+export type InlineActivityStep =
+  | { type: "thinking"; content: string; id: string }
+  | { type: "content"; content: string; id: string }
+  | {
+      type: "action";
+      label: string;
+      id: string;
+      actionId: string;
+      internalMCPServerName: InternalMCPServerNameType | null;
+    };
+
 export type ParsedContentItem =
   | { kind: "reasoning"; content: string }
   | { kind: "action"; action: AgentMCPActionWithOutputType };
@@ -281,6 +297,7 @@ export type LightAgentMessageType = BaseAgentMessageType & {
   };
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
+  activitySteps: InlineActivityStep[];
 };
 
 // This type represents the agent message we can reconstruct by accumulating streaming events
@@ -340,6 +357,7 @@ export type ConversationWithoutContentType = {
   triggerId: string | null;
   depth: number;
   metadata: ConversationMetadata;
+  branchId: string | null;
 
   // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];
@@ -354,7 +372,6 @@ export type ConversationWithoutContentType = {
 export type ConversationType = ConversationWithoutContentType & {
   owner: WorkspaceType;
   visibility: ConversationVisibility;
-  branchId: string | null;
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
 };
 
@@ -365,9 +382,16 @@ export type ConversationType = ConversationWithoutContentType & {
 export type LightConversationType = ConversationWithoutContentType & {
   owner: WorkspaceType;
   visibility: ConversationVisibility;
-  branchId: string | null;
   content: (LightAgentMessageType | UserMessageTypeWithContentFragments)[];
 };
+
+export function isLightConversationType(
+  conversation: ConversationType | LightConversationType
+): conversation is LightConversationType {
+  // Content is not an array of arrays of messages, it's an array of messages.
+  // Just check that the item 0 is not an
+  return "content" in conversation && !Array.isArray(conversation.content[0]);
+}
 
 export const isProjectConversation = <T extends ConversationWithoutContentType>(
   conversation: T
@@ -443,6 +467,13 @@ export type UserMessageNewEvent = {
   created: number;
   messageId: string;
   message: UserMessageTypeWithContentFragments;
+};
+
+// Event sent when a pending user message is promoted to visible from pending.
+export type UserMessagePromotedEvent = {
+  type: "user_message_promoted";
+  created: number;
+  messageId: string;
 };
 
 // Event sent when the user message is created.

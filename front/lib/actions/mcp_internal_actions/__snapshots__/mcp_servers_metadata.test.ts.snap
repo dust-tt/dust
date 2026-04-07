@@ -54,6 +54,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "search_candidates": "never_ask",
     "update_job_posting": "high",
   },
+  "ask_user_question": {
+    "ask_user_question": "never_ask",
+  },
   "common_utilities": {
     "generate_random_float": "never_ask",
     "generate_random_number": "never_ask",
@@ -181,6 +184,11 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_drafts": "never_ask",
     "get_messages": "never_ask",
     "send_mail": "high",
+  },
+  "gong": {
+    "get_call": "never_ask",
+    "get_call_transcript": "never_ask",
+    "list_calls": "never_ask",
   },
   "google_calendar": {
     "check_availability": "never_ask",
@@ -342,8 +350,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "write_worksheet": "high",
   },
   "microsoft_teams": {
+    "get_transcript_content": "low",
     "list_channels": "never_ask",
     "list_chats": "never_ask",
+    "list_meetings": "never_ask",
     "list_messages": "never_ask",
     "list_teams": "never_ask",
     "list_users": "never_ask",
@@ -430,12 +440,20 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "update_event": "low",
   },
   "poke": {
+    "check_notion_page": "high",
+    "check_slack_channel": "high",
+    "find_workspace_by_connector_id": "high",
+    "get_connector_details": "high",
+    "get_conversation_details": "high",
+    "get_mcp_server_details": "high",
     "get_workspace_credits": "high",
     "get_workspace_feature_flags": "high",
     "get_workspace_members": "high",
     "get_workspace_metadata": "high",
     "get_workspace_plan_and_subscription": "high",
     "get_workspace_spaces": "high",
+    "list_data_sources": "high",
+    "list_workspace_groups": "high",
   },
   "primitive_types_debugger": {
     "pass_through": "high",
@@ -473,12 +491,13 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "run_dust_app": "never_ask",
   },
   "salesforce": {
+    "create_object": "medium",
     "describe_object": "never_ask",
     "execute_read_query": "never_ask",
     "list_attachments": "never_ask",
     "list_objects": "never_ask",
     "read_attachment": "never_ask",
-    "update_object": "high",
+    "update_object": "medium",
   },
   "salesloft": {
     "get_actions": "never_ask",

@@ -24,8 +24,10 @@ export interface TruncatedContentProps {
   animationDurationMs?: number;
   expandLabel?: string;
   collapseLabel?: string;
+  variant?: "default" | "light";
   footer?: React.ReactNode;
   className?: string;
+  buttonClassName?: string;
 }
 
 export function TruncatedContent({
@@ -37,11 +39,13 @@ export function TruncatedContent({
   animationDurationMs = 200,
   expandLabel = "Show more",
   collapseLabel = "Show less",
+  variant = "default",
   footer,
   className,
+  buttonClassName,
 }: TruncatedContentProps) {
   const contentRef = useRef<HTMLDivElement>(null);
-  const [exceedsThreshold, setExceedsThreshold] = useState(false);
+  const [exceedsThreshold, setExceedsThreshold] = useState(defaultCollapsed);
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
   useEffect(() => {
@@ -81,12 +85,18 @@ export function TruncatedContent({
       <div className="s-flex s-items-center s-gap-3">
         {shouldShowToggle && (
           <Button
-            variant="outline"
+            variant={variant === "light" ? "ghost-secondary" : "outline"}
             size="xs"
             label={isCollapsed ? expandLabel : collapseLabel}
-            icon={isCollapsed ? ChevronDownIcon : ChevronUpIcon}
+            icon={
+              variant === "light"
+                ? undefined
+                : isCollapsed
+                  ? ChevronDownIcon
+                  : ChevronUpIcon
+            }
             onClick={handleToggle}
-            className="s-text-muted-foreground"
+            className={buttonClassName}
           />
         )}
         {footer}

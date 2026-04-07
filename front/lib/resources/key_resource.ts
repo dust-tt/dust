@@ -52,7 +52,7 @@ export class KeyResource extends BaseResource<KeyModel> {
 
   private user?: UserModel;
 
-  private static readonly keyCacheKeyResolver = (secret: string) =>
+  static readonly keyCacheKeyResolver = (secret: string) =>
     `key:secret:${Buffer.from(blake3(secret)).toString("hex")}`;
 
   private static async _fetchBySecretUncached(
@@ -76,10 +76,9 @@ export class KeyResource extends BaseResource<KeyModel> {
       status: key.status,
       isSystem: key.isSystem,
       role: key.role,
-      scope: key.scope,
       monthlyCapMicroUsd: key.monthlyCapMicroUsd,
       workspaceId: key.workspaceId,
-      groupId: key.groupId,
+      groupIds: key.groupIds,
       userId: key.userId,
       lastUsedAt: key.lastUsedAt?.getTime() ?? null,
       createdAt: key.createdAt.getTime(),
@@ -135,15 +134,14 @@ export class KeyResource extends BaseResource<KeyModel> {
   }
 
   static async makeNew(
-    blob: Omit<CreationAttributes<KeyModel>, "secret" | "groupId" | "scope">,
-    group: GroupResource
+    blob: Omit<CreationAttributes<KeyModel>, "secret" | "groupIds">,
+    groups: GroupResource[]
   ) {
     const secret = this.createNewSecret();
     const key = await KeyResource.model.create({
       ...blob,
-      groupId: group.id,
+      groupIds: groups.map((g) => g.id),
       secret,
-      scope: "default",
     });
 
     return new this(KeyResource.model, key.get());
@@ -274,8 +272,8 @@ export class KeyResource extends BaseResource<KeyModel> {
   ) {
     return this.model.count({
       where: {
-        groupId: {
-          [Op.in]: groups.map((g) => g.id),
+        groupIds: {
+          [Op.overlap]: groups.map((g) => g.id),
         },
         status: "active",
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -325,9 +323,8 @@ export class KeyResource extends BaseResource<KeyModel> {
       name: this.name,
       secret,
       status: this.status,
-      groupId: this.groupId,
+      groupIds: this.groupIds,
       role: this.role,
-      scope: this.scope,
       monthlyCapMicroUsd: this.monthlyCapMicroUsd,
     };
   }

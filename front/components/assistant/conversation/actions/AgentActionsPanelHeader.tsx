@@ -1,15 +1,17 @@
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { Button, cn, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, cn } from "@dust-tt/sparkle";
 import type React from "react";
 
 interface AgentActionsPanelHeaderProps {
   children?: React.ReactNode;
   onClose?: () => void;
+  closeIcon: React.ComponentType<{}>;
   title: string;
 }
 
 export function AgentActionsPanelHeader({
   children,
+  closeIcon,
   onClose,
   title,
 }: AgentActionsPanelHeaderProps) {
@@ -37,7 +39,7 @@ export function AgentActionsPanelHeader({
               variant="ghost"
               size="sm"
               onClick={onClose}
-              icon={XMarkIcon}
+              icon={closeIcon}
               className="text-element-600 hover:text-element-900"
             />
           )}

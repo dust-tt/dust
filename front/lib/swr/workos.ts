@@ -7,6 +7,10 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
+import type {
+  AuditLogsPortal,
+  AuditLogsPortalResponse,
+} from "@app/pages/api/w/[wId]/audit-logs";
 import type { GetWorkspaceDomainsResponseBody } from "@app/pages/api/w/[wId]/domains";
 import type { GetProvisioningStatusResponseBody } from "@app/pages/api/w/[wId]/provisioning-status";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -250,4 +254,45 @@ export function useProvisioningStatus({
     isProvisioningStatusLoading: !error && !data && !disabled,
     isProvisioningStatusError: error,
   };
+}
+
+/**
+ * Audit Logs
+ */
+
+export function useOpenAuditLogsPortal({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+
+  const openPortal = async (portal: AuditLogsPortal) => {
+    // Open a blank window synchronously to avoid popup blockers.
+    const newWindow = window.open("", "_blank");
+
+    const response = await clientFetch(`/api/w/${owner.sId}/audit-logs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ portal }),
+    });
+
+    if (!response.ok) {
+      newWindow?.close();
+      const errorData = await getErrorFromResponse(response);
+      sendNotification({
+        type: "error",
+        title: "Failed to open audit logs portal",
+        description: errorData.message,
+      });
+      return;
+    }
+
+    const data: AuditLogsPortalResponse = await response.json();
+    if (newWindow) {
+      newWindow.location.href = data.portalUrl;
+    }
+  };
+
+  return { openPortal };
 }

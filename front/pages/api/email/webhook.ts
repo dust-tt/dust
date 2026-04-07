@@ -11,17 +11,43 @@ import {
   triggerFromEmail,
   userAndWorkspaceFromEmail,
 } from "@app/lib/api/assistant/email/email_trigger";
+import {
+  extractEmailAddressesFromHeader,
+  extractSingleEmailAddressFromHeader,
+  parseHeaderValue,
+} from "@app/lib/api/assistant/email/header_parsing";
+import {
+  evaluateInboundAuth,
+  parseSendgridDkimResults,
+} from "@app/lib/api/assistant/email/inbound_auth";
+import {
+  createBufferedRequestFromRawBody,
+  isSendgridParseFormRequest,
+  validateSendgridParseWebhookSignature,
+} from "@app/lib/api/assistant/email/sendgrid_parse_webhook_signature";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import apiConfig from "@app/lib/api/config";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { config as regionsConfig } from "@app/lib/api/regions/config";
+import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isSupportedFileContentType } from "@app/types/files";
+import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { IncomingForm } from "formidable";
+import { readFile } from "fs/promises";
 import type { NextApiRequest, NextApiResponse } from "next";
+import getRawBody from "raw-body";
+
+const SENDGRID_PARSE_WEBHOOK_MAX_SIZE = "30mb";
 
 // Disabling Next.js's body parser as formidable has its own
 export const config = {
@@ -30,64 +56,126 @@ export const config = {
   },
 };
 
-function extractEmailAddressesFromHeader(headerValue: string | null): string[] {
-  if (!headerValue) {
-    return [];
-  }
-  const addresses: string[] = [];
-  const seen = new Set<string>();
+const EMAIL_WEBHOOK_RELAY_HEADER = "x-dust-email-webhook-relayed";
+const EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER =
+  "x-dust-email-webhook-source-region";
+const EMAIL_WEBHOOK_RELAY_HEADER_VALUE = "1";
 
-  const addEmail = (raw: string) => {
-    const email = raw.trim().toLowerCase();
-    if (!seen.has(email)) {
-      seen.add(email);
-      addresses.push(email);
-    }
-  };
-
-  // First pass: extract addresses inside angle brackets (e.g., "Name <email@domain.com>").
-  // This correctly handles display names with special characters (apostrophes, quotes, etc.)
-  // and ensures case-insensitive matching by lowercasing here.
-  const anglePattern = /<([^>]+)>/g;
-  let match;
-  while ((match = anglePattern.exec(headerValue)) !== null) {
-    const content = match[1].trim();
-    // Basic validation: must contain exactly one "@" and no spaces.
-    if (content.includes("@") && !content.includes(" ")) {
-      addEmail(content);
-    }
-  }
-
-  // Second pass: extract bare email addresses from parts without angle brackets.
-  const remaining = headerValue.replace(/<[^>]*>/g, " ");
-  const barePattern = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
-  while ((match = barePattern.exec(remaining)) !== null) {
-    addEmail(match[0]);
-  }
-
-  return addresses;
+function isRelayedWebhookRequest(
+  req: Pick<NextApiRequest, "headers">
+): boolean {
+  return (
+    req.headers[EMAIL_WEBHOOK_RELAY_HEADER] === EMAIL_WEBHOOK_RELAY_HEADER_VALUE
+  );
 }
 
-function parseHeaderValue(
-  rawHeaders: string,
-  headerName: string
-): string | null {
-  const escapedHeaderName = headerName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  // Match the header name at line start, capture the first line value then any
-  // RFC 5322 folded continuation lines (lines starting with whitespace).
-  const headerPattern = new RegExp(
-    `^${escapedHeaderName}:\\s*((?:.*(?:\\r?\\n[ \\t]+.*)*))`,
-    "im"
+function isRelayEligibleError(error: EmailTriggerError): boolean {
+  return (
+    error.type === "user_not_found" || error.type === "workspace_not_found"
   );
-  const match = rawHeaders.match(headerPattern);
-  if (!match) {
-    return null;
+}
+
+export function shouldRelayToOtherRegion({
+  req,
+  error,
+}: {
+  req: Pick<NextApiRequest, "headers">;
+  error: EmailTriggerError;
+}): boolean {
+  return isRelayEligibleError(error) && !isRelayedWebhookRequest(req);
+}
+
+function hasValidSendgridAuthorization(
+  authHeader: string | undefined
+): boolean {
+  if (!authHeader || !authHeader.startsWith("Basic ")) {
+    return false;
   }
 
-  // Unfold RFC 5322 continuation lines (CRLF/LF followed by spaces/tabs).
-  const unfoldedHeaderValue = match[1].replace(/\r?\n[ \t]+/g, " ").trim();
+  const base64Credentials = authHeader.split(" ")[1];
+  const credentials = Buffer.from(base64Credentials, "base64").toString(
+    "ascii"
+  );
+  const [username, password] = credentials.split(":");
 
-  return unfoldedHeaderValue.length > 0 ? unfoldedHeaderValue : null;
+  return (
+    username === "sendgrid" && password === apiConfig.getEmailWebhookSecret()
+  );
+}
+
+function hasValidRelayAuthorization(
+  req: Pick<NextApiRequest, "headers">
+): boolean {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return false;
+  }
+
+  return (
+    isRelayedWebhookRequest(req) &&
+    authHeader.slice("Bearer ".length) === regionsConfig.getLookupApiSecret()
+  );
+}
+
+async function relayEmailToOtherRegion(
+  email: InboundEmail
+): Promise<Result<void, Error>> {
+  try {
+    const { url, name } = regionsConfig.getOtherRegionInfo();
+    const formData = new FormData();
+
+    formData.set("subject", email.subject);
+    formData.set("text", email.text);
+    formData.set("from", email.sender.full);
+    formData.set("SPF", email.auth.SPF);
+    formData.set("dkim", email.auth.dkimRaw);
+    formData.set("envelope", JSON.stringify(email.envelope));
+
+    if (email.rawHeaders) {
+      formData.set("headers", email.rawHeaders);
+    }
+
+    for (const [index, attachment] of email.attachments.entries()) {
+      const buffer = await readFile(attachment.filepath);
+      formData.append(
+        `attachment_${index}`,
+        new Blob([buffer], { type: attachment.contentType }),
+        attachment.filename
+      );
+    }
+
+    const response = await fetch(`${url}/api/email/webhook`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${regionsConfig.getLookupApiSecret()}`,
+        [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
+        [EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER]:
+          regionsConfig.getCurrentRegion(),
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      return new Err(
+        new Error(
+          `Relay to ${name} failed with status ${response.status}: ${response.statusText}`
+        )
+      );
+    }
+
+    logger.info(
+      {
+        senderEmail: email.sender.email,
+        targetRegion: name,
+        sourceRegion: regionsConfig.getCurrentRegion(),
+      },
+      "[email] Relayed inbound email to other region"
+    );
+
+    return new Ok(undefined);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
 }
 
 function parseThreadingHeaders(rawHeaders: string | null) {
@@ -108,21 +196,30 @@ function parseThreadingHeaders(rawHeaders: string | null) {
 
 // Parses the Sendgrid webhook form data and validates it returning a fully formed InboundEmail.
 const parseSendgridWebhookContent = async (
-  req: NextApiRequest
+  rawBody: Buffer,
+  headers: NextApiRequest["headers"]
 ): Promise<Result<InboundEmail, Error>> => {
+  const req = createBufferedRequestFromRawBody(rawBody, headers);
+  if (!isSendgridParseFormRequest(req)) {
+    return new Err(
+      new Error("Failed to recreate request body for multipart parsing")
+    );
+  }
   const form = new IncomingForm();
   const [fields, files] = await form.parse(req);
 
   try {
     const subject = fields["subject"] ? fields["subject"][0] : null;
     const text = fields["text"] ? fields["text"][0] : null;
-    const full = fields["from"] ? fields["from"][0] : null;
+    const senderFull = fields["from"] ? fields["from"][0] : null;
     const SPF = fields["SPF"] ? fields["SPF"][0] : null;
     const dkim = fields["dkim"] ? fields["dkim"][0] : null;
     const rawHeaders = fields["headers"] ? fields["headers"][0] : null;
     const envelope = fields["envelope"]
       ? JSON.parse(fields["envelope"][0])
       : null;
+
+    const dkimRaw = isString(dkim) ? dkim : "";
 
     if (!envelope) {
       return new Err(new Error("Failed to parse envelope"));
@@ -133,8 +230,19 @@ const parseSendgridWebhookContent = async (
     if (!from || typeof from !== "string") {
       return new Err(new Error("Failed to parse envelope.from"));
     }
-    if (!full || typeof full !== "string") {
+    if (!senderFull || typeof senderFull !== "string") {
       return new Err(new Error("Failed to parse from"));
+    }
+
+    const senderHeaderValue =
+      (isString(rawHeaders) ? parseHeaderValue(rawHeaders, "From") : null) ??
+      senderFull;
+    const senderRes = extractSingleEmailAddressFromHeader(
+      "From",
+      senderHeaderValue
+    );
+    if (senderRes.isErr()) {
+      return senderRes;
     }
 
     // Extract attachments from files, filtering to supported content types.
@@ -161,10 +269,19 @@ const parseSendgridWebhookContent = async (
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       text: text || "",
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      auth: { SPF: SPF || "", dkim: dkim || "" },
+      auth: {
+        SPF: SPF || "",
+        dkim: parseSendgridDkimResults(dkimRaw),
+        dkimRaw,
+      },
       threadingHeaders: parseThreadingHeaders(
         isString(rawHeaders) ? rawHeaders : null
       ),
+      rawHeaders: isString(rawHeaders) ? rawHeaders : null,
+      sender: {
+        email: senderRes.value,
+        full: senderHeaderValue,
+      },
       envelope: {
         // Use raw headers to get all To/Cc recipients: Sendgrid's envelope.to only
         // contains addresses matching the inbound-parse domain, omitting human recipients.
@@ -183,7 +300,6 @@ const parseSendgridWebhookContent = async (
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         bcc: envelope.bcc || [],
         from,
-        full,
       },
       attachments,
     });
@@ -208,10 +324,7 @@ const replyToError = async (
   await replyToEmail({
     email,
     htmlContent,
-    recipients: {
-      to: [email.envelope.from],
-      cc: [],
-    },
+    recipient: email.sender.email,
   });
 };
 
@@ -226,8 +339,10 @@ async function handler(
   switch (req.method) {
     case "POST":
       const authHeader = req.headers.authorization;
+      const isSendgridRequest = hasValidSendgridAuthorization(authHeader);
+      const isRelayRequest = hasValidRelayAuthorization(req);
 
-      if (!authHeader || !authHeader.startsWith("Basic ")) {
+      if (!authHeader) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
@@ -237,16 +352,7 @@ async function handler(
         });
       }
 
-      const base64Credentials = authHeader.split(" ")[1];
-      const credentials = Buffer.from(base64Credentials, "base64").toString(
-        "ascii"
-      );
-      const [username, password] = credentials.split(":");
-
-      if (
-        username !== "sendgrid" ||
-        password !== apiConfig.getEmailWebhookSecret()
-      ) {
+      if (!isSendgridRequest && !isRelayRequest) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -256,7 +362,48 @@ async function handler(
         });
       }
 
-      const emailRes = await parseSendgridWebhookContent(req);
+      // SendGrid signs the exact multipart bytes, so we must verify the raw body
+      // before formidable parses or rewrites anything.
+      let rawBody: Buffer;
+      try {
+        rawBody = await getRawBody(req, {
+          limit: SENDGRID_PARSE_WEBHOOK_MAX_SIZE,
+        });
+      } catch {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Failed to read raw request body.",
+          },
+        });
+      }
+
+      // Only the original SendGrid ingress carries the signed raw multipart body.
+      // Cross-region relays rebuild the form-data payload, so the forwarded hop must
+      // trust our relay auth instead of re-running SendGrid signature verification.
+      if (isSendgridRequest && !isDevelopment()) {
+        const signatureValidationRes = validateSendgridParseWebhookSignature({
+          publicKey: apiConfig.getSendgridParseWebhookPublicKey(),
+          headers: req.headers,
+          rawBody,
+        });
+        if (signatureValidationRes.isErr()) {
+          logger.warn(
+            {
+              errorType: signatureValidationRes.error.apiError.type,
+              message: signatureValidationRes.error.apiError.message,
+            },
+            "[email] Rejected SendGrid Parse webhook before multipart parsing"
+          );
+          return apiError(req, res, {
+            status_code: signatureValidationRes.error.statusCode,
+            api_error: signatureValidationRes.error.apiError,
+          });
+        }
+      }
+
+      const emailRes = await parseSendgridWebhookContent(rawBody, req.headers);
       if (emailRes.isErr()) {
         return apiError(req, res, {
           status_code: 401,
@@ -273,23 +420,60 @@ async function handler(
       // possible below this point, errors should be reported to the sender.
       res.status(200).json({ success: true });
 
-      // Check SPF is pass.
-      if (
-        email.auth.SPF !== "pass" ||
-        email.auth.dkim !== `{@${email.envelope.from.split("@")[1]} : pass}`
-      ) {
-        await replyToError(email, {
-          type: "unauthenticated_error",
-          message:
-            "Failed to authenticate your email (SPF/dkim validation failed).",
-        });
+      const authDecision = evaluateInboundAuth(email);
+
+      if (!authDecision.authenticated) {
+        // Do not reply to unauthenticated mail — the sender may be spoofed,
+        // and replying would cause backscatter.
+        logger.warn(
+          {
+            reason: authDecision.reason,
+            headerFromDomain: authDecision.headerFromDomain,
+            spfResult: authDecision.spfResult,
+            spfEnvelopeDomain: authDecision.spfEnvelopeDomain,
+            dkimEntries: authDecision.dkimEntries,
+            senderEmail: email.sender.email,
+            targetEmails: [
+              ...(email.envelope.to ?? []),
+              ...(email.envelope.cc ?? []),
+              ...(email.envelope.bcc ?? []),
+            ].filter((e) => e.endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`)),
+          },
+          "[email] Dropping unauthenticated inbound mail (SPF/DKIM failure)"
+        );
         return;
       }
 
+      logger.info(
+        {
+          reason: authDecision.reason,
+          headerFromDomain: authDecision.headerFromDomain,
+          senderEmail: email.sender.email,
+        },
+        "[email] Inbound sender authenticated"
+      );
+
       const userRes = await userAndWorkspaceFromEmail({
-        email: email.envelope.from,
+        email: email.sender.email,
       });
       if (userRes.isErr()) {
+        if (shouldRelayToOtherRegion({ req, error: userRes.error })) {
+          const relayRes = await relayEmailToOtherRegion(email);
+          if (relayRes.isOk()) {
+            return;
+          }
+
+          logger.error(
+            {
+              senderEmail: email.sender.email,
+              error: relayRes.error,
+              sourceRegion: regionsConfig.getCurrentRegion(),
+              targetRegion: regionsConfig.getOtherRegionInfo().name,
+            },
+            "[email] Failed to relay inbound email to other region"
+          );
+        }
+
         await replyToError(email, userRes.error);
         return;
       }
@@ -318,16 +502,6 @@ async function handler(
         user.sId,
         workspace.sId
       );
-
-      const featureFlags = await getFeatureFlags(auth);
-      if (!featureFlags.includes("email_agents")) {
-        await replyToError(email, {
-          type: "invalid_email_error",
-          message:
-            "Email interactions with agents are not enabled for your workspace.",
-        });
-        return;
-      }
 
       if (workspace.metadata?.allowEmailAgents !== true) {
         await replyToError(email, {
@@ -370,6 +544,23 @@ async function handler(
         await replyToError(email, triggerRes.error);
         return;
       }
+
+      void emitAuditLogEvent({
+        auth,
+        action: "trigger.email_received",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("trigger", {
+            sId: triggerRes.value.conversation.sId,
+            name: triggerRes.value.conversation.sId,
+          }),
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          senderEmail: email.sender.email,
+          agentId: agentConfigurations.map((a) => a.sId).join(","),
+        },
+      });
 
       logger.info(
         {

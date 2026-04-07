@@ -2,7 +2,7 @@ import type {
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { GlobalSkillId } from "@app/lib/resources/skill/global/registry";
+import { MCPServerConfigurationSchema } from "@app/lib/actions/mcp_schemas";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentFunctionCallContentType,
@@ -10,23 +10,24 @@ import type {
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
-import { isOAuthProvider, isValidScope } from "@app/types/oauth/lib";
-import type { ModelId } from "@app/types/shared/model_id";
-import type { TagType } from "@app/types/tag";
-import type { UserType } from "@app/types/user";
+import type { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
+import type { ModelIdType } from "@app/types/assistant/models/types";
+import { DbModelIdSchema } from "@app/types/shared/model_id";
+import { TagSchema, type TagType } from "@app/types/tag";
+import { UserSchema } from "@app/types/user";
 import { z } from "zod";
-import type { OAuthProvider } from "../oauth/lib";
-import type { ModelIdType, ModelProviderIdType } from "./models/types";
 
 /**
  * Agent configuration
  */
 
-export type GlobalAgentStatus =
-  | "active"
-  | "disabled_by_admin"
-  | "disabled_missing_datasource"
-  | "disabled_free_workspace";
+export const GLOBAL_AGENT_STATUSES = [
+  "active",
+  "disabled_by_admin",
+  "disabled_missing_datasource",
+  "disabled_free_workspace",
+] as const;
+export type GlobalAgentStatus = (typeof GLOBAL_AGENT_STATUSES)[number];
 
 /**
  * Agent statuses:
@@ -39,8 +40,29 @@ export type GlobalAgentStatus =
  *   it is saved for the first time (allows capturing sId early). It allows having
  *   a sId before creating the agent.
  */
-export type AgentStatus = "active" | "archived" | "draft" | "pending";
-export type AgentConfigurationStatus = AgentStatus | GlobalAgentStatus;
+export const AGENT_STATUSES = [
+  "active",
+  "archived",
+  "draft",
+  "pending",
+] as const;
+export type AgentStatus = (typeof AGENT_STATUSES)[number];
+
+export const AGENT_CONFIGURATION_STATUSES = [
+  "active",
+  "archived",
+  "draft",
+  "pending",
+  "disabled_by_admin",
+  "disabled_missing_datasource",
+  "disabled_free_workspace",
+] as const;
+export const AgentConfigurationStatusSchema = z.enum(
+  AGENT_CONFIGURATION_STATUSES
+);
+export type AgentConfigurationStatus = z.infer<
+  typeof AgentConfigurationStatusSchema
+>;
 
 /**
  * Agent configuration scope
@@ -84,13 +106,6 @@ export type AgentsGetViewType =
   | "archived"
   | "favorites";
 
-export type AgentUsageType = {
-  messageCount: number;
-  conversationCount: number;
-  userCount: number;
-  timePeriodSec: number;
-};
-
 export type AgentRecentAuthors = readonly string[];
 
 export const AGENT_REINFORCEMENT_MODES = ["auto", "on", "off"] as const;
@@ -100,6 +115,15 @@ const AGENT_REASONING_EFFORTS = ["none", "light", "medium", "high"] as const;
 
 export const AgentReasoningEffortSchema = z.enum(AGENT_REASONING_EFFORTS);
 export type AgentReasoningEffort = z.infer<typeof AgentReasoningEffortSchema>;
+
+export const AgentUsageSchema = z.object({
+  messageCount: z.number(),
+  conversationCount: z.number(),
+  userCount: z.number(),
+  timePeriodSec: z.number(),
+});
+
+export type AgentUsageType = z.infer<typeof AgentUsageSchema>;
 
 // Constrains a reasoning effort to the [min, max] range supported by a model.
 export function clampReasoningEffort(
@@ -116,14 +140,23 @@ export function clampReasoningEffort(
   ];
 }
 
-export type AgentModelConfigurationType = {
-  providerId: ModelProviderIdType;
-  modelId: ModelIdType;
-  temperature: number;
-  reasoningEffort?: AgentReasoningEffort;
-  responseFormat?: string;
-  metaData?: Record<string, unknown>;
-};
+// ModelProviderIdSchema and ModelIdSchema are inlined here to avoid importing
+// from models/models.ts and models/providers.ts which have io-ts side effects
+// (ioTsEnum → uuid) that crash in the Temporal workflow sandbox.
+export const AgentModelConfigurationSchema = z.object({
+  providerId: z.custom<(typeof MODEL_PROVIDER_IDS)[number]>(
+    (val) => typeof val === "string"
+  ),
+  modelId: z.custom<ModelIdType>((val) => typeof val === "string"),
+  temperature: z.number(),
+  reasoningEffort: AgentReasoningEffortSchema.optional(),
+  responseFormat: z.string().optional(),
+  metaData: z.record(z.string(), z.unknown()).optional(),
+});
+
+export type AgentModelConfigurationType = z.infer<
+  typeof AgentModelConfigurationSchema
+>;
 
 export type AgentFetchVariant = "light" | "full" | "extra_light";
 
@@ -136,73 +169,50 @@ export type GlobalAgentContext = {
   };
 };
 
+export const LightAgentConfigurationSchema = z.object({
+  id: DbModelIdSchema,
+  versionCreatedAt: z.string().nullable(),
+  sId: z.string(),
+  version: z.number(),
+  versionAuthorId: DbModelIdSchema.nullable(),
+  instructions: z.string().nullable(),
+  model: AgentModelConfigurationSchema,
+  status: AgentConfigurationStatusSchema,
+  scope: z.enum(AGENT_CONFIGURATION_SCOPES),
+  userFavorite: z.boolean(),
+  name: z.string(),
+  description: z.string(),
+  pictureUrl: z.string(),
+  lastAuthors: z.array(z.string()).readonly().optional(),
+  editors: z.array(UserSchema).optional(),
+  usage: AgentUsageSchema.optional(),
+  feedbacks: z.object({ up: z.number(), down: z.number() }).optional(),
+  maxStepsPerRun: z.number(),
+  tags: z.array(TagSchema),
+  templateId: z.string().nullable(),
+  visualizationEnabled: z.boolean().optional(),
+  requestedGroupIds: z.array(z.array(z.string())),
+  requestedSpaceIds: z.array(z.string()),
+  reinforcement: z.enum(AGENT_REINFORCEMENT_MODES).optional(),
+  canRead: z.boolean(),
+  canEdit: z.boolean(),
+  omittedThinking: z.boolean().optional(),
+});
+
 /**
  * @swaggerschema AgentConfiguration (swagger_schemas.ts), PrivateLightAgentConfiguration (swagger_private_schemas.ts)
  */
-export type LightAgentConfigurationType = {
-  id: ModelId;
+export type LightAgentConfigurationType = z.infer<
+  typeof LightAgentConfigurationSchema
+>;
 
-  versionCreatedAt: string | null;
+export const AgentConfigurationSchema = LightAgentConfigurationSchema.extend({
+  instructionsHtml: z.string().nullable(),
+  actions: z.array(MCPServerConfigurationSchema),
+  skills: z.array(z.string()).optional(),
+});
 
-  sId: string;
-  version: number;
-  // Global agents have a null authorId, others have a non-null authorId
-  versionAuthorId: ModelId | null;
-
-  instructions: string | null;
-
-  model: AgentModelConfigurationType;
-
-  status: AgentConfigurationStatus;
-  scope: AgentConfigurationScope;
-
-  // always false if not in the context of a user (API query)
-  userFavorite: boolean;
-
-  name: string;
-  description: string;
-  pictureUrl: string;
-
-  // `lastAuthors` is expensive to compute, so we only compute it when needed.
-  lastAuthors?: AgentRecentAuthors;
-  editors?: UserType[];
-  usage?: AgentUsageType;
-  feedbacks?: { up: number; down: number };
-
-  maxStepsPerRun: number;
-  tags: TagType[];
-
-  templateId: string | null;
-
-  // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
-  visualizationEnabled?: boolean;
-
-  // Remove this once we have completely removed from the sdk.
-  requestedGroupIds: string[][];
-
-  // Space restrictions for accessing the agent/conversation - replaces group restrictions.
-  // The array represents permission requirements:
-  // - If empty, no restrictions apply
-  // - Each element represents an AND condition (user must belong to ALL spaces)
-  //
-  // Example: [1,2] means (1 AND 2)
-  requestedSpaceIds: string[];
-
-  reinforcement?: AgentReinforcementMode;
-
-  canRead: boolean;
-  canEdit: boolean;
-  // TODO (Pierre): Remove after omitted thinking evals
-  omittedThinking?: boolean;
-};
-
-export type AgentConfigurationType = LightAgentConfigurationType & {
-  instructionsHtml: string | null;
-
-  // If empty, no actions are performed, otherwise the actions are performed.
-  actions: MCPServerConfigurationType[];
-  skills?: GlobalSkillId[];
-};
+export type AgentConfigurationType = z.infer<typeof AgentConfigurationSchema>;
 
 export interface TemplateAgentConfigurationType {
   name: string;
@@ -287,50 +297,13 @@ export type GenericErrorContent = {
   metadata: Record<string, string | number | boolean> | null;
 };
 
-export type MCPServerPersonalAuthenticationRequiredMetadata = {
-  mcp_server_id: string;
-  provider: OAuthProvider;
-  scope?: string;
-  conversationId: string;
-  messageId: string;
-};
+import type { PersonalAuthenticationRequiredErrorContent } from "@app/types/assistant/agent_error";
 
-function isMCPServerPersonalAuthenticationRequiredMetadata(
-  metadata: unknown
-): metadata is MCPServerPersonalAuthenticationRequiredMetadata {
-  return (
-    typeof metadata === "object" &&
-    metadata !== null &&
-    "mcp_server_id" in metadata &&
-    typeof metadata.mcp_server_id === "string" &&
-    "provider" in metadata &&
-    isOAuthProvider(metadata?.provider) &&
-    (!("scope" in metadata) || isValidScope(metadata.scope)) &&
-    "conversationId" in metadata &&
-    typeof metadata.conversationId === "string" &&
-    "messageId" in metadata &&
-    typeof metadata.messageId === "string"
-  );
-}
-
-export type PersonalAuthenticationRequiredErrorContent = {
-  code: "mcp_server_personal_authentication_required";
-  message: string;
-  metadata: MCPServerPersonalAuthenticationRequiredMetadata;
-};
-
-export function isPersonalAuthenticationRequiredErrorContent(
-  error: unknown
-): error is PersonalAuthenticationRequiredErrorContent {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    error.code === "mcp_server_personal_authentication_required" &&
-    "metadata" in error &&
-    isMCPServerPersonalAuthenticationRequiredMetadata(error.metadata)
-  );
-}
+export type {
+  MCPServerPersonalAuthenticationRequiredMetadata,
+  PersonalAuthenticationRequiredErrorContent,
+} from "@app/types/assistant/agent_error";
+export { isPersonalAuthenticationRequiredErrorContent } from "@app/types/assistant/agent_error";
 
 // Generic event sent when an error occurred during the model call.
 export type AgentErrorEvent = {
@@ -377,6 +350,16 @@ export type AgentDisabledErrorEvent = {
   };
 };
 
+export type AgentToolCallStartedEvent = {
+  type: "tool_call_started";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  toolCallId?: string;
+  toolCallIndex?: number;
+  toolName: string;
+};
+
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {
   type: "agent_action_success";
@@ -392,6 +375,16 @@ export type AgentGenerationCancelledEvent = {
   created: number;
   configurationId: string;
   messageId: string;
+};
+
+// Event sent when the agent loop was gracefully stopped (current step completed, then exited).
+export type AgentMessageGracefullyStoppedEvent = {
+  type: "agent_message_gracefully_stopped";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  message: AgentMessageType;
+  runIds: string[];
 };
 
 // Event sent once the message is completed and successful.

@@ -113,18 +113,22 @@ function isMessageEventParams(
     case "agent_error":
     case "agent_generation_cancelled":
     case "agent_message_success":
+    case "agent_message_gracefully_stopped":
     case "generation_tokens":
+    case "tool_call_started":
     case "tool_approve_execution":
     case "tool_error":
     case "tool_file_auth_required":
     case "tool_notification":
     case "tool_params":
     case "tool_personal_auth_required":
+    case "tool_ask_user_question":
       return true;
     case "butler_done":
     case "butler_suggestion_created":
     case "butler_thinking":
     case "user_message_new":
+    case "user_message_promoted":
     case "agent_message_new":
     case "agent_message_done":
     case "conversation_title":

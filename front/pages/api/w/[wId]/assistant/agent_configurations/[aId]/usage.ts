@@ -4,13 +4,17 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { AgentUsageType } from "@app/types/assistant/agent";
+import { AgentUsageSchema } from "@app/types/assistant/agent";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-export type GetAgentUsageResponseBody = {
-  agentUsage: AgentUsageType | null;
-};
+export const GetAgentUsageResponseBodySchema = z.object({
+  agentUsage: AgentUsageSchema.nullable(),
+});
+export type GetAgentUsageResponseBody = z.infer<
+  typeof GetAgentUsageResponseBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,

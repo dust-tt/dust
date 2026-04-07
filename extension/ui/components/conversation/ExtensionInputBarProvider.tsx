@@ -1,10 +1,16 @@
-import { InputBarContextProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import {
+  InputBarContext,
+  InputBarContextProvider,
+} from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import { toRichAgentMentionType } from "@app/types/assistant/mentions";
 import type { LightWorkspaceType } from "@app/types/user";
-import type { AttachSelectionMessage } from "@extension/platforms/chrome/messages";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
+import type { AttachSelectionMessage } from "@extension/shared/messages";
+import { useSearchParam } from "@extension/shared/platform";
 import { useFileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
 interface ExtensionInputBarProviderProps {
   workspace: LightWorkspaceType;
@@ -66,7 +72,29 @@ export function ExtensionInputBarProvider({
       captureActions={captureActions}
       fileUploaderService={fileUploaderService}
     >
+      <AgentQueryParamHandler workspaceId={workspace.sId} />
       {children}
     </InputBarContextProvider>
   );
+}
+
+/**
+ * Reads the ?agent= query param and pre-selects the agent in the input bar.
+ */
+function AgentQueryParamHandler({ workspaceId }: { workspaceId: string }) {
+  const agent = useSearchParam("agent");
+  const { setSelectedAgent } = useContext(InputBarContext);
+
+  const { agentConfiguration } = useAgentConfiguration({
+    workspaceId,
+    agentConfigurationId: agent,
+  });
+
+  useEffect(() => {
+    if (agentConfiguration) {
+      setSelectedAgent(toRichAgentMentionType(agentConfiguration));
+    }
+  }, [agentConfiguration, setSelectedAgent]);
+
+  return null;
 }

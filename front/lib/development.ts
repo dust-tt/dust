@@ -8,18 +8,18 @@ export function showDebugTools(flags: WhitelistableFeature[]) {
   return isDevelopment() || flags.includes("show_debug_tools");
 }
 
-const INLINE_ACTIVITY_KEY = "dust_inline_activity";
+const SINGLE_AGENT_INPUT_KEY = "dust_single_agent_input";
 
-export function isInlineActivityEnabled(): boolean {
+export function isSingleAgentInputEnabled(): boolean {
   if (typeof window === "undefined") {
     return false;
   }
-  return localStorage.getItem(INLINE_ACTIVITY_KEY) === "true";
+  return localStorage.getItem(SINGLE_AGENT_INPUT_KEY) === "true";
 }
 
-export function toggleInlineActivity(): boolean {
-  const next = !isInlineActivityEnabled();
-  localStorage.setItem(INLINE_ACTIVITY_KEY, next ? "true" : "false");
+export function toggleSingleAgentInput(): boolean {
+  const next = !isSingleAgentInputEnabled();
+  localStorage.setItem(SINGLE_AGENT_INPUT_KEY, next ? "true" : "false");
   return next;
 }
 

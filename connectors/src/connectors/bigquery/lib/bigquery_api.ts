@@ -175,9 +175,16 @@ export const fetchDatasets = async ({
     );
   } catch (error) {
     const e = normalizeError(error);
-    // Sometimes the service account has access to a multiple projects, but one of them has not enabled BigQuery.
-    // In that case, we return an empty array.
-    if (e.message.includes("has not enabled BigQuery")) {
+    // Sometimes the service account has access to a multiple projects, but one of them has not enabled BigQuery
+    // or the project has been deleted. In that case, we skip the project and return an empty array.
+    if (
+      e.message.includes("has not enabled BigQuery") ||
+      e.message.includes("has been deleted")
+    ) {
+      logger?.info(
+        { database: database.name, error: e.message },
+        "[BigQuery] Skipping project"
+      );
       return new Ok([]);
     }
     return new Err(e);

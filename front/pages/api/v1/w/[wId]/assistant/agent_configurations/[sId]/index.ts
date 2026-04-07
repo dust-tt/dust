@@ -1,4 +1,5 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { patchAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -86,7 +87,71 @@ import { fromError } from "zod-validation-error";
  *             type: object
  *             properties:
  *               userFavorite:
- *                  type: boolean
+ *                 type: boolean
+ *               agent:
+ *                 type: object
+ *                 properties:
+ *                   handle:
+ *                     type: string
+ *                   description:
+ *                     type: string
+ *                   scope:
+ *                     type: string
+ *                     enum: [visible, hidden]
+ *                   avatar_url:
+ *                     type: string
+ *                   max_steps_per_run:
+ *                     type: number
+ *                   visualization_enabled:
+ *                     type: boolean
+ *               instructions:
+ *                 type: string
+ *               generation_settings:
+ *                 type: object
+ *                 properties:
+ *                   model_id:
+ *                     type: string
+ *                   provider_id:
+ *                     type: string
+ *                   temperature:
+ *                     type: number
+ *                   reasoning_effort:
+ *                     type: string
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     kind:
+ *                       type: string
+ *                       enum: [standard, protected]
+ *               editors:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     user_id:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     full_name:
+ *                       type: string
+ *               toolset:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     description:
+ *                       type: string
+ *                     type:
+ *                       type: string
+ *                       enum: [MCP]
+ *                     configuration:
+ *                       type: object
  *     security:
  *       - BearerAuth: []
  *     responses:
@@ -99,6 +164,15 @@ import { fromError } from "zod-validation-error";
  *               properties:
  *                 agentConfiguration:
  *                   $ref: '#/components/schemas/AgentConfiguration'
+ *                 skippedActions:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       name:
+ *                         type: string
+ *                       reason:
+ *                         type: string
  *       400:
  *         description: Bad Request. Invalid or missing parameters.
  *       401:
@@ -186,6 +260,26 @@ async function handler(
             },
           });
         }
+      }
+
+      const { userFavorite: _userFavorite, ...configPatch } = req.body;
+      const hasConfigPatch = Object.keys(configPatch).length > 0;
+
+      if (hasConfigPatch) {
+        const patchResult = await patchAgentConfigurationFromJSON(
+          auth,
+          sId,
+          configPatch
+        );
+
+        if (patchResult.isErr()) {
+          return apiError(req, res, patchResult.error);
+        }
+
+        return res.status(200).json({
+          agentConfiguration: patchResult.value.agentConfiguration,
+          skippedActions: patchResult.value.skippedActions,
+        });
       }
 
       return res.status(200).json({

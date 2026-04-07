@@ -1,0 +1,16 @@
+{
+  "action": "invitation.role_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "invitation"
+    }
+  ],
+  "metadata": {
+    "invitedEmail": "string",
+    "previousRole": "string",
+    "newRole": "string"
+  }
+}

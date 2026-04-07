@@ -16,7 +16,7 @@ export const WebhookFormSchema = z.object({
     .max(255, "Name should be less than 255 characters"),
   status: triggerStatusSchema.default("enabled"),
   customPrompt: z.string(),
-  webhookSourceViewSId: z.string().min(1, "Select a webhook source"),
+  webhookSourceViewId: z.string().min(1, "Select a webhook source"),
   event: z.string().optional(),
   filter: z.string().optional(),
   includePayload: z.boolean().default(false),
@@ -45,7 +45,7 @@ export function getWebhookFormDefaultValues({
         : "Webhook Trigger"),
     status: trigger?.status ?? "enabled",
     customPrompt: trigger?.customPrompt ?? "",
-    webhookSourceViewSId: webhookSourceView?.sId ?? "",
+    webhookSourceViewId: webhookSourceView?.sId ?? "",
     event: trigger?.configuration.event,
     filter: trigger?.configuration.filter ?? "",
     includePayload: trigger?.configuration.includePayload ?? true,
@@ -83,7 +83,7 @@ export function formValuesToWebhookTriggerData({
       event: webhook.event,
       filter: webhook.filter?.trim() ?? undefined,
     },
-    webhookSourceViewSId: webhook.webhookSourceViewSId ?? undefined,
+    webhookSourceViewId: webhook.webhookSourceViewId ?? undefined,
     editor:
       editTrigger?.kind === "webhook" ? editTrigger.editor : (user.id ?? null),
     editorName:

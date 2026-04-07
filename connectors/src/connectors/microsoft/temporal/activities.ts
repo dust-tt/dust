@@ -31,6 +31,7 @@ import {
   isGeneralExceptionError,
   isItemNotFoundError,
   isJSONParsingError,
+  isMalformedDriveError,
 } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import {
   deleteFile,
@@ -1235,8 +1236,11 @@ export async function fetchDeltaForRootNodesInDrive({
     results = resultsFromDelta;
     deltaLink = deltaLinkFromDelta;
   } catch (error) {
-    if (isItemNotFoundError(error)) {
-      logger.info({ error: error.message }, "Node not found, skipping");
+    if (isItemNotFoundError(error) || isMalformedDriveError(error)) {
+      logger.info(
+        { error: error.message, driveId },
+        "Drive not found or malformed, skipping"
+      );
       return { gcsFilePath: null };
     }
     throw error;

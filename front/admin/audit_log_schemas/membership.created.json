@@ -1,0 +1,15 @@
+{
+  "action": "membership.created",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "user"
+    }
+  ],
+  "metadata": {
+    "role": "string",
+    "origin": "string"
+  }
+}

@@ -251,9 +251,8 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async makeNewAgentEditorsGroup(
     auth: Authenticator,
     agent: AgentConfigurationModel,
-    { transaction }: { transaction?: Transaction } = {}
+    { transaction, authorId }: { transaction?: Transaction; authorId: ModelId }
   ) {
-    const user = auth.getNonNullableUser();
     const workspace = auth.getNonNullableWorkspace();
 
     if (agent.workspaceId !== workspace.id) {
@@ -270,7 +269,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         name: `${AGENT_GROUP_PREFIX} ${agent.name} (${agent.sId})`,
         kind: "agent_editors",
       },
-      { transaction, memberIds: [user.id] }
+      { transaction, memberIds: [authorId] }
     );
 
     // Associate the group with the agent configuration.
@@ -548,21 +547,11 @@ export class GroupResource extends BaseResource<GroupModel> {
           },
         },
       });
-    } else if (key.scope === "restricted_group_only") {
-      // Special case for restricted keys.
-      // Those are regular keys for which we want to restrict access to the global group.
-      groups = await this.model.findAll({
-        where: {
-          workspaceId: key.workspaceId,
-          id: key.groupId,
-        },
-      });
     } else {
-      // We fetch the associated group and the global group.
       groups = await this.model.findAll({
         where: {
           workspaceId: key.workspaceId,
-          [Op.or]: [{ id: key.groupId }, { kind: "global" }],
+          id: { [Op.in]: key.groupIds },
         },
       });
     }
@@ -1812,7 +1801,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
       await KeyModel.destroy({
         where: {
-          groupId: this.id,
+          groupIds: { [Op.contains]: [this.id] },
           workspaceId: owner.id,
         },
         transaction,

@@ -502,6 +502,111 @@
                 "properties": {
                   "userFavorite": {
                     "type": "boolean"
+                  },
+                  "agent": {
+                    "type": "object",
+                    "properties": {
+                      "handle": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "scope": {
+                        "type": "string",
+                        "enum": [
+                          "visible",
+                          "hidden"
+                        ]
+                      },
+                      "avatar_url": {
+                        "type": "string"
+                      },
+                      "max_steps_per_run": {
+                        "type": "number"
+                      },
+                      "visualization_enabled": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  "instructions": {
+                    "type": "string"
+                  },
+                  "generation_settings": {
+                    "type": "object",
+                    "properties": {
+                      "model_id": {
+                        "type": "string"
+                      },
+                      "provider_id": {
+                        "type": "string"
+                      },
+                      "temperature": {
+                        "type": "number"
+                      },
+                      "reasoning_effort": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "standard",
+                            "protected"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "editors": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "user_id": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "full_name": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "toolset": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "MCP"
+                          ]
+                        },
+                        "configuration": {
+                          "type": "object"
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -523,6 +628,20 @@
                   "properties": {
                     "agentConfiguration": {
                       "$ref": "#/components/schemas/AgentConfiguration"
+                    },
+                    "skippedActions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        }
+                      }
                     }
                   }
                 }
@@ -540,6 +659,206 @@
           },
           "405": {
             "description": "Method not supported. Only GET or PATCH is expected."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/assistant/agent_configurations/import": {
+      "post": {
+        "summary": "Import agent configuration",
+        "description": "Create a new agent configuration from a JSON body matching the agent config schema.",
+        "tags": [
+          "Agents"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "agent",
+                  "instructions",
+                  "generation_settings",
+                  "tags",
+                  "editors",
+                  "toolset"
+                ],
+                "properties": {
+                  "agent": {
+                    "type": "object",
+                    "required": [
+                      "handle",
+                      "description",
+                      "scope",
+                      "max_steps_per_run",
+                      "visualization_enabled"
+                    ],
+                    "properties": {
+                      "handle": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "scope": {
+                        "type": "string",
+                        "enum": [
+                          "visible",
+                          "hidden"
+                        ]
+                      },
+                      "avatar_url": {
+                        "type": "string"
+                      },
+                      "max_steps_per_run": {
+                        "type": "number"
+                      },
+                      "visualization_enabled": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  "instructions": {
+                    "type": "string"
+                  },
+                  "generation_settings": {
+                    "type": "object",
+                    "properties": {
+                      "model_id": {
+                        "type": "string"
+                      },
+                      "provider_id": {
+                        "type": "string"
+                      },
+                      "temperature": {
+                        "type": "number"
+                      },
+                      "reasoning_effort": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "standard",
+                            "protected"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "editors": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "user_id": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "full_name": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "toolset": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "MCP"
+                          ]
+                        },
+                        "configuration": {
+                          "type": "object"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully created agent configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "agentConfiguration": {
+                      "$ref": "#/components/schemas/AgentConfiguration"
+                    },
+                    "skippedActions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Invalid request body."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "405": {
+            "description": "Method not supported. Only POST is expected."
           },
           "500": {
             "description": "Internal Server Error."
@@ -938,7 +1257,7 @@
     "/api/v1/w/{wId}/assistant/conversations/{cId}": {
       "get": {
         "summary": "Get a conversation",
-        "description": "Get a conversation in the workspace identified by {wId}.",
+        "description": "Get a conversation in the workspace identified by {wId}. Supports optional pagination of message content via limit and lastValue query parameters.",
         "tags": [
           "Conversations"
         ],
@@ -962,6 +1281,24 @@
             "name": "cId",
             "required": true,
             "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "Maximum number of messages to return. When omitted, all messages are returned.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lastValue",
+            "required": false,
+            "description": "Cursor value (message rank) from a previous response to fetch the next page of messages.",
             "schema": {
               "type": "string"
             }
@@ -5533,7 +5870,8 @@
                   "action": {
                     "type": "string",
                     "enum": [
-                      "cancel"
+                      "cancel",
+                      "gracefully_stop"
                     ]
                   },
                   "messageIds": {
@@ -9052,6 +9390,36 @@
             "type": "integer",
             "nullable": true
           },
+          "activitySteps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "thinking",
+                    "action"
+                  ]
+                },
+                "content": {
+                  "type": "string",
+                  "description": "Chain of thought text (thinking steps only)"
+                },
+                "label": {
+                  "type": "string",
+                  "description": "Action display label (action steps only)"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "actionId": {
+                  "type": "string",
+                  "description": "Action string identifier (action steps only)"
+                }
+              }
+            }
+          },
           "reactions": {
             "type": "array",
             "items": {
@@ -10177,6 +10545,9 @@
             "$ref": "#/components/schemas/PrivateGenerationTokensEvent"
           },
           {
+            "$ref": "#/components/schemas/PrivateToolCallStartedEvent"
+          },
+          {
             "$ref": "#/components/schemas/PrivateAgentActionSuccessEvent"
           },
           {
@@ -10253,6 +10624,45 @@
           "delimiterClassification": {
             "type": "string",
             "description": "Present when classification is opening_delimiter or closing_delimiter"
+          },
+          "step": {
+            "type": "integer"
+          }
+        }
+      },
+      "PrivateToolCallStartedEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "configurationId",
+          "messageId",
+          "toolName"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "tool_call_started"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "configurationId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "toolCallIndex": {
+            "type": "integer"
+          },
+          "toolName": {
+            "type": "string"
           },
           "step": {
             "type": "integer"

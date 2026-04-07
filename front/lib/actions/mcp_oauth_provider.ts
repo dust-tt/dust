@@ -29,7 +29,7 @@ export class MCPOAuthProvider implements OAuthClientProvider {
       redirect_uris: [finalizeUriForProvider("mcp")],
       client_name: "Dust",
       client_uri: config.getStaticWebsiteUrl(),
-      logo_uri: "https://avatars.githubusercontent.com/u/116068963?s=200&v=4",
+      logo_uri: config.getStaticWebsiteUrl() + "/static/AppIcon.png",
       contacts: ["support@dust.com"],
       tos_uri: config.getStaticWebsiteUrl() + "/terms",
       policy_uri: config.getStaticWebsiteUrl() + "/privacy",

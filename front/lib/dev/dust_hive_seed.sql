@@ -11,7 +11,7 @@
 -- 3. The test outputs a prompt for Claude Code to fix the drift
 --
 -- PARAMETERS (using Sequelize replacements :paramName syntax):
---   :userSid, :workspaceSid, :subscriptionSid
+--   :userId, :workspaceId, :subscriptionId
 --   :email, :username, :name, :firstName, :lastName
 --   :workspaceName
 --   :workOSUserId, :provider, :providerId, :imageUrl
@@ -30,7 +30,7 @@ inserted_user AS (
     "isDustSuperUser", "lastLoginAt", "createdAt", "updatedAt"
   )
   VALUES (
-    :userSid,
+    :userId,
     :username,
     lower(:email),
     :name,
@@ -60,7 +60,7 @@ inserted_workspace AS (
     "workOSOrganizationId", metadata, "createdAt", "updatedAt"
   )
   VALUES (
-    :workspaceSid,
+    :workspaceId,
     :workspaceName,
     NULL,
     NULL,
@@ -157,7 +157,7 @@ inserted_subscription AS (
   )
   SELECT
     w.id,
-    :subscriptionSid,
+    :subscriptionId,
     'active',
     false,
     NULL,

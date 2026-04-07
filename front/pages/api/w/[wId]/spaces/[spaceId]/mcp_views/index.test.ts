@@ -8,6 +8,7 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import sgMail from "@sendgrid/mail";
+import { escape } from "html-escaper";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
@@ -235,7 +236,9 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/mcp_views", () => {
       expect(message.dynamic_template_data.subject).toBe(
         "[Dust] Agents to reconfigure after sharing Notion"
       );
-      expect(message.dynamic_template_data.body).toContain(workspace.name);
+      expect(message.dynamic_template_data.body).toContain(
+        escape(workspace.name)
+      );
       expect(message.dynamic_template_data.body).toContain(
         "Needs Reconfiguration"
       );

@@ -41,7 +41,7 @@ export const ProductboardNoteRelationshipSchema = z.object({
 export const ProductboardNoteSchema = z
   .object({
     id: z.string(),
-    type: z.enum(["simple", "conversation", "opportunity"]),
+    type: z.enum(["textNote", "conversationNote", "opportunityNote"]),
     fields: z.record(z.string(), z.unknown()).optional(),
     relationships: z
       .object({
@@ -277,9 +277,9 @@ export const ProductboardConfigurationSchema = z
       "releaseGroup",
       "company",
       "user",
-      "simple",
-      "conversation",
-      "opportunity",
+      "textNote",
+      "conversationNote",
+      "opportunityNote",
     ]),
     fields: z.record(z.string(), ProductboardConfigFieldSchema),
     relationships: z

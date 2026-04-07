@@ -135,6 +135,7 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -401,6 +402,8 @@ async function handler(
           }
         }
 
+        const featureFlags = await getFeatureFlags(auth);
+
         // If a message was provided we do await for the message to be created before returning the
         // conversation along with the message.
         const messageRes = await postUserMessage(auth, {
@@ -418,6 +421,7 @@ async function handler(
               message.context.clientSideMCPServerIds ?? [],
           },
           skipToolsValidation: skipToolsValidation ?? false,
+          steeringEnabled: featureFlags.includes("enable_steering"),
         });
         if (messageRes.isErr()) {
           return apiError(req, res, messageRes.error);

@@ -72,14 +72,17 @@ const useEditorService = (editor: Editor | null) => {
           .insertContent(" ") // Add an extra space after the mention.
           .run();
       },
-      setContent: (content: string) => {
-        editor
+      setContent: (
+        content: string,
+        { focus = true }: { focus?: boolean } = {}
+      ) => {
+        const chain = editor
           ?.chain()
-          .setContent(content, {
-            contentType: "markdown",
-          })
-          .focus()
-          .run();
+          .setContent(content, { contentType: "markdown" });
+        if (focus) {
+          chain?.focus();
+        }
+        chain?.run();
       },
       resetWithMentions: (
         mentions: RichMention[],
@@ -173,6 +176,8 @@ export interface CustomEditorProps {
   disableAutoFocus: boolean;
   disableUserMentions?: boolean;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
+  onAgentSelect?: (mention: RichMention) => void;
+  singleAgentInputEnabled?: boolean;
   owner: WorkspaceType;
   conversationId?: string | null;
   spaceId?: string;
@@ -184,6 +189,8 @@ export interface CustomEditorProps {
   }) => void;
   longTextPasteCharsThreshold?: number;
   onInlineText?: (fileId: string, textContent: string) => void;
+  // Ref that dynamically controls whether agent suggestions are shown for single agent mode.
+  shouldSuggestAgentRef?: React.RefObject<boolean>;
 }
 
 export const buildEditorExtensions = ({
@@ -193,6 +200,9 @@ export const buildEditorExtensions = ({
   disableUserMentions,
   onInlineText,
   onUrlDetected,
+  onAgentSelect,
+  singleAgentInputEnabled,
+  shouldSuggestAgentRef,
 }: {
   owner: WorkspaceType;
   conversationId?: string | null;
@@ -200,6 +210,9 @@ export const buildEditorExtensions = ({
   disableUserMentions?: boolean;
   onInlineText?: (fileId: string, textContent: string) => void;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
+  onAgentSelect?: (mention: RichMention) => void;
+  singleAgentInputEnabled?: boolean;
+  shouldSuggestAgentRef?: React.RefObject<boolean>;
 }) => {
   const extensions = [
     KeyboardShortcutsExtension,
@@ -273,6 +286,9 @@ export const buildEditorExtensions = ({
           agents: true,
           users: !disableUserMentions,
         },
+        shouldSuggestAgentRef,
+        onAgentSelect,
+        singleAgentInputEnabled,
       }),
     }),
     EmojiExtension,
@@ -307,12 +323,15 @@ const useCustomEditor = ({
   disableAutoFocus,
   disableUserMentions,
   onUrlDetected,
+  onAgentSelect,
+  singleAgentInputEnabled,
   owner,
   conversationId,
   spaceId,
   onLongTextPaste,
   longTextPasteCharsThreshold,
   onInlineText,
+  shouldSuggestAgentRef,
 }: CustomEditorProps) => {
   const editor = useEditor(
     {
@@ -324,6 +343,9 @@ const useCustomEditor = ({
         disableUserMentions,
         onInlineText,
         onUrlDetected,
+        onAgentSelect,
+        singleAgentInputEnabled,
+        shouldSuggestAgentRef,
       }),
       shouldRerenderOnTransaction: true, // necessary to update the editor state (and so the toolbar icons "activation") in real time
       editorProps: {

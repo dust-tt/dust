@@ -1,4 +1,9 @@
 import type { Authenticator } from "@app/lib/auth";
+import {
+  AgentMessageModel,
+  MessageModel,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
 import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -59,7 +64,7 @@ export class ConversationBranchResource extends BaseResource<ConversationBranchM
    */
   static async fetchByModelIds(
     auth: Authenticator,
-    ids: number[]
+    ids: ModelId[]
   ): Promise<ConversationBranchResource[]> {
     if (ids.length === 0) {
       return [];
@@ -77,6 +82,38 @@ export class ConversationBranchResource extends BaseResource<ConversationBranchM
     return branches.map(
       (b) => new this(ConversationBranchResource.model, b.get())
     );
+  }
+
+  async fetchAllMessages(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<MessageModel[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    return MessageModel.findAll({
+      where: {
+        conversationId: this.conversationId,
+        workspaceId: owner.id,
+        branchId: this.id,
+      } as WhereOptions<MessageModel>,
+      order: [
+        ["rank", "ASC"],
+        ["version", "DESC"],
+      ],
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: false,
+        },
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: false,
+        },
+      ],
+      transaction,
+    });
   }
 
   /**

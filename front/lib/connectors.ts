@@ -284,7 +284,7 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
   },
   dust_project: {
     matcher: (url: URL): boolean => {
-      return url.toString().startsWith(config.getApiBaseUrl());
+      return url.toString().startsWith(config.getAppUrl());
     },
     urlNormalizer: (url: URL): UrlCandidate => {
       const path = url.pathname.endsWith("/")

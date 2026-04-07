@@ -321,12 +321,12 @@ const MultiPageDialogContent = React.forwardRef<
 MultiPageDialogContent.displayName = "MultiPageDialogContent";
 
 export {
-  MultiPageDialogRoot as MultiPageDialog,
   MultiPageDialogClose,
   MultiPageDialogContent,
   MultiPageDialogFooter,
   type MultiPageDialogFooterProps,
   type MultiPageDialogPage,
   type MultiPageDialogProps,
+  MultiPageDialogRoot as MultiPageDialog,
   MultiPageDialogTrigger,
 };

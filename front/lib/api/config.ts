@@ -453,6 +453,11 @@ const config = {
   getEmailWebhookSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("EMAIL_WEBHOOK_SECRET");
   },
+  getSendgridParseWebhookPublicKey: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "SENDGRID_PARSE_WEBHOOK_PUBLIC_KEY"
+    );
+  },
   getProductionDustWorkspaceId: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
       "PRODUCTION_DUST_WORKSPACE_ID"
@@ -485,6 +490,9 @@ const config = {
       domain: EnvironmentConfig.getOptionalEnvVariable("E2B_DOMAIN"),
     };
   },
+  getDatadogApiKey: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DD_API_KEY");
+  },
   getSandboxGcpArtifactServiceAccountPath: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
       "SBX_GCP_ARTIFACT_SERVICE_ACCOUNT"
@@ -503,7 +511,15 @@ const config = {
     return EnvironmentConfig.getEnvVariable("NOVU_SECRET_KEY");
   },
   getNovuApiUrl: (): string => {
-    return EnvironmentConfig.getEnvVariable("NEXT_PUBLIC_NOVU_API_URL");
+    // Using process.env here to make sure the function is usable on the client side.
+    if (!process.env.NEXT_PUBLIC_NOVU_API_URL) {
+      throw new Error("NEXT_PUBLIC_NOVU_API_URL is not set");
+    }
+    return process.env.NEXT_PUBLIC_NOVU_API_URL;
+  },
+  // Metronome billing.
+  getMetronomeApiKey: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("METRONOME_API_KEY");
   },
 };
 

@@ -6,10 +6,10 @@ import config from "@app/lib/api/config";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   forceUserRole,
-  isInlineActivityEnabled,
+  isSingleAgentInputEnabled,
   sendOnboardingConversation,
   showDebugTools,
-  toggleInlineActivity,
+  toggleSingleAgentInput,
 } from "@app/lib/development";
 import { useAppRouter } from "@app/lib/platform";
 import type { SubscriptionType } from "@app/types/plan";
@@ -42,7 +42,7 @@ import {
   TestTubeIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 interface UserMenuProps {
   user: UserTypeWithWorkspaces;
@@ -56,16 +56,19 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
 
   const sendNotification = useSendNotification();
   const privacyMask = usePrivacyMask();
-  const [inlineActivity, setInlineActivity] = useState(isInlineActivityEnabled);
-  const handleToggleInlineActivity = useCallback(() => {
-    const next = toggleInlineActivity();
-    setInlineActivity(next);
+  const [singleAgentInput, setSingleAgentInput] = useState(() =>
+    isSingleAgentInputEnabled()
+  );
+  const handleToggleSingleAgentInput = () => {
+    const next = toggleSingleAgentInput();
+    setSingleAgentInput(next);
     sendNotification({
-      title: `Inline activity ${next ? "enabled" : "disabled"}`,
+      title: `Single agent input ${next ? "enabled" : "disabled"}`,
       description: "Reload the page to apply.",
       type: "success",
     });
-  }, [sendNotification]);
+  };
+
   const { clearAllDraftsFromUser } = useConversationDrafts({
     workspaceId: owner.sId,
     userId: user.sId,
@@ -200,7 +203,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
         <DropdownMenuLabel label="Account" />
         {subscription?.plan.limits.canUseProduct && (
           <DropdownMenuItem
-            label="Profile"
+            label="Personal Settings"
             icon={UserIcon}
             href={`/w/${owner.sId}/me`}
           />
@@ -276,8 +279,8 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
                     icon={privacyMask.isEnabled ? EyeSlashIcon : EyeIcon}
                   />
                   <DropdownMenuItem
-                    label={`${inlineActivity ? "Disable" : "Enable"} Inline Activity`}
-                    onClick={handleToggleInlineActivity}
+                    label={`${singleAgentInput ? "Disable" : "Enable"} Single Agent Input`}
+                    onClick={handleToggleSingleAgentInput}
                     icon={TestTubeIcon}
                   />
                   {owner.role === "admin" && (

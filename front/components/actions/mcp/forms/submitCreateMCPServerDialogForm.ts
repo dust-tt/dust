@@ -71,6 +71,7 @@ type CreateInternalMCPServerFn = (
     sharedSecret?: string;
     customHeaders?: Array<{ key: string; value: string }>;
     viewName?: string;
+    oauthScope?: string;
   } & (
     | { oauthConnection: MCPConnectionType; useCase?: never }
     | { oauthConnection?: never; useCase: MCPOAuthUseCase }
@@ -165,9 +166,26 @@ export async function submitCreateMCPServerDialogForm({
     );
   }
 
-  if (authorization && oauthUseCase) {
-    const scope = authorization.scope;
+  // Compute the effective OAuth scope: use admin-selected scopes if provided,
+  // otherwise fall back to the server's full default scope.
+  // Scopes marked with `impliedBy` are excluded when their parent scope is
+  // selected (e.g. Files.Read.All is excluded when Files.ReadWrite.All is
+  // selected, since ReadWrite already includes read access).
+  const effectiveScope =
+    values.selectedScopes !== undefined && authorization?.availableScopes
+      ? values.selectedScopes
+          .filter((scopeValue) => {
+            const def = authorization.availableScopes!.find(
+              (s) => s.value === scopeValue
+            );
+            return !(
+              def?.impliedBy && values.selectedScopes!.includes(def.impliedBy)
+            );
+          })
+          .join(" ")
+      : authorization?.scope;
 
+  if (authorization && oauthUseCase) {
     const cRes = await setupOAuthConnection({
       owner,
       provider: authorization.provider,
@@ -175,7 +193,7 @@ export async function submitCreateMCPServerDialogForm({
       useCase: "platform_actions",
       extraConfig: {
         ...(values.authCredentials ?? {}),
-        ...(scope ? { scope } : {}),
+        ...(effectiveScope ? { scope: effectiveScope } : {}),
       },
       regionInfo,
     });
@@ -221,18 +239,23 @@ export async function submitCreateMCPServerDialogForm({
           }
         : {};
 
+    const scopeField =
+      effectiveScope !== undefined ? { oauthScope: effectiveScope } : {};
+
     const createRes = oauthConnection
       ? await createInternalMCPServer({
           name: internalMCPServer.name,
           oauthConnection,
           includeGlobal: true,
           viewName: values.viewName,
+          ...scopeField,
           ...optionalFields,
         })
       : await createInternalMCPServer({
           name: internalMCPServer.name,
           includeGlobal: true,
           viewName: values.viewName,
+          ...scopeField,
           ...optionalFields,
         });
 

@@ -1,5 +1,5 @@
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type {
   ConversationType,
   UserMessageType,
@@ -42,6 +42,7 @@ function createMockContentFragment(
     sourceProvider: null,
     sourceIcon: null,
     isInProjectContext: false,
+    hidden: false,
   };
 }
 

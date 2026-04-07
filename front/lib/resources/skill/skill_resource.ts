@@ -788,6 +788,21 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return resources[0];
   }
 
+  static async fetchByNames(
+    auth: Authenticator,
+    names: string[]
+  ): Promise<SkillResource[]> {
+    if (names.length === 0) {
+      return [];
+    }
+    return this.baseFetch(auth, {
+      where: {
+        name: names,
+        status: "active",
+      },
+    });
+  }
+
   /**
    * Fetches skills from rows that reference them via customSkillId or globalSkillId.
    */
@@ -1354,7 +1369,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     const instructions = def.fetchInstructions
-      ? await def.fetchInstructions(auth, requestedSpaceIds)
+      ? await def.fetchInstructions(auth, {
+          spaceIds: requestedSpaceIds,
+          agentLoopData,
+        })
       : def.instructions;
 
     return new SkillResource(
@@ -1624,6 +1642,24 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this.editorGroup?.getActiveMembers(auth) ?? null;
   }
 
+  private async upsertCurrentUserAsEditor(auth: Authenticator): Promise<void> {
+    const user = auth.user();
+    if (!this.editorGroup || !user) {
+      return;
+    }
+
+    if (!this.editorGroup.canWrite(auth)) {
+      return;
+    }
+
+    const isMember = await this.editorGroup.isMember(user);
+    if (!isMember) {
+      await this.editorGroup.dangerouslyAddMember(auth, {
+        user: user.toJSON(),
+      });
+    }
+  }
+
   async fetchEditedByUser(auth: Authenticator): Promise<UserResource | null> {
     if (this.editedBy === null) {
       return null;
@@ -1800,6 +1836,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     if (fileAttachments) {
       await this.setFileAttachments(auth, fileAttachments);
     }
+
+    await this.upsertCurrentUserAsEditor(auth);
   }
 
   /**

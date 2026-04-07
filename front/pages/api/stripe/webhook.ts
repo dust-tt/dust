@@ -22,6 +22,8 @@ import {
   invoiceEnterprisePAYGCredits,
   isPAYGEnabled,
 } from "@app/lib/credits/payg";
+import { handleMetronomeSetupCheckout } from "@app/lib/metronome/checkout";
+import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/client";
 import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
@@ -34,7 +36,7 @@ import {
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -42,12 +44,13 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import { launchWorkOSWorkspaceSubscriptionCreatedWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import assert from "assert";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -96,6 +99,68 @@ async function grantFreeCreditsForSubscription({
     auth,
     stripeSubscription,
   });
+}
+
+/**
+ * Shadow-provision Metronome customer + contract for a workspace.
+ * Uses shadow packages (no billing provider) so Metronome generates invoices
+ * but does NOT deliver them to Stripe. Fire-and-forget: logs errors but does not throw.
+ */
+async function shadowProvisionMetronome({
+  workspace,
+  stripeCustomerId,
+  metronomePackageAlias,
+  sessionId,
+  subscriptionModelId,
+}: {
+  workspace: WorkspaceResource;
+  stripeCustomerId: string;
+  metronomePackageAlias: string;
+  sessionId: string;
+  subscriptionModelId: ModelId;
+}): Promise<void> {
+  try {
+    const result = await provisionMetronomeCustomerAndContract({
+      workspaceId: workspace.sId,
+      workspaceName: workspace.name,
+      stripeCustomerId,
+      packageAlias: metronomePackageAlias,
+      uniquenessKey: sessionId,
+    });
+
+    if (result.isErr()) {
+      logger.error(
+        { workspaceId: workspace.sId, error: result.error.message },
+        "[Stripe Webhook] Failed to shadow-provision Metronome"
+      );
+      return;
+    }
+
+    const { metronomeCustomerId, metronomeContractId } = result.value;
+
+    await WorkspaceResource.updateMetronomeCustomerId(
+      workspace.id,
+      metronomeCustomerId
+    );
+    await SubscriptionResource.updateMetronomeContractId(
+      subscriptionModelId,
+      metronomeContractId
+    );
+
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        metronomeCustomerId,
+        metronomeContractId,
+      },
+      "[Stripe Webhook] Metronome shadow provisioned"
+    );
+  } catch (err) {
+    logger.error(
+      { workspaceId: workspace.sId, error: normalizeError(err) },
+      "[Stripe Webhook] Failed to shadow-provision Metronome"
+    );
+  }
 }
 
 async function handler(
@@ -160,9 +225,9 @@ async function handler(
           const session = event.data.object as Stripe.Checkout.Session;
           const workspaceId = session.client_reference_id;
           const stripeSubscriptionId = session.subscription;
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           const planCode = session?.metadata?.planCode || null;
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          const metronomePackageAlias =
+            session?.metadata?.metronomePackageAlias || null;
           const userId = session?.metadata?.userId || null;
 
           if (session.status === "open" || session.status === "expired") {
@@ -189,6 +254,44 @@ async function handler(
               `[Stripe Webhook] Received checkout.session.completed with unkown status "${session.status}". Ignoring event.`
             );
             return res.status(200).json({ success: true });
+          }
+
+          // Branch on session mode: "setup" for Metronome, "subscription" for Stripe.
+          if (session.mode === "setup") {
+            const result = await handleMetronomeSetupCheckout({
+              session,
+              now,
+            });
+
+            if (result.isOk()) {
+              return res.status(200).json({ success: true });
+            }
+
+            switch (result.error.code) {
+              case "subscription_already_exists":
+              case "workspace_not_found":
+                logger.warn(
+                  { error: result.error, workspaceId, planCode },
+                  `[Stripe Webhook] Metronome setup: ${result.error.message}`
+                );
+                return res
+                  .status(200)
+                  .json({ success: false, message: result.error.message });
+
+              default:
+                logger.error(
+                  { error: result.error, workspaceId, planCode },
+                  `[Stripe Webhook] Metronome setup: ${result.error.message}`
+                );
+                return apiError(req, res, {
+                  status_code: 500,
+                  api_error: {
+                    type: "internal_server_error",
+                    message:
+                      "Stripe Webhook: error handling Metronome setup checkout.session.completed.",
+                  },
+                });
+            }
           }
 
           try {
@@ -222,8 +325,10 @@ async function handler(
                 `Cannot subscribe to plan ${planCode}: not found.`
               );
             }
+            const checkoutStripeSubscription =
+              await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
-            await withTransaction(async (t) => {
+            const newSubscription = await withTransaction(async (t) => {
               const activeSubscription =
                 await SubscriptionResource.fetchActiveByWorkspaceModelId(
                   workspace.id,
@@ -274,16 +379,14 @@ async function handler(
               if (activeSubscription) {
                 await activeSubscription.markAsEnded("ended", t);
               }
-              const stripeSubscription =
-                await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
-              await SubscriptionResource.makeNew(
+              return SubscriptionResource.makeNew(
                 {
                   sId: generateRandomModelSId(),
                   workspaceId: workspace.id,
                   planId: plan.id,
                   status: "active",
-                  trialing: stripeSubscription.status === "trialing",
+                  trialing: checkoutStripeSubscription.status === "trialing",
                   startDate: now,
                   stripeSubscriptionId: stripeSubscriptionId,
                 },
@@ -291,6 +394,31 @@ async function handler(
                 t
               );
             });
+            const auth = await Authenticator.internalAdminForWorkspace(
+              workspace.sId
+            );
+            const shouldGrantFreeCreditsOnCheckoutCompletion =
+              checkoutStripeSubscription.status === "active" ||
+              checkoutStripeSubscription.status === "trialing";
+
+            if (shouldGrantFreeCreditsOnCheckoutCompletion) {
+              const freeCreditsResult = await grantFreeCreditsForSubscription({
+                auth,
+                stripeSubscription: checkoutStripeSubscription,
+              });
+
+              if (freeCreditsResult.isErr()) {
+                logger.error(
+                  {
+                    error: freeCreditsResult.error,
+                    subscriptionId: checkoutStripeSubscription.id,
+                    workspaceId: workspace.sId,
+                  },
+                  "[Stripe Webhook] Error granting free credits on checkout.session.completed"
+                );
+              }
+            }
+
             if (userId) {
               const workspaceSeats =
                 await MembershipResource.countActiveSeatsInWorkspace(
@@ -304,9 +432,21 @@ async function handler(
                 subscriptionStartAt: now,
               });
             }
-            await restoreWorkspaceAfterSubscription(
-              await Authenticator.internalAdminForWorkspace(workspace.sId)
-            );
+            await restoreWorkspaceAfterSubscription(auth);
+
+            if (
+              metronomePackageAlias &&
+              newSubscription &&
+              isString(checkoutStripeSubscription.customer)
+            ) {
+              void shadowProvisionMetronome({
+                workspace,
+                stripeCustomerId: checkoutStripeSubscription.customer,
+                metronomePackageAlias,
+                sessionId: session.id,
+                subscriptionModelId: newSubscription.id,
+              });
+            }
 
             await launchWorkOSWorkspaceSubscriptionCreatedWorkflow({
               workspaceId,

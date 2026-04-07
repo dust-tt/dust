@@ -86,6 +86,7 @@ export enum GLOBAL_AGENTS_SID {
   DUST_BROWSER_SUMMARY = "dust-browser-summary",
   DUST_PLANNING = "dust-planning",
   SIDEKICK = "sidekick",
+  REINFORCEMENT = "reinforcement",
   SLACK = "slack",
   GOOGLE_DRIVE = "google_drive",
   NOTION = "notion",

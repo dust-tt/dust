@@ -1,0 +1,20 @@
+{
+  "action": "scim.group_user_added",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "group"
+    },
+    {
+      "type": "user"
+    }
+  ],
+  "metadata": {
+    "groupName": "string",
+    "userEmail": "string",
+    "directoryId": "string",
+    "roleGranted": "string"
+  }
+}

@@ -17,6 +17,7 @@ async function backfillApiKeys(
     const globalGroup = await GroupResource.fetchWorkspaceGlobalGroup(auth);
     if (globalGroup.isOk()) {
       await KeyResource.model.update(
+        // @ts-ignore -- Legacy migration: groupId column was removed.
         { groupId: globalGroup.value.id },
         {
           where: {
@@ -30,6 +31,7 @@ async function backfillApiKeys(
     const systemGroup = await GroupResource.fetchWorkspaceSystemGroup(auth);
     if (systemGroup.isOk()) {
       await KeyResource.model.update(
+        // @ts-ignore -- Legacy migration: groupId column was removed.
         { groupId: systemGroup.value.id },
         {
           where: {

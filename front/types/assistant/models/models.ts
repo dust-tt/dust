@@ -62,6 +62,7 @@ import {
   GEMINI_2_5_FLASH_MODEL_ID,
   GEMINI_2_5_PRO_MODEL_CONFIG,
   GEMINI_2_5_PRO_MODEL_ID,
+  GEMINI_3_1_FLASH_IMAGE_MODEL_ID,
   GEMINI_3_1_PRO_MODEL_CONFIG,
   GEMINI_3_1_PRO_MODEL_ID,
   GEMINI_3_FLASH_MODEL_CONFIG,
@@ -108,6 +109,7 @@ import {
   GPT_5_MODEL_ID,
   GPT_5_NANO_MODEL_CONFIG,
   GPT_5_NANO_MODEL_ID,
+  GPT_IMAGE_1_5_MODEL_ID,
   O1_MINI_MODEL_CONFIG,
   O1_MINI_MODEL_ID,
   O1_MODEL_CONFIG,
@@ -236,7 +238,11 @@ export const ModelIdSchema = z.custom<ModelIdType>(
 );
 
 // Image generation model IDs (internal-only, not user-selectable)
-export const IMAGE_MODEL_IDS = [GEMINI_3_PRO_IMAGE_MODEL_ID] as const;
+export const IMAGE_MODEL_IDS = [
+  GEMINI_3_PRO_IMAGE_MODEL_ID,
+  GEMINI_3_1_FLASH_IMAGE_MODEL_ID,
+  GPT_IMAGE_1_5_MODEL_ID,
+] as const;
 
 export type ImageModelIdType = (typeof IMAGE_MODEL_IDS)[number];
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [

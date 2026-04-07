@@ -26,6 +26,8 @@ const ALLOWED_ORIGIN_PATTERNS = [
   new RegExp("^https://.+\\.zendesk\\.com$"),
   // Staging apps - allow all builds from *.preview.dust.tt .
   new RegExp("^https://.*\\.preview\\.dust\\.tt$"),
+  // Firefox Internal UUID is not stable, allow all moz-extension origins.
+  new RegExp("^moz-extension://"),
 ] as const;
 
 type StaticAllowedOriginType = (typeof STATIC_ALLOWED_ORIGINS)[number];

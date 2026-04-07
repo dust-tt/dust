@@ -1,0 +1,16 @@
+{
+  "action": "space.created",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "space"
+    }
+  ],
+  "metadata": {
+    "spaceName": "string",
+    "spaceKind": "string",
+    "isRestricted": "string"
+  }
+}

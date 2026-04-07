@@ -18,6 +18,11 @@ vi.mock("@app/types/oauth/oauth_api", async (importOriginal) => {
   };
 });
 
+const BASE_VARIABLES = {
+  OPENAI_BASE_URL: "",
+  OPENAI_USE_EU_ENDPOINT: "false",
+};
+
 describe("getLlmCredentials", () => {
   beforeEach(() => {
     mockGetCredentials.mockResolvedValue(
@@ -83,6 +88,7 @@ describe("getLlmCredentials", () => {
       OPENAI_API_KEY: "sk-openai-test",
       OPENAI_EMBEDDING_API_KEY: "sk-openai-test",
       ANTHROPIC_API_KEY: "sk-anthropic-test",
+      ...BASE_VARIABLES,
     });
   });
 
@@ -96,7 +102,7 @@ describe("getLlmCredentials", () => {
       skipEmbeddingApiKeyRequirement: true,
     });
 
-    expect(result).toEqual({});
+    expect(result).toEqual(BASE_VARIABLES);
   });
 
   describe("skipEmbeddingApiKeyRequirement", () => {
@@ -157,7 +163,7 @@ describe("getLlmCredentials", () => {
         skipEmbeddingApiKeyRequirement: true,
       });
 
-      expect(result).toEqual({});
+      expect(result).toEqual(BASE_VARIABLES);
     });
   });
 

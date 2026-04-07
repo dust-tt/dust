@@ -126,7 +126,7 @@ import {
   isFileTypeUpsertableForUseCase,
   processAndUpsertToDataSource,
 } from "@app/lib/api/files/upsert";
-import { upsertProjectContextFile } from "@app/lib/api/projects";
+import { addFileToProject } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -453,28 +453,27 @@ async function handler(
             });
           }
         }
-      } else if (
-        file.useCase === "project_context" &&
-        space &&
-        isFileTypeUpsertableForUseCase(file)
-      ) {
-        const upsertRes = await upsertProjectContextFile(auth, file);
+      } else if (file.useCase === "project_context" && space) {
+        const addFileToProjectRes = await addFileToProject(auth, {
+          file,
+          space,
+        });
 
-        if (upsertRes.isErr()) {
+        if (addFileToProjectRes.isErr()) {
           logger.error({
             fileModelId: file.id,
             workspaceId: auth.workspace()?.sId,
             contentType: file.contentType,
             useCase: file.useCase,
             useCaseMetadata: file.useCaseMetadata,
-            message: "Failed to upsert the file.",
-            error: upsertRes.error,
+            message: "Failed to add the file to the project.",
+            error: addFileToProjectRes.error,
           });
           return apiError(req, res, {
             status_code: 500,
             api_error: {
               type: "internal_server_error",
-              message: "Failed to upsert the file.",
+              message: "Failed to add the file to the project.",
             },
           });
         }

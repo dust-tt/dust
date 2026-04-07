@@ -48,7 +48,7 @@ export async function downloadSandboxFile(
   conversationId: string,
   filePath: string
 ): Promise<Response> {
-  const url = `${config.getApiBaseUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/sandbox/files/download`;
+  const url = `${config.getApiBaseUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/files/download`;
   const res = await clientFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -177,7 +177,7 @@ export function useFileMetadata({
       : `/api/w/${owner.sId}/files/${fileId}/metadata`
     : null;
 
-  const { data, error, mutate } = useSWRWithDefaults(
+  const { data, error, mutateRegardlessOfQueryParams } = useSWRWithDefaults(
     swrKey,
     fileMetadataFetcher
   );
@@ -186,7 +186,7 @@ export function useFileMetadata({
     fileMetadata: data,
     isFileMetadataLoading: !error && !data,
     isFileMetadataError: error,
-    mutateFileMetadata: mutate,
+    mutateFileMetadata: mutateRegardlessOfQueryParams,
   };
 }
 

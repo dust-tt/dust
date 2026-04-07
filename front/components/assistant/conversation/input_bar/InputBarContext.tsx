@@ -18,6 +18,8 @@ export const InputBarContext = createContext<{
   getAndClearSelectedAgent: () => RichAgentMention | null;
   setAnimate: React.Dispatch<React.SetStateAction<boolean>>;
   setSelectedAgent: (agentMention: RichAgentMention | null) => void;
+  selectedSingleAgent: RichAgentMention | null;
+  setSelectedSingleAgent: (agentMention: RichAgentMention | null) => void;
   getAndClearPendingInputText: () => string | null;
   setPendingInputText: (text: string | null) => void;
   fileUploaderService: FileUploaderService;
@@ -30,6 +32,8 @@ export const InputBarContext = createContext<{
   getAndClearSelectedAgent: () => null,
   setAnimate: () => {},
   setSelectedAgent: () => {},
+  selectedSingleAgent: null,
+  setSelectedSingleAgent: () => {},
   getAndClearPendingInputText: () => null,
   setPendingInputText: () => {},
   fileUploaderService: {
@@ -47,6 +51,7 @@ export const InputBarContext = createContext<{
 
 interface InputBarContextProviderProps {
   children: ReactNode;
+  conversationId?: string | null;
   fileUploaderService: FileUploaderService;
   captureActions?: {
     onCapture: (type: "text" | "screenshot") => void;
@@ -56,6 +61,7 @@ interface InputBarContextProviderProps {
 
 export function InputBarContextProvider({
   children,
+  conversationId = null,
   fileUploaderService,
   captureActions,
 }: InputBarContextProviderProps) {
@@ -65,6 +71,18 @@ export function InputBarContextProvider({
   const [selectedAgent, setSelectedAgent] = useState<RichAgentMention | null>(
     null
   );
+
+  // Persistent agent selection for single-agent input mode (displayed in the agent picker button).
+  const [selectedSingleAgent, setSelectedSingleAgent] =
+    useState<RichAgentMention | null>(null);
+
+  // Reset the single-agent selection when conversation changes so the stale
+  // agent from a previous conversation doesn't leak into the new one.
+  const [prevConversationId, setPrevConversationId] = useState(conversationId);
+  if (conversationId !== prevConversationId) {
+    setPrevConversationId(conversationId);
+    setSelectedSingleAgent(null);
+  }
 
   // Useful when a component needs to pre-fill the input bar with text (e.g. butler suggestions).
   const [pendingInputText, setPendingInputTextState] = useState<string | null>(
@@ -108,6 +126,8 @@ export function InputBarContextProvider({
       setAnimate,
       getAndClearSelectedAgent,
       setSelectedAgent: setSelectedAgentOuter,
+      selectedSingleAgent,
+      setSelectedSingleAgent,
       getAndClearPendingInputText,
       setPendingInputText,
       captureActions,
@@ -117,6 +137,7 @@ export function InputBarContextProvider({
       animate,
       getAndClearSelectedAgent,
       setSelectedAgentOuter,
+      selectedSingleAgent,
       getAndClearPendingInputText,
       setPendingInputText,
       captureActions,
@@ -165,7 +186,10 @@ export function InputBarProvider({ children }: InputBarProviderProps) {
   }
 
   return (
-    <InputBarContextProvider fileUploaderService={fileUploaderService}>
+    <InputBarContextProvider
+      conversationId={conversationId}
+      fileUploaderService={fileUploaderService}
+    >
       {children}
     </InputBarContextProvider>
   );

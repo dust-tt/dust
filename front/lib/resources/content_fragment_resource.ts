@@ -21,13 +21,12 @@ import {
   FileResource,
   type FileVersion,
 } from "@app/lib/resources/file_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import {
-  generateRandomModelSId,
-  getResourceNameAndIdFromSId,
-} from "@app/lib/resources/string_ids";
+import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
 import type { ContentFragmentMessageTypeModel } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
@@ -37,6 +36,7 @@ import type {
   ContentFragmentVersion,
   ContentNodeContentFragmentType,
   FileContentFragmentType,
+  SupportedContentFragmentType,
 } from "@app/types/content_fragment";
 import type { ContentNodeType } from "@app/types/core/content_node";
 import { CoreAPI } from "@app/types/core/core_api";
@@ -54,6 +54,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
 export const CONTENT_OUTDATED_MSG =
   "Content is outdated. Please refer to the latest version of this content.";
@@ -196,6 +197,215 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
       (b: ContentFragmentModel) =>
         new ContentFragmentResource(ContentFragmentResource.model, b.get())
+    );
+  }
+
+  /**
+   * Latest file-backed content fragments tagged with this space (project knowledge).
+   * Node-backed fragments (Step 2) are excluded via `fileId IS NOT NULL`.
+   */
+  static async listBySpace(
+    auth: Authenticator,
+    space: SpaceResource
+  ): Promise<ContentFragmentResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+    if (space.workspaceId !== workspace.id) {
+      throw new Error("Space does not belong to the authenticated workspace.");
+    }
+
+    const rows = await ContentFragmentResource.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+        spaceId: space.id,
+        version: "latest",
+        fileId: { [Op.not]: null },
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return rows.map(
+      (row) =>
+        new ContentFragmentResource(ContentFragmentResource.model, row.get())
+    );
+  }
+
+  /**
+   * Create a latest-version content fragment row for a project context file.
+   * Callers (e.g. upsert path) are responsible for idempotency / superseding duplicates.
+   */
+  static async makeProjectFragment(
+    auth: Authenticator,
+    space: SpaceResource,
+    file: FileResource,
+    transaction?: Transaction
+  ): Promise<Result<ContentFragmentResource, Error>> {
+    const workspace = auth.getNonNullableWorkspace();
+    if (
+      space.workspaceId !== workspace.id ||
+      file.workspaceId !== workspace.id
+    ) {
+      return new Err(
+        new Error("Space and file must belong to the authenticated workspace.")
+      );
+    }
+
+    if (file.useCase !== "project_context") {
+      return new Err(
+        new Error(
+          "File must be a project context file (useCase project_context)."
+        )
+      );
+    }
+
+    const metadataSpaceId = file.useCaseMetadata?.spaceId;
+    if (!metadataSpaceId || metadataSpaceId !== space.sId) {
+      return new Err(
+        new Error("File project metadata spaceId must match the target space.")
+      );
+    }
+
+    if (!file.isReady) {
+      return new Err(
+        new Error(
+          "File is not ready; cannot create a project content fragment."
+        )
+      );
+    }
+
+    const sourceUrl = file.getPrivateUrl(auth);
+    const user = auth.user();
+
+    const fragment = await ContentFragmentResource.makeNew(
+      {
+        workspaceId: workspace.id,
+        spaceId: space.id,
+        fileId: file.id,
+        title: file.fileName,
+        contentType: file.contentType,
+        sourceUrl,
+        textBytes: file.fileSize,
+        userId: user?.id ?? null,
+        userContextUsername: user?.username ?? null,
+        userContextFullName: user?.fullName() ?? null,
+        userContextEmail: user?.email ?? null,
+        userContextProfilePictureUrl: user?.imageUrl ?? null,
+        nodeId: null,
+        nodeDataSourceViewId: null,
+        nodeType: null,
+        expiredReason: null,
+      },
+      transaction
+    );
+
+    return new Ok(fragment);
+  }
+
+  /**
+   * Latest project content fragment for this file + space: update if present or insert.
+   * Supersedes extra `version: latest` rows for the same file/space (duplicate cleanup).
+   */
+  static async upsertLatestProjectFileFragment(
+    auth: Authenticator,
+    space: SpaceResource,
+    file: FileResource,
+    transaction?: Transaction
+  ): Promise<Result<ContentFragmentResource, Error>> {
+    const workspace = auth.getNonNullableWorkspace();
+    if (
+      space.workspaceId !== workspace.id ||
+      file.workspaceId !== workspace.id
+    ) {
+      return new Err(
+        new Error("Space and file must belong to the authenticated workspace.")
+      );
+    }
+
+    if (file.useCase !== "project_context") {
+      return new Err(
+        new Error(
+          "File must be a project context file (useCase project_context)."
+        )
+      );
+    }
+
+    const metadataSpaceId = file.useCaseMetadata?.spaceId;
+    if (!metadataSpaceId || metadataSpaceId !== space.sId) {
+      return new Err(
+        new Error("File project metadata spaceId must match the target space.")
+      );
+    }
+
+    if (!file.isReady) {
+      return new Err(
+        new Error(
+          "File is not ready; cannot create a project content fragment."
+        )
+      );
+    }
+
+    const sourceUrl = file.getPrivateUrl(auth);
+    const user = auth.user();
+    const blob: {
+      title: string;
+      contentType: SupportedContentFragmentType;
+      sourceUrl: string;
+      textBytes: number;
+      userId: number | null;
+      userContextUsername: string | null;
+      userContextFullName: string | null;
+      userContextEmail: string | null;
+      userContextProfilePictureUrl: string | null;
+    } = {
+      title: file.fileName,
+      contentType: file.contentType,
+      sourceUrl,
+      textBytes: file.fileSize,
+      userId: user?.id ?? null,
+      userContextUsername: user?.username ?? null,
+      userContextFullName: user?.fullName() ?? null,
+      userContextEmail: user?.email ?? null,
+      userContextProfilePictureUrl: user?.imageUrl ?? null,
+    };
+
+    const rows = await ContentFragmentResource.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+        spaceId: space.id,
+        fileId: file.id,
+        version: "latest",
+      },
+      order: [["id", "DESC"]],
+      transaction,
+    });
+
+    if (rows.length > 1) {
+      await ContentFragmentResource.model.update(
+        { version: "superseded" },
+        {
+          where: {
+            id: { [Op.in]: rows.slice(1).map((r) => r.id) },
+          },
+          transaction,
+        }
+      );
+    }
+
+    const existing = rows[0];
+    if (existing) {
+      await existing.update(blob, { transaction });
+      return new Ok(
+        new ContentFragmentResource(
+          ContentFragmentResource.model,
+          existing.get()
+        )
+      );
+    }
+
+    return ContentFragmentResource.makeProjectFragment(
+      auth,
+      space,
+      file,
+      transaction
     );
   }
 
@@ -363,6 +573,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
           sourceProvider: null,
           sourceIcon: null,
           isInProjectContext: null,
+          hidden: true,
         };
       } else if (contentFragmentType === "content_node") {
         return {
@@ -392,6 +603,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       let sourceProvider: string | null = null;
       let sourceIcon: string | null = null;
       let isInProjectContext: boolean = false;
+      let hidden: boolean = true;
 
       // Use pre-fetched file if provided, otherwise fetch it (for backward compatibility)
       const fileResource =
@@ -407,6 +619,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         sourceProvider = fileResource.useCaseMetadata?.sourceProvider ?? null;
         sourceIcon = fileResource.useCaseMetadata?.sourceIcon ?? null;
         isInProjectContext = !!fileResource.useCaseMetadata?.spaceId;
+        hidden = !!fileResource.useCaseMetadata?.hideFromUser;
       }
 
       return {
@@ -421,6 +634,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         sourceProvider,
         sourceIcon,
         isInProjectContext,
+        hidden,
       } satisfies FileContentFragmentType;
     } else if (contentFragmentType === "content_node") {
       assert(

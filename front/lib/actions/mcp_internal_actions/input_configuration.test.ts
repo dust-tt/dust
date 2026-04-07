@@ -8,7 +8,7 @@ import {
   ConfigurableToolInputSchemas,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { WorkspaceType } from "@app/types/user";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -26,6 +26,8 @@ const mockWorkspace: WorkspaceType = {
   whiteListedProviders: null,
   defaultEmbeddingProvider: null,
   metadata: {},
+  metronomeCustomerId: null,
+  sharingPolicy: "all_scopes",
 };
 
 // Helper function to create a basic MCP tool configuration

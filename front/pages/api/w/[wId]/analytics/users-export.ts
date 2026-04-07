@@ -1,49 +1,26 @@
 /** @ignoreswagger */
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import {
+  fetchUserExportRows,
+  USER_EXPORT_HEADERS,
+} from "@app/lib/api/analytics/users_export";
+import {
   buildAgentAnalyticsBaseQuery,
+  daysToDateRange,
   timezoneSchema,
 } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
-import { MembershipModel } from "@app/lib/resources/storage/models/membership";
-import { UserModel } from "@app/lib/resources/storage/models/user";
-import { getUserGroupMemberships } from "@app/lib/workspace_usage";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { estypes } from "@elastic/elasticsearch";
 import { stringify } from "csv-stringify/sync";
-import moment from "moment-timezone";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { Op } from "sequelize";
 import { z } from "zod";
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
   timezone: timezoneSchema,
 });
-
-type TopUserExportBucket = {
-  key: string;
-  doc_count: number;
-  last_message?: estypes.AggregationsMaxAggregate;
-  active_days?: estypes.AggregationsDateHistogramAggregate;
-};
-
-type TopUsersExportAggs = {
-  by_user?: estypes.AggregationsMultiBucketAggregateBase<TopUserExportBucket>;
-};
-
-interface UserExportRow {
-  userId: string;
-  userName: string;
-  userEmail: string;
-  messageCount: number;
-  lastMessageSent: string;
-  activeDaysCount: number;
-  groups: string;
-}
 
 async function handler(
   req: NextApiRequest,
@@ -81,122 +58,35 @@ async function handler(
         days: q.data.days,
       });
 
-      const esResult = await searchAnalytics<never, TopUsersExportAggs>(
-        {
-          bool: {
-            filter: [baseQuery],
-          },
-        },
-        {
-          aggregations: {
-            by_user: {
-              terms: { field: "user_id", size: 10000 },
-              aggs: {
-                last_message: { max: { field: "timestamp" } },
-                active_days: {
-                  date_histogram: {
-                    field: "timestamp",
-                    calendar_interval: "day",
-                    time_zone: q.data.timezone,
-                  },
-                },
-              },
-            },
-          },
-          size: 0,
-        }
+      const { startDate, endDate } = daysToDateRange(
+        q.data.days,
+        q.data.timezone
       );
 
-      if (esResult.isErr()) {
+      const result = await fetchUserExportRows({
+        baseQuery,
+        owner,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        timezone: q.data.timezone,
+      });
+
+      if (result.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `Failed to retrieve user analytics: ${esResult.error.message}`,
+            message: `Failed to retrieve user analytics: ${result.error.message}`,
           },
         });
       }
 
-      const buckets = bucketsToArray<TopUserExportBucket>(
-        esResult.value.aggregations?.by_user?.buckets
+      const csvData = result.value.map((row) =>
+        USER_EXPORT_HEADERS.map((h) => row[h])
       );
-
-      const esMetrics = new Map(
-        buckets.map((b) => {
-          const lastMessageMs = b.last_message?.value;
-          const activeDaysBuckets = b.active_days?.buckets;
-          return [
-            String(b.key),
-            {
-              messageCount: b.doc_count,
-              lastMessageSent:
-                typeof lastMessageMs === "number"
-                  ? moment(lastMessageMs)
-                      .tz(q.data.timezone)
-                      .format("YYYY-MM-DD")
-                  : "",
-              activeDaysCount: Array.isArray(activeDaysBuckets)
-                ? activeDaysBuckets.filter((d) => d.doc_count > 0).length
-                : 0,
-            },
-          ] as const;
-        })
-      );
-
-      const now = new Date();
-      const startDate = new Date(now);
-      startDate.setDate(startDate.getDate() - q.data.days);
-
-      const memberships = await MembershipModel.findAll({
-        where: {
-          workspaceId: owner.id,
-          startAt: { [Op.lte]: now },
-          [Op.or]: [{ endAt: null }, { endAt: { [Op.gte]: startDate } }],
-        },
-        include: [
-          {
-            model: UserModel,
-            required: true,
-            attributes: ["id", "sId", "firstName", "lastName", "email"],
-          },
-        ],
+      const csv = stringify([USER_EXPORT_HEADERS, ...csvData], {
+        header: false,
       });
-
-      const groupsMap = await getUserGroupMemberships(owner.id, startDate, now);
-
-      const rows: UserExportRow[] = memberships.map((membership) => {
-        const user = (membership as MembershipModel & { user: UserModel }).user;
-        const userSid = user.sId;
-        const metrics = esMetrics.get(userSid);
-        const userId = String(user.id);
-
-        return {
-          userId: userSid,
-          userName:
-            [user.firstName, user.lastName].filter(Boolean).join(" ") ||
-            user.email ||
-            "Unknown",
-          userEmail: user.email ?? "",
-          messageCount: metrics?.messageCount ?? 0,
-          lastMessageSent: metrics?.lastMessageSent ?? "",
-          activeDaysCount: metrics?.activeDaysCount ?? 0,
-          groups: groupsMap[userId] ?? "",
-        };
-      });
-
-      rows.sort((a, b) => b.messageCount - a.messageCount);
-
-      const headers: (keyof UserExportRow)[] = [
-        "userId",
-        "userName",
-        "userEmail",
-        "messageCount",
-        "lastMessageSent",
-        "activeDaysCount",
-        "groups",
-      ];
-      const csvData = rows.map((row) => headers.map((h) => row[h]));
-      const csv = stringify([headers, ...csvData], { header: false });
 
       res.setHeader("Content-Type", "text/csv");
       res.setHeader(

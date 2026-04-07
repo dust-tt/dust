@@ -408,6 +408,25 @@
  *         completionDurationMs:
  *           type: integer
  *           nullable: true
+ *         activitySteps:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               type:
+ *                 type: string
+ *                 enum: [thinking, action]
+ *               content:
+ *                 type: string
+ *                 description: Chain of thought text (thinking steps only)
+ *               label:
+ *                 type: string
+ *                 description: Action display label (action steps only)
+ *               id:
+ *                 type: string
+ *               actionId:
+ *                 type: string
+ *                 description: Action string identifier (action steps only)
  *         reactions:
  *           type: array
  *           items:
@@ -1090,6 +1109,7 @@
  *         propertyName: type
  *       oneOf:
  *         - $ref: '#/components/schemas/PrivateGenerationTokensEvent'
+ *         - $ref: '#/components/schemas/PrivateToolCallStartedEvent'
  *         - $ref: '#/components/schemas/PrivateAgentActionSuccessEvent'
  *         - $ref: '#/components/schemas/PrivateAgentMessageSuccessEvent'
  *         - $ref: '#/components/schemas/PrivateAgentErrorEvent'
@@ -1123,6 +1143,27 @@
  *         delimiterClassification:
  *           type: string
  *           description: Present when classification is opening_delimiter or closing_delimiter
+ *         step:
+ *           type: integer
+ *     PrivateToolCallStartedEvent:
+ *       type: object
+ *       required: [type, created, configurationId, messageId, toolName]
+ *       properties:
+ *         type:
+ *           type: string
+ *           enum: [tool_call_started]
+ *         created:
+ *           type: integer
+ *         configurationId:
+ *           type: string
+ *         messageId:
+ *           type: string
+ *         toolCallId:
+ *           type: string
+ *         toolCallIndex:
+ *           type: integer
+ *         toolName:
+ *           type: string
  *         step:
  *           type: integer
  *     PrivateAgentActionSuccessEvent:

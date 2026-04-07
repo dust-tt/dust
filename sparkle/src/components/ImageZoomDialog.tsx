@@ -1,5 +1,6 @@
 import { Button } from "@sparkle/components/Button";
 import { Dialog, DialogClose, DialogContent } from "@sparkle/components/Dialog";
+import { ImageWrapper } from "@sparkle/components/ImageWrapper";
 import { Spinner } from "@sparkle/components/Spinner";
 import {
   ArrowDownOnSquareIcon,
@@ -62,7 +63,7 @@ function ImageZoomDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="fit" className="s-overflow-hidden s-p-3">
+      <DialogContent size="fit" className="s-overflow-hidden s-p-3 !s-w-fit">
         <div className="s-relative s-flex s-items-center s-justify-center s-gap-2">
           {/* Previous button */}
           {navigation?.hasPrevious && (
@@ -91,10 +92,10 @@ function ImageZoomDialog({
               </div>
             ) : (
               <>
-                <img
+                <ImageWrapper
                   src={image.src}
                   alt={image.alt ?? ""}
-                  className="s-max-h-full s-max-w-full s-object-contain"
+                  className="s-max-h-[calc(90vh-1.5rem)] s-max-w-[calc(90vw-1.5rem)]"
                   onLoad={() => setImageLoaded(true)}
                 />
                 <DialogClose asChild>
@@ -139,5 +140,5 @@ function ImageZoomDialog({
 
 ImageZoomDialog.displayName = "ImageZoomDialog";
 
-export { downloadFile, ImageZoomDialog };
 export type { ImageZoomDialogProps };
+export { downloadFile, ImageZoomDialog };

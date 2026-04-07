@@ -9,7 +9,10 @@ import {
   MAX_EMAILS_PER_INVITE,
   type SharingGrantType,
 } from "@app/types/files";
-import type { LightWorkspaceType } from "@app/types/user";
+import type {
+  LightWorkspaceType,
+  WorkspaceSharingPolicy,
+} from "@app/types/user";
 import {
   ArrowUpOnSquareIcon,
   Avatar,
@@ -65,6 +68,16 @@ const SCOPE_OPTIONS: {
     value: "public",
   },
 ];
+
+// Scopes allowed by each workspace sharing policy.
+const ALLOWED_SCOPES_BY_POLICY: Record<
+  WorkspaceSharingPolicy,
+  FileShareScope[]
+> = {
+  emails_only: ["emails_only"],
+  workspace_and_emails: ["emails_only", "workspace_and_emails"],
+  all_scopes: ["emails_only", "workspace_and_emails", "public"],
+};
 
 const inviteFormSchema = z.object({
   emailsRaw: z
@@ -128,8 +141,14 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
     reValidateMode: "onSubmit",
   });
 
-  const currentScope = fileShare?.scope ?? "workspace";
+  const currentScope: FileShareScope =
+    fileShare?.scope ?? "workspace_and_emails";
   const shareURL = fileShare?.shareUrl ?? "";
+
+  const allowedScopes = ALLOWED_SCOPES_BY_POLICY[owner.sharingPolicy];
+  const availableScopeOptions = SCOPE_OPTIONS.filter((o) =>
+    allowedScopes.includes(o.value)
+  );
 
   const showEmailSection =
     currentScope === "emails_only" || currentScope === "workspace_and_emails";
@@ -197,21 +216,21 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
             ) : (
               <div className="flex flex-col gap-6">
                 <fieldset className="flex flex-col gap-2 border-none p-0">
-                  <legend className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                  <legend className="text-sm font-semibold text-foreground dark:text-foreground-night mb-2">
                     Who has access
                   </legend>
                   <div className="flex flex-col gap-1">
-                    {SCOPE_OPTIONS.map((option) => {
+                    {availableScopeOptions.map((option) => {
                       const isSelected = option.value === currentScope;
                       const inputId = `share-scope-${option.value}`;
                       return (
                         <Label
                           key={option.value}
                           htmlFor={inputId}
-                          className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
+                          className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
                             isSelected
-                              ? "bg-muted-background dark:bg-muted-background-night"
-                              : "hover:bg-muted-background/50 dark:hover:bg-muted-background-night/50"
+                              ? "border-highlight-300 bg-muted-background dark:border-highlight-300-night dark:bg-muted-background-night"
+                              : "border-transparent hover:bg-muted-background/50 dark:hover:bg-muted-background-night/50"
                           }`}
                         >
                           <input
@@ -232,7 +251,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                             <span className="text-sm font-medium text-primary dark:text-primary-night">
                               {option.label}
                             </span>
-                            <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                            <span className="copy-xs text-muted-foreground dark:text-muted-foreground-night">
                               {option.description}
                             </span>
                           </div>

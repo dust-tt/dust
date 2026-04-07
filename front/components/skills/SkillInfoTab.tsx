@@ -43,8 +43,7 @@ export function SkillInfoTab({
   const [knowledgeItems, setKnowledgeItems] = useState<KnowledgeItem[]>([]);
   const { hasFeature } = useFeatureFlags();
 
-  const showDiscoverableSkills =
-    skill.sId === "discover_skills" && hasFeature("discover_skills");
+  const showDiscoverableSkills = skill.sId === "discover_skills";
 
   const { skills: discoverableSkills, isSkillsLoading: isDiscoverableLoading } =
     useSkills({

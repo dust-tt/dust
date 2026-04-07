@@ -9,8 +9,9 @@ import {
 import {
   NotificationInteractiveContentFileContentSchema,
   OAuthProviderSchema,
+  UserQuestionItemSchema,
 } from "./output_schemas";
-import { CallToolResultSchema } from "./raw_mcp_types";
+import { CallToolResultSchema, ContentBlockSchema } from "./raw_mcp_types";
 import { TIMEZONE_NAMES } from "./timezone_names";
 
 const ModelProviderIdSchema = FlexibleEnumSchema<
@@ -342,6 +343,7 @@ const USER_MESSAGE_ORIGINS = [
   "project_butler",
   "project_kickoff",
   "reinforced_agent_notification",
+  "reinforcement",
 ] as const;
 
 const UserMessageOriginEnumSchema = z.enum(USER_MESSAGE_ORIGINS);
@@ -355,7 +357,9 @@ const UserMessageOriginSchema = UserMessageOriginEnumSchema.catch("api")
   .or(z.null())
   .or(z.undefined());
 
-const VisibilitySchema = FlexibleEnumSchema<"visible" | "deleted">();
+const VisibilitySchema = FlexibleEnumSchema<
+  "visible" | "deleted" | "pending"
+>();
 
 const RankSchema = z.object({
   rank: z.number(),
@@ -676,13 +680,14 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "analytics_csv_export"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
+  | "ask_user_question_tool"
   | "audit_logs"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "confluence_tool"
   | "conversation_butler"
   | "conversation_branches"
-  | "project_butler"
+  | "project_todo"
   | "projects"
   | "databricks_tool"
   | "deepseek_feature"
@@ -691,14 +696,13 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
   | "discord_bot"
-  | "discover_skills"
-  | "email_agents"
   | "dust_academy"
   | "dust_internal_global_agents"
   | "dust_no_spa"
   | "dust_spa"
   | "fireworks_new_model_feature"
   | "gemini_3_1_pro_feature"
+  | "gong_tool"
   | "google_sheets_tool"
   | "hootl_subscriptions"
   | "http_client_tool"
@@ -714,12 +718,13 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_usage_mcp"
+  | "power_bi_mcp"
   | "reinforced_agents"
+  | "metronome_billing"
   | "poke_mcp"
   | "restrict_agents_publishing"
   | "restrict_agents_publishing_to_admins"
   | "salesforce_synced_queries"
-  | "salesforce_tool_write"
   | "salesforce_tool"
   | "sandbox_tools"
   | "self_created_slack_app_connector_rollout"
@@ -737,6 +742,8 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "anthropic_reasoning_token_count"
   | "collapsible_messages"
   | "email_restricted_sharing"
+  | "use_dust_keys"
+  | "enable_steering"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1328,6 +1335,7 @@ const ToolExecutionBlockedStatusSchema = z.enum([
   "blocked_file_authorization_required",
   "blocked_validation_required",
   "blocked_child_action_input_required",
+  "blocked_user_answer_required",
 ]);
 
 export type ToolExecutionBlockedStatusType = z.infer<
@@ -1348,6 +1356,8 @@ const BlockedActionExecutionSchema = ToolExecutionMetadataSchema.extend({
   messageId: z.string(),
   conversationId: z.string(),
   status: ToolExecutionBlockedStatusSchema,
+  // Present only when status is "blocked_user_answer_required".
+  question: UserQuestionItemSchema.optional(),
 });
 
 export type BlockedActionExecutionType = z.infer<
@@ -1432,14 +1442,42 @@ const AgentErrorEventSchema = z.object({
 });
 export type AgentErrorEvent = z.infer<typeof AgentErrorEventSchema>;
 
+const ToolAskUserQuestionEventSchema = ToolExecutionMetadataSchema.extend({
+  type: z.literal("tool_ask_user_question"),
+  userId: z.string().optional(),
+  configurationId: z.string(),
+  conversationId: z.string(),
+  created: z.number(),
+  messageId: z.string(),
+  question: UserQuestionItemSchema,
+});
+
+export type ToolAskUserQuestionEvent = z.infer<
+  typeof ToolAskUserQuestionEventSchema
+>;
+
 const AgentActionSpecificEventSchema = z.union([
   MCPParamsEventSchema,
   ToolNotificationEventSchema,
   MCPApproveExecutionEventSchema,
   ToolPersonalAuthRequiredEventSchema,
+  ToolAskUserQuestionEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema
+>;
+
+const AgentToolCallStartedEventSchema = z.object({
+  type: z.literal("tool_call_started"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  toolCallId: z.string().optional(),
+  toolCallIndex: z.number().optional(),
+  toolName: z.string(),
+});
+export type AgentToolCallStartedEvent = z.infer<
+  typeof AgentToolCallStartedEventSchema
 >;
 
 const AgentActionSuccessEventSchema = z.object({
@@ -1550,6 +1588,7 @@ const AgentMessageEventTypeSchema = z.object({
   data: z.union([
     AgentErrorEventSchema,
     AgentActionSpecificEventSchema,
+    AgentToolCallStartedEventSchema,
     AgentActionSuccessEventSchema,
     AgentContextPrunedEventSchema,
     AgentGenerationCancelledEventSchema,
@@ -1932,6 +1971,9 @@ export type GetDataSourcesResponseType = z.infer<
 
 export const GetOrPatchAgentConfigurationResponseSchema = z.object({
   agentConfiguration: LightAgentConfigurationSchema,
+  skippedActions: z
+    .array(z.object({ name: z.string(), reason: z.string() }))
+    .optional(),
 });
 
 export type GetOrPatchAgentConfigurationResponseType = z.infer<
@@ -1950,6 +1992,15 @@ export const GetAgentConfigurationYAMLExportResponseSchema = z.string();
 
 export type GetAgentConfigurationYAMLExportResponseType = z.infer<
   typeof GetAgentConfigurationYAMLExportResponseSchema
+>;
+
+export const ImportAgentConfigurationFromYAMLResponseSchema = z.object({
+  agentConfiguration: LightAgentConfigurationSchema,
+  skippedActions: z.array(z.object({ name: z.string(), reason: z.string() })),
+});
+
+export type ImportAgentConfigurationFromYAMLResponseType = z.infer<
+  typeof ImportAgentConfigurationFromYAMLResponseSchema
 >;
 
 export const GetAgentConfigurationsResponseSchema = z.object({
@@ -2044,6 +2095,8 @@ export type RetryMessageResponseType = z.infer<
 
 export const GetConversationResponseSchema = z.object({
   conversation: ConversationSchema,
+  hasMore: z.boolean().optional(),
+  lastValue: z.string().nullable().optional(),
 });
 
 export type GetConversationResponseType = z.infer<
@@ -2661,14 +2714,14 @@ const UpsertTableResponseSchema = z.object({
 });
 export type UpsertTableResponseType = z.infer<typeof UpsertTableResponseSchema>;
 
-const SupportedUsageTablesSchema = FlexibleEnumSchema<
-  | "users"
-  | "assistant_messages"
-  | "builders"
-  | "assistants"
-  | "feedback"
-  | "all"
->();
+const SupportedUsageTablesSchema = z.enum([
+  "users",
+  "assistant_messages",
+  "builders",
+  "assistants",
+  "feedback",
+  "all",
+]);
 
 export type UsageTableType = z.infer<typeof SupportedUsageTablesSchema>;
 
@@ -2779,6 +2832,39 @@ const GetWorkspaceUsageResponseSchema = z
   .or(z.instanceof(Buffer));
 export type GetWorkspaceUsageResponseType = z.infer<
   typeof GetWorkspaceUsageResponseSchema
+>;
+
+const AnalyticsExportTableSchema = z.enum([
+  "usage_metrics",
+  "active_users",
+  "source",
+  "agents",
+  "users",
+  "skill_usage",
+  "tool_usage",
+  "messages",
+]);
+
+const AnalyticsDateSchema = z
+  .string()
+  .refine(
+    (s): s is string => /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(s),
+    { message: "Date must be in YYYY-MM-DD format" }
+  );
+
+export const GetAnalyticsExportRequestSchema = z
+  .object({
+    table: AnalyticsExportTableSchema,
+    startDate: AnalyticsDateSchema,
+    endDate: AnalyticsDateSchema,
+    timezone: Timezone.optional(),
+  })
+  .refine((d) => d.startDate <= d.endDate, {
+    message: "startDate must be before or equal to endDate",
+  });
+
+export type GetAnalyticsExportRequestType = z.infer<
+  typeof GetAnalyticsExportRequestSchema
 >;
 
 export const FileUploadUrlRequestSchema = z.object({
@@ -3065,6 +3151,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "MondayLogo"
   | "NotionLogo"
   | "OpenaiLogo"
+  | "PowerBiLogo"
   | "ProductboardLogo"
   | "PuzzleIcon"
   | "SalesforceLogo"
@@ -3295,15 +3382,10 @@ export type CallMCPToolRequestBodyType = z.infer<
   typeof CallMCPToolRequestBodySchema
 >;
 
-const CallMCPToolContentBlockSchema = z.object({
-  type: z.string(),
-  text: z.string().optional(),
-});
-
 export const CallMCPToolResponseSchema = z.object({
   success: z.literal(true),
   result: z.object({
-    content: z.array(CallMCPToolContentBlockSchema),
+    content: z.array(ContentBlockSchema),
     isError: z.boolean(),
   }),
 });

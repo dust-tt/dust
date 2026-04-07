@@ -17,7 +17,7 @@ import { verify } from "jsonwebtoken";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-import { generateRandomModelSId } from "./string_ids";
+import { generateRandomModelSId } from "./string_ids_server";
 import type { WorkspaceResource } from "./workspace_resource";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.

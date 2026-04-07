@@ -10,13 +10,57 @@ import type {
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import {
+  AGENT_SIDEKICK_CONTEXT_TOOL_NAME,
+  AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
+import {
+  CONFLUENCE_TOOL_NAME,
+  CONFLUENCE_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/confluence/metadata";
+import {
   FILE_GENERATION_TOOL_NAME,
   FILE_GENERATION_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/file_generation/metadata";
 import {
+  GMAIL_TOOL_NAME,
+  GMAIL_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/gmail/metadata";
+import {
+  GOOGLE_DRIVE_TOOL_NAME,
+  GOOGLE_DRIVE_WRITE_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/google_drive/metadata";
+import {
+  GOOGLE_SHEETS_TOOL_NAME,
+  GOOGLE_SHEETS_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/google_sheets/metadata";
+import {
   INTERACTIVE_CONTENT_SERVER_NAME,
   INTERACTIVE_CONTENT_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
+import {
+  MICROSOFT_DRIVE_SERVER_NAME,
+  MICROSOFT_DRIVE_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/microsoft_drive/metadata";
+import {
+  MICROSOFT_EXCEL_SERVER_NAME,
+  MICROSOFT_EXCEL_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/microsoft_excel/metadata";
+import {
+  NOTION_TOOL_NAME,
+  NOTION_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/notion/metadata";
+import {
+  OUTLOOK_TOOL_NAME,
+  OUTLOOK_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/outlook/mail_metadata";
+import {
+  SANDBOX_TOOL_NAME,
+  SANDBOX_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/sandbox/metadata";
+import {
+  SLIDESHOW_SERVER_NAME,
+  SLIDESHOW_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/slideshow/metadata";
 import { extractEncryptedContentFromMetadata } from "@app/lib/api/llm/utils";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import type {
@@ -175,9 +219,37 @@ export function toMessage(
 // Tool names sent to the model are prefixed with the server name
 // (e.g. "file_generation__generate_file").
 const TOOLS_WITH_POTENTIAL_LARGE_INPUTS = new Set<string>([
+  // File generation and interactive content: generates full file content.
   `${FILE_GENERATION_TOOL_NAME}${TOOL_NAME_SEPARATOR}${FILE_GENERATION_TOOLS_METADATA["generate_file"].name}`,
   `${INTERACTIVE_CONTENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${INTERACTIVE_CONTENT_TOOLS_METADATA["create_interactive_content_file"].name}`,
   `${INTERACTIVE_CONTENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${INTERACTIVE_CONTENT_TOOLS_METADATA["edit_interactive_content_file"].name}`,
+  // Sandbox: bash commands can include large inline scripts.
+  `${SANDBOX_TOOL_NAME}${TOOL_NAME_SEPARATOR}${SANDBOX_TOOLS_METADATA["bash"].name}`,
+  // Sidekick: rewrites the full agent prompt which can be very large.
+  `${AGENT_SIDEKICK_CONTEXT_TOOL_NAME}${TOOL_NAME_SEPARATOR}${AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA["suggest_prompt_edits"].name}`,
+  // Confluence: page body can contain large storage/ADF content.
+  `${CONFLUENCE_TOOL_NAME}${TOOL_NAME_SEPARATOR}${CONFLUENCE_TOOLS_METADATA["create_page"].name}`,
+  `${CONFLUENCE_TOOL_NAME}${TOOL_NAME_SEPARATOR}${CONFLUENCE_TOOLS_METADATA["update_page"].name}`,
+  // Gmail / Outlook: email drafts can contain large body content.
+  `${GMAIL_TOOL_NAME}${TOOL_NAME_SEPARATOR}${GMAIL_TOOLS_METADATA["create_draft"].name}`,
+  `${OUTLOOK_TOOL_NAME}${TOOL_NAME_SEPARATOR}${OUTLOOK_TOOLS_METADATA["create_draft"].name}`,
+  // Notion: page content can contain large arrays of recursive block structures.
+  `${NOTION_TOOL_NAME}${TOOL_NAME_SEPARATOR}${NOTION_TOOLS_METADATA["add_page_content"].name}`,
+  // Google Drive: document/spreadsheet/presentation updates carry large request arrays.
+  `${GOOGLE_DRIVE_TOOL_NAME}${TOOL_NAME_SEPARATOR}${GOOGLE_DRIVE_WRITE_TOOLS_METADATA["update_document"].name}`,
+  `${GOOGLE_DRIVE_TOOL_NAME}${TOOL_NAME_SEPARATOR}${GOOGLE_DRIVE_WRITE_TOOLS_METADATA["append_to_spreadsheet"].name}`,
+  `${GOOGLE_DRIVE_TOOL_NAME}${TOOL_NAME_SEPARATOR}${GOOGLE_DRIVE_WRITE_TOOLS_METADATA["update_spreadsheet"].name}`,
+  `${GOOGLE_DRIVE_TOOL_NAME}${TOOL_NAME_SEPARATOR}${GOOGLE_DRIVE_WRITE_TOOLS_METADATA["update_presentation"].name}`,
+  // Google Sheets: 2D arrays of cell data.
+  `${GOOGLE_SHEETS_TOOL_NAME}${TOOL_NAME_SEPARATOR}${GOOGLE_SHEETS_TOOLS_METADATA["update_cells"].name}`,
+  `${GOOGLE_SHEETS_TOOL_NAME}${TOOL_NAME_SEPARATOR}${GOOGLE_SHEETS_TOOLS_METADATA["append_data"].name}`,
+  // Microsoft Drive: full Word document XML content.
+  `${MICROSOFT_DRIVE_SERVER_NAME}${TOOL_NAME_SEPARATOR}${MICROSOFT_DRIVE_TOOLS_METADATA["update_word_document"].name}`,
+  // Microsoft Excel: 2D array of cell data.
+  `${MICROSOFT_EXCEL_SERVER_NAME}${TOOL_NAME_SEPARATOR}${MICROSOFT_EXCEL_TOOLS_METADATA["write_worksheet"].name}`,
+  // Slideshow: up to 1MB of TSX/JSX content.
+  `${SLIDESHOW_SERVER_NAME}${TOOL_NAME_SEPARATOR}${SLIDESHOW_TOOLS_METADATA["create_slideshow_file"].name}`,
+  `${SLIDESHOW_SERVER_NAME}${TOOL_NAME_SEPARATOR}${SLIDESHOW_TOOLS_METADATA["edit_slideshow_file"].name}`,
 ]);
 
 export function toTool(tool: AgentActionSpecification): Tool {

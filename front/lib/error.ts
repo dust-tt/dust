@@ -11,6 +11,11 @@ export type DustErrorCode =
   | "data_source_view_not_found"
   | "space_not_found"
   | "invalid_request_error"
+  // Conversation branch errors
+  | "branch_not_found"
+  | "branch_not_open"
+  | "branch_write_not_authorized"
+  | "branch_has_no_user_message"
   // Data source
   | "data_source_error"
   | "data_source_quota_error"
@@ -54,7 +59,12 @@ export type DustErrorCode =
   | "no_unread_messages_found"
   | "no_whitelisted_model_found"
   | "generation_failed"
-  | "invalid_conversation";
+  | "invalid_conversation"
+  // Subscription / billing errors
+  | "subscription_already_exists"
+  | "workspace_not_found"
+  | "plan_not_found"
+  | "metronome_error";
 
 export class DustError<T extends DustErrorCode = DustErrorCode> extends Error {
   constructor(

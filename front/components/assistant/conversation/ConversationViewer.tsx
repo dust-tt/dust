@@ -1,7 +1,11 @@
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
+import { ConversationBranchApprovalModal } from "@app/components/assistant/conversation/ConversationBranchApprovalModal";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import {
+  parseDataAsMessageIdAndActionId,
+  useConversationSidePanelContext,
+} from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
   createPlaceholderAgentMessage,
@@ -14,6 +18,7 @@ import type {
 } from "@app/components/assistant/conversation/types";
 import {
   areSameRankAndBranch,
+  convertLightMessageTypeToVirtuosoMessages,
   getPredicateForRankAndBranch,
   isMessageTemporayState,
   isUserMessage,
@@ -41,12 +46,8 @@ import type { DustError } from "@app/lib/error";
 import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import logger from "@app/logger/logger";
-import type {
-  ConversationWithoutContentType,
-  LightMessageType,
-} from "@app/types/assistant/conversation";
 import {
-  isUserMessageType,
+  type ConversationWithoutContentType,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
@@ -178,6 +179,10 @@ export const ConversationViewer = ({
     owner,
     options: { disabled: true },
   });
+
+  const [branchIdToApprove, setBranchIdToApprove] = useState<string | null>(
+    null
+  );
 
   const {
     conversation,
@@ -336,7 +341,10 @@ export const ConversationViewer = ({
   const onRenderedDataChange = useCallback(
     (renderedData: VirtuosoMessage[]) => {
       if (currentPanel === "actions" && panelData) {
-        const messageId = panelData;
+        const { messageId } = parseDataAsMessageIdAndActionId(panelData);
+        if (!messageId) {
+          return;
+        }
         const message = renderedData
           .filter(isMessageTemporayState)
           .find((m) => m.sId === messageId);
@@ -534,6 +542,17 @@ export const ConversationViewer = ({
               }
             }
             break;
+
+          case "user_message_promoted":
+            if (ref.current) {
+              ref.current.data.map((m) =>
+                isUserMessage(m) && m.sId === event.messageId
+                  ? { ...m, visibility: "visible" }
+                  : m
+              );
+            }
+            break;
+
           case "agent_message_new":
             if (ref.current) {
               const agentMessage = makeInitialMessageStreamState(
@@ -558,6 +577,10 @@ export const ConversationViewer = ({
                 } else {
                   ref.current.data.append([agentMessage]);
                 }
+              }
+
+              if (agentMessage.branchId) {
+                setBranchIdToApprove(agentMessage.branchId);
               }
 
               void mutateConversationParticipants(async (participants) =>
@@ -695,8 +718,8 @@ export const ConversationViewer = ({
 
         let rank =
           lastMessageRank +
-          // Content fragments are prepended as "message" in the conversation, before the user message.
-          // We need to account for their ranks as well.
+          // Content fragments are prepended as "message" in the conversation, before the user
+          // message.  We need to account for their ranks as well.
           contentFragments.contentNodes.length +
           contentFragments.uploaded.length +
           // +1 for the user message
@@ -712,19 +735,28 @@ export const ConversationViewer = ({
             contentFragments,
           });
 
+        // Skip placeholder agent messages if there's already a running agent in the conversation
+        // (steering: the message will be pending, no new agent message is created until the running
+        // one gracefully stops).
+        const hasRunningAgent = ref.current.data
+          .get()
+          .some((m) => m.type === "agent_message" && m.status === "created");
+
         const placeholderAgentMessages: VirtuosoMessage[] = [];
-        for (const mention of mentions) {
-          if (isRichAgentMention(mention)) {
-            // +1 per agent message mentioned
-            rank += 1;
-            placeholderAgentMessages.push(
-              createPlaceholderAgentMessage({
-                userMessage: placeholderUserMsg,
-                mention,
-                rank,
-                branchId: null, // We can't know the branch id yet, it will be set when the message is created.
-              })
-            );
+        if (!hasRunningAgent) {
+          for (const mention of mentions) {
+            if (isRichAgentMention(mention)) {
+              // +1 per agent message mentioned
+              rank += 1;
+              placeholderAgentMessages.push(
+                createPlaceholderAgentMessage({
+                  userMessage: placeholderUserMsg,
+                  mention,
+                  rank,
+                  branchId: null, // We can't know the branch id yet, it will be set when the message is created.
+                })
+              );
+            }
           }
         }
 
@@ -893,7 +925,7 @@ export const ConversationViewer = ({
   const firstMessage = messages.at(-1)?.messages.at(0);
   const isOnboardingConversation =
     !!firstMessage &&
-    isUserMessageType(firstMessage) &&
+    isUserMessageTypeWithContentFragments(firstMessage) &&
     firstMessage.context.origin === "onboarding_conversation";
 
   const context: VirtuosoMessageListContext = useMemo(() => {
@@ -915,6 +947,8 @@ export const ConversationViewer = ({
       isProjectRestricted: spaceInfo?.isRestricted,
       projectSpaceId: conversation?.spaceId ?? undefined,
       projectSpaceName: spaceInfo?.name,
+      branchIdToApprove: branchIdToApprove ?? undefined,
+      setBranchIdToApprove,
     };
   }, [
     user,
@@ -933,6 +967,7 @@ export const ConversationViewer = ({
     isProjectMember,
     spaceInfo?.isRestricted,
     spaceInfo?.name,
+    branchIdToApprove,
   ]);
 
   return (
@@ -947,6 +982,7 @@ export const ConversationViewer = ({
       >
         <VirtuosoMessageList<VirtuosoMessage, VirtuosoMessageListContext>
           onRenderedDataChange={onRenderedDataChange}
+          StickyHeader={ConversationBranchApprovalModal}
           data={{
             data: initialListData,
             scrollModifier: {
@@ -966,7 +1002,7 @@ export const ConversationViewer = ({
           className={cn(
             "dd-privacy-mask",
             "@container/conversation",
-            "h-full w-full px-4",
+            "h-full w-full px-5",
             !agentBuilderContext && "md:px-8"
           )}
           shortSizeAlign="top"
@@ -983,12 +1019,3 @@ export const ConversationViewer = ({
     </>
   );
 };
-
-const convertLightMessageTypeToVirtuosoMessages = (
-  messages: LightMessageType[]
-) =>
-  messages.map((message) =>
-    isUserMessageTypeWithContentFragments(message)
-      ? message
-      : makeInitialMessageStreamState(message)
-  );

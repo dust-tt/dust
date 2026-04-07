@@ -444,10 +444,10 @@ async function extractRetrievalDocuments(
   // Fetch MCP server configurations for analytics tracking.
   // Using standalone resource allows independent querying for reporting purposes.
   const [outputItemsByActionId, serverConfigs] = await Promise.all([
-    AgentMCPActionResource.fetchOutputItemsByActionIds(
-      auth,
-      searchActions.map((a) => a.id)
-    ),
+    AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+      actionIds: searchActions.map((a) => a.id),
+      ignoreContent: false,
+    }),
     AgentMCPServerConfigurationResource.fetchByModelIds(auth, configModelIds),
   ]);
 

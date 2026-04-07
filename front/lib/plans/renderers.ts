@@ -72,6 +72,7 @@ export function renderSubscriptionFromModels({
     sId: activeSubscription?.sId || null,
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     stripeSubscriptionId: activeSubscription?.stripeSubscriptionId || null,
+    metronomeContractId: activeSubscription?.metronomeContractId ?? null,
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     startDate: activeSubscription?.startDate?.getTime() || null,
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
