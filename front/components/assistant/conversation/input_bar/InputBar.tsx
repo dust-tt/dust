@@ -34,7 +34,7 @@ import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 // biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
@@ -83,6 +83,7 @@ export const InputBar = React.memo(function InputBar({
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
   const { hasFeature } = useFeatureFlags();
   const singleAgentInput = hasFeature("enable_steering");
+  const [isShaking, setIsShaking] = useState(false);
 
   const [attachedNodes, setAttachedNodes] = useState<
     DataSourceViewContentNode[]
@@ -133,7 +134,7 @@ export const InputBar = React.memo(function InputBar({
   // In single-agent mode, block submission when the selected agent differs from
   // the agent that is currently generating a response.
   const blockedByGeneratingAgentName = useMemo(() => {
-    if (!isSingleAgentInputEnabled() || !selectedSingleAgent) {
+    if (!singleAgentInput || !selectedSingleAgent) {
       return null;
     }
     const generatingMessages =
@@ -148,6 +149,7 @@ export const InputBar = React.memo(function InputBar({
       agentConfigurations.find((a) => a.sId === blockingAgentId)?.name ?? null
     );
   }, [
+    singleAgentInput,
     selectedSingleAgent,
     getConversationGeneratingMessages,
     conversation?.sId,
@@ -372,6 +374,11 @@ export const InputBar = React.memo(function InputBar({
     setAttachedNodes([]);
   };
 
+  const handleShake = useCallback(() => {
+    setIsShaking(true);
+    setTimeout(() => setIsShaking(false), 520);
+  }, []);
+
   useEffect(() => {
     setIsLocalSubmitting(isSubmitting);
   }, [isSubmitting]);
@@ -380,6 +387,7 @@ export const InputBar = React.memo(function InputBar({
     <div className="flex w-full flex-col">
       <div
         className={classNames(
+          isShaking && "animate-shake",
           "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch sm:flex-row",
           "rounded-2xl transition-all",
           "bg-muted-background dark:bg-muted-background-night",
@@ -444,6 +452,7 @@ export const InputBar = React.memo(function InputBar({
             getDraft={getDraft}
             user={user}
             blockedByGeneratingAgentName={blockedByGeneratingAgentName}
+            onShake={handleShake}
           />
         </div>
       </div>

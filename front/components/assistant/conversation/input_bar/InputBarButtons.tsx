@@ -17,7 +17,7 @@ import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { getSupportedFileExtensions } from "@app/types/files";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { Avatar, Button, RobotIcon } from "@dust-tt/sparkle";
+import { Avatar, Button, cn, RobotIcon } from "@dust-tt/sparkle";
 import React from "react";
 
 interface InputBarButtonsProps {
@@ -27,6 +27,7 @@ interface InputBarButtonsProps {
   buttonSize: "xs" | "sm";
   clientType: string;
   conversation?: ConversationWithoutContentType;
+  disableAgentSelector: boolean;
   disableInput: boolean;
   editorService: ReturnType<typeof useCustomEditor>["editorService"];
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
@@ -52,6 +53,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   buttonSize,
   clientType,
   conversation,
+  disableAgentSelector,
   disableInput,
   editorService,
   fileInputRef,
@@ -98,6 +100,9 @@ export const InputBarButtons = React.memo(function InputBarButtons({
                 <Avatar size="xxs" visual={selectedAgent.pictureUrl} />
               )}
               label={selectedAgent.label}
+              className={cn(
+                disableAgentSelector && "bg-gray-150 dark:bg-gray-800"
+              )}
             />
           ) : (
             <Button
@@ -105,6 +110,9 @@ export const InputBarButtons = React.memo(function InputBarButtons({
               size={buttonSize}
               icon={RobotIcon}
               label="Agent"
+              className={cn(
+                disableAgentSelector && "bg-gray-150 dark:bg-gray-800"
+              )}
             />
           )
         ) : undefined

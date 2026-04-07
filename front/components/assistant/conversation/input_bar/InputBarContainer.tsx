@@ -132,6 +132,7 @@ export interface InputBarContainerProps {
   allAgents: LightAgentConfigurationType[];
   attachedNodes: DataSourceViewContentNode[];
   blockedByGeneratingAgentName: string | null;
+  onShake: () => void;
   conversation?: ConversationWithoutContentType;
   space?: SpaceType;
   disableAutoFocus: boolean;
@@ -192,6 +193,7 @@ const InputBarContainer = ({
   saveDraft,
   user,
   blockedByGeneratingAgentName,
+  onShake,
 }: InputBarContainerProps) => {
   const isBlockedByAgentSwitch = blockedByGeneratingAgentName !== null;
   const { subscription } = useAuth();
@@ -263,7 +265,6 @@ const InputBarContainer = ({
   const shouldSuggestAgentRef = useRef(true);
   const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
-  const [isShaking, setIsShaking] = useState(false);
   const plusButtonRef = useRef<HTMLDivElement>(null);
   const clientType = useClientType();
 
@@ -430,13 +431,12 @@ const InputBarContainer = ({
   const onEnterKeyDownWithShake: typeof onEnterKeyDown = useCallback(
     (isEmpty, markdownAndMentions, resetEditorText, setLoading) => {
       if (isBlockedByAgentSwitch) {
-        setIsShaking(true);
-        setTimeout(() => setIsShaking(false), 820);
+        onShake();
         return;
       }
       onEnterKeyDown(isEmpty, markdownAndMentions, resetEditorText, setLoading);
     },
-    [isBlockedByAgentSwitch, onEnterKeyDown]
+    [isBlockedByAgentSwitch, onEnterKeyDown, onShake]
   );
 
   const { editor, editorService } = useCustomEditor({
@@ -1062,6 +1062,7 @@ const InputBarContainer = ({
                     buttonSize={buttonSize}
                     clientType={clientType}
                     conversation={conversation}
+                    disableAgentSelector={isBlockedByAgentSwitch}
                     disableInput={disableInput}
                     editorService={editorService}
                     fileInputRef={fileInputRef}
@@ -1214,7 +1215,6 @@ const InputBarContainer = ({
                 : undefined
             }
             className={cn(
-              isShaking && "animate-shake",
               isBlockedByAgentSwitch &&
                 "hover:s-bg-transparent dark:hover:s-bg-transparent hover:s-text-muted-foreground dark:hover:s-text-muted-foreground-night"
             )}
