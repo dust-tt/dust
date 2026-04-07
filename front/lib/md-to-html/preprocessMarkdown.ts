@@ -43,13 +43,22 @@ function collectMatchedTagNames(str: string): Set<string> {
  * TODO: Remove when tiptap merges https://github.com/ueberdosis/tiptap/pull/7260
  */
 export function preprocessMarkdownForEditor(markdown: string): string {
-  // Strip fenced code blocks before collecting tag names so that HTML tags
-  // inside code (e.g. JSX/React snippets) are not treated as instruction blocks.
-  const withoutCodeBlocks = markdown.replace(/```[\s\S]*?```/g, "");
-  const matchedPairs = collectMatchedTagNames(withoutCodeBlocks);
+  // Protect fenced code blocks from all preprocessing by replacing them with
+  // placeholders. This prevents HTML tags inside code (e.g. JSX/React snippets)
+  // from being treated as instruction blocks or having their whitespace altered.
+  const codeBlocks: string[] = [];
+  const withPlaceholders = markdown.replace(/```[\s\S]*?```/g, (match) => {
+    codeBlocks.push(match);
+    return `\n\n__CODE_BLOCK_${codeBlocks.length - 1}__\n\n`;
+  });
+
+  const matchedPairs = collectMatchedTagNames(withPlaceholders);
 
   // Step 1: Escape `<` only when not already followed by ZWS (avoids double-escaping round-trips).
-  let processed = markdown.replace(new RegExp(`<(?!${ZWS})`, "g"), `<${ZWS}`);
+  let processed = withPlaceholders.replace(
+    new RegExp(`<(?!${ZWS})`, "g"),
+    `<${ZWS}`
+  );
 
   // Step 2: Normalize indented block-level tags
 
@@ -131,6 +140,11 @@ export function preprocessMarkdownForEditor(markdown: string): string {
       return match;
     }
   );
+
+  // Restore fenced code blocks from placeholders.
+  for (let i = 0; i < codeBlocks.length; i++) {
+    processed = processed.replace(`__CODE_BLOCK_${i}__`, codeBlocks[i]);
+  }
 
   return processed;
 }

@@ -56,6 +56,30 @@ describe("convertMarkdownToHtml", () => {
     expect(html).not.toContain('type="null"');
   });
 
+  it("does not alter whitespace of HTML tags inside fenced code blocks", () => {
+    const md = `Some text
+
+\`\`\`
+<div>
+  <p>Hello</p>
+  <h1>Title</h1>
+</div>
+\`\`\`
+
+More text`;
+    const html = convertMarkdownToHtml(md);
+    // Code block should be rendered as <pre><code>.
+    expect(html).toContain("<pre>");
+    expect(html).toContain("<code>");
+    // Tags inside code should NOT have extra \n\n inserted by preprocessing.
+    expect(html).not.toContain("\n\n<p>");
+    expect(html).not.toContain("\n\n</p>");
+    expect(html).not.toContain("\n\n<h1>");
+    // Surrounding text should still be normal paragraphs.
+    expect(html).toContain("Some text");
+    expect(html).toContain("More text");
+  });
+
   it("converts fenced code blocks", () => {
     const html = convertMarkdownToHtml("```\ncode block\n```");
     expect(html).toContain("<pre>");
