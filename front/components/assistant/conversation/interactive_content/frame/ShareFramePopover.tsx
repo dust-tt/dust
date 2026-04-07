@@ -106,8 +106,7 @@ export function ShareFramePopover({
     "workspace_and_emails"
   );
 
-  const isPublicSharingForbidden =
-    owner.metadata?.allowContentCreationFileSharing === false;
+  const isPublicSharingForbidden = owner.sharingPolicy !== "all_scopes";
 
   const { doShare, fileShare, isFileShareLoading, isFileShareError } =
     useShareInteractiveContentFile({
