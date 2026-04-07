@@ -13,6 +13,7 @@ import type { MessageFootnotes } from "@connectors/lib/bot/citations";
 import { makeDustAppUrl } from "@connectors/lib/bot/conversation_utils";
 import { truncate } from "@connectors/types";
 import type { LightAgentConfigurationType } from "@dust-tt/client";
+import slackifyMarkdown from "slackify-markdown";
 
 /*
  * This length threshold is set to prevent the "msg_too_long" error
@@ -29,18 +30,31 @@ function makeDividerBlock() {
   };
 }
 
-export function makeMarkdownBlock(text?: string) {
-  return text
-    ? [
-        {
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: truncate(text, MAX_SLACK_MESSAGE_LENGTH),
-          },
-        },
-      ]
-    : [];
+export function makeMarkdownBlock(text?: string, isUpload?: boolean) {
+  if (!text) {
+    return [];
+  }
+
+  // New markdown block has better support for markdown formatting,
+  // but is not supported when uploading files.
+  if (!isUpload) {
+    return [
+      {
+        type: "markdown",
+        text: truncate(text, MAX_SLACK_MESSAGE_LENGTH),
+      },
+    ];
+  }
+
+  return [
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: truncate(slackifyMarkdown(text), MAX_SLACK_MESSAGE_LENGTH),
+      },
+    },
+  ];
 }
 
 function makeFootnotesBlock(footnotes: MessageFootnotes) {
@@ -270,7 +284,8 @@ export function makeFooterBlock({
 export function makeMessageUpdateBlocksAndText(
   conversationUrl: string | null,
   workspaceId: string,
-  messageUpdate: SlackMessageUpdate
+  messageUpdate: SlackMessageUpdate,
+  { isUpload = false } = {}
 ) {
   const { isThinking, thinkingAction, assistantName, text, footnotes } =
     messageUpdate;
@@ -285,7 +300,7 @@ export function makeMessageUpdateBlocksAndText(
         isThinking: isThinking ?? false,
         thinkingText: thinkingTextWithAction,
       }),
-      ...makeMarkdownBlock(text),
+      ...makeMarkdownBlock(text, isUpload),
       ...makeContextSectionBlocks({
         state: isThinking ? "thinking" : "answered",
         assistantName,
@@ -328,6 +343,88 @@ export function makeErrorBlock(
     mrkdwn: true,
     unfurl_links: false,
     text: truncate(errorMessage, MAX_SLACK_MESSAGE_LENGTH),
+  };
+}
+
+export type TaskCardStatus = "pending" | "in_progress" | "complete" | "error";
+
+export interface TaskCardSource {
+  url: string;
+  text: string;
+}
+
+export interface TaskCardState {
+  taskId: string;
+  title: string;
+  status: TaskCardStatus;
+  details?: string;
+  sources?: TaskCardSource[];
+}
+
+function makeRichTextBlock(text: string) {
+  return {
+    type: "rich_text",
+    elements: [
+      {
+        type: "rich_text_section",
+        elements: [{ type: "text", text }],
+      },
+    ],
+  };
+}
+
+function makeTaskCardBlock(t: TaskCardState) {
+  const card: Record<string, unknown> = {
+    type: "task_card",
+    task_id: t.taskId,
+    title: t.title,
+    status: t.status,
+  };
+  if (t.details) {
+    card.details = makeRichTextBlock(t.details);
+  }
+  if (t.sources && t.sources.length > 0) {
+    card.sources = t.sources.map((s) => ({
+      type: "url",
+      url: s.url,
+      text: s.text,
+    }));
+  }
+  return card;
+}
+
+export function makePlanMessage({
+  planTitle,
+  tasks,
+  conversationUrl,
+  assistantName,
+  workspaceId,
+}: {
+  planTitle: string;
+  tasks: TaskCardState[];
+  conversationUrl: string | null;
+  assistantName: string;
+  workspaceId: string;
+}) {
+  return {
+    blocks: [
+      {
+        type: "plan",
+        block_id: "agent-plan",
+        title: planTitle,
+        tasks: tasks.map(makeTaskCardBlock),
+      },
+      makeDividerBlock(),
+      makeFooterBlock({
+        state: "thinking",
+        assistantName,
+        conversationUrl,
+        workspaceId,
+      }),
+    ],
+    text: planTitle,
+    mrkdwn: true,
+    unfurl_links: false,
   };
 }
 

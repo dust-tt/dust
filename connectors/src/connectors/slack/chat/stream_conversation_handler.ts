@@ -1,13 +1,20 @@
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
-import type { SlackMessageUpdate } from "@connectors/connectors/slack/chat/blocks";
+import {
+  getActionDoneLabel,
+  getActionRunningLabel,
+  getRunAgentNotificationOutput,
+} from "@connectors/connectors/slack/chat/action_utils";
 import {
   MAX_SLACK_MESSAGE_LENGTH,
   makeAssistantSelectionBlock,
+  makeMarkdownBlock,
   makeMessageUpdateBlocksAndText,
   makeToolAuthenticationBlock,
   makeToolValidationBlock,
+  type SlackMessageUpdate,
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/blocks";
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+import { PlanMessageHandler } from "@connectors/connectors/slack/chat/plan_message_handler";
 import type { SlackStreamHandler } from "@connectors/connectors/slack/chat/slack_stream_handler";
 import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
@@ -30,14 +37,7 @@ import type {
   Result,
   UserMessageType,
 } from "@dust-tt/client";
-import {
-  assertNever,
-  DustAPI,
-  Err,
-  Ok,
-  removeNulls,
-  TOOL_RUNNING_LABEL,
-} from "@dust-tt/client";
+import { assertNever, DustAPI, Err, Ok, removeNulls } from "@dust-tt/client";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import * as t from "io-ts";
 import throttle from "lodash/throttle";
@@ -47,12 +47,6 @@ const SLACK_MESSAGE_UPDATE_THROTTLE_MS = 1_000;
 const SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS = 5_000;
 const SLACK_MESSAGE_LONG_THRESHOLD_CHARS = 400;
 
-function getActionRunningLabel(action: AgentActionPublicType): string {
-  return action.displayLabels?.running ?? TOOL_RUNNING_LABEL;
-}
-
-// Dynamic throttling: longer messages get less frequent updates to reduce UX disruption when the content is expanded.
-// Posting an update on an expanded message will collapse it, frequent updates prevent users from reading the content.
 const getThrottleDelay = (textLength: number): number => {
   if (textLength >= SLACK_MESSAGE_LONG_THRESHOLD_CHARS) {
     return SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS;
@@ -207,7 +201,26 @@ async function streamAgentAnswerToSlack(
 
   const { streamHandler } = conversationData;
 
-  // Old path: lodash throttle for chat.update.
+  const conversationUrl = makeConversationUrl(
+    connector.workspaceId,
+    conversation.sId
+  );
+
+  // -- Plan message + child stream tracking --
+  // Only used when native streaming (streamHandler) is enabled.
+
+  const planHandler = streamHandler
+    ? new PlanMessageHandler({
+        dustAPI,
+        slackClient,
+        slackChannelId,
+        slackMessageTs,
+        conversationUrl,
+        assistantName,
+        workspaceId: connector.workspaceId,
+      })
+    : null;
+
   let currentThrottleDelay = SLACK_MESSAGE_UPDATE_THROTTLE_MS;
   let throttledPostSlackMessageUpdate = throttle(
     postSlackMessageUpdate,
@@ -218,8 +231,28 @@ async function streamAgentAnswerToSlack(
     switch (event.type) {
       case "tool_params":
       case "tool_notification": {
-        if (streamHandler) {
-          await streamHandler.startTask(getActionRunningLabel(event.action));
+        const isRunAgent = event.action.internalMCPServerName === "run_agent";
+
+        // For run_agent, skip tool_params and early notifications:
+        // the child stream handles progress.
+        if (isRunAgent && event.type === "tool_notification") {
+          const output = getRunAgentNotificationOutput(event);
+          if (output) {
+            await planHandler?.startChildStream(output);
+          }
+          break;
+        }
+
+        // For all other tools, rotate a single default task card.
+        const thinkingAction = getActionRunningLabel(event.action);
+
+        if (planHandler) {
+          planHandler.setDefaultTask(
+            thinkingAction,
+            "in_progress",
+            event.action
+          );
+          await planHandler.upsertPlanMessage(thinkingAction);
         } else {
           await throttledPostSlackMessageUpdate({
             messageUpdate: {
@@ -227,7 +260,7 @@ async function streamAgentAnswerToSlack(
               assistantName,
               agentConfigurations,
               text: answer,
-              thinkingAction: getActionRunningLabel(event.action),
+              thinkingAction,
             },
             ...conversationData,
             canBeIgnored: true,
@@ -237,7 +270,6 @@ async function streamAgentAnswerToSlack(
             },
           });
         }
-
         break;
       }
 
@@ -316,8 +348,9 @@ async function streamAgentAnswerToSlack(
           };
         }
 
-        if (streamHandler) {
-          await streamHandler.startTask("Waiting for authentication…");
+        if (planHandler) {
+          planHandler.setDefaultTask("Waiting for authentication…", "pending");
+          await planHandler.upsertPlanMessage("Waiting for authentication…");
         } else {
           await throttledPostSlackMessageUpdate({
             messageUpdate: {
@@ -357,6 +390,8 @@ async function streamAgentAnswerToSlack(
         );
       }
       case "agent_error": {
+        planHandler?.abortAllChildStreams();
+        await planHandler?.deletePlanMessage();
         return new Err(
           new Error(
             `Agent message error: code: ${event.error.code} message: ${event.error.message}`
@@ -375,6 +410,14 @@ async function streamAgentAnswerToSlack(
           );
           pendingPersonalAuth = null;
         }
+
+        // Mark default task complete (for non-run_agent tools).
+        if (planHandler && event.action.internalMCPServerName !== "run_agent") {
+          const doneLabel = getActionDoneLabel(event.action);
+          planHandler.setDefaultTask(doneLabel, "complete", event.action);
+          await planHandler.upsertPlanMessage(doneLabel);
+        }
+
         actions.push(event.action);
         break;
       }
@@ -398,27 +441,26 @@ async function streamAgentAnswerToSlack(
           // Message too long for streaming: stop and fall back to chat.update
           // with truncated content + footer.
           await streamHandler.stop();
+          await planHandler?.deletePlanMessage();
           const { formattedContent, footnotes } = annotateCitations(
             answer,
             actions
           );
-          const slackContent = safelyPrepareAnswer(formattedContent);
-          if (slackContent) {
-            await postSlackMessageUpdate({
-              messageUpdate: {
-                text: slackContent,
-                assistantName,
-                agentConfigurations,
-                footnotes,
-              },
-              ...conversationData,
-              canBeIgnored: false,
-              extraLogs: {
-                source: "streamAgentAnswerToSlack",
-                eventType: "stream_fallback",
-              },
-            });
-          }
+
+          await postSlackMessageUpdate({
+            messageUpdate: {
+              text: formattedContent,
+              assistantName,
+              agentConfigurations,
+              footnotes,
+            },
+            ...conversationData,
+            canBeIgnored: false,
+            extraLogs: {
+              source: "streamAgentAnswerToSlack",
+              eventType: "stream_fallback",
+            },
+          });
           break;
         }
 
@@ -469,6 +511,9 @@ async function streamAgentAnswerToSlack(
       }
 
       case "agent_message_success": {
+        planHandler?.abortAllChildStreams();
+        await planHandler?.deletePlanMessage();
+
         const finalAnswer = event.message.content ?? "";
         const actions = event.message.actions;
         const messageId = event.message.sId; // Get the message ID
@@ -487,9 +532,9 @@ async function streamAgentAnswerToSlack(
           filesUploaded = await getFilesFromDust(files, dustAPI);
         }
 
-        const slackContent = slackifyMarkdown(
-          normalizeContentForSlack(formattedContent)
-        );
+        const slackContent = streamHandler
+          ? formattedContent
+          : slackifyMarkdown(normalizeContentForSlack(formattedContent));
 
         if (streamHandler && !streamHandler.isStopped) {
           await streamHandler.stop();
@@ -614,6 +659,8 @@ async function streamAgentAnswerToSlack(
       }
 
       case "agent_generation_cancelled": {
+        planHandler?.abortAllChildStreams();
+        await planHandler?.deletePlanMessage();
         if (streamHandler && !streamHandler.isStopped) {
           await streamHandler.stop();
         }
@@ -659,7 +706,9 @@ async function streamAgentAnswerToSlack(
     }
   }
 
-  // Clean up stream if the event stream ended without a terminal event.
+  // Clean up if the event stream ended without a terminal event.
+  planHandler?.abortAllChildStreams();
+  await planHandler?.deletePlanMessage();
   if (streamHandler && !streamHandler.isStopped) {
     await streamHandler.stop();
   }
@@ -706,7 +755,8 @@ async function deleteAndRepostMessageWithFiles({
     ...makeMessageUpdateBlocksAndText(
       conversationUrl,
       connector.workspaceId,
-      messageUpdate
+      messageUpdate,
+      { isUpload: true }
     ),
     channel_id: slackChannelId,
     file_uploads: uploadedFiles,
@@ -910,7 +960,7 @@ async function postThreadFollowUpMessages(
   for (let i = 0; i < followUpMessages.length; i++) {
     const threadResponse = await slackClient.chat.postMessage({
       channel: slackChannelId,
-      text: followUpMessages[i] || "",
+      blocks: makeMarkdownBlock(followUpMessages[i] || ""),
       thread_ts: threadTs,
     });
 

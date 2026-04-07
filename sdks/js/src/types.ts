@@ -1245,14 +1245,19 @@ const NotificationToolApproveBubbleUpContentSchema = z.object({
   metadata: MCPValidationMetadataSchema,
 });
 
-const NotificationRunAgentContentSchema = z.object({
+export const NotificationRunAgentContentSchema = z.object({
   type: z.literal("run_agent"),
   childAgentId: z.string(),
   conversationId: z.string(),
+  agentMessageId: z.string().nullable().optional(),
   query: z.string(),
   childConversationUrl: z.string().nullable().optional(),
   childConversationEventsUrl: z.string().nullable().optional(),
 });
+
+export type NotificationRunAgentContent = z.infer<
+  typeof NotificationRunAgentContentSchema
+>;
 
 const NotificationRunAgentChainOfThoughtSchema = z.object({
   type: z.literal("run_agent_chain_of_thought"),
