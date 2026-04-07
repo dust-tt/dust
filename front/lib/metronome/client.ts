@@ -475,6 +475,7 @@ export async function createMetronomeCommit({
   endingBefore,
   name,
   idempotencyKey,
+  priority,
 }: {
   metronomeCustomerId: string;
   contractId: string;
@@ -484,6 +485,7 @@ export async function createMetronomeCommit({
   endingBefore: Date;
   idempotencyKey: string;
   name?: string;
+  priority?: number;
 }): Promise<Result<void, Error>> {
   // Metronome requires dates on hour boundaries — round down start, round up end.
   const roundedStartingAt = floorToHourISO(startingAt);
@@ -511,6 +513,7 @@ export async function createMetronomeCommit({
             product_id: productId,
             name: name ?? "Commit purchase",
             applicable_product_tags: ["usage"],
+            priority,
             access_schedule: {
               schedule_items: [
                 {
@@ -754,7 +757,7 @@ export async function createMetronomeCredit({
           {
             product_id: productId,
             name,
-            priority: 100,
+            priority: 1, // Apply credits before any prepaid commits
             applicable_product_tags: ["usage"],
             access_schedule: {
               schedule_items: [
