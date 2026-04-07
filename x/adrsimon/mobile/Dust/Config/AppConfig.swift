@@ -16,6 +16,10 @@ enum AppConfig {
             "/api/w/\(workspaceId)/assistant/conversations"
         }
 
+        static func conversation(workspaceId: String, conversationId: String) -> String {
+            "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)"
+        }
+
         static func conversationMessages(workspaceId: String, conversationId: String) -> String {
             "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/messages"
         }
@@ -26,6 +30,10 @@ enum AppConfig {
 
         static func messageEvents(workspaceId: String, conversationId: String, messageId: String) -> String {
             "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/messages/\(messageId)/events"
+        }
+
+        static func conversationsBulkActions(workspaceId: String) -> String {
+            "/api/w/\(workspaceId)/assistant/conversations/bulk-actions"
         }
 
         static func agentConfigurations(workspaceId: String) -> String {
