@@ -523,36 +523,11 @@ const runAgent = async (
           action.generatedFiles.filter((f) => !f.hidden)
         );
         break;
-      } else if (event.type === "tool_approve_execution") {
-        // Collect this blocking event.
-        collectedBlockingEvents.push(event);
-
-        // If this is the last blocking event for the step, throw an error to break the agent
-        // loop until the user approves the execution.
-        if (event.isLastBlockingEventForStep) {
-          const blockedResponse = makeToolBlockedAwaitingInputResponse(
-            collectedBlockingEvents,
-            {
-              conversationId: conversation.sId,
-              userMessageId,
-            }
-          );
-          return await finalizeAndReturn(new Ok(blockedResponse.content));
-        }
-      } else if (event.type === "tool_personal_auth_required") {
-        collectedBlockingEvents.push(event);
-
-        if (event.isLastBlockingEventForStep) {
-          const blockedResponse = makeToolBlockedAwaitingInputResponse(
-            collectedBlockingEvents,
-            {
-              conversationId: conversation.sId,
-              userMessageId,
-            }
-          );
-          return await finalizeAndReturn(new Ok(blockedResponse.content));
-        }
-      } else if (event.type === "tool_file_auth_required") {
+      } else if (
+        event.type === "tool_approve_execution" ||
+        event.type === "tool_personal_auth_required" ||
+        event.type === "tool_file_auth_required"
+      ) {
         collectedBlockingEvents.push(event);
 
         if (event.isLastBlockingEventForStep) {
