@@ -11,7 +11,10 @@ import {
   updateSlackChannelInConnectorsDb,
   updateSlackChannelInCoreDb,
 } from "@connectors/connectors/slack/lib/channels";
-import { isWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
+import {
+  isWebAPIHTTPError,
+  isWebAPIPlatformError,
+} from "@connectors/connectors/slack/lib/errors";
 import { formatMessagesForUpsert } from "@connectors/connectors/slack/lib/messages";
 import {
   getSlackClient,
@@ -79,6 +82,7 @@ import type {
   ConversationsHistoryResponse,
   MessageElement,
 } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
+import { Context } from "@temporalio/activity";
 import assert from "assert";
 import { Op, Sequelize } from "sequelize";
 
@@ -190,12 +194,34 @@ export async function syncChannel(
 
   const threadsToSync: string[] = [];
   let unthreadedTimeframesToSync: number[] = [];
-  const messages = await getMessagesForChannel(
-    connectorId,
-    channelId,
-    50,
-    messagesCursor
-  );
+  let messages: ConversationsHistoryResponse;
+  try {
+    messages = await getMessagesForChannel(
+      connectorId,
+      channelId,
+      50,
+      messagesCursor
+    );
+  } catch (e) {
+    if (
+      isWebAPIHTTPError(e) &&
+      e.statusCode >= 500 &&
+      Context.current().info.attempt > 20
+    ) {
+      logger.error(
+        {
+          connectorId,
+          channelId,
+          attempt: Context.current().info.attempt,
+          statusCode: e.statusCode,
+          error: e,
+        },
+        "Slack API returned a server error after multiple retries. Giving up and moving on."
+      );
+      return;
+    }
+    throw e;
+  }
   if (!messages.messages) {
     // This should never happen because we throw an exception in the activity if we get an error
     // from the Slack API, but we need to make typescript happy.
