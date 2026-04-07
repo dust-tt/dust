@@ -4,6 +4,7 @@ import { getMetronomeClient } from "@app/lib/metronome/client";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
 import { promisify } from "util";
@@ -66,7 +67,7 @@ async function handler(
         ) as { type: string; [key: string]: unknown };
       } catch (err) {
         logger.error(
-          { error: err },
+          { error: normalizeError(err) },
           "[Metronome Webhook] Signature verification failed"
         );
         return apiError(req, res, {
