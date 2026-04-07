@@ -28,16 +28,16 @@ function getClient(): Metronome {
 // ---------------------------------------------------------------------------
 // Metronome requires dates on hour boundaries.
 // ---------------------------------------------------------------------------
-
+const HOUR_IN_MS = 3_600_000;
 function floorToHourISO(date: Date): string {
   return new Date(
-    Math.floor(date.getTime() / 3_600_000) * 3_600_000
+    Math.floor(date.getTime() / HOUR_IN_MS) * HOUR_IN_MS
   ).toISOString();
 }
 
 function ceilToHourISO(date: Date): string {
   return new Date(
-    Math.ceil(date.getTime() / 3_600_000) * 3_600_000
+    Math.ceil(date.getTime() / HOUR_IN_MS) * HOUR_IN_MS
   ).toISOString();
 }
 

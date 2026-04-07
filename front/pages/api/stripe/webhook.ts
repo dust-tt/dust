@@ -248,7 +248,7 @@ async function grantMetronomeFreeCredits({
     }
   } catch (err) {
     logger.error(
-      { workspaceId: workspace.sId, error: err },
+      { workspaceId: workspace.sId, error: normalizeError(err) },
       "[Stripe Webhook] Failed to grant Metronome free credits"
     );
   }
