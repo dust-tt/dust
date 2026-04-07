@@ -125,6 +125,14 @@ export async function buildConversationAnalysisBatchMap(
     variant: "full",
   });
   if (!agentConfig || agentConfig.id < 0) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        agentConfigurationId,
+        isGlobal: agentConfig ? agentConfig.id < 0 : false,
+      },
+      "ReinforcedAgent: agent not found or is global, skipping conversation analysis"
+    );
     return null;
   }
 
@@ -143,7 +151,12 @@ export async function buildConversationAnalysisBatchMap(
     });
     if (conversationRes.isErr()) {
       logger.warn(
-        { conversationId, error: conversationRes.error },
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          agentConfigurationId,
+          conversationId,
+          error: conversationRes.error,
+        },
         "ReinforcedAgent: conversation not found, skipping in batch"
       );
       continue;
@@ -157,5 +170,17 @@ export async function buildConversationAnalysisBatchMap(
     batchMap.set(conversationId, buildReinforcedLLMParams(prompt));
   }
 
-  return batchMap.size > 0 ? batchMap : null;
+  if (batchMap.size === 0) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        agentConfigurationId,
+        conversationCount: conversationIds.length,
+      },
+      "ReinforcedAgent: no conversations could be prepared for analysis batch"
+    );
+    return null;
+  }
+
+  return batchMap;
 }
