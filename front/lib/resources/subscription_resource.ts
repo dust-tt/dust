@@ -442,6 +442,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     const res = await this.model.findOne({
       where: { stripeSubscriptionId },
       include: [PlanModel],
+      order: [["createdAt", "DESC"]],
 
       // WORKSPACE_ISOLATION_BYPASS: Used to check if a subscription is not attached to a workspace.
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
@@ -457,6 +458,20 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       res.get(),
       renderPlanFromModel({ plan: res.plan })
     );
+  }
+
+  static async isStripeIdAlreadyUsed(
+    stripeSubscriptionId: string
+  ): Promise<boolean> {
+    const res = await this.model.findOne({
+      where: { stripeSubscriptionId },
+
+      // WORKSPACE_ISOLATION_BYPASS: Used to check across all workspaces.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+
+    return res !== null;
   }
 
   static async internalFetchWorkspacesWithFreeEndedSubscriptions(): Promise<{

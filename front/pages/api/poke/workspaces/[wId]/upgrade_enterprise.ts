@@ -106,20 +106,14 @@ async function handler(
         });
       }
 
-      // Ensure that the stripe subscription is either attached to the current workspace
-      // or is not attached to any workspace.
-      const subscription = await SubscriptionResource.fetchByStripeId(
+      // Ensure the stripe subscription ID has not been used before (same or different workspace).
+      const isAlreadyUsed = await SubscriptionResource.isStripeIdAlreadyUsed(
         stripeSubscription.id
       );
-      const currentWorkspaceSubscription = auth.subscription();
-      const isCurrentWorkspaceSubscription =
-        currentWorkspaceSubscription &&
-        currentWorkspaceSubscription.stripeSubscriptionId ===
-          stripeSubscription.id;
 
-      if (subscription && !isCurrentWorkspaceSubscription) {
+      if (isAlreadyUsed) {
         const errorMessage =
-          "The subscription is already attached to another workspace.";
+          "The Stripe subscription ID is already used by an existing subscription.";
         await pluginRun.recordError(errorMessage);
         return apiError(req, res, {
           status_code: 400,
