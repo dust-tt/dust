@@ -528,6 +528,8 @@ const runAgent = async (
         event.type === "tool_personal_auth_required" ||
         event.type === "tool_file_auth_required"
       ) {
+        // Collect blocking events until the child marks one as the last blocking event for this
+        // step, then stop the parent run_agent call and return a blocked response upstream.
         collectedBlockingEvents.push(event);
 
         if (event.isLastBlockingEventForStep) {
