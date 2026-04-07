@@ -45,7 +45,7 @@ const useHandleMentions = ({
   const singleAgentInput = hasFeature("enable_steering");
   const { setSelectedSingleAgent } = useContext(InputBarContext);
 
-  // Priority: draft > sticky mentions > agent builder (clear to avoid flickering) > @dust fallback.
+  // Priority: draft > sticky mentions > @dust fallback.
   // Also resets when the conversation changes so stale state doesn't leak.
   const prevConversationIdRef = useRef(conversation?.sId ?? null);
   const hasInitializedRef = useRef(false);
@@ -64,6 +64,13 @@ const useHandleMentions = ({
     }
 
     if (hasInitializedRef.current) {
+      return;
+    }
+
+    // Agent builder: wait for the draft agent to arrive via stickyMentions.
+    // Clear any stale selection but don't mark as initialized so we re-run.
+    if (isAgentBuilder && (!stickyMentions || stickyMentions.length === 0)) {
+      setSelectedSingleAgent(null);
       return;
     }
 
@@ -87,14 +94,7 @@ const useHandleMentions = ({
       }
     }
 
-    // 3. Agent builder with no sticky mentions yet → clear stale value but don't
-    //    mark as initialized so we re-run when the draft agent arrives.
-    if (isAgentBuilder) {
-      setSelectedSingleAgent(null);
-      return;
-    }
-
-    // 4. New conversation → fall back to @dust.
+    // 3. New conversation → fall back to @dust.
     if (!conversation) {
       const dustAgent = allAgents.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST);
       if (dustAgent) {
