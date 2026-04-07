@@ -968,7 +968,6 @@ export const ConversationViewer = ({
     spaceInfo?.isRestricted,
     spaceInfo?.name,
     branchIdToApprove,
-    setBranchIdToApprove,
   ]);
 
   return (
