@@ -11,7 +11,7 @@ export const ASK_USER_QUESTION_TOOLS_METADATA = createToolsRecord({
       "Asks the user a question during execution.\n\n" +
       "This tool can serve multiple purposes:\n" +
       "- Clarify ambiguous instructions where multiple interpretations are plausible\n" +
-      "- Validate major decision before moving forward\n" +
+      "- Validate major decisions before moving forward\n" +
       "- Get more context and information on the user's intent\n" +
       "- Make decisions on the desired course of action while working\n" +
       "- Let the user choose what direction to take\n\n" +
