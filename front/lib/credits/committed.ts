@@ -539,6 +539,7 @@ async function addMetronomeCommitsForWorkspace({
     endingBefore: effectiveExpirationDate,
     name: `Prepaid commit (${effectiveStartDate.toISOString()})`,
     idempotencyKey: `commit-${workspace.sId}-${effectiveStartDate.getTime()}-${amountCents}`,
+    priority: 2, // Committed credits should be applied after any free credits (priority 1) but before any PAYG commits (priority 3)
   });
 
   if (result.isErr()) {

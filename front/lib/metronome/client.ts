@@ -26,6 +26,22 @@ function getClient(): Metronome {
 }
 
 // ---------------------------------------------------------------------------
+// Metronome requires dates on hour boundaries.
+// ---------------------------------------------------------------------------
+const HOUR_IN_MS = 3_600_000;
+function floorToHourISO(date: Date): string {
+  return new Date(
+    Math.floor(date.getTime() / HOUR_IN_MS) * HOUR_IN_MS
+  ).toISOString();
+}
+
+function ceilToHourISO(date: Date): string {
+  return new Date(
+    Math.ceil(date.getTime() / HOUR_IN_MS) * HOUR_IN_MS
+  ).toISOString();
+}
+
+// ---------------------------------------------------------------------------
 // Event ingestion
 // ---------------------------------------------------------------------------
 
@@ -159,9 +175,7 @@ export async function createMetronomeContract({
       customer_id: metronomeCustomerId,
       package_alias: packageAlias,
       // Metronome requires starting_at on an hour boundary — round down to current hour.
-      starting_at: new Date(
-        Math.floor(Date.now() / 3_600_000) * 3_600_000
-      ).toISOString(),
+      starting_at: floorToHourISO(new Date()),
       uniqueness_key: uniquenessKey,
     });
 
@@ -264,7 +278,7 @@ export async function getMetronomeActiveContract(
   >
 > {
   try {
-    const response = await getClient().v1.contracts.list({
+    const response = await getClient().v2.contracts.list({
       customer_id: metronomeCustomerId,
     });
 
@@ -461,6 +475,7 @@ export async function createMetronomeCommit({
   endingBefore,
   name,
   idempotencyKey,
+  priority,
 }: {
   metronomeCustomerId: string;
   contractId: string;
@@ -470,14 +485,11 @@ export async function createMetronomeCommit({
   endingBefore: Date;
   idempotencyKey: string;
   name?: string;
+  priority?: number;
 }): Promise<Result<void, Error>> {
   // Metronome requires dates on hour boundaries — round down start, round up end.
-  const roundedStartingAt = new Date(
-    Math.floor(startingAt.getTime() / 3_600_000) * 3_600_000
-  );
-  const roundedEndingBefore = new Date(
-    Math.ceil(endingBefore.getTime() / 3_600_000) * 3_600_000
-  );
+  const roundedStartingAt = floorToHourISO(startingAt);
+  const roundedEndingBefore = ceilToHourISO(endingBefore);
   try {
     logger.info(
       {
@@ -501,12 +513,13 @@ export async function createMetronomeCommit({
             product_id: productId,
             name: name ?? "Commit purchase",
             applicable_product_tags: ["usage"],
+            priority,
             access_schedule: {
               schedule_items: [
                 {
                   amount: amountCents,
-                  starting_at: roundedStartingAt.toISOString(),
-                  ending_before: roundedEndingBefore.toISOString(),
+                  starting_at: roundedStartingAt,
+                  ending_before: roundedEndingBefore,
                 },
               ],
             },
@@ -699,6 +712,83 @@ export async function listMetronomeUsageWithGroups({
     logger.error(
       { error, customerId, billableMetricId },
       "[Metronome] Failed to list usage with groups"
+    );
+    return new Err(error);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Credits
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a credit grant on a Metronome customer.
+ * Used for monthly free programmatic credits on legacy plans.
+ */
+export async function createMetronomeCredit({
+  metronomeCustomerId,
+  contractId,
+  productId,
+  amountCents,
+  startingAt,
+  endingBefore,
+  name,
+  idempotencyKey,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  productId: string;
+  amountCents: number;
+  startingAt: string;
+  endingBefore: string;
+  name: string;
+  idempotencyKey: string;
+}): Promise<Result<{ creditId: string }, Error>> {
+  // Metronome requires dates on hour boundaries — round down start, round up end.
+  const roundedStartingAt = floorToHourISO(new Date(startingAt));
+  const roundedEndingBefore = ceilToHourISO(new Date(endingBefore));
+
+  try {
+    const response = await getClient().v2.contracts.edit(
+      {
+        customer_id: metronomeCustomerId,
+        contract_id: contractId,
+        add_credits: [
+          {
+            product_id: productId,
+            name,
+            priority: 1, // Apply credits before any prepaid commits
+            applicable_product_tags: ["usage"],
+            access_schedule: {
+              schedule_items: [
+                {
+                  amount: amountCents,
+                  starting_at: roundedStartingAt,
+                  ending_before: roundedEndingBefore,
+                },
+              ],
+            },
+          },
+        ],
+      },
+      { idempotencyKey }
+    );
+
+    return new Ok({ creditId: response.data.id });
+  } catch (err) {
+    if (err instanceof ConflictError) {
+      // Idempotency key conflict — credit already granted, safe to ignore.
+      logger.info(
+        { metronomeCustomerId, idempotencyKey },
+        "[Metronome] Credit grant already exists (idempotent)"
+      );
+      return new Ok({ creditId: "already-exists" });
+    }
+
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, name, idempotencyKey },
+      "[Metronome] Failed to create credit grant"
     );
     return new Err(error);
   }

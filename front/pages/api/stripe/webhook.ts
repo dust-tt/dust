@@ -14,6 +14,7 @@ import {
   voidFailedProCreditPurchaseInvoice,
 } from "@app/lib/credits/committed";
 import {
+  calculateFreeCreditAmountMicroUsd,
   grantFreeCreditFromSubscriptionStateChangeYearly,
   grantFreeCreditsFromSubscriptionStateChange,
 } from "@app/lib/credits/free";
@@ -23,7 +24,11 @@ import {
   isPAYGEnabled,
 } from "@app/lib/credits/payg";
 import { handleMetronomeSetupCheckout } from "@app/lib/metronome/checkout";
-import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/client";
+import {
+  createMetronomeCredit,
+  getMetronomeActiveContract,
+  provisionMetronomeCustomerAndContract,
+} from "@app/lib/metronome/client";
 import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
@@ -159,6 +164,92 @@ async function shadowProvisionMetronome({
     logger.error(
       { workspaceId: workspace.sId, error: normalizeError(err) },
       "[Stripe Webhook] Failed to shadow-provision Metronome"
+    );
+  }
+}
+
+/**
+ * Grant monthly free programmatic credits to a Metronome-billed workspace.
+ * Uses the same bracket formula as the Stripe credit system.
+ * Idempotent via uniqueness_key: free-legacy-{workspaceSId}-{YYYY-MM}.
+ */
+async function grantMetronomeFreeCredits({
+  workspace,
+  stripeSubscription,
+}: {
+  workspace: WorkspaceResource;
+  stripeSubscription: Stripe.Subscription;
+}): Promise<void> {
+  if (!workspace.metronomeCustomerId) {
+    return;
+  }
+
+  try {
+    // Resolve the active contract.
+    const contractResult = await getMetronomeActiveContract(
+      workspace.metronomeCustomerId
+    );
+    if (contractResult.isErr() || !contractResult.value) {
+      logger.error(
+        { workspaceId: workspace.sId },
+        "[Stripe Webhook] No active Metronome contract found for free credit grant"
+      );
+      return;
+    }
+
+    const productId = apiConfig.getMetronomeFreeCreditProductId();
+    if (!productId) {
+      logger.error(
+        { workspaceId: workspace.sId },
+        `[Stripe Webhook] Metronome product "Free Monthly Credits" not found`
+      );
+      return;
+    }
+
+    // Count active members and compute bracket amount.
+    const memberCount = await MembershipResource.countActiveSeatsInWorkspace(
+      workspace.sId
+    );
+    const amountMicroUsd = calculateFreeCreditAmountMicroUsd(memberCount);
+    if (amountMicroUsd <= 0) {
+      return;
+    }
+
+    // Convert micro-USD to cents (Metronome credits are in cents).
+    const amountCents = Math.ceil(amountMicroUsd / 10_000);
+
+    const periodStart = new Date(
+      stripeSubscription.current_period_start * 1000
+    );
+    const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
+    const monthKey = `${periodStart.getUTCFullYear()}-${String(periodStart.getUTCMonth() + 1).padStart(2, "0")}`;
+
+    const result = await createMetronomeCredit({
+      metronomeCustomerId: workspace.metronomeCustomerId,
+      contractId: contractResult.value.contractId,
+      productId,
+      amountCents,
+      startingAt: periodStart.toISOString(),
+      endingBefore: periodEnd.toISOString(),
+      name: `Free Monthly Credits (${memberCount} users, ${monthKey})`,
+      idempotencyKey: `free-legacy-${workspace.sId}-${monthKey}`,
+    });
+
+    if (result.isOk()) {
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          memberCount,
+          amountCents,
+          monthKey,
+        },
+        "[Stripe Webhook] Metronome free credits granted"
+      );
+    }
+  } catch (err) {
+    logger.error(
+      { workspaceId: workspace.sId, error: normalizeError(err) },
+      "[Stripe Webhook] Failed to grant Metronome free credits"
     );
   }
 }
@@ -1079,6 +1170,13 @@ async function handler(
                 "[Stripe Webhook] Error granting free credits"
               );
             }
+
+            // Grant free credits in Metronome for legacy workspaces.
+            // Fire-and-forget: Metronome failure should not block the webhook.
+            void grantMetronomeFreeCredits({
+              workspace,
+              stripeSubscription,
+            });
 
             if (subscriptionCycleChanged) {
               const paygEnabled = await isPAYGEnabled(auth);
