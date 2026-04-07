@@ -165,8 +165,7 @@ export function ConversationContainerVirtuoso({
   const { startConversationRef } = useWelcomeTourGuide();
 
   // Forces a full remount of ConversationViewer (Virtuoso list, messages, InputBar)
-  // when switching conversations. This is the single place that controls
-  // conversation-switch remounts.
+  // when switching conversations.
   const conversationViewerKey = activeConversationId;
 
   const body = (
