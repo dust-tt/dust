@@ -764,3 +764,61 @@ is used as a hook dependency. Do not add `useMemo` preemptively.
 
 Reviewer: If you see an inline object or array literal passed directly as a Context provider
 value, require the author to memoize it.
+
+### [REACT5] Always create a custom hook to consume context
+
+When creating a React context, always provide a custom hook that calls `useContext` internally,
+throws a descriptive error if used outside the provider, and returns the typed context value.
+Never consume context directly via `useContext(SomeContext)` in components — always use the
+custom hook.
+
+Example:
+
+```tsx
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+// BAD — direct useContext in a component
+function Component() {
+  const ctx = useContext(AuthContext); // no safety check, no encapsulation
+}
+
+// GOOD — custom hook with safety check
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
+  return ctx;
+}
+```
+
+Reviewer: If you see `useContext(SomeContext)` called directly in a component instead of through
+a dedicated hook, require the author to create or use the corresponding custom hook.
+
+### [REACT6] Never use an entire context object as a hook dependency
+
+Never pass the full context object returned by a custom hook as a dependency to `useEffect`,
+`useMemo`, or `useCallback`. Destructure the specific values you need and use those as
+dependencies. The context object reference changes on every provider re-render, causing
+unnecessary effect re-runs.
+
+Example:
+
+```tsx
+// BAD — entire context object as dependency, re-runs on every provider render
+const auth = useAuth();
+
+useEffect(() => {
+  fetchData(auth.token);
+}, [auth]);
+
+// GOOD — only the specific value as dependency
+const { token } = useAuth();
+
+useEffect(() => {
+  fetchData(token);
+}, [token]);
+```
+
+Reviewer: If you see a context hook return value used directly as a dependency (e.g.,
+`[auth]`, `[ctx]`) instead of destructured fields, require the author to destructure.
