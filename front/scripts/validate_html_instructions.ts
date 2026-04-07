@@ -24,6 +24,18 @@ function normalizeHtml(html: string): string {
       // marks differently, e.g. "✅<strong> Verified</strong>" vs "✅ <strong>Verified</strong>".
       .replace(/ (<(?:strong|em|code|a\b)[^>]*>)/g, "$1 ")
       .replace(/(<\/(?:strong|em|code|a)>) /g, " $1")
+      // Remove trailing whitespace before closing block tags.
+      // The frontend editor may preserve trailing spaces that the
+      // markdown parser trims.
+      .replace(/ +(<\/(?:p|li|h[1-6])>)/g, "$1")
+      // Unwrap mailto links: <a ...href="mailto:x@y"...>x@y</a> → x@y
+      // The stored HTML may have auto-linked emails from the frontend editor.
+      .replace(
+        /<a[^>]*href="mailto:([^"]*)"[^>]*>\1<\/a>/g,
+        "$1"
+      )
+      // Normalize leading whitespace after opening block tags.
+      .replace(/(<(?:p|li|h[1-6])\b[^>]*>) +/g, "$1")
   );
 }
 
