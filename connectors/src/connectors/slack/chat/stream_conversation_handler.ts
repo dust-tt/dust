@@ -445,24 +445,21 @@ async function streamAgentAnswerToSlack(
             answer,
             actions
           );
-          const slackContent = safelyPrepareAnswer(formattedContent);
-          // If the answer cannot be prepared safely, skip processing these tokens.
-          if (slackContent) {
-            await postSlackMessageUpdate({
-              messageUpdate: {
-                text: slackContent,
-                assistantName,
-                agentConfigurations,
-                footnotes,
-              },
-              ...conversationData,
-              canBeIgnored: false,
-              extraLogs: {
-                source: "streamAgentAnswerToSlack",
-                eventType: "stream_fallback",
-              },
-            });
-          }
+
+          await postSlackMessageUpdate({
+            messageUpdate: {
+              text: formattedContent,
+              assistantName,
+              agentConfigurations,
+              footnotes,
+            },
+            ...conversationData,
+            canBeIgnored: false,
+            extraLogs: {
+              source: "streamAgentAnswerToSlack",
+              eventType: "stream_fallback",
+            },
+          });
           break;
         }
 
@@ -534,9 +531,9 @@ async function streamAgentAnswerToSlack(
           filesUploaded = await getFilesFromDust(files, dustAPI);
         }
 
-        const slackContent = slackifyMarkdown(
-          normalizeContentForSlack(formattedContent)
-        );
+        const slackContent = streamHandler
+          ? formattedContent
+          : slackifyMarkdown(normalizeContentForSlack(formattedContent));
 
         if (streamHandler && !streamHandler.isStopped) {
           await streamHandler.stop();
@@ -757,7 +754,8 @@ async function deleteAndRepostMessageWithFiles({
     ...makeMessageUpdateBlocksAndText(
       conversationUrl,
       connector.workspaceId,
-      messageUpdate
+      messageUpdate,
+      { isUpload: true }
     ),
     channel_id: slackChannelId,
     file_uploads: uploadedFiles,

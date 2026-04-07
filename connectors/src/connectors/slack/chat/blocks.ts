@@ -13,6 +13,7 @@ import type { MessageFootnotes } from "@connectors/lib/bot/citations";
 import { makeDustAppUrl } from "@connectors/lib/bot/conversation_utils";
 import { truncate } from "@connectors/types";
 import type { LightAgentConfigurationType } from "@dust-tt/client";
+import slackifyMarkdown from "slackify-markdown";
 
 /*
  * This length threshold is set to prevent the "msg_too_long" error
@@ -29,18 +30,31 @@ function makeDividerBlock() {
   };
 }
 
-export function makeMarkdownBlock(text?: string) {
-  return text
-    ? [
-        {
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: truncate(text, MAX_SLACK_MESSAGE_LENGTH),
-          },
-        },
-      ]
-    : [];
+export function makeMarkdownBlock(text?: string, isUpload?: boolean) {
+  if (!text) {
+    return [];
+  }
+
+  // New markdown block has better support for markdown formatting,
+  // but is not supported when uploading files.
+  if (!isUpload) {
+    return [
+      {
+        type: "markdown",
+        text: truncate(text, MAX_SLACK_MESSAGE_LENGTH),
+      },
+    ];
+  }
+
+  return [
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: truncate(slackifyMarkdown(text), MAX_SLACK_MESSAGE_LENGTH),
+      },
+    },
+  ];
 }
 
 function makeFootnotesBlock(footnotes: MessageFootnotes) {
@@ -270,7 +284,8 @@ export function makeFooterBlock({
 export function makeMessageUpdateBlocksAndText(
   conversationUrl: string | null,
   workspaceId: string,
-  messageUpdate: SlackMessageUpdate
+  messageUpdate: SlackMessageUpdate,
+  { isUpload = false } = {}
 ) {
   const { isThinking, thinkingAction, assistantName, text, footnotes } =
     messageUpdate;
@@ -285,7 +300,7 @@ export function makeMessageUpdateBlocksAndText(
         isThinking: isThinking ?? false,
         thinkingText: thinkingTextWithAction,
       }),
-      ...makeMarkdownBlock(text),
+      ...makeMarkdownBlock(text, isUpload),
       ...makeContextSectionBlocks({
         state: isThinking ? "thinking" : "answered",
         assistantName,
