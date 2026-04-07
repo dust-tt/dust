@@ -9,8 +9,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getMetronomeContractPackageAliases } from "@app/lib/metronome/client";
 import {
-  LEGACY_BUSINESS_39_PACKAGE_ALIAS,
-  LEGACY_PRO_29_PACKAGE_ALIAS,
+  LEGACY_BUSINESS_PACKAGE_ALIAS,
+  LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
   PRO_OR_BUSINESS_PACKAGE_ALIASES,
 } from "@app/lib/metronome/types";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -908,12 +908,12 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
               "card",
               "sepa_debit",
             ] satisfies SupportedPaymentMethod[],
-            metronomePackageAlias: LEGACY_BUSINESS_39_PACKAGE_ALIAS,
+            metronomePackageAlias: LEGACY_BUSINESS_PACKAGE_ALIAS,
           }
         : {
             planCode: PRO_PLAN_SEAT_29_CODE,
             allowedPaymentMethods: ["card"] satisfies SupportedPaymentMethod[],
-            metronomePackageAlias: LEGACY_PRO_29_PACKAGE_ALIAS,
+            metronomePackageAlias: LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
           };
 
     const proPlan = await SubscriptionResource.findPlanOrThrow(planCode);
