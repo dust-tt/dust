@@ -214,7 +214,7 @@ export async function syncChannel(
           channelId,
           attempt: Context.current().info.attempt,
           statusCode: e.statusCode,
-          error: e,
+          error: normalizeError(e),
         },
         "Slack API returned a server error after multiple retries. Giving up and moving on."
       );
