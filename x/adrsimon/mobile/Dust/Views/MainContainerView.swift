@@ -115,6 +115,10 @@ struct MainContainerView: View {
                     onDismiss: { markedIds in
                         showCatchUp = false
                         viewModel.markConversationsAsRead(markedIds)
+                    },
+                    onOpenConversation: { conversation in
+                        showCatchUp = false
+                        selectedConversation = conversation
                     }
                 )
             }

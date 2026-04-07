@@ -170,9 +170,25 @@ struct ConversationDetailView: View {
                                     currentUserEmail: currentUserEmail,
                                     streamingPhase: isStreaming ? viewModel.streamingPhase : .idle,
                                     activeActions: isStreaming ? viewModel.activeActions : [],
+                                    lastError: viewModel.lastError?.messageId == message.id
+                                        ? viewModel.lastError : nil,
+                                    isValidatingAction: viewModel.isValidatingAction,
                                     onFragmentTap: { fragment in
                                         guard fragment.fileId != nil else { return }
                                         selectedFragment = fragment
+                                    },
+                                    onValidateAction: { approval in
+                                        Task { await viewModel.validateAction(approved: approval) }
+                                    },
+                                    onRetry: { messageId in
+                                        Task { await viewModel.retryMessage(messageId: messageId) }
+                                    },
+                                    onOpenInBrowser: {
+                                        let base = AppConfig.appURL
+                                        let path = "/w/\(workspaceId)/assistant/\(conversation.sId)"
+                                        if let url = URL(string: base + path) {
+                                            UIApplication.shared.open(url)
+                                        }
                                     }
                                 )
                                 .id(message.id)

@@ -62,5 +62,17 @@ enum AppConfig {
         static func conversationAttachments(workspaceId: String, conversationId: String) -> String {
             "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/attachments"
         }
+
+        static func blockedActions(workspaceId: String, conversationId: String) -> String {
+            "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/actions/blocked"
+        }
+
+        static func validateAction(workspaceId: String, conversationId: String, messageId: String) -> String {
+            "/api/v1/w/\(workspaceId)/assistant/conversations/\(conversationId)/messages/\(messageId)/validate-action"
+        }
+
+        static func retryMessage(workspaceId: String, conversationId: String, messageId: String) -> String {
+            "/api/v1/w/\(workspaceId)/assistant/conversations/\(conversationId)/messages/\(messageId)/retry"
+        }
     }
 }

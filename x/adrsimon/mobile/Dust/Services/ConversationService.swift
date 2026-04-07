@@ -100,7 +100,70 @@ enum ConversationService {
         )
     }
 
+    static func fetchBlockedActions(
+        workspaceId: String,
+        conversationId: String,
+        tokenProvider: TokenProvider
+    ) async throws -> [BlockedAction] {
+        let endpoint = AppConfig.Endpoints.blockedActions(
+            workspaceId: workspaceId,
+            conversationId: conversationId
+        )
+        let response: BlockedActionsResponse = try await APIClient.authenticatedGet(
+            endpoint, tokenProvider: tokenProvider, snakeCase: false
+        )
+        return response.blockedActions
+    }
+
+    // swiftlint:disable:next function_parameter_count
+    static func validateAction(
+        workspaceId: String,
+        conversationId: String,
+        messageId: String,
+        actionId: String,
+        approved: ActionApproval,
+        tokenProvider: TokenProvider
+    ) async throws {
+        let endpoint = AppConfig.Endpoints.validateAction(
+            workspaceId: workspaceId,
+            conversationId: conversationId,
+            messageId: messageId
+        )
+        try await APIClient.authenticatedSend(
+            endpoint,
+            method: "POST",
+            body: ValidateActionRequest(actionId: actionId, approved: approved.rawValue),
+            tokenProvider: tokenProvider
+        )
+    }
+
+    static func retryMessage(
+        workspaceId: String,
+        conversationId: String,
+        messageId: String,
+        tokenProvider: TokenProvider
+    ) async throws {
+        let endpoint = AppConfig.Endpoints.retryMessage(
+            workspaceId: workspaceId,
+            conversationId: conversationId,
+            messageId: messageId
+        )
+        try await APIClient.authenticatedSend(
+            endpoint,
+            method: "POST",
+            body: RetryMessageRequest(),
+            tokenProvider: tokenProvider
+        )
+    }
+
     // MARK: - Request Bodies
+
+    private struct ValidateActionRequest: Encodable {
+        let actionId: String
+        let approved: String
+    }
+
+    private struct RetryMessageRequest: Encodable {}
 
     private struct MarkAsReadRequest: Encodable {
         let read: Bool

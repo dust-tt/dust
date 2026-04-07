@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import MarkdownUI
 import SparkleTokens
 import SwiftUI
@@ -7,7 +8,12 @@ struct MessageBubbleView: View {
     let currentUserEmail: String
     var streamingPhase: AgentStreamingPhase = .idle
     var activeActions: [ActiveAction] = []
+    var lastError: ErrorInfo?
+    var isValidatingAction: Bool = false
     var onFragmentTap: ((ContentFragment) -> Void)?
+    var onValidateAction: ((ActionApproval) -> Void)?
+    var onRetry: ((String) -> Void)?
+    var onOpenInBrowser: (() -> Void)?
 
     var body: some View {
         switch message {
@@ -21,7 +27,12 @@ struct MessageBubbleView: View {
             AgentMessageBubble(
                 message: msg,
                 streamingPhase: streamingPhase,
-                activeActions: activeActions
+                activeActions: activeActions,
+                lastError: lastError,
+                isValidatingAction: isValidatingAction,
+                onValidateAction: onValidateAction,
+                onRetry: onRetry,
+                onOpenInBrowser: onOpenInBrowser
             )
         }
     }
@@ -86,6 +97,11 @@ struct AgentMessageBubble: View {
     let message: AgentMessage
     var streamingPhase: AgentStreamingPhase = .idle
     var activeActions: [ActiveAction] = []
+    var lastError: ErrorInfo?
+    var isValidatingAction: Bool = false
+    var onValidateAction: ((ActionApproval) -> Void)?
+    var onRetry: ((String) -> Void)?
+    var onOpenInBrowser: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -105,10 +121,36 @@ struct AgentMessageBubble: View {
                 )
             }
 
-            // Show content (streamed or final)
             if let content = message.content, !content.isEmpty {
                 StreamingMarkdownView(rawContent: content, isStreaming: message.isStreaming)
                     .textSelection(!message.isStreaming)
+            }
+
+            if message.isStreaming {
+                switch streamingPhase {
+                case let .approvalRequired(approval):
+                    ToolApprovalInlineView(
+                        approval: approval,
+                        isLoading: isValidatingAction,
+                        onValidate: onValidateAction
+                    )
+                case let .personalAuthRequired(provider, _):
+                    AuthRequiredView(
+                        label: "Authentication required for \(provider)",
+                        onOpenInBrowser: onOpenInBrowser
+                    )
+                case let .fileAuthRequired(fileName, _):
+                    AuthRequiredView(
+                        label: "File access required for \(fileName)",
+                        onOpenInBrowser: onOpenInBrowser
+                    )
+                case .idle, .thinking, .generating:
+                    EmptyView()
+                }
+            }
+
+            if message.status == .failed, let error = lastError {
+                ErrorCardView(error: error, onRetry: { onRetry?(message.sId) })
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -222,7 +264,7 @@ private struct FlowLayout: Layout {
 
 // swiftlint:enable identifier_name
 
-// MARK: - Streaming Status
+// MARK: - Streaming Status (thinking / acting / generating)
 
 struct StreamingStatusView: View {
     let phase: AgentStreamingPhase
@@ -230,18 +272,7 @@ struct StreamingStatusView: View {
     let chainOfThought: String?
 
     var body: some View {
-        if isBlockingState {
-            blockingChip
-        } else {
-            statusArea
-        }
-    }
-
-    // MARK: - Thinking / Acting / Generating
-
-    private var statusArea: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Chain of thought text, visible while it streams in
             if let text = chainOfThought, !text.isEmpty {
                 Text(text)
                     .sparkleCopyXs()
@@ -250,7 +281,6 @@ struct StreamingStatusView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            // Active actions
             if !activeActions.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(activeActions) { action in
@@ -258,8 +288,7 @@ struct StreamingStatusView: View {
                     }
                 }
                 .padding(.top, chainOfThought?.isEmpty == false ? 6 : 0)
-            } else {
-                // Thinking or generating (no active actions)
+            } else if !isBlockingPhase {
                 HStack(spacing: 6) {
                     PulsingDot()
                         .frame(width: 14, height: 14)
@@ -275,54 +304,237 @@ struct StreamingStatusView: View {
         .padding(.vertical, 4)
     }
 
-    // MARK: - Blocking states
-
-    private var blockingChip: some View {
-        HStack(spacing: 6) {
-            blockingIcon
-                .frame(width: 14, height: 14)
-
-            Text(blockingLabel)
-                .sparkleCopyXs()
-                .foregroundStyle(Color.warning600)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(Color.warning100)
-        .clipShape(Capsule())
-    }
-
-    @ViewBuilder
-    private var blockingIcon: some View {
-        switch phase {
-        case .approvalRequired:
-            SparkleIcon.stopSign.image
-                .resizable()
-                .scaledToFit()
-                .foregroundStyle(Color.warning600)
-        default:
-            SparkleIcon.lock.image
-                .resizable()
-                .scaledToFit()
-                .foregroundStyle(Color.warning600)
-        }
-    }
-
-    private var blockingLabel: String {
-        switch phase {
-        case let .personalAuthRequired(provider): "Authentication required (\(provider))"
-        case let .fileAuthRequired(fileName): "File access required (\(fileName))"
-        case .approvalRequired: "Approval required"
-        default: ""
-        }
-    }
-
-    private var isBlockingState: Bool {
+    private var isBlockingPhase: Bool {
         switch phase {
         case .personalAuthRequired, .fileAuthRequired, .approvalRequired: true
         default: false
         }
+    }
+}
+
+// MARK: - Tool Approval
+
+struct ToolApprovalInlineView: View {
+    let approval: ToolApprovalInfo
+    var isLoading: Bool = false
+    var onValidate: ((ActionApproval) -> Void)?
+
+    @State private var showDetails = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                guard !approval.displayableInputs.isEmpty else { return }
+                withAnimation(.easeInOut(duration: 0.2)) { showDetails.toggle() }
+            } label: {
+                HStack(spacing: 8) {
+                    ToolApprovalIconView(serverName: approval.mcpServerName)
+                        .frame(width: 20, height: 20)
+
+                    Text(title)
+                        .sparkleLabelSm()
+                        .foregroundStyle(Color.dustForeground)
+
+                    if !approval.displayableInputs.isEmpty {
+                        Spacer()
+                        (showDetails ? SparkleIcon.chevronUp : SparkleIcon.chevronDown).image
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 10, height: 10)
+                            .foregroundStyle(Color.dustFaint)
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if showDetails {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(approval.displayableInputs, id: \.key) { input in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(input.key)
+                                .sparkleLabelXs()
+                                .foregroundStyle(Color.dustFaint)
+                            Text(input.value)
+                                .sparkleCopyXs()
+                                .foregroundStyle(Color.dustForeground)
+                                .lineLimit(6)
+                        }
+                    }
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.dustMutedBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+
+            Divider()
+                .foregroundStyle(Color.dustBorder)
+
+            ToolApprovalActionButtons(
+                canAlwaysAllow: approval.canAlwaysAllow,
+                isLoading: isLoading,
+                onValidate: onValidate
+            )
+        }
+        .padding(12)
+        .liquidGlassRoundedRect()
+    }
+
+    private var title: String {
+        let server = approval.mcpServerName ?? "Tool"
+        if let tool = approval.toolName {
+            return "Allow \(server) to \(tool)?"
+        }
+        return "\(server) requires approval"
+    }
+}
+
+struct ToolApprovalIconView: View {
+    let serverName: String?
+
+    var body: some View {
+        if let name = serverName, let icon = MCPServerIcon.icon(for: name) {
+            icon.image
+                .resizable()
+                .scaledToFit()
+        } else {
+            SparkleIcon.cog6Tooth.image
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(Color.dustFaint)
+        }
+    }
+}
+
+struct ToolApprovalActionButtons: View {
+    var canAlwaysAllow: Bool = false
+    var isLoading: Bool = false
+    var onValidate: ((ActionApproval) -> Void)?
+
+    var body: some View {
+        VStack(spacing: 8) {
+            if canAlwaysAllow {
+                Button { onValidate?(.alwaysApproved) } label: {
+                    Text("Always allow")
+                        .sparkleLabelXs()
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.highlight)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+            }
+
+            Button { onValidate?(.approved) } label: {
+                Text(canAlwaysAllow ? "Allow once" : "Allow")
+                    .sparkleLabelXs()
+                    .foregroundStyle(canAlwaysAllow ? Color.dustForeground : .white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(canAlwaysAllow ? Color.clear : Color.highlight)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+
+            Button { onValidate?(.rejected) } label: {
+                Text("Decline")
+                    .sparkleLabelXs()
+                    .foregroundStyle(Color.dustForeground)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+            }
+        }
+        .disabled(isLoading)
+        .opacity(isLoading ? 0.5 : 1.0)
+    }
+}
+
+// MARK: - Auth / File Access Required
+
+struct AuthRequiredView: View {
+    let label: String
+    var onOpenInBrowser: (() -> Void)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                SparkleIcon.lock.image
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 16, height: 16)
+                    .foregroundStyle(Color.dustFaint)
+
+                Text(label)
+                    .sparkleLabelSm()
+                    .foregroundStyle(Color.dustForeground)
+            }
+
+            Text("Connect this service in the web app to continue.")
+                .sparkleCopyXs()
+                .foregroundStyle(Color.dustFaint)
+
+            if let onOpenInBrowser {
+                Button(action: onOpenInBrowser) {
+                    HStack(spacing: 4) {
+                        SparkleIcon.externalLink.image
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 12, height: 12)
+                        Text("Open in Dust")
+                            .sparkleLabelXs()
+                    }
+                    .foregroundStyle(Color.dustForeground)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                }
+                .liquidGlassRoundedRect(cornerRadius: 10)
+            }
+        }
+        .padding(12)
+        .liquidGlassRoundedRect()
+    }
+}
+
+// MARK: - Error Card
+
+struct ErrorCardView: View {
+    let error: ErrorInfo
+    var onRetry: (() -> Void)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                SparkleIcon.exclamationCircle.image
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 14, height: 14)
+                    .foregroundStyle(Color.warning)
+
+                Text(error.errorTitle ?? "Something went wrong")
+                    .sparkleLabelSm()
+                    .foregroundStyle(Color.warning)
+            }
+
+            Text(error.message)
+                .sparkleCopyXs()
+                .foregroundStyle(Color.dustForeground)
+
+            if error.isRetryable, let onRetry {
+                Button(action: onRetry) {
+                    HStack(spacing: 4) {
+                        SparkleIcon.arrowPath.image
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 12, height: 12)
+                        Text("Retry")
+                            .sparkleLabelXs()
+                    }
+                    .foregroundStyle(Color.highlight)
+                }
+            }
+        }
+        .padding(12)
+        .liquidGlassRoundedRect()
     }
 }
 
