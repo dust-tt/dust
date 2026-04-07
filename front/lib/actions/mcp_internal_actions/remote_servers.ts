@@ -1288,6 +1288,78 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10017,
+    name: "NetSuite",
+    description:
+      "NetSuite tools for querying records, running searches, and interacting with your NetSuite account via the AI Connector Service.",
+    url: "",
+    icon: "NetSuiteLogo",
+    documentationUrl: "https://docs.dust.tt/docs/netsuite",
+    authMethod: "oauth-static",
+    supportedOAuthUseCases: ["platform_actions", "personal_actions"],
+    scope: "mcp",
+    featureFlag: "netsuite_mcp",
+    toolStakes: {
+      ns_getRecord: "never_ask",
+      ns_getRecordTypeMetadata: "never_ask",
+      ns_listAllReports: "never_ask",
+      ns_runReport: "never_ask",
+      ns_getSubsidiaries: "never_ask",
+      ns_listSavedSearches: "never_ask",
+      ns_runSavedSearch: "never_ask",
+      ns_runCustomSuiteQL: "never_ask",
+      ns_getSuiteQLMetadata: "never_ask",
+      ns_createRecord: "high",
+      ns_updateRecord: "high",
+    },
+    toolDisplayLabels: {
+      ns_getRecord: {
+        running: "Fetching record from NetSuite",
+        done: "Fetched record from NetSuite",
+      },
+      ns_getRecordTypeMetadata: {
+        running: "Fetching record type metadata from NetSuite",
+        done: "Fetched record type metadata from NetSuite",
+      },
+      ns_listAllReports: {
+        running: "Listing reports from NetSuite",
+        done: "Listed reports from NetSuite",
+      },
+      ns_runReport: {
+        running: "Running report on NetSuite",
+        done: "Ran report on NetSuite",
+      },
+      ns_getSubsidiaries: {
+        running: "Fetching subsidiaries from NetSuite",
+        done: "Fetched subsidiaries from NetSuite",
+      },
+      ns_listSavedSearches: {
+        running: "Listing saved searches from NetSuite",
+        done: "Listed saved searches from NetSuite",
+      },
+      ns_runSavedSearch: {
+        running: "Running saved search on NetSuite",
+        done: "Ran saved search on NetSuite",
+      },
+      ns_runCustomSuiteQL: {
+        running: "Running SuiteQL query on NetSuite",
+        done: "Ran SuiteQL query on NetSuite",
+      },
+      ns_getSuiteQLMetadata: {
+        running: "Fetching SuiteQL metadata from NetSuite",
+        done: "Fetched SuiteQL metadata from NetSuite",
+      },
+      ns_createRecord: {
+        running: "Creating record on NetSuite",
+        done: "Created record on NetSuite",
+      },
+      ns_updateRecord: {
+        running: "Updating record on NetSuite",
+        done: "Updated record on NetSuite",
+      },
+    },
+  },
 ];
 
 export const isDefaultRemoteMcpServerURL = (url: string | undefined) => {

@@ -203,6 +203,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Power BI MCP tool for querying semantic models and DAX",
     stage: "on_demand",
   },
+  netsuite_mcp: {
+    description:
+      "NetSuite MCP tool for querying records and interacting with your NetSuite account",
+    stage: "on_demand",
+  },
   discord_bot: {
     description:
       "Discord bot integration for workspace-level Discord integration",

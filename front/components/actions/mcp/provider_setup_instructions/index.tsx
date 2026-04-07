@@ -1,6 +1,7 @@
 import type { MCPOAuthUseCase, OAuthProvider } from "@app/types/oauth/lib";
 import { Icon, InformationCircleIcon } from "@dust-tt/sparkle";
 
+import { NetSuiteSetupInstructions } from "./NetSuiteSetupInstructions";
 import { PowerBiSetupInstructions } from "./PowerBiSetupInstructions";
 import { SnowflakeSetupInstructions } from "./SnowflakeSetupInstructions";
 
@@ -28,6 +29,9 @@ export function ProviderSetupInstructions({
     case "mcp_static":
       if (serverId === 10015) {
         return <PowerBiSetupInstructions />;
+      }
+      if (serverId === 10017) {
+        return <NetSuiteSetupInstructions />;
       }
       return null;
     default:
