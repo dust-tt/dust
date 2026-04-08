@@ -974,9 +974,15 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     subscriptionModelId: ModelId,
     metronomeContractId: string
   ): Promise<void> {
-    await SubscriptionModel.update(
-      { metronomeContractId },
-      { where: { id: subscriptionModelId } }
+    const subscription = await SubscriptionModel.findByPk(subscriptionModelId);
+    if (!subscription) {
+      throw new Error(`Subscription not found: ${subscriptionModelId}`);
+    }
+
+    await subscription.update({ metronomeContractId });
+
+    await SubscriptionResource.invalidateSubscriptionCache(
+      subscription.workspaceId
     );
   }
 

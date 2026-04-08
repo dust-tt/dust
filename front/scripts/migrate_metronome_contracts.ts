@@ -276,12 +276,22 @@ async function migrateWorkspace(
     );
 
     // Provision seats for all existing members.
-    await provisionSeatsForContract({
+    const seatResult = await provisionSeatsForContract({
       metronomeCustomerId,
       contractId: newContractId,
       workspace,
       startingAt: subInfo.startDate,
     });
+    if (seatResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          contractId: newContractId,
+          error: seatResult.error.message,
+        },
+        "Failed to provision seats on new contract"
+      );
+    }
 
     // Update metronomeContractId on the subscription.
     await SubscriptionResource.updateMetronomeContractId(
@@ -427,12 +437,22 @@ async function migrateWorkspace(
     );
 
     // 3. Provision seats on the new contract.
-    await provisionSeatsForContract({
+    const seatResult2 = await provisionSeatsForContract({
       metronomeCustomerId,
       contractId: newContractId,
       workspace,
       startingAt: contract.starting_at,
     });
+    if (seatResult2.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          contractId: newContractId,
+          error: seatResult2.error.message,
+        },
+        "Failed to provision seats on new contract"
+      );
+    }
 
     // 4. Update metronomeContractId on the active subscription.
     const activeSubscription =
