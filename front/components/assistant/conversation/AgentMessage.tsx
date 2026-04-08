@@ -980,6 +980,7 @@ export function AgentMessage({
   return (
     <ConversationMessageContainer
       messageType="agent"
+      isOtherUser={triggeringUser !== null && triggeringUser.sId !== user.sId}
       type="agent"
       className={isGracefullyStopped ? "s-py-2" : undefined}
     >
