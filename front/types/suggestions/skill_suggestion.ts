@@ -9,9 +9,27 @@ export const SKILL_SUGGESTION_STATES = [
 
 export type SkillSuggestionState = (typeof SKILL_SUGGESTION_STATES)[number];
 
+export function isSkillSuggestionState(
+  value: unknown
+): value is SkillSuggestionState {
+  return (
+    typeof value === "string" &&
+    SKILL_SUGGESTION_STATES.includes(value as SkillSuggestionState)
+  );
+}
+
 export const SKILL_SUGGESTION_SOURCES = ["reinforcement", "synthetic"] as const;
 
 export type SkillSuggestionSource = (typeof SKILL_SUGGESTION_SOURCES)[number];
+
+export function isSkillSuggestionSource(
+  value: unknown
+): value is SkillSuggestionSource {
+  return (
+    typeof value === "string" &&
+    SKILL_SUGGESTION_SOURCES.includes(value as SkillSuggestionSource)
+  );
+}
 
 export const SKILL_SUGGESTION_KINDS = [
   "create",

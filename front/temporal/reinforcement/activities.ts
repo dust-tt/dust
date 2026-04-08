@@ -210,8 +210,8 @@ async function runReinforcedSkillsStep({
       typeof prepareReinforcedToolActions
     >[1]["exploratoryToolCalls"],
     agentMessageModelId: storedResult.agentMessageModelId,
-    agentMessageId: storedResult.agentMessageSId,
-    userMessageId: storedResult.userMessageSId,
+    agentMessageId: storedResult.agentMessageId,
+    userMessageId: storedResult.userMessageId,
     conversationId: reinforcementConversationId,
   });
 
@@ -743,8 +743,8 @@ export async function processSkillConversationAnalysisBatchResultActivity({
             typeof prepareReinforcedToolActions
           >[1]["exploratoryToolCalls"],
           agentMessageModelId: storedInfo.agentMessageModelId,
-          agentMessageId: storedInfo.agentMessageSId,
-          userMessageId: storedInfo.userMessageSId,
+          agentMessageId: storedInfo.agentMessageId,
+          userMessageId: storedInfo.userMessageId,
           conversationId: reinforcementConvId,
         });
 
@@ -973,8 +973,8 @@ export async function processSkillAggregationBatchResultActivity({
       typeof prepareReinforcedToolActions
     >[1]["exploratoryToolCalls"],
     agentMessageModelId: storedInfo.agentMessageModelId,
-    agentMessageId: storedInfo.agentMessageSId,
-    userMessageId: storedInfo.userMessageSId,
+    agentMessageId: storedInfo.agentMessageId,
+    userMessageId: storedInfo.userMessageId,
     conversationId: firstConvId,
   });
 

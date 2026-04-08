@@ -309,6 +309,70 @@ describe("SkillSuggestionResource", () => {
     });
   });
 
+  describe("bulkDelete", () => {
+    it("should delete all given suggestions", async () => {
+      const s1 = await SkillSuggestionFactory.create(authenticator, skill);
+      const s2 = await SkillSuggestionFactory.create(authenticator, skill);
+
+      const result = await SkillSuggestionResource.bulkDelete(authenticator, [
+        s1,
+        s2,
+      ]);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBe(2);
+      }
+
+      const fetched1 = await SkillSuggestionResource.fetchById(
+        authenticator,
+        s1.sId
+      );
+      const fetched2 = await SkillSuggestionResource.fetchById(
+        authenticator,
+        s2.sId
+      );
+      expect(fetched1).toBeNull();
+      expect(fetched2).toBeNull();
+    });
+
+    it("should return Ok(0) for empty array", async () => {
+      const result = await SkillSuggestionResource.bulkDelete(
+        authenticator,
+        []
+      );
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBe(0);
+      }
+    });
+
+    it("should fail when user cannot write on one of the suggestions", async () => {
+      const s1 = await SkillSuggestionFactory.create(authenticator, skill);
+
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      const result = await SkillSuggestionResource.bulkDelete(otherAuth, [s1]);
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toBe(
+          "User does not have permission to delete all the given suggestions"
+        );
+      }
+
+      // Verify suggestion was not deleted.
+      const fetched = await SkillSuggestionResource.fetchById(
+        authenticator,
+        s1.sId
+      );
+      expect(fetched).not.toBeNull();
+    });
+  });
+
   describe("deleteExpiredSynthetic", () => {
     it("should delete synthetic suggestions older than cutoff date", async () => {
       const adminAuth = await Authenticator.internalAdminForWorkspace(

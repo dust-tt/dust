@@ -281,6 +281,40 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
   }
 
   /**
+   * Bulk-deletes the given suggestions.
+   * Requires write permission on all suggestions.
+   */
+  static async bulkDelete(
+    auth: Authenticator,
+    suggestions: SkillSuggestionResource[]
+  ): Promise<Result<number, Error>> {
+    if (suggestions.length === 0) {
+      return new Ok(0);
+    }
+
+    const nonWritable = suggestions.filter((s) => !s.canWrite(auth));
+    if (nonWritable.length > 0) {
+      return new Err(
+        new Error(
+          "User does not have permission to delete all the given suggestions"
+        )
+      );
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+    const ids = suggestions.map((s) => s.id);
+
+    const deletedCount = await SkillSuggestionModel.destroy({
+      where: {
+        workspaceId: owner.id,
+        id: ids,
+      },
+    });
+
+    return new Ok(deletedCount);
+  }
+
+  /**
    * Deletes all synthetic suggestions older than the given cutoff date.
    * Requires admin permissions. Returns the number of deleted rows.
    */
