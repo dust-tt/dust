@@ -58,6 +58,7 @@ type DiscoverOAuthMetadataFn = (
 
 type CreateRemoteMCPServerFn = (args: {
   url: string;
+  defaultServerId?: number;
   includeGlobal: boolean;
   sharedSecret?: string;
   oauthConnection?: MCPConnectionType;
@@ -82,6 +83,7 @@ type CreateInternalMCPServerFn = (
 interface SubmitCreateMCPServerDialogFormParams {
   owner: WorkspaceType;
   internalMCPServer?: MCPServerType;
+  defaultServerId?: number;
   values: CreateMCPServerDialogFormValues;
   // Workflow state - managed via useState in the dialog, not in form state.
   // These are server-derived values, not user input.
@@ -97,6 +99,7 @@ interface SubmitCreateMCPServerDialogFormParams {
 export async function submitCreateMCPServerDialogForm({
   owner,
   internalMCPServer,
+  defaultServerId,
   values,
   authorization,
   remoteMCPServerOAuthDiscoveryDone,
@@ -276,6 +279,7 @@ export async function submitCreateMCPServerDialogForm({
   if (values.remoteServerUrl) {
     const createRes = await createWithURL({
       url: values.remoteServerUrl,
+      defaultServerId,
       includeGlobal: true,
       sharedSecret:
         values.authMethod === "bearer" ? values.sharedSecret : undefined,

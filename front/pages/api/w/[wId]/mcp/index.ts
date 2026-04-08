@@ -53,6 +53,7 @@ const PostQueryParamsSchema = t.union([
   t.type({
     serverType: t.literal("remote"),
     url: t.string,
+    defaultServerId: t.union([t.number, t.undefined]),
     includeGlobal: t.union([t.boolean, t.undefined]),
     sharedSecret: t.union([t.string, t.undefined]),
     useCase: t.union([
@@ -221,9 +222,13 @@ async function handler(
 
           const metadata = r.value;
 
-          const defaultConfig = DEFAULT_REMOTE_MCP_SERVERS.find(
-            (config) => config.url === url
-          );
+          const defaultConfig =
+            DEFAULT_REMOTE_MCP_SERVERS.find((config) => config.url === url) ??
+            (body.defaultServerId !== undefined
+              ? DEFAULT_REMOTE_MCP_SERVERS.find(
+                  (config) => config.id === body.defaultServerId
+                )
+              : undefined);
 
           const name = defaultConfig?.name ?? metadata.name;
           if (name.length > MAX_NAME_LENGTH) {

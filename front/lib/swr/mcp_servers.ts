@@ -384,18 +384,23 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
   const createWithURL = useCallback(
     async ({
       url,
+      defaultServerId,
       includeGlobal,
       sharedSecret,
       oauthConnection,
       customHeaders,
     }: {
       url: string;
+      defaultServerId?: number;
       includeGlobal: boolean;
       sharedSecret?: string;
       oauthConnection?: MCPConnectionType;
       customHeaders?: { key: string; value: string }[];
     }): Promise<Result<CreateMCPServerResponseBody, Error>> => {
       const body: any = { url, serverType: "remote", includeGlobal };
+      if (defaultServerId !== undefined) {
+        body.defaultServerId = defaultServerId;
+      }
       if (sharedSecret) {
         body.sharedSecret = sharedSecret;
       }
