@@ -63,7 +63,7 @@ export async function seedConversations(
         conversationUser = specifiedUser;
       } else {
         logger.warn(
-          { userId: requestedUserId },
+          { userId: conv.userId },
           "Specified user not found in additionalUsers, using default user"
         );
       }
