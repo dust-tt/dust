@@ -1,6 +1,5 @@
 import { getBuilderDescriptionSuggestions } from "@app/lib/api/assistant/suggestions/description";
 import { getBuilderEmojiSuggestions } from "@app/lib/api/assistant/suggestions/emoji";
-import { getBuilderInstructionsSuggestions } from "@app/lib/api/assistant/suggestions/instructions";
 import { getBuilderNameSuggestions } from "@app/lib/api/assistant/suggestions/name";
 import { getBuilderTagSuggestions } from "@app/lib/api/assistant/suggestions/tags";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
@@ -20,7 +19,6 @@ async function getModelForSuggestionType(
   type: BuilderSuggestionType
 ): Promise<ModelConfigurationType | null> {
   switch (type) {
-    case "instructions":
     case "name":
     case "description":
     case "emoji":
@@ -56,9 +54,6 @@ export async function getBuilderSuggestions(
 
     case "emoji":
       return getBuilderEmojiSuggestions(auth, inputs);
-
-    case "instructions":
-      return getBuilderInstructionsSuggestions(auth, inputs);
 
     default:
       assertNever(type);

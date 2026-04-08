@@ -13,7 +13,6 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-// TODO(sidekick): Remove useless suggestion types when sidekick is released.
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<

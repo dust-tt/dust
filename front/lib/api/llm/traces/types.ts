@@ -16,7 +16,6 @@ interface LLMTraceContextBase {
     | "butler_analyze_conversation"
     | "project_todo_analyze_conversation"
     | "agent_builder_emoji_suggestion"
-    | "agent_builder_instruction_suggestion"
     | "agent_builder_name_suggestion"
     | "agent_builder_tags_suggestion"
     | "agent_conversation"
