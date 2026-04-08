@@ -1,5 +1,4 @@
 import handler from "@app/pages/api/v1/w/[wId]/analytics/export";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import {
   createPublicApiAuthenticationTests,
   createPublicApiMockRequest,
@@ -118,7 +117,6 @@ async function setupTest({
   timezone?: string;
 } = {}) {
   const result = await createPublicApiMockRequest({ systemKey: true });
-  await FeatureFlagFactory.basic(result.auth, "analytics_csv_export");
 
   const query: Record<string, string> = {
     wId: result.workspace.sId,
@@ -149,28 +147,10 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     });
   });
 
-  it("returns 403 without analytics_csv_export feature flag", async () => {
-    const { req, res } = await createPublicApiMockRequest({
-      systemKey: true,
-    });
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData()).toEqual({
-      error: {
-        type: "workspace_auth_error",
-        message:
-          "The workspace does not have access to the analytics export API.",
-      },
-    });
-  });
-
   it("returns 400 for missing required query params", async () => {
-    const { req, res, auth, workspace } = await createPublicApiMockRequest({
+    const { req, res, workspace } = await createPublicApiMockRequest({
       systemKey: true,
     });
-    await FeatureFlagFactory.basic(auth, "analytics_csv_export");
     req.query = { wId: workspace.sId };
 
     await handler(req, res);
@@ -211,7 +191,6 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
         method,
         systemKey: true,
       });
-      await FeatureFlagFactory.basic(result.auth, "analytics_csv_export");
       result.req.query = {
         wId: result.workspace.sId,
         table: "usage_metrics",
