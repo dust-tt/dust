@@ -24,8 +24,10 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { handleBase64Upload } from "@app/lib/actions/mcp_utils";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import { persistToolOutput } from "@app/lib/api/files/action_output_fs";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -159,6 +161,9 @@ export async function processToolResults(
     conversationId: conversation.sId,
   };
 
+  const flags = await getFeatureFlags(auth);
+  const hasSandbox = flags.includes("sandbox_tools");
+
   const timestamp = Date.now();
   const cleanContent: {
     content: CallToolResult["content"][number];
@@ -166,6 +171,12 @@ export async function processToolResults(
   }[] = await concurrentExecutor(
     toolCallResultContent,
     async (block, idx) => {
+      if (hasSandbox) {
+        await persistToolOutput(auth, conversation, block, {
+          toolName: toolConfiguration.mcpServerName,
+        });
+      }
+
       switch (block.type) {
         case "text": {
           // If the text is too large we create a file and return a resource block that references the file.
