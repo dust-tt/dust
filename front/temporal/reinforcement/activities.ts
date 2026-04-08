@@ -87,7 +87,7 @@ async function runReinforcedSkillsStep({
   const llm = await getReinforcedSkillsLLM(auth, operationType);
   if (!llm) {
     logger.error(
-      { contextId },
+      { contextId, workspaceId: auth.getNonNullableWorkspace().sId },
       "ReinforcedSkills: no LLM available for step activity"
     );
     return { isTerminal: true, suggestionsCreated: 0 };
