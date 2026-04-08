@@ -109,20 +109,29 @@ export function useAddProjectContextContentNode({
   };
 }
 
-export function useDeleteProjectFile({ owner }: { owner: LightWorkspaceType }) {
+export function useRemoveProjectContextFile({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
   const sendNotification = useSendNotification();
 
   return async (fileId: string): Promise<Result<void, Error>> => {
     try {
-      const res = await clientFetch(`/api/w/${owner.sId}/files/${fileId}`, {
-        method: "DELETE",
-      });
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_context/files/${fileId}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
         sendNotification({
           type: "error",
-          title: "Failed to delete file",
+          title: "Failed to remove file from project",
           description: errorData.message,
         });
         return new Err(new Error(errorData.message));
@@ -130,7 +139,7 @@ export function useDeleteProjectFile({ owner }: { owner: LightWorkspaceType }) {
 
       sendNotification({
         type: "success",
-        title: "File deleted",
+        title: "Removed from project knowledge",
       });
 
       return new Ok(undefined);
@@ -138,7 +147,7 @@ export function useDeleteProjectFile({ owner }: { owner: LightWorkspaceType }) {
       const errorMessage = normalizeError(e).message;
       sendNotification({
         type: "error",
-        title: "Failed to delete file",
+        title: "Failed to remove file from project",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));

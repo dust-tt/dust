@@ -6,6 +6,7 @@ export {
   listProjectContentFragments,
   listProjectContextAttachments,
   listProjectContextFiles,
+  removeFileFromProject,
 } from "./context";
 export {
   fetchProjectDataSource,

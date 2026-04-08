@@ -14,7 +14,9 @@ import type { DataSourceViewContentNode } from "./data_source_view";
 import type { AllSupportedFileContentType } from "./files";
 import type { ModelId } from "./shared/model_id";
 
-export type ContentFragmentExpiredReason = "data_source_deleted";
+export type ContentFragmentExpiredReason =
+  | "data_source_deleted"
+  | "file_deleted";
 
 export type ContentFragmentContextType = {
   username: string | null;
