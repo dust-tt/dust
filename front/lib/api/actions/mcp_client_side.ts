@@ -104,24 +104,27 @@ export async function createClientSideMCPServerConfigurations(
     return [];
   }
 
-  const metadata = await getMCPServersMetadata(auth, {
+  const metaByServerId = await getMCPServersMetadata(auth, {
     serverIds: clientSideMCPServerIds,
   });
 
-  return clientSideMCPServerIds.map((serverId) => ({
-    description: `Use the MCP Server ${serverId} to interact with the client-side MCP server.`,
-    id: -1, // Default ID for client-side MCP servers.
-    clientSideMcpServerId: serverId,
-    name:
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      metadata.find((m) => m?.serverId === serverId)?.serverName ||
-      `MCP Server ${serverId}`,
-    mcpServerName:
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      metadata.find((m) => m?.serverId === serverId)?.serverName || null,
-    sId: serverId,
-    type: "mcp_server_configuration",
-  }));
+  return clientSideMCPServerIds.flatMap((serverId) => {
+    const meta = metaByServerId.get(serverId);
+    if (!meta) {
+      return [];
+    }
+    return [
+      {
+        description: `Use the MCP Server ${serverId} to interact with the client-side MCP server.`,
+        id: -1,
+        clientSideMcpServerId: serverId,
+        name: meta.serverName,
+        mcpServerName: meta.serverName,
+        sId: serverId,
+        type: "mcp_server_configuration",
+      },
+    ];
+  });
 }
 
 // ------------------------------

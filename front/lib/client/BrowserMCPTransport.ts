@@ -32,6 +32,16 @@ export class BrowserMCPTransport implements Transport {
 
   private readonly handleBeforeUnload = () => {
     this.isClosing = true;
+    // Use sendBeacon for reliable delivery during page unload — fetch is not
+    // guaranteed to complete when the document is being torn down.
+    if (this.serverId) {
+      navigator.sendBeacon(
+        `/api/w/${this.workspaceId}/mcp/deregister`,
+        new Blob([JSON.stringify({ serverId: this.serverId })], {
+          type: "application/json",
+        })
+      );
+    }
   };
 
   constructor(
@@ -40,6 +50,33 @@ export class BrowserMCPTransport implements Transport {
     private readonly onServerIdReceived: (serverId: string) => void
   ) {
     window.addEventListener("beforeunload", this.handleBeforeUnload);
+  }
+
+  private async deregisterServer(serverId: string): Promise<void> {
+    try {
+      const response = await clientFetch(
+        `/api/w/${this.workspaceId}/mcp/deregister`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({ serverId }),
+        }
+      );
+      if (!response.ok) {
+        console.warn(
+          "[BrowserMCPTransport] Failed to deregister MCP server:",
+          response.status
+        );
+      }
+    } catch (error) {
+      console.warn(
+        "[BrowserMCPTransport] Failed to deregister MCP server:",
+        error
+      );
+    }
   }
 
   /**
@@ -393,6 +430,12 @@ export class BrowserMCPTransport implements Transport {
       console.log("[BrowserMCPTransport] Closing MCP SSE connection");
       this.eventSource.close();
       this.eventSource = null;
+    }
+
+    // Deregister the server to clean up Redis.
+    if (this.serverId) {
+      await this.deregisterServer(this.serverId);
+      this.serverId = null;
     }
 
     // Trigger onclose callback.
