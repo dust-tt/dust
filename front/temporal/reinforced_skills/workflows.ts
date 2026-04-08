@@ -301,7 +301,10 @@ export async function reinforcedSkillsWorkspaceWorkflow({
   );
 
   // Phase 5: Finalize per skill.
-  for (const { skillId: currentSkillId, suggestionsCreated } of aggregationResults) {
+  for (const {
+    skillId: currentSkillId,
+    suggestionsCreated,
+  } of aggregationResults) {
     await finalizeSkillAggregationActivity({
       workspaceId,
       skillId: currentSkillId,

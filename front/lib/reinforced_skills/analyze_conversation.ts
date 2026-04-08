@@ -102,7 +102,9 @@ export function buildSkillAnalysisPrompt(
 ): { systemPrompt: string; userMessage: string } {
   const systemPrompt = buildSkillAnalysisSystemPrompt();
 
-  const skillContexts = skills.map((s) => formatSkillContext(s)).join("\n\n---\n\n");
+  const skillContexts = skills
+    .map((s) => formatSkillContext(s))
+    .join("\n\n---\n\n");
 
   const userMessage = `<skill_context>
 ${skillContexts}

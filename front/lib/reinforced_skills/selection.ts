@@ -1,6 +1,6 @@
+import type { Authenticator } from "@app/lib/auth";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { AgentMessageSkillModel } from "@app/lib/models/skill/conversation_skill";
-import type { Authenticator } from "@app/lib/auth";
 import { makeSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types/shared/model_id";

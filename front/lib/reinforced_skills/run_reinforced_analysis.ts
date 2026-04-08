@@ -25,9 +25,9 @@ import type { ConversationResource } from "@app/lib/resources/conversation_resou
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import logger from "@app/logger/logger";
-import type { SkillSuggestionSource } from "@app/types/suggestions/skill_suggestion";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { SkillSuggestionSource } from "@app/types/suggestions/skill_suggestion";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
