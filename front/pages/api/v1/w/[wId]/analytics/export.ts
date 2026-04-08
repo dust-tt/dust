@@ -37,12 +37,14 @@
  *         description: Start date in YYYY-MM-DD format
  *         schema:
  *           type: string
+ *           format: date
  *       - in: query
  *         name: endDate
  *         required: true
  *         description: End date in YYYY-MM-DD format
  *         schema:
  *           type: string
+ *           format: date
  *       - in: query
  *         name: timezone
  *         required: false

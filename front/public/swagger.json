@@ -275,7 +275,8 @@
             "required": true,
             "description": "Start date in YYYY-MM-DD format",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "format": "date"
             }
           },
           {
@@ -284,7 +285,8 @@
             "required": true,
             "description": "End date in YYYY-MM-DD format",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "format": "date"
             }
           },
           {
