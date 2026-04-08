@@ -170,12 +170,12 @@ export function UserQuestionRequired({
         </div>
       )}
       <div className="flex gap-2">
-        <Button label="Skip" variant="outline" size="xs" onClick={handleSkip} />
+        <Button label="Skip" variant="outline" size="sm" onClick={handleSkip} />
         {question.multiSelect ? (
           <Button
             label="Submit"
             variant="primary"
-            size="xs"
+            size="sm"
             disabled={selectedOptions.length === 0}
             onClick={handleMultiSelectSubmit}
           />
@@ -183,7 +183,7 @@ export function UserQuestionRequired({
           <Button
             icon={ArrowUpIcon}
             variant="highlight"
-            size="xs"
+            size="sm"
             className="ml-auto"
             disabled={isCustomResponseEmpty}
             onClick={handleCustomResponseSubmit}
