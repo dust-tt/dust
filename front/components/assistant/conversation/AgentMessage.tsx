@@ -982,7 +982,7 @@ export function AgentMessage({
       messageType="agent"
       isOtherUser={triggeringUser !== null && triggeringUser.sId !== user.sId}
       type="agent"
-      className={isGracefullyStopped ? "s-py-2" : undefined}
+      className={isGracefullyStopped ? "py-2" : undefined}
     >
       {!hideHeader && (
         <div className="inline-flex items-center gap-2">
