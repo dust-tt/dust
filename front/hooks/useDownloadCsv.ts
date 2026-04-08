@@ -1,4 +1,3 @@
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useCallback, useState } from "react";
 
@@ -13,8 +12,6 @@ export function useDownloadCsv({
   filename,
   disabled,
 }: UseDownloadCsvOptions) {
-  const { hasFeature } = useFeatureFlags();
-  const showExport = hasFeature("analytics_csv_export");
   const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = useCallback(async () => {
@@ -37,7 +34,6 @@ export function useDownloadCsv({
   }, [url, filename]);
 
   return {
-    showExport,
     isDownloading,
     disabled: !!disabled,
     handleDownload,
