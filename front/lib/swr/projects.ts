@@ -155,6 +155,60 @@ export function useRemoveProjectContextFile({
   };
 }
 
+export function useRemoveProjectContextContentNode({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  return async ({
+    nodeId,
+    nodeDataSourceViewId,
+  }: {
+    nodeId: string;
+    nodeDataSourceViewId: string;
+  }): Promise<Result<void, Error>> => {
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_context/content_nodes`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nodeId, nodeDataSourceViewId }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to remove content node from project",
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      sendNotification({
+        type: "success",
+        title: "Removed from project knowledge",
+      });
+
+      return new Ok(undefined);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to remove content node from project",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
 export function useRenameProjectFile({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
 

@@ -441,3 +441,87 @@ export async function removeFileFromProject(
 
   return new Ok(undefined);
 }
+
+/**
+ * Removes a project-context content node reference from a project space.
+ *
+ * - Deletes associated ContentFragmentModel rows for this (space,nodeId,nodeDataSourceViewId)
+ *   tuple when they are not referenced by any conversation message.
+ * - If some fragments are referenced by messages, we keep them but detach them from the space
+ *   and mark them expired so conversation rendering can display an appropriate placeholder.
+ */
+export async function removeContentNodeFromProject(
+  auth: Authenticator,
+  {
+    space,
+    nodeId,
+    nodeDataSourceViewId,
+  }: {
+    space: SpaceResource;
+    nodeId: string;
+    nodeDataSourceViewId: string; // data source view sId
+  }
+): Promise<Result<void, Error>> {
+  const dsView = await DataSourceViewResource.fetchById(
+    auth,
+    nodeDataSourceViewId
+  );
+  if (!dsView) {
+    return new Err(new Error("Data source view not found."));
+  }
+
+  const workspaceId = auth.getNonNullableWorkspace().id;
+
+  const projectFragmentIds = await ContentFragmentModel.findAll({
+    attributes: ["id"],
+    where: {
+      workspaceId,
+      spaceId: space.id,
+      fileId: null,
+      nodeId,
+      nodeDataSourceViewId: dsView.id,
+    },
+  }).then((rows) => rows.map((r) => r.id));
+
+  if (projectFragmentIds.length === 0) {
+    return new Ok(undefined);
+  }
+
+  const messagesReferencing = await MessageModel.findAll({
+    attributes: ["contentFragmentId"],
+    where: {
+      workspaceId,
+      contentFragmentId: {
+        [Op.in]: projectFragmentIds,
+      },
+    },
+  });
+
+  const referencedIds = new Set(
+    removeNulls(messagesReferencing.map((m) => m.contentFragmentId))
+  );
+  const orphanIds = projectFragmentIds.filter((id) => !referencedIds.has(id));
+
+  if (orphanIds.length > 0) {
+    await ContentFragmentModel.destroy({
+      where: {
+        workspaceId,
+        id: { [Op.in]: orphanIds },
+      },
+    });
+  }
+
+  if (referencedIds.size > 0) {
+    await ContentFragmentModel.update(
+      { spaceId: null },
+      {
+        where: {
+          workspaceId,
+          id: { [Op.in]: Array.from(referencedIds) },
+        },
+      }
+    );
+  }
+
+  return new Ok(undefined);
+}

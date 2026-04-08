@@ -543,11 +543,6 @@ export const InputBarAttachmentsPicker = ({
           <div ref={itemsContainerRef}>
             {(showLoader || availableSources.length > 1) && (
               <div className="flex flex-wrap items-center gap-0.5 p-2">
-                {showLoader && (
-                  <div className="flex h-7 items-center justify-center last:grow">
-                    <Spinner size="xs" />
-                  </div>
-                )}
                 {availableSources.length > 1 && (
                   <DropdownMenuFilters
                     filters={availableSources}
@@ -555,6 +550,11 @@ export const InputBarAttachmentsPicker = ({
                     onSelectFilter={handleFilterClick}
                     className="grow"
                   />
+                )}
+                {showLoader && (
+                  <div className="flex h-7 items-center justify-center last:grow">
+                    <Spinner size="xs" />
+                  </div>
                 )}
               </div>
             )}

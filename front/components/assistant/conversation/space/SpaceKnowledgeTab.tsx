@@ -16,6 +16,7 @@ import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   useAddProjectContextContentNode,
   useProjectContextAttachments,
+  useRemoveProjectContextContentNode,
   useRemoveProjectContextFile,
 } from "@app/lib/swr/projects";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
@@ -24,6 +25,7 @@ import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
+  CloudArrowLeftRightIcon,
   DataTable,
   EmptyCTA,
   Icon,
@@ -122,6 +124,11 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     spaceId: space.sId,
   });
 
+  const removeProjectContextContentNode = useRemoveProjectContextContentNode({
+    owner,
+    spaceId: space.sId,
+  });
+
   const addProjectContextContentNode = useAddProjectContextContentNode({
     owner,
     spaceId: space.sId,
@@ -183,6 +190,28 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     }
   };
 
+  const handleDeleteContentNode = async (item: ContextAttachmentItem) => {
+    if (!isContentNodeAttachmentType(item)) {
+      return;
+    }
+    const confirmed = await confirm({
+      title: "Remove content node?",
+      message: `Are you sure you want to remove "${item.title}" from this project?`,
+      validateLabel: "Remove",
+      validateVariant: "warning",
+    });
+
+    if (confirmed) {
+      const result = await removeProjectContextContentNode({
+        nodeId: item.nodeId,
+        nodeDataSourceViewId: item.nodeDataSourceViewId,
+      });
+      if (result.isOk()) {
+        void mutateProjectContextAttachments();
+      }
+    }
+  };
+
   const openAttachment = useCallback(
     (item: ContextAttachmentItem) => {
       if (isFileAttachmentType(item)) {
@@ -229,6 +258,34 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
                   }
                 />
               </div>
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        id: "source",
+        header: "",
+        enableSorting: false,
+        meta: {
+          className: "w-10",
+        },
+        cell: (info: CellContext<ProjectKnowledgeRow, unknown>) => {
+          const row = info.row.original;
+          if (!isContentNodeAttachmentType(row)) {
+            return null;
+          }
+
+          return (
+            <DataTable.CellContent>
+              <Tooltip
+                tooltipTriggerAsChild
+                label="Synced from a connected data source, cannot be directly edited by agents."
+                trigger={
+                  <span className="text-muted-foreground">
+                    <Icon visual={CloudArrowLeftRightIcon} size="sm" />
+                  </span>
+                }
+              />
             </DataTable.CellContent>
           );
         },
@@ -339,7 +396,20 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
               },
             },
           ]
-        : [],
+        : isContentNodeAttachmentType(attachment)
+          ? [
+              {
+                kind: "item" as const,
+                label: "Remove",
+                icon: TrashIcon,
+                variant: "warning" as const,
+                onClick: (e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  void handleDeleteContentNode(attachment);
+                },
+              },
+            ]
+          : [],
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- stable openAttachment / handlers
   }, [attachments]);
@@ -441,7 +511,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
                 name="knowledge-search"
                 value={searchText}
                 onChange={setSearchText}
-                placeholder="Search knowledge..."
+                placeholder="Filter knowledge..."
                 className="w-full"
               />
               <DataTable
