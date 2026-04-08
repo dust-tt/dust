@@ -22,7 +22,6 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 //   2. Plain text blocks that exceed FILE_OFFLOAD_TEXT_SIZE_BYTES (with JSON sniffing for a better
 //      file extension).
 
-
 export interface PersistedToolOutput {
   // Filename within tool_outputs/ — what the model and sandbox use.
   fileName: string;
@@ -64,7 +63,10 @@ export async function persistToolOutput(
 
   // Text blocks above the offload threshold.
   if (shouldOffloadTextBlock(block)) {
-    const { fileName, contentType } = inferTextFileMetadata(block.text, toolName);
+    const { fileName, contentType } = inferTextFileMetadata(
+      block.text,
+      toolName
+    );
 
     await getPrivateUploadBucket().uploadRawContentToBucket({
       content: block.text,
@@ -100,6 +102,12 @@ function inferTextFileMetadata(
 
   const slug = slugify(toolName) || "output";
   return isJson
-    ? { fileName: makeFileName({ name: slug, ext: ".json" }), contentType: "application/json" }
-    : { fileName: makeFileName({ name: slug, ext: ".txt" }), contentType: "text/plain" };
+    ? {
+        fileName: makeFileName({ name: slug, ext: ".json" }),
+        contentType: "application/json",
+      }
+    : {
+        fileName: makeFileName({ name: slug, ext: ".txt" }),
+        contentType: "text/plain",
+      };
 }
