@@ -440,6 +440,8 @@ export const fetchTree = async (
   const allSchemas: RemoteDBSchema[] = [];
   const allTables: RemoteDBTable[] = [];
 
+  const skippedDatabases: string[] = [];
+
   for (const db of databases) {
     const schemasRes = await fetchSchemas({
       credentials,
@@ -447,6 +449,14 @@ export const fetchTree = async (
       connection,
     });
     if (schemasRes.isErr()) {
+      if (isSnowflakeObjectNotFoundError(schemasRes.error)) {
+        localLogger.warn(
+          { database: db.name },
+          "Database no longer exists or is inaccessible, skipping."
+        );
+        skippedDatabases.push(db.name);
+        continue;
+      }
       return schemasRes;
     }
     allSchemas.push(...schemasRes.value);
@@ -457,10 +467,21 @@ export const fetchTree = async (
       connection,
     });
     if (tablesRes.isErr()) {
+      if (isSnowflakeObjectNotFoundError(tablesRes.error)) {
+        localLogger.warn(
+          { database: db.name },
+          "Database no longer exists or is inaccessible, skipping."
+        );
+        skippedDatabases.push(db.name);
+        continue;
+      }
       return tablesRes;
     }
     allTables.push(...tablesRes.value);
   }
+
+  const skippedSet = new Set(skippedDatabases);
+  const activeDatabases = databases.filter((db) => !skippedSet.has(db.name));
 
   const schemas = allSchemas.filter((s) => !EXCLUDE_SCHEMAS.includes(s.name));
   localLogger.info(
@@ -479,7 +500,7 @@ export const fetchTree = async (
   );
 
   const tree = {
-    databases: databases.map((db) => ({
+    databases: activeDatabases.map((db) => ({
       ...db,
       schemas: schemas
         .filter((s) => s.database_name === db.name)
@@ -771,6 +792,15 @@ async function _closeConnection(
   } catch (error) {
     return new Err(normalizeError(error));
   }
+}
+
+/**
+ * Snowflake error code 002043: "Object does not exist, or operation cannot be
+ * performed." Raised when a database or schema has been dropped / made
+ * inaccessible after SHOW DATABASES returned it.
+ */
+function isSnowflakeObjectNotFoundError(err: Error): boolean {
+  return "code" in err && (err as Error & { code: string }).code === "002043";
 }
 
 /**
