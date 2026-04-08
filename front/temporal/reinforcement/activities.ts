@@ -364,33 +364,32 @@ export async function getSkillsWithSyntheticSuggestionsActivity({
 }): Promise<string[]> {
   const auth = await getAuthForWorkspace(workspaceId);
 
+  // Fetch all pending synthetic suggestions for the workspace (or scoped skill),
+  // then extract distinct skill sIds.
+  const filters: Parameters<
+    typeof SkillSuggestionResource.listBySkillConfigurationId
+  >[2] = {
+    sources: ["synthetic"],
+    states: ["pending"],
+  };
+
   if (skillId) {
-    // Check if this specific skill has synthetic suggestions.
-    const suggestions =
-      await SkillSuggestionResource.listBySkillConfigurationId(auth, skillId, {
-        sources: ["synthetic"],
-        states: ["pending"],
-      });
-    return suggestions.length > 0 ? [skillId] : [];
-  }
-
-  // Find all skills with pending synthetic suggestions across the workspace.
-  const allSkills = await SkillResource.listByWorkspace(auth);
-  const skillIdsWithSuggestions: string[] = [];
-
-  for (const skill of allSkills) {
     const suggestions =
       await SkillSuggestionResource.listBySkillConfigurationId(
         auth,
-        skill.sId,
-        { sources: ["synthetic"], states: ["pending"] }
+        skillId,
+        filters
       );
-    if (suggestions.length > 0) {
-      skillIdsWithSuggestions.push(skill.sId);
-    }
+    return suggestions.length > 0 ? [skillId] : [];
   }
 
-  return skillIdsWithSuggestions;
+  // Single query: list all pending synthetic suggestions across the workspace.
+  const allSuggestions =
+    await SkillSuggestionResource.listByWorkspace(auth, filters);
+
+  return [
+    ...new Set(allSuggestions.map((s) => s.skillConfigurationSId)),
+  ];
 }
 
 /**
