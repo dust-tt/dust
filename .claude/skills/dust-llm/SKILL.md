@@ -34,11 +34,18 @@ Before adding, gather:
 
 ### Step 1: Add Model Configuration
 
+**IMPORTANT**: Always verify model specs from the official provider docs before adding. Key properties to verify: **context window**, **max output tokens**, **vision support**, **structured output support**. Add the doc URL as a comment above the config:
+- OpenAI: `https://developers.openai.com/api/docs/models/{model-id}`
+- Anthropic: `https://docs.anthropic.com/en/docs/about-claude/models/overview`
+- Google: `https://ai.google.dev/gemini-api/docs/models`
+- Mistral: `https://docs.mistral.ai/getting-started/models/models_overview/`
+
 Edit `front/types/assistant/models/openai.ts`:
 
 ```typescript
 export const GPT_4_TURBO_2024_04_09_MODEL_ID = "gpt-4-turbo-2024-04-09" as const;
 
+// https://developers.openai.com/api/docs/models/gpt-4-turbo
 export const GPT_4_TURBO_2024_04_09_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: GPT_4_TURBO_2024_04_09_MODEL_ID,
@@ -63,11 +70,20 @@ export const GPT_4_TURBO_2024_04_09_MODEL_CONFIG: ModelConfigurationType = {
 
 ### Step 2: Add Pricing
 
+**IMPORTANT**: Always verify pricing from the official provider page before adding:
+- OpenAI: https://openai.com/api/pricing/
+- Anthropic: https://www.anthropic.com/pricing#anthropic-api
+- Google: https://ai.google.dev/pricing
+- Mistral: https://mistral.ai/technology/#pricing
+
+Add a comment with the source URL above each model's pricing entry.
+
 Edit `front/lib/api/assistant/token_pricing.ts`:
 
 ```typescript
 const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
   // ... existing
+  // https://openai.com/api/pricing/
   "gpt-4-turbo-2024-04-09": {
     input: 10.0,  // USD per million input tokens
     output: 30.0, // USD per million output tokens
