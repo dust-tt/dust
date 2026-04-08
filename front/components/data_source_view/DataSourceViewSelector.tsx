@@ -104,9 +104,55 @@ const getUseResourceHook =
       isResourcesTruncated: !totalNodesCountIsAccurate,
       nextPageCursor: hasNextPage ? nextPageCursor : null,
       loadMore,
-      isLoadingMore: !!isLoadingMore && !isNodesLoading,
+      isLoadingMore: isLoadingMore && !isNodesLoading,
     };
   };
+
+interface UseLazyLoadAllNodesOptions {
+  owner: LightWorkspaceType;
+  dataSourceView: DataSourceViewType;
+  viewType: ContentNodesViewType;
+  onComplete: (
+    nodes: ReturnType<typeof useInfiniteDataSourceViewContentNodes>["nodes"]
+  ) => void;
+}
+
+function useLazyLoadAllNodes({
+  owner,
+  dataSourceView,
+  viewType,
+  onComplete,
+}: UseLazyLoadAllNodesOptions) {
+  const [triggered, setTriggered] = useState(false);
+
+  const { nodes, hasNextPage, isLoadingMore, loadMore } =
+    useInfiniteDataSourceViewContentNodes({
+      owner,
+      dataSourceView: triggered ? dataSourceView : undefined,
+      viewType,
+      pagination: { cursor: null, limit: ITEMS_PER_PAGE },
+    });
+
+  useEffect(() => {
+    if (!triggered) {
+      return;
+    }
+    if (hasNextPage && !isLoadingMore) {
+      void loadMore();
+      return;
+    }
+    if (!hasNextPage && !isLoadingMore && nodes.length > 0) {
+      onComplete(nodes);
+      setTriggered(false);
+    }
+  }, [triggered, hasNextPage, isLoadingMore, loadMore, nodes, onComplete]);
+
+  return {
+    trigger: () => setTriggered(true),
+    reset: () => setTriggered(false),
+    isLoading: triggered,
+  };
+}
 
 const getNodesFromConfig = (
   selectionConfiguration: DataSourceViewSelectionConfiguration
@@ -746,18 +792,29 @@ export function DataSourceViewSelector({
     [dataSourceView]
   );
 
-  const [selectAllTriggered, setSelectAllTriggered] = useState(false);
-
-  const {
-    nodes: rootNodes,
-    hasNextPage,
-    isLoadingMore,
-    loadMore,
-  } = useInfiniteDataSourceViewContentNodes({
+  const selectAll = useLazyLoadAllNodes({
     owner,
-    dataSourceView: selectAllTriggered ? dataSourceView : undefined,
+    dataSourceView,
     viewType,
-    pagination: { limit: ITEMS_PER_PAGE, cursor: null },
+    onComplete: useCallback(
+      (nodes: DataSourceViewContentNode[]) => {
+        setSelectionConfigurations((prevState) =>
+          applySelectionConfigUpdate({
+            prevState,
+            dataSourceView,
+            update: { selectedResources: nodes, isSelectAll: false },
+            selectionMode,
+            keepOnlyOneSpaceIfApplicable,
+          })
+        );
+      },
+      [
+        dataSourceView,
+        selectionMode,
+        keepOnlyOneSpaceIfApplicable,
+        setSelectionConfigurations,
+      ]
+    ),
   });
 
   const hasActiveSelection =
@@ -769,7 +826,7 @@ export function DataSourceViewSelector({
       setSelectionConfigurations((prevState) =>
         _.omit(prevState, dataSourceView.sId)
       );
-      setSelectAllTriggered(false);
+      selectAll.reset();
       return;
     }
 
@@ -786,7 +843,7 @@ export function DataSourceViewSelector({
       return;
     }
 
-    setSelectAllTriggered(true);
+    selectAll.trigger();
   };
 
   const isChecked = selectionConfiguration.isSelectAll
@@ -892,38 +949,6 @@ export function DataSourceViewSelector({
     [searchResult, isExpanded]
   );
 
-  useEffect(() => {
-    if (!selectAllTriggered) {
-      return;
-    }
-    if (hasNextPage && !isLoadingMore) {
-      void loadMore();
-      return;
-    }
-    if (!hasNextPage && !isLoadingMore && rootNodes.length > 0) {
-      setSelectionConfigurations((prevState) =>
-        applySelectionConfigUpdate({
-          prevState,
-          dataSourceView,
-          update: { selectedResources: rootNodes, isSelectAll: false },
-          selectionMode,
-          keepOnlyOneSpaceIfApplicable,
-        })
-      );
-      setSelectAllTriggered(false);
-    }
-  }, [
-    selectAllTriggered,
-    hasNextPage,
-    isLoadingMore,
-    loadMore,
-    rootNodes,
-    dataSourceView,
-    selectionMode,
-    keepOnlyOneSpaceIfApplicable,
-    setSelectionConfigurations,
-  ]);
-
   return (
     <div id={`dataSourceViewsSelector-${dataSourceView.dataSource.sId}`}>
       <Tree.Item
@@ -953,10 +978,10 @@ export function DataSourceViewSelector({
             <Button
               variant="ghost"
               size="xs"
-              disabled={selectAllTriggered}
+              disabled={selectAll.isLoading}
               className="mr-4 text-xs"
               label={
-                selectAllTriggered
+                selectAll.isLoading
                   ? "Loading..."
                   : hasActiveSelection
                     ? "Unselect All"
