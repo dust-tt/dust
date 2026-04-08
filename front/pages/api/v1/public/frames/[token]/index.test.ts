@@ -6,6 +6,7 @@ import {
   ExternalViewerSessionModel,
   SharingGrantModel,
 } from "@app/lib/resources/storage/models/files";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -426,6 +427,53 @@ describe("GET /api/v1/public/frames/[token]", () => {
 
       expect(res._getStatusCode()).toBe(200);
       expect(res._getJSONData()).toHaveProperty("accessToken");
+    });
+  });
+
+  describe("workspace_only policy", () => {
+    beforeEach(async () => {
+      await WorkspaceModel.update(
+        { sharingPolicy: "workspace_only" },
+        { where: { sId: workspace.sId } }
+      );
+    });
+
+    it("blocks external user with a valid email grant", async () => {
+      const { file, token } = await createFrameWithScope("emails_only");
+      vi.mocked(getAuthForSharedEndpointWorkspaceMembersOnly).mockResolvedValue(
+        null
+      );
+
+      const sessionToken = await createGrantAndSession(
+        file,
+        "viewer@example.com"
+      );
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { token },
+      });
+      req.cookies = { dust_frame_session: sessionToken };
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(404);
+    });
+
+    it("still allows authenticated workspace member", async () => {
+      const { token } = await createFrameWithScope("workspace_and_emails");
+      vi.mocked(getAuthForSharedEndpointWorkspaceMembersOnly).mockResolvedValue(
+        auth
+      );
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { token },
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
     });
   });
 

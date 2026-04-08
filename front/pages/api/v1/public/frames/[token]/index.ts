@@ -125,6 +125,17 @@ async function handler(
     workspace.sId
   );
 
+  // If workspace policy restricts to members only, block all non-member access.
+  if (workspace.sharingPolicy === "workspace_only" && !auth) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  }
+
   // Handle email-based share scopes (treat legacy "workspace" as "workspace_and_emails").
   if (
     shareScope === "emails_only" ||
