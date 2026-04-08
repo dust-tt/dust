@@ -2,22 +2,19 @@
 import { P } from "@app/components/home/ContentComponents";
 import type { HeroTestimonial } from "@app/components/home/content/Competitive/TestimonialSlider";
 import { TestimonialSlider } from "@app/components/home/content/Competitive/TestimonialSlider";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { appendUTMParams } from "@app/lib/utils/utm";
-import { ArrowRightIcon, Button, CheckIcon, Icon } from "@dust-tt/sparkle";
+import { LandingEmailSignup } from "@app/components/home/content/Landing/LandingEmailSignup";
+import { TRACKING_AREAS } from "@app/lib/tracking";
+import { CheckIcon, Icon } from "@dust-tt/sparkle";
 import Image from "next/image";
 
-interface ChatGptEnterpriseDeepDiveProps {
+interface GleanDeepDiveProps {
   pros: string[];
   testimonials: HeroTestimonial[];
 }
 
-export function ChatGptEnterpriseDeepDive({
-  pros,
-  testimonials,
-}: ChatGptEnterpriseDeepDiveProps) {
+export function GleanDeepDive({ pros, testimonials }: GleanDeepDiveProps) {
   return (
-    <section id="dust-deep-dive" className="w-full pt-4 pb-12 md:pt-8 md:pb-24">
+    <section id="dust-deep-dive" className="w-full pt-2 pb-4 md:pt-8 md:pb-24">
       <div className="mx-auto max-w-5xl">
         <div className="overflow-hidden rounded-3xl border-2 border-[#1C91FF] bg-white shadow-2xl shadow-[#1C91FF]/10">
           {/* Blue header */}
@@ -71,7 +68,7 @@ export function ChatGptEnterpriseDeepDive({
                 </span>
               </div>
               <h2 className="text-3xl font-bold">
-                Dust — Best for specialized AI agents connected to company
+                Dust: Best for specialized AI agents connected to company
                 knowledge
               </h2>
             </div>
@@ -87,12 +84,14 @@ export function ChatGptEnterpriseDeepDive({
           </div>
 
           {/* Body */}
-          <div className="p-8 md:p-12">
+          <div className="p-5 md:p-12">
             <p className="mb-10 text-xl font-medium leading-relaxed text-gray-700">
-              <span className="text-[#1C91FF]">Not just a chat interface,</span>{" "}
+              <span className="text-[#1C91FF]">
+                Not just a search interface,
+              </span>{" "}
               Dust is an AI platform purpose-built for team collaboration at
-              scale, with specialized agents, deep company data integration, and
-              multi-model flexibility.
+              scale, with specialized agents that search, reason, and take
+              action across your company&apos;s tools and data.
             </p>
 
             <div className="grid gap-12 md:grid-cols-2">
@@ -137,28 +136,21 @@ export function ChatGptEnterpriseDeepDive({
                     platforms.
                   </P>
                 </div>
-
-                <div className="mt-8">
-                  <Button
-                    variant="primary"
-                    size="md"
-                    label="Book a demo"
-                    icon={ArrowRightIcon}
-                    onClick={withTracking(
-                      TRACKING_AREAS.COMPETITIVE,
-                      "chatgpt_enterprise_deep_dive_demo",
-                      () => {
-                        // eslint-disable-next-line react-hooks/immutability
-                        window.location.href = appendUTMParams("/home/contact");
-                      }
-                    )}
-                  />
-                </div>
               </div>
             </div>
 
+            {/* Free trial CTA */}
+            <div className="mt-8 flex justify-center">
+              <LandingEmailSignup
+                ctaButtonText="Start Free Trial"
+                trackingLocation="glean_deep_dive"
+                trackingArea={TRACKING_AREAS.COMPETITIVE}
+                className="w-full max-w-lg"
+              />
+            </div>
+
             {/* Testimonial slider */}
-            <div className="mt-16 border-t border-gray-100 pt-12">
+            <div className="mt-8 border-t border-gray-100 pt-6 md:mt-16 md:pt-12">
               <TestimonialSlider testimonials={testimonials} />
             </div>
           </div>

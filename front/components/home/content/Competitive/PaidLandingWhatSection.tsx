@@ -3,7 +3,7 @@ import { cn } from "@dust-tt/sparkle";
 import { AlertTriangle, Check, Cpu, Lock, Settings } from "lucide-react";
 import type { ReactNode } from "react";
 
-// ─── "What is ChatGPT Enterprise?" ────────────────────────────────────
+// ─── "What is [Product]?" ─────────────────────────────────────────────────────
 
 interface ComparisonCardItem {
   text: string;
@@ -22,7 +22,7 @@ interface WhatSectionProps {
   approaches: [ComparisonApproach, ComparisonApproach];
 }
 
-export function ChatGptEnterpriseWhatSection({
+export function PaidLandingWhatSection({
   title,
   description,
   catchLine,
@@ -42,7 +42,6 @@ export function ChatGptEnterpriseWhatSection({
           {catchLine}
         </P>
       </div>
-
       <div className="mt-12 grid gap-8 md:grid-cols-2">
         {approaches.map((approach) => (
           <ApproachCard key={approach.title} {...approach} />
@@ -92,7 +91,7 @@ function ApproachCard({ title, items, variant }: ComparisonApproach) {
   );
 }
 
-// ─── "Why teams look for alternatives" ─────────────────────────────────
+// ─── "Why teams look for alternatives" ────────────────────────────────────────
 
 interface WhyReason {
   title: string;
@@ -113,7 +112,7 @@ const ICON_MAP = {
   blue: <Cpu className="h-6 w-6 text-blue-500" />,
 } as const;
 
-export function ChatGptEnterpriseWhySection({
+export function PaidLandingWhySection({
   title,
   subtitle,
   reasons,
@@ -126,7 +125,6 @@ export function ChatGptEnterpriseWhySection({
           {subtitle}
         </P>
       </div>
-
       <div className="grid gap-8 md:grid-cols-2">
         {reasons.map((reason) => (
           <div
