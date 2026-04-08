@@ -1000,8 +1000,7 @@ export function AgentMessage({
       messageType="agent"
       isOtherUser={isOtherUser}
       type="agent"
-      className={spacingOverride
-      }
+      className={spacingOverride}
     >
       {!hideHeader && (
         <div className="inline-flex items-center gap-2">
