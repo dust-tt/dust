@@ -412,7 +412,7 @@ export class UserResource extends BaseResource<UserModel> {
       logger.error(
         {
           workspaceId: owner.sId,
-          missingUserSIds: missingUserIds,
+          missingUserIds,
           owner: "spolu",
         },
         // This log is expected as user search queries may happen before the index update completes

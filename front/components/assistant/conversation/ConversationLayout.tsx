@@ -81,7 +81,7 @@ const ConversationLayoutContent = ({
     return null;
   }, [router.query.agentDetails]);
 
-  const userSId = useMemo(() => {
+  const userId = useMemo(() => {
     const sid = router.query.userDetails ?? [];
     if (isString(sid)) {
       return sid;
@@ -133,7 +133,7 @@ const ConversationLayoutContent = ({
 
       <MemberDetails
         owner={owner}
-        userId={userSId}
+        userId={userId}
         onClose={() => onOpenChangeUserModal(false)}
       />
 

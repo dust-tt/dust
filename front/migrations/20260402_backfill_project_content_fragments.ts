@@ -75,7 +75,7 @@ async function backfillProjectContentFragmentsForWorkspace(
           : [];
       const creatorByModelId = new Map(creators.map((u) => [u.id, u]));
 
-      const fragmentAuthByUserSId = new Map<string, Authenticator>();
+      const fragmentAuthByUserId = new Map<string, Authenticator>();
 
       async function fragmentAuthForFile(
         file: FileResource
@@ -87,14 +87,14 @@ async function backfillProjectContentFragmentsForWorkspace(
         if (!creator) {
           return baseAuth;
         }
-        let cached = fragmentAuthByUserSId.get(creator.sId);
+        let cached = fragmentAuthByUserId.get(creator.sId);
         if (!cached) {
           const auth = await Authenticator.fromUserIdAndWorkspaceId(
             creator.sId,
             workspace.sId
           );
           cached = auth.user() ? auth : baseAuth;
-          fragmentAuthByUserSId.set(creator.sId, cached);
+          fragmentAuthByUserId.set(creator.sId, cached);
         }
         return cached;
       }

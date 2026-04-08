@@ -30,7 +30,7 @@
     "sId": "SidekickConv02",
     "title": "Quantum computing updates",
     "agentName": "TechNewsDigest",
-    "userSId": "SeedUserJohn",
+    "userId": "SeedUserJohn",
     "exchanges": [
       {
         "user": {
