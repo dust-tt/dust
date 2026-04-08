@@ -1,5 +1,4 @@
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceSharingPolicy, WorkspaceType } from "@app/types/user";
 import {
   ActionFrameIcon,
@@ -18,7 +17,6 @@ import {
   DropdownMenuTrigger,
   GlobeAltIcon,
   LockIcon,
-  SliderToggle,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
