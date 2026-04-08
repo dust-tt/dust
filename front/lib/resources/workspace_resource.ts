@@ -409,6 +409,15 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return result?.domainInfo.domainAutoJoinEnabled ?? false;
   }
 
+  static async fetchByMetronomeCustomerId(
+    metronomeCustomerId: string
+  ): Promise<WorkspaceResource | null> {
+    const workspace = await this.model.findOne({
+      where: { metronomeCustomerId },
+    });
+    return workspace ? new this(this.model, workspace.get()) : null;
+  }
+
   static async fetchByWorkOSOrganizationId(
     workOSOrganizationId: string
   ): Promise<WorkspaceResource | null> {

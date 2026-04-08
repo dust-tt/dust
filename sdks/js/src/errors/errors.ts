@@ -218,6 +218,7 @@ const errorTypeMapping: Record<
   subscription_payment_failed: DustPermissionError,
   plan_limit_error: DustPermissionError,
   plan_message_limit_exceeded: DustPermissionError,
+  credits_exhausted: DustPermissionError,
   subscription_required: DustPermissionError,
   content_too_large: DustContentTooLargeError,
   internal_server_error: DustServerError,

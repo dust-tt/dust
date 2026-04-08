@@ -1,3 +1,4 @@
+import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
@@ -59,7 +60,8 @@ export function ConversationContainerVirtuoso({
       ? conversationIdProp
       : conversationIdFromRouter;
 
-  const [planLimitReached, setPlanLimitReached] = useState(false);
+  const [limitReachedCode, setLimitReachedCode] =
+    useState<WorkspaceLimit | null>(null);
   const { hasFeature } = useFeatureFlags();
   const singleAgentInput = hasFeature("enable_steering");
 
@@ -112,7 +114,9 @@ export function ConversationContainerVirtuoso({
 
       if (conversationRes.isErr()) {
         if (conversationRes.error.type === "plan_limit_reached_error") {
-          setPlanLimitReached(true);
+          setLimitReachedCode("message_limit");
+        } else if (conversationRes.error.type === "credits_exhausted_error") {
+          setLimitReachedCode("credits_exhausted");
         } else {
           sendNotification({
             title: conversationRes.error.title,
@@ -178,7 +182,7 @@ export function ConversationContainerVirtuoso({
           owner={owner}
           user={user}
           conversationId={activeConversationId}
-          setPlanLimitReached={setPlanLimitReached}
+          setLimitReachedCode={setLimitReachedCode}
           key={conversationViewerKey}
           clientSideMCPServerIds={clientSideMCPServerIds}
         />
@@ -251,11 +255,11 @@ export function ConversationContainerVirtuoso({
       )}
       <ReachedLimitPopup
         isAdmin={isAdmin(owner)}
-        isOpened={planLimitReached}
-        onClose={() => setPlanLimitReached(false)}
+        isOpened={!!limitReachedCode}
+        onClose={() => setLimitReachedCode(null)}
         subscription={subscription}
         owner={owner}
-        code="message_limit"
+        code={limitReachedCode ?? "message_limit"}
       />
     </DropzoneContainer>
   );

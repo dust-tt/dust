@@ -55,6 +55,7 @@ import { isModelAvailable, isProviderWhitelisted } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
+import { hasCredits } from "@app/lib/metronome/credit_balance";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
@@ -2234,6 +2235,33 @@ async function checkMessagesLimit(
   // Skip rate limiting for system-initiated messages (e.g. reinforced agent workflows).
   if (!auth.user() && !auth.key() && auth.authMethod() === "internal") {
     return new Ok(undefined);
+  }
+
+  // Check Metronome pool credits.
+  const owner = auth.getNonNullableWorkspace();
+  if (owner.metronomeCustomerId) {
+    const user = auth.user();
+    if (user) {
+      const userSId = user.sId;
+      const hasCreds = await hasCredits(
+        owner.sId,
+        userSId,
+        owner.metronomeCustomerId
+      );
+      if (!hasCreds) {
+        getStatsDClient().increment("assistant.credits_exhausted.blocked", 1, [
+          `workspace_id:${owner.sId}`,
+        ]);
+        return new Err({
+          status_code: 403,
+          api_error: {
+            type: "credits_exhausted",
+            message:
+              "Your workspace has run out of credits. Please purchase more credits to continue.",
+          },
+        });
+      }
+    }
   }
 
   const messageLimit = await isMessagesLimitReached(auth, {

@@ -507,6 +507,7 @@ export type SubmitMessageError = {
     | "attachment_upload_error"
     | "message_send_error"
     | "plan_limit_reached_error"
+    | "credits_exhausted_error"
     | "content_too_large";
   title: string;
   message: string;

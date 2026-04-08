@@ -148,7 +148,9 @@ export function useCreateConversationWithMessage({
           type:
             isApiError && e.error.type === "plan_message_limit_exceeded"
               ? "plan_limit_reached_error"
-              : "message_send_error",
+              : isApiError && e.error.type === "credits_exhausted"
+                ? "credits_exhausted_error"
+                : "message_send_error",
           title: "Your message could not be sent.",
           message: isApiError
             ? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

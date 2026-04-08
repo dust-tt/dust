@@ -1707,6 +1707,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "personal_workspace_not_found"
   | "plan_limit_error"
   | "plan_message_limit_exceeded"
+  | "credits_exhausted"
   | "plugin_execution_failed"
   | "plugin_not_found"
   | "provider_auth_error"
