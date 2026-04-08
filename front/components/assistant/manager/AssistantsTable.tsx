@@ -4,6 +4,7 @@ import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgent
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useTags } from "@app/lib/swr/tags";
 import {
@@ -11,6 +12,7 @@ import {
   formatTimestampToFriendlyDate,
   tagsSorter,
 } from "@app/lib/utils";
+import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type {
   AgentConfigurationScope,
@@ -345,6 +347,9 @@ export function AssistantsTable({
   const { tags } = useTags({ owner });
   const sortedTags = useMemo(() => [...tags].sort(tagsSorter), [tags]);
 
+  const { providersHealth } = useAuth();
+  const noHealthyProviders = !hasHealthyProviders(providersHealth);
+
   const [showDeleteDialog, setShowDeleteDialog] = useState<{
     open: boolean;
     agentConfiguration: LightAgentConfigurationType | undefined;
@@ -420,7 +425,9 @@ export function AssistantsTable({
                     "data-gtm-label": "assistantEditButton",
                     "data-gtm-location": "assistantDetails",
                     icon: PencilSquareIcon,
-                    disabled: !agentConfiguration.canEdit && !isAdmin(owner),
+                    disabled:
+                      (!agentConfiguration.canEdit && !isAdmin(owner)) ||
+                      noHealthyProviders,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       void router.push(
@@ -469,6 +476,7 @@ export function AssistantsTable({
                       );
                     },
                     kind: "item" as const,
+                    disabled: noHealthyProviders,
                   },
                   {
                     label: "Archive",

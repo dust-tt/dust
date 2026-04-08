@@ -17,6 +17,7 @@ import { useClientType } from "@app/lib/context/clientType";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
+import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
@@ -145,7 +146,7 @@ export function ConversationMenu({
   displayOpenInBrowser,
   openDetailsInNewTab,
 }: ConversationMenuProps) {
-  const { user } = useAuth();
+  const { user, providersHealth } = useAuth();
   const { hasFeature, featureFlags } = useFeatureFlags();
   const confirm = useContext(ConfirmContext);
 
@@ -423,6 +424,7 @@ export function ConversationMenu({
             <DropdownMenuItem
               label="Convert to agent"
               icon={SidekickIcon}
+              disabled={!hasHealthyProviders(providersHealth)}
               onClick={async () => {
                 const confirmed = await confirm({
                   title: "Shrink-wrap",

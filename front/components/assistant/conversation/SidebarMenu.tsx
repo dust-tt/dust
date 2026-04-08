@@ -33,13 +33,14 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
 import { useSearchProjects } from "@app/hooks/useSearchProjects";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
@@ -398,6 +399,9 @@ export function AgentSidebarMenu({
   const activeSpaceId = useActiveSpaceId();
   const { hasFeature } = useFeatureFlags();
   const moveConversationToProject = useMoveConversationToProject(owner);
+
+  const { providersHealth } = useAuth();
+  const noHealthyProviders = !hasHealthyProviders(providersHealth);
 
   const agentsSearchInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -856,6 +860,7 @@ export function AgentSidebarMenu({
                               <DropdownMenuSubTrigger
                                 icon={PlusIcon}
                                 label="New agent"
+                                disabled={noHealthyProviders}
                               />
                               <DropdownMenuPortal>
                                 <DropdownMenuSubContent className="pointer-events-auto">
@@ -913,6 +918,7 @@ export function AgentSidebarMenu({
                                 <DropdownMenuSubTrigger
                                   icon={PencilSquareIcon}
                                   label="Edit agent"
+                                  disabled={noHealthyProviders}
                                 />
                                 <DropdownMenuPortal>
                                   <DropdownMenuSubContent className="pointer-events-auto">

@@ -1,14 +1,16 @@
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
+import { NotAvailableErrorPage } from "@app/components/pages/builder/agents/NotAvailableErrorPage";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import Custom404 from "@app/pages/404";
 import { Spinner } from "@dust-tt/sparkle";
 
 export function EditAgentPage() {
   const owner = useWorkspace();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, providersHealth } = useAuth();
   const agentId = useRequiredPathParam("aId");
 
   const {
@@ -27,6 +29,10 @@ export function EditAgentPage() {
     (agentConfiguration && !agentConfiguration.canEdit && !isAdmin)
   ) {
     return <Custom404 />;
+  }
+
+  if (!hasHealthyProviders(providersHealth)) {
+    return <NotAvailableErrorPage isAdmin={isAdmin} owner={owner} />;
   }
 
   if (isAgentConfigurationLoading || !agentConfiguration) {

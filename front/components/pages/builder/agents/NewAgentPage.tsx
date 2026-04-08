@@ -2,6 +2,7 @@ import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
 import type { BuilderFlow } from "@app/components/agent_builder/types";
 import { BUILDER_FLOWS } from "@app/components/agent_builder/types";
+import { NotAvailableErrorPage } from "@app/components/pages/builder/agents/NotAvailableErrorPage";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
 import {
   useAuth,
@@ -13,6 +14,7 @@ import {
   useAgentConfiguration,
   useAssistantTemplate,
 } from "@app/lib/swr/assistants";
+import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import Custom404 from "@app/pages/404";
 import type {
   AgentConfigurationScope,
@@ -26,7 +28,7 @@ function isBuilderFlow(value: string): value is BuilderFlow {
 
 export function NewAgentPage() {
   const owner = useWorkspace();
-  const { user, isAdmin, isBuilder } = useAuth();
+  const { user, isAdmin, isBuilder, providersHealth } = useAuth();
   const { featureFlags } = useFeatureFlags();
 
   const flowParam = useSearchParam("flow");
@@ -72,6 +74,10 @@ export function NewAgentPage() {
 
   if (isRestrictedFromAgentCreation) {
     return <Custom404 />;
+  }
+
+  if (!hasHealthyProviders(providersHealth)) {
+    return <NotAvailableErrorPage isAdmin={isAdmin} owner={owner} />;
   }
 
   if (
