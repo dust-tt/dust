@@ -859,9 +859,9 @@ const InputBarContainer = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const canSubmitEmpty = singleAgentInput && !!selectedSingleAgent;
+  const canSubmitWithoutText = singleAgentInput && !!selectedSingleAgent;
   const isSubmitDisabled =
-    (isEmpty && !canSubmitEmpty) ||
+    (isEmpty && !canSubmitWithoutText) ||
     isSubmitting ||
     disableInput ||
     isBlockedByAgentSwitch ||
