@@ -66,6 +66,7 @@ export function MemberSelectionTable({
     pageIndex: pagination.pageIndex,
     pageSize: pagination.pageSize,
     buildersOnly,
+    disabled: !searchText,
   });
 
   // Internal map to resolve sId -> UserType, seeded with initialMembers and
@@ -81,15 +82,16 @@ export function MemberSelectionTable({
     }
   }
 
-  // Selected users first, then unselected
+  // When not searching, show selected members; when searching, show search results.
   const rows = useMemo(() => {
-    const selectedMembers = members.filter((m) => selectedMemberIds.has(m.sId));
-    const unselectedMembers = members.filter(
-      (m) => !selectedMemberIds.has(m.sId)
-    );
-    const sortedMembers = [...selectedMembers, ...unselectedMembers];
-    return getMemberTableRows(sortedMembers);
-  }, [members, selectedMemberIds]);
+    if (!searchText) {
+      const selectedUsers = Array.from(selectedMemberIds)
+        .map((sId) => userMapRef.current.get(sId))
+        .filter((u): u is UserType => !!u);
+      return getMemberTableRows(selectedUsers);
+    }
+    return getMemberTableRows(members);
+  }, [searchText, selectedMemberIds, members]);
 
   const rowSelectionState: RowSelectionState = useMemo(
     () =>
@@ -164,7 +166,7 @@ export function MemberSelectionTable({
             columns={columns}
             pagination={pagination}
             setPagination={setPagination}
-            totalRowCount={totalMembersCount}
+            totalRowCount={searchText ? totalMembersCount : rows.length}
             rowSelection={rowSelectionState}
             setRowSelection={handleRowSelectionChange}
             enableRowSelection

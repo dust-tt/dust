@@ -30,6 +30,7 @@ interface RestrictedAccessBodyProps {
   onManagementTypeChange: (managementType: MembersManagementType) => void;
   onMembersUpdated: (members: UserType[]) => void;
   onGroupsUpdated: (groups: GroupType[]) => void;
+  initialMembers?: UserType[];
 }
 
 export function RestrictedAccessBody({
@@ -42,6 +43,7 @@ export function RestrictedAccessBody({
   onManagementTypeChange,
   onMembersUpdated,
   onGroupsUpdated,
+  initialMembers,
 }: RestrictedAccessBodyProps) {
   const confirm = useContext(ConfirmContext);
 
@@ -152,7 +154,7 @@ export function RestrictedAccessBody({
           owner={owner}
           selectedMemberIds={selectedMemberIds}
           onSelectionChange={handleMemberSelectionChange}
-          initialMembers={selectedMembers}
+          initialMembers={initialMembers}
         />
       )}
 

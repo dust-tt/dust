@@ -203,7 +203,8 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
     ];
   }, [mode, currentMembers, currentEditors, toggleEditor]);
 
-  const initialMembers = mode === "editors-only" ? props.editors : undefined;
+  const initialMembers =
+    mode === "editors-only" ? props.editors : props.currentProjectMembers;
 
   const canSave =
     !isSaving && (mode !== "space-members" || currentEditors.size > 0);

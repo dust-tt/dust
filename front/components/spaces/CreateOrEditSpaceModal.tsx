@@ -370,6 +370,7 @@ export function CreateOrEditSpaceModal({
                   setSelectedGroups(groups);
                   setIsDirty(true);
                 }}
+                initialMembers={spaceInfo?.members}
               />
             )}
           </div>
