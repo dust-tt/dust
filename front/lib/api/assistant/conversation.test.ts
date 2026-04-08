@@ -987,12 +987,7 @@ describe("getConversation with branches", () => {
   });
 
   it("returns messages up to the branch point plus branch messages when branchId is provided, and sets branchId on the conversation", async () => {
-    const result = await getConversation(
-      auth,
-      conversationId,
-      false,
-      branchId
-    );
+    const result = await getConversation(auth, conversationId, false, branchId);
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {

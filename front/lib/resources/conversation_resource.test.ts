@@ -7,7 +7,6 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import {
   getReinforcementMetadata,
   REINFORCEMENT_METADATA_KEYS,
