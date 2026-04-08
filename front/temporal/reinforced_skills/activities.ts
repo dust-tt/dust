@@ -197,15 +197,6 @@ async function runReinforcedSkillsStep({
   // Prepare tool actions for the workflow to execute via runRetryableToolActivity.
   // The skill exploratory tool call type has the same shape as the agent type.
   const toolActionInfo = await prepareReinforcedToolActions(auth, {
-    exploratoryToolCalls:
-      exploratoryToolCalls as unknown as Parameters<
-        typeof prepareReinforcedToolActions
-      >[1]["exploratoryToolCalls"],
-  }
-
-  // Prepare tool actions for the workflow to execute via runRetryableToolActivity.
-  // The skill exploratory tool call type has the same shape as the agent type.
-  const toolActionInfo = await prepareReinforcedToolActions(auth, {
     exploratoryToolCalls: exploratoryToolCalls as unknown as Parameters<
       typeof prepareReinforcedToolActions
     >[1]["exploratoryToolCalls"],
