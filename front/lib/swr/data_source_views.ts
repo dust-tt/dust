@@ -351,7 +351,11 @@ export function useInfiniteDataSourceViewContentNodes({
       async ([url, body]) => {
         return fetcherWithBody([url, body, "POST"]);
       },
-      swrOptions
+      {
+        revalidateAll: false,
+        revalidateFirstPage: false,
+        ...swrOptions,
+      }
     );
 
   const nodes = data?.flatMap((page) => page.nodes) ?? emptyArray();

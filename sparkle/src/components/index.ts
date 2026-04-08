@@ -213,6 +213,7 @@ export {
   SheetPortal,
   SheetTitle,
   SheetTrigger,
+  useSheetViewport,
 } from "./Sheet";
 export type { SidebarLayoutProps, SidebarLayoutRef } from "./SidebarLayout";
 export { SidebarLayout } from "./SidebarLayout";

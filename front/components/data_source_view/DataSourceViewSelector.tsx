@@ -28,12 +28,8 @@ import {
   isRemoteDatabase,
   isWebsite,
 } from "@app/lib/data_sources";
-import {
-  useDataSourceViewContentNodes,
-  useInfiniteDataSourceViewContentNodes,
-} from "@app/lib/swr/data_source_views";
+import { useInfiniteDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpacesSearch } from "@app/lib/swr/spaces";
-import type { ContentNode } from "@app/types/connectors/connectors_api";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { SearchWarningCode } from "@app/types/core/core_api";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
@@ -68,87 +64,47 @@ import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
-const ITEMS_PER_PAGE = 50;
-const PAGE_SIZE = 1000;
+const ITEMS_PER_PAGE = 100;
 
 const getUseResourceHook =
   (
     owner: LightWorkspaceType,
     dataSourceView: DataSourceViewType,
-    viewType: ContentNodesViewType,
-    useContentNodes: typeof useDataSourceViewContentNodes
+    viewType: ContentNodesViewType
   ) =>
   (parentId: string | null) => {
-    // State for accumulating nodes for "load more".
-    const [currentCursor, setCurrentCursor] = useState<string | null>(null);
-    const [accumulatedNodes, setAccumulatedNodes] = useState<ContentNode[]>([]);
-    const [isLoadingMore, setIsLoadingMore] = useState(false);
-
     const {
-      nodes: fetchedNodes,
-      isNodesLoading: isInitialNodesLoading,
-      isNodesError,
-      totalNodesCountIsAccurate,
+      nodes,
+      hasNextPage,
+      loadMore,
+      isNodesLoading,
+      nodesError,
       totalNodesCount,
+      totalNodesCountIsAccurate,
+      isLoadingMore,
       nextPageCursor,
-    } = useContentNodes({
+    } = useInfiniteDataSourceViewContentNodes({
       owner,
       dataSourceView,
       parentId: parentId ?? undefined,
       viewType,
-      pagination: { cursor: currentCursor, limit: ITEMS_PER_PAGE },
+      sorting: [{ field: "title", direction: "asc" }],
+      pagination: { cursor: null, limit: ITEMS_PER_PAGE },
+      swrOptions: {
+        revalidateOnFocus: false,
+        revalidateOnReconnect: false,
+      },
     });
 
-    useEffect(() => {
-      // Skip if no nodes were fetched yet
-      if (!fetchedNodes || fetchedNodes.length === 0) {
-        return;
-      }
-
-      if (currentCursor === null) {
-        // Initial load - just set the nodes directly
-        setAccumulatedNodes(fetchedNodes);
-        return;
-      }
-
-      if (isLoadingMore) {
-        // Load more case - append new nodes to existing ones
-        setAccumulatedNodes((prev) => {
-          // Dedup new nodes.
-          const existingIds = new Set(prev.map((node) => node.internalId));
-          const newNodes = fetchedNodes.filter(
-            (node) => !existingIds.has(node.internalId)
-          );
-          if (newNodes.length === 0) {
-            // Avoid re-rendering if no new nodes are added.
-            return prev;
-          }
-
-          return [...prev, ...newNodes];
-        });
-
-        setIsLoadingMore(false);
-      }
-    }, [fetchedNodes, currentCursor, isLoadingMore]);
-
-    // Function to load more items
-    const loadMore = useCallback(() => {
-      if (nextPageCursor && !isLoadingMore) {
-        setIsLoadingMore(true);
-        setCurrentCursor(nextPageCursor);
-      }
-    }, [nextPageCursor, isLoadingMore]);
-
     return {
-      resources: accumulatedNodes,
+      resources: nodes,
       totalResourceCount: totalNodesCount,
-      isResourcesLoading:
-        isInitialNodesLoading || (isLoadingMore && currentCursor === null),
-      isResourcesError: isNodesError,
+      isResourcesLoading: isNodesLoading,
+      isResourcesError: !!nodesError,
       isResourcesTruncated: !totalNodesCountIsAccurate,
-      nextPageCursor,
+      nextPageCursor: hasNextPage ? nextPageCursor : null,
       loadMore,
-      isLoadingMore,
+      isLoadingMore: !!isLoadingMore,
     };
   };
 
@@ -702,7 +658,6 @@ interface DataSourceViewSelectorProps {
   setSelectionConfigurations: Dispatch<
     SetStateAction<DataSourceViewSelectionConfigurations>
   >;
-  useContentNodes?: typeof useDataSourceViewContentNodes;
   viewType: ContentNodesViewType;
   isRootSelectable: boolean;
   defaultCollapsed?: boolean;
@@ -721,7 +676,6 @@ export function DataSourceViewSelector({
   readonly = false,
   selectionConfiguration,
   setSelectionConfigurations,
-  useContentNodes = useDataSourceViewContentNodes,
   viewType,
   isRootSelectable,
   defaultCollapsed = true,
@@ -762,6 +716,8 @@ export function DataSourceViewSelector({
     [dataSourceView]
   );
 
+  const [selectAllTriggered, setSelectAllTriggered] = useState(false);
+
   const {
     nodes: rootNodes,
     hasNextPage,
@@ -769,49 +725,78 @@ export function DataSourceViewSelector({
     loadMore,
   } = useInfiniteDataSourceViewContentNodes({
     owner,
-    dataSourceView,
+    dataSourceView: selectAllTriggered ? dataSourceView : undefined,
     viewType,
-    pagination: { limit: PAGE_SIZE, cursor: null },
+    pagination: { limit: ITEMS_PER_PAGE, cursor: null },
   });
 
   const hasActiveSelection =
     selectionConfiguration.selectedResources.length > 0 ||
     selectionConfiguration.isSelectAll;
 
-  const handleSelectAll = () => {
-    setSelectionConfigurations((prevState) => {
-      if (hasActiveSelection) {
-        // remove the whole dataSourceView from the list
-        return _.omit(prevState, dataSourceView.sId);
-      } else {
+  const applySelectAll = useCallback(
+    (nodes: typeof rootNodes) => {
+      setSelectionConfigurations((prevState) => {
         const { sId } = dataSourceView;
         const defaultConfig = defaultSelectionConfiguration(dataSourceView);
-        const prevConfig = prevState[sId] || defaultConfig;
-
-        const updatedConfig = isRootSelectable
-          ? {
-              ...prevConfig,
-              selectedResources: [],
-              isSelectAll: true,
-            }
-          : {
-              ...prevConfig,
-              selectedResources: rootNodes,
-              isSelectAll: false,
-            };
+        const prevConfig = prevState[sId] ?? defaultConfig;
+        const updatedConfig = {
+          ...prevConfig,
+          selectedResources: nodes,
+          isSelectAll: false,
+        };
 
         if (selectionMode === "radio") {
-          return {
-            [dataSourceView.sId]: updatedConfig,
-          };
+          return { [sId]: updatedConfig };
         }
 
         return keepOnlyOneSpaceIfApplicable({
           ...prevState,
-          [dataSourceView.sId]: updatedConfig,
+          [sId]: updatedConfig,
         });
-      }
-    });
+      });
+    },
+    [
+      dataSourceView,
+      keepOnlyOneSpaceIfApplicable,
+      setSelectionConfigurations,
+      selectionMode,
+    ]
+  );
+
+  const handleSelectAll = () => {
+    if (hasActiveSelection) {
+      setSelectionConfigurations((prevState) =>
+        _.omit(prevState, dataSourceView.sId)
+      );
+      setSelectAllTriggered(false);
+      return;
+    }
+
+    if (isRootSelectable) {
+      setSelectionConfigurations((prevState) => {
+        const { sId } = dataSourceView;
+        const defaultConfig = defaultSelectionConfiguration(dataSourceView);
+        const prevConfig = prevState[sId] ?? defaultConfig;
+        const updatedConfig = {
+          ...prevConfig,
+          selectedResources: [],
+          isSelectAll: true,
+        };
+
+        if (selectionMode === "radio") {
+          return { [sId]: updatedConfig };
+        }
+
+        return keepOnlyOneSpaceIfApplicable({
+          ...prevState,
+          [sId]: updatedConfig,
+        });
+      });
+      return;
+    }
+
+    setSelectAllTriggered(true);
   };
 
   const isChecked = selectionConfiguration.isSelectAll
@@ -894,13 +879,8 @@ export function DataSourceViewSelector({
 
   const useResourcesHook = useCallback(
     (parentId: string | null) =>
-      getUseResourceHook(
-        owner,
-        dataSourceView,
-        viewType,
-        useContentNodes
-      )(parentId),
-    [owner, dataSourceView, viewType, useContentNodes]
+      getUseResourceHook(owner, dataSourceView, viewType)(parentId),
+    [owner, dataSourceView, viewType]
   );
 
   const isExpanded = searchResult
@@ -923,14 +903,28 @@ export function DataSourceViewSelector({
   );
 
   useEffect(() => {
-    const handleLoadMore = async () => {
-      await loadMore();
-    };
-
-    if (hasNextPage && !isLoadingMore) {
-      void handleLoadMore();
+    if (selectAllTriggered && hasNextPage && !isLoadingMore) {
+      void loadMore();
     }
-  }, [hasNextPage, isLoadingMore, loadMore]);
+  }, [selectAllTriggered, hasNextPage, isLoadingMore, loadMore]);
+
+  useEffect(() => {
+    if (
+      selectAllTriggered &&
+      rootNodes.length > 0 &&
+      !hasNextPage &&
+      !isLoadingMore
+    ) {
+      applySelectAll(rootNodes);
+      setSelectAllTriggered(false);
+    }
+  }, [
+    selectAllTriggered,
+    rootNodes,
+    hasNextPage,
+    isLoadingMore,
+    applySelectAll,
+  ]);
 
   return (
     <div id={`dataSourceViewsSelector-${dataSourceView.dataSource.sId}`}>
@@ -961,7 +955,7 @@ export function DataSourceViewSelector({
             <Button
               variant="ghost"
               size="xs"
-              disabled={rootNodes.length === 0 || isLoadingMore}
+              disabled={selectAllTriggered && isLoadingMore}
               className="mr-4 text-xs"
               label={hasActiveSelection ? "Unselect All" : "Select All"}
               icon={ListCheckIcon}

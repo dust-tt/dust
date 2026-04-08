@@ -3,6 +3,7 @@ import { FocusScope } from "@radix-ui/react-focus-scope";
 import { Button } from "@sparkle/components/Button";
 import { Icon } from "@sparkle/components/Icon";
 import { ScrollArea } from "@sparkle/components/ScrollArea";
+import { SheetViewportProvider } from "@sparkle/components/SheetViewportContext";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
@@ -214,10 +215,24 @@ const ScrollContainer = ({
   className?: string;
   children: React.ReactNode;
 }) => {
+  const viewportRef = React.useRef<HTMLDivElement>(null);
+  const [viewport, setViewport] = React.useState<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    setViewport(viewportRef.current);
+  }, []);
+
   if (noScroll) {
     return <div className={className}>{children}</div>;
   }
-  return <ScrollArea className={className}>{children}</ScrollArea>;
+
+  const value = React.useMemo(() => viewport, [viewport]);
+
+  return (
+    <ScrollArea className={className} viewportRef={viewportRef}>
+      <SheetViewportProvider value={value}>{children}</SheetViewportProvider>
+    </ScrollArea>
+  );
 };
 
 const SheetContainer = ({
@@ -348,6 +363,7 @@ const SheetDescription = React.forwardRef<
 ));
 SheetDescription.displayName = SheetPrimitive.Description.displayName;
 
+export { useSheetViewport } from "@sparkle/components/SheetViewportContext";
 export {
   Sheet,
   SheetClose,

@@ -5,8 +5,6 @@ import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeDataSourceViewDetails } from "@app/poke/swr/data_source_view_details";
-import type { DataSourceViewContentNodesProps } from "@app/poke/swr/data_source_views";
-import { usePokeDataSourceViewContentNodes } from "@app/poke/swr/data_source_views";
 import { defaultSelectionConfiguration } from "@app/types/data_source_view";
 import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
@@ -24,14 +22,6 @@ export function SpaceDataSourceViewPage() {
     dataSourceViewId: dsvId,
     disabled: false,
   });
-
-  const useContentNodes = (
-    contentNodesParams: DataSourceViewContentNodesProps
-  ) => {
-    return usePokeDataSourceViewContentNodes({
-      ...contentNodesParams,
-    });
-  };
 
   if (isLoading) {
     return (
@@ -91,7 +81,6 @@ export function SpaceDataSourceViewPage() {
                 dataSourceView
               )}
               setSelectionConfigurations={() => {}}
-              useContentNodes={useContentNodes}
               viewType="all"
               isRootSelectable={true}
             />
