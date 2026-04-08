@@ -391,13 +391,16 @@ export async function reinforcedSkillsWorkspaceWorkflow({
     }
 
     // Phase 4-5: Per-skill batch aggregation + finalize.
-    for (const currentSkillId of skillIdsWithSuggestions) {
-      await aggregateSkillWithMultiStepBatch({
-        workspaceId,
-        skillId: currentSkillId,
-        disableNotifications,
-      });
-    }
+    await concurrentExecutor(
+      skillIdsWithSuggestions,
+      (currentSkillId) =>
+        aggregateSkillWithMultiStepBatch({
+          workspaceId,
+          skillId: currentSkillId,
+          disableNotifications,
+        }),
+      { concurrency: SKILL_AGGREGATION_CONCURRENCY }
+    );
   } else {
     // Phase 2: Analyze conversations concurrently via streaming multi-step.
     await concurrentExecutor(
