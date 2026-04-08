@@ -6,6 +6,7 @@ import {
 import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { processToolResults } from "@app/lib/actions/mcp_execution";
 import { Authenticator } from "@app/lib/auth";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
@@ -15,6 +16,7 @@ import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { assert, describe, expect, it, vi } from "vitest";
 
 // Mock file storage to avoid cloud storage interactions.
@@ -188,5 +190,114 @@ describe("processToolResults", () => {
     if (stored.type === "resource" && "text" in stored.resource) {
       expect(stored.resource.text).toBe(smallText);
     }
+  });
+
+  it("should persist DATA_SOURCE_NODE_CONTENT block to tool_outputs/", async () => {
+    const { auth, conversation, action, toolConfiguration } = await setupTest();
+
+    vi.mocked(getPrivateUploadBucket).mockClear();
+
+    await processToolResults(auth, {
+      action,
+      conversation,
+      localLogger: logger.child({ test: true }),
+      toolCallResultContent: [
+        {
+          type: "resource",
+          resource: {
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_CONTENT,
+            uri: "notion://page/abc123",
+            text: "# My Notion Page\n\nSome content here.",
+            metadata: {
+              nodeId: "abc123",
+              title: "My Notion Page",
+              path: "/workspace/My Notion Page",
+              parentTitle: null,
+              lastUpdatedAt: "2026-01-01T00:00:00Z",
+              sourceUrl: null,
+              mimeType: "application/vnd.notion.page",
+              hasChildren: false,
+              connectorProvider: null,
+            },
+          },
+        },
+      ],
+      toolConfiguration,
+    });
+
+    const uploadCalls = vi
+      .mocked(getPrivateUploadBucket)
+      .mock.results.flatMap((r) =>
+        r.type === "return"
+          ? vi.mocked(r.value.uploadRawContentToBucket).mock.calls
+          : []
+      );
+
+    const toolOutputWrite = uploadCalls.find((call) =>
+      call[0].filePath.includes("tool_outputs/")
+    );
+    expect(toolOutputWrite).toBeDefined();
+    expect(toolOutputWrite?.[0].filePath).toMatch(/tool_outputs\/\d+_my_notion_page\.md$/);
+    expect(toolOutputWrite?.[0].content).toBe("# My Notion Page\n\nSome content here.");
+  });
+
+  it("should persist large plain text block to tool_outputs/ as .txt", async () => {
+    const { auth, conversation, action, toolConfiguration } = await setupTest();
+
+    vi.mocked(getPrivateUploadBucket).mockClear();
+
+    const largeText = "hello world ".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES);
+
+    await processToolResults(auth, {
+      action,
+      conversation,
+      localLogger: logger.child({ test: true }),
+      toolCallResultContent: [{ type: "text", text: largeText }],
+      toolConfiguration,
+    });
+
+    const uploadCalls = vi
+      .mocked(getPrivateUploadBucket)
+      .mock.results.flatMap((r) =>
+        r.type === "return"
+          ? vi.mocked(r.value.uploadRawContentToBucket).mock.calls
+          : []
+      );
+
+    const toolOutputWrite = uploadCalls.find((call) =>
+      call[0].filePath.includes("tool_outputs/")
+    );
+    expect(toolOutputWrite).toBeDefined();
+    expect(toolOutputWrite?.[0].filePath).toMatch(/tool_outputs\/\d+_test_server\.txt$/);
+  });
+
+  it("should persist large JSON text block to tool_outputs/ as .json", async () => {
+    const { auth, conversation, action, toolConfiguration } = await setupTest();
+
+    vi.mocked(getPrivateUploadBucket).mockClear();
+
+    const largeJson = JSON.stringify({ data: "x".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES) });
+
+    await processToolResults(auth, {
+      action,
+      conversation,
+      localLogger: logger.child({ test: true }),
+      toolCallResultContent: [{ type: "text", text: largeJson }],
+      toolConfiguration,
+    });
+
+    const uploadCalls = vi
+      .mocked(getPrivateUploadBucket)
+      .mock.results.flatMap((r) =>
+        r.type === "return"
+          ? vi.mocked(r.value.uploadRawContentToBucket).mock.calls
+          : []
+      );
+
+    const toolOutputWrite = uploadCalls.find((call) =>
+      call[0].filePath.includes("tool_outputs/")
+    );
+    expect(toolOutputWrite).toBeDefined();
+    expect(toolOutputWrite?.[0].filePath).toMatch(/tool_outputs\/\d+_test_server\.json$/);
   });
 });
