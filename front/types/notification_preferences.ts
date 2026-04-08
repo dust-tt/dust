@@ -50,12 +50,8 @@ export const isNotificationPreferencesDelay = (
 };
 
 export function makeNotificationPreferencesUserMetadata(
-  channel: keyof ChannelPreference,
-  workflowTriggerId?: WorkflowTriggerId
+  channel: keyof ChannelPreference
 ): string {
-  if (workflowTriggerId) {
-    return `${workflowTriggerId}_${channel}_notification_preferences`;
-  }
   return `${channel}_notification_preferences`;
 }
 
@@ -75,17 +71,6 @@ export type NotificationCondition =
 export const DEFAULT_NOTIFICATION_CONDITION: NotificationCondition =
   "all_messages";
 
-const PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION_OPTIONS = [
-  "all_projects",
-  "never",
-] as const;
-
-export type ProjectNewConversationNotificationConditionOptions =
-  (typeof PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION_OPTIONS)[number];
-
-export const DEFAULT_PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION: ProjectNewConversationNotificationConditionOptions =
-  "all_projects";
-
 export const isNotificationCondition = (
   value: unknown
 ): value is NotificationCondition => {
@@ -95,31 +80,16 @@ export const isNotificationCondition = (
   );
 };
 
-export const isProjectNewConversationNotificationConditionOptions = (
-  value: unknown
-): value is ProjectNewConversationNotificationConditionOptions => {
-  return (
-    typeof value === "string" &&
-    PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION_OPTIONS.includes(
-      value as ProjectNewConversationNotificationConditionOptions
-    )
-  );
-};
-
 /**
  * User metadata keys for conversation notification preferences.
  */
 export const CONVERSATION_NOTIFICATION_METADATA_KEYS = {
   notifyCondition: "conversation_notify_condition",
-  projectNewConversationNotifyCondition:
-    "project_new_conversation_notify_condition",
 } as const;
 
 export const CONVERSATION_UNREAD_TRIGGER_ID = "conversation-unread" as const;
 export const PROJECT_ADDED_AS_MEMBER_TRIGGER_ID =
   "project-added-as-member" as const;
-export const PROJECT_NEW_CONVERSATION_TRIGGER_ID =
-  "project-new-conversation" as const;
 export const AGENT_SUGGESTIONS_READY_TRIGGER_ID =
   "agent-suggestions-ready" as const;
 export const SKILL_SUGGESTIONS_READY_TRIGGER_ID =
@@ -132,7 +102,6 @@ export const PROVIDER_CREDENTIALS_HEALTH_UPDATED_TAG =
 export type WorkflowTriggerId =
   | typeof CONVERSATION_UNREAD_TRIGGER_ID
   | typeof PROJECT_ADDED_AS_MEMBER_TRIGGER_ID
-  | typeof PROJECT_NEW_CONVERSATION_TRIGGER_ID
   | typeof AGENT_SUGGESTIONS_READY_TRIGGER_ID
   | typeof SKILL_SUGGESTIONS_READY_TRIGGER_ID
   | typeof PROVIDER_CREDENTIALS_HEALTH_UPDATED_TRIGGER_ID;

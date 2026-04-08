@@ -3,10 +3,7 @@ export { getNovuClient } from "@app/lib/notifications/novu-client";
 import { getNovuClient } from "@app/lib/notifications/novu-client";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import type {
-  NotificationPreferencesDelay,
-  WorkflowTriggerId,
-} from "@app/types/notification_preferences";
+import type { NotificationPreferencesDelay } from "@app/types/notification_preferences";
 import {
   DEFAULT_NOTIFICATION_DELAY,
   isNotificationPreferencesDelay,
@@ -53,12 +50,10 @@ export const getUserNotificationDelay = async ({
   subscriberId,
   workspaceId,
   channel,
-  workflowTriggerId,
 }: {
   subscriberId?: string;
   workspaceId: string;
   channel: keyof ChannelPreference;
-  workflowTriggerId?: WorkflowTriggerId;
 }): Promise<NotificationPreferencesDelay> => {
   if (!subscriberId) {
     return DEFAULT_NOTIFICATION_DELAY;
@@ -75,10 +70,7 @@ export const getUserNotificationDelay = async ({
     where: {
       userId: user.id,
       key: {
-        [Op.eq]: makeNotificationPreferencesUserMetadata(
-          channel,
-          workflowTriggerId
-        ),
+        [Op.eq]: makeNotificationPreferencesUserMetadata(channel),
       },
     },
   });
