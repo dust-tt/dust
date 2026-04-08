@@ -5,10 +5,31 @@ import {
   type InternalMCPServerNameType,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { DEFAULT_REMOTE_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import {
+  isDataSourceFilesystemFindInputType,
+  isGenerateImageInputType,
+  isSearchInputType,
+  isWebbrowseInputType,
+  isWebsearchInputType,
+} from "@app/lib/actions/mcp_internal_actions/types";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
 import { asDisplayName, slugify } from "@app/types/shared/utils/string_utils";
 
 type ToolDisplayLabelsByTool = Record<string, ToolDisplayLabels>;
+
+const MAX_QUERY_DISPLAY_LENGTH = 60;
+
+function truncateQuery(query: string): string {
+  return query.length > MAX_QUERY_DISPLAY_LENGTH
+    ? query.slice(0, MAX_QUERY_DISPLAY_LENGTH) + "…"
+    : query;
+}
+
+function shortenUrl(url: string): string {
+  return truncateQuery(url.replace(/^https?:\/\//, ""));
+}
 
 const INTERNAL_TOOL_DISPLAY_LABELS_BY_SERVER = Object.fromEntries(
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES.flatMap((serverName) => {
@@ -83,12 +104,23 @@ export function getStaticToolDisplayLabels({
   internalMCPServerName,
   mcpServerName,
   toolName,
+  inputs,
 }: {
   internalMCPServerName?: InternalMCPServerNameType | null;
   mcpServerName?: string | null;
   toolName: string;
+  inputs: Record<string, unknown>;
 }): ToolDisplayLabels | null {
   if (internalMCPServerName) {
+    const dynamicLabels = getDynamicToolDisplayLabels({
+      internalMCPServerName,
+      toolName,
+      inputs,
+    });
+    if (dynamicLabels) {
+      return dynamicLabels;
+    }
+
     return getStaticToolDisplayLabelsForServerName(
       internalMCPServerName,
       toolName

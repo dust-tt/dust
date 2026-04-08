@@ -1038,6 +1038,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       internalMCPServerName,
       mcpServerName: this.toolConfiguration.mcpServerName,
       toolName,
+      inputs: this.augmentedInputs,
     });
   }
 
