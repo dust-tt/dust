@@ -3381,12 +3381,11 @@ describe("Space Handling", () => {
       });
       assert(mainMessage, "No main message found");
 
-      const branch = await ConversationBranchModel.create({
+      const branch = await ConversationBranchResource.makeNew(ownerAuth, {
         state: "open",
         previousMessageId: mainMessage.id,
         conversationId: conversationResource.id,
         userId: ownerUser.id,
-        workspaceId: workspace.id,
       });
 
       const branchUserMessageRow = await UserMessageModel.create({
@@ -3402,11 +3401,6 @@ describe("Space Handling", () => {
         clientSideMCPServerIds: [],
       });
 
-      const branchSId = ConversationBranchResource.modelIdToSId({
-        id: branch.id,
-        workspaceId: workspace.id,
-      });
-
       const branchMessage = await MessageModel.create({
         sId: generateRandomModelSId(),
         rank: 1,
@@ -3415,7 +3409,6 @@ describe("Space Handling", () => {
         userMessageId: branchUserMessageRow.id,
         workspaceId: workspace.id,
         branchId: branch.id,
-        branchSId,
       });
 
       const okResult = await ConversationResource.getMessageByIdInConversation(
@@ -3960,12 +3953,11 @@ describe("Space Handling", () => {
       });
 
       // Create a branch from that message
-      const branch = await ConversationBranchModel.create({
+      const branch = await ConversationBranchResource.makeNew(auth, {
         state: "open",
         previousMessageId: mainMessage.id,
         conversationId: conversationResource.id,
         userId: user.id,
-        workspaceId: workspace.id,
       });
 
       // Create a branch user message at the same rank, attached to the branch
