@@ -6,6 +6,7 @@ const {
   purgeExpiredRunExecutionsActivity,
   purgeExpiredPendingAgentsActivity,
   purgeExpiredSyntheticSuggestionsActivity,
+  purgeExpiredSyntheticSkillSuggestionsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "60 minutes",
 });
@@ -14,4 +15,5 @@ export async function hardDeleteCronWorkflow(): Promise<void> {
   await purgeExpiredRunExecutionsActivity();
   await purgeExpiredPendingAgentsActivity();
   await purgeExpiredSyntheticSuggestionsActivity();
+  await purgeExpiredSyntheticSkillSuggestionsActivity();
 }
