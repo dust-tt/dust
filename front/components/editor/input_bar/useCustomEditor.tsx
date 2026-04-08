@@ -5,7 +5,10 @@ import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/in
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
 import { URLStorageExtension } from "@app/components/editor/extensions/input_bar/URLStorageExtension";
-import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
+import {
+  MentionExtension,
+  type MentionsStrippedPayload,
+} from "@app/components/editor/extensions/MentionExtension";
 import { BlockquoteExtension } from "@app/components/editor/input_bar/BlockquoteExtension";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { emojiPluginKey } from "@app/components/editor/input_bar/emojiSuggestion";
@@ -195,7 +198,7 @@ export interface CustomEditorProps {
     ((agentId: string) => void) | undefined
   >;
   onAgentMentionsStrippedRef?: React.RefObject<
-    ((count: number) => void) | undefined
+    ((payload: MentionsStrippedPayload) => void) | undefined
   >;
 }
 
@@ -225,7 +228,7 @@ export const buildEditorExtensions = ({
     ((agentId: string) => void) | undefined
   >;
   onAgentMentionsStrippedRef?: React.RefObject<
-    ((count: number) => void) | undefined
+    ((payload: MentionsStrippedPayload) => void) | undefined
   >;
 }) => {
   const extensions = [

@@ -5,6 +5,7 @@ import {
   getPastedFileName,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
+import type { MentionsStrippedPayload } from "@app/components/editor/extensions/MentionExtension";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
@@ -229,7 +230,7 @@ const InputBarContainer = ({
     ((agentId: string) => void) | undefined
   >(undefined);
   const onAgentMentionsStrippedRef = useRef<
-    ((count: number) => void) | undefined
+    ((payload: MentionsStrippedPayload) => void) | undefined
   >(undefined);
   const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
@@ -417,14 +418,30 @@ const InputBarContainer = ({
     : undefined;
 
   onAgentMentionsStrippedRef.current = singleAgentInput
-    ? (count: number) => {
+    ? (payload: MentionsStrippedPayload) => {
+        let title: string;
+        let description: string;
+        switch (payload.reason) {
+          case "extra-agents":
+            title = "Agent mentions removed";
+            description = `${payload.count} ${payload.count === 1 ? "agent mention was" : "agent mentions were"} removed. Only one agent can be used at a time.`;
+            break;
+          case "user-conflict":
+          case "mixed-conflict":
+            title = "Agent mentions removed";
+            description =
+              "You can't mention both users and agents in the same message.";
+            break;
+          case "users-stripped-for-agent":
+            title = "User mentions removed";
+            description =
+              "You can't mention both users and agents in the same message.";
+            break;
+        }
         sendNotification({
           type: "info",
-          title: "Agent mentions removed",
-          description:
-            count === 1
-              ? "1 agent mention was removed. Only one agent can be used at a time."
-              : `${count} agent mentions were removed. Only one agent can be used at a time.`,
+          title,
+          description,
         });
       }
     : undefined;

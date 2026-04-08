@@ -3,6 +3,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import {
   AGENT_MENTION_REGEX,
   AGENT_MENTION_REGEX_BEGINNING,
+  USER_MENTION_REGEX,
   USER_MENTION_REGEX_BEGINNING,
 } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
@@ -21,12 +22,107 @@ const MENTION_PICTURE_URL_ATTRIBUTE = "data-picture-url";
 // Legacy attribute written by older versions of the extension. Kept for backward compat in parseHTML.
 const LEGACY_TYPE_ATTRIBUTE = "data-type";
 
+export type MentionsStrippedPayload =
+  | { reason: "extra-agents"; count: number }
+  | { reason: "user-conflict" }
+  | { reason: "mixed-conflict" }
+  | { reason: "users-stripped-for-agent" };
+
+/**
+ * In single-agent mode, enforce mutual exclusion between agent and user
+ * mentions in pasted markdown. Whichever type is established first wins.
+ */
+function stripConflictingMentions(
+  processedMarkdown: string,
+  {
+    editorHasUserMentions,
+    richHtmlAgentId,
+  }: {
+    editorHasUserMentions: boolean;
+    richHtmlAgentId: string | null;
+  }
+): {
+  content: string;
+  agentIdToRoute: string | null;
+  notification: MentionsStrippedPayload | null;
+} {
+  AGENT_MENTION_REGEX.lastIndex = 0;
+  USER_MENTION_REGEX.lastIndex = 0;
+  const firstAgentMatch = AGENT_MENTION_REGEX.exec(processedMarkdown);
+  const firstUserMatch = USER_MENTION_REGEX.exec(processedMarkdown);
+  AGENT_MENTION_REGEX.lastIndex = 0;
+  USER_MENTION_REGEX.lastIndex = 0;
+
+  const agentFirst =
+    firstAgentMatch !== null &&
+    (firstUserMatch === null || firstAgentMatch.index < firstUserMatch.index);
+
+  // User mentions win: editor already has them, or user mention appears first.
+  if (editorHasUserMentions || (!agentFirst && firstUserMatch !== null)) {
+    const content = processedMarkdown
+      .replaceAll(AGENT_MENTION_REGEX, "")
+      .trim();
+    AGENT_MENTION_REGEX.lastIndex = 0;
+    const notification: MentionsStrippedPayload | null =
+      firstAgentMatch !== null
+        ? {
+            reason:
+              firstUserMatch !== null ? "mixed-conflict" : "user-conflict",
+          }
+        : null;
+    return { content, agentIdToRoute: null, notification };
+  }
+
+  // Agent mentions win: route first agent to picker, strip the rest + all user mentions.
+  if (firstAgentMatch !== null) {
+    let markdownAgentId: string | null = null;
+    let agentStrippedCount = 0;
+    const content = processedMarkdown
+      .replaceAll(AGENT_MENTION_REGEX, (_match, _label, agentId) => {
+        if (!markdownAgentId) {
+          markdownAgentId = agentId;
+        }
+        agentStrippedCount++;
+        return "";
+      })
+      .replaceAll(USER_MENTION_REGEX, "")
+      .trim();
+    AGENT_MENTION_REGEX.lastIndex = 0;
+    USER_MENTION_REGEX.lastIndex = 0;
+
+    const agentIdToRoute = richHtmlAgentId ?? markdownAgentId;
+    // If richHtmlAgentId already claimed the first agent, all
+    // markdown-stripped mentions are extras; otherwise subtract one.
+    const extraAgents = richHtmlAgentId
+      ? agentStrippedCount
+      : agentStrippedCount - 1;
+
+    let notification: MentionsStrippedPayload | null = null;
+    if (firstUserMatch !== null) {
+      notification = { reason: "users-stripped-for-agent" };
+    } else if (extraAgents > 0) {
+      notification = { reason: "extra-agents", count: extraAgents };
+    }
+
+    return { content, agentIdToRoute, notification };
+  }
+
+  // No mentions to strip.
+  return {
+    content: processedMarkdown,
+    agentIdToRoute: null,
+    notification: null,
+  };
+}
+
 interface MentionExtensionOptions extends MentionOptions {
   owner: WorkspaceType;
   onFirstAgentMentionPasteRef?: RefObject<
     ((agentId: string) => void) | undefined
   >;
-  onAgentMentionsStrippedRef?: RefObject<((count: number) => void) | undefined>;
+  onAgentMentionsStrippedRef?: RefObject<
+    ((payload: MentionsStrippedPayload) => void) | undefined
+  >;
 }
 
 export const MentionExtension = Mention.extend<MentionExtensionOptions>({
@@ -179,10 +275,8 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
           // Get text from the slice after TipTap processing.
           const text = slice.content.textBetween(0, slice.content.size, "\n");
 
-          // In single-agent mode, check if the slice has agent mention nodes
-          // (rich HTML paste). If so, route the first to the picker — then fall
-          // through to parseMentionsOnBackend which will strip them from the
-          // serialized markdown before inserting.
+          // In single-agent mode, scan the slice for rich-HTML agent mention
+          // nodes so we know whether any exist before the backend call.
           let richHtmlAgentId: string | null = null;
           if (onFirstAgentMentionPasteRef?.current) {
             slice.content.descendants((node) => {
@@ -194,14 +288,22 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
                 richHtmlAgentId = node.attrs.id;
               }
             });
-            if (richHtmlAgentId) {
-              onFirstAgentMentionPasteRef?.current(richHtmlAgentId);
-            }
           }
 
           // Only process if text contains @ or we have agent mention nodes to strip.
           if (!text.includes("@") && !richHtmlAgentId) {
             return false;
+          }
+
+          // Check pre-existing editor state for user mentions.
+          let editorHasUserMentions = false;
+          if (onFirstAgentMentionPasteRef?.current) {
+            editor.state.doc.descendants((node) => {
+              if (node.type.name === "mention" && node.attrs.type === "user") {
+                editorHasUserMentions = true;
+                return false;
+              }
+            });
           }
 
           const { state } = view;
@@ -244,34 +346,20 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
             .then((processedMarkdown: string) => {
               let contentToInsert = processedMarkdown;
 
-              // In single-agent mode, strip all agent mentions from the pasted
-              // content and route the first one to the picker (unless we already
-              // routed it from the rich-HTML slice check above).
+              // In single-agent mode, enforce mutual exclusion between agent
+              // and user mentions. Whichever type is established first wins.
               if (onFirstAgentMentionPasteRef?.current) {
-                let markdownAgentId: string | null = null;
-                let strippedCount = 0;
-                contentToInsert = processedMarkdown
-                  .replaceAll(
-                    AGENT_MENTION_REGEX,
-                    (_match, _label, agentId) => {
-                      if (!markdownAgentId) {
-                        markdownAgentId = agentId;
-                      }
-                      strippedCount++;
-                      return "";
-                    }
-                  )
-                  .trim();
-                if (markdownAgentId && !richHtmlAgentId) {
-                  onFirstAgentMentionPasteRef?.current(markdownAgentId);
+                const { content, agentIdToRoute, notification } =
+                  stripConflictingMentions(processedMarkdown, {
+                    editorHasUserMentions,
+                    richHtmlAgentId,
+                  });
+                contentToInsert = content;
+                if (agentIdToRoute) {
+                  onFirstAgentMentionPasteRef.current(agentIdToRoute);
                 }
-                // If richHtmlAgentId already claimed the first agent, all
-                // markdown-stripped mentions are extras; otherwise subtract one.
-                const extraStripped = richHtmlAgentId
-                  ? strippedCount
-                  : strippedCount - 1;
-                if (extraStripped > 0) {
-                  onAgentMentionsStrippedRef?.current?.(extraStripped);
+                if (notification) {
+                  onAgentMentionsStrippedRef?.current?.(notification);
                 }
               }
 
