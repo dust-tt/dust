@@ -21,7 +21,7 @@ import type { SeedContext } from "./types";
  */
 export async function seedAnalytics(
   ctx: SeedContext,
-  conversationSIds: string[]
+  conversationIds: string[]
 ): Promise<void> {
   const { auth, workspace, execute, logger } = ctx;
 
@@ -30,7 +30,7 @@ export async function seedAnalytics(
     return;
   }
 
-  if (conversationSIds.length === 0) {
+  if (conversationIds.length === 0) {
     logger.info("No conversations to index analytics for");
     return;
   }
@@ -38,7 +38,7 @@ export async function seedAnalytics(
   // Find all conversations by sId (skip permission filtering for seed script).
   const conversations = await ConversationResource.fetchByIds(
     auth,
-    conversationSIds,
+    conversationIds,
     { dangerouslySkipPermissionFiltering: true, includeDeleted: true }
   );
 
@@ -80,8 +80,8 @@ export async function seedAnalytics(
 
   for (const message of messages) {
     const { agentMessage } = message;
-    const conversationSId = conversationIdToSId.get(message.conversationId);
-    if (!agentMessage || !conversationSId) {
+    const conversationId = conversationIdToSId.get(message.conversationId);
+    if (!agentMessage || !conversationId) {
       continue;
     }
 
@@ -120,7 +120,7 @@ export async function seedAnalytics(
     const document: AgentMessageAnalyticsData = {
       agent_id: agentMessage.agentConfigurationId,
       agent_version: agentMessage.agentConfigurationVersion.toString(),
-      conversation_id: conversationSId,
+      conversation_id: conversationId,
       context_origin: "web",
       latency_ms: agentMessage.modelInteractionDurationMs ?? 0,
       message_id: message.sId,

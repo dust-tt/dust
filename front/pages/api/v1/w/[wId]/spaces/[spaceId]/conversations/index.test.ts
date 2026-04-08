@@ -181,9 +181,9 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/conversations", () => {
     expect(Array.isArray(data.conversations)).toBe(true);
     expect(data.conversations.length).toBeGreaterThanOrEqual(2);
 
-    const conversationSIds = data.conversations.map((c: any) => c.sId);
-    expect(conversationSIds).toContain(convo1.sId);
-    expect(conversationSIds).toContain(convo2.sId);
+    const conversationIds = data.conversations.map((c: any) => c.sId);
+    expect(conversationIds).toContain(convo1.sId);
+    expect(conversationIds).toContain(convo2.sId);
 
     // Verify conversation structure
     const firstConvo = data.conversations.find(
@@ -246,9 +246,9 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/conversations", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
-    const conversationSIds = data.conversations.map((c: any) => c.sId);
-    expect(conversationSIds).toContain(convo1.sId);
-    expect(conversationSIds).toContain(convo2.sId); // Deleted conversation should be included
+    const conversationIds = data.conversations.map((c: any) => c.sId);
+    expect(conversationIds).toContain(convo1.sId);
+    expect(conversationIds).toContain(convo2.sId); // Deleted conversation should be included
   });
 
   it("should filter conversations by updatedSince", async () => {
@@ -343,10 +343,10 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/conversations", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
-    const conversationSIds = data.conversations.map((c: any) => c.sId);
-    expect(conversationSIds).toContain(convo2.sId); // Updated 4 days ago
-    expect(conversationSIds).toContain(convo3.sId); // Updated 2 days ago
-    expect(conversationSIds).not.toContain(convo1.sId); // Updated 6 days ago (excluded)
+    const conversationIds = data.conversations.map((c: any) => c.sId);
+    expect(conversationIds).toContain(convo2.sId); // Updated 4 days ago
+    expect(conversationIds).toContain(convo3.sId); // Updated 2 days ago
+    expect(conversationIds).not.toContain(convo1.sId); // Updated 6 days ago (excluded)
   });
 
   it("should return empty array for space with no conversations", async () => {

@@ -70,7 +70,7 @@ export interface ConversationsAsset {
 }
 
 export interface FeedbackAsset {
-  conversationSId: string;
+  conversationId: string;
   agentMessageSId: string;
   thumbDirection: "up" | "down";
   content: string | null;

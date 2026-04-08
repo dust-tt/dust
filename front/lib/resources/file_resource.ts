@@ -1608,20 +1608,20 @@ async function maybeDeleteCoreArtifactsForIndexedFile(
   }
 
   if (file.useCase === "conversation") {
-    const conversationSId = file.useCaseMetadata?.conversationId;
-    if (!conversationSId) {
+    const conversationId = file.useCaseMetadata?.conversationId;
+    if (!conversationId) {
       return;
     }
     const cRes = await ConversationResource.fetchConversationWithoutContent(
       auth,
-      conversationSId
+      conversationId
     );
     if (cRes.isErr()) {
       logger.warn(
         {
           workspaceId: auth.workspace()?.sId,
           fileId: file.sId,
-          conversationSId,
+          conversationId,
         },
         "File delete: conversation not found; skipping Core cleanup."
       );
@@ -1636,7 +1636,7 @@ async function maybeDeleteCoreArtifactsForIndexedFile(
         {
           workspaceId: auth.workspace()?.sId,
           fileId: file.sId,
-          conversationSId,
+          conversationId,
         },
         "File delete: conversation data source not found; skipping Core cleanup."
       );

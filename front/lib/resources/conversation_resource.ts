@@ -2293,14 +2293,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async batchMarkAsReadAndClearActionRequired(
     auth: Authenticator,
-    conversationSIds: string[]
+    conversationIds: string[]
   ) {
     const conversations = await ConversationResource.fetchByIds(
       auth,
-      conversationSIds
+      conversationIds
     );
 
-    const conversationIds = conversations.map((c) => c.id);
+    const conversationModelIds = conversations.map((c) => c.id);
 
     const userModelId = auth.getNonNullableUser().id;
     const workspaceModelId = auth.getNonNullableWorkspace().id;
@@ -2309,7 +2309,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       { actionRequired: false },
       {
         where: {
-          conversationId: { [Op.in]: conversationIds },
+          conversationId: { [Op.in]: conversationModelIds },
           workspaceId: workspaceModelId,
           userId: userModelId,
         },
@@ -2319,7 +2319,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // Update the existing UserConversationReads entries
     const existingReads = await UserConversationReadsModel.findAll({
       where: {
-        conversationId: { [Op.in]: conversationIds },
+        conversationId: { [Op.in]: conversationModelIds },
         userId: userModelId,
         workspaceId: workspaceModelId,
       },
@@ -2337,15 +2337,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
 
     // Create entries for conversations that do not have one yet
-    const conversationIdsWithExistingReads = new Set(
+    const conversationModelIdsWithExistingReads = new Set(
       existingReads.map((read) => read.conversationId)
     );
-    const conversationIdsNeedingNewReads = conversationIds.filter(
-      (id) => !conversationIdsWithExistingReads.has(id)
+    const conversationModelIdsNeedingNewReads = conversationModelIds.filter(
+      (id) => !conversationModelIdsWithExistingReads.has(id)
     );
     await UserConversationReadsModel.bulkCreate(
-      conversationIdsNeedingNewReads.map((conversationId) => ({
-        conversationId,
+      conversationModelIdsNeedingNewReads.map((conversationModelId) => ({
+        conversationId: conversationModelId,
         userId: userModelId,
         workspaceId: workspaceModelId,
         lastReadAt: new Date(),

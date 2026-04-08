@@ -4289,9 +4289,9 @@ describe("markAsActionRequired", () => {
         }
       );
 
-      const conversationSIds = conversations.map((c) => c.sId);
-      expect(conversationSIds).toContain(convo1.sId);
-      expect(conversationSIds).toContain(convo2.sId);
+      const conversationIds = conversations.map((c) => c.sId);
+      expect(conversationIds).toContain(convo1.sId);
+      expect(conversationIds).toContain(convo2.sId);
       expect(conversations.length).toBeGreaterThanOrEqual(2);
     });
 
@@ -4322,9 +4322,9 @@ describe("markAsActionRequired", () => {
         }
       );
 
-      const conversationSIds = conversations.map((c) => c.sId);
-      expect(conversationSIds).toContain(convo1.sId);
-      expect(conversationSIds).not.toContain(convo2.sId);
+      const conversationIds = conversations.map((c) => c.sId);
+      expect(conversationIds).toContain(convo1.sId);
+      expect(conversationIds).not.toContain(convo2.sId);
     });
 
     it("should include deleted conversations when includeDeleted is true", async () => {
@@ -4357,9 +4357,9 @@ describe("markAsActionRequired", () => {
         }
       );
 
-      const conversationSIds = conversations.map((c) => c.sId);
-      expect(conversationSIds).toContain(convo1.sId);
-      expect(conversationSIds).toContain(convo2.sId);
+      const conversationIds = conversations.map((c) => c.sId);
+      expect(conversationIds).toContain(convo1.sId);
+      expect(conversationIds).toContain(convo2.sId);
     });
 
     it("should filter conversations by updatedSince timestamp", async () => {
@@ -4450,12 +4450,12 @@ describe("markAsActionRequired", () => {
         }
       );
 
-      const conversationSIds = conversations.map((c) => c.sId);
+      const conversationIds = conversations.map((c) => c.sId);
       // Verify convo2 and convo3 are included (updated more recently than 4.5 days ago)
-      expect(conversationSIds).toContain(convo2.sId);
-      expect(conversationSIds).toContain(convo3.sId);
+      expect(conversationIds).toContain(convo2.sId);
+      expect(conversationIds).toContain(convo3.sId);
       // Verify convo1 is excluded (updated before 4.5 days ago)
-      expect(conversationSIds).not.toContain(convo1.sId);
+      expect(conversationIds).not.toContain(convo1.sId);
     });
 
     it("should return empty array for space with no conversations", async () => {
@@ -4566,9 +4566,9 @@ describe("markAsActionRequired", () => {
         }
       );
 
-      const conversationSIds = conversations.map((c) => c.sId);
+      const conversationIds = conversations.map((c) => c.sId);
       // convo2 should be included (updated after threshold, not deleted)
-      expect(conversationSIds).toContain(convo2.sId);
+      expect(conversationIds).toContain(convo2.sId);
       // convo1 should be included (deleted but includeDeleted=true)
       // Note: convo1 was updated 4 days ago, so it won't pass updatedSince filter
       // This test verifies the combination works, even if convo1 is filtered out by updatedSince
