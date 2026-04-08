@@ -2,13 +2,15 @@ import CustomErrorPage from "@app/components/pages/CustomErrorPage";
 import type { LightWorkspaceType } from "@app/types/user";
 import { BrainIcon, LoginIcon } from "@dust-tt/sparkle";
 
+interface NotAvailableErrorPageProps {
+  isAdmin: boolean;
+  owner: LightWorkspaceType;
+}
+
 export function NotAvailableErrorPage({
   isAdmin,
   owner,
-}: {
-  isAdmin: boolean;
-  owner: LightWorkspaceType;
-}) {
+}: NotAvailableErrorPageProps) {
   const restOfProps = isAdmin
     ? {
         href: `/w/${owner.sId}/model-providers`,

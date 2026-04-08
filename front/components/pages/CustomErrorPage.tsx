@@ -2,6 +2,14 @@ import { LinkWrapper } from "@app/lib/platform";
 import { Button, ExclamationCircleIcon, Icon } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
+interface CustomErrorPageProps {
+  title: string;
+  description: string;
+  href: string;
+  label: string;
+  icon: ComponentType;
+}
+
 // biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function CustomErrorPage({
   title,
@@ -9,13 +17,7 @@ export default function CustomErrorPage({
   href,
   label,
   icon,
-}: {
-  title: string;
-  description: string;
-  href: string;
-  label: string;
-  icon: ComponentType;
-}) {
+}: CustomErrorPageProps) {
   return (
     <div className="flex h-dvh items-center justify-center">
       <div className="flex flex-col gap-3 text-center">
