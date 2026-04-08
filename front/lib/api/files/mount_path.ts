@@ -22,6 +22,16 @@ export function getConversationFilesBasePath({
   return `${getBaseMountPathForWorkspace({ workspaceId })}conversations/${conversationId}/files/`;
 }
 
+export function getConversationToolOutputsBasePath({
+  workspaceId,
+  conversationId,
+}: {
+  workspaceId: string;
+  conversationId: string;
+}): string {
+  return `${getConversationFilesBasePath({ workspaceId, conversationId })}tool_outputs/`;
+}
+
 export function getConversationFilePath({
   workspaceId,
   conversationId,

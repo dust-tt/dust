@@ -24,6 +24,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { handleBase64Upload } from "@app/lib/actions/mcp_utils";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import { persistToolOutput } from "@app/lib/api/files/action_output_fs";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
@@ -166,6 +167,12 @@ export async function processToolResults(
   }[] = await concurrentExecutor(
     toolCallResultContent,
     async (block, idx) => {
+      // Side effect: write qualifying blocks to tool_outputs/ in GCS.
+      // TODO(2026-04-08: SANDBOX): Make this the default path.
+      await persistToolOutput(auth, conversation, block, {
+        toolName: toolConfiguration.mcpServerName,
+      });
+
       switch (block.type) {
         case "text": {
           // If the text is too large we create a file and return a resource block that references the file.
