@@ -203,7 +203,7 @@ const InputBarContainer = ({
     useContext(InputBarContext);
   const [hasUserMention, setHasUserMention] = useState(false);
 
-  const agentsBySId = useMemo(
+  const agentsById = useMemo(
     () => new Map(allAgents.map((a) => [a.sId, a])),
     [allAgents]
   );
@@ -223,6 +223,14 @@ const InputBarContainer = ({
   const [isEmpty, setIsEmpty] = useState(true);
   // A ref so the mention suggestion plugin (which lives outside React) can read it synchronously.
   const shouldSuggestAgentRef = useRef(true);
+  // The editor plugin captures its options once at initialization. Passing a ref lets the plugin
+  // always invoke the latest closure without needing to reinitialize the editor.
+  const onFirstAgentMentionPasteRef = useRef<
+    ((agentId: string) => void) | undefined
+  >(undefined);
+  const onAgentMentionsStrippedRef = useRef<
+    ((count: number) => void) | undefined
+  >(undefined);
   const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
   const plusButtonRef = useRef<HTMLDivElement>(null);
@@ -399,6 +407,28 @@ const InputBarContainer = ({
     [isBlockedByAgentSwitch, onEnterKeyDown, onShake]
   );
 
+  onFirstAgentMentionPasteRef.current = singleAgentInput
+    ? (agentId: string) => {
+        const agent = agentsById.get(agentId);
+        if (agent) {
+          setSelectedSingleAgent(toRichAgentMentionType(agent));
+        }
+      }
+    : undefined;
+
+  onAgentMentionsStrippedRef.current = singleAgentInput
+    ? (count: number) => {
+        sendNotification({
+          type: "info",
+          title: "Agent mentions removed",
+          description:
+            count === 1
+              ? "1 agent mention was removed. Only one agent can be used at a time."
+              : `${count} agent mentions were removed. Only one agent can be used at a time.`,
+        });
+      }
+    : undefined;
+
   const { editor, editorService } = useCustomEditor({
     onEnterKeyDown: onEnterKeyDownWithShake,
     disableAutoFocus,
@@ -411,6 +441,8 @@ const InputBarContainer = ({
     spaceId: space?.sId,
     onInlineText: handleInlineText,
     shouldSuggestAgentRef: singleAgentInput ? shouldSuggestAgentRef : undefined,
+    onFirstAgentMentionPasteRef,
+    onAgentMentionsStrippedRef,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
       let inserted = false;
@@ -487,7 +519,7 @@ const InputBarContainer = ({
             break;
           case "mention": {
             if (singleAgentInput) {
-              const agent = agentsBySId.get(message.id);
+              const agent = agentsById.get(message.id);
               if (agent) {
                 handleSingleAgentSelect(toRichAgentMentionType(agent));
               }

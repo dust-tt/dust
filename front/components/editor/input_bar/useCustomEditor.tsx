@@ -191,6 +191,12 @@ export interface CustomEditorProps {
   onInlineText?: (fileId: string, textContent: string) => void;
   // Ref that dynamically controls whether agent suggestions are shown for single agent mode.
   shouldSuggestAgentRef?: React.RefObject<boolean>;
+  onFirstAgentMentionPasteRef?: React.RefObject<
+    ((agentId: string) => void) | undefined
+  >;
+  onAgentMentionsStrippedRef?: React.RefObject<
+    ((count: number) => void) | undefined
+  >;
 }
 
 export const buildEditorExtensions = ({
@@ -203,6 +209,8 @@ export const buildEditorExtensions = ({
   onAgentSelect,
   singleAgentInputEnabled,
   shouldSuggestAgentRef,
+  onFirstAgentMentionPasteRef,
+  onAgentMentionsStrippedRef,
 }: {
   owner: WorkspaceType;
   conversationId?: string | null;
@@ -213,6 +221,12 @@ export const buildEditorExtensions = ({
   onAgentSelect?: (mention: RichMention) => void;
   singleAgentInputEnabled?: boolean;
   shouldSuggestAgentRef?: React.RefObject<boolean>;
+  onFirstAgentMentionPasteRef?: React.RefObject<
+    ((agentId: string) => void) | undefined
+  >;
+  onAgentMentionsStrippedRef?: React.RefObject<
+    ((count: number) => void) | undefined
+  >;
 }) => {
   const extensions = [
     KeyboardShortcutsExtension,
@@ -274,6 +288,8 @@ export const buildEditorExtensions = ({
     }),
     MentionExtension.configure({
       owner,
+      onFirstAgentMentionPasteRef,
+      onAgentMentionsStrippedRef,
       HTMLAttributes: {
         class:
           "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
@@ -332,6 +348,8 @@ const useCustomEditor = ({
   longTextPasteCharsThreshold,
   onInlineText,
   shouldSuggestAgentRef,
+  onFirstAgentMentionPasteRef,
+  onAgentMentionsStrippedRef,
 }: CustomEditorProps) => {
   const editor = useEditor(
     {
@@ -346,6 +364,8 @@ const useCustomEditor = ({
         onAgentSelect,
         singleAgentInputEnabled,
         shouldSuggestAgentRef,
+        onFirstAgentMentionPasteRef,
+        onAgentMentionsStrippedRef,
       }),
       shouldRerenderOnTransaction: true, // necessary to update the editor state (and so the toolbar icons "activation") in real time
       editorProps: {
