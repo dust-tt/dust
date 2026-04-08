@@ -67,7 +67,9 @@ export function UserQuestionRequired({
 
     if (question.multiSelect) {
       setSelectedOptions((prev) =>
-        prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
+        prev.includes(index)
+          ? prev.filter((i) => i !== index)
+          : [...prev, index]
       );
       return;
     }
@@ -183,9 +185,7 @@ export function UserQuestionRequired({
                 ]
           )}
         >
-          <div
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-150 text-xs font-semibold text-primary-700 dark:bg-primary-800 dark:text-primary-300"
-          >
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-150 text-xs font-semibold text-primary-700 dark:bg-primary-800 dark:text-primary-300">
             {question.options.length + 1}
           </div>
           <Input
