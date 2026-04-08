@@ -192,8 +192,7 @@ export function UserMessage({
   const methods = useVirtuosoMethods<VirtuosoMessage>();
 
   const isDeleted = message.visibility === "deleted";
-  const isEmpty =
-    !message.content && message.contentFragments.length === 0;
+  const isEmpty = !message.content && message.contentFragments.length === 0;
   const isCurrentUser = message.user?.sId === currentUserId;
   const canDelete = (isCurrentUser || isAdmin) && !isDeleted;
   const canEdit = isCurrentUser && !isDeleted;
