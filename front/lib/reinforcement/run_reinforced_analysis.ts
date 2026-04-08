@@ -5,6 +5,7 @@ import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import { getSkillInstructionEditsValidationError } from "@app/lib/api/skills/apply_skill_instruction_edits";
 import { getLargeWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -44,41 +45,56 @@ const REINFORCED_SKILLS_TOOL_DEFINITIONS: Record<
       "Get the list of available tools (MCP servers) that can be added to skills.",
     schema: {},
   },
-  suggest_skill_instruction_edits: {
+  edit_skill: {
     description:
-      "Suggest instruction edits for one or more skills based on conversation analysis.",
+      "Suggest edits to a skill's instructions and/or configured tools.",
     schema: {
-      suggestions: z.array(
-        z.object({
-          skillId: z.string().describe("The sId of the skill to modify"),
-          instructions: z
-            .string()
-            .describe("Full replacement text for the skill instructions"),
-          analysis: z
-            .string()
-            .describe("Explanation of why this change improves the skill"),
-        })
-      ),
-    },
-  },
-  suggest_skill_tools: {
-    description:
-      "Suggest tools to add or remove from one or more skills based on conversation analysis.",
-    schema: {
-      suggestions: z.array(
-        z.object({
-          skillId: z.string().describe("The sId of the skill to modify"),
-          action: z
-            .enum(["add", "remove"])
-            .describe("Whether to add or remove the tool"),
-          toolId: z
-            .string()
-            .describe("The identifier of the tool to add or remove"),
-          analysis: z
-            .string()
-            .describe("Explanation of why this change improves the skill"),
-        })
-      ),
+      skillId: z.string().describe("The sId of the skill to modify"),
+      instructionEdits: z
+        .array(
+          z.object({
+            old_string: z
+              .string()
+              .min(1)
+              .describe(
+                "Exact text to find in the current skill instructions."
+              ),
+            new_string: z
+              .string()
+              .describe(
+                "Replacement text. Empty string deletes the matched span."
+              ),
+            expected_occurrences: z
+              .number()
+              .int()
+              .min(1)
+              .default(1)
+              .describe(
+                "How many times old_string is expected to appear. Used to validate the edit is still applicable."
+              ),
+          })
+        )
+        .optional()
+        .describe(
+          "Sequential search-and-replace operations applied to the skill instructions."
+        ),
+      toolEdits: z
+        .array(
+          z.object({
+            action: z
+              .enum(["add", "remove"])
+              .describe("Whether to add or remove the tool"),
+            toolId: z
+              .string()
+              .describe("The identifier of the tool to add or remove"),
+          })
+        )
+        .optional()
+        .describe("Tools to add or remove from the skill."),
+      analysis: z
+        .string()
+        .optional()
+        .describe("Why this change improves the skill"),
     },
   },
 };
@@ -349,9 +365,8 @@ async function createSkillSuggestionsFromToolCall({
   conversation?: ConversationResource;
 }): Promise<ToolCallResult> {
   switch (toolName) {
-    case "suggest_skill_instruction_edits": {
-      const parsed =
-        TOOL_SCHEMAS.suggest_skill_instruction_edits.safeParse(actionArguments);
+    case "edit_skill": {
+      const parsed = TOOL_SCHEMAS.edit_skill.safeParse(actionArguments);
       if (!parsed.success) {
         const errorMessage = `Invalid arguments for ${toolName}: ${parsed.error.message}`;
         logger.warn(
@@ -361,71 +376,78 @@ async function createSkillSuggestionsFromToolCall({
         return { suggestionsCreated: 0, error: errorMessage };
       }
 
-      let created = 0;
-      for (const suggestion of parsed.data.suggestions) {
-        const skill = await SkillResource.fetchById(auth, suggestion.skillId);
-        if (!skill) {
-          logger.warn(
-            { skillId: suggestion.skillId, contextId },
-            "ReinforcedSkills: skill not found for instruction suggestion"
-          );
-          continue;
-        }
-
-        await SkillSuggestionResource.createSuggestionForSkill(auth, skill, {
-          kind: "edit_instructions",
-          suggestion: { instructions: suggestion.instructions },
-          analysis: suggestion.analysis,
-          state: "pending",
-          source,
-          sourceConversationId: conversation?.id ?? null,
-          groupId: null,
-        });
-        created++;
-      }
-
-      return { suggestionsCreated: created };
-    }
-
-    case "suggest_skill_tools": {
-      const parsed =
-        TOOL_SCHEMAS.suggest_skill_tools.safeParse(actionArguments);
-      if (!parsed.success) {
-        const errorMessage = `Invalid arguments for ${toolName}: ${parsed.error.message}`;
+      const skill = await SkillResource.fetchById(auth, parsed.data.skillId);
+      if (!skill) {
         logger.warn(
-          { contextId, toolName, error: parsed.error },
-          `ReinforcedSkills: invalid LLM response shape for ${operationType}`
+          { skillId: parsed.data.skillId, contextId },
+          "ReinforcedSkills: skill not found for edit_skill"
         );
-        return { suggestionsCreated: 0, error: errorMessage };
+        return { suggestionsCreated: 0, error: "Skill not found" };
       }
 
-      let created = 0;
-      for (const suggestion of parsed.data.suggestions) {
-        const skill = await SkillResource.fetchById(auth, suggestion.skillId);
-        if (!skill) {
+      const hasInstructionEdits =
+        (parsed.data.instructionEdits?.length ?? 0) > 0;
+      const hasToolEdits = (parsed.data.toolEdits?.length ?? 0) > 0;
+      if (!hasInstructionEdits && !hasToolEdits) {
+        return {
+          suggestionsCreated: 0,
+          error:
+            "edit_skill requires at least one instruction edit or tool edit.",
+        };
+      }
+
+      if (
+        parsed.data.instructionEdits &&
+        parsed.data.instructionEdits.length > 0
+      ) {
+        const currentInstructions = skill.instructions ?? "";
+        const validationError = getSkillInstructionEditsValidationError(
+          currentInstructions,
+          parsed.data.instructionEdits
+        );
+        if (validationError) {
           logger.warn(
-            { skillId: suggestion.skillId, contextId },
-            "ReinforcedSkills: skill not found for tools suggestion"
+            { skillId: parsed.data.skillId, contextId, validationError },
+            "ReinforcedSkills: invalid instruction edits"
           );
-          continue;
+          return { suggestionsCreated: 0, error: validationError };
         }
-
-        await SkillSuggestionResource.createSuggestionForSkill(auth, skill, {
-          kind: "tools",
-          suggestion: {
-            action: suggestion.action,
-            toolId: suggestion.toolId,
-          },
-          analysis: suggestion.analysis,
-          state: "pending",
-          source,
-          sourceConversationId: conversation?.id ?? null,
-          groupId: null,
-        });
-        created++;
       }
 
-      return { suggestionsCreated: created };
+      // Mark any existing pending edit suggestions for this skill as outdated.
+      // This is not strictly necessary, but it is unclear if we want to allow multiple pending edit suggestions for the same skill.
+      const existingPending =
+        await SkillSuggestionResource.listBySkillConfigurationId(
+          auth,
+          skill.sId,
+          {
+            states: ["pending"],
+            kind: "edit",
+            sources: ["reinforcement", "synthetic"],
+          }
+        );
+      if (existingPending.length > 0) {
+        await SkillSuggestionResource.bulkUpdateState(
+          auth,
+          existingPending,
+          "outdated"
+        );
+      }
+
+      await SkillSuggestionResource.createSuggestionForSkill(auth, skill, {
+        kind: "edit",
+        suggestion: {
+          instructionEdits: parsed.data.instructionEdits,
+          toolEdits: parsed.data.toolEdits,
+        },
+        analysis: parsed.data.analysis ?? null,
+        state: "pending",
+        source,
+        sourceConversationId: conversation?.id ?? null,
+        groupId: null,
+      });
+
+      return { suggestionsCreated: 1 };
     }
 
     default:

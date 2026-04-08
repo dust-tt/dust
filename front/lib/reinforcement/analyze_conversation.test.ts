@@ -33,7 +33,8 @@ describe("buildSkillAnalysisPrompt", () => {
     const skill = makeSkill({ name: "DataLookup", sId: "skl_data" });
     const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);
 
-    expect(userMessage).toContain("Skill: DataLookup (ID: skl_data)");
+    expect(userMessage).toContain('ID="skl_data"');
+    expect(userMessage).toContain('name="DataLookup"');
   });
 
   it("includes description when present", () => {
@@ -42,14 +43,17 @@ describe("buildSkillAnalysisPrompt", () => {
     });
     const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);
 
-    expect(userMessage).toContain("Description: Searches internal databases");
+    expect(userMessage).toContain("<agentFacingDescription>");
+    expect(userMessage).toContain("Searches internal databases");
+    expect(userMessage).toContain("</agentFacingDescription>");
   });
 
-  it("omits description section when empty", () => {
+  it("omits description when empty", () => {
     const skill = makeSkill({ agentFacingDescription: "" });
     const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);
 
-    expect(userMessage).not.toContain("Description:");
+    expect(userMessage).not.toContain("<agentFacingDescription>");
+    expect(userMessage).toMatch(/<skill[^>]+><\/skill>/);
   });
 
   it("includes instructions when present", () => {
@@ -58,15 +62,15 @@ describe("buildSkillAnalysisPrompt", () => {
     });
     const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);
 
-    expect(userMessage).toContain("### Current instructions");
+    expect(userMessage).toContain("<instructions>");
     expect(userMessage).toContain("Always verify data before responding.");
   });
 
-  it("omits instructions section when null", () => {
+  it("omits instructions when null", () => {
     const skill = makeSkill({ instructions: null });
     const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);
 
-    expect(userMessage).not.toContain("### Current instructions");
+    expect(userMessage).not.toContain("<instructions>");
   });
 
   it("wraps conversation text in <conversation> tags", () => {
@@ -94,8 +98,7 @@ describe("buildSkillAnalysisPrompt", () => {
       makeSkill(),
     ]);
 
-    expect(systemPrompt).toContain("suggest_skill_instruction_edits");
-    expect(systemPrompt).toContain("suggest_skill_tools");
+    expect(systemPrompt).toContain("edit_skill");
     expect(systemPrompt).toContain("get_available_tools");
   });
 
@@ -110,8 +113,9 @@ describe("buildSkillAnalysisPrompt", () => {
     });
     const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);
 
-    expect(userMessage).toContain("### Configured tools");
-    expect(userMessage).toContain("web_search (ID: tool-ws)");
+    expect(userMessage).toContain("<tools>");
+    expect(userMessage).toContain('sId="tool-ws"');
+    expect(userMessage).toContain('name="web_search"');
   });
 
   it("includes multiple skills in user message", () => {
@@ -122,7 +126,9 @@ describe("buildSkillAnalysisPrompt", () => {
       skill2,
     ]);
 
-    expect(userMessage).toContain("Skill: SkillA (ID: skl_a)");
-    expect(userMessage).toContain("Skill: SkillB (ID: skl_b)");
+    expect(userMessage).toContain('ID="skl_a"');
+    expect(userMessage).toContain('name="SkillA"');
+    expect(userMessage).toContain('ID="skl_b"');
+    expect(userMessage).toContain('name="SkillB"');
   });
 });

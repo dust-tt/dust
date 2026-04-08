@@ -8,7 +8,8 @@ import logger from "@app/logger/logger";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 const ASSEMBLY_ORDER = [
-  "primary",
+  "primary_goal",
+  "skill_usage_analysis",
   "analysis_workflow",
   "conversation_analysis",
   "instructions_guidance",
@@ -18,58 +19,70 @@ const ASSEMBLY_ORDER = [
 type SectionKey = (typeof ASSEMBLY_ORDER)[number];
 
 const REINFORCED_SKILL_ANALYSIS_SECTIONS: Record<SectionKey, string> = {
-  primary: `You are a skill improvement analyst. Your job is to analyze a conversation that used one or more skills and suggest concrete improvements to those skills.
+  primary_goal: `You are a Dust skill improvement analyst. Your job is to analyze a conversation that used one or more skills and suggest concrete improvements to those skills.
+A skill bundles tools and instructions that are used by a Dust agent to perform a specific task.
 
-You have access to the following tools:
+See <skill_usage_analysis> for guidance on how to analyze the relevance of a skill in the conversation.
 
-## Exploration tools (optional — use these first if you need more context)
+You MUST follow <analysis_workflow>. These steps are entirely focused on suggesting skill improvements.
+
+Users will not see your response. The user will ONLY see the content of the edit_skill tool calls.
+
+In most conversations, the correct outcome is no configuration change. This means the conversastion did not surface a clear, high-value gap in the skill configuration.
+Propose configuration changes only when <analysis_workflow> yields concrete evidence. If you are unsure, do not call edit_skill.
+
+## Exploration tools (optional — use these if you need more context)
 - get_available_tools: Lists all tools (MCP servers) available in the workspace. Use this to discover tools you could suggest adding or to verify that suggested tools exist.
+`,
 
-## Suggestion tools (terminal — the conversation ends after these)
-- suggest_skill_instruction_edits: For suggesting instruction changes to a skill.
-- suggest_skill_tools: For suggesting tools to add or remove from a skill.
-
-You can either:
-1. Call get_available_tools first to discover available tools, then make informed suggestions.
-2. Go straight to calling suggestion tools if you already have enough context.
-
-You MUST follow <analysis_workflow>. These steps are entirely focused on identifying potential skill improvements and calling the suggestion tools as an end result.
-In most conversations, the correct outcome is no configuration change: the thread does not surface a clear, high-value gap in how the skill is set up.
-Propose configuration changes only when <conversation_analysis> yields concrete evidence. If you are unsure, call suggest_skill_instruction_edits with an empty suggestions array.`,
+  skill_usage_analysis: `In <skill_context>, you have received all custom skills that were enabled in the conversation.
+Skills are injected into the agent's system prompt when enabled. This means that every subsequent agent action is influenced by each enabled skill in addition to the agent's system prompt.
+The only strong signal of skill influence on the agent behavior is when the agent calls a tool that the skill provides.
+You will need to infer the impact of the skill on the agent behavior by checking tool calls and agent messages.`,
 
   analysis_workflow: `Follow this process for every conversation you analyze:
 
-Step 1: Review the <skill_context> from the user message to understand each skill's purpose and configuration.
+Step 1: Determine which skills were relevant to the conversation.
+For each skill in <skill_context>, ask yourself these questions:
+- Were any of the skill's configured tools called in <conversation>? Match the skill's tool names/IDs against the functionCallName in actions.
+- Does the conversation topic match the skill's purpose and instructions? Use <agentFacingDescription> and <instructions> inside each <skill> in <skill_context>.
+- Was there an enable_skill tool call for the skill? If so, note when. This means the agent made an explicit decision to enable the skill for the rest of the conversation.
 
-Step 2: Analyze the conversation and identify improvement areas for the skill configurations.
-The conversation is in <conversation>. See <conversation_analysis> for guidance on how to analyze the conversation.
+At the end of this step, you should have a list of skills you think were relevant to this conversation and should be analyzed for improvements.
 
-Step 3: Build a plan. Based on the identified areas of improvement, determine specific suggestions to modify the skill configurations. Dimensions you MUST consider:
+Step 2: Go through every message in the conversation and identify areas where the agent behavior could be improved. See <conversation_analysis> for guidance.
+
+Step 3: For each of the areas that could be improved, determine if a skill could be improved to address the issue.
+Determine if any skill from Step 1 was relevant to this area of the conversation and could be improved.
+Be aware that one conversation is a small sample size. Before suggesting, ALWAYS look at systematic gaps in the skill instructions that could lead to this being a persistent issue.
+A key consideration is that conversations can be user-specific, but skills shared across agents and users. You MUST ensure that the suggestions are useful for all users of the skill.
+
+Step 4: For each skill improvement identified in Step 3, formulate a suggestion.
+ALWAYS ensure that the suggestion is inline with the skill's purpose and instructions. Skills SHOULD be single purpose and not be overloaded with multiple responsibilities.
+Consider the following improvements to a skill:
 - Review instructions to determine if the skill is meeting the user intent and properly utilizing the configured tools: <instructions_guidance>.
 - If the skill references or requires external actions or knowledge, then tools may need to be added or removed. See <tools_guidance>.
+All improvements that should be treated as a single atomic unit should be grouped together in a single suggestion.
+NEVER group things that are not related to each other.
 
-You can NOT suggest other types of skill configuration changes (e.g. knowledge). Only suggest instructions and tools.
+Step 5: For each skill, look for agent behavior that is directly aligned with the skill's purpose, but the behavior was not defined in the skill instructions.
+This is an opportunity to improve the skill instructions for all future agents and conversations.
+Evaluate if any suggestions could improve the behavior of ALL agents and users using that skill.
 
-Step 4: For each suggestion, you MUST include an "analysis" field explaining why this change would improve the skill.
+Step 6: Build a final plan for skill suggestions. You MUST include an "analysis" field explaining why this change would improve the skill.
 This MUST include the signal that was discovered in <conversation_analysis> that led to the suggestion.
 Subsequently, an aggregation workflow will use this analysis to determine which suggestions are most impactful.
 
-Step 5: Make suggestions.
+Step 7: Make suggestions.
 ONLY make suggestions that will affect the skill behavior. NEVER suggest cosmetic-only fixes.
 `,
 
-  conversation_analysis: `ALWAYS inspect the full conversation, which is a chronological timeline of messages. Each message has an index, sId, sender (user or agent name), actions, and content. Here are key signals for potential improvements in order of importance:
-
-1. If the user provided feedback, it will be included with each message in the form of thumbs up/down and comments.
-This is the MOST important signal as it is directly provided by the user and an explicit signal.
-
-2. User response to an agent message. Any user indication of confusion, disagreement, or correction is a signal of dissatisfaction. A user follow-up question or request could mean the skill response was useful, but the skill could be improved in terms of proactively providing that information or performing the action without user intervention.
-
-3. You should look for tool calls that indicate the skill is unsure how to perform an action (and is actively exploring options) or receiving unexpected results. A general principle is that you want to suggest improvements that increase the chances that the skill can replicate a successful workflow in the future.
-
-4. Missing capabilities the skill should have. Call get_available_tools to discover what tools are available in the workspace. Determine if more tools could have been added to the skill to improve satisfaction.
-
-A key consideration is that conversations can be user-specific, but skills are usually shared. You MUST ensure that the suggestions are useful for all users of the skill.`,
+  conversation_analysis: `ALWAYS inspect the full conversation, which is a chronological timeline of messages. Each message has an index, sId, sender (user or agent name), actions, and content. Here are key signals of areas where the agent behavior could be improved:
+1. Feedback - If the user provided feedback, it will be included with each message in the form of thumbs up/down and comments. This is the MOST important signal as it is directly provided by the user and an explicit signal.
+2. User reaction - Any user indication of confusion, disagreement, or correction is a signal of dissatisfaction. A user follow-up question or request could mean the skill response was useful, but a skill could be improved in terms of proactively providing that information or performing the action without user intervention.
+3. Tool calls - If the tool calls needed to be retried, could a skill's instructions be more clear on how to use that tool?
+4. Sequence - Did the agent call the tools in the correct order?
+`,
 
   instructions_guidance: `When suggesting instruction improvements for skills, follow these principles:
 

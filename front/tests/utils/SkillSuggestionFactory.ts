@@ -22,9 +22,15 @@ export class SkillSuggestionFactory {
     }> = {}
   ): Promise<SkillSuggestionResource> {
     return SkillSuggestionResource.createSuggestionForSkill(auth, skill, {
-      kind: overrides.kind ?? "edit_instructions",
+      kind: overrides.kind ?? "edit",
       suggestion: overrides.suggestion ?? {
-        instructions: "Updated skill instructions",
+        instructionEdits: [
+          {
+            old_string: "original text",
+            new_string: "updated skill instructions",
+            expected_occurrences: 1,
+          },
+        ],
       },
       analysis: overrides.analysis ?? "Improved instructions",
       state: overrides.state ?? "pending",
@@ -32,20 +38,33 @@ export class SkillSuggestionFactory {
     });
   }
 
-  static async createEditInstructions(
+  static async createEdit(
     auth: Authenticator,
     skill: SkillResource,
     overrides: Partial<{
-      suggestion: { instructions: string };
+      suggestion: {
+        instructionEdits?: {
+          old_string: string;
+          new_string: string;
+          expected_occurrences: number;
+        }[];
+        toolEdits?: { action: "add" | "remove"; toolId: string }[];
+      };
       analysis: string | null;
       state: SkillSuggestionState;
       source: SkillSuggestionSource;
     }> = {}
   ): Promise<SkillSuggestionResource> {
     return this.create(auth, skill, {
-      kind: "edit_instructions",
+      kind: "edit",
       suggestion: overrides.suggestion ?? {
-        instructions: "Updated skill instructions",
+        instructionEdits: [
+          {
+            old_string: "original text",
+            new_string: "updated skill instructions",
+            expected_occurrences: 1,
+          },
+        ],
       },
       analysis: overrides.analysis,
       state: overrides.state,
