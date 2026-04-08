@@ -124,7 +124,7 @@ export function AgentDetailsButtonBar({
               ? getAgentBuilderRoute(owner.sId, agentConfiguration.sId)
               : undefined
           }
-          disabled={!canEditAgent || !hasHealthyProviders(providersHealth)}
+          disabled={!canEditAgent || !hasHealthyProviders(providersHealth)}
           variant="outline"
           icon={PencilSquareIcon}
         />

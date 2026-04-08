@@ -2,6 +2,7 @@ import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
 import type { BuilderFlow } from "@app/components/agent_builder/types";
 import { BUILDER_FLOWS } from "@app/components/agent_builder/types";
+import { NotAvailableErrorPage } from "@app/components/pages/builder/agents/NotAvailableErrorPage";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
 import {
   useAuth,
@@ -13,14 +14,13 @@ import {
   useAgentConfiguration,
   useAssistantTemplate,
 } from "@app/lib/swr/assistants";
+import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import Custom404 from "@app/pages/404";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { Spinner } from "@dust-tt/sparkle";
-import { NotAvailableErrorPage } from "@app/components/pages/builder/agents/NotAvailableErrorPage";
-import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 
 function isBuilderFlow(value: string): value is BuilderFlow {
   return BUILDER_FLOWS.some((flow) => flow === value);

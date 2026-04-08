@@ -425,7 +425,9 @@ export function AssistantsTable({
                     "data-gtm-label": "assistantEditButton",
                     "data-gtm-location": "assistantDetails",
                     icon: PencilSquareIcon,
-                    disabled: (!agentConfiguration.canEdit && !isAdmin(owner)) || noHealthyProviders,
+                    disabled:
+                      (!agentConfiguration.canEdit && !isAdmin(owner)) ||
+                      noHealthyProviders,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       void router.push(
