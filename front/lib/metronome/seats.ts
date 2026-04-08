@@ -134,10 +134,20 @@ export async function provisionSeatsForContract({
     return new Ok(undefined);
   }
 
-  return await editMetronomeContractSeats({
-    metronomeCustomerId,
-    contractId,
-    edits: [{ subscriptionId, addSeatIds: memberIds }],
-    startingAt,
-  });
+  // Metronome limits to 500 seats per subscription edit. Batch if needed.
+  const SEAT_BATCH_SIZE = 500;
+  for (let i = 0; i < memberIds.length; i += SEAT_BATCH_SIZE) {
+    const batch = memberIds.slice(i, i + SEAT_BATCH_SIZE);
+    const result = await editMetronomeContractSeats({
+      metronomeCustomerId,
+      contractId,
+      edits: [{ subscriptionId, addSeatIds: batch }],
+      startingAt,
+    });
+    if (result.isErr()) {
+      return result;
+    }
+  }
+
+  return new Ok(undefined);
 }
