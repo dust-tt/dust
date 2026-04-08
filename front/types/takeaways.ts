@@ -27,8 +27,3 @@ export type TodoVersionedKeyDecision = {
   sourceMessageRank: number;
   status: TodoVersionedKeyDecisionStatus;
 };
-
-export type TodoVersionedAgentSuggestion = {
-  agentId: string;
-  rationale: string;
-};

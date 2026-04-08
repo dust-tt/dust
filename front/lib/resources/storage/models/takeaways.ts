@@ -1,11 +1,11 @@
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { ProjectTodoSourceType } from "@app/types/project_todo";
 import type {
   TodoVersionedActionItem,
   TodoVersionedKeyDecision,
   TodoVersionedNotableFact,
-} from "@app/types/conversation_todo_versioned";
-import type { ProjectTodoSourceType } from "@app/types/project_todo";
+} from "@app/types/takeaways";
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 

@@ -21,10 +21,9 @@ import {
 } from "@app/lib/project_todo/analyze_conversation/types";
 import {
   buildSpec,
-  getLastProcessedMessageRank,
   renderConversationForLLM,
 } from "@app/lib/project_todo/analyze_conversation/utils";
-import { ConversationTodoVersionedResource } from "@app/lib/resources/conversation_todo_versioned_resource";
+import { TakeawaysResource } from "@app/lib/resources/takeaways_resource";
 import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
@@ -107,19 +106,17 @@ export async function analyzeConversationTodos(
   {
     conversation,
     messageId,
-    runId,
   }: {
     conversation: ConversationType;
     messageId: string;
-    runId: string;
   }
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
   // Fetch the model and the previous version concurrently — they are independent.
   const [model, previousVersion] = await Promise.all([
     getFastestWhitelistedModel(auth),
-    ConversationTodoVersionedResource.fetchLatestByConversation(auth, {
-      conversationId: conversation.id,
+    TakeawaysResource.fetchLatestByConversationId(auth, {
+      conversationId: conversation.sId,
     }),
   ]);
   if (!model) {
@@ -183,16 +180,11 @@ export async function analyzeConversationTodos(
     new Set(previousKeyDecisions.map((d) => d.sId))
   );
 
-  await ConversationTodoVersionedResource.makeNew(auth, {
-    conversationId: conversation.id,
-    runId,
-    topic: extraction.topic,
+  await TakeawaysResource.makeNewForConversation(auth, {
+    conversationId: conversation.sId,
     actionItems,
     notableFacts,
     keyDecisions,
-    agentSuggestions: [],
-    lastRunAt: new Date(),
-    lastProcessedMessageRank: getLastProcessedMessageRank(conversation),
   });
 
   logger.info(

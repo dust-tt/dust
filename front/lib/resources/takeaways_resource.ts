@@ -10,8 +10,14 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+
 import { Ok, type Result } from "@app/types/shared/result";
 import { md5 } from "@app/types/shared/utils/encryption";
+import type {
+  TodoVersionedActionItem,
+  TodoVersionedKeyDecision,
+  TodoVersionedNotableFact,
+} from "@app/types/takeaways";
 import type {
   Attributes,
   CreationAttributes,
@@ -19,6 +25,7 @@ import type {
   Transaction,
 } from "sequelize";
 import { col, fn } from "sequelize";
+import { v4 as uuidv4 } from "uuid";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -188,5 +195,78 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
     });
 
     return new Ok(undefined);
+  }
+
+  // Returns the most recent snapshot for a conversation, or null if none exists.
+  // Looks up the conversation's stable sId through TakeawaySourcesModel.
+  static async fetchLatestByConversationId(
+    auth: Authenticator,
+    { conversationId }: { conversationId: string },
+    transaction?: Transaction
+  ): Promise<TakeawaysResource | null> {
+    const source = await TakeawaySourcesModel.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sourceId: conversationId,
+      },
+      transaction,
+    });
+    if (!source) {
+      return null;
+    }
+    return TakeawaysResource.fetchLatestBySId(
+      auth,
+      { sId: source.takeawaySId },
+      transaction
+    );
+  }
+
+  // Creates a new versioned snapshot for a conversation. The conversation's
+  // stable takeaway sId is looked up (or created) via TakeawaySourcesModel.
+  static async makeNewForConversation(
+    auth: Authenticator,
+    {
+      conversationId,
+      actionItems,
+      notableFacts,
+      keyDecisions,
+    }: {
+      conversationId: string;
+      actionItems: TodoVersionedActionItem[];
+      notableFacts: TodoVersionedNotableFact[];
+      keyDecisions: TodoVersionedKeyDecision[];
+    },
+    transaction?: Transaction
+  ): Promise<TakeawaysResource> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    return withTransaction(async (t) => {
+      let source = await TakeawaySourcesModel.findOne({
+        where: { workspaceId, sourceId: conversationId },
+        transaction: t,
+      });
+
+      let sId: string;
+      if (source) {
+        sId = source.takeawaySId;
+      } else {
+        sId = uuidv4();
+        await TakeawaySourcesModel.create(
+          {
+            workspaceId,
+            takeawaySId: sId,
+            sourceType: "conversation",
+            sourceId: conversationId,
+          },
+          { transaction: t }
+        );
+      }
+
+      return TakeawaysResource.makeNew(
+        auth,
+        { actionItems, notableFacts, keyDecisions },
+        t
+      );
+    }, transaction);
   }
 }
