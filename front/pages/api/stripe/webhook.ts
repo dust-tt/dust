@@ -28,7 +28,7 @@ import {
   createMetronomeCredit,
   getMetronomeActiveContract,
 } from "@app/lib/metronome/client";
-import { getFreeCreditProductId } from "@app/lib/metronome/constants";
+import { getProductFreeMonthlyCreditId } from "@app/lib/metronome/constants";
 import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
@@ -197,7 +197,7 @@ async function grantMetronomeFreeCredits({
       return;
     }
 
-    const productId = getFreeCreditProductId();
+    const productId = getProductFreeMonthlyCreditId();
 
     // Count active members and compute bracket amount.
     const memberCount = await MembershipResource.countActiveSeatsInWorkspace(
