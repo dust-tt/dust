@@ -974,7 +974,12 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     subscriptionModelId: ModelId,
     metronomeContractId: string
   ): Promise<void> {
-    const subscription = await SubscriptionModel.findByPk(subscriptionModelId);
+    const subscription = await SubscriptionResource.model.findOne({
+      where: { id: subscriptionModelId },
+      // subscription ID is already trusted.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
     if (!subscription) {
       throw new Error(`Subscription not found: ${subscriptionModelId}`);
     }

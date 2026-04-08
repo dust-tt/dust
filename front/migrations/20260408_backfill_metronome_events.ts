@@ -392,7 +392,7 @@ makeScript(
           );
         }
       },
-      { wId: args.wId, fromWorkspaceId: args.fromWorkspaceId }
+      { wId: args.wId, fromWorkspaceId: args.fromWorkspaceId, concurrency: 5 }
     );
 
     logger.info(
