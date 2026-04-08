@@ -859,6 +859,14 @@ const InputBarContainer = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const canSubmitEmpty = singleAgentInput && !!selectedSingleAgent;
+  const isSubmitDisabled =
+    (isEmpty && !canSubmitEmpty) ||
+    isSubmitting ||
+    disableInput ||
+    isBlockedByAgentSwitch ||
+    voiceTranscriberService.status !== "idle";
+
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const hideButtons = singleAgentInput && hasUserMention;
 
@@ -1195,13 +1203,7 @@ const InputBarContainer = ({
             }
             icon={ArrowUpIcon}
             variant={isBlockedByAgentSwitch ? "ghost-secondary" : "highlight"}
-            disabled={
-              isEmpty ||
-              isSubmitting ||
-              disableInput ||
-              isBlockedByAgentSwitch ||
-              voiceTranscriberService.status !== "idle"
-            }
+            disabled={isSubmitDisabled}
             tooltip={
               blockedByGeneratingAgentName
                 ? `Wait for @${blockedByGeneratingAgentName} to finish before switching agent`

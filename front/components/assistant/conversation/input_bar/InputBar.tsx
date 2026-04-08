@@ -240,9 +240,11 @@ export const InputBar = React.memo(function InputBar({
     resetEditorText,
     setLoading
   ) => {
+    const canSubmitEmpty =
+      singleAgentInput && !!selectedSingleAgent;
     if (
       isLocalSubmitting ||
-      isEmpty ||
+      (isEmpty && !canSubmitEmpty) ||
       fileUploaderService.isProcessingFiles ||
       isBlockedByAgentSwitch
     ) {
