@@ -73,7 +73,7 @@ const ConversationLayoutContent = ({
     workspaceId: owner.sId,
   });
 
-  const agentSId = useMemo(() => {
+  const agentId = useMemo(() => {
     const sid = router.query.agentDetails ?? [];
     if (isString(sid)) {
       return sid;
@@ -127,7 +127,7 @@ const ConversationLayoutContent = ({
       <AgentDetailsSheet
         owner={owner}
         user={user}
-        agentId={agentSId}
+        agentId={agentId}
         onClose={() => onOpenChangeAgentModal(false)}
       />
 

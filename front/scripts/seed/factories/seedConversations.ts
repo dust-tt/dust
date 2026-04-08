@@ -11,7 +11,7 @@ import type { ConversationAsset, CreatedAgent, SeedContext } from "./types";
 
 export interface SeedConversationsOptions {
   agents?: Map<string, CreatedAgent>;
-  defaultAgentSId?: string;
+  defaultAgentId?: string;
   placeholders?: Record<string, string>;
   additionalUsers?: Map<string, UserResource>;
 }
@@ -24,18 +24,18 @@ export async function seedConversations(
   const { auth, workspace, user, execute, logger } = ctx;
   const {
     agents = new Map(),
-    defaultAgentSId,
+    defaultAgentId,
     placeholders = {},
     additionalUsers = new Map(),
   } = options;
 
   for (const conv of conversationAssets) {
     // Determine the agent to use
-    let agentSId: string | undefined;
+    let agentId: string | undefined;
     if (conv.agentName) {
       const agent = agents.get(conv.agentName);
       if (agent) {
-        agentSId = agent.sId;
+        agentId = agent.sId;
       } else {
         logger.warn(
           { agentName: conv.agentName },
@@ -44,10 +44,10 @@ export async function seedConversations(
         continue;
       }
     } else {
-      agentSId = defaultAgentSId;
+      agentId = defaultAgentId;
     }
 
-    if (!agentSId) {
+    if (!agentId) {
       logger.warn(
         { title: conv.title },
         "No agent specified for conversation, skipping"
@@ -144,7 +144,7 @@ export async function seedConversations(
         // Create agent message with "succeeded" status since it has content
         const agentMessageRow = await AgentMessageModel.create({
           status: "succeeded",
-          agentConfigurationId: agentSId,
+          agentConfigurationId: agentId,
           agentConfigurationVersion: 0,
           workspaceId: workspace.id,
           skipToolsValidation: false,

@@ -27,7 +27,7 @@ function userMsg(
 
 function agentMsg(
   index: number,
-  agentSId: string,
+  agentId: string,
   agentName: string,
   content: string | null,
   actions: ShrinkWrapAgentMessage["actions"] = []
@@ -38,7 +38,7 @@ function agentMsg(
     created: 1708000000000 + index * 60000,
     content,
     status: "succeeded",
-    configuration: { sId: agentSId, name: agentName },
+    configuration: { sId: agentId, name: agentName },
     actions,
     parentAgentMessageId: null,
   };

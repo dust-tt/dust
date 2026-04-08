@@ -78,17 +78,17 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
    * Fetches the editors group IDs for a list of agent configuration sIds.
    * Returns a map from agent sId to group ID (or null if no group found).
    */
-  private static async getEditorsGroupIdByAgentSId(
+  private static async getEditorsGroupIdByAgentId(
     auth: Authenticator,
-    agentSIds: string[]
+    agentIds: string[]
   ): Promise<Map<string, ModelId>> {
-    if (agentSIds.length === 0) {
+    if (agentIds.length === 0) {
       return new Map();
     }
 
     // Fetch agent configurations.
     const agentConfigs = await getAgentConfigurations(auth, {
-      agentIds: agentSIds,
+      agentIds: agentIds,
       variant: "extra_light",
     });
 
@@ -105,7 +105,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     // Build a map from agent sId to editors group ID.
     const result = new Map<string, ModelId>();
     if (groupsResult.isOk()) {
-      for (const sId of agentSIds) {
+      for (const sId of agentIds) {
         const group = groupsResult.value[sId];
         if (group !== undefined) {
           result.set(sId, group.id);
@@ -127,7 +127,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     const owner = auth.getNonNullableWorkspace();
 
     // Look up the agent's editors group.
-    const editorsGroupIdMap = await this.getEditorsGroupIdByAgentSId(auth, [
+    const editorsGroupIdMap = await this.getEditorsGroupIdByAgentId(auth, [
       agentConfiguration.sId,
     ]);
     const editorsGroupId = editorsGroupIdMap.get(agentConfiguration.sId);
@@ -193,7 +193,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       ...new Set(suggestions.map((s) => s.agentConfiguration?.sId ?? "")),
     ].filter((sId) => sId !== "");
 
-    const editorsGroupIdBySId = await this.getEditorsGroupIdByAgentSId(
+    const editorsGroupIdBySId = await this.getEditorsGroupIdByAgentId(
       auth,
       agentIds
     );

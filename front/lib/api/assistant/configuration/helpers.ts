@@ -70,7 +70,7 @@ export async function isSelfHostedImageWithValidContentType(
   return contentType.includes("image");
 }
 
-export async function getAgentSIdFromName(
+export async function getAgentIdFromName(
   auth: Authenticator,
   name: string
 ): Promise<string | null> {

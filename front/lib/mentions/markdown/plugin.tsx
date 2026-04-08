@@ -26,7 +26,7 @@ export function agentMentionDirective() {
         const data = node.data || (node.data = {});
         data.hName = "mention";
         data.hProperties = {
-          agentSId: node.attributes.sId,
+          agentId: node.attributes.sId,
           agentName: node.children[0].value,
         };
       }
@@ -46,15 +46,15 @@ export function agentMentionDirective() {
 export function getAgentMentionPlugin(owner: WorkspaceType) {
   const AgentMentionPlugin = ({
     agentName,
-    agentSId,
+    agentId,
   }: {
     agentName: string;
-    agentSId: string;
+    agentId: string;
   }) => {
     return (
       <MentionDisplay
         mention={{
-          id: agentSId,
+          id: agentId,
           label: agentName,
           type: "agent",
           pictureUrl: "",

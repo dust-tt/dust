@@ -170,7 +170,7 @@ export async function seedAgentSuggestions(
 
       if (!agentConfiguration) {
         logger.warn(
-          { agentSId: agent.sId },
+          { agentId: agent.sId },
           "Agent configuration not found, skipping suggestion"
         );
         continue;

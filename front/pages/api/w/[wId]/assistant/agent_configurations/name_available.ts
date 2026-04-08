@@ -1,5 +1,5 @@
 /** @ignoreswagger */
-import { getAgentSIdFromName } from "@app/lib/api/assistant/configuration/helpers";
+import { getAgentIdFromName } from "@app/lib/api/assistant/configuration/helpers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -40,7 +40,7 @@ async function handler(
           },
         });
       }
-      const sId = await getAgentSIdFromName(auth, bodyValidation.data.handle);
+      const sId = await getAgentIdFromName(auth, bodyValidation.data.handle);
       const available = sId === null;
       return res.status(200).json({ available });
 

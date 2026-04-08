@@ -139,7 +139,7 @@ export const callAgentEvaluator: ButlerEvaluator = {
     return {
       suggestionType: "call_agent",
       metadata: {
-        agentSId: matchedAgent.sId,
+        agentId: matchedAgent.sId,
         agentName: matchedAgent.name,
         prompt: agent_prompt,
         rationale: agent_rationale || undefined,

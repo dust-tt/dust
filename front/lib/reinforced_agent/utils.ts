@@ -84,7 +84,7 @@ export async function listRecentConversationsForAgent(
   const convSIdsByAgent = await ConversationResource.getConversationSIdsByAgent(
     auth,
     {
-      agentSIds: [agentConfigurationId],
+      agentIds: [agentConfigurationId],
       cutoffDate,
       excludeHumanOutOfTheLoop,
     }

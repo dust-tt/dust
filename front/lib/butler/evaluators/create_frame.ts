@@ -98,7 +98,7 @@ export const createFrameEvaluator: ButlerEvaluator = {
     return {
       suggestionType: "create_frame",
       metadata: {
-        agentSId: GLOBAL_AGENTS_SID.DUST,
+        agentId: GLOBAL_AGENTS_SID.DUST,
         agentName: "Dust",
         prompt: frame_prompt,
         rationale: frame_rationale || undefined,

@@ -27,7 +27,7 @@ async function deleteAgentAndRelatedResources(
   const workspaceId = auth.getNonNullableWorkspace().id;
 
   logger.info(
-    { agentSId: agent.sId, agentId: agent.id, agentName: agent.name },
+    { agentId: agent.sId, agentModelId: agent.id, agentName: agent.name },
     "Processing agent for deletion"
   );
 
@@ -119,7 +119,7 @@ async function deleteAgentAndRelatedResources(
   await agent.destroy();
 
   logger.info(
-    { agentSId: agent.sId, agentId: agent.id },
+    { agentId: agent.sId, agentModelId: agent.id },
     "Successfully deleted agent"
   );
 

@@ -320,8 +320,11 @@ export class ConversationButlerSuggestionResource extends BaseResource<Conversat
     }
 
     // Verify the suggestion's agent matches the one that just responded.
-    const metadata = suggestion.metadata as { agentSId: string };
-    if (metadata.agentSId !== agentConfigurationId) {
+    const metadata = suggestion.metadata as {
+      agentId?: string;
+      agentSId?: string;
+    };
+    if ((metadata.agentId ?? metadata.agentSId) !== agentConfigurationId) {
       return null;
     }
 

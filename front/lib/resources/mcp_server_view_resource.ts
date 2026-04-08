@@ -290,19 +290,19 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       attributes: ["id", "sId"],
     });
 
-    const impactedAgentIds = new Set(
+    const impactedAgentModelIds = new Set(
       impactedAgentConfigurations.map((configuration) => configuration.id)
     );
 
-    if (impactedAgentIds.size === 0) {
+    if (impactedAgentModelIds.size === 0) {
       return [];
     }
 
-    const impactedAgentSIds = uniq(
+    const impactedAgentIds = uniq(
       impactedAgentConfigurations.map((configuration) => configuration.sId)
     );
 
-    if (impactedAgentSIds.length === 0) {
+    if (impactedAgentIds.length === 0) {
       return [];
     }
 
@@ -310,7 +310,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       where: {
         workspaceId: workspaceModelId,
         sId: {
-          [Op.in]: impactedAgentSIds,
+          [Op.in]: impactedAgentIds,
         },
       },
       attributes: ["id", "sId", "name", "status", "version"],
@@ -336,7 +336,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return Array.from(latestAgentConfigurations.values())
       .filter(
         (agentConfiguration) =>
-          impactedAgentIds.has(agentConfiguration.id) &&
+          impactedAgentModelIds.has(agentConfiguration.id) &&
           agentConfiguration.status === "active"
       )
       .map((agentConfiguration) => ({

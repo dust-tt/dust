@@ -24,12 +24,20 @@ const RenameTitleMetadataSchema = z.object({
 });
 
 // Shared schema for suggestion types that invoke an agent with a prompt.
-const AgentInvocationMetadataSchema = z.object({
-  agentSId: z.string(),
-  agentName: z.string(),
-  prompt: z.string(),
-  rationale: z.string().optional(),
-});
+// Accepts both `agentId` (current) and `agentSId` (legacy) for backward
+// compatibility with existing DB rows, normalizing to `agentId`.
+const AgentInvocationMetadataSchema = z
+  .object({
+    agentId: z.string().optional(),
+    agentSId: z.string().optional(),
+    agentName: z.string(),
+    prompt: z.string(),
+    rationale: z.string().optional(),
+  })
+  .transform(({ agentId, agentSId, ...rest }) => ({
+    agentId: agentId ?? agentSId ?? "",
+    ...rest,
+  }));
 
 export type RenameTitleMetadata = z.infer<typeof RenameTitleMetadataSchema>;
 export type CallAgentMetadata = z.infer<typeof AgentInvocationMetadataSchema>;

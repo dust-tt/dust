@@ -51,7 +51,7 @@ describe("markdown mention plugins", () => {
     const node = tree.children[0];
     expect(node.data.hName).toBe("mention");
     expect(node.data.hProperties).toEqual({
-      agentSId: "agent_123",
+      agentId: "agent_123",
       agentName: "Alice",
     });
 
@@ -64,7 +64,7 @@ describe("markdown mention plugins", () => {
     const owner = { sId: "w_1", id: 1, name: "W" } as LightWorkspaceType;
     const Comp = getAgentMentionPlugin(owner);
 
-    render(<Comp agentName="Alice" agentSId="agent_123" />);
+    render(<Comp agentName="Alice" agentId="agent_123" />);
 
     const el = screen.getByTestId("mention-display");
     expect(el).toHaveAttribute("data-id", "agent_123");

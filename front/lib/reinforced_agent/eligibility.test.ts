@@ -24,9 +24,9 @@ const daysAgo = (days: number) =>
 
 function emptySignals(): ReinforcementAutoTrackSignals {
   return {
-    feedbackCountByAgentSId: new Map(),
+    feedbackCountByAgentId: new Map(),
     humanConversationSIdsByAgent: new Map(),
-    agentSIdsWithRecentPendingSuggestions: new Set(),
+    agentIdsWithRecentPendingSuggestions: new Set(),
   };
 }
 
@@ -78,7 +78,7 @@ describe("filterEligibleAgents", () => {
     await createHumanInLoopConversation(auth, agent, daysAgo(2));
 
     const signals = await fetchReinforcementAutoTrackSignals(auth, {
-      agentSIds: [agent.sId],
+      agentIds: [agent.sId],
       lookbackWindowDays: 30,
       pendingSuggestionMaxAgeDays: DEFAULT_PENDING_SUGGESTION_MAX_AGE_DAYS,
     });
@@ -116,7 +116,7 @@ describe("filterEligibleAgents", () => {
     });
 
     const signals = await fetchReinforcementAutoTrackSignals(auth, {
-      agentSIds: [agent.sId],
+      agentIds: [agent.sId],
       lookbackWindowDays: 30,
       pendingSuggestionMaxAgeDays: DEFAULT_PENDING_SUGGESTION_MAX_AGE_DAYS,
     });
@@ -133,7 +133,7 @@ describe("filterEligibleAgents", () => {
     });
 
     const signals = await fetchReinforcementAutoTrackSignals(auth, {
-      agentSIds: [agent.sId],
+      agentIds: [agent.sId],
       lookbackWindowDays: 30,
       pendingSuggestionMaxAgeDays: DEFAULT_PENDING_SUGGESTION_MAX_AGE_DAYS,
     });
@@ -147,7 +147,7 @@ describe("filterEligibleAgents", () => {
     await createHumanInLoopConversation(auth, agent, daysAgo(60));
 
     const signals = await fetchReinforcementAutoTrackSignals(auth, {
-      agentSIds: [agent.sId],
+      agentIds: [agent.sId],
       lookbackWindowDays: 30,
       pendingSuggestionMaxAgeDays: DEFAULT_PENDING_SUGGESTION_MAX_AGE_DAYS,
     });

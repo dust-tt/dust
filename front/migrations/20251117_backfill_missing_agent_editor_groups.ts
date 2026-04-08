@@ -176,7 +176,7 @@ const migrateWorkspaceMissingEditorGroups = async (
     return;
   }
 
-  const agentSIdsNeedingBackfill = _.uniq(
+  const agentIdsNeedingBackfill = _.uniq(
     activeAgentsWithoutGroup.map((agent) => agent.sId)
   );
 
@@ -191,7 +191,7 @@ const migrateWorkspaceMissingEditorGroups = async (
         [Op.not]: "draft",
       },
       sId: {
-        [Op.in]: agentSIdsNeedingBackfill,
+        [Op.in]: agentIdsNeedingBackfill,
       },
     },
   });

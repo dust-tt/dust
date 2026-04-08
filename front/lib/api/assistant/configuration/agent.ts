@@ -1804,14 +1804,14 @@ export async function filterAgentsByRequestedSpaces(
 
 export async function updateAgentReinforcementMode(
   auth: Authenticator,
-  agentSId: string,
+  agentId: string,
   reinforcement: AgentReinforcementMode
 ): Promise<void> {
   await AgentConfigurationModel.update(
     { reinforcement },
     {
       where: {
-        sId: agentSId,
+        sId: agentId,
         workspaceId: auth.getNonNullableWorkspace().id,
         status: "active",
       },
@@ -1821,13 +1821,13 @@ export async function updateAgentReinforcementMode(
 
 export async function recordAgentReinforcementAnalysisCompletion(
   auth: Authenticator,
-  agentSId: string
+  agentId: string
 ): Promise<void> {
   await AgentConfigurationModel.update(
     { lastReinforcementAnalysisAt: new Date() },
     {
       where: {
-        sId: agentSId,
+        sId: agentId,
         workspaceId: auth.getNonNullableWorkspace().id,
         status: "active",
       },

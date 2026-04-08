@@ -132,9 +132,9 @@ export async function selectAgentsForReinforcementPipeline(
       explicitOnAgents,
       eligibleAutoAgents: [],
       signals: {
-        feedbackCountByAgentSId: new Map(),
+        feedbackCountByAgentId: new Map(),
         humanConversationSIdsByAgent: new Map(),
-        agentSIdsWithRecentPendingSuggestions: new Set(),
+        agentIdsWithRecentPendingSuggestions: new Set(),
       },
       options,
     });
@@ -143,7 +143,7 @@ export async function selectAgentsForReinforcementPipeline(
   const autoAgents = inScope.filter((a) => a.reinforcement === "auto");
 
   const signals = await fetchReinforcementAutoTrackSignals(auth, {
-    agentSIds: autoAgents.map((a) => a.sId),
+    agentIds: autoAgents.map((a) => a.sId),
     lookbackWindowDays: DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS,
     pendingSuggestionMaxAgeDays: DEFAULT_PENDING_SUGGESTION_MAX_AGE_DAYS,
   });
@@ -197,22 +197,22 @@ async function computeReinforcementSelections(
     return explicitOnResults;
   }
 
-  const { distinctUserCountByAgentSId, toolErrorCountByAgentSId } =
+  const { distinctUserCountByAgentId, toolErrorCountByAgentId } =
     await fetchDistinctUsersAndToolErrorCounts(
       workspaceId,
       eligibleAutoAgents.map((a) => a.sId),
       DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS
     );
 
-  const feedbackCountMap = signals.feedbackCountByAgentSId;
+  const feedbackCountMap = signals.feedbackCountByAgentId;
   const humanConvsByAgent = signals.humanConversationSIdsByAgent;
 
   const rawByAgent = eligibleAutoAgents.map((agent) => ({
     agent,
     feedback: feedbackCountMap.get(agent.sId) ?? 0,
     humanConversations: humanConvsByAgent.get(agent.sId)?.length ?? 0,
-    toolError: toolErrorCountByAgentSId.get(agent.sId) ?? 0,
-    multiUser: distinctUserCountByAgentSId.get(agent.sId) ?? 0,
+    toolError: toolErrorCountByAgentId.get(agent.sId) ?? 0,
+    multiUser: distinctUserCountByAgentId.get(agent.sId) ?? 0,
   }));
 
   const maxFeedback = Math.max(0, ...rawByAgent.map((r) => r.feedback));
