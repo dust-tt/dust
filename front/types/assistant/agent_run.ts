@@ -128,6 +128,14 @@ export type AgentLoopArgs = {
   userMessageOrigin?: UserMessageOrigin | null;
 
   caching?: ConversationCaching;
+
+  // RunIds from the specific agent loop execution. Used by tracking workflows
+  // to process only this execution's runs (not all accumulated runs on the message).
+  dustRunIds?: string[];
+
+  // The step at which this agent loop execution started. Used to filter MCP actions
+  // to only those from this execution (step >= startStep).
+  startStep?: number;
 };
 
 export type AgentMessageRef = {

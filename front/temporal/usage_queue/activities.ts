@@ -1,3 +1,4 @@
+import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import {
   isProgrammaticUsage,
   trackProgrammaticCost,
@@ -35,7 +36,7 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import { isDevelopment } from "@app/types/shared/env";
-import { Context } from "@temporalio/activity";
+import { createHash } from "crypto";
 
 export async function recordUsageActivity(workspaceId: string) {
   const workspace = await WorkspaceResource.fetchById(workspaceId);
@@ -160,9 +161,14 @@ export async function trackProgrammaticUsageActivity(
 
   const userMessageOrigin = userMessage.userContextOrigin;
 
+  // Use dustRunIds from this specific agent loop execution if available,
+  // fall back to all accumulated runIds on the message (legacy behavior).
+  const effectiveRunIds = agentLoopArgs.dustRunIds ?? agentMessage.runIds;
+
   if (
     AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status) &&
-    agentMessage.runIds &&
+    effectiveRunIds &&
+    effectiveRunIds.length > 0 &&
     isProgrammaticUsage(auth, { userMessageOrigin })
   ) {
     const localLogger = logger.child({
@@ -180,7 +186,7 @@ export async function trackProgrammaticUsageActivity(
     const result = await trackProgrammaticCost(
       auth,
       {
-        dustRunIds: agentMessage.runIds,
+        dustRunIds: effectiveRunIds,
         userMessageOrigin,
       },
       localLogger
@@ -230,7 +236,14 @@ export async function emitMetronomeUsageEventsActivity(
   });
 
   const agentMessage = agentMessageRow?.agentMessage;
-  if (!agentMessage || !agentMessage.runIds) {
+  if (!agentMessage) {
+    return;
+  }
+
+  // Use dustRunIds from this specific agent loop execution if available,
+  // fall back to all accumulated runIds on the message (legacy behavior).
+  const effectiveRunIds = agentLoopArgs.dustRunIds ?? agentMessage.runIds;
+  if (!effectiveRunIds || effectiveRunIds.length === 0) {
     return;
   }
 
@@ -276,7 +289,7 @@ export async function emitMetronomeUsageEventsActivity(
 
   // Get LLM run usages.
   const runs = await RunResource.listByDustRunIds(auth, {
-    dustRunIds: agentMessage.runIds,
+    dustRunIds: effectiveRunIds,
   });
   const runUsages = (
     await concurrentExecutor(
@@ -288,10 +301,26 @@ export async function emitMetronomeUsageEventsActivity(
     )
   ).flat();
 
-  // Get MCP actions.
-  const mcpActions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
-    agentMessage.id,
-  ]);
+  // Get MCP actions — filter to this execution's steps if startStep is available,
+  // and only include actions with a final status (succeeded/errored/denied).
+  // Actions with blocked/transient status haven't been executed yet and shouldn't be billed.
+  const allMcpActions = await AgentMCPActionResource.listByAgentMessageIds(
+    auth,
+    [agentMessage.id]
+  );
+  const mcpActions = allMcpActions.filter((a) => {
+    const json = a.toJSON();
+    if (!isToolExecutionStatusFinal(json.status)) {
+      return false;
+    }
+    if (
+      agentLoopArgs.startStep !== undefined &&
+      json.step < agentLoopArgs.startStep
+    ) {
+      return false;
+    }
+    return true;
+  });
   const toolActions = mcpActions.map((a) => {
     const json = a.toJSON();
     return {
@@ -303,10 +332,13 @@ export async function emitMetronomeUsageEventsActivity(
     };
   });
 
-  // Use the Temporal workflow run ID as the unique key — each workflow execution
-  // gets a unique runId, even when the workflow ID is reused across retries.
-  const { runId: workflowRunId } = Context.current().info.workflowExecution;
-  const runKey = workflowRunId.slice(0, 12);
+  // Deterministic runKey based on the specific dustRunIds being processed.
+  // Same runIds → same transaction IDs → Metronome deduplicates retries.
+  // Different runIds (new agent loop execution) → different transaction IDs.
+  const runKey = createHash("sha256")
+    .update(effectiveRunIds.sort().join(","))
+    .digest("hex")
+    .slice(0, 8);
 
   // Build and ingest events.
   const llmEvents = buildLlmUsageEvents({

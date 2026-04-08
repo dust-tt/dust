@@ -28,6 +28,7 @@ import type {
 } from "@temporalio/workflow";
 import {
   CancellationScope,
+  patched,
   proxyActivities,
   proxySinks,
   setHandler,
@@ -154,11 +155,12 @@ export async function agentLoopWorkflow({
     gracefulStopRequested = true;
   });
 
+  const runIds: string[] = [];
+
   try {
     const { agentMessageId, conversationId } = agentLoopArgs;
 
     await executionScope.run(async () => {
-      const runIds: string[] = [];
       const syncStartTime = Date.now();
       let currentStep = startStep;
       let childWorkflowHandle: ChildWorkflowHandle<
@@ -240,14 +242,22 @@ export async function agentLoopWorkflow({
         syncStartTime
       );
 
+      // Attach this execution's runIds so tracking workflows process only
+      // these runs (not all accumulated runs on the agent message).
+      // Pass this execution's runIds and startStep to finalize so tracking
+      // workflows only process this execution's runs and actions.
+      const argsWithRunIds = patched("pass-dustRunIds-to-finalize")
+        ? { ...agentLoopArgs, dustRunIds: runIds, startStep }
+        : agentLoopArgs;
+
       await CancellationScope.nonCancellable(async () => {
         if (gracefulStopRequested) {
           await finalizeGracefullyStoppedAgentLoopActivity(
             authType,
-            agentLoopArgs
+            argsWithRunIds
           );
         } else {
-          await finalizeSuccessfulAgentLoopActivity(authType, agentLoopArgs);
+          await finalizeSuccessfulAgentLoopActivity(authType, argsWithRunIds);
         }
       });
 
@@ -260,13 +270,18 @@ export async function agentLoopWorkflow({
 
     // Notify error in a non-cancellable scope to ensure it runs even if the workflow is canceled.
     await CancellationScope.nonCancellable(async () => {
+      // Pass this execution's runIds and startStep to finalize so tracking
+      // workflows only process this execution's runs and actions.
+      const argsWithRunIds = patched("pass-dustRunIds-to-finalize")
+        ? { ...agentLoopArgs, dustRunIds: runIds, startStep }
+        : agentLoopArgs;
       if (cancelRequested) {
-        return finalizeCancelledAgentLoopActivity(authType, agentLoopArgs);
+        return finalizeCancelledAgentLoopActivity(authType, argsWithRunIds);
       }
       // Error objects don't survive JSON serialization across the workflow→activity boundary
       // (Error.message is not enumerable), so we extract the relevant fields into a plain object
       // before passing to the activity.
-      await finalizeErroredAgentLoopActivity(authType, agentLoopArgs, {
+      await finalizeErroredAgentLoopActivity(authType, argsWithRunIds, {
         message: workflowError.message,
         name: workflowError.name,
       });
@@ -300,7 +315,7 @@ async function executeStepIteration({
   });
 
   if (!result) {
-    // Generation completed or error occurred.
+    // Error occurred — no runId to capture.
     return {
       runId: null,
       shouldContinue: false,
@@ -308,6 +323,14 @@ async function executeStepIteration({
   }
 
   const { runId, actionBlobs } = result;
+
+  // Generation completed (text response, no tool calls).
+  if (actionBlobs.length === 0) {
+    return {
+      runId,
+      shouldContinue: false,
+    };
+  }
 
   // If at least one action needs approval, we break out of the loop and will resume once all
   // actions have been approved.
