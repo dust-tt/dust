@@ -88,7 +88,7 @@ jobs:
       short_sha: ${{ steps.short_sha.outputs.short_sha }}
       long_sha: ${{ steps.short_sha.outputs.long_sha }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Get short sha
         id: short_sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
@@ -102,7 +102,7 @@ jobs:
     outputs:
       thread_ts: ${{ steps.build_message.outputs.thread_ts }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Notify Build And Deploy Start
         id: build_message
@@ -149,7 +149,7 @@ jobs:
       fail-fast: true
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 50 # Fetch last 50 commits for commit diff functionality
 
@@ -214,7 +214,7 @@ jobs:
     if: ${{ !failure() && !cancelled() && (needs.ensure-sandbox-images.result == 'success' || needs.ensure-sandbox-images.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Generate token
         id: generate-token
