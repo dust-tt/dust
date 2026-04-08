@@ -68,6 +68,23 @@ const GROUP_BY_TO_METRICS: Record<MetronomeUsageGroupByType, "llm" | "both"> = {
   origin: "both",
 };
 
+const HOUR_MS = 3_600_000;
+const DAY_MS = 24 * HOUR_MS;
+
+// Metronome usage APIs require dates at UTC midnight boundaries.
+function floorToMidnightUTC(d: Date): Date {
+  return new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+  );
+}
+
+function ceilToMidnightUTC(d: Date): Date {
+  const floored = floorToMidnightUTC(d);
+  return floored.getTime() < d.getTime()
+    ? new Date(floored.getTime() + DAY_MS)
+    : floored;
+}
+
 function getTimestampsForWindow(
   start: Date,
   end: Date,
@@ -75,7 +92,7 @@ function getTimestampsForWindow(
 ): number[] {
   const timestamps: number[] = [];
   const current = new Date(start);
-  const incrementMs = windowSize === "DAY" ? 86_400_000 : 3_600_000;
+  const incrementMs = windowSize === "DAY" ? DAY_MS : HOUR_MS;
   while (current < end) {
     timestamps.push(current.getTime());
     current.setTime(current.getTime() + incrementMs);
@@ -216,18 +233,8 @@ export async function handleMetronomeUsageRequest(
         Math.min(periodEnd.getTime(), Date.now() + TEN_DAYS_MS)
       );
 
-      // Metronome requires dates at UTC midnight boundaries.
-      const floorToMidnight = (d: Date) =>
-        new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-      const ceilToMidnight = (d: Date) => {
-        const floored = floorToMidnight(d);
-        return floored.getTime() < d.getTime()
-          ? new Date(floored.getTime() + 86_400_000)
-          : floored;
-      };
-
-      const rangeStart = floorToMidnight(periodStart);
-      const rangeEnd = ceilToMidnight(cappedEnd);
+      const rangeStart = floorToMidnightUTC(periodStart);
+      const rangeEnd = ceilToMidnightUTC(cappedEnd);
       const startingOn = rangeStart.toISOString();
       const endingBefore = rangeEnd.toISOString();
 
