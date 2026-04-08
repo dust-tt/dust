@@ -280,6 +280,18 @@ export function formatEventAsText(event: EnrichedGoogleCalendarEvent): string {
     lines.push(`Location: ${event.location}`);
   }
 
+  if (event.conferenceData?.entryPoints) {
+    const meetingLinks = event.conferenceData.entryPoints
+      .filter((ep) => ep.uri)
+      .map((ep) => {
+        const type = ep.entryPointType ?? "Meeting";
+        return `${ep.uri}${ep.label ? ` (${ep.label})` : ` (${type})`}`;
+      });
+    if (meetingLinks.length > 0) {
+      lines.push(`Meeting Link${meetingLinks.length > 1 ? "s" : ""}: ${meetingLinks.join(", ")}`);
+    }
+  }
+
   if (event.description) {
     lines.push(`Description: ${event.description}`);
   }
