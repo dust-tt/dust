@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
         with:
-          node-version: "22.22.0"
+          node-version: "24.14.0"
           build-sdks: "true"
       - name: Typecheck
         working-directory: cli/dust-cli
