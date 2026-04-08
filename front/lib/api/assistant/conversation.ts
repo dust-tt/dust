@@ -540,6 +540,7 @@ export async function postUserMessage(
     context,
     agenticMessageData,
     skipToolsValidation,
+    skipDustAutoMention,
     doNotAssociateUser,
     steeringEnabled,
   }: {
@@ -550,6 +551,7 @@ export async function postUserMessage(
     agenticMessageData?: AgenticMessageData;
     skipToolsValidation: boolean;
     doNotAssociateUser?: boolean;
+    skipDustAutoMention?: boolean;
     steeringEnabled?: boolean;
   }
 ): Promise<
@@ -672,6 +674,7 @@ export async function postUserMessage(
 
   // Check if no mentions, in that case, we might automatically append an @dust mention.
   if (
+    !skipDustAutoMention &&
     mentions.length === 0 &&
     (context.origin === "web" || context.origin === "extension")
   ) {
