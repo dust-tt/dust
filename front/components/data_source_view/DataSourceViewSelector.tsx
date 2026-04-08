@@ -104,7 +104,7 @@ const getUseResourceHook =
       isResourcesTruncated: !totalNodesCountIsAccurate,
       nextPageCursor: hasNextPage ? nextPageCursor : null,
       loadMore,
-      isLoadingMore: !!isLoadingMore,
+      isLoadingMore: !!isLoadingMore && !isNodesLoading,
     };
   };
 
@@ -953,9 +953,15 @@ export function DataSourceViewSelector({
             <Button
               variant="ghost"
               size="xs"
-              disabled={selectAllTriggered && isLoadingMore}
+              disabled={selectAllTriggered}
               className="mr-4 text-xs"
-              label={hasActiveSelection ? "Unselect All" : "Select All"}
+              label={
+                selectAllTriggered
+                  ? "Loading..."
+                  : hasActiveSelection
+                    ? "Unselect All"
+                    : "Select All"
+              }
               icon={ListCheckIcon}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.stopPropagation();
