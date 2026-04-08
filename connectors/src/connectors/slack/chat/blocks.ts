@@ -526,3 +526,42 @@ export function makeToolAuthenticationBlock({
     },
   ];
 }
+
+export function makeToolFileAuthorizationBlock({
+  agentName,
+  fileName,
+  conversationUrl,
+  value,
+}: {
+  agentName: string;
+  fileName: string;
+  conversationUrl: string;
+  value: string;
+}) {
+  return [
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `Agent \`${agentName}\` requires file authorization for \`${fileName}\``,
+      },
+    },
+    {
+      type: "actions",
+      elements: [
+        {
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: "Authorize file",
+            emoji: true,
+          },
+          url: conversationUrl,
+          action_id: AUTHENTICATE_TOOL,
+          value,
+          style: "primary",
+        },
+      ],
+    },
+  ];
+}
