@@ -17,7 +17,6 @@ export { default as ActionCalendarCheckIcon } from "./CalendarCheck";
 export { default as ActionCameraIcon } from "./Camera";
 export { default as ActionCarIcon } from "./Car";
 export { default as ActionCardIcon } from "./Card";
-export { default as ActionChatBubbleBottomCenterTextIcon } from "./ChatBubbleBottomCenterText";
 export { default as ActionChatBubbleBottomCenterText1Icon } from "./ChatBubbleBottomCenterText1";
 export { default as ActionChatBubbleThoughtIcon } from "./ChatBubbleThought";
 export { default as ActionCheckCircleIcon } from "./CheckCircle";
