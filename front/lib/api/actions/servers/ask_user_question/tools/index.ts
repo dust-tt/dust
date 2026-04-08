@@ -1,6 +1,11 @@
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isUserQuestionResumeState } from "@app/lib/actions/types";
+import {
+  formatUserQuestionAnswer,
+  getUserQuestionSelections,
+  USER_QUESTION_DECLINED_MESSAGE,
+} from "@app/lib/actions/user_question";
 import { ASK_USER_QUESTION_TOOLS_METADATA } from "@app/lib/api/actions/servers/ask_user_question/metadata";
 import { Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
@@ -13,21 +18,16 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
     const resumeState = agentLoopContext?.runContext?.stepContext?.resumeState;
     if (isUserQuestionResumeState(resumeState) && resumeState.answer) {
       const { answer } = resumeState;
-      const selections: string[] = [];
-      for (const idx of answer.selectedOptions) {
-        if (idx >= 0 && idx < options.length) {
-          selections.push(options[idx].label);
-        }
-      }
-      if (answer.customResponse) {
-        selections.push(`Other: ${answer.customResponse}`);
-      }
+      const selections = getUserQuestionSelections(
+        { question, options, multiSelect },
+        answer
+      );
 
       if (selections.length === 0) {
         return new Ok([
           {
             type: "text",
-            text: "User declined to answer. Proceed with your best judgment.",
+            text: USER_QUESTION_DECLINED_MESSAGE,
           },
         ]);
       }
@@ -35,9 +35,7 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text",
-          text:
-            `User has answered your questions: "${question}"="${selections.join(", ")}". ` +
-            "You can now continue with the user's answers in mind",
+          text: formatUserQuestionAnswer(question, selections),
         },
       ]);
     }
