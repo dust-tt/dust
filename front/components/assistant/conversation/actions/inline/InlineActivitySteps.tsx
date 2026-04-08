@@ -221,6 +221,9 @@ export function InlineActivitySteps({
                     />
                   );
                 case "content":
+                  if (!step.content.trim()) {
+                    return null;
+                  }
                   return (
                     <div key={step.id}>
                       <Markdown

@@ -84,10 +84,7 @@ export function TruncatedContent({
       </div>
       {(shouldShowToggle || footer) && (
         <div
-          className={cn(
-            "s-flex s-items-center",
-            shouldShowToggle && "s-gap-3"
-          )}
+          className={cn("s-flex s-items-center", shouldShowToggle && "s-gap-3")}
         >
           {shouldShowToggle && (
             <Button
