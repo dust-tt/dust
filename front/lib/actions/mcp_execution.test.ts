@@ -5,6 +5,7 @@ import {
 } from "@app/lib/actions/action_output_limits";
 import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { processToolResults } from "@app/lib/actions/mcp_execution";
+import { DataSourceNodeContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -197,6 +198,23 @@ describe("processToolResults", () => {
 
     vi.mocked(getPrivateUploadBucket).mockClear();
 
+    const dataSourceNodeResult: DataSourceNodeContentType = {
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_CONTENT,
+      uri: "notion://page/abc123",
+      text: "# My Notion Page\n\nSome content here.",
+      metadata: {
+        nodeId: "abc123",
+        title: "My Notion Page",
+        path: "/workspace/My Notion Page",
+        parentTitle: null,
+        lastUpdatedAt: "2026-01-01T00:00:00Z",
+        sourceUrl: null,
+        mimeType: "application/vnd.notion.page",
+        hasChildren: false,
+        connectorProvider: null,
+      },
+    };
+
     await processToolResults(auth, {
       action,
       conversation,
@@ -204,22 +222,7 @@ describe("processToolResults", () => {
       toolCallResultContent: [
         {
           type: "resource",
-          resource: {
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_CONTENT,
-            uri: "notion://page/abc123",
-            text: "# My Notion Page\n\nSome content here.",
-            metadata: {
-              nodeId: "abc123",
-              title: "My Notion Page",
-              path: "/workspace/My Notion Page",
-              parentTitle: null,
-              lastUpdatedAt: "2026-01-01T00:00:00Z",
-              sourceUrl: null,
-              mimeType: "application/vnd.notion.page",
-              hasChildren: false,
-              connectorProvider: null,
-            },
-          },
+          resource: dataSourceNodeResult,
         },
       ],
       toolConfiguration,
@@ -237,8 +240,12 @@ describe("processToolResults", () => {
       call[0].filePath.includes("tool_outputs/")
     );
     expect(toolOutputWrite).toBeDefined();
-    expect(toolOutputWrite?.[0].filePath).toMatch(/tool_outputs\/\d+_my_notion_page\.md$/);
-    expect(toolOutputWrite?.[0].content).toBe("# My Notion Page\n\nSome content here.");
+    expect(toolOutputWrite?.[0].filePath).toMatch(
+      /tool_outputs\/\d+_my_notion_page\.md$/
+    );
+    expect(toolOutputWrite?.[0].content).toBe(
+      "# My Notion Page\n\nSome content here."
+    );
   });
 
   it("should persist large plain text block to tool_outputs/ as .txt", async () => {
@@ -268,7 +275,9 @@ describe("processToolResults", () => {
       call[0].filePath.includes("tool_outputs/")
     );
     expect(toolOutputWrite).toBeDefined();
-    expect(toolOutputWrite?.[0].filePath).toMatch(/tool_outputs\/\d+_test_server\.txt$/);
+    expect(toolOutputWrite?.[0].filePath).toMatch(
+      /tool_outputs\/\d+_test_server\.txt$/
+    );
   });
 
   it("should persist large JSON text block to tool_outputs/ as .json", async () => {
@@ -276,7 +285,9 @@ describe("processToolResults", () => {
 
     vi.mocked(getPrivateUploadBucket).mockClear();
 
-    const largeJson = JSON.stringify({ data: "x".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES) });
+    const largeJson = JSON.stringify({
+      data: "x".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES),
+    });
 
     await processToolResults(auth, {
       action,
@@ -298,6 +309,8 @@ describe("processToolResults", () => {
       call[0].filePath.includes("tool_outputs/")
     );
     expect(toolOutputWrite).toBeDefined();
-    expect(toolOutputWrite?.[0].filePath).toMatch(/tool_outputs\/\d+_test_server\.json$/);
+    expect(toolOutputWrite?.[0].filePath).toMatch(
+      /tool_outputs\/\d+_test_server\.json$/
+    );
   });
 });
