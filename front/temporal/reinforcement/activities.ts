@@ -384,12 +384,12 @@ export async function getSkillsWithSyntheticSuggestionsActivity({
   }
 
   // Single query: list all pending synthetic suggestions across the workspace.
-  const allSuggestions =
-    await SkillSuggestionResource.listByWorkspace(auth, filters);
+  const allSuggestions = await SkillSuggestionResource.listByWorkspace(
+    auth,
+    filters
+  );
 
-  return [
-    ...new Set(allSuggestions.map((s) => s.skillConfigurationSId)),
-  ];
+  return [...new Set(allSuggestions.map((s) => s.skillConfigurationSId))];
 }
 
 /**
