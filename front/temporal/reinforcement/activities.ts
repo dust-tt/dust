@@ -160,7 +160,7 @@ async function runReinforcedSkillsStep({
   if (terminalToolCalls.length > 0 || exploratoryToolCalls.length === 0) {
     if (terminalToolCalls.length > 0 && exploratoryToolCalls.length > 0) {
       logger.warn(
-        { contextId },
+        { contextId, workspaceId: auth.getNonNullableWorkspace().sId },
         "ReinforcedSkills: LLM is sending both terminal and exploratory tool call."
       );
     }
