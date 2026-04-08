@@ -42,7 +42,7 @@ export function isActiveRoleType(role: string): role is ActiveRoleType {
 }
 
 export type WorkspaceSharingPolicy =
-  | "emails_only"
+  | "workspace_only"
   | "workspace_and_emails"
   | "all_scopes";
 

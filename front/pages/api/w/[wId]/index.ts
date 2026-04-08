@@ -62,7 +62,7 @@ const WorkspaceInteractiveContentSharingUpdateBodySchema = t.type({
 const WorkspaceSharingPolicyUpdateBodySchema = t.type({
   sharingPolicy: t.union([
     t.literal("all_scopes"),
-    t.literal("emails_only"),
+    t.literal("workspace_only"),
     t.literal("workspace_and_emails"),
   ]),
 });

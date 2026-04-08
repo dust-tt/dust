@@ -15,8 +15,9 @@ export function getDefaultFrameShareScope(
   sharingPolicy: WorkspaceSharingPolicy
 ): FileShareScope {
   switch (sharingPolicy) {
-    case "emails_only":
-      return "emails_only";
+    // TODO(2026-04-08 FRAME SHARING): Rework logic here.
+    case "workspace_only":
+      return "workspace_and_emails";
     case "workspace_and_emails":
     case "all_scopes":
       return "workspace_and_emails";
