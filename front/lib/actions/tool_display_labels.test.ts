@@ -25,6 +25,7 @@ describe("getStaticToolDisplayLabels", () => {
       getStaticToolDisplayLabels({
         internalMCPServerName: "common_utilities",
         toolName: "wait",
+        inputs: {},
       })
     ).toEqual({
       running: "Waiting",
@@ -37,6 +38,7 @@ describe("getStaticToolDisplayLabels", () => {
       getStaticToolDisplayLabels({
         mcpServerName: "Linear",
         toolName: "list_issues",
+        inputs: {},
       })
     ).toEqual({
       running: "Listing issues on Linear",
