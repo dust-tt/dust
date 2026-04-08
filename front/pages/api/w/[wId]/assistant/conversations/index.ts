@@ -403,6 +403,21 @@ async function handler(
         }
 
         const featureFlags = await getFeatureFlags(auth);
+        const steeringEnabled = featureFlags.includes("enable_steering");
+
+        if (message.content.length === 0) {
+          if (!steeringEnabled || message.mentions.length === 0) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: steeringEnabled
+                  ? "Message content cannot be empty unless at least one mention is provided."
+                  : "Message content cannot be empty.",
+              },
+            });
+          }
+        }
 
         // If a message was provided we do await for the message to be created before returning the
         // conversation along with the message.
@@ -421,7 +436,7 @@ async function handler(
               message.context.clientSideMCPServerIds ?? [],
           },
           skipToolsValidation: skipToolsValidation ?? false,
-          steeringEnabled: featureFlags.includes("enable_steering"),
+          steeringEnabled,
         });
         if (messageRes.isErr()) {
           return apiError(req, res, messageRes.error);

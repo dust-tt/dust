@@ -19,11 +19,7 @@ const UserMessageOriginSchema = t.union([
 ]);
 
 export const MessageBaseSchema = t.type({
-  content: t.refinement(
-    t.string,
-    (s): s is string => s.length > 0,
-    "NonEmptyString"
-  ),
+  content: t.string,
   mentions: t.array(t.union([AgentMentionSchema, UserMentionSchema])),
   context: t.intersection([
     t.type({
