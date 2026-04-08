@@ -52,6 +52,7 @@ import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
+import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -118,9 +119,6 @@ import {
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
-const UNDERTAND_LLMS_CONTEXT_WINDOW_URL =
-  "https://docs.dust.tt/docs/understanding-llms-context-windows";
-
 function PrunedContextChip() {
   return (
     <Tooltip
@@ -142,7 +140,7 @@ function PrunedContextChip() {
             </p>
             <p>
               <a
-                href={UNDERTAND_LLMS_CONTEXT_WINDOW_URL}
+                href={CONTEXT_WINDOW_DOC_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline hover:text-foreground dark:hover:text-foreground-night"
