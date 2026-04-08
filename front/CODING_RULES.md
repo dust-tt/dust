@@ -1,364 +1,7 @@
 # [front] Coding Rules
 
-## GENERAL
-
-### [GEN1] Consistently bad is better than inconsistently good
-
-Favor re-using existing patterns (with broad refactors if necessary) over introducing new ones
-sporadically.
-
-Reviewer: If you detect a pattern that is not consistent with an existing approach in the codebase,
-require the author to match the existing pattern (and possibly refactor everything in a subsequent
-PR).
-
-### [GEN2] Simple but good is better than perfect but complex
-
-Favor simple and easy to understand approaches vs overly optimized but complex ones.
-
-Reviewer: If you detect an overly optimized or complex solution that can be simplified (at the cost
-of a bit of performance loss or extra code), ask the author to consider the simpler approach.
-
-### [GEN3] Favor types over typescript enums
-
-We do not use typescript enums, we use types instead, eg: `type Color = "red" | "blue";`.
-
-### [GEN4] Non type-safe use of `as` is prohibited
-
-The non type-safe uses of `as` are prohibited in the codebase. Use typeguards or other type-safe
-methods instead. There are few exceptions where `as` is type-safe to use (eg, `as const`) and
-therefore acceptable.
-
-### [GEN5] No mutation of function parameters
-
-Never mutate arrays or objects passed as parameters to functions. Create and return new instances
-instead. This includes avoiding methods like `splice` that mutate arrays in place.
-
-Reviewer: If you detect parameter mutation in the code (including array methods like `splice`),
-request the author to refactor the code to create and return new instances instead.
-
-Example:
-
-```
-// BAD
-function addItem(items: string[], newItem: string) {
-  items.push(newItem);
-  return items;
-}
-
-// GOOD
-function addItem(items: string[], newItem: string) {
-  return [...items, newItem];
-}
-```
-
-### [GEN6] Prefer exhaustive switch + assertNever over if/else on union types
-
-When branching on a discriminated union or string union, prefer an exhaustive `switch` with
-`assertNever` (from `@app/types/shared/utils/assert_never`) over chains of `if`/`else` or nested
-ternaries. This keeps the code readable and ensures TypeScript enforces exhaustiveness when cases
-are added.
-
-Two variants are available:
-
-- **`assertNever`**: Throws at runtime. Use when missing a case is a bug (server-side code,
-  internal client logic, client-created data).
-- **`assertNeverAndIgnore`**: Does NOT throw at runtime. Use in client-side code that processes
-  API data (event streams, API responses, connector types, etc.) where the server may add new
-  enum values before the client is updated. The unknown value is silently ignored instead of
-  crashing the app.
-
-Both provide the same compile-time exhaustiveness checking. Using the wrong variant is a bug:
-using `assertNever` on API data can crash the app when the server adds a new value, and using
-`assertNeverAndIgnore` on internal logic can silently swallow programming errors.
-
-Example:
-
-```
-import { assertNever, assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-
-// Internal logic: use assertNever (crash on missing case)
-type Status = "approved" | "rejected" | "expired";
-
-function titleForStatus(status: Status): string {
-  switch (status) {
-    case "approved":
-      return "Approved";
-    case "rejected":
-      return "Rejected";
-    case "expired":
-      return "Expired";
-    default:
-      return assertNever(status);
-  }
-}
-
-// Processing API data: use assertNeverAndIgnore (gracefully ignore unknown values)
-function handleStreamEvent(event: AgentMessageEvent): State {
-  switch (event.type) {
-    case "generation_tokens":
-      return { ...state, content: state.content + event.text };
-    case "agent_error":
-      return { ...state, status: "error" };
-    default:
-      assertNeverAndIgnore(event);
-      return state;
-  }
-}
-```
-
-### [GEN7] Avoid loops with quadratic or worse complexity
-
-Loops with quadratic O(n²) or worse cubic O(n³) complexity can severely hurt performance as data
-sizes grow. Common quadratic patterns include nested loops over related datasets, repeated searches
-within loops, and chained array operations that each iterate over the data.
-
-Always prefer linear O(n) or logarithmic O(n log n) solutions using data structures like Map, Set,
-or sorted arrays. When quadratic complexity is unavoidable, ensure array sizes are small (< 100
-elements) and comment the code appropriately with expected array sizes and execution time. For
-larger datasets or longer operations, implement async processing or move to separate workflows.
-
-Example:
-
-```
-// BAD - O(n²) nested loop
-function findDuplicates(items: Item[], otherItems: Item[]) {
-  const duplicates = [];
-  for (const item of items) {
-    for (const other of otherItems) {
-      if (item.id === other.id) {
-        duplicates.push(item);
-      }
-    }
-  }
-  return duplicates;
-}
-
-// GOOD - O(n) using Set lookup
-function findDuplicates(items: Item[], otherItems: Item[]) {
-  const otherIds = new Set(otherItems.map(item => item.id));
-  return items.filter(item => otherIds.has(item.id));
-}
-
-// BAD - O(n²) repeated find operation in map
-const enrichedAgents = agents.map(agent => ({
-  ...agent,
-  isFavorite: members.find(m => m.favoriteAgentId === agent.sId) !== undefined
-}));
-
-// GOOD - O(n) using Set for constant-time lookup
-const favoriteAgentIds = new Set(members.map(m => m.favoriteAgentId));
-const enrichedAgents = agents.map(agent => ({
-  ...agent,
-  isFavorite: favoriteAgentIds.has(agent.sId)
-}));
-
-// BAD - O(n²) nested loops without bounds checking
-for (const workspace of workspaces) {
-  for (const member of workspace.members) {
-    processWorkspaceMember(workspace, member);
-  }
-}
-
-// GOOD - Comment when quadratic is acceptable due to small array sizes
-function validatePermissions(userRoles: string[], requiredPermissions: string[]) {
-  // O(n²) acceptable: both arrays guaranteed to be small (< 20 elements each).
-  return requiredPermissions.every(permission =>
-    userRoles.some(role => hasPermission(role, permission))
-  );
-}
-```
-
-When quadratic complexity cannot be avoided:
-
-- Comment the expected maximum array sizes and execution time
-- Add runtime assertions if sizes could exceed safe limits
-- Consider moving to background processing for larger datasets
-- Implement proper async handling with progress indicators for long operations
-
-### [GEN8] Do not use console.log, console.error, etc. — always use the app logger
-
-Direct calls to `console.log`, `console.error`, `console.warn`, `console.info`, or similar console
-methods are prohibited in the codebase. Always use the application logger for all logging,
-debugging, and error reporting purposes. This ensures consistent log formatting, proper log
-routing, and easier log management across environments.
-
-Example:
-
-```
-// BAD
-console.log("User created", user);
-console.error("Failed to fetch data", error);
-
-// GOOD
-logger.info({ user }, "User created");
-logger.error({ err: error }, "Failed to fetch data");
-```
-
-### [GEN9] Use unit suffixes for money and time variables
-
-Variables representing monetary amounts or time durations must include a unit suffix in their name.
-This prevents conversion errors (e.g., cents vs dollars, milliseconds vs seconds) such as the one
-that caused [this incident](https://dust4ai.slack.com/archives/C05B529FHV1/p1764835038528229).
-
-Common suffixes:
-
-- Money: `Cents`, `Dollars` (e.g., `priceCents`, `amountDollars`)
-- Time: `Ms`, `Seconds`, `Minutes`, `Hours` (e.g., `timeoutMs`, `durationSeconds`)
-
-Reviewer: If you detect a variable representing money or time without a unit suffix, require the
-author to rename it with the appropriate suffix.
-
-Example:
-
-```
-// BAD
-const price = 1999;
-const timeout = 5000;
-const delay = 30;
-
-// GOOD
-const priceCents = 1999;
-const timeoutMs = 5000;
-const delaySeconds = 30;
-```
-
-### [GEN10] Using config for environment variables
-
-Never access environment variables directly via `process.env`. Instead, use the `@app/lib/api/config`
-module which provides type-safe access to environment variables.
-
-Example:
-
-```
-// BAD
-const apiUrl = process.env.API_URL;
-const isProduction = process.env.NODE_ENV === "production";
-
-// GOOD
-import config from "@app/lib/api/config";
-
-const apiUrl = config.getApiUrl();
-const isProduction = config.getNodeEnv() === "production";
-```
-
-### [GEN11] Dynamic imports are forbidden by default in production code
-
-In production TypeScript/TSX code, prefer static imports at the top of the file.
-
-Use dynamic `import()` only when strictly necessary (e.g., runtime gating between Node/Edge,
-optional dependencies, or excluding client-only code from server bundles).
-
-This rule does not apply to CommonJS config files (e.g., `next.config.js`, `tailwind.config.js`)
-or to Vitest patterns such as `vi.mock(import("..."), ...)`.
-
-If a dynamic import is strictly necessary, it must:
-
-- Use a string literal module specifier (no computed paths).
-- Be accompanied by a short comment explaining why a static import is not acceptable.
-
-## SECURITY
-
-### [SEC1] No sensitive data outside of HTTP bodies or headers
-
-No sensitive data should be sent to our servers through URL or query string parameters. HTTP body or
-headers only are acceptable for sensitive data.
-
-### [SEC2] No ModelId exposure in URLs or API endpoints
-
-Never expose or accept ModelId in URLs, API endpoints or POST/PATCH payloads. Use string identifiers
-(sId) instead. This applies to all routes, including GET, POST, PATCH, and DELETE methods. ModelIds
-should be strictly internal and never exposed to the client.
-
-Example:
-
-```
-// BAD
-/api/w/[wId]/resource/[modelId]
-
-// GOOD
-/api/w/[wId]/resource/[sId]
-```
-
-## AUDIT LOGGING
-
-### [AUDIT1] Every state-changing operation on a security-sensitive resource MUST emit an audit log event
-
-- Use `void emitAuditLogEvent({ auth, action, targets, context?, metadata? })` for user-initiated actions where an `Authenticator` is available
-- Use `void emitAuditLogEventDirect({ workspace, action, actor, targets, context, metadata? })` for system-initiated actions (Temporal activities, webhooks, login/logout) where no `Authenticator` exists
-- Never `await` the emit call; always fire-and-forget with `void`
-- Audit log failures must never break the main operation (the emit functions handle this internally)
-
-### [AUDIT2] Always prefer the real human actor over "system"
-
-- If a human configured the automation (trigger, API key), use that human as the actor via `Authenticator.fromUserIdAndWorkspaceId(userId, workspaceId)`
-- Only use `Authenticator.internalAdminForWorkspace(workspaceId)` or `emitAuditLogEventDirect` with a system actor for genuinely external events (SCIM sync, WorkOS webhooks, login failures without workspace context)
-
-### [AUDIT3] Every new audit action requires three artifacts
-
-- A JSON schema file at `front/admin/audit_log_schemas/<action>.json`
-- The action string added to the `AuditAction` union type in `front/lib/api/audit/workos_audit.ts`
-- A `void emitAuditLogEvent(...)` or `void emitAuditLogEventDirect(...)` call at the mutation site
-- See `runbooks/NEW_AUDIT_EVENT.md` for the step-by-step checklist
-
-### [AUDIT4] Place the emit call AFTER the mutation succeeds, not before
-
-- The audit log records what happened, not what was attempted
-- Exception: `user.login_failed` and similar failure events are emitted on the failure path
-
-### [AUDIT5] Metadata values must be strings
-
-- WorkOS SDK expects all metadata values as strings. Convert numbers and booleans with `String(value)`
-- Schema files use `"string"` as the value type (e.g., `"role": "string"`)
-
-### [AUDIT6] Always include `getAuditLogContext(auth, req)` as the `context` parameter when a `NextApiRequest` is available
-
-- This captures the client IP from `x-forwarded-for` headers
-- In Temporal activities or non-HTTP contexts, omit `context` (defaults to `auth.clientIp() ?? "internal"`) or pass `{ location: "internal" }` for direct emit
-
-### [AUDIT7] Targets always include the workspace as the first target
-
-- Use `buildWorkspaceTarget(auth.getNonNullableWorkspace())` or `buildWorkspaceTarget(workspace)`
-- Additional targets follow: `{ type: "user", id: user.sId, name: user.fullName() }`, `{ type: "api_key", id: key.sId }`, etc.
-
-### [AUDIT8] Action names follow `<resource>.<verb>` dot notation
-
-- Resource is singular, lowercase: `user`, `api_key`, `membership`, `scim`
-- Verb is past tense or descriptive: `created`, `revoked`, `role_updated`, `login_failed`
-- Consistency matters: check existing `AuditAction` values before inventing new names
-
-## ERROR
-
-### [ERR1] Do not rely on throw + catch
-
-Never catch your own errors. `catch` is authorized around external libraries (whose error handling
-we don't control), but otherwise errors that may alter the execution upstream should be returned
-using our `Result<>` pattern. It is OK to throw errors, since we can't catch them these are
-guaranteed to trigger a internal error (and return a 500).
-
-### [ERR2] Do not rely on `err as Error`
-
-Never catch and cast what was caught as `Error`. JS allows throwing anything (string, number,
-random object, ...) so the cast may be invalid and hides errors from the logs. Use `normalizeError`
-instead, this function properly checks the content of the caught object and always returns a valid
-`Error` object.
-
-Example:
-
-```
-// BAD
-try {
-  // Some code.
-} catch (err) {
-  return new Err(err as Err);
-}
-
-// GOOD
-try {
-  // Some code.
-} catch(err) {
-  return new Err(normalizeError(err));
-}
-```
+Shared rules (GEN1-GEN9, SEC1-SEC2, ERR1-ERR2) are in the root `CODING_RULES.md` and apply
+automatically. This file contains rules specific to the `front` workspace.
 
 ## BACKEND
 
@@ -610,6 +253,89 @@ export type UserTypeWithWorkspaces = UserType & {
   workspaces: WorkspaceType[];
 };
 ```
+
+## TYPESCRIPT
+
+### [TS1] Dynamic imports are forbidden by default in production code
+
+In production TypeScript/TSX code, prefer static imports at the top of the file.
+
+Use dynamic `import()` only when strictly necessary (e.g., runtime gating between Node/Edge,
+optional dependencies, or excluding client-only code from server bundles).
+
+This rule does not apply to CommonJS config files (e.g., `next.config.js`, `tailwind.config.js`)
+or to Vitest patterns such as `vi.mock(import("..."), ...)`.
+
+If a dynamic import is strictly necessary, it must:
+
+- Use a string literal module specifier (no computed paths).
+- Be accompanied by a short comment explaining why a static import is not acceptable.
+
+### [TS2] Using config for environment variables
+
+Never access environment variables directly via `process.env`. Instead, use the `@app/lib/api/config`
+module which provides type-safe access to environment variables.
+
+Example:
+
+```
+// BAD
+const apiUrl = process.env.API_URL;
+const isProduction = process.env.NODE_ENV === "production";
+
+// GOOD
+import config from "@app/lib/api/config";
+
+const apiUrl = config.getApiUrl();
+const isProduction = config.getNodeEnv() === "production";
+```
+
+## AUDIT LOGGING
+
+### [AUDIT1] Every state-changing operation on a security-sensitive resource MUST emit an audit log event
+
+- Use `void emitAuditLogEvent({ auth, action, targets, context?, metadata? })` for user-initiated actions where an `Authenticator` is available
+- Use `void emitAuditLogEventDirect({ workspace, action, actor, targets, context, metadata? })` for system-initiated actions (Temporal activities, webhooks, login/logout) where no `Authenticator` exists
+- Never `await` the emit call; always fire-and-forget with `void`
+- Audit log failures must never break the main operation (the emit functions handle this internally)
+
+### [AUDIT2] Always prefer the real human actor over "system"
+
+- If a human configured the automation (trigger, API key), use that human as the actor via `Authenticator.fromUserIdAndWorkspaceId(userId, workspaceId)`
+- Only use `Authenticator.internalAdminForWorkspace(workspaceId)` or `emitAuditLogEventDirect` with a system actor for genuinely external events (SCIM sync, WorkOS webhooks, login failures without workspace context)
+
+### [AUDIT3] Every new audit action requires three artifacts
+
+- A JSON schema file at `front/admin/audit_log_schemas/<action>.json`
+- The action string added to the `AuditAction` union type in `front/lib/api/audit/workos_audit.ts`
+- A `void emitAuditLogEvent(...)` or `void emitAuditLogEventDirect(...)` call at the mutation site
+- See `runbooks/NEW_AUDIT_EVENT.md` for the step-by-step checklist
+
+### [AUDIT4] Place the emit call AFTER the mutation succeeds, not before
+
+- The audit log records what happened, not what was attempted
+- Exception: `user.login_failed` and similar failure events are emitted on the failure path
+
+### [AUDIT5] Metadata values must be strings
+
+- WorkOS SDK expects all metadata values as strings. Convert numbers and booleans with `String(value)`
+- Schema files use `"string"` as the value type (e.g., `"role": "string"`)
+
+### [AUDIT6] Always include `getAuditLogContext(auth, req)` as the `context` parameter when a `NextApiRequest` is available
+
+- This captures the client IP from `x-forwarded-for` headers
+- In Temporal activities or non-HTTP contexts, omit `context` (defaults to `auth.clientIp() ?? "internal"`) or pass `{ location: "internal" }` for direct emit
+
+### [AUDIT7] Targets always include the workspace as the first target
+
+- Use `buildWorkspaceTarget(auth.getNonNullableWorkspace())` or `buildWorkspaceTarget(workspace)`
+- Additional targets follow: `{ type: "user", id: user.sId, name: user.fullName() }`, `{ type: "api_key", id: key.sId }`, etc.
+
+### [AUDIT8] Action names follow `<resource>.<verb>` dot notation
+
+- Resource is singular, lowercase: `user`, `api_key`, `membership`, `scim`
+- Verb is past tense or descriptive: `created`, `revoked`, `role_updated`, `login_failed`
+- Consistency matters: check existing `AuditAction` values before inventing new names
 
 ## MCP
 
