@@ -179,13 +179,17 @@ export function UserQuestionRequired({
             disabled={selectedOptions.length === 0}
             onClick={handleMultiSelectSubmit}
           />
-        ): <Button
-          icon={ArrowUpIcon}
-          variant="highlight"
-          size="icon"
-          disabled={selectedOptions.length === 0 && isCustomResponseEmpty}
-          onClick={handleMultiSelectSubmit}
-        />}
+        ) : (
+          <Button
+            icon={ArrowUpIcon}
+            variant="highlight"
+            size="xs"
+            className="ml-auto"
+            disabled={isCustomResponseEmpty}
+            onClick={handleCustomResponseSubmit}
+            aria-label="Send custom response"
+          />
+        )}
       </div>
     </Card>
   );
