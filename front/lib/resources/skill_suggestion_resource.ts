@@ -263,6 +263,26 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     });
   }
 
+  static async bulkUpdateState(
+    auth: Authenticator,
+    suggestions: SkillSuggestionResource[],
+    state: SkillSuggestionState
+  ): Promise<void> {
+    if (suggestions.length === 0) {
+      return;
+    }
+
+    await this.model.update(
+      { state },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          id: { [Op.in]: suggestions.map((s) => s.id) },
+        },
+      }
+    );
+  }
+
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
     if (!this.canWrite(auth)) {
       return new Err(
