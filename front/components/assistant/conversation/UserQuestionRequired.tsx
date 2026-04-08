@@ -8,6 +8,7 @@ import {
   ArrowUpIcon,
   Button,
   Card,
+  Counter,
   cn,
   Input,
   Spinner,
@@ -44,10 +45,6 @@ export function UserQuestionRequired({
   const { question } = blockedAction;
   const isTriggeredByCurrentUser = blockedAction.userId === user?.sId;
   const trimmedCustomResponse = customResponse.trim();
-  const hasCustomResponse = trimmedCustomResponse.length > 0;
-  const hasSelectedOptions = selectedOptions.length > 0;
-  const canSubmit = hasCustomResponse || hasSelectedOptions;
-  const customResponseInputId = `custom-response-${blockedAction.actionId}`;
 
   async function submitAnswer(answer: UserQuestionAnswer) {
     const result = await answerQuestion({
@@ -83,7 +80,7 @@ export function UserQuestionRequired({
   }
 
   function handleSubmit() {
-    if (hasCustomResponse) {
+    if (trimmedCustomResponse.length > 0) {
       void submitAnswer({
         selectedOptions: [],
         customResponse: trimmedCustomResponse,
@@ -91,7 +88,7 @@ export function UserQuestionRequired({
       return;
     }
 
-    if (!hasSelectedOptions) {
+    if (selectedOptions.length === 0) {
       return;
     }
 
@@ -156,9 +153,12 @@ export function UserQuestionRequired({
               tabIndex={0}
               aria-pressed={isSelected}
             >
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-150 text-xs font-semibold text-primary-700 dark:bg-primary-800 dark:text-primary-300">
-                {index + 1}
-              </div>
+              <Counter
+                value={index + 1}
+                size="sm"
+                variant="ghost"
+                className="shrink-0 bg-border text-muted-foreground dark:bg-border-night dark:text-muted-foreground-night"
+              />
               <div className="flex flex-col">
                 <span className="text-sm font-medium text-foreground dark:text-foreground-night">
                   {option.label}
@@ -185,11 +185,14 @@ export function UserQuestionRequired({
                 ]
           )}
         >
-          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-150 text-xs font-semibold text-primary-700 dark:bg-primary-800 dark:text-primary-300">
-            {question.options.length + 1}
-          </div>
+          <Counter
+            value={question.options.length + 1}
+            size="sm"
+            variant="ghost"
+            className="shrink-0 bg-border text-muted-foreground dark:bg-border-night dark:text-muted-foreground-night"
+          />
           <Input
-            id={customResponseInputId}
+            id={`custom-response-${blockedAction.actionId}`}
             containerClassName="flex-1"
             className="h-auto w-full rounded-none border-transparent bg-transparent px-0 py-0 text-sm shadow-none focus-visible:border-transparent focus-visible:ring-0"
             placeholder="Type something else"
@@ -221,7 +224,9 @@ export function UserQuestionRequired({
           icon={ArrowUpIcon}
           variant="highlight"
           size="sm"
-          disabled={!canSubmit}
+          disabled={
+            trimmedCustomResponse.length === 0 && selectedOptions.length === 0
+          }
           onClick={handleSubmit}
           aria-label="Send answer"
         />
