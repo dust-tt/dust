@@ -428,6 +428,8 @@ const InputBarContainer = ({
         });
       }
     : undefined;
+  // Current space is taken from the conversation (if already set) or from the space prop (if provided).
+  const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
   const { editor, editorService } = useCustomEditor({
     onEnterKeyDown: onEnterKeyDownWithShake,
@@ -438,7 +440,7 @@ const InputBarContainer = ({
     singleAgentInputEnabled: singleAgentInput,
     owner,
     conversationId: conversation?.sId,
-    spaceId: space?.sId,
+    spaceId,
     onInlineText: handleInlineText,
     shouldSuggestAgentRef: singleAgentInput ? shouldSuggestAgentRef : undefined,
     onFirstAgentMentionPasteRef,
@@ -622,17 +624,17 @@ const InputBarContainer = ({
   const spaceIds = useMemo(() => {
     // We are having a conversation within a specific space, so we only allow datasources/tools from that space and the global space.
     // This is a project v1 limitation.
-    if (space) {
+    if (spaceId) {
       return spaces
-        .filter((s) => s.sId === space.sId || s.kind === "global")
+        .filter((s) => s.sId === spaceId || s.kind === "global")
         .map((s) => s.sId);
     } else {
       return spaces.map((s) => s.sId);
     }
-  }, [spaces, space]);
+  }, [spaces, spaceId]);
 
   const spacesMap = useMemo(
-    () => Object.fromEntries(spaces?.map((space) => [space.sId, space]) || []),
+    () => Object.fromEntries(spaces?.map((s) => [s.sId, s]) || []),
     [spaces]
   );
 
@@ -1160,7 +1162,7 @@ const InputBarContainer = ({
                             conversationId: conversation?.sId,
                           },
                         }}
-                        space={space}
+                        spaceId={space?.sId}
                         type="dropdown"
                         onFileChange={() => setShowKnowledgePicker(false)}
                         externalOpen={showKnowledgePicker}

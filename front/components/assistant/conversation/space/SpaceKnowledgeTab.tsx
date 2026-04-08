@@ -19,6 +19,7 @@ import {
   useRemoveProjectContextContentNode,
   useRemoveProjectContextFile,
 } from "@app/lib/swr/projects";
+import { useSpaces } from "@app/lib/swr/spaces";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { getSupportedFileExtensions } from "@app/types/files";
 import type { SpaceType } from "@app/types/space";
@@ -109,6 +110,12 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
   } | null>(null);
   const [showPreviewSheet, setShowPreviewSheet] = useState(false);
   const confirm = useContext(ConfirmContext);
+
+  const { spaces } = useSpaces({
+    workspaceId: owner.sId,
+    kinds: ["global"],
+  });
+  const globalSpace = spaces.find((space) => space.kind === "global");
 
   const {
     attachments,
@@ -462,7 +469,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
           spaceId: space.sId,
         },
       }}
-      space={space}
+      spaceId={globalSpace?.sId}
       type="dropdown"
     />
   );

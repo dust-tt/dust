@@ -37,11 +37,14 @@ function getSetupSuffixForDataSource(
 
 export function getDisplayNameForDataSource(
   ds: DataSourceType,
-  aggregateFolder: boolean = false
+  aggregate: boolean = false
 ) {
   if (ds.connectorProvider) {
+    if (ds.connectorProvider === "dust_project") {
+      return aggregate ? "Projects" : ds.name;
+    }
     if (ds.connectorProvider === "webcrawler") {
-      return aggregateFolder ? "Websites" : ds.name;
+      return aggregate ? "Websites" : ds.name;
     }
     // Not very satisfying to retro-engineer getDefaultDataSourceName but we don't store the suffix by itself.
     // This is a technical debt to have this function.
@@ -51,7 +54,7 @@ export function getDisplayNameForDataSource(
     }
     return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
   } else {
-    return aggregateFolder ? "Folders" : ds.name;
+    return aggregate ? "Folders" : ds.name;
   }
 }
 

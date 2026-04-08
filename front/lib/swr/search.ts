@@ -8,7 +8,7 @@ import type { DataSourceViewType } from "@app/types/data_source_view";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { EventSourcePolyfill } from "event-source-polyfill";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
 export type DataSourceViewContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
@@ -167,7 +167,7 @@ export function useUnifiedSearch({
   );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  useEffect(() => {
+  useLayoutEffect(() => {
     setKnowledgeResults([]);
     setToolResults([]);
     setNextPageCursor(null);

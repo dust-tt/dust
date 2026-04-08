@@ -59,6 +59,8 @@ const getKeyForDataSource = (dataSource: DataSourceType) => {
     return `ds-webcrawler`;
   } else if (!dataSource.connectorProvider) {
     return `ds-folder`;
+  } else if (dataSource.connectorProvider === "dust_project") {
+    return `ds-project`;
   } else {
     return `ds-${dataSource.sId}`;
   }
@@ -81,7 +83,7 @@ interface InputBarAttachmentsPickerProps {
     useCase: "conversation" | "project_context";
     useCaseMetadata: FileUseCaseMetadata;
   };
-  space?: SpaceType;
+  spaceId?: string;
   onFileChange?: () => void;
   externalOpen?: boolean;
   onExternalOpenChange?: (open: boolean) => void;
@@ -212,7 +214,7 @@ export const InputBarAttachmentsPicker = ({
   buttonLabel = undefined,
   buttonVariant = "ghost-secondary",
   toolFileUpload,
-  space,
+  spaceId,
   type,
   onFileChange,
   externalOpen,
@@ -249,14 +251,14 @@ export const InputBarAttachmentsPicker = ({
   const spaceIds = useMemo(() => {
     // We are having a conversation within a specific space, so we only allow datasources/tools from that space and the global space.
     // This is a project v1 limitation.
-    if (space) {
+    if (spaceId) {
       return spaces
-        .filter((s) => s.sId === space.sId || s.kind === "global")
+        .filter((s) => s.sId === spaceId || s.kind === "global")
         .map((s) => s.sId);
     } else {
       return spaces.map((s) => s.sId);
     }
-  }, [spaces, space]);
+  }, [spaces, spaceId]);
 
   const {
     knowledgeResults: searchResultNodes,
@@ -406,16 +408,19 @@ export const InputBarAttachmentsPicker = ({
   const showLoader =
     isSearchLoading || isLoadingNextPage || isSearchValidating || isDebouncing;
 
-  const availableSources: DropdownMenuFilterOption[] = [
-    ...Object.entries(dataSourcesWithResults).map(([key, r]) => ({
-      value: key,
-      label: getDisplayNameForDataSource(r.dataSource, true),
-    })),
-    ...Object.entries(serversWithResults).map(([key, s]) => ({
-      value: key,
-      label: asDisplayToolName(s.server.serverName),
-    })),
-  ];
+  const availableSources: DropdownMenuFilterOption[] = useMemo(
+    () => [
+      ...Object.entries(dataSourcesWithResults).map(([key, r]) => ({
+        value: key,
+        label: getDisplayNameForDataSource(r.dataSource, true),
+      })),
+      ...Object.entries(serversWithResults).map(([key, s]) => ({
+        value: key,
+        label: asDisplayToolName(s.server.serverName),
+      })),
+    ],
+    [dataSourcesWithResults, serversWithResults]
+  );
 
   const selectedFilterKeys = useMemo(
     () =>
@@ -542,18 +547,17 @@ export const InputBarAttachmentsPicker = ({
         {searchQuery ? (
           <div ref={itemsContainerRef}>
             {(showLoader || availableSources.length > 1) && (
-              <div className="flex flex-wrap items-center gap-0.5 p-2">
+              <div className="flex flex-wrap items-center">
                 {availableSources.length > 1 && (
                   <DropdownMenuFilters
                     filters={availableSources}
                     selectedValues={selectedFilterKeys}
                     onSelectFilter={handleFilterClick}
-                    className="grow"
                   />
                 )}
                 {showLoader && (
-                  <div className="flex h-7 items-center justify-center last:grow">
-                    <Spinner size="xs" />
+                  <div className="flex items-center justify-center gap-0.5 p-2 grow">
+                    <Button size="xs" isLoading={true} variant="ghost" />
                   </div>
                 )}
               </div>

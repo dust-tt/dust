@@ -115,7 +115,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isDeletable: false,
   },
   dust_project: {
-    name: "Conversations & Context",
+    name: "Project",
     connectorProvider: "dust_project",
     status: "preview",
     isDeletable: false,
