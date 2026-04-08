@@ -1,12 +1,18 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
+import { storeLlmResult } from "@app/lib/api/llm/batch_llm";
 import type { BatchStatus } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import {
-  buildSkillAggregationPrompt,
+  prepareReinforcedToolActions,
+  type ReinforcedToolActionInfo,
+  storeTerminalToolCallResults,
+} from "@app/lib/reinforced_agent/tool_execution";
+import { hasReinforcementEnabled } from "@app/lib/reinforced_agent/workspace_check";
+import {
   buildSkillAggregationSystemPrompt,
   loadSkillAggregationContext,
 } from "@app/lib/reinforced_skills/aggregate_suggestions";
@@ -22,25 +28,13 @@ import {
   buildReinforcedSkillsSpecifications,
   classifySkillToolCalls,
   createReinforcedSkillsConversation,
-  getReinforcedSkillsDefaultOptions,
   getReinforcedSkillsLLM,
   processSkillReinforcedEvents,
   REINFORCEMENT_SKILLS_AGENT_ID,
-  reinforcedSkillsConversationTitle,
 } from "@app/lib/reinforced_skills/run_reinforced_analysis";
 import { findConversationsWithSkills } from "@app/lib/reinforced_skills/selection";
-import type {
-  ReinforcedSkillsOperationType,
-  TerminalToolCallInfo,
-} from "@app/lib/reinforced_skills/types";
+import type { ReinforcedSkillsOperationType } from "@app/lib/reinforced_skills/types";
 import { getAuthForWorkspace } from "@app/lib/reinforced_skills/utils";
-import {
-  prepareReinforcedToolActions,
-  type ReinforcedToolActionInfo,
-  storeTerminalToolCallResults,
-} from "@app/lib/reinforced_agent/tool_execution";
-import { hasReinforcementEnabled } from "@app/lib/reinforced_agent/workspace_check";
-import { storeLlmResult } from "@app/lib/api/llm/batch_llm";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
@@ -175,14 +169,12 @@ async function runReinforcedSkillsStep({
     // The skill types have the same shape as agent types (id, name, arguments)
     // but different nominal type names, so we cast through unknown.
     await storeTerminalToolCallResults(auth, {
-      successfulToolCalls:
-        result.successfulToolCalls as unknown as Parameters<
-          typeof storeTerminalToolCallResults
-        >[1]["successfulToolCalls"],
-      failedToolCalls:
-        result.failedToolCalls as unknown as Parameters<
-          typeof storeTerminalToolCallResults
-        >[1]["failedToolCalls"],
+      successfulToolCalls: result.successfulToolCalls as unknown as Parameters<
+        typeof storeTerminalToolCallResults
+      >[1]["successfulToolCalls"],
+      failedToolCalls: result.failedToolCalls as unknown as Parameters<
+        typeof storeTerminalToolCallResults
+      >[1]["failedToolCalls"],
       agentMessageModelId: storedResult.agentMessageModelId,
     });
 
@@ -209,6 +201,14 @@ async function runReinforcedSkillsStep({
       exploratoryToolCalls as unknown as Parameters<
         typeof prepareReinforcedToolActions
       >[1]["exploratoryToolCalls"],
+  }
+
+  // Prepare tool actions for the workflow to execute via runRetryableToolActivity.
+  // The skill exploratory tool call type has the same shape as the agent type.
+  const toolActionInfo = await prepareReinforcedToolActions(auth, {
+    exploratoryToolCalls: exploratoryToolCalls as unknown as Parameters<
+      typeof prepareReinforcedToolActions
+    >[1]["exploratoryToolCalls"],
     agentMessageModelId: storedResult.agentMessageModelId,
     agentMessageId: storedResult.agentMessageSId,
     userMessageId: storedResult.userMessageSId,
