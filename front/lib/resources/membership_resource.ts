@@ -379,9 +379,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   private static async _getActiveRoleForUserInWorkspaceUncached({
     userModelId,
     workspaceModelId,
+    transaction,
   }: {
     userModelId: ModelId;
     workspaceModelId: ModelId;
+    transaction?: Transaction;
   }): Promise<MembershipRoleType | "none"> {
     const membership = await MembershipModel.findOne({
       attributes: ["role"],
@@ -395,6 +397,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }],
         },
       },
+      transaction,
     });
     return membership?.role ?? "none";
   }
@@ -426,6 +429,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       return this._getActiveRoleForUserInWorkspaceUncached({
         userModelId: user.id,
         workspaceModelId: workspace.id,
+        transaction,
       });
     }
     return this.getActiveRoleForUserInWorkspaceCached({

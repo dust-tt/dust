@@ -11,6 +11,7 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import {
   batchInvalidateCacheWithRedis,
   cacheWithRedis,
+  invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
 import type { KeyType } from "@app/types/key";
@@ -129,7 +130,9 @@ export class KeyResource extends BaseResource<KeyModel> {
   ): Promise<[affectedCount: number]> {
     const oldSecret = this.secret;
     const result = await super.update(blob, transaction);
-    await KeyResource.invalidateKeyCache(oldSecret);
+    invalidateCacheAfterCommit(transaction, () =>
+      KeyResource.invalidateKeyCache(oldSecret)
+    );
     return result;
   }
 
