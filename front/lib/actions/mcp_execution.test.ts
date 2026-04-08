@@ -5,7 +5,7 @@ import {
 } from "@app/lib/actions/action_output_limits";
 import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { processToolResults } from "@app/lib/actions/mcp_execution";
-import { DataSourceNodeContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { DataSourceNodeContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -17,6 +17,7 @@ import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { assert, describe, expect, it, vi } from "vitest";
 
@@ -195,6 +196,7 @@ describe("processToolResults", () => {
 
   it("should persist DATA_SOURCE_NODE_CONTENT block to tool_outputs/", async () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     vi.mocked(getPrivateUploadBucket).mockClear();
 
@@ -250,6 +252,7 @@ describe("processToolResults", () => {
 
   it("should persist large plain text block to tool_outputs/ as .txt", async () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     vi.mocked(getPrivateUploadBucket).mockClear();
 
@@ -282,6 +285,7 @@ describe("processToolResults", () => {
 
   it("should persist large JSON text block to tool_outputs/ as .json", async () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     vi.mocked(getPrivateUploadBucket).mockClear();
 

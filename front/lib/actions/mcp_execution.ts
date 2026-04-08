@@ -27,6 +27,7 @@ import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import { persistToolOutput } from "@app/lib/api/files/action_output_fs";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -160,6 +161,9 @@ export async function processToolResults(
     conversationId: conversation.sId,
   };
 
+  const flags = await getFeatureFlags(auth);
+  const hasSandbox = flags.includes("sandbox_tools");
+
   const timestamp = Date.now();
   const cleanContent: {
     content: CallToolResult["content"][number];
@@ -167,11 +171,11 @@ export async function processToolResults(
   }[] = await concurrentExecutor(
     toolCallResultContent,
     async (block, idx) => {
-      // Side effect: write qualifying blocks to tool_outputs/ in GCS.
-      // TODO(2026-04-08: SANDBOX): Make this the default path.
-      await persistToolOutput(auth, conversation, block, {
-        toolName: toolConfiguration.mcpServerName,
-      });
+      if (hasSandbox) {
+        await persistToolOutput(auth, conversation, block, {
+          toolName: toolConfiguration.mcpServerName,
+        });
+      }
 
       switch (block.type) {
         case "text": {
