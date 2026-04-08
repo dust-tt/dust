@@ -24,6 +24,20 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
       { type: QueryTypes.SELECT }
     );
 
+  const connectorInfos: {
+    id: number;
+    workspaceId: string;
+    dataSourceId: string;
+  }[] =
+    // biome-ignore lint/plugin/noRawSql: production check uses read replica
+    await connectorsReplica.query(
+      `SELECT id, "workspaceId", "dataSourceId" FROM connectors WHERE "type" = 'google_drive'`,
+      { type: QueryTypes.SELECT }
+    );
+  const connectorInfoById = new Map(
+    connectorInfos.map((c) => [String(c.id), c])
+  );
+
   if (GdriveDataSources.length === 0) {
     reportSuccess({ message: "No Google Drive data sources to check" });
     return;
@@ -103,10 +117,13 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
         (coreId) => !connectorDocumentIds.has(coreId)
       );
       if (notDeleted.length > 0) {
+        const connectorInfo = connectorInfoById.get(ds.connectorId);
         const actionLinks: ActionLink[] = [
           {
             label: `${notDeleted.length} document${notDeleted.length > 1 ? "s" : ""} not GC'd (connector: ${ds.connectorId})`,
-            url: `/poke/connectors/${ds.connectorId}`,
+            url: connectorInfo
+              ? `/poke/${connectorInfo.workspaceId}/data_sources/${connectorInfo.dataSourceId}`
+              : `/poke/connectors/${ds.connectorId}`,
           },
         ];
         reportFailure(
