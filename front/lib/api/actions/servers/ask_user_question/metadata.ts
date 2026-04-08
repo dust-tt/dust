@@ -45,7 +45,7 @@ export const ASK_USER_QUESTION_SERVER = {
     name: "ask_user_question",
     version: "1.0.0",
     description: "Ask the user a question with multiple-choice options.",
-    icon: "ActionAtomIcon",
+    icon: "ActionSpeakIcon",
     authorization: null,
     documentationUrl: null,
     instructions: null,
