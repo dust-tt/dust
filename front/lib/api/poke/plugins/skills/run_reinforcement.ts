@@ -1,12 +1,12 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS } from "@app/lib/reinforcement/constants";
-import { startReinforcedSkillsWorkspaceWorkflow } from "@app/temporal/reinforcement/client";
+import { startReinforcementWorkspaceWorkflow } from "@app/temporal/reinforcement/client";
 import { Err, Ok } from "@app/types/shared/result";
 
-export const runReinforcedSkillPlugin = createPlugin({
+export const runReinforcementPlugin = createPlugin({
   manifest: {
-    id: "run-reinforced-skill",
-    name: "Run Reinforced Skill",
+    id: "run-reinforcement",
+    name: "Run Reinforcement",
     description:
       "Analyze recent conversations for this skill and suggest improvements to its configuration",
     resourceTypes: ["skills"],
@@ -40,7 +40,7 @@ export const runReinforcedSkillPlugin = createPlugin({
 
     const workspace = auth.getNonNullableWorkspace();
 
-    const result = await startReinforcedSkillsWorkspaceWorkflow({
+    const result = await startReinforcementWorkspaceWorkflow({
       workspaceId: workspace.sId,
       skillId: resource.sId,
       useBatchMode: args.useBatchMode,
@@ -54,7 +54,7 @@ export const runReinforcedSkillPlugin = createPlugin({
 
     return new Ok({
       display: "text",
-      value: `Reinforced skill workflow started (workflowId: ${result.value}).`,
+      value: `Reinforcement workflow started (workflowId: ${result.value}).`,
     });
   },
   isApplicableTo: (auth, resource) => {

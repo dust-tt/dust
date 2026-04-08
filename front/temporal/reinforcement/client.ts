@@ -61,7 +61,7 @@ async function getFlaggedWorkspaceIds(): Promise<string[]> {
  * The cron fires at regional midnight; the workflow itself spreads execution
  * over a 0-2 hour window using a deterministic delay.
  */
-export async function launchReinforcedSkillsWorkspaceCron({
+export async function launchReinforcementWorkspaceCron({
   workspaceId,
 }: {
   workspaceId: string;
@@ -101,7 +101,7 @@ export async function launchReinforcedSkillsWorkspaceCron({
 /**
  * Stop the cron-scheduled workflow for a single workspace.
  */
-export async function stopReinforcedSkillsWorkspaceCron({
+export async function stopReinforcementWorkspaceCron({
   workspaceId,
   stopReason,
 }: {
@@ -141,7 +141,7 @@ export async function launchAllReinforcedSkillsWorkspaceCrons(): Promise<
 
   await concurrentExecutor(
     workspaceIds,
-    (workspaceId) => launchReinforcedSkillsWorkspaceCron({ workspaceId }),
+    (workspaceId) => launchReinforcementWorkspaceCron({ workspaceId }),
     { concurrency: 8 }
   );
 
@@ -159,7 +159,7 @@ export async function stopAllReinforcedSkillsWorkspaceCrons(): Promise<void> {
   await concurrentExecutor(
     workspaceIds,
     (workspaceId) =>
-      stopReinforcedSkillsWorkspaceCron({
+      stopReinforcementWorkspaceCron({
         workspaceId,
         stopReason: "Stopped all via CLI",
       }),
@@ -176,7 +176,7 @@ export async function stopAllReinforcedSkillsWorkspaceCrons(): Promise<void> {
 // Manual one-off runs
 // ---------------------------------------------------------------------------
 
-export async function startReinforcedSkillsWorkspaceWorkflow({
+export async function startReinforcementWorkspaceWorkflow({
   workspaceId,
   useBatchMode,
   skillId,

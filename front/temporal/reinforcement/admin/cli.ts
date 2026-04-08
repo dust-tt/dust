@@ -1,9 +1,9 @@
 import {
   launchAllReinforcedSkillsWorkspaceCrons,
-  launchReinforcedSkillsWorkspaceCron,
-  startReinforcedSkillsWorkspaceWorkflow,
+  launchReinforcementWorkspaceCron,
+  startReinforcementWorkspaceWorkflow,
   stopAllReinforcedSkillsWorkspaceCrons,
-  stopReinforcedSkillsWorkspaceCron,
+  stopReinforcementWorkspaceCron,
 } from "@app/temporal/reinforcement/client";
 import parseArgs from "minimist";
 
@@ -40,7 +40,7 @@ const main = async () => {
         usage();
         process.exit(1);
       }
-      await launchReinforcedSkillsWorkspaceCron({ workspaceId });
+      await launchReinforcementWorkspaceCron({ workspaceId });
       return;
     }
     case "stop-workspace": {
@@ -50,7 +50,7 @@ const main = async () => {
         usage();
         process.exit(1);
       }
-      await stopReinforcedSkillsWorkspaceCron({
+      await stopReinforcementWorkspaceCron({
         workspaceId,
         stopReason: "Stopped via CLI",
       });
@@ -65,7 +65,7 @@ const main = async () => {
       }
       const conversationLookbackDays =
         argv["days"] !== undefined ? Number(argv["days"]) : undefined;
-      await startReinforcedSkillsWorkspaceWorkflow({
+      await startReinforcementWorkspaceWorkflow({
         workspaceId,
         useBatchMode: argv["batch"],
         skillId: argv["skill-id"],
@@ -83,7 +83,7 @@ const main = async () => {
       }
       const conversationLookbackDays =
         argv["days"] !== undefined ? Number(argv["days"]) : undefined;
-      await startReinforcedSkillsWorkspaceWorkflow({
+      await startReinforcementWorkspaceWorkflow({
         workspaceId,
         useBatchMode: argv["batch"],
         skillId,
