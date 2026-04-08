@@ -74,7 +74,7 @@ const ALLOWED_SCOPES_BY_POLICY: Record<
   WorkspaceSharingPolicy,
   FileShareScope[]
 > = {
-  emails_only: ["emails_only"],
+  workspace_only: ["workspace_and_emails"],
   workspace_and_emails: ["emails_only", "workspace_and_emails"],
   all_scopes: ["emails_only", "workspace_and_emails", "public"],
 };
@@ -151,7 +151,8 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
   );
 
   const showEmailSection =
-    currentScope === "emails_only" || currentScope === "workspace_and_emails";
+    owner.sharingPolicy !== "workspace_only" &&
+    (currentScope === "emails_only" || currentScope === "workspace_and_emails");
 
   const onInviteSubmit = async (data: InviteFormValues) => {
     const emails = data.emailsRaw

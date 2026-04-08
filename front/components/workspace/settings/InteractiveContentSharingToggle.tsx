@@ -29,9 +29,9 @@ const SHARING_POLICY_OPTIONS: {
 }[] = [
   {
     icon: LockIcon,
-    label: "Email invites only",
-    description: "Frames can only be shared via email invite",
-    value: "emails_only",
+    label: "Workspace members only",
+    description: "Frames can only be viewed by workspace members",
+    value: "workspace_only",
   },
   {
     icon: UserGroupIcon,

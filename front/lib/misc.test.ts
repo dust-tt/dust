@@ -14,7 +14,7 @@ function makeWorkspace(sId: string): LightWorkspaceType {
     whiteListedProviders: null,
     defaultEmbeddingProvider: null,
     metronomeCustomerId: null,
-    sharingPolicy: "emails_only",
+    sharingPolicy: "workspace_only",
   };
 }
 
