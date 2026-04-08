@@ -415,7 +415,6 @@ describe("SkillSuggestionResource", () => {
 
       const json = suggestion.toJSON();
 
-      expect(json.id).toBe(suggestion.id);
       expect(json.sId).toBe(suggestion.sId);
       expect(json.kind).toBe("edit_instructions");
       expect(json.suggestion).toEqual({ instructions: "New instructions" });

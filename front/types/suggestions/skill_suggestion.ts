@@ -67,7 +67,6 @@ export function parseSkillSuggestionData(data: unknown): SkillSuggestionData {
 }
 
 const BaseSkillSuggestionSchema = z.object({
-  id: z.number(),
   sId: z.string(),
   createdAt: z.number(),
   updatedAt: z.number(),

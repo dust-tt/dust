@@ -297,7 +297,6 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     });
 
     return {
-      id: this.id,
       sId: this.sId,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
