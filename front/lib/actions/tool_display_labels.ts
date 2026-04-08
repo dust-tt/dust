@@ -68,6 +68,222 @@ function getToolCallNameParts(functionCallName: string) {
   };
 }
 
+/**
+ * Generate input-aware dynamic labels for internal MCP server tools.
+ */
+function getDynamicToolDisplayLabels({
+  internalMCPServerName,
+  toolName,
+  inputs,
+}: {
+  internalMCPServerName: InternalMCPServerNameType;
+  toolName: string;
+  inputs: Record<string, unknown>;
+}): ToolDisplayLabels | null {
+  switch (internalMCPServerName) {
+    case "web_search_&_browse":
+    case "http_client":
+      if (toolName === "websearch" && isWebsearchInputType(inputs)) {
+        const q = truncateQuery(inputs.query);
+        return {
+          running: `Searching “${q}”`,
+          done: `Searched “${q}”`,
+        };
+      }
+      if (toolName === "webbrowser" && isWebbrowseInputType(inputs)) {
+        if (inputs.urls.length === 1) {
+          const url = shortenUrl(inputs.urls[0]);
+          return {
+            running: `Browsing “${url}”`,
+            done: `Browsed “${url}”`,
+          };
+        }
+        return {
+          running: `Browsing ${inputs.urls.length} web pages`,
+          done: `Browsed ${inputs.urls.length} web pages`,
+        };
+      }
+      return null;
+
+    case "search":
+      if (toolName === "semantic_search" && isSearchInputType(inputs)) {
+        const q = truncateQuery(inputs.query);
+        return {
+          running: `Searching “${q}”`,
+          done: `Searched “${q}”`,
+        };
+      }
+      return null;
+
+    case "data_sources_file_system":
+      if (
+        toolName === "find" &&
+        isDataSourceFilesystemFindInputType(inputs) &&
+        inputs.query
+      ) {
+        const q = truncateQuery(inputs.query);
+        return {
+          running: `Finding “${q}”`,
+          done: `Found “${q}”`,
+        };
+      }
+      if (toolName === "semantic_search" && isSearchInputType(inputs)) {
+        const q = truncateQuery(inputs.query);
+        return {
+          running: `Searching “${q}”`,
+          done: `Searched “${q}”`,
+        };
+      }
+      return null;
+
+    case "image_generation":
+      if (toolName === "generate_image" && isGenerateImageInputType(inputs)) {
+        const name = truncateQuery(inputs.outputName);
+        return {
+          running: `Generating “${name}”`,
+          done: `Generated “${name}”`,
+        };
+      }
+      return null;
+
+    case "gmail":
+      if (
+        toolName === "create_draft" &&
+        isString(inputs.subject)
+      ) {
+        const s = truncateQuery(inputs.subject);
+        return {
+          running: `Drafting “${s}”`,
+          done: `Drafted “${s}”`,
+        };
+      }
+      if (toolName === "send_mail" && isString(inputs.subject)) {
+        const s = truncateQuery(inputs.subject);
+        return {
+          running: `Sending “${s}”`,
+          done: `Sent “${s}”`,
+        };
+      }
+      return null;
+
+    case "slack":
+    case "slack_bot":
+      if (toolName === "post_message" && isString(inputs.to)) {
+        const to = truncateQuery(inputs.to);
+        return {
+          running: `Posting to channel ${to}`,
+          done: `Posted to channel ${to}`,
+        };
+      }
+      return null;
+
+    case "notion":
+      if (toolName === "search" && isString(inputs.query)) {
+        const q = truncateQuery(inputs.query);
+        return {
+          running: `Searching Notion “${q}”`,
+          done: `Searched Notion “${q}”`,
+        };
+      }
+      return null;
+
+    case "google_drive":
+      if (toolName === "search_files" && isString(inputs.q)) {
+        const q = truncateQuery(inputs.q);
+        return {
+          running: `Searching Drive “${q}”`,
+          done: `Searched Drive “${q}”`,
+        };
+      }
+      return null;
+
+    case "extract_data":
+      if (
+        toolName === "extract_information_from_documents" &&
+        isString(inputs.objective)
+      ) {
+        const o = truncateQuery(inputs.objective);
+        return {
+          running: `Extracting “${o}”`,
+          done: `Extracted “${o}”`,
+        };
+      }
+      return null;
+
+    case "conversation_files":
+        return {
+          running: `Searching files “${q}”`,
+          done: `Searched files “${q}”`,
+        };
+      }
+      return null;
+
+    // All other servers: no dynamic labels.
+    case "agent_sidekick_agent_state":
+    case "agent_sidekick_context":
+    case "agent_management":
+    case "agent_memory":
+    case "agent_router":
+    case "ashby":
+    case "confluence":
+    case "databricks":
+    case "data_warehouses":
+    case "file_generation":
+    case "fathom":
+    case "freshservice":
+    case "github":
+    case "gong":
+    case "google_calendar":
+    case "google_sheets":
+    case "hubspot":
+    case "include_data":
+    case "interactive_content":
+    case "slideshow":
+    case "jira":
+    case "luma":
+    case "microsoft_drive":
+    case "microsoft_excel":
+    case "microsoft_teams":
+    case "missing_action_catcher":
+    case "monday":
+    case "openai_usage":
+    case "outlook_calendar":
+    case "outlook":
+    case "primitive_types_debugger":
+    case "productboard":
+    case "common_utilities":
+    case "jit_testing":
+    case "run_agent":
+    case "run_dust_app":
+    case "salesforce":
+    case "salesloft":
+    case "slab":
+    case "snowflake":
+    case "sound_studio":
+    case "speech_generator":
+    case "statuspage":
+    case "toolsets":
+    case "ukg_ready":
+    case "user_mentions":
+    case "val_town":
+    case "vanta":
+    case "front":
+    case "zendesk":
+    case "query_tables_v2":
+    case "skill_management":
+    case "schedules_management":
+    case "project_manager":
+    case "poke":
+    case "project_conversation":
+    case "sandbox":
+    case "ask_user_question":
+      return null;
+
+    default:
+      assertNever(internalMCPServerName);
+  }
+}
+
 function getStaticToolDisplayLabelsForServerName(
   serverName: string,
   toolName: string
