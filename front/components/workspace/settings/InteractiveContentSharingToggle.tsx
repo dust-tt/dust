@@ -94,7 +94,7 @@ export function InteractiveContentSharingToggle({
                 className="grid grid-cols-[auto_1fr_auto] truncate"
               />
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
+            <DropdownMenuContent className="max-w-[400px]" align="end">
               <DropdownMenuRadioGroup value={sharingPolicy}>
                 {SHARING_POLICY_OPTIONS.map((option) => (
                   <DropdownMenuRadioItem
