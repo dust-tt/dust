@@ -4,6 +4,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
+import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
@@ -44,7 +45,7 @@ export function AgentDetailsButtonBar({
   isAgentConfigurationValidating,
   owner,
 }: AgentDetailsButtonBarProps) {
-  const { user } = useAuth();
+  const { user, providersHealth } = useAuth();
 
   const { updateUserFavorite, isUpdatingFavorite } = useUpdateUserFavorite({
     owner,
@@ -123,7 +124,7 @@ export function AgentDetailsButtonBar({
               ? getAgentBuilderRoute(owner.sId, agentConfiguration.sId)
               : undefined
           }
-          disabled={!canEditAgent}
+          disabled={!canEditAgent || !hasHealthyProviders(providersHealth)}
           variant="outline"
           icon={PencilSquareIcon}
         />
@@ -159,6 +160,9 @@ export function AgentDetailsDropdownMenu({
 }: AgentDetailsDropdownMenuProps) {
   const sendNotification = useSendNotification();
   const router = useAppRouter();
+
+  const { providersHealth } = useAuth();
+  const noHealthyProviders = !hasHealthyProviders(providersHealth);
 
   const [showDeletionModal, setShowDeletionModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -230,6 +234,7 @@ export function AgentDetailsDropdownMenu({
         canEditAgent && (
           <DropdownMenuItem
             label="Edit agent"
+            disabled={noHealthyProviders}
             onClick={(e) => {
               e.stopPropagation();
               void router.push(
@@ -263,6 +268,7 @@ export function AgentDetailsDropdownMenu({
         <>
           <DropdownMenuItem
             label="Duplicate (New)"
+            disabled={noHealthyProviders}
             data-gtm-label="agentDuplicationButton"
             data-gtm-location="agentDetails"
             icon={ClipboardIcon}
