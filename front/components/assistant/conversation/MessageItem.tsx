@@ -238,6 +238,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               conversationId={context.conversation.sId}
               hideHeader={isSteeredAgentMessage}
               isLastMessage={!nextData}
+              isSteered={isSteeredAgentMessage}
               agentMessage={data}
               messageFeedback={messageFeedbackWithSubmit}
               owner={context.owner}

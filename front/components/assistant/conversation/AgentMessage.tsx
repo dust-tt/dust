@@ -170,6 +170,7 @@ interface AgentMessageProps {
   conversationId: string;
   hideHeader: boolean;
   isLastMessage: boolean;
+  isSteered: boolean;
   agentMessage: AgentMessageWithStreaming;
   messageFeedback: FeedbackSelectorBaseProps;
   owner: WorkspaceType;
@@ -190,6 +191,7 @@ export function AgentMessage({
   conversationId,
   hideHeader,
   isLastMessage,
+  isSteered,
   agentMessage,
   messageFeedback,
   owner,
@@ -977,12 +979,29 @@ export function AgentMessage({
 
   const hideCompletionStatus = isDeleted || isInlineActivityEnabled;
 
+  const isOtherUser =
+    triggeringUser !== null && triggeringUser.sId !== user.sId;
+
+  // Steered messages (continuation of a previous agent response) only need
+  // bottom padding to stay visually attached to the message above.
+  // Other users' messages get more spacing since they are left-aligned.
+  // TODO(2025-04-08 yuka): Refactor conversation message spacing to handle all
+  // cases (steered, other user, gracefully stopped) in a unified way.
+  const spacingOverride = isSteered
+    ? isOtherUser
+      ? "s-pb-4"
+      : "s-pb-2"
+    : isGracefullyStopped
+      ? "s-py-2"
+      : undefined;
+
   return (
     <ConversationMessageContainer
       messageType="agent"
-      isOtherUser={triggeringUser !== null && triggeringUser.sId !== user.sId}
+      isOtherUser={isOtherUser}
       type="agent"
-      className={isGracefullyStopped ? "py-2" : undefined}
+      className={spacingOverride
+      }
     >
       {!hideHeader && (
         <div className="inline-flex items-center gap-2">
