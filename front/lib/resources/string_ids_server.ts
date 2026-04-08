@@ -1,4 +1,4 @@
-import { blake3 } from "@napi-rs/blake-hash";
+import { hash as blake3 } from "blake3";
 import { v4 as uuidv4 } from "uuid";
 
 /**
@@ -6,8 +6,11 @@ import { v4 as uuidv4 } from "uuid";
  */
 export function generateRandomModelSId(prefix?: string): string {
   const u = uuidv4();
-  const b = blake3(u).subarray(0, 10);
-  const sId = b.map(uniformByteToCode62).map(alphanumFromCode62).toString();
+  const b = blake3(u, { length: 10 });
+  const sId = Buffer.from(b)
+    .map(uniformByteToCode62)
+    .map(alphanumFromCode62)
+    .toString();
 
   if (prefix) {
     return `${prefix}_${sId}`;
@@ -23,14 +26,11 @@ export function generateRandomModelSId(prefix?: string): string {
  * length: number of characters to return (default 64).
  */
 export function generateSecureSecret(length = 64): string {
-  // blake3 produces 32 bytes per call. To support lengths > 32, we hash multiple
-  // fresh UUIDs and concatenate the results before slicing to the desired length.
-  const BLAKE3_OUTPUT_BYTES = 32;
-  const chunksNeeded = Math.ceil(length / BLAKE3_OUTPUT_BYTES);
-  const digest = Buffer.concat(
-    Array.from({ length: chunksNeeded }, () => blake3(uuidv4()))
-  ).subarray(0, length);
-  return digest.map(uniformByteToCode62).map(alphanumFromCode62).toString();
+  const digest = blake3(uuidv4(), { length });
+  return Buffer.from(digest)
+    .map(uniformByteToCode62)
+    .map(alphanumFromCode62)
+    .toString();
 }
 
 /**

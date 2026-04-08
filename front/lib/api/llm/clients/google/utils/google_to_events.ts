@@ -7,8 +7,8 @@ import type {
   GenerateContentResponseUsageMetadata,
 } from "@google/genai";
 import { FinishReason } from "@google/genai";
-import { blake3 } from "@napi-rs/blake-hash";
 import assert from "assert";
+import { hash as blake3 } from "blake3";
 import crypto from "crypto";
 import flatMap from "lodash/flatMap";
 
