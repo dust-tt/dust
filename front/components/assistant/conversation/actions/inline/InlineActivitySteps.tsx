@@ -200,7 +200,7 @@ export function InlineActivitySteps({
         style={getCollapseAnimationStyle(isCollapsed)}
       >
         <div className="overflow-hidden">
-          <div className="mt-4 flex flex-col gap-3">
+          <div className="mt-3 flex flex-col gap-3">
             {completedSteps.map((step, index) => {
               const isLast =
                 index === completedSteps.length - 1 &&
