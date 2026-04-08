@@ -90,7 +90,7 @@ async function handleBlockedValidation(
   if (!conversationResource) {
     logger.warn(
       {
-        agentMessageId: agentMessageId,
+        agentMessageId,
         conversationId: context.conversationId,
       },
       "[email] Conversation not found for blocked validation check"
@@ -121,7 +121,7 @@ async function handleBlockedValidation(
   if (!agentConfiguration) {
     logger.warn(
       {
-        agentMessageId: agentMessageId,
+        agentMessageId,
         agentConfigurationId: context.agentConfigurationId,
       },
       "[email] Agent configuration not found for blocked validation check"
@@ -144,7 +144,7 @@ async function handleBlockedValidation(
 
   logger.info(
     {
-      agentMessageId: agentMessageId,
+      agentMessageId,
       conversationId: context.conversationId,
       blockedActionsCount: validationRequiredActions.length,
     },
