@@ -93,8 +93,8 @@ export function WebAgentBrowser({
             handleAgentClick(agent);
             setAssistantSearch("");
           }}
-          onAgentMoreClick={(agentSId) =>
-            setQueryParam(router, "agentDetails", agentSId)
+          onAgentMoreClick={(agentId) =>
+            setQueryParam(router, "agentDetails", agentId)
           }
         />
 

@@ -199,7 +199,7 @@ type SearchDropdownContentProps = {
   isLoading: boolean;
   onTagClick: (tagSId: string) => void;
   onAgentClick: (agent: LightAgentConfigurationType) => void;
-  onAgentMoreClick?: (agentSId: string) => void;
+  onAgentMoreClick?: (agentId: string) => void;
 };
 
 export function SearchDropdownContent({
@@ -387,7 +387,7 @@ export function AgentBrowserSearchDropdown({
   isLoading: boolean;
   onTagClick: (tagSId: string) => void;
   onAgentClick: (agent: LightAgentConfigurationType) => void;
-  onAgentMoreClick?: (agentSId: string) => void;
+  onAgentMoreClick?: (agentId: string) => void;
 }) {
   return (
     <SearchDropdownMenu

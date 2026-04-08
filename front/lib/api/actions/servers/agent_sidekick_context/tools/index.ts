@@ -1704,21 +1704,21 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
 
     // Find agents that this message handed off to.
-    const handoffTargets: { agentSId: string; agentName: string }[] = [];
+    const handoffTargets: { agentId: string; agentName: string }[] = [];
     for (const msg of flatMessages) {
       if (
         isAgentMessageType(msg) &&
         msg.parentAgentMessageId === agentMsg.sId
       ) {
         handoffTargets.push({
-          agentSId: msg.configuration.sId,
+          agentId: msg.configuration.sId,
           agentName: msg.configuration.name,
         });
       }
     }
     if (handoffTargets.length > 0) {
       lines.push(
-        `Handed off to: ${handoffTargets.map((h) => `${h.agentSId} (${h.agentName})`).join(", ")}`
+        `Handed off to: ${handoffTargets.map((h) => `${h.agentId} (${h.agentName})`).join(", ")}`
       );
       lines.push("");
     }

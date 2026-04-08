@@ -425,9 +425,9 @@ export const ConversationViewer = ({
         (matchedSuggestion?.suggestionType === "call_agent" ||
           matchedSuggestion?.suggestionType === "create_frame")
       ) {
-        const { agentSId, agentName, prompt } = matchedSuggestion.metadata;
+        const { agentId, agentName, prompt } = matchedSuggestion.metadata;
         setSelectedAgent({
-          id: agentSId,
+          id: agentId,
           type: "agent",
           label: agentName,
           pictureUrl: "",

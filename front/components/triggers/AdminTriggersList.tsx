@@ -57,7 +57,7 @@ interface AdminTriggersListProps {
   isWebhookSourcesWithViewsLoading: boolean;
   webhookSourcesWithSystemView: WebhookSourceWithSystemViewAndUsageType[];
   filter: string;
-  setAgentSId: (a: string | null) => void;
+  setAgentId: (a: string | null) => void;
 }
 
 export const AdminTriggersList = ({
@@ -65,7 +65,7 @@ export const AdminTriggersList = ({
   isWebhookSourcesWithViewsLoading,
   webhookSourcesWithSystemView,
   filter,
-  setAgentSId,
+  setAgentId,
 }: AdminTriggersListProps) => {
   const [sheetMode, setSheetMode] = useState<WebhookSourceSheetMode | null>(
     null
@@ -149,7 +149,7 @@ export const AdminTriggersList = ({
                 count: info.row.original.webhookSource.usage?.count ?? 0,
                 agents: info.row.original.webhookSource.usage?.agents ?? [],
               }}
-              onItemClick={setAgentSId}
+              onItemClick={setAgentId}
             />
           </DataTable.CellContent>
         ),
@@ -231,7 +231,7 @@ export const AdminTriggersList = ({
     );
 
     return columns;
-  }, [setAgentSId]);
+  }, [setAgentId]);
 
   const createWebhook = (provider: WebhookProvider | null) => {
     setSheetMode({ type: "create", provider });

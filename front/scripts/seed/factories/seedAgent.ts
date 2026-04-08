@@ -78,7 +78,7 @@ export async function seedAgent(
     for (const skill of skills) {
       await skill.addToAgent(auth, agentConfiguration);
       logger.info(
-        { skillSId: skill.sId, agentSId: agentConfiguration.sId },
+        { skillSId: skill.sId, agentId: agentConfiguration.sId },
         "Skill linked to agent"
       );
     }

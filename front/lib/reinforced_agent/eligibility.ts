@@ -66,10 +66,10 @@ export function filterEligibleAgents(
   }
 
   const eligible = candidates.filter((agent) => {
-    if (signals.agentSIdsWithRecentPendingSuggestions.has(agent.sId)) {
+    if (signals.agentIdsWithRecentPendingSuggestions.has(agent.sId)) {
       return false;
     }
-    const feedback = signals.feedbackCountByAgentSId.get(agent.sId) ?? 0;
+    const feedback = signals.feedbackCountByAgentId.get(agent.sId) ?? 0;
     const humanConvCount =
       signals.humanConversationSIdsByAgent.get(agent.sId)?.length ?? 0;
     return feedback > 0 || humanConvCount > 0;

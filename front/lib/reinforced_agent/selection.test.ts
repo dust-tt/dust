@@ -47,11 +47,11 @@ const DEFAULT_PIPELINE_OPTIONS: SelectionOptions = {
 
 async function createConversationWithUpdatedAt(
   auth: Authenticator,
-  agentSId: string,
+  agentId: string,
   updatedAt: Date
 ) {
   const conv = await ConversationFactory.create(auth, {
-    agentConfigurationId: agentSId,
+    agentConfigurationId: agentId,
     messagesCreatedAt: [updatedAt],
   });
   await ConversationFactory.setUpdatedAtForTest(auth, conv.id, updatedAt);

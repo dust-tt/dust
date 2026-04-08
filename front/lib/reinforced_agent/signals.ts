@@ -6,9 +6,9 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { estypes } from "@elastic/elasticsearch";
 
 export interface ReinforcementAutoTrackSignals {
-  feedbackCountByAgentSId: Map<string, number>;
+  feedbackCountByAgentId: Map<string, number>;
   humanConversationSIdsByAgent: Map<string, string[]>;
-  agentSIdsWithRecentPendingSuggestions: Set<string>;
+  agentIdsWithRecentPendingSuggestions: Set<string>;
 }
 
 type ReinforcementSignalAggs = {
@@ -34,17 +34,17 @@ type ReinforcementSignalAggs = {
  */
 export async function fetchDistinctUsersAndToolErrorCounts(
   workspaceId: string,
-  agentSIds: string[],
+  agentIds: string[],
   lookbackWindowDays: number
 ): Promise<{
-  distinctUserCountByAgentSId: Map<string, number>;
-  toolErrorCountByAgentSId: Map<string, number>;
+  distinctUserCountByAgentId: Map<string, number>;
+  toolErrorCountByAgentId: Map<string, number>;
 }> {
   const query: estypes.QueryDslQueryContainer = {
     bool: {
       filter: [
         { term: { workspace_id: workspaceId } },
-        { terms: { agent_id: agentSIds } },
+        { terms: { agent_id: agentIds } },
         {
           range: {
             timestamp: { gte: `now-${lookbackWindowDays}d/d` },
@@ -57,7 +57,7 @@ export async function fetchDistinctUsersAndToolErrorCounts(
   const aggregations: Record<string, estypes.AggregationsAggregationContainer> =
     {
       by_agent: {
-        terms: { field: "agent_id", size: agentSIds.length + 1 },
+        terms: { field: "agent_id", size: agentIds.length + 1 },
         aggs: {
           user_count: { cardinality: { field: "user_id" } },
           tool_errors: {
@@ -95,17 +95,14 @@ export async function fetchDistinctUsersAndToolErrorCounts(
     throw new Error(`Analytics signals query failed: ${result.error.message}`);
   }
 
-  const distinctUserCountByAgentSId = new Map<string, number>();
-  const toolErrorCountByAgentSId = new Map<string, number>();
+  const distinctUserCountByAgentId = new Map<string, number>();
+  const toolErrorCountByAgentId = new Map<string, number>();
 
   const buckets = result.value.aggregations?.by_agent?.buckets;
   if (buckets && Array.isArray(buckets)) {
     for (const bucket of buckets) {
-      distinctUserCountByAgentSId.set(
-        bucket.key,
-        bucket.user_count?.value ?? 0
-      );
-      toolErrorCountByAgentSId.set(
+      distinctUserCountByAgentId.set(bucket.key, bucket.user_count?.value ?? 0);
+      toolErrorCountByAgentId.set(
         bucket.key,
         bucket.tool_errors?.errored?.back_to_root?.distinct_conversations
           ?.value ?? 0
@@ -113,26 +110,26 @@ export async function fetchDistinctUsersAndToolErrorCounts(
     }
   }
 
-  return { distinctUserCountByAgentSId, toolErrorCountByAgentSId };
+  return { distinctUserCountByAgentId, toolErrorCountByAgentId };
 }
 
 export async function fetchReinforcementAutoTrackSignals(
   auth: Authenticator,
   {
-    agentSIds,
+    agentIds,
     lookbackWindowDays,
     pendingSuggestionMaxAgeDays,
   }: {
-    agentSIds: string[];
+    agentIds: string[];
     lookbackWindowDays: number;
     pendingSuggestionMaxAgeDays: number;
   }
 ): Promise<ReinforcementAutoTrackSignals> {
-  if (agentSIds.length === 0) {
+  if (agentIds.length === 0) {
     return {
-      feedbackCountByAgentSId: new Map(),
+      feedbackCountByAgentId: new Map(),
       humanConversationSIdsByAgent: new Map(),
-      agentSIdsWithRecentPendingSuggestions: new Set(),
+      agentIdsWithRecentPendingSuggestions: new Set(),
     };
   }
 
@@ -148,31 +145,31 @@ export async function fetchReinforcementAutoTrackSignals(
     await Promise.all([
       AgentMessageFeedbackResource.getFeedbackCountForAssistants(
         auth,
-        agentSIds,
+        agentIds,
         lookbackWindowDays
       ),
       ConversationResource.getConversationSIdsByAgent(auth, {
-        agentSIds,
+        agentIds,
         cutoffDate,
         excludeHumanOutOfTheLoop: true,
       }),
-      AgentSuggestionResource.listByAgentConfigurationIds(auth, agentSIds, {
+      AgentSuggestionResource.listByAgentConfigurationIds(auth, agentIds, {
         states: ["pending"],
         sources: ["reinforcement"],
         createdAfter: pendingSuggestionCutoff,
       }),
     ]);
 
-  const feedbackCountByAgentSId = new Map<string, number>();
+  const feedbackCountByAgentId = new Map<string, number>();
   for (const row of feedbackCounts) {
-    const prev = feedbackCountByAgentSId.get(row.agentConfigurationId) ?? 0;
-    feedbackCountByAgentSId.set(row.agentConfigurationId, prev + row.count);
+    const prev = feedbackCountByAgentId.get(row.agentConfigurationId) ?? 0;
+    feedbackCountByAgentId.set(row.agentConfigurationId, prev + row.count);
   }
 
   return {
-    feedbackCountByAgentSId,
+    feedbackCountByAgentId,
     humanConversationSIdsByAgent: humanConvSIdsByAgent,
-    agentSIdsWithRecentPendingSuggestions: new Set(
+    agentIdsWithRecentPendingSuggestions: new Set(
       pendingSuggestions.map((s) => s.agentConfigurationSId)
     ),
   };

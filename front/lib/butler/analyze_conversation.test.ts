@@ -360,7 +360,7 @@ describe("analyzeConversation", () => {
     expect(suggestions).toHaveLength(1);
     expect(suggestions[0].suggestionType).toBe("call_agent");
     expect(suggestions[0].metadata).toEqual({
-      agentSId: "agent-1",
+      agentId: "agent-1",
       agentName: "CodeHelper",
       prompt: "Can you help me debug this issue?",
       rationale: "This agent can help debug the issue.",

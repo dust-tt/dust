@@ -728,18 +728,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static async getConversationSIdsByAgent(
     auth: Authenticator,
     {
-      agentSIds,
+      agentIds,
       cutoffDate,
       excludeHumanOutOfTheLoop = false,
     }: {
-      agentSIds: string[];
+      agentIds: string[];
       cutoffDate: Date;
       excludeHumanOutOfTheLoop?: boolean;
     }
   ): Promise<Map<string, string[]>> {
-    const result = new Map<string, string[]>(agentSIds.map((sId) => [sId, []]));
+    const result = new Map<string, string[]>(agentIds.map((sId) => [sId, []]));
 
-    if (agentSIds.length === 0) {
+    if (agentIds.length === 0) {
       return result;
     }
 
@@ -749,7 +749,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       attributes: ["agentConfigurationId"],
       where: {
         workspaceId,
-        agentConfigurationId: { [Op.in]: agentSIds },
+        agentConfigurationId: { [Op.in]: agentIds },
         createdAt: { [Op.gte]: cutoffDate },
       },
       include: [
@@ -789,11 +789,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       if (!convSId) {
         continue;
       }
-      const agentSId = p.agentConfigurationId;
-      if (!agentToConvSIds.has(agentSId)) {
-        agentToConvSIds.set(agentSId, new Set());
+      const agentId = p.agentConfigurationId;
+      if (!agentToConvSIds.has(agentId)) {
+        agentToConvSIds.set(agentId, new Set());
       }
-      agentToConvSIds.get(agentSId)!.add(convSId);
+      agentToConvSIds.get(agentId)!.add(convSId);
     }
 
     let qualifyingConvSIds: Set<string>;
@@ -838,12 +838,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     }
 
-    for (const [agentSId, convSIds] of agentToConvSIds) {
+    for (const [agentId, convSIds] of agentToConvSIds) {
       const qualifying = [...convSIds].filter((sId) =>
         qualifyingConvSIds.has(sId)
       );
       if (qualifying.length > 0) {
-        result.set(agentSId, qualifying);
+        result.set(agentId, qualifying);
       }
     }
 
