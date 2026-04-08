@@ -47,10 +47,23 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
       throw new Error(r.error.message);
     }
 
+    // When the official Notion MCP is present, hide the internal Notion server.
+    const hasOfficialNotion = r.value.some(
+      (v) => v.serverType === "remote" && v.server.name === "Notion"
+    );
+
     const mcpServerViews = r.value
       .filter(
         (mcpServerView) =>
           !mcpServerViewIdsFromAgentConfiguration.includes(mcpServerView.sId)
+      )
+      .filter(
+        (mcpServerView) =>
+          !(
+            hasOfficialNotion &&
+            mcpServerView.serverType === "internal" &&
+            mcpServerView.server.name === "notion"
+          )
       )
       .filter(
         (mcpServerView) => getMCPServerRequirements(mcpServerView).noRequirement
