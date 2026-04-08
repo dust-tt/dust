@@ -203,7 +203,7 @@ const InputBarContainer = ({
     useContext(InputBarContext);
   const [hasUserMention, setHasUserMention] = useState(false);
 
-  const agentsBySId = useMemo(
+  const agentsById = useMemo(
     () => new Map(allAgents.map((a) => [a.sId, a])),
     [allAgents]
   );
@@ -409,7 +409,7 @@ const InputBarContainer = ({
 
   onFirstAgentMentionPasteRef.current = singleAgentInput
     ? (agentId: string) => {
-        const agent = agentsBySId.get(agentId);
+        const agent = agentsById.get(agentId);
         if (agent) {
           setSelectedSingleAgent(toRichAgentMentionType(agent));
         }
@@ -519,7 +519,7 @@ const InputBarContainer = ({
             break;
           case "mention": {
             if (singleAgentInput) {
-              const agent = agentsBySId.get(message.id);
+              const agent = agentsById.get(message.id);
               if (agent) {
                 handleSingleAgentSelect(toRichAgentMentionType(agent));
               }
