@@ -41,7 +41,7 @@ export interface GlobalAgentFeedbackItem {
   isConversationShared: boolean;
   workspaceId: string;
   workspaceName: string;
-  conversationSId: string | null;
+  conversationId: string | null;
   messageSId: string | null;
 }
 
@@ -163,7 +163,7 @@ async function handler(
       isConversationShared: row.isConversationShared,
       workspaceId: workspace?.sId ?? "unknown",
       workspaceName: workspace?.name ?? "Unknown",
-      conversationSId: conversationById.get(row.conversationId) ?? null,
+      conversationId: conversationById.get(row.conversationId) ?? null,
       messageSId: messageSIdByAgentMessageId.get(row.agentMessageId) ?? null,
     };
   });

@@ -8,6 +8,8 @@ import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PostSendOnboardingResponseBody = {
+  conversationId: string | null;
+  // TODO(2026-04-08 aubin): field kept for retro-compatibility over older front-end, to remove once.
   conversationSId: string | null;
 };
 
@@ -47,7 +49,10 @@ async function handler(
     return apiError(req, res, result.error);
   }
 
-  return res.status(200).json({ conversationSId: result.value });
+  return res.status(200).json({
+    conversationId: result.value,
+    conversationSId: result.value,
+  });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
