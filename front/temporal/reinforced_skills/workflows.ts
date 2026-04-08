@@ -60,6 +60,20 @@ const { checkBatchStatusActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
 
+const {
+  startSkillConversationAnalysisBatchActivity,
+  startSkillAggregationBatchActivity,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "30 minutes",
+});
+
+const {
+  processSkillConversationAnalysisBatchResultActivity,
+  processSkillAggregationBatchResultActivity,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "30 minutes",
+});
+
 // runToolActivity is re-exported from the agent loop so the reinforced skills
 // worker registers it. We proxy it with retry for durability.
 const { runToolActivity: runRetryableToolActivity } = proxyActivities<
@@ -204,6 +218,62 @@ async function runMultiStepStreamingLoop(
 }
 
 /**
+ * Multi-step batch aggregation for a single skill.
+ */
+async function aggregateSkillWithMultiStepBatch({
+  workspaceId,
+  skillId,
+  disableNotifications,
+}: {
+  workspaceId: string;
+  skillId: string;
+  disableNotifications: boolean;
+}): Promise<void> {
+  let reinforcementConversationId: string | undefined;
+  let totalSuggestionsCreated = 0;
+
+  for (let step = 0; step < MAX_REINFORCED_ANALYSIS_STEPS; step++) {
+    const batchResult = await startSkillAggregationBatchActivity({
+      workspaceId,
+      skillId,
+      existingReinforcementConversationId: reinforcementConversationId,
+    });
+
+    if (!batchResult) {
+      break;
+    }
+
+    await waitForBatch({ workspaceId, batchId: batchResult.batchId });
+
+    const result = await processSkillAggregationBatchResultActivity({
+      workspaceId,
+      skillId,
+      batchId: batchResult.batchId,
+      reinforcementConversationIds: batchResult.reinforcementConversationIds,
+    });
+
+    totalSuggestionsCreated += result.suggestionsCreated;
+
+    if (!result.needsContinuation) {
+      break;
+    }
+
+    reinforcementConversationId = result.reinforcementConversationId;
+
+    if (result.toolActionInfo) {
+      await executeReinforcedToolActions(result.toolActionInfo);
+    }
+  }
+
+  await finalizeSkillAggregationActivity({
+    workspaceId,
+    skillId,
+    suggestionsCreated: totalSuggestionsCreated,
+    disableNotifications,
+  });
+}
+
+/**
  * Workspace-level workflow (one per workspace, cron-scheduled).
  * When `skipDelay` is false (cron runs), sleeps a deterministic delay derived
  * from the workspace ID to spread load across the midnight-2am window.
@@ -257,59 +327,132 @@ export async function reinforcedSkillsWorkspaceWorkflow({
     return;
   }
 
-  // Phase 2: Analyze conversations concurrently via streaming multi-step.
-  await concurrentExecutor(
-    conversationsWithSkills,
-    ({ conversationSId, skillSIds }) =>
-      runMultiStepStreamingLoop((reinforcementConversationId) =>
-        analyzeConversationStepActivity({
+  if (useBatchMode) {
+    // Phase 2: Batch-analyze conversations with multi-step loop.
+    let pendingConversations = conversationsWithSkills;
+    let reinforcementConversationMap: Record<string, string> | undefined;
+    let step = 0;
+
+    while (
+      step < MAX_REINFORCED_ANALYSIS_STEPS &&
+      pendingConversations.length > 0
+    ) {
+      const batchResult = await startSkillConversationAnalysisBatchActivity({
+        workspaceId,
+        conversationsWithSkills: pendingConversations,
+        existingReinforcementConversationMap: reinforcementConversationMap,
+      });
+
+      if (!batchResult) {
+        break;
+      }
+
+      await waitForBatch({ workspaceId, batchId: batchResult.batchId });
+
+      reinforcementConversationMap = batchResult.reinforcementConversationMap;
+
+      const continuations =
+        await processSkillConversationAnalysisBatchResultActivity({
           workspaceId,
-          conversationId: conversationSId,
-          skillSIds,
-          reinforcementConversationId,
-        })
-      ),
-    { concurrency: CONVERSATION_ANALYSIS_CONCURRENCY }
-  );
+          batchId: batchResult.batchId,
+          reinforcementConversationMap,
+        });
 
-  // Phase 3: Find skills with synthetic suggestions.
-  const skillIdsWithSuggestions =
-    await getSkillsWithSyntheticSuggestionsActivity({
-      workspaceId,
-      skillId,
-    });
+      if (continuations.length === 0) {
+        break;
+      }
 
-  if (skillIdsWithSuggestions.length === 0) {
-    return;
-  }
+      // Execute exploratory tools via the agent loop's retryable tool activity.
+      for (const c of continuations) {
+        if (c.toolActionInfo) {
+          await executeReinforcedToolActions(c.toolActionInfo);
+        }
+      }
 
-  // Phase 4: Aggregate per-skill concurrently.
-  const aggregationResults = await concurrentExecutor(
-    skillIdsWithSuggestions,
-    async (currentSkillId) => {
-      const { suggestionsCreated } = await runMultiStepStreamingLoop(
-        (reinforcementConversationId) =>
-          aggregateSuggestionsForSkillStepActivity({
+      // Next iteration will re-submit only the continuing conversations.
+      const continuingIds = new Set(
+        continuations.map((c) => c.analysedConversationId)
+      );
+      pendingConversations = pendingConversations.filter((c) =>
+        continuingIds.has(c.conversationSId)
+      );
+      step++;
+    }
+
+    // Phase 3: Find skills with synthetic suggestions.
+    const skillIdsWithSuggestions =
+      await getSkillsWithSyntheticSuggestionsActivity({
+        workspaceId,
+        skillId,
+      });
+
+    if (skillIdsWithSuggestions.length === 0) {
+      return;
+    }
+
+    // Phase 4-5: Per-skill batch aggregation + finalize.
+    for (const currentSkillId of skillIdsWithSuggestions) {
+      await aggregateSkillWithMultiStepBatch({
+        workspaceId,
+        skillId: currentSkillId,
+        disableNotifications,
+      });
+    }
+  } else {
+    // Phase 2: Analyze conversations concurrently via streaming multi-step.
+    await concurrentExecutor(
+      conversationsWithSkills,
+      ({ conversationSId, skillSIds }) =>
+        runMultiStepStreamingLoop((reinforcementConversationId) =>
+          analyzeConversationStepActivity({
             workspaceId,
-            skillId: currentSkillId,
+            conversationId: conversationSId,
+            skillSIds,
             reinforcementConversationId,
           })
-      );
-      return { skillId: currentSkillId, suggestionsCreated };
-    },
-    { concurrency: SKILL_AGGREGATION_CONCURRENCY }
-  );
+        ),
+      { concurrency: CONVERSATION_ANALYSIS_CONCURRENCY }
+    );
 
-  // Phase 5: Finalize per skill.
-  for (const {
-    skillId: currentSkillId,
-    suggestionsCreated,
-  } of aggregationResults) {
-    await finalizeSkillAggregationActivity({
-      workspaceId,
+    // Phase 3: Find skills with synthetic suggestions.
+    const skillIdsWithSuggestions =
+      await getSkillsWithSyntheticSuggestionsActivity({
+        workspaceId,
+        skillId,
+      });
+
+    if (skillIdsWithSuggestions.length === 0) {
+      return;
+    }
+
+    // Phase 4: Aggregate per-skill concurrently.
+    const aggregationResults = await concurrentExecutor(
+      skillIdsWithSuggestions,
+      async (currentSkillId) => {
+        const { suggestionsCreated } = await runMultiStepStreamingLoop(
+          (reinforcementConversationId) =>
+            aggregateSuggestionsForSkillStepActivity({
+              workspaceId,
+              skillId: currentSkillId,
+              reinforcementConversationId,
+            })
+        );
+        return { skillId: currentSkillId, suggestionsCreated };
+      },
+      { concurrency: SKILL_AGGREGATION_CONCURRENCY }
+    );
+
+    // Phase 5: Finalize per skill.
+    for (const {
       skillId: currentSkillId,
       suggestionsCreated,
-      disableNotifications,
-    });
+    } of aggregationResults) {
+      await finalizeSkillAggregationActivity({
+        workspaceId,
+        skillId: currentSkillId,
+        suggestionsCreated,
+        disableNotifications,
+      });
+    }
   }
 }

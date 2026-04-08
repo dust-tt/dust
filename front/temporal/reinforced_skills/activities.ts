@@ -1,7 +1,12 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
-import { storeLlmResult } from "@app/lib/api/llm/batch_llm";
+import type { LlmConversationOptions } from "@app/lib/api/llm/batch_llm";
+import {
+  downloadBatchResultFromLlm,
+  sendBatchCallToLlm,
+  storeLlmResult,
+} from "@app/lib/api/llm/batch_llm";
 import type { BatchStatus } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
@@ -13,12 +18,14 @@ import {
 } from "@app/lib/reinforced_agent/tool_execution";
 import { hasReinforcementEnabled } from "@app/lib/reinforced_agent/workspace_check";
 import {
+  buildSkillAggregationBatchMap,
   buildSkillAggregationSystemPrompt,
   loadSkillAggregationContext,
 } from "@app/lib/reinforced_skills/aggregate_suggestions";
 import {
   buildSkillAnalysisPrompt,
   buildSkillAnalysisSystemPrompt,
+  buildSkillConversationAnalysisBatchMap,
 } from "@app/lib/reinforced_skills/analyze_conversation";
 import {
   DEFAULT_MAX_CONVERSATIONS_PER_RUN,
@@ -28,9 +35,11 @@ import {
   buildReinforcedSkillsSpecifications,
   classifySkillToolCalls,
   createReinforcedSkillsConversation,
+  getReinforcedSkillsDefaultOptions,
   getReinforcedSkillsLLM,
   processSkillReinforcedEvents,
   REINFORCEMENT_SKILLS_AGENT_ID,
+  reinforcedSkillsConversationTitle,
 } from "@app/lib/reinforced_skills/run_reinforced_analysis";
 import { findConversationsWithSkills } from "@app/lib/reinforced_skills/selection";
 import type { ReinforcedSkillsOperationType } from "@app/lib/reinforced_skills/types";
@@ -498,4 +507,484 @@ export async function checkBatchStatusActivity({
   }
 
   return llm.getBatchStatus(batchId);
+}
+
+export interface ConversationContinuationInfo {
+  analysedConversationId: string;
+  reinforcementConversationId: string;
+  toolActionInfo?: ReinforcedToolActionInfo;
+}
+
+/**
+ * Build analysis prompts for skill conversations and submit as a batch.
+ * For first-time conversations, builds prompts via buildSkillConversationAnalysisBatchMap.
+ * For continuation conversations, reuses existing reinforcement conversations.
+ */
+export async function startSkillConversationAnalysisBatchActivity({
+  workspaceId,
+  conversationsWithSkills,
+  existingReinforcementConversationMap,
+}: {
+  workspaceId: string;
+  conversationsWithSkills: { conversationSId: string; skillSIds: string[] }[];
+  existingReinforcementConversationMap?: Record<string, string>;
+}): Promise<{
+  batchId: string;
+  reinforcementConversationMap: Record<string, string>;
+} | null> {
+  const auth = await getAuthForWorkspace(workspaceId);
+
+  const llm = await getReinforcedSkillsLLM(
+    auth,
+    "reinforced_skills_analyze_conversation"
+  );
+  if (!llm) {
+    logger.warn(
+      { workspaceId },
+      "ReinforcedSkills: no LLM available for conversation analysis batch"
+    );
+    return null;
+  }
+
+  // Build the analysis prompt for first-time conversations.
+  const firstTimeConversations = conversationsWithSkills.filter(
+    (c) => !existingReinforcementConversationMap?.[c.conversationSId]
+  );
+
+  let batchMap: Map<string, LLMStreamParameters> | null = null;
+  if (firstTimeConversations.length > 0) {
+    batchMap = await buildSkillConversationAnalysisBatchMap(
+      auth,
+      firstTimeConversations
+    );
+  }
+
+  const systemPrompt = buildSkillAnalysisSystemPrompt();
+  const specifications = buildReinforcedSkillsSpecifications();
+
+  const batchConversations: LlmConversationOptions[] = [];
+  const orderedAnalysedConversationIds: string[] = [];
+
+  for (const { conversationSId } of conversationsWithSkills) {
+    const existingReinforcementConvId =
+      existingReinforcementConversationMap?.[conversationSId];
+
+    if (existingReinforcementConvId) {
+      // Continuation: reuse existing reinforcement conversation.
+      batchConversations.push({
+        newMessages: [],
+        existingConversationId: existingReinforcementConvId,
+        prompt: systemPrompt,
+        specifications,
+        userContextOrigin: "reinforcement",
+      });
+      orderedAnalysedConversationIds.push(conversationSId);
+    } else {
+      // First time: create a new reinforcement conversation with the analysis prompt.
+      const llmParams = batchMap?.get(conversationSId);
+      if (!llmParams) {
+        continue;
+      }
+      const { conversation, ...llmParamsWithoutConversation } = llmParams;
+      batchConversations.push({
+        newMessages: conversation.messages,
+        title: reinforcedSkillsConversationTitle(
+          "reinforced_skills_analyze_conversation",
+          conversationSId
+        ),
+        ...llmParamsWithoutConversation,
+        ...getReinforcedSkillsDefaultOptions(
+          "reinforced_skills_analyze_conversation",
+          conversationSId
+        ),
+      });
+      orderedAnalysedConversationIds.push(conversationSId);
+    }
+  }
+
+  if (batchConversations.length === 0) {
+    return null;
+  }
+
+  const result = await sendBatchCallToLlm(auth, llm, batchConversations);
+  if (result.isErr()) {
+    throw result.error;
+  }
+
+  // Build the map of analysed conversation ID -> reinforcement conversation ID.
+  const reinforcementConversationMap: Record<string, string> = {
+    ...(existingReinforcementConversationMap ?? {}),
+  };
+  for (let i = 0; i < orderedAnalysedConversationIds.length; i++) {
+    reinforcementConversationMap[orderedAnalysedConversationIds[i]] =
+      result.value.conversationIds[i];
+  }
+
+  logger.info(
+    {
+      workspaceId,
+      batchId: result.value.batchId,
+      conversationCount: batchConversations.length,
+      continuationCount: Object.keys(
+        existingReinforcementConversationMap ?? {}
+      ).length,
+    },
+    "ReinforcedSkills: started conversation analysis batch"
+  );
+
+  return {
+    batchId: result.value.batchId,
+    reinforcementConversationMap,
+  };
+}
+
+/**
+ * Download batch results for skill conversation analysis and create suggestions.
+ * For conversations where the LLM called only terminal tools, creates suggestions.
+ * For conversations where the LLM called exploratory tools, returns continuation info.
+ */
+export async function processSkillConversationAnalysisBatchResultActivity({
+  workspaceId,
+  batchId,
+  reinforcementConversationMap,
+}: {
+  workspaceId: string;
+  batchId: string;
+  reinforcementConversationMap: Record<string, string>;
+}): Promise<ConversationContinuationInfo[]> {
+  const auth = await getAuthForWorkspace(workspaceId);
+
+  const llm = await getReinforcedSkillsLLM(
+    auth,
+    "reinforced_skills_analyze_conversation"
+  );
+  if (!llm) {
+    return [];
+  }
+
+  // Invert the map: reinforcementConvId -> analysedConvId.
+  const reinforcementToAnalysed = new Map<string, string>();
+  const reinforcementConversationIds: string[] = [];
+  for (const [analysedId, reinforcementId] of Object.entries(
+    reinforcementConversationMap
+  )) {
+    reinforcementToAnalysed.set(reinforcementId, analysedId);
+    reinforcementConversationIds.push(reinforcementId);
+  }
+
+  // Download results and store agent messages in reinforcement conversations.
+  const { events: batchEvents, storedResultInfo } =
+    await downloadBatchResultFromLlm(
+      auth,
+      llm,
+      batchId,
+      reinforcementConversationIds,
+      REINFORCEMENT_SKILLS_AGENT_ID
+    );
+
+  // Resolve analysed conversations for FK storage.
+  const analysedConversationIds = Object.keys(reinforcementConversationMap);
+  const analysedConversations = await ConversationResource.fetchByIds(
+    auth,
+    analysedConversationIds
+  );
+  const conversationById = new Map(
+    analysedConversations.map((c) => [c.sId, c])
+  );
+
+  let totalCreated = 0;
+  const continuations: ConversationContinuationInfo[] = [];
+
+  for (const [reinforcementConvId, events] of batchEvents) {
+    const analysedConvId =
+      reinforcementToAnalysed.get(reinforcementConvId) ?? reinforcementConvId;
+
+    const { exploratoryToolCalls, terminalToolCalls } =
+      classifySkillToolCalls(events);
+
+    // If terminal tools were called, process suggestions.
+    if (terminalToolCalls.length > 0 || exploratoryToolCalls.length === 0) {
+      const result = await processSkillReinforcedEvents({
+        auth,
+        events,
+        source: "synthetic",
+        operationType: "reinforced_skills_analyze_conversation",
+        contextId: analysedConvId,
+        conversation: conversationById.get(analysedConvId),
+      });
+      totalCreated += result.suggestionsCreated;
+
+      // Store results for all terminal tool calls so the conversation is complete.
+      const storedInfo = storedResultInfo.get(reinforcementConvId);
+      if (storedInfo) {
+        await storeTerminalToolCallResults(auth, {
+          successfulToolCalls:
+            result.successfulToolCalls as unknown as Parameters<
+              typeof storeTerminalToolCallResults
+            >[1]["successfulToolCalls"],
+          failedToolCalls: result.failedToolCalls as unknown as Parameters<
+            typeof storeTerminalToolCallResults
+          >[1]["failedToolCalls"],
+          agentMessageModelId: storedInfo.agentMessageModelId,
+        });
+
+        // If any failed, add to continuations so the LLM can retry.
+        if (result.failedToolCalls.length > 0) {
+          continuations.push({
+            analysedConversationId: analysedConvId,
+            reinforcementConversationId: reinforcementConvId,
+          });
+        }
+      }
+    } else {
+      // Only exploratory tools — prepare actions for the workflow to execute.
+      const storedInfo = storedResultInfo.get(reinforcementConvId);
+      if (storedInfo) {
+        const toolActionInfo = await prepareReinforcedToolActions(auth, {
+          exploratoryToolCalls:
+            exploratoryToolCalls as unknown as Parameters<
+              typeof prepareReinforcedToolActions
+            >[1]["exploratoryToolCalls"],
+          agentMessageModelId: storedInfo.agentMessageModelId,
+          agentMessageId: storedInfo.agentMessageSId,
+          userMessageId: storedInfo.userMessageSId,
+          conversationId: reinforcementConvId,
+        });
+
+        continuations.push({
+          analysedConversationId: analysedConvId,
+          reinforcementConversationId: reinforcementConvId,
+          toolActionInfo,
+        });
+      }
+    }
+  }
+
+  logger.info(
+    {
+      batchId,
+      conversationCount: batchEvents.size,
+      suggestionsCreated: totalCreated,
+      continuationCount: continuations.length,
+    },
+    "ReinforcedSkills: processed conversation analysis batch results"
+  );
+
+  return continuations;
+}
+
+/**
+ * Build aggregation prompt for a skill and submit as a batch.
+ * Returns the batch ID and reinforcement conversation IDs,
+ * or null if there are no suggestions to aggregate.
+ */
+export async function startSkillAggregationBatchActivity({
+  workspaceId,
+  skillId,
+  existingReinforcementConversationId,
+}: {
+  workspaceId: string;
+  skillId: string;
+  existingReinforcementConversationId?: string;
+}): Promise<{
+  batchId: string;
+  reinforcementConversationIds: string[];
+} | null> {
+  const auth = await getAuthForWorkspace(workspaceId);
+
+  const llm = await getReinforcedSkillsLLM(
+    auth,
+    "reinforced_skills_aggregate_suggestions"
+  );
+  if (!llm) {
+    logger.warn(
+      { workspaceId, skillId },
+      "ReinforcedSkills: no LLM available for aggregation batch"
+    );
+    return null;
+  }
+
+  const systemPrompt = buildSkillAggregationSystemPrompt();
+  const specifications = buildReinforcedSkillsSpecifications();
+
+  let batchConversations: LlmConversationOptions[];
+
+  if (existingReinforcementConversationId) {
+    // Continuation: reuse existing reinforcement conversation.
+    batchConversations = [
+      {
+        newMessages: [],
+        existingConversationId: existingReinforcementConversationId,
+        prompt: systemPrompt,
+        specifications,
+        userContextOrigin: "reinforcement",
+      },
+    ];
+  } else {
+    // First time: build the aggregation prompt.
+    const batchMap = await buildSkillAggregationBatchMap(auth, skillId);
+    if (!batchMap) {
+      return null;
+    }
+
+    batchConversations = [];
+    for (const [, llmParams] of batchMap) {
+      const { conversation, ...llmParamsWithoutConversation } = llmParams;
+      batchConversations.push({
+        newMessages: conversation.messages,
+        title: reinforcedSkillsConversationTitle(
+          "reinforced_skills_aggregate_suggestions",
+          skillId
+        ),
+        ...llmParamsWithoutConversation,
+        ...getReinforcedSkillsDefaultOptions(
+          "reinforced_skills_aggregate_suggestions",
+          skillId
+        ),
+      });
+    }
+  }
+
+  const sendResult = await sendBatchCallToLlm(auth, llm, batchConversations);
+  if (sendResult.isErr()) {
+    throw sendResult.error;
+  }
+  const { batchId, conversationIds } = sendResult.value;
+
+  logger.info(
+    {
+      skillId,
+      workspaceId,
+      batchId,
+    },
+    "ReinforcedSkills: started aggregation batch"
+  );
+
+  return { batchId, reinforcementConversationIds: conversationIds };
+}
+
+/**
+ * Download aggregation batch results and process tool calls.
+ * Returns `needsContinuation: true` with `toolActionInfo` when the LLM called
+ * exploratory tools (or terminal tools failed). Returns `needsContinuation: false`
+ * when terminal tools succeeded.
+ */
+export async function processSkillAggregationBatchResultActivity({
+  workspaceId,
+  skillId,
+  batchId,
+  reinforcementConversationIds,
+}: {
+  workspaceId: string;
+  skillId: string;
+  batchId: string;
+  reinforcementConversationIds: string[];
+}): Promise<{
+  needsContinuation: boolean;
+  suggestionsCreated: number;
+  reinforcementConversationId?: string;
+  toolActionInfo?: ReinforcedToolActionInfo;
+}> {
+  const auth = await getAuthForWorkspace(workspaceId);
+
+  const llm = await getReinforcedSkillsLLM(
+    auth,
+    "reinforced_skills_aggregate_suggestions"
+  );
+  if (!llm) {
+    return { needsContinuation: false, suggestionsCreated: 0 };
+  }
+
+  // Download results and store agent messages in reinforcement conversations.
+  const { events: batchEvents, storedResultInfo } =
+    await downloadBatchResultFromLlm(
+      auth,
+      llm,
+      batchId,
+      reinforcementConversationIds,
+      REINFORCEMENT_SKILLS_AGENT_ID
+    );
+
+  // The aggregation batch has a single entry — get the first result.
+  const firstConvId = reinforcementConversationIds[0];
+  const events = batchEvents.get(firstConvId);
+
+  if (!events) {
+    return { needsContinuation: false, suggestionsCreated: 0 };
+  }
+
+  const { exploratoryToolCalls, terminalToolCalls } =
+    classifySkillToolCalls(events);
+
+  // If terminal tools were called, process suggestions.
+  if (terminalToolCalls.length > 0 || exploratoryToolCalls.length === 0) {
+    const result = await processSkillReinforcedEvents({
+      auth,
+      events,
+      source: "reinforcement",
+      operationType: "reinforced_skills_aggregate_suggestions",
+      contextId: skillId,
+    });
+
+    // Store results for all terminal tool calls.
+    const storedInfo = storedResultInfo.get(firstConvId);
+    if (storedInfo) {
+      await storeTerminalToolCallResults(auth, {
+        successfulToolCalls:
+          result.successfulToolCalls as unknown as Parameters<
+            typeof storeTerminalToolCallResults
+          >[1]["successfulToolCalls"],
+        failedToolCalls: result.failedToolCalls as unknown as Parameters<
+          typeof storeTerminalToolCallResults
+        >[1]["failedToolCalls"],
+        agentMessageModelId: storedInfo.agentMessageModelId,
+      });
+
+      // If any failed, continue the loop for retry.
+      if (result.failedToolCalls.length > 0) {
+        return {
+          needsContinuation: true,
+          suggestionsCreated: result.suggestionsCreated,
+          reinforcementConversationId: firstConvId,
+        };
+      }
+    }
+
+    logger.info(
+      {
+        skillId,
+        batchId,
+        suggestionsCreated: result.suggestionsCreated,
+      },
+      "ReinforcedSkills: processed aggregation batch results"
+    );
+
+    return {
+      needsContinuation: false,
+      suggestionsCreated: result.suggestionsCreated,
+    };
+  }
+
+  // Only exploratory tools — prepare actions for the workflow to execute.
+  const storedInfo = storedResultInfo.get(firstConvId);
+  if (!storedInfo) {
+    return { needsContinuation: false, suggestionsCreated: 0 };
+  }
+
+  const toolActionInfo = await prepareReinforcedToolActions(auth, {
+    exploratoryToolCalls: exploratoryToolCalls as unknown as Parameters<
+      typeof prepareReinforcedToolActions
+    >[1]["exploratoryToolCalls"],
+    agentMessageModelId: storedInfo.agentMessageModelId,
+    agentMessageId: storedInfo.agentMessageSId,
+    userMessageId: storedInfo.userMessageSId,
+    conversationId: firstConvId,
+  });
+
+  return {
+    needsContinuation: true,
+    suggestionsCreated: 0,
+    reinforcementConversationId: firstConvId,
+    toolActionInfo,
+  };
 }
