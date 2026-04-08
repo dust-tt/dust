@@ -313,7 +313,9 @@ export const buildEditorExtensions = ({
         if (node.type.name !== "paragraph") {
           return "";
         }
-        return "Ask an @agent a question, or get some @help";
+        return singleAgentInputEnabled
+          ? "Ask a question"
+          : "Ask an @agent a question, or get some @help";
       },
       emptyNodeClass:
         "first:before:text-gray-400 first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
