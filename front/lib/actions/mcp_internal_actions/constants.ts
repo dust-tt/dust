@@ -1091,10 +1091,8 @@ export const INTERNAL_MCP_SERVERS = {
     id: 1028,
     availability: "auto",
     allowMultipleInstances: false,
-    isPreview: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("ask_user_question_tool");
-    },
+    isPreview: false,
+    isRestricted: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
