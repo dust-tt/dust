@@ -6,7 +6,8 @@
       "data_collection_permissions": {
         "required": [
           "personallyIdentifyingInfo",
-          "authenticationInfo"
+          "authenticationInfo",
+          "websiteContent"
         ],
         "optional": [
           "technicalAndInteraction"
