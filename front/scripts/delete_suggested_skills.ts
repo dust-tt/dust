@@ -10,26 +10,26 @@ import { makeScript } from "@app/scripts/helpers";
  * Usage:
  * From your local machine:
  * 1. Run the script on the pod from front:
- *    kubectl exec -it <pod-name> -n <namespace> -- npx tsx scripts/delete_suggested_skills.ts --workspaceSId <workspaceSId> --execute
+ *    kubectl exec -it <pod-name> -n <namespace> -- npx tsx scripts/delete_suggested_skills.ts --workspaceId <workspaceId> --execute
  *
  * Or locally for testing:
- *    npx tsx scripts/delete_suggested_skills.ts --workspaceSId <workspaceSId> --execute
+ *    npx tsx scripts/delete_suggested_skills.ts --workspaceId <workspaceId> --execute
  */
 async function deleteSuggestedSkills(
   logger: Logger,
-  workspaceSId: string,
+  workspaceId: string,
   execute: boolean
 ): Promise<void> {
   logger.info(
-    { execute, workspaceSId },
+    { execute, workspaceId },
     "Starting deletion of suggested skills"
   );
 
   // Find the workspace using the resource layer
-  const workspace = await WorkspaceResource.fetchById(workspaceSId);
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
 
   if (!workspace) {
-    throw new Error(`Workspace not found with sId: ${workspaceSId}`);
+    throw new Error(`Workspace not found with sId: ${workspaceId}`);
   }
 
   logger.info(
@@ -118,14 +118,14 @@ async function deleteSuggestedSkills(
 
 makeScript(
   {
-    workspaceSId: {
+    workspaceId: {
       alias: "w",
       describe: "Workspace sId where suggested skills should be deleted",
       type: "string" as const,
       demandOption: true,
     },
   },
-  async ({ workspaceSId, execute }, logger) => {
-    await deleteSuggestedSkills(logger, workspaceSId, execute);
+  async ({ workspaceId, execute }, logger) => {
+    await deleteSuggestedSkills(logger, workspaceId, execute);
   }
 );

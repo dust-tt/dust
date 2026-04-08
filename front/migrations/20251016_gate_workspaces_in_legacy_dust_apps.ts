@@ -83,8 +83,8 @@ makeScript({}, async ({ execute }, logger) => {
       await FeatureFlagResource.enable(workspace, FEATURE_FLAG_NAME);
       logger.info(
         {
-          workspaceId: workspace.id,
-          workspaceSId: workspace.sId,
+          workspaceModelId: workspace.id,
+          workspaceId: workspace.sId,
           workspaceName: workspace.name,
           featureFlag: FEATURE_FLAG_NAME,
           execute,
@@ -94,8 +94,8 @@ makeScript({}, async ({ execute }, logger) => {
     } else {
       logger.info(
         {
-          workspaceId: workspace.id,
-          workspaceSId: workspace.sId,
+          workspaceModelId: workspace.id,
+          workspaceId: workspace.sId,
           workspaceName: workspace.name,
           featureFlag: FEATURE_FLAG_NAME,
           execute,

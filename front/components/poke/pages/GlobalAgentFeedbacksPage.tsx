@@ -72,7 +72,7 @@ function makeColumns(): ColumnDef<GlobalAgentFeedbackItem>[] {
       cell: ({ row }) => {
         const feedback = row.original;
         return (
-          <LinkWrapper href={`/poke/${feedback.workspaceSId}`}>
+          <LinkWrapper href={`/poke/${feedback.workspaceId}`}>
             <span className="text-blue-600 hover:underline dark:text-blue-400">
               {feedback.workspaceName}
             </span>
@@ -97,11 +97,11 @@ function makeColumns(): ColumnDef<GlobalAgentFeedbackItem>[] {
         if (
           feedback.isConversationShared &&
           feedback.conversationSId &&
-          feedback.workspaceSId !== "unknown"
+          feedback.workspaceId !== "unknown"
         ) {
           return (
             <LinkWrapper
-              href={`/poke/${feedback.workspaceSId}/conversation/${feedback.conversationSId}`}
+              href={`/poke/${feedback.workspaceId}/conversation/${feedback.conversationSId}`}
             >
               <span className="text-blue-600 hover:underline dark:text-blue-400">
                 View

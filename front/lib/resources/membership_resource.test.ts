@@ -72,8 +72,8 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 
-function getCacheKeyForWorkspace(workspaceSid: string): string {
-  return `cacheWithRedis-_countActiveSeatsInWorkspaceUncached-count-active-seats-in-workspace:${workspaceSid}`;
+function getCacheKeyForWorkspace(workspaceId: string): string {
+  return `cacheWithRedis-_countActiveSeatsInWorkspaceUncached-count-active-seats-in-workspace:${workspaceId}`;
 }
 
 describe("MembershipResource", () => {

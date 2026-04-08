@@ -101,7 +101,7 @@ export async function moveConversationToProject(
     // For participants who had already read the conversation (unread = false),
     // mark them as read using markAsReadForAuthUser to preserve their read status.
     // Participants who were already unread should stay unread.
-    const workspaceSId = auth.getNonNullableWorkspace().sId;
+    const workspaceId = auth.getNonNullableWorkspace().sId;
 
     for (const participant of participants) {
       // A participant was read if they had a lastReadAt and it was >= oldUpdatedAt
@@ -112,7 +112,7 @@ export async function moveConversationToProject(
       if (wasRead) {
         const participantAuth = await Authenticator.fromUserIdAndWorkspaceId(
           participant.sId,
-          workspaceSId
+          workspaceId
         );
         await ConversationResource.markAsReadForAuthUser(participantAuth, {
           conversation,

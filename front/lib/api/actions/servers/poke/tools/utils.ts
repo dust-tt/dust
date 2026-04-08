@@ -32,7 +32,7 @@ export function jsonResponse(data: unknown): ToolHandlerResult {
 export async function enforcePokeSecurityGates(
   { auth }: ToolHandlerExtra,
   toolName: string,
-  targetWorkspaceSId: string
+  targetWorkspaceId: string
 ): Promise<Result<void, MCPError>> {
   const callerWorkspace = auth.getNonNullableWorkspace();
   const callerUser = auth.user();
@@ -67,8 +67,8 @@ export async function enforcePokeSecurityGates(
       action: "poke_cross_workspace_access",
       callerUserSId: callerUser?.sId,
       callerUserEmail: callerUser?.email,
-      callerWorkspaceSId: callerWorkspace.sId,
-      targetWorkspaceSId,
+      callerWorkspaceId: callerWorkspace.sId,
+      targetWorkspaceId,
       tool: toolName,
     },
     "Poke MCP: cross-workspace access"
@@ -82,11 +82,11 @@ export async function enforcePokeSecurityGates(
  * error handling. Returns Err(MCPError) if the workspace does not exist.
  */
 export async function getTargetAuth(
-  workspaceSId: string
+  workspaceId: string
 ): Promise<Result<Authenticator, MCPError>> {
   try {
     const targetAuth =
-      await Authenticator.internalAdminForWorkspace(workspaceSId);
+      await Authenticator.internalAdminForWorkspace(workspaceId);
     return new Ok(targetAuth);
   } catch (err) {
     const normalizedErr = normalizeError(err);
@@ -96,7 +96,7 @@ export async function getTargetAuth(
     );
     return new Err(
       new MCPError(
-        `Workspace not found: no workspace with sId "${workspaceSId}" exists.`,
+        `Workspace not found: no workspace with sId "${workspaceId}" exists.`,
         { tracked: false }
       )
     );

@@ -7,7 +7,7 @@
  * 3. If so, end the old contract and create a new one using the latest package alias
  * 4. Update metronomeContractId on the subscription
  *
- * Run with: npx tsx scripts/migrate_metronome_contracts.ts [--execute] [-w workspaceSId]
+ * Run with: npx tsx scripts/migrate_metronome_contracts.ts [--execute] [-w workspaceId]
  *
  * Without --execute, runs in dry-run mode (logs what would happen, no changes).
  */

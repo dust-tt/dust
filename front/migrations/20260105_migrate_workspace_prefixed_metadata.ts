@@ -60,12 +60,12 @@ async function migrateWorkspacePrefixedMetadata(
         continue;
       }
 
-      const workspaceSId = keyParts[1];
+      const workspaceId = keyParts[1];
       const actualKey = keyParts.slice(2).join(":"); // Handle keys that might have colons
 
       // Find the workspace by sId
       const workspace = await WorkspaceModel.findOne({
-        where: { sId: workspaceSId },
+        where: { sId: workspaceId },
         attributes: ["id", "sId"],
       });
 
@@ -74,7 +74,7 @@ async function migrateWorkspacePrefixedMetadata(
           {
             metadataId: metadata.id,
             key: metadata.key,
-            workspaceSId,
+            workspaceId,
           },
           "Workspace not found for metadata, skipping"
         );
@@ -82,7 +82,7 @@ async function migrateWorkspacePrefixedMetadata(
         errors.push({
           metadataId: metadata.id,
           key: metadata.key,
-          error: `Workspace ${workspaceSId} not found`,
+          error: `Workspace ${workspaceId} not found`,
         });
         continue;
       }
@@ -123,8 +123,8 @@ async function migrateWorkspacePrefixedMetadata(
           userId: metadata.userId,
           oldKey: metadata.key,
           newKey: actualKey,
-          workspaceSId,
-          workspaceId: workspace.id,
+          workspaceId,
+          workspaceModelId: workspace.id,
         },
         execute ? "Migrating metadata" : "Would migrate metadata"
       );

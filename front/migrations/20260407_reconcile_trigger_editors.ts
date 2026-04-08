@@ -12,8 +12,8 @@ const BUG_WINDOW_START = "2026-04-03T09:00:00Z";
 interface AffectedTrigger {
   triggerId: ModelId;
   triggerName: string;
-  workspaceId: ModelId;
-  workspaceSId: string;
+  workspaceModelId: ModelId;
+  workspaceId: string;
   currentEditorId: ModelId;
   currentEditorSId: string;
   currentEditorEmail: string;
@@ -32,7 +32,7 @@ async function findAffectedTriggers(): Promise<AffectedTrigger[]> {
       t.id AS "triggerId",
       t.name AS "triggerName",
       t."workspaceId",
-      w."sId" AS "workspaceSId",
+      w."sId" AS "workspaceId",
       t.editor AS "currentEditorId",
       curr_u."sId" AS "currentEditorSId",
       curr_u.email AS "currentEditorEmail",
@@ -106,13 +106,13 @@ makeScript({}, async ({ execute }, logger) => {
 
     const triggerSId = TriggerResource.modelIdToSId({
       id: row.triggerId,
-      workspaceId: row.workspaceId,
+      workspaceId: row.workspaceModelId,
     });
 
     // Auth as the current (admin) editor to pass the permission check.
     const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
       row.currentEditorSId,
-      row.workspaceSId
+      row.workspaceId
     );
 
     const result = await TriggerResource.update(adminAuth, triggerSId, {
@@ -130,7 +130,7 @@ makeScript({}, async ({ execute }, logger) => {
     // Re-upsert the Temporal workflow under the original user's identity.
     const originalUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
       row.originalUserSId,
-      row.workspaceSId
+      row.workspaceId
     );
 
     const trigger = await TriggerResource.fetchById(

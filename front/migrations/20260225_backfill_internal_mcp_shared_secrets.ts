@@ -135,7 +135,7 @@ makeScript({}, async ({ execute }, logger) => {
 
     if (existingCredential) {
       logger.info(
-        { workspaceSId: workspace.sId, serverName },
+        { workspaceId: workspace.sId, serverName },
         "Skipping: credential already exists"
       );
       skippedCount++;
@@ -168,7 +168,7 @@ makeScript({}, async ({ execute }, logger) => {
     if (!dustAppSecret) {
       logger.warn(
         {
-          workspaceSId: workspace.sId,
+          workspaceId: workspace.sId,
           serverName,
           secretName: mostCommonSecretName,
         },
@@ -193,7 +193,7 @@ makeScript({}, async ({ execute }, logger) => {
 
       logger.info(
         {
-          workspaceSId: workspace.sId,
+          workspaceId: workspace.sId,
           serverName,
           secretName: mostCommonSecretName,
           agentConfigCount: secretNames.length,
@@ -203,7 +203,7 @@ makeScript({}, async ({ execute }, logger) => {
     } else {
       logger.info(
         {
-          workspaceSId: workspace.sId,
+          workspaceId: workspace.sId,
           serverName,
           secretName: mostCommonSecretName,
           agentConfigCount: secretNames.length,

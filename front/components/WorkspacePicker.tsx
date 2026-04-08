@@ -19,7 +19,7 @@ interface WorkspacePickerRadioGroupProps {
   user: UserTypeWithWorkspaces;
   workspace: LightWorkspaceType;
   onSelectOrganization?: (organizationId: string) => void;
-  onSelectWorkspace?: (workspaceSId: string) => void;
+  onSelectWorkspace?: (workspaceId: string) => void;
 }
 
 export const WorkspacePickerRadioGroup = ({

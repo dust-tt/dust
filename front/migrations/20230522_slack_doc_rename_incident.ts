@@ -89,7 +89,7 @@ async function main() {
           dustAPIProjectId: dustProject.value.project.project_id.toString(),
           dustAPIDataSourceId:
             dustDataSource.value.data_source.data_source_id.toString(),
-          workspaceId: workspaceId,
+          workspaceId,
         });
 
         console.log(

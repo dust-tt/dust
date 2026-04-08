@@ -16,8 +16,8 @@ const EXCESS_SUBSCRIPTION_PERCENTAGE_THRESHOLD = 5; // 5% of annual subscription
 const EXCESS_ACTIVE_CREDITS_PERCENTAGE_THRESHOLD = 2; // 2% of active credits (fallback)
 
 interface WorkspaceExcessCredits {
-  workspaceId: number;
-  workspaceSId: string;
+  workspaceModelId: number;
+  workspaceId: string;
   workspaceName: string;
   totalExcessMicroUsd: number;
 }
@@ -42,8 +42,8 @@ export const checkExcessCredits: CheckFunction = async (
     await frontDb.query(
       `
       SELECT
-        c."workspaceId" as "workspaceId",
-        w."sId" as "workspaceSId",
+        c."workspaceId" as "workspaceModelId",
+        w."sId" as "workspaceId",
         w."name" as "workspaceName",
         SUM(c."consumedAmountMicroUsd") as "totalExcessMicroUsd"
       FROM credits c
@@ -69,12 +69,12 @@ export const checkExcessCredits: CheckFunction = async (
   }
 
   // Fetch subscription and active credits data for workspaces that exceeded the absolute threshold.
-  const thresholdDataByWorkspaceSId = new Map<string, WorkspaceThresholdData>();
+  const thresholdDataByWorkspaceId = new Map<string, WorkspaceThresholdData>();
   await concurrentExecutor(
     workspacesWithExcessCredits,
     async (workspace) => {
       const auth = await Authenticator.internalAdminForWorkspace(
-        workspace.workspaceSId
+        workspace.workspaceId
       );
 
       // Fetch active credits.
@@ -88,7 +88,7 @@ export const checkExcessCredits: CheckFunction = async (
       let annualSubscriptionValueMicroUsd: number | null = null;
       const subscription =
         await SubscriptionResource.fetchActiveByWorkspaceModelId(
-          workspace.workspaceId
+          workspace.workspaceModelId
         );
 
       if (subscription?.stripeSubscriptionId) {
@@ -101,7 +101,7 @@ export const checkExcessCredits: CheckFunction = async (
         }
       }
 
-      thresholdDataByWorkspaceSId.set(workspace.workspaceSId, {
+      thresholdDataByWorkspaceId.set(workspace.workspaceId, {
         annualSubscriptionValueMicroUsd,
         activeCreditsMicroUsd,
       });
@@ -114,7 +114,7 @@ export const checkExcessCredits: CheckFunction = async (
   // For workspaces without Stripe subscription: fallback to 2% of active credits.
   const significantExcessWorkspaces = workspacesWithExcessCredits.filter(
     (w) => {
-      const thresholdData = thresholdDataByWorkspaceSId.get(w.workspaceSId);
+      const thresholdData = thresholdDataByWorkspaceId.get(w.workspaceId);
       if (!thresholdData) {
         return true;
       }
@@ -145,14 +145,14 @@ export const checkExcessCredits: CheckFunction = async (
 
   if (significantExcessWorkspaces.length > 0) {
     const formattedWorkspaces = significantExcessWorkspaces.map((w) => ({
-      workspaceSId: w.workspaceSId,
+      workspaceId: w.workspaceId,
       workspaceName: w.workspaceName,
       totalExcessUsd: (Number(w.totalExcessMicroUsd) / 1_000_000).toFixed(2),
     }));
 
     const actionLinks: ActionLink[] = significantExcessWorkspaces.map((w) => ({
       label: `${w.workspaceName} ($${(Number(w.totalExcessMicroUsd) / 1_000_000).toFixed(2)})`,
-      url: `/poke/${w.workspaceSId}`,
+      url: `/poke/${w.workspaceId}`,
     }));
 
     const thresholdDollars = EXCESS_ABSOLUTE_THRESHOLD_MICRO_USD / 1_000_000;

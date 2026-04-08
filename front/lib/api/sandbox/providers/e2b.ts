@@ -77,7 +77,7 @@ export class E2BSandboxProvider implements SandboxProvider {
 
   async create(
     config: SandboxCreateConfig,
-    tracingOpts: { workspaceSId: string }
+    tracingOpts: { workspaceId: string }
   ): Promise<Result<SandboxHandle, Error>> {
     if (!config.imageId) {
       throw new Error(
@@ -123,14 +123,14 @@ export class E2BSandboxProvider implements SandboxProvider {
       },
       {
         image_id: imageId,
-        workspace_id: tracingOpts.workspaceSId,
+        workspace_id: tracingOpts.workspaceId,
       }
     );
   }
 
   async wake(
     providerId: string,
-    tracingOpts: { workspaceSId: string }
+    tracingOpts: { workspaceId: string }
   ): Promise<Result<SandboxHandle, Error>> {
     return traceSandboxOperation(
       "wake",
@@ -156,14 +156,14 @@ export class E2BSandboxProvider implements SandboxProvider {
       },
       {
         provider_id: providerId,
-        workspace_id: tracingOpts.workspaceSId,
+        workspace_id: tracingOpts.workspaceId,
       }
     );
   }
 
   async sleep(
     providerId: string,
-    tracingOpts: { workspaceSId: string }
+    tracingOpts: { workspaceId: string }
   ): Promise<Result<void, Error>> {
     return traceSandboxOperation(
       "sleep",
@@ -195,14 +195,14 @@ export class E2BSandboxProvider implements SandboxProvider {
       },
       {
         provider_id: providerId,
-        workspace_id: tracingOpts.workspaceSId,
+        workspace_id: tracingOpts.workspaceId,
       }
     );
   }
 
   async destroy(
     providerId: string,
-    tracingOpts: { workspaceSId: string }
+    tracingOpts: { workspaceId: string }
   ): Promise<Result<void, Error>> {
     return traceSandboxOperation(
       "destroy",
@@ -224,7 +224,7 @@ export class E2BSandboxProvider implements SandboxProvider {
       },
       {
         provider_id: providerId,
-        workspace_id: tracingOpts.workspaceSId,
+        workspace_id: tracingOpts.workspaceId,
       }
     );
   }
@@ -233,7 +233,7 @@ export class E2BSandboxProvider implements SandboxProvider {
     providerId: string,
     command: string,
     execOpts: ExecOptions | undefined,
-    tracingOpts: { workspaceSId: string }
+    tracingOpts: { workspaceId: string }
   ): Promise<Result<ExecResult, Error>> {
     return traceSandboxOperation(
       "exec",
@@ -279,7 +279,7 @@ export class E2BSandboxProvider implements SandboxProvider {
       },
       {
         provider_id: providerId,
-        workspace_id: tracingOpts.workspaceSId,
+        workspace_id: tracingOpts.workspaceId,
       }
     );
   }
@@ -288,7 +288,7 @@ export class E2BSandboxProvider implements SandboxProvider {
     providerId: string,
     path: string,
     data: ArrayBuffer,
-    tracingOpts: { workspaceSId: string }
+    tracingOpts: { workspaceId: string }
   ): Promise<Result<void, Error>> {
     return traceSandboxOperation(
       "writeFile",
@@ -317,7 +317,7 @@ export class E2BSandboxProvider implements SandboxProvider {
       },
       {
         provider_id: providerId,
-        workspace_id: tracingOpts.workspaceSId,
+        workspace_id: tracingOpts.workspaceId,
       }
     );
   }
@@ -325,7 +325,7 @@ export class E2BSandboxProvider implements SandboxProvider {
   async readFile(
     _providerId: string,
     _path: string,
-    _tracingOpts: { workspaceSId: string }
+    _tracingOpts: { workspaceId: string }
   ): Promise<Buffer> {
     throw new Error("readFile is not implemented yet.");
   }
@@ -334,7 +334,7 @@ export class E2BSandboxProvider implements SandboxProvider {
     providerId: string,
     path: string,
     opts: { recursive?: boolean } | undefined,
-    tracingOpts: { workspaceSId: string }
+    tracingOpts: { workspaceId: string }
   ): Promise<FileEntry[]> {
     return traceSandboxOperation(
       "listFiles",
@@ -364,7 +364,7 @@ export class E2BSandboxProvider implements SandboxProvider {
       },
       {
         provider_id: providerId,
-        workspace_id: tracingOpts.workspaceSId,
+        workspace_id: tracingOpts.workspaceId,
       }
     );
   }

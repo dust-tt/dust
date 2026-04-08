@@ -1110,7 +1110,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
 
   private static determinePlanFromSubscription(
     subscription: SubscriptionModel | null,
-    workspaceSId: string
+    workspaceId: string
   ): PlanAttributes {
     let plan: PlanAttributes = DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION;
 
@@ -1123,7 +1123,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       } else {
         logger.error(
           {
-            workspaceId: workspaceSId,
+            workspaceId,
             subscription,
           },
           "Cannot find plan for subscription. Will use limits of FREE_TEST_PLAN instead. Please check and fix."

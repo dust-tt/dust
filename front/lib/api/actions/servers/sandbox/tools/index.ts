@@ -144,7 +144,7 @@ export function createSandboxTools(
         expiryMs: DEFAULT_EXEC_TIMEOUT_MS,
       });
 
-      const metricsCtx = { workspaceSId: auth.getNonNullableWorkspace().sId };
+      const metricsCtx = { workspaceId: auth.getNonNullableWorkspace().sId };
       const startMs = performance.now();
 
       const providerId = agentConfiguration.model.providerId;
