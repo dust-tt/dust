@@ -19,7 +19,6 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -846,7 +845,7 @@ describe("getConversation with branches", () => {
   let auth: Authenticator;
   let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
   let conversationId: string;
-  let branchSId: string;
+  let branchId: string;
 
   beforeEach(async () => {
     const setup = await createResourceTest({});
@@ -932,17 +931,13 @@ describe("getConversation with branches", () => {
       contentFragmentId: null,
     });
 
-    const branch = await ConversationBranchModel.create({
-      workspaceId: workspace.id,
+    const branch = await ConversationBranchResource.makeNew(auth, {
       state: "open",
       previousMessageId: atBranchMessage.id,
       conversationId: conversation.id,
       userId: user.id,
     });
-    branchSId = makeSId("conversation_branch", {
-      id: branch.id,
-      workspaceId: workspace.id,
-    });
+    branchId = branch.sId;
 
     const branchUserMessage = await UserMessageModel.create({
       userId: user.id,
@@ -992,17 +987,12 @@ describe("getConversation with branches", () => {
   });
 
   it("returns messages up to the branch point plus branch messages when branchId is provided, and sets branchId on the conversation", async () => {
-    const result = await getConversation(
-      auth,
-      conversationId,
-      false,
-      branchSId
-    );
+    const result = await getConversation(auth, conversationId, false, branchId);
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       const conv = result.value;
-      expect(conv.branchId).toBe(branchSId);
+      expect(conv.branchId).toBe(branchId);
 
       const userMessages = conv.content.flat().filter(isUserMessageType);
       const contents = userMessages.map((m) => m.content);
@@ -2295,13 +2285,13 @@ describe("postUserMessage", () => {
         }
 
         expect(projectConversation.branchId).toBeDefined();
-        const branchSId = projectConversation.branchId!;
+        const branchId = projectConversation.branchId!;
 
         const conversationWithBranch = await getConversation(
           auth,
           projectConversation.sId,
           false,
-          branchSId
+          branchId
         );
         expect(conversationWithBranch.isOk()).toBe(true);
         if (conversationWithBranch.isErr()) {
@@ -2338,7 +2328,7 @@ describe("postUserMessage", () => {
         expect(secondUserMessageRow).not.toBeNull();
         const branchRow = await ConversationBranchResource.fetchById(
           auth,
-          branchSId
+          branchId
         );
         expect(branchRow).not.toBeNull();
         expect(secondUserMessageRow!.branchId).toBe(branchRow!.id);
@@ -3096,7 +3086,7 @@ describe("isConversationEventAllowedForAuth", () => {
   let auth: Authenticator;
   let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
   let otherAuth: Authenticator;
-  let branchSId: string;
+  let branchId: string;
 
   beforeEach(async () => {
     const setup = await createResourceTest({});
@@ -3142,17 +3132,13 @@ describe("isConversationEventAllowedForAuth", () => {
       contentFragmentId: null,
     });
 
-    const branch = await ConversationBranchModel.create({
-      workspaceId: workspace.id,
+    const branch = await ConversationBranchResource.makeNew(auth, {
       state: "open",
       previousMessageId: baseMessage.id,
       conversationId: conversation.id,
       userId: user.id,
     });
-    branchSId = makeSId("conversation_branch", {
-      id: branch.id,
-      workspaceId: workspace.id,
-    });
+    branchId = branch.sId;
   });
 
   it("returns true for agent_message_done event", async () => {
@@ -3235,7 +3221,7 @@ describe("isConversationEventAllowedForAuth", () => {
       created: Date.now(),
       messageId: "msg-1",
       message: {
-        branchId: branchSId,
+        branchId,
         contentFragments: [],
       } as unknown as UserMessageNewEvent["message"],
     };
@@ -3249,7 +3235,7 @@ describe("isConversationEventAllowedForAuth", () => {
       created: Date.now(),
       messageId: "msg-1",
       message: {
-        branchId: branchSId,
+        branchId,
         contentFragments: [],
       } as unknown as UserMessageNewEvent["message"],
     };
@@ -3294,7 +3280,7 @@ describe("isConversationEventAllowedForAuth", () => {
       created: Date.now(),
       configurationId: "config-1",
       messageId: "msg-1",
-      message: { branchId: branchSId } as AgentMessageType,
+      message: { branchId } as AgentMessageType,
     };
     const result = await isConversationEventAllowedForAuth(auth, { event });
     expect(result).toBe(true);
@@ -3306,7 +3292,7 @@ describe("isConversationEventAllowedForAuth", () => {
       created: Date.now(),
       configurationId: "config-1",
       messageId: "msg-1",
-      message: { branchId: branchSId } as AgentMessageType,
+      message: { branchId } as AgentMessageType,
     };
     const result = await isConversationEventAllowedForAuth(otherAuth, {
       event,

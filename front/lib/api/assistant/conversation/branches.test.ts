@@ -62,17 +62,13 @@ describe("mergeConversationBranch", () => {
       contentFragmentId: null,
     });
 
-    const branch = await ConversationBranchModel.create({
-      workspaceId: workspace.id,
+    const branch = await ConversationBranchResource.makeNew(auth, {
       state: "open",
       previousMessageId: baseMessage.id,
       conversationId: conversation.id,
       userId: user.id,
     });
-    const branchSId = ConversationBranchResource.modelIdToSId({
-      id: branch.id,
-      workspaceId: branch.workspaceId,
-    });
+    const branchId = branch.sId;
 
     // Branch user message (rank 1 in branch).
     const branchedUserMessage = await UserMessageModel.create({
@@ -144,7 +140,7 @@ describe("mergeConversationBranch", () => {
     ]);
 
     const mergeRes = await mergeConversationBranch(auth, {
-      branchId: branchSId,
+      branchId,
       conversationId: conversation.sId,
     });
     if (mergeRes.isErr()) {
@@ -270,20 +266,16 @@ describe("mergeConversationBranch", () => {
       contentFragmentId: null,
     });
 
-    const branch = await ConversationBranchModel.create({
-      workspaceId: workspace.id,
+    const branch = await ConversationBranchResource.makeNew(otherAuth, {
       state: "open",
       previousMessageId: baseMessage.id,
       conversationId: conversation.id,
       userId: owner.id,
     });
-    const branchSId = ConversationBranchResource.modelIdToSId({
-      id: branch.id,
-      workspaceId: branch.workspaceId,
-    });
+    const branchId = branch.sId;
 
     const res = await mergeConversationBranch(otherAuth, {
-      branchId: branchSId,
+      branchId,
       conversationId: conversation.sId,
     });
     expect(res.isErr()).toBe(true);
@@ -331,20 +323,15 @@ describe("mergeConversationBranch", () => {
       contentFragmentId: null,
     });
 
-    const branch = await ConversationBranchModel.create({
-      workspaceId: workspace.id,
+    const branch = await ConversationBranchResource.makeNew(auth, {
       state: "merged",
       previousMessageId: baseMessage.id,
       conversationId: conversation.id,
       userId: user.id,
     });
-    const branchSId = ConversationBranchResource.modelIdToSId({
-      id: branch.id,
-      workspaceId: branch.workspaceId,
-    });
 
     const res = await mergeConversationBranch(auth, {
-      branchId: branchSId,
+      branchId: branch.sId,
       conversationId: conversation.sId,
     });
     expect(res.isErr()).toBe(true);
@@ -394,20 +381,15 @@ describe("closeConversationBranch", () => {
       contentFragmentId: null,
     });
 
-    const branch = await ConversationBranchModel.create({
-      workspaceId: workspace.id,
+    const branch = await ConversationBranchResource.makeNew(auth, {
       state: "open",
       previousMessageId: baseMessage.id,
       conversationId: conversation.id,
       userId: user.id,
     });
-    const branchSId = ConversationBranchResource.modelIdToSId({
-      id: branch.id,
-      workspaceId: branch.workspaceId,
-    });
 
     const res = await closeConversationBranch(auth, {
-      branchId: branchSId,
+      branchId: branch.sId,
       conversationId: conversation.sId,
     });
     if (res.isErr()) {
@@ -451,13 +433,13 @@ describe("closeConversationBranch", () => {
 
   it("should return branch_not_found when branch belongs to someone else", async () => {
     const workspace = await WorkspaceFactory.basic();
-    const owner = await UserFactory.basic();
-    const other = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, owner, { role: "user" });
-    await MembershipFactory.associate(workspace, other, { role: "user" });
+    const user = await UserFactory.basic();
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
 
     const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      other.sId,
+      otherUser.sId,
       workspace.sId
     );
 
@@ -469,7 +451,7 @@ describe("closeConversationBranch", () => {
     });
 
     const baseUserMessage = await UserMessageModel.create({
-      userId: owner.id,
+      userId: user.id,
       workspaceId: workspace.id,
       content: "Base",
       userContextUsername: "testuser",
@@ -492,20 +474,15 @@ describe("closeConversationBranch", () => {
       contentFragmentId: null,
     });
 
-    const branch = await ConversationBranchModel.create({
-      workspaceId: workspace.id,
+    const branch = await ConversationBranchResource.makeNew(otherAuth, {
       state: "open",
       previousMessageId: baseMessage.id,
       conversationId: conversation.id,
-      userId: owner.id,
-    });
-    const branchSId = ConversationBranchResource.modelIdToSId({
-      id: branch.id,
-      workspaceId: branch.workspaceId,
+      userId: user.id,
     });
 
     const res = await closeConversationBranch(otherAuth, {
-      branchId: branchSId,
+      branchId: branch.sId,
       conversationId: conversation.sId,
     });
     expect(res.isErr()).toBe(true);
@@ -553,20 +530,15 @@ describe("closeConversationBranch", () => {
       contentFragmentId: null,
     });
 
-    const branch = await ConversationBranchModel.create({
-      workspaceId: workspace.id,
+    const branch = await ConversationBranchResource.makeNew(auth, {
       state: "closed",
       previousMessageId: baseMessage.id,
       conversationId: conversation.id,
       userId: user.id,
     });
-    const branchSId = ConversationBranchResource.modelIdToSId({
-      id: branch.id,
-      workspaceId: branch.workspaceId,
-    });
 
     const res = await closeConversationBranch(auth, {
-      branchId: branchSId,
+      branchId: branch.sId,
       conversationId: conversation.sId,
     });
     expect(res.isErr()).toBe(true);

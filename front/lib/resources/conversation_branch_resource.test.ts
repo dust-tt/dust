@@ -4,9 +4,7 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
-import { makeSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -19,8 +17,8 @@ describe("ConversationBranchResource permissions", () => {
   let otherAuth: Authenticator;
   let adminAuth: Authenticator;
 
-  let ownerBranchSId: string;
-  let otherBranchSId: string;
+  let ownerBranchId: string;
+  let otherBranchId: string;
 
   beforeEach(async () => {
     workspace = await WorkspaceFactory.basic();
@@ -101,61 +99,52 @@ describe("ConversationBranchResource permissions", () => {
       contentFragmentId: null,
     });
 
-    const ownerBranch = await ConversationBranchModel.create({
-      workspaceId: workspace.id,
+    const ownerBranch = await ConversationBranchResource.makeNew(ownerAuth, {
       state: "open",
       previousMessageId: ownerBaseMessage.id,
       conversationId: conversation.id,
       userId: ownerUser.id,
     });
 
-    const otherBranch = await ConversationBranchModel.create({
-      workspaceId: workspace.id,
+    const otherBranch = await ConversationBranchResource.makeNew(otherAuth, {
       state: "open",
       previousMessageId: otherBaseMessage.id,
       conversationId: conversation.id,
       userId: otherUser.id,
     });
 
-    ownerBranchSId = makeSId("conversation_branch", {
-      id: ownerBranch.id,
-      workspaceId: workspace.id,
-    });
-
-    otherBranchSId = makeSId("conversation_branch", {
-      id: otherBranch.id,
-      workspaceId: workspace.id,
-    });
+    ownerBranchId = ownerBranch.sId;
+    otherBranchId = otherBranch.sId;
   });
 
   it("fetchById should only return branches readable by the caller", async () => {
     const ownerBranchForOwner = await ConversationBranchResource.fetchById(
       ownerAuth,
-      ownerBranchSId
+      ownerBranchId
     );
     expect(ownerBranchForOwner).not.toBeNull();
     expect(ownerBranchForOwner?.userId).toBe(ownerAuth.getNonNullableUser().id);
 
     const ownerBranchForOther = await ConversationBranchResource.fetchById(
       otherAuth,
-      ownerBranchSId
+      ownerBranchId
     );
     expect(ownerBranchForOther).toBeNull();
 
     const ownerBranchForAdmin = await ConversationBranchResource.fetchById(
       adminAuth,
-      ownerBranchSId
+      ownerBranchId
     );
     expect(ownerBranchForAdmin).not.toBeNull();
     expect(ownerBranchForAdmin?.userId).toBeDefined();
   });
 
   it("fetchByIds should filter out branches the user cannot read", async () => {
-    const allBranchSIds = [ownerBranchSId, otherBranchSId];
+    const allBranchIDs = [ownerBranchId, otherBranchId];
 
     const ownerBranches = await ConversationBranchResource.fetchByIds(
       ownerAuth,
-      allBranchSIds
+      allBranchIDs
     );
     const ownerBranchIds = ownerBranches.map((b) => b.userId);
     expect(ownerBranchIds).toContain(ownerAuth.getNonNullableUser().id);
@@ -163,7 +152,7 @@ describe("ConversationBranchResource permissions", () => {
 
     const otherBranches = await ConversationBranchResource.fetchByIds(
       otherAuth,
-      allBranchSIds
+      allBranchIDs
     );
     const otherBranchIds = otherBranches.map((b) => b.userId);
     expect(otherBranchIds).toContain(otherAuth.getNonNullableUser().id);
@@ -171,7 +160,7 @@ describe("ConversationBranchResource permissions", () => {
 
     const adminBranches = await ConversationBranchResource.fetchByIds(
       adminAuth,
-      allBranchSIds
+      allBranchIDs
     );
     const adminBranchIds = adminBranches.map((b) => b.userId);
     expect(adminBranchIds).toContain(ownerAuth.getNonNullableUser().id);
