@@ -209,7 +209,12 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 isAgentMessageWithStreaming(data) &&
                 data.status === "gracefully_stopped"
               ) &&
-              "mb-1"
+              // Other users' messages and agent messages are left-aligned (unlike
+              // the current user's messages which are right-aligned), so they need
+              // a bit more bottom spacing to visually separate them.
+              (isUserMessage(data) && data.user?.sId !== context.user.sId
+                ? "mb-3"
+                : "mb-1")
           )}
         >
           {isUserMessage(data) && (
