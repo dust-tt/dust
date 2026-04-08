@@ -34,6 +34,7 @@ import {
 import type React from "react";
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useState } from "react";
+import { ProjectNotificationMenu } from "./ProjectNotificationMenu";
 
 /**
  * Hook for handling right-click context menu with timing protection
@@ -142,7 +143,6 @@ export function ProjectMenu({
     disabled: shouldWaitBeforeFetching,
     includeAllMembers: true,
   });
-
   const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
 
   const shareLink = activeSpaceId
@@ -239,6 +239,11 @@ export function ProjectMenu({
           <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
         )}
         <DropdownMenuContent onFocusOutside={(e) => e.preventDefault()}>
+          <ProjectNotificationMenu
+            activeSpaceId={activeSpaceId}
+            owner={owner}
+            shouldWaitBeforeFetching={shouldWaitBeforeFetching}
+          />
           {canRename && (
             <DropdownMenuItem
               label="Rename"

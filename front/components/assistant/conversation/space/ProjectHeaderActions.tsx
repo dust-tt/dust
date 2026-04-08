@@ -19,6 +19,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useCallback } from "react";
+import { ProjectNotificationMenu } from "../ProjectNotificationMenu";
 
 interface ProjectHeaderActionsProps {
   isMember: boolean;
@@ -92,6 +93,11 @@ export function ProjectHeaderActions({
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent>
+              <ProjectNotificationMenu
+                activeSpaceId={spaceId}
+                owner={owner}
+                shouldWaitBeforeFetching={false}
+              />
               {!canLeaveProject ? (
                 <DropdownTooltipTrigger
                   description="You are the last editor of this project and cannot leave it."
