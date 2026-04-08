@@ -209,11 +209,7 @@ export async function retrieveGongTranscriptContent(
 
     if (!user) {
       localLogger.error(
-        {
-          fileId,
-          transcriptsConfigurationId: transcriptsConfiguration.id,
-          transcriptsConfigurationSid: transcriptsConfiguration.sId,
-        },
+        { fileId },
         "[retrieveGongTranscripts] User not found. Skipping."
       );
       return null;
@@ -236,8 +232,6 @@ export async function retrieveGongTranscriptContent(
         localLogger.error(
           {
             fileId,
-            transcriptsConfigurationId: transcriptsConfiguration.id,
-            transcriptsConfigurationSid: transcriptsConfiguration.sId,
             status: response.status,
           },
           "[retrieveGongTranscripts] Error fetching Gong users. Skipping."
@@ -269,8 +263,6 @@ export async function retrieveGongTranscriptContent(
       localLogger.error(
         {
           fileId,
-          transcriptsConfigurationId: transcriptsConfiguration.id,
-          transcriptsConfigurationSid: transcriptsConfiguration.sId,
           userEmail: user.email,
         },
         "[retrieveGongTranscripts] Gong user not found. Skipping."
@@ -302,11 +294,7 @@ export async function retrieveGongTranscriptContent(
 
   if (!call.ok) {
     localLogger.error(
-      {
-        fileId,
-        transcriptsConfigurationId: transcriptsConfiguration.id,
-        transcriptsConfigurationSid: transcriptsConfiguration.sId,
-      },
+      { fileId },
       "[retrieveGongTranscripts] Error fetching call from Gong. Skipping."
     );
     throw new Error("Error fetching call from Gong. Skipping.");
@@ -323,11 +311,7 @@ export async function retrieveGongTranscriptContent(
 
   if (!callData) {
     localLogger.error(
-      {
-        fileId,
-        transcriptsConfigurationId: transcriptsConfiguration.id,
-        transcriptsConfigurationSid: transcriptsConfiguration.sId,
-      },
+      { fileId },
       "[retrieveGongTranscripts] Call data not found from Gong. Skipping."
     );
     return null;

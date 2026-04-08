@@ -134,8 +134,7 @@ async function handler(
       if (newStatus !== undefined) {
         logger.info(
           {
-            transcriptsConfigurationId: transcriptsConfiguration.id,
-            transcriptsConfigurationSid: transcriptsConfiguration.sId,
+            transcriptsConfigurationId: transcriptsConfiguration.sId,
             status: newStatus,
           },
           "Setting transcript configuration status."
@@ -202,8 +201,7 @@ async function handler(
       if (shouldStartWorkflow) {
         logger.info(
           {
-            transcriptsConfigurationId: updatedTranscriptsConfiguration.id,
-            transcriptsConfigurationSid: updatedTranscriptsConfiguration.sId,
+            transcriptsConfigurationId: updatedTranscriptsConfiguration.sId,
           },
           "Starting transcript retrieval workflow."
         );
