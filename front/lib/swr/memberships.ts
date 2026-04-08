@@ -148,7 +148,7 @@ export function useSearchMembers({
   return {
     members: data?.members ?? emptyArray(),
     totalMembersCount: data?.total ?? 0,
-    isLoading: !error && !data,
+    isLoading: !error && !data && !disabled,
     isError: !!error,
     mutate,
     mutateRegardlessOfQueryParams,
