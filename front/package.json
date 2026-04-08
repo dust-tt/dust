@@ -117,7 +117,7 @@
     "adm-zip": "^0.5.16",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
-    "blake3": "^2.1.7",
+    "@napi-rs/blake-hash": "^1.3.6",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
@@ -222,6 +222,7 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^9.3.0",
+    "blake3": "^2.1.7",
     "@google-cloud/storage": "^7.11.2",
     "@next/bundle-analyzer": "^15.5.4",
     "@statoscope/webpack-plugin": "^5.29.0",
