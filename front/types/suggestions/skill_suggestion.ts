@@ -58,12 +58,6 @@ export type SkillToolsSuggestionType = z.infer<
   typeof SkillToolsSuggestionSchema
 >;
 
-export function isSkillToolsSuggestion(
-  data: unknown
-): data is SkillToolsSuggestionType {
-  return SkillToolsSuggestionSchema.safeParse(data).success;
-}
-
 export type SkillSuggestionPayload =
   | SkillCreateSuggestionType
   | SkillEditInstructionsSuggestionType
