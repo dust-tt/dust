@@ -625,9 +625,8 @@ export async function startSkillConversationAnalysisBatchActivity({
       workspaceId,
       batchId: result.value.batchId,
       conversationCount: batchConversations.length,
-      continuationCount: Object.keys(
-        existingReinforcementConversationMap ?? {}
-      ).length,
+      continuationCount: Object.keys(existingReinforcementConversationMap ?? {})
+        .length,
     },
     "ReinforcedSkills: started conversation analysis batch"
   );
@@ -741,10 +740,9 @@ export async function processSkillConversationAnalysisBatchResultActivity({
       const storedInfo = storedResultInfo.get(reinforcementConvId);
       if (storedInfo) {
         const toolActionInfo = await prepareReinforcedToolActions(auth, {
-          exploratoryToolCalls:
-            exploratoryToolCalls as unknown as Parameters<
-              typeof prepareReinforcedToolActions
-            >[1]["exploratoryToolCalls"],
+          exploratoryToolCalls: exploratoryToolCalls as unknown as Parameters<
+            typeof prepareReinforcedToolActions
+          >[1]["exploratoryToolCalls"],
           agentMessageModelId: storedInfo.agentMessageModelId,
           agentMessageId: storedInfo.agentMessageSId,
           userMessageId: storedInfo.userMessageSId,
