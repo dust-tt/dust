@@ -402,6 +402,64 @@ describe("SkillSuggestionResource", () => {
     });
   });
 
+  describe("bulkUpdateState", () => {
+    it("should update state for multiple suggestions", async () => {
+      const s1 = await SkillSuggestionFactory.create(authenticator, skill, {
+        source: "synthetic",
+        state: "pending",
+      });
+      const s2 = await SkillSuggestionFactory.create(authenticator, skill, {
+        source: "synthetic",
+        state: "pending",
+      });
+
+      await SkillSuggestionResource.bulkUpdateState(
+        authenticator,
+        [s1, s2],
+        "approved"
+      );
+
+      const fetched = await SkillSuggestionResource.fetchByIds(authenticator, [
+        s1.sId,
+        s2.sId,
+      ]);
+      expect(fetched).toHaveLength(2);
+      expect(fetched.every((s) => s.state === "approved")).toBe(true);
+    });
+
+    it("should not affect other suggestions", async () => {
+      const s1 = await SkillSuggestionFactory.create(authenticator, skill, {
+        source: "synthetic",
+        state: "pending",
+      });
+      const s2 = await SkillSuggestionFactory.create(authenticator, skill, {
+        source: "reinforcement",
+        state: "pending",
+      });
+
+      await SkillSuggestionResource.bulkUpdateState(
+        authenticator,
+        [s1],
+        "approved"
+      );
+
+      const fetchedS2 = await SkillSuggestionResource.fetchById(
+        authenticator,
+        s2.sId
+      );
+      expect(fetchedS2?.state).toBe("pending");
+    });
+
+    it("should be a no-op for empty array", async () => {
+      await SkillSuggestionResource.bulkUpdateState(
+        authenticator,
+        [],
+        "approved"
+      );
+      // No error thrown.
+    });
+  });
+
   describe("toJSON", () => {
     it("should return a properly formatted JSON object", async () => {
       const suggestion = await SkillSuggestionFactory.create(
