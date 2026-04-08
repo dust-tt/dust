@@ -59,7 +59,7 @@ export async function seedReinforcedAgents(
 
   if (!skipAnalytics) {
     ctx.logger.info("Indexing analytics to Elasticsearch...");
-    const conversationSIds = conversations.map((c) => c.sId);
-    await seedAnalytics(ctx, conversationSIds);
+    const conversationIds = conversations.map((c) => c.sId);
+    await seedAnalytics(ctx, conversationIds);
   }
 }

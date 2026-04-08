@@ -207,7 +207,7 @@ async function createConversation(
   }
 
   logger.info(
-    { conversationSId: conversation.sId, index: conv.index },
+    { conversationId: conversation.sId, index: conv.index },
     "Conversation created"
   );
 }

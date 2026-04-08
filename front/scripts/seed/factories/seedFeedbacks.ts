@@ -12,7 +12,7 @@ export async function seedFeedbacks(
   for (const feedbackAsset of feedbackAssets) {
     logger.info(
       {
-        conversationSId: feedbackAsset.conversationSId,
+        conversationId: feedbackAsset.conversationId,
         agentMessageSId: feedbackAsset.agentMessageSId,
       },
       "Creating feedback"
@@ -22,13 +22,13 @@ export async function seedFeedbacks(
       // Find the conversation (skip permission filtering for seed script)
       const conversation = await ConversationResource.fetchById(
         auth,
-        feedbackAsset.conversationSId,
+        feedbackAsset.conversationId,
         { dangerouslySkipPermissionFiltering: true, includeDeleted: true }
       );
 
       if (!conversation) {
         logger.warn(
-          { conversationSId: feedbackAsset.conversationSId },
+          { conversationId: feedbackAsset.conversationId },
           "Conversation not found for feedback, skipping"
         );
         continue;

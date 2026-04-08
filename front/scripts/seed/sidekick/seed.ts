@@ -118,8 +118,8 @@ makeScript({}, async ({ execute }, logger) => {
 
   // 7. Index analytics to Elasticsearch (enables feedbacks to appear in insights)
   logger.info("Indexing analytics to Elasticsearch...");
-  const conversationSIds = conversations.map((c) => c.sId);
-  await seedAnalytics(ctx, conversationSIds);
+  const conversationIds = conversations.map((c) => c.sId);
+  await seedAnalytics(ctx, conversationIds);
 
   // 8. Create templates (with sidekickInstructions)
   logger.info("Seeding templates...");

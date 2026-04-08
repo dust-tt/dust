@@ -296,12 +296,12 @@ export async function getRecentConversationsForAgentActivity({
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - conversationLookbackDays);
 
-  const conversationSIds = await listRecentConversationsForAgent(workspaceId, {
+  const conversationIds = await listRecentConversationsForAgent(workspaceId, {
     agentConfigurationId,
     cutoffDate,
   });
   // TODO(https://github.com/dust-tt/tasks/issues/7313): This is a placeholder for the actual sampling logic
-  return conversationSIds.slice(0, maxConversations);
+  return conversationIds.slice(0, maxConversations);
 }
 
 /**

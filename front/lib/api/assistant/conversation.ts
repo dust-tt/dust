@@ -1603,7 +1603,7 @@ export async function createAgentMessageFromText(
     logger.error(
       {
         workspaceId: owner.sId,
-        conversationSId: conversation.sId,
+        conversationId: conversation.sId,
         messageSId: created.messageSId,
       },
       "createAgentMessageFromText: conversation not found for event publish."
@@ -1626,7 +1626,7 @@ export async function createAgentMessageFromText(
     logger.error(
       {
         workspaceId: owner.sId,
-        conversationSId: conversation.sId,
+        conversationId: conversation.sId,
         messageSId: created.messageSId,
       },
       "createAgentMessageFromText: message row missing for batch render."
@@ -1645,7 +1645,7 @@ export async function createAgentMessageFromText(
     logger.error(
       {
         workspaceId: owner.sId,
-        conversationSId: conversation.sId,
+        conversationId: conversation.sId,
         messageSId: created.messageSId,
         error: renderedRes.error,
       },
@@ -1663,7 +1663,7 @@ export async function createAgentMessageFromText(
     logger.error(
       {
         workspaceId: owner.sId,
-        conversationSId: conversation.sId,
+        conversationId: conversation.sId,
         messageSId: created.messageSId,
       },
       "createAgentMessageFromText: rendered agent message not found."

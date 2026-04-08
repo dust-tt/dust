@@ -845,7 +845,7 @@ describe("retryAgentMessage", () => {
 describe("getConversation with branches", () => {
   let auth: Authenticator;
   let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
-  let conversationSId: string;
+  let conversationId: string;
   let branchSId: string;
 
   beforeEach(async () => {
@@ -861,7 +861,7 @@ describe("getConversation with branches", () => {
       title: "Branching conversation",
       requestedSpaceIds: [],
     });
-    conversationSId = conversation.sId;
+    conversationId = conversation.sId;
 
     const beforeBranchUserMessage = await UserMessageModel.create({
       userId: user.id,
@@ -970,7 +970,7 @@ describe("getConversation with branches", () => {
   });
 
   it("returns only main-thread messages when branchId is not provided", async () => {
-    const result = await getConversation(auth, conversationSId);
+    const result = await getConversation(auth, conversationId);
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -994,7 +994,7 @@ describe("getConversation with branches", () => {
   it("returns messages up to the branch point plus branch messages when branchId is provided, and sets branchId on the conversation", async () => {
     const result = await getConversation(
       auth,
-      conversationSId,
+      conversationId,
       false,
       branchSId
     );

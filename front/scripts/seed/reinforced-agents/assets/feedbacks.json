@@ -1,24 +1,24 @@
 [
   {
-    "conversationSId": "RAConv01",
+    "conversationId": "RAConv01",
     "agentMessageSId": "RAAMsg02",
     "thumbDirection": "down",
     "content": "The bot should provide specific escalation contacts (IT helpdesk email, phone number, Slack channel) instead of vaguely saying 'contact the IT department'."
   },
   {
-    "conversationSId": "RAConv02",
+    "conversationId": "RAConv02",
     "agentMessageSId": "RAAMsg03",
     "thumbDirection": "down",
     "content": "The response is too terse and ignores the urgency. Should acknowledge the time pressure, provide step-by-step troubleshooting, and offer a fallback like using Slack web."
   },
   {
-    "conversationSId": "RAConv04",
+    "conversationId": "RAConv04",
     "agentMessageSId": "RAAMsg07",
     "thumbDirection": "down",
     "content": "After multiple messages the bot still couldn't provide any actionable help. It should know the Google Workspace admin contact or at least the IT support ticket system."
   },
   {
-    "conversationSId": "RAConv05",
+    "conversationId": "RAConv05",
     "agentMessageSId": "RAAMsg08",
     "thumbDirection": "up",
     "content": null
