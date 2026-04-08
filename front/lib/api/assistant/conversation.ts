@@ -1477,7 +1477,7 @@ export async function createAgentMessageFromText(
 ): Promise<{
   messageModelId: ModelId;
   messageId: string;
-  agentMessageId: ModelId;
+  agentMessageModelId: ModelId;
 }> {
   const owner = auth.getNonNullableWorkspace();
 
@@ -1591,7 +1591,7 @@ export async function createAgentMessageFromText(
     return {
       messageModelId: messageRow.id,
       messageId: messageRow.sId,
-      agentMessageId: agentMessageRow.id,
+      agentMessageModelId: agentMessageRow.id,
     };
   });
 
