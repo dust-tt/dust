@@ -5,7 +5,7 @@ import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
 import { Chip } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
-function formatMicroUsdToUsd(microUsdAmount: number): string {
+export function formatMicroUsdToUsd(microUsdAmount: number): string {
   return `$${(microUsdAmount / 1_000_000).toFixed(2)}`;
 }
 

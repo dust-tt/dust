@@ -1,4 +1,8 @@
-import { makeColumnsForCredits } from "@app/components/poke/credits/columns";
+import {
+  formatMicroUsdToUsd,
+  makeColumnsForCredits,
+} from "@app/components/poke/credits/columns";
+import { makeColumnsForMetronomeBalances } from "@app/components/poke/credits/metronome_columns";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { safeLazy, Tooltip } from "@dust-tt/sparkle";
 import { Suspense } from "react";
@@ -12,7 +16,15 @@ const PokeProgrammaticCostChart = safeLazy(() =>
   )
 );
 
-function PokeProgrammaticCostChartFallback() {
+const PokeMetronomeUsageChart = safeLazy(() =>
+  import("@app/components/poke/credits/PokeMetronomeUsageChart").then(
+    (mod) => ({
+      default: mod.PokeMetronomeUsageChart,
+    })
+  )
+);
+
+function PokeChartFallback() {
   return (
     <div className="h-96 animate-pulse rounded-lg bg-muted-background dark:bg-muted-background-night" />
   );
@@ -20,8 +32,14 @@ function PokeProgrammaticCostChartFallback() {
 
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { PokeCreditType } from "@app/pages/api/poke/workspaces/[wId]/credits";
-import type { PokeCreditsData } from "@app/poke/swr/credits";
-import { usePokeCredits } from "@app/poke/swr/credits";
+import type {
+  PokeCreditsData,
+  PokeMetronomeBalancesData,
+} from "@app/poke/swr/credits";
+import {
+  usePokeCredits,
+  usePokeMetronomeBalances,
+} from "@app/poke/swr/credits";
 import type { SubscriptionType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 
@@ -51,10 +69,6 @@ function sortByStartDateDescending(
     // Most recent first (descending order)
     return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
   });
-}
-
-function formatMicroUsdToUsd(microUsd: number): string {
-  return (microUsd / 1_000_000).toFixed(2);
 }
 
 export function CreditsDataTable({
@@ -91,7 +105,7 @@ export function CreditsDataTable({
                   label="Excess credits are created when programmatic usage exceeds available credits. This tracks over-consumption that needs to be billed."
                   trigger={
                     <p className="cursor-help text-sm font-medium text-warning-800 dark:text-warning-800-night">
-                      Excess credits (last 30 days): $
+                      Excess credits (last 30 days):{" "}
                       {formatMicroUsdToUsd(
                         data.excessCreditsLast30DaysMicroUsd
                       )}
@@ -109,13 +123,38 @@ export function CreditsDataTable({
         )}
       </PokeDataTableConditionalFetch>
 
-      {billingCycleStartDay && (
-        <Suspense fallback={<PokeProgrammaticCostChartFallback />}>
-          <PokeProgrammaticCostChart
-            owner={owner}
-            billingCycleStartDay={billingCycleStartDay}
+      <PokeDataTableConditionalFetch<
+        PokeMetronomeBalancesData,
+        PokeMetronomeBalancesData
+      >
+        header="Metronome Balances"
+        owner={owner}
+        useSWRHook={usePokeMetronomeBalances}
+      >
+        {(data) => (
+          <PokeDataTable
+            columns={makeColumnsForMetronomeBalances()}
+            data={data.credits}
+            defaultFilterColumn="type"
           />
-        </Suspense>
+        )}
+      </PokeDataTableConditionalFetch>
+
+      {billingCycleStartDay && (
+        <div className="flex flex-col gap-4">
+          <Suspense fallback={<PokeChartFallback />}>
+            <PokeProgrammaticCostChart
+              owner={owner}
+              billingCycleStartDay={billingCycleStartDay}
+            />
+          </Suspense>
+          <Suspense fallback={<PokeChartFallback />}>
+            <PokeMetronomeUsageChart
+              owner={owner}
+              billingCycleStartDay={billingCycleStartDay}
+            />
+          </Suspense>
+        </div>
       )}
     </>
   );

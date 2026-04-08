@@ -160,7 +160,7 @@ function UsageTooltip(
   return <ChartTooltipCard title={date} rows={rows} />;
 }
 
-function BaseMetronomeUsageChart({
+export function BaseMetronomeUsageChart({
   metronomeUsageData,
   isLoading,
   isError,

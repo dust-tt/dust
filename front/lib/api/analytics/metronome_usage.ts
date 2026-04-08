@@ -212,16 +212,28 @@ export async function handleMetronomeUsageRequest(
         getBillingCycleFromDay(billingCycleStartDay, referenceDate, true);
 
       const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000;
-      const cappedPeriodEnd = new Date(
+      const cappedEnd = new Date(
         Math.min(periodEnd.getTime(), Date.now() + TEN_DAYS_MS)
       );
 
-      const startingOn = periodStart.toISOString();
-      const endingBefore = cappedPeriodEnd.toISOString();
+      // Metronome requires dates at UTC midnight boundaries.
+      const floorToMidnight = (d: Date) =>
+        new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+      const ceilToMidnight = (d: Date) => {
+        const floored = floorToMidnight(d);
+        return floored.getTime() < d.getTime()
+          ? new Date(floored.getTime() + 86_400_000)
+          : floored;
+      };
+
+      const rangeStart = floorToMidnight(periodStart);
+      const rangeEnd = ceilToMidnight(cappedEnd);
+      const startingOn = rangeStart.toISOString();
+      const endingBefore = rangeEnd.toISOString();
 
       const timestamps = getTimestampsForWindow(
-        periodStart,
-        cappedPeriodEnd,
+        rangeStart,
+        rangeEnd,
         windowSize
       );
 
