@@ -133,12 +133,11 @@ export async function createAndTrackMembership({
   if (addSeatResult.isErr()) {
     logger.error(
       {
-        panic: true,
         workspaceId: workspace.sId,
         userId: user.sId,
         error: addSeatResult.error,
       },
-      "Failed to add seat for new member"
+      "[Metronome] Failed to add seat for new member"
     );
   }
 
@@ -211,12 +210,11 @@ export async function revokeAndTrackMembership(
     if (removeSeatResult.isErr()) {
       logger.error(
         {
-          panic: true,
           workspaceId: workspace.sId,
           userId: user.sId,
           error: removeSeatResult.error,
         },
-        "Failed to remove seat for revoked member"
+        "[Metronome] Failed to remove seat for revoked member"
       );
     }
   }
@@ -289,12 +287,11 @@ export async function updateMembershipRoleAndTrack({
       if (addSeatResult.isErr()) {
         logger.error(
           {
-            panic: true,
             workspaceId: workspace.sId,
             userId: user.sId,
             error: addSeatResult.error,
           },
-          "Failed to add seat for re-activated member"
+          "[Metronome] Failed to add seat for re-activated member"
         );
       }
       await launchUpdateUsageWorkflow({ workspaceId: workspace.sId });
