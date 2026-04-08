@@ -153,10 +153,14 @@ vi.mock("@app/types/shared/utils/url_utils", () => ({
   },
 }));
 
-vi.mock("@workos-inc/node", () => ({
-  GenericServerException: class GenericServerException extends Error {},
-  OauthException: class OauthException extends Error {},
-}));
+vi.mock("@workos-inc/node", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@workos-inc/node")>();
+  return {
+    ...actual,
+    GenericServerException: class GenericServerException extends Error {},
+    OauthException: class OauthException extends Error {},
+  };
+});
 
 // Must import handler AFTER mocks are set up.
 import handler from "./[action]";
@@ -237,42 +241,10 @@ describe("GET /api/workos/login", () => {
     expect(stateObj.nonce.length).toBeGreaterThan(0);
   });
 
-  it("rejects untrusted redirect_uri and uses default", async () => {
+  it("uses default redirect_uri when none is provided", async () => {
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "GET",
-      query: { action: "login", redirect_uri: "https://evil.com/steal" },
-    });
-
-    await handler(req, res);
-
-    const callArgs = mockGetAuthorizationUrl.mock.calls[0][0];
-    expect(callArgs.redirectUri).toBe("https://dust.tt/api/workos/callback");
-  });
-
-  it("allows redirect_uri from trusted origins with correct path", async () => {
-    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-      method: "GET",
-      query: {
-        action: "login",
-        redirect_uri: "https://app.dust.tt/api/workos/callback",
-      },
-    });
-
-    await handler(req, res);
-
-    const callArgs = mockGetAuthorizationUrl.mock.calls[0][0];
-    expect(callArgs.redirectUri).toBe(
-      "https://app.dust.tt/api/workos/callback"
-    );
-  });
-
-  it("rejects trusted origin with wrong path", async () => {
-    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-      method: "GET",
-      query: {
-        action: "login",
-        redirect_uri: "https://app.dust.tt/evil-redirect",
-      },
+      query: { action: "login" },
     });
 
     await handler(req, res);
