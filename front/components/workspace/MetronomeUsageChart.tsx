@@ -63,7 +63,6 @@ const GROUP_BY_OPTIONS: {
   { value: "global", label: "Global" },
   { value: "user", label: "By User" },
   { value: "model", label: "By Model" },
-  { value: "tool", label: "By Tool" },
   { value: "origin", label: "By Source" },
 ];
 
