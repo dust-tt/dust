@@ -54,8 +54,7 @@ async function getScheduleOptions(
       cronExpressions: ["*/5 * * * *"],
     },
     memo: {
-      transcriptsConfigurationId: transcriptsConfiguration.id,
-      transcriptsConfigurationSid: transcriptsConfiguration.sId,
+      transcriptsConfigurationId: transcriptsConfiguration.sId,
       IsProcessingTranscripts: transcriptsConfiguration.isActive(),
       IsStoringTranscripts: transcriptsConfiguration.dataSourceViewId !== null,
     },
@@ -74,8 +73,7 @@ export async function launchRetrieveTranscriptsWorkflow(
 
   const childLogger = logger.child({
     scheduleId,
-    transcriptsConfigurationId: transcriptsConfiguration.id,
-    transcriptsConfigurationSid: transcriptsConfiguration.sId,
+    transcriptsConfigurationId: transcriptsConfiguration.sId,
   });
 
   // Try to update existing schedule first
@@ -117,8 +115,7 @@ export async function stopRetrieveTranscriptsWorkflow(
 
   const childLogger = logger.child({
     scheduleId,
-    transcriptsConfigurationId: transcriptsConfiguration.id,
-    transcriptsConfigurationSid: transcriptsConfiguration.sId,
+    transcriptsConfigurationId: transcriptsConfiguration.sId,
   });
 
   try {

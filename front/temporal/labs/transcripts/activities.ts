@@ -79,8 +79,7 @@ export async function retrieveNewTranscriptsActivity(
   }
 
   const localLogger = mainLogger.child({
-    transcriptsConfigurationId: transcriptsConfiguration.id,
-    transcriptsConfigurationSid: transcriptsConfiguration.sId,
+    transcriptsConfigurationId: transcriptsConfiguration.sId,
   });
 
   const workspace = await WorkspaceResource.fetchByModelId(
