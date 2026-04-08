@@ -116,7 +116,10 @@ export async function gongSyncTranscriptsWorkflow({
 
   // Do an outer loop to sync all the transcripts. To avoid hitting activity startToCloseTimeout.
   do {
-    const { nextPageCursor, processedRecords } =
+    const {
+      nextPageCursor,
+      processedRecords,
+    }: Awaited<ReturnType<typeof activities.gongSyncTranscriptsActivity>> =
       await gongSyncTranscriptsActivity({
         connectorId,
         forceResync,
@@ -195,7 +198,9 @@ export async function gongKeywordUpdateWorkflow({
   let hasMore = keywordsToProcess.size > 0;
 
   while (hasMore && latestMaxTranscriptId) {
-    const result = await gongDeleteExcludedTranscriptsActivity({
+    const result: Awaited<
+      ReturnType<typeof activities.gongDeleteExcludedTranscriptsActivity>
+    > = await gongDeleteExcludedTranscriptsActivity({
       connectorId,
       excludeKeywords: [...keywordsToProcess],
       lastId,
