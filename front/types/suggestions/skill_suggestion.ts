@@ -1,0 +1,50 @@
+import { z } from "zod";
+
+export const SKILL_SUGGESTION_STATES = [
+  "pending",
+  "approved",
+  "rejected",
+  "outdated",
+] as const;
+
+export type SkillSuggestionState = (typeof SKILL_SUGGESTION_STATES)[number];
+
+export const SKILL_SUGGESTION_SOURCES = ["reinforcement", "synthetic"] as const;
+
+export type SkillSuggestionSource = (typeof SKILL_SUGGESTION_SOURCES)[number];
+
+export const SKILL_SUGGESTION_KINDS = ["create", "edit_instructions"] as const;
+
+export type SkillSuggestionKind = (typeof SKILL_SUGGESTION_KINDS)[number];
+
+export const SkillCreateSuggestionSchema = z.object({}).strict();
+
+export type SkillCreateSuggestionType = z.infer<
+  typeof SkillCreateSuggestionSchema
+>;
+
+export function isSkillCreateSuggestion(
+  data: unknown
+): data is SkillCreateSuggestionType {
+  return SkillCreateSuggestionSchema.safeParse(data).success;
+}
+
+export const SkillEditInstructionsSuggestionSchema = z.object({
+  instructions: z
+    .string()
+    .describe("Full replacement text for the skill instructions."),
+});
+
+export type SkillEditInstructionsSuggestionType = z.infer<
+  typeof SkillEditInstructionsSuggestionSchema
+>;
+
+export function isSkillEditInstructionsSuggestion(
+  data: unknown
+): data is SkillEditInstructionsSuggestionType {
+  return SkillEditInstructionsSuggestionSchema.safeParse(data).success;
+}
+
+export type SkillSuggestionPayload =
+  | SkillCreateSuggestionType
+  | SkillEditInstructionsSuggestionType;

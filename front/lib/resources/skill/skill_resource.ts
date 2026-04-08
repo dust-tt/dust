@@ -18,6 +18,7 @@ import {
   ConversationSkillModel,
 } from "@app/lib/models/skill/conversation_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
+import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -2155,6 +2156,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           transaction,
         });
 
+        await SkillSuggestionModel.destroy({
+          where: whereWorkspaceIdAndSkillId,
+          transaction,
+        });
+
         await SkillVersionModel.destroy({
           where: whereWorkspaceIdAndSkillId,
           transaction,
@@ -2361,6 +2367,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     await SkillMCPServerConfigurationModel.destroy({
+      where: { workspaceId },
+    });
+
+    await SkillSuggestionModel.destroy({
       where: { workspaceId },
     });
 
