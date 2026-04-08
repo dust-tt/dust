@@ -40,9 +40,9 @@ export function useOnboardingConversation({
 
     if (res.ok) {
       const data = (await res.json()) as PostSendOnboardingResponseBody;
-      if (data.conversationSId) {
+      if (data.conversationId) {
         await router.replace(
-          `/w/${workspaceId}/conversation/${data.conversationSId}`
+          `/w/${workspaceId}/conversation/${data.conversationId}`
         );
         return;
       }

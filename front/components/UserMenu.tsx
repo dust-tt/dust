@@ -94,7 +94,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
         });
         setTimeout(() => {
           void router.push(
-            `/w/${owner.sId}/conversation/${result.conversationSId}`
+            `/w/${owner.sId}/conversation/${result.conversationId}`
           );
         }, 1000);
       } else {

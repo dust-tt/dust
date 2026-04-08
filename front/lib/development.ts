@@ -48,7 +48,7 @@ export async function sendOnboardingConversation(
   owner: LightWorkspaceType,
   featureFlags: WhitelistableFeature[]
 ): Promise<
-  { isOk: true; conversationSId: string } | { isOk: false; error: string }
+  { isOk: true; conversationId: string } | { isOk: false; error: string }
 > {
   if (!showDebugTools(featureFlags)) {
     return { isOk: false, error: "Not allowed" };
@@ -67,10 +67,10 @@ export async function sendOnboardingConversation(
 
   if (response.ok) {
     const data = await response.json();
-    if (!data.conversationSId) {
+    if (!data.conversationId) {
       return { isOk: false, error: "Failed to create onboarding conversation" };
     }
-    return { isOk: true, conversationSId: data.conversationSId };
+    return { isOk: true, conversationId: data.conversationId };
   } else {
     return { isOk: false, error: "Error sending onboarding conversation" };
   }
