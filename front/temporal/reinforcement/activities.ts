@@ -461,16 +461,18 @@ export async function finalizeSkillAggregationActivity({
 }): Promise<void> {
   const auth = await getAuthForWorkspace(workspaceId);
 
-  // Delete synthetic suggestions (consumed by aggregation).
+  // Mark synthetic suggestions as approved (consumed by aggregation).
   const syntheticSuggestions =
     await SkillSuggestionResource.listBySkillConfigurationId(auth, skillId, {
       sources: ["synthetic"],
       states: ["pending"],
     });
 
-  for (const suggestion of syntheticSuggestions) {
-    await suggestion.delete(auth);
-  }
+  await SkillSuggestionResource.bulkUpdateState(
+    auth,
+    syntheticSuggestions,
+    "approved"
+  );
 
   logger.info(
     {
