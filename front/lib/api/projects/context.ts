@@ -1,9 +1,11 @@
 import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
   getAttachmentFromContentFragment,
+  isContentNodeAttachmentType,
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
+import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import type {
   UpsertDocumentArgs,
   UpsertTableArgs,
@@ -14,6 +16,7 @@ import { fetchProjectDataSource } from "@app/lib/api/projects/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
@@ -125,7 +128,61 @@ export async function listProjectContextAttachments(
     merged.set(key, { ...attachment, isInProjectContext: true });
   }
 
-  return Array.from(merged.values());
+  const attachments = Array.from(merged.values());
+
+  // Enrich content-node attachments with the underlying Core node timestamp (last sync / update).
+  // We batch by dataSourceView to avoid one Core call per row.
+  const contentNodeAttachments = attachments.filter(
+    isContentNodeAttachmentType
+  );
+  if (contentNodeAttachments.length === 0) {
+    return attachments;
+  }
+
+  const byView = new Map<string, string[]>();
+  for (const a of contentNodeAttachments) {
+    const ids = byView.get(a.nodeDataSourceViewId) ?? [];
+    ids.push(a.nodeId);
+    byView.set(a.nodeDataSourceViewId, ids);
+  }
+
+  const lastUpdatedByViewAndNode = new Map<
+    string,
+    Map<string, number | null>
+  >();
+
+  await Promise.all(
+    Array.from(byView.entries()).map(async ([dsViewSId, nodeIds]) => {
+      const dsView = await DataSourceViewResource.fetchById(auth, dsViewSId);
+      if (!dsView) {
+        return;
+      }
+
+      const res = await getContentNodesForDataSourceView(dsView, {
+        internalIds: nodeIds,
+        viewType: "all",
+      });
+      if (res.isErr()) {
+        return;
+      }
+
+      const m = new Map<string, number | null>();
+      for (const n of res.value.nodes) {
+        m.set(n.internalId, n.lastUpdatedAt);
+      }
+      lastUpdatedByViewAndNode.set(dsViewSId, m);
+    })
+  );
+
+  return attachments.map((a) => {
+    if (!isContentNodeAttachmentType(a)) {
+      return a;
+    }
+    const ts =
+      lastUpdatedByViewAndNode.get(a.nodeDataSourceViewId)?.get(a.nodeId) ??
+      null;
+    return { ...a, lastUpdatedAt: ts };
+  });
 }
 
 /**

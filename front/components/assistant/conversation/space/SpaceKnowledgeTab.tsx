@@ -69,6 +69,15 @@ function formatDate(timestamp: number): string {
   return date;
 }
 
+function getLastUpdatedTimestamp(row: ContextAttachmentItem): number | null {
+  return (
+    ("lastUpdatedAt" in row ? row.lastUpdatedAt : undefined) ??
+    ("updatedAt" in row ? row.updatedAt : undefined) ??
+    ("createdAt" in row ? row.createdAt : undefined) ??
+    null
+  );
+}
+
 export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
   return (
     <FileDropProvider>
@@ -258,22 +267,20 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
       },
       {
         id: "lastUpdated",
-        accessorKey: "title",
+        accessorFn: (row) => getLastUpdatedTimestamp(row) ?? 0,
         header: "Last updated",
+        sortingFn: "basic",
         meta: {
           className: "w-[100px]",
         },
         cell: (info: CellContext<ProjectKnowledgeRow, unknown>) => {
           const row = info.row.original;
-          if (isFileAttachmentType(row)) {
-            const ts = row.updatedAt ?? row.createdAt ?? null;
-            return (
-              <DataTable.BasicCellContent
-                label={ts != null ? formatDate(ts) : "—"}
-              />
-            );
-          }
-          return <DataTable.BasicCellContent label="—" />;
+          const ts = getLastUpdatedTimestamp(row);
+          return (
+            <DataTable.BasicCellContent
+              label={ts != null ? formatDate(ts) : "—"}
+            />
+          );
         },
       },
       {
