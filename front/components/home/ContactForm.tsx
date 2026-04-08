@@ -310,14 +310,19 @@ export function ContactForm({
           </div>
 
           {/* Phone Number */}
-          <Input
-            label="Phone Number"
-            {...form.register("mobilephone")}
-            placeholder="+1 (555) 000-0000"
-            type="tel"
-            isError={!!errors.mobilephone}
-            message={errors.mobilephone?.message}
-          />
+          <div className="flex flex-col gap-2">
+            <Label>
+              Phone Number<span className="text-red-500">*</span>
+            </Label>
+            <Input
+              {...form.register("mobilephone")}
+              placeholder="+1 (555) 000-0000"
+              type="tel"
+              isError={!!errors.mobilephone}
+              message={errors.mobilephone?.message}
+              messageStatus={errors.mobilephone ? "error" : undefined}
+            />
+          </div>
 
           {/* Language */}
           <DropdownField
