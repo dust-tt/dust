@@ -26,9 +26,7 @@ interface MentionExtensionOptions extends MentionOptions {
   onFirstAgentMentionPasteRef?: RefObject<
     ((agentId: string) => void) | undefined
   >;
-  onAgentMentionsStrippedRef?: RefObject<
-    ((count: number) => void) | undefined
-  >;
+  onAgentMentionsStrippedRef?: RefObject<((count: number) => void) | undefined>;
 }
 
 export const MentionExtension = Mention.extend<MentionExtensionOptions>({
