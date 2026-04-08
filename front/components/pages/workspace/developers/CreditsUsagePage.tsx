@@ -1,9 +1,14 @@
 import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
 import { CreditHistorySheet } from "@app/components/workspace/CreditHistorySheet";
 import { CreditsList, isExpired } from "@app/components/workspace/CreditsList";
+import { MetronomeUsageChart } from "@app/components/workspace/MetronomeUsageChart";
 import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCostChart";
 import config from "@app/lib/api/config";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import {
   getBillingCycle,
   getPriceAsString,
@@ -246,9 +251,12 @@ function UsageSection({
 export function CreditsUsagePage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
+  const { hasFeature } = useFeatureFlags();
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
+  const isMetronome = hasFeature("metronome_billing");
   const { credits, pendingCredits, isCreditsLoading } = useCredits({
     workspaceId: owner.sId,
+    metronomeCustomerId: isMetronome ? owner.metronomeCustomerId : null,
   });
   const {
     isEnterprise,
@@ -353,14 +361,15 @@ export function CreditsUsagePage() {
 
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
-          title="Programmatic Usage"
+          title={isMetronome ? "Usage" : "Programmatic Usage"}
           icon={CardIcon}
           description={
             <div>
               <p>
-                Monitor usage and credits for programmatic usage (API keys,
-                automated workflows, etc.). Usage cost is based on token
-                consumption, according to our{" "}
+                {isMetronome
+                  ? "Monitor all usage and credits across your workspace."
+                  : "Monitor usage and credits for programmatic usage (API keys, automated workflows, etc.)."}{" "}
+                Usage cost is based on token consumption, according to our{" "}
                 <Hoverable
                   href={`${config.getStaticWebsiteUrl()}/home/api-pricing`}
                   target="_blank"
@@ -374,7 +383,7 @@ export function CreditsUsagePage() {
                   target="_blank"
                   variant="primary"
                 >
-                  programmatic usage documentation
+                  usage documentation
                 </Hoverable>
                 .
               </p>
@@ -420,7 +429,8 @@ export function CreditsUsagePage() {
             </ContentMessage>
           )}
 
-        {pendingCredits.length > 0 &&
+        {!isMetronome &&
+          pendingCredits.length > 0 &&
           (() => {
             const totalPendingMicroUsd = pendingCredits.reduce(
               (sum, c) => sum + c.initialAmountMicroUsd,
@@ -489,6 +499,11 @@ export function CreditsUsagePage() {
         {/* Usage Graph */}
         {isCreditPurchaseInfoLoading ? (
           <div className="h-64 animate-pulse rounded bg-muted-foreground/20" />
+        ) : isMetronome ? (
+          <MetronomeUsageChart
+            workspaceId={owner.sId}
+            billingCycleStartDay={billingCycleStartDay ?? 1}
+          />
         ) : (
           <ProgrammaticCostChart
             workspaceId={owner.sId}
