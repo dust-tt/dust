@@ -214,6 +214,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "MicrosoftTeamsLogo",
   "MiroLogo",
   "MondayLogo",
+  "NetSuiteLogo",
   "NotionLogo",
   "OpenaiLogo",
   "PowerBiLogo",
