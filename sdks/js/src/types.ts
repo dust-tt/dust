@@ -3141,6 +3141,8 @@ export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
 
 const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionBrainIcon"
+  | "ActionChatBubbleBottomCenterText1Icon"
+  | "ActionChatBubbleThoughtIcon"
   | "ActionCloudArrowLeftRightIcon"
   | "ActionDocumentTextIcon"
   | "ActionEmotionLaughIcon"
