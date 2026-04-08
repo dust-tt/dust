@@ -8,9 +8,7 @@ interface UseReinforcementToggleProps {
   owner: LightWorkspaceType;
 }
 
-export function useReinforcementToggle({
-  owner,
-}: UseReinforcementToggleProps) {
+export function useReinforcementToggle({ owner }: UseReinforcementToggleProps) {
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
   const [isEnabled, setIsEnabled] = useState(

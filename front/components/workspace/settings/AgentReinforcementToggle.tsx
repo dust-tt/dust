@@ -1,4 +1,4 @@
-import {  useReinforcementToggle } from "@app/lib/swr/useReinforcementToggle";
+import { useReinforcementToggle } from "@app/lib/swr/useReinforcementToggle";
 import type { WorkspaceType } from "@app/types/user";
 import { ContextItem, SliderToggle, SparklesIcon } from "@dust-tt/sparkle";
 
@@ -6,9 +6,7 @@ interface ReinforcementToggleProps {
   owner: WorkspaceType;
 }
 
-export function ReinforcementToggle({
-  owner,
-}: ReinforcementToggleProps) {
+export function ReinforcementToggle({ owner }: ReinforcementToggleProps) {
   const { isEnabled, isChanging, doToggleReinforcement } =
     useReinforcementToggle({ owner });
 
