@@ -1,0 +1,29 @@
+front/pages/api/w/[wId]/subscriptions/index.ts
+  068bbc100a060eab 5,151,161-168,178,182-183,188,190,192-197,199,201-209,211
+front/pages/api/metronome/webhook.ts
+  068bbc100a060eab 4-5,10,15,22-27,127-218,220
+front/lib/resources/workspace_resource.ts
+  068bbc100a060eab 318-326
+front/lib/resources/subscription_resource.ts
+  068bbc100a060eab 11-12,469,471-473,475-482,484-489,620,644,647,650,660-661,679-700,1278-1280,1282-1284,1293,1295-1300,1303-1306
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "96da6c690df747ecdd89550a8904012ff8ca4f04",
+  "prompts": {
+    "068bbc100a060eab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ca0ebdb-9a62-4038-94b7-8a530c09bf58",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Alexandre Pinon",
+      "messages": [],
+      "total_additions": 425,
+      "total_deletions": 151,
+      "accepted_lines": 214,
+      "overriden_lines": 7
+    }
+  }
+}
