@@ -131,6 +131,9 @@ export function InlineActivitySteps({
   const latestPendingToolCall = showPendingToolCalls
     ? pendingToolCalls[pendingToolCalls.length - 1]
     : null;
+  const showTrailingLoader =
+    (showActiveThinking && !chainOfThought) ||
+    (showActiveWriting && !agentMessage.content);
   const activeAction =
     isActing && isAgentMessageWithActions ? actions[actions.length - 1] : null;
 
@@ -264,12 +267,17 @@ export function InlineActivitySteps({
             })}
 
             {/* Active thinking (streaming CoT) */}
-            {showActiveThinking && (
+            {showActiveThinking && chainOfThought && (
               <ThinkingStep
                 content={chainOfThought}
                 isStreaming
                 isMessageDone={false}
-                isLast={!activeAction && !isDone}
+                isLast={
+                  !activeAction &&
+                  !latestPendingToolCall &&
+                  !showTrailingLoader &&
+                  !isDone
+                }
               />
             )}
 
@@ -286,8 +294,6 @@ export function InlineActivitySteps({
                   isLastMessage={false}
                 />
               </div>
-            ) : showActiveWriting ? (
-              <TimelineRow spinner isLast={!activeAction && !isDone} />
             ) : null}
 
             {/* Active action (tool in progress) */}
@@ -301,12 +307,14 @@ export function InlineActivitySteps({
 
             {latestPendingToolCall &&
               renderRunningToolRow({
-                isLast: !isDone,
+                isLast: !isDone && !showTrailingLoader,
                 label: getToolCallDisplayLabel(
                   latestPendingToolCall.toolName,
                   "running"
                 ),
               })}
+
+            {showTrailingLoader && <TimelineRow spinner isLast={!isDone} />}
 
             {/* Pending spinner — shown when between transitions (not done, nothing active) */}
             {!isDone &&
