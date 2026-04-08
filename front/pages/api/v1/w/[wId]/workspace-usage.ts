@@ -24,7 +24,12 @@ import { fromError } from "zod-validation-error";
  * /api/v1/w/{wId}/workspace-usage:
  *   get:
  *     summary: Get workspace usage data
- *     description: Get usage data for the workspace identified by {wId} in CSV or JSON format.
+ *     deprecated: true
+ *     description: |
+ *       Deprecated: this endpoint will be removed after 2026-06-01.
+ *       Use GET /api/v1/w/{wId}/analytics/export instead.
+ *
+ *       Get usage data for the workspace identified by {wId} in CSV or JSON format.
  *     tags:
  *       - Workspace
  *     security:

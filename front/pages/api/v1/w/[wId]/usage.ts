@@ -29,7 +29,8 @@ const GetWorkspaceUsageSchema = t.intersection([
 
 /**
  * @ignoreswagger
- * Deprecated endpoint - not documentated anymore.
+ * Deprecated: this endpoint will be removed after 2026-06-01.
+ * Use GET /api/v1/w/{wId}/analytics/export instead.
  */
 
 async function handler(
