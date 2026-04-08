@@ -11,10 +11,10 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import { isProjectConversation } from "@app/types/assistant/conversation";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
-  DEFAULT_PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION,
-  isProjectNewConversationNotificationConditionOptions,
-  PROJECT_NEW_CONVERSATION_TRIGGER_ID,
-  type ProjectNewConversationNotificationConditionOptions,
+  CONVERSATION_UNREAD_TRIGGER_ID,
+  DEFAULT_NOTIFICATION_CONDITION,
+  isNotificationCondition,
+  type NotificationCondition,
 } from "@app/types/notification_preferences";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -22,17 +22,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import uniqBy from "lodash/uniqBy";
 import { Op } from "sequelize";
-import z from "zod";
-
-export const projectNewConversationPayloadSchema = z.object({
-  workspaceId: z.string(),
-  conversationId: z.string(),
-  userThatCreatedConversationId: z.string(),
-});
-
-export type ProjectNewConversationPayloadType = z.infer<
-  typeof projectNewConversationPayloadSchema
->;
 
 const NOTIFICATION_DELAY_MS = 15_000; // 15 seconds
 
@@ -45,28 +34,26 @@ export const filterMembersByNotifyCondition = async (
   const preferences = await UserMetadataModel.findAll({
     where: {
       userId: { [Op.in]: userModelIds },
-      key: CONVERSATION_NOTIFICATION_METADATA_KEYS.projectNewConversationNotifyCondition,
+      key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
     },
     attributes: ["userId", "value"],
   });
 
-  const preferenceMap = new Map<
-    number,
-    ProjectNewConversationNotificationConditionOptions
-  >();
+  const preferenceMap = new Map<number, NotificationCondition>();
   for (const pref of preferences) {
-    if (isProjectNewConversationNotificationConditionOptions(pref.value)) {
+    if (isNotificationCondition(pref.value)) {
       preferenceMap.set(pref.userId, pref.value);
     }
   }
 
   return members.filter((member) => {
     const notifyCondition =
-      preferenceMap.get(member.id) ??
-      DEFAULT_PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION;
+      preferenceMap.get(member.id) ?? DEFAULT_NOTIFICATION_CONDITION;
     switch (notifyCondition) {
-      case "all_projects":
+      case "all_messages":
         return true;
+      case "only_mentions":
+        return false;
       case "never":
         return false;
       default:
@@ -151,15 +138,16 @@ const triggerProjectNewConversationNotifications = async (
   try {
     const novuClient = await getNovuClient();
 
-    const payload: ProjectNewConversationPayloadType = {
+    const payload = {
       workspaceId: auth.getNonNullableWorkspace().sId,
       conversationId: conversation.sId,
+      isNewProjectConversation: true,
       userThatCreatedConversationId: userThatCreatedConversation.sId,
     };
 
     const r = await novuClient.triggerBulk({
       events: usersToNotify.map((user) => ({
-        workflowId: PROJECT_NEW_CONVERSATION_TRIGGER_ID,
+        workflowId: CONVERSATION_UNREAD_TRIGGER_ID,
         to: {
           subscriberId: user.sId,
           email: user.email,
