@@ -120,7 +120,12 @@ export function UserQuestionRequired({
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-3xl border border-border bg-background p-5 dark:border-border-night dark:bg-background-night">
+    <div
+      className={cn(
+        "flex flex-col gap-4 rounded-3xl border border-border bg-background p-5",
+        "dark:border-border-night dark:bg-background-night"
+      )}
+    >
       <div className="text-base font-medium leading-tight text-foreground dark:text-foreground-night">
         {question.question}
       </div>
@@ -157,7 +162,10 @@ export function UserQuestionRequired({
                 value={index + 1}
                 size="sm"
                 variant="ghost"
-                className="shrink-0 bg-border text-muted-foreground dark:bg-border-night dark:text-muted-foreground-night"
+                className={cn(
+                  "shrink-0 bg-border text-muted-foreground",
+                  "dark:bg-border-night dark:text-muted-foreground-night"
+                )}
               />
               <div className="flex flex-col">
                 <span className="text-sm font-medium text-foreground dark:text-foreground-night">
@@ -189,12 +197,19 @@ export function UserQuestionRequired({
             value={question.options.length + 1}
             size="sm"
             variant="ghost"
-            className="shrink-0 bg-border text-muted-foreground dark:bg-border-night dark:text-muted-foreground-night"
+            className={cn(
+              "shrink-0 bg-border text-muted-foreground",
+              "dark:bg-border-night dark:text-muted-foreground-night"
+            )}
           />
           <Input
             id={`custom-response-${blockedAction.actionId}`}
             containerClassName="flex-1"
-            className="h-auto w-full rounded-none border-transparent bg-transparent px-0 py-0 text-sm shadow-none focus-visible:border-transparent focus-visible:ring-0"
+            className={cn(
+              "h-auto w-full rounded-none border-transparent bg-transparent",
+              "px-0 py-0 text-sm shadow-none",
+              "focus-visible:border-transparent focus-visible:ring-0"
+            )}
             placeholder="Type something else"
             value={customResponse}
             onFocus={() => {
