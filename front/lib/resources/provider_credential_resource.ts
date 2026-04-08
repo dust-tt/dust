@@ -117,10 +117,12 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
   ) => `provider_credentials:workspaceId:${workspaceModelId}`;
 
   private static async _baseFetchUncached(
-    workspaceModelId: ModelId
+    workspaceModelId: ModelId,
+    transaction?: Transaction
   ): Promise<CachedProviderCredential[]> {
     const models = await ProviderCredentialResource.model.findAll({
       where: { workspaceId: workspaceModelId },
+      transaction,
     });
 
     const resources = await concurrentExecutor(
@@ -378,7 +380,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     transaction?: Transaction
   ): Promise<Partial<Record<ByokModelProviderIdType, boolean>>> {
     const cached = transaction
-      ? await this._baseFetchUncached(workspaceId)
+      ? await this._baseFetchUncached(workspaceId, transaction)
       : await this.baseFetchCached(workspaceId);
 
     return Object.fromEntries(cached.map((c) => [c.providerId, c.isHealthy]));
