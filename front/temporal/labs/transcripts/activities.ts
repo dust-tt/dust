@@ -624,7 +624,7 @@ export async function processTranscriptActivity(
     if (cfRes.isErr()) {
       localLogger.error(
         {
-          conversationSid: initialConversation.sId,
+          conversationId: initialConversation.sId,
           error: cfRes.error,
         },
         "[processTranscriptActivity] Error creating file for content fragment. Stopping."
@@ -643,7 +643,7 @@ export async function processTranscriptActivity(
       localLogger.error(
         {
           agentConfigurationId,
-          conversationSid: initialConversation.sId,
+          conversationId: initialConversation.sId,
           error: contentFragmentRes.error,
         },
         "[processTranscriptActivity] Error creating content fragment. Stopping."
@@ -661,7 +661,7 @@ export async function processTranscriptActivity(
       localLogger.error(
         {
           agentConfigurationId,
-          conversationSid: initialConversation.sId,
+          conversationId: initialConversation.sId,
           panic: true,
           error: conversationRes.error,
         },
@@ -688,7 +688,7 @@ export async function processTranscriptActivity(
       localLogger.error(
         {
           agentConfigurationId,
-          conversationSid: conversation.sId,
+          conversationId: conversation.sId,
           error: messageRes.error,
         },
         "[processTranscriptActivity] Error creating message. Stopping."
@@ -702,7 +702,7 @@ export async function processTranscriptActivity(
       localLogger.error(
         {
           agentConfigurationId,
-          conversationSid: conversation.sId,
+          conversationId: conversation.sId,
           error: updatedRes.error,
         },
         "[processTranscriptActivity] Error getting conversation after creation. Stopping."
@@ -763,7 +763,7 @@ export async function processTranscriptActivity(
     localLogger.info(
       {
         agentConfigurationId,
-        conversationSid: conversation.sId,
+        conversationId: conversation.sId,
       },
       "[processTranscriptActivity] Sent processed transcript email."
     );
