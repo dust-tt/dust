@@ -19,6 +19,8 @@ import type {
   AgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { Spinner } from "@dust-tt/sparkle";
+import { NotAvailableErrorPage } from "@app/components/pages/builder/agents/NotAvailableErrorPage";
+import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 
 function isBuilderFlow(value: string): value is BuilderFlow {
   return BUILDER_FLOWS.some((flow) => flow === value);
@@ -26,7 +28,7 @@ function isBuilderFlow(value: string): value is BuilderFlow {
 
 export function NewAgentPage() {
   const owner = useWorkspace();
-  const { user, isAdmin, isBuilder } = useAuth();
+  const { user, isAdmin, isBuilder, providersHealth } = useAuth();
   const { featureFlags } = useFeatureFlags();
 
   const flowParam = useSearchParam("flow");
@@ -72,6 +74,10 @@ export function NewAgentPage() {
 
   if (isRestrictedFromAgentCreation) {
     return <Custom404 />;
+  }
+
+  if (!hasHealthyProviders(providersHealth)) {
+    return <NotAvailableErrorPage isAdmin={isAdmin} owner={owner} />;
   }
 
   if (
