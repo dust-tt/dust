@@ -47,7 +47,8 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
   readonly editorsGroupId: ModelId | null;
   readonly agentConfigurationSId: string;
-  readonly conversationSId: string | null;
+  readonly _conversationId: string | null;
+
   constructor(
     model: ModelStatic<AgentSuggestionModel>,
     blob: Attributes<AgentSuggestionModel>,
@@ -58,7 +59,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     super(AgentSuggestionModel, blob);
     this.editorsGroupId = editorsGroupId;
     this.agentConfigurationSId = agentConfigurationSId;
-    this.conversationSId = conversationId;
+    this._conversationId = conversationId;
   }
 
   /**
@@ -440,7 +441,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       analysis: this.analysis,
       state: this.state,
       source: this.source,
-      conversationId: this.conversationSId,
+      conversationId: this._conversationId,
       ...suggestionData,
     };
   }
