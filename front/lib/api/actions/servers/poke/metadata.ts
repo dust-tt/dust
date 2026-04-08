@@ -29,6 +29,10 @@ export const CHECK_SLACK_CHANNEL_TOOL_NAME = "check_slack_channel";
 export const GET_CONVERSATION_DETAILS_TOOL_NAME = "get_conversation_details";
 export const GET_MCP_SERVER_DETAILS_TOOL_NAME = "get_mcp_server_details";
 
+// ─── Search ──────────────────────────────────────────────────────────────────
+
+export const SEARCH_WORKSPACES_TOOL_NAME = "search_workspaces";
+
 // ─── Users & Cross-Reference ─────────────────────────────────────────────────
 
 export const LIST_WORKSPACE_GROUPS_TOOL_NAME = "list_workspace_groups";
@@ -205,6 +209,27 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Fetching MCP server details",
       done: "Fetched MCP server details",
+    },
+  },
+
+  // ── Search ───────────────────────────────────────────────────────────────
+
+  [SEARCH_WORKSPACES_TOOL_NAME]: {
+    description:
+      "Search workspaces by name (exact), verified domain, or member email. " +
+      "Returns matching workspaces with links to poke, WorkOS, Metronome, and health dashboards.",
+    schema: {
+      query: z
+        .string()
+        .describe(
+          "Search term: workspace name (e.g. 'Acme'), verified domain (e.g. 'acme.com'), " +
+            "or member email (e.g. 'alice@acme.com')."
+        ),
+    },
+    stake: "high" as const,
+    displayLabels: {
+      running: "Searching workspaces",
+      done: "Searched workspaces",
     },
   },
 

@@ -142,6 +142,8 @@ describe("poke tools - security gates", () => {
 
       // Make isDustWorkspace return true.
       vi.stubEnv("PRODUCTION_DUST_WORKSPACE_ID", workspace.sId);
+      vi.stubEnv("WORKOS_ENVIRONMENT_ID", "123456789");
+      vi.stubEnv("POKE_APP_URL", "http://localhost:3000");
 
       // Mock getFeatureFlags to include poke_mcp.
       const authModule = await import("@app/lib/auth");

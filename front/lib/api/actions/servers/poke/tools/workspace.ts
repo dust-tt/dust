@@ -7,6 +7,7 @@ import {
   GET_WORKSPACE_MEMBERS_TOOL_NAME,
   GET_WORKSPACE_PLAN_TOOL_NAME,
   GET_WORKSPACE_SPACES_TOOL_NAME,
+  SEARCH_WORKSPACES_TOOL_NAME,
 } from "@app/lib/api/actions/servers/poke/metadata";
 import {
   enforcePokeSecurityGates,
@@ -23,6 +24,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { isDomain, isEmailValid } from "@app/lib/utils";
 import { Err } from "@app/types/shared/result";
 import { format } from "date-fns/format";
 
@@ -35,6 +37,7 @@ type WorkspaceHandlers = Pick<
   | typeof GET_WORKSPACE_MEMBERS_TOOL_NAME
   | typeof GET_WORKSPACE_SPACES_TOOL_NAME
   | typeof GET_WORKSPACE_CREDITS_TOOL_NAME
+  | typeof SEARCH_WORKSPACES_TOOL_NAME
 >;
 
 export const workspaceHandlers: WorkspaceHandlers = {
@@ -230,5 +233,59 @@ export const workspaceHandlers: WorkspaceHandlers = {
       excessCreditsLast30DaysMicroUsd,
       poke_url: `${config.getPokeAppUrl()}/${workspace_id}`,
     });
+  },
+
+  [SEARCH_WORKSPACES_TOOL_NAME]: async ({ query }, extra) => {
+    const gateResult = await enforcePokeSecurityGates(
+      extra,
+      SEARCH_WORKSPACES_TOOL_NAME,
+      // No specific target workspace for a cross-workspace search.
+      "(global search)"
+    );
+    if (gateResult.isErr()) {
+      return gateResult;
+    }
+
+    let workspaces: WorkspaceResource[] = [];
+
+    if (isEmailValid(query)) {
+      // Search by member email: find user(s) → memberships → workspaces.
+      const users = await UserResource.listByEmail(query);
+      if (users.length) {
+        const { memberships } = await MembershipResource.getLatestMemberships({
+          users,
+        });
+        workspaces = await WorkspaceResource.fetchByModelIds(
+          memberships.map((m) => m.workspaceId)
+        );
+      }
+    } else if (isDomain(query)) {
+      // Search by verified domain.
+      const workspace = await WorkspaceResource.fetchByDomain(query);
+      if (workspace) {
+        workspaces = [workspace];
+      }
+    } else {
+      // Search by exact name or sId.
+      const [byName, bySId] = await Promise.all([
+        WorkspaceResource.fetchByName(query),
+        WorkspaceResource.fetchById(query),
+      ]);
+      // Deduplicate in case name and sId match the same workspace.
+      const seen = new Set<number>();
+      for (const w of [byName, bySId]) {
+        if (w && !seen.has(w.id)) {
+          seen.add(w.id);
+          workspaces.push(w);
+        }
+      }
+    }
+
+    const results = workspaces.map((w) => ({
+      sId: w.sId,
+      name: w.name,
+    }));
+
+    return jsonResponse({ count: results.length, workspaces: results });
   },
 };
