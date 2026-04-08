@@ -364,7 +364,9 @@ export function ScrollableDataTable<TData extends TBaseData>({
 }: ScrollableDataTableProps<TData>) {
   const windowSize = useWindowSize();
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const scrollSentinelRef = useRef<HTMLDivElement>(null);
   const [tableWidth, setTableWidth] = useState(0);
+  const [canScrollDown, setCanScrollDown] = useState(false);
   const tableContainerRef = useRef<HTMLDivElement | null>(null);
 
   const isSorting = !!setSorting;
@@ -521,6 +523,22 @@ export function ScrollableDataTable<TData extends TBaseData>({
       observer.disconnect();
     };
   }, [onLoadMore, isLoading]);
+
+  // Observe whether the bottom of the table is visible to show/hide scroll indicator
+  useEffect(() => {
+    const sentinel = scrollSentinelRef.current;
+    const root = tableContainerRef.current;
+    if (!sentinel || !root) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setCanScrollDown(!entry.isIntersecting),
+      { root, threshold: 0.1 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div
@@ -679,7 +697,16 @@ export function ScrollableDataTable<TData extends TBaseData>({
           ref={loadMoreRef}
           className="s-absolute s-bottom-0 s-h-1 s-w-full"
         />
+        <div ref={scrollSentinelRef} className="s-h-px" />
       </div>
+
+      <div
+        className={cn(
+          "s-pointer-events-none s-sticky -s-bottom-px s-left-0 s-right-0 -s-mt-10 s-h-10 s-bg-gradient-to-t",
+          "s-from-white s-via-white/60 s-to-transparent s-transition-opacity s-duration-300 dark:s-from-background-night dark:s-via-background-night/60",
+          canScrollDown ? "s-opacity-100" : "s-opacity-0"
+        )}
+      />
 
       {isLoading && (
         <div className="s-sticky s-bottom-0 s-left-0 s-right-0 s-flex s-justify-center s-bg-white/80 s-py-2 s-backdrop-blur-sm dark:s-bg-background-night/80">
