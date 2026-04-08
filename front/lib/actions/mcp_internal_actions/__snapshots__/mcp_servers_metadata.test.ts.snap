@@ -454,6 +454,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_workspace_spaces": "high",
     "list_data_sources": "high",
     "list_workspace_groups": "high",
+    "search_workspaces": "high",
   },
   "primitive_types_debugger": {
     "pass_through": "high",

@@ -10,9 +10,12 @@ import { userHandlers } from "@app/lib/api/actions/servers/poke/tools/users";
 import {
   enforcePokeSecurityGates,
   getTargetAuth,
+  jsonResponse,
 } from "@app/lib/api/actions/servers/poke/tools/utils";
 import { workspaceHandlers } from "@app/lib/api/actions/servers/poke/tools/workspace";
-import { Ok } from "@app/types/shared/result";
+import config from "@app/lib/api/config";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { isDevelopment } from "@app/types/shared/env";
 
 const handlers: ToolHandlers<typeof POKE_TOOLS_METADATA> = {
   [GET_WORKSPACE_METADATA_TOOL_NAME]: async ({ workspace_id }, extra) => {
@@ -34,30 +37,34 @@ const handlers: ToolHandlers<typeof POKE_TOOLS_METADATA> = {
     const targetWorkspace = targetAuth.getNonNullableWorkspace();
     const plan = targetAuth.plan();
 
-    return new Ok([
-      {
-        type: "text" as const,
-        text: JSON.stringify(
-          {
-            sId: targetWorkspace.sId,
-            name: targetWorkspace.name,
-            segmentation: targetWorkspace.segmentation,
-            ssoEnforced:
-              "ssoEnforced" in targetWorkspace
-                ? targetWorkspace.ssoEnforced
-                : undefined,
-            plan: plan
-              ? {
-                  code: plan.code,
-                  name: plan.name,
-                }
-              : null,
-          },
-          null,
-          2
-        ),
+    const workspaceResource = await WorkspaceResource.fetchById(workspace_id);
+    const workosEnvironmentId = config.getWorkOSEnvironmentId();
+
+    return jsonResponse({
+      sId: targetWorkspace.sId,
+      name: targetWorkspace.name,
+      segmentation: targetWorkspace.segmentation,
+      ssoEnforced:
+        "ssoEnforced" in targetWorkspace
+          ? targetWorkspace.ssoEnforced
+          : undefined,
+      plan: plan
+        ? {
+            code: plan.code,
+            name: plan.name,
+          }
+        : null,
+      links: {
+        poke: `${config.getPokeAppUrl()}/${targetWorkspace.sId}`,
+        workos: workspaceResource?.workOSOrganizationId
+          ? `https://dashboard.workos.com/${workosEnvironmentId}/organizations/${workspaceResource.workOSOrganizationId}`
+          : null,
+        metronome: workspaceResource?.metronomeCustomerId
+          ? `https://app.metronome.com/${isDevelopment() ? "sandbox/" : ""}customers/${workspaceResource.metronomeCustomerId}`
+          : null,
+        health: `https://metabase.dust.tt/dashboard/34-snowflake-workspace-health?end_date=2030-12-31&start_date=2024-01-01&tab=30-executive-summary&workspace_size_difference_margin=0.2&workspacesid=${targetWorkspace.sId}`,
       },
-    ]);
+    });
   },
 
   ...workspaceHandlers,
