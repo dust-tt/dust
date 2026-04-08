@@ -22,12 +22,8 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Chip,
   CodeBlock,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
   ContentBlockWrapper,
   ContentMessage,
-  cn,
   FaviconIcon,
   InformationCircleIcon,
   Markdown,
@@ -204,22 +200,10 @@ export function SearchResultDetails({
       ) : (
         <div className="flex flex-col gap-4 pl-6 pt-4">
           <div className="flex flex-col gap-1">
-            <span
-              className={cn(
-                displayContext === "sidebar-single-action" ? "font-medium" : "",
-                "text-foreground dark:text-foreground-night"
-              )}
-            >
+            <span className="font-medium text-foreground dark:text-foreground-night">
               Query
             </span>
-            <div
-              className={cn(
-                displayContext === "sidebar-single-action"
-                  ? ""
-                  : "text-sm font-normal",
-                "text-muted-foreground dark:text-muted-foreground-night"
-              )}
-            >
+            <div className="text-muted-foreground dark:text-muted-foreground-night">
               {displayQuery}
             </div>
             {warning && (
@@ -229,44 +213,22 @@ export function SearchResultDetails({
               />
             )}
           </div>
-          {actionOutput &&
-            (displayContext === "sidebar-single-action" ? (
-              <div className="flex flex-col gap-2">
-                <span className="font-medium text-foreground dark:text-foreground-night">
-                  Results
-                </span>
-                {singleFileContentText && (
-                  <Markdown
-                    content={singleFileContentText}
-                    isStreaming={false}
-                    forcedTextSize="text-sm"
-                    textColor="text-muted-foreground dark:text-muted-foreground-night"
-                  />
-                )}
-                <PaginatedCitationsGrid items={citations} />
-              </div>
-            ) : (
-              <div>
-                <Collapsible defaultOpen={false}>
-                  <CollapsibleTrigger>
-                    <span className="text-sm font-bold text-foreground dark:text-foreground-night">
-                      Results
-                    </span>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    {singleFileContentText && (
-                      <Markdown
-                        content={singleFileContentText}
-                        isStreaming={false}
-                        forcedTextSize="text-sm"
-                        textColor="text-muted-foreground dark:text-muted-foreground-night"
-                      />
-                    )}
-                    <PaginatedCitationsGrid items={citations} />
-                  </CollapsibleContent>
-                </Collapsible>
-              </div>
-            ))}
+          {actionOutput && (
+            <div className="flex flex-col gap-2">
+              <span className="font-medium text-foreground dark:text-foreground-night">
+                Results
+              </span>
+              {singleFileContentText && (
+                <Markdown
+                  content={singleFileContentText}
+                  isStreaming={false}
+                  forcedTextSize="text-sm"
+                  textColor="text-muted-foreground dark:text-muted-foreground-night"
+                />
+              )}
+              <PaginatedCitationsGrid items={citations} />
+            </div>
+          )}
         </div>
       )}
     </ActionDetailsWrapper>

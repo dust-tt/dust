@@ -4,9 +4,6 @@ import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_sche
 import {
   ActionDocumentTextIcon,
   Button,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
   CommandLineIcon,
   cn,
   Markdown,
@@ -140,10 +137,7 @@ export function MCPSandboxActionDetails({
       {displayContext === "conversation" ? (
         <ConversationView {...viewProps} />
       ) : (
-        <SidebarView
-          {...viewProps}
-          useCollapsible={displayContext === "sidebar-all-actions"}
-        />
+        <SidebarView {...viewProps} />
       )}
     </ActionDetailsWrapper>
   );
@@ -245,10 +239,6 @@ function ConversationView({
   );
 }
 
-interface SidebarViewFullProps extends SandboxViewProps {
-  useCollapsible: boolean;
-}
-
 function SidebarView({
   command,
   summary,
@@ -256,8 +246,7 @@ function SidebarView({
   isRawMode,
   isRunning,
   exitCode,
-  useCollapsible,
-}: SidebarViewFullProps) {
+}: SandboxViewProps) {
   return (
     <div className="flex flex-col gap-4 py-4 pl-6">
       {!isRawMode && (
@@ -272,76 +261,31 @@ function SidebarView({
 
       {isRawMode && (
         <>
-          {command &&
-            (useCollapsible ? (
-              <Collapsible defaultOpen={true}>
-                <CollapsibleTrigger>
-                  <div
-                    className={cn(
-                      "text-foreground dark:text-foreground-night",
-                      "flex flex-row items-center gap-x-2"
-                    )}
-                  >
-                    <span className="heading-base">Command</span>
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="py-2">
-                    <Markdown content={`\`\`\`bash\n${command}\n\`\`\``} />
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            ) : (
-              <div>
-                <span className="font-medium text-foreground dark:text-foreground-night">
-                  Command
-                </span>
-                <div className="py-2">
-                  <Markdown content={`\`\`\`bash\n${command}\n\`\`\``} />
-                </div>
-              </div>
-            ))}
-
-          {useCollapsible ? (
-            <Collapsible defaultOpen={!!rawOutputText}>
-              <CollapsibleTrigger>
-                <div
-                  className={cn(
-                    "text-foreground dark:text-foreground-night",
-                    "flex flex-row items-center gap-x-2"
-                  )}
-                >
-                  <span className="heading-base">Output</span>
-                </div>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="py-2">
-                  {rawOutputText ? (
-                    <Markdown content={`\`\`\`\n${rawOutputText}\n\`\`\``} />
-                  ) : (
-                    <p className="text-sm italic text-muted-foreground dark:text-muted-foreground-night">
-                      {isRunning ? "Waiting for output…" : "(no output)"}
-                    </p>
-                  )}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          ) : (
+          {command && (
             <div>
               <span className="font-medium text-foreground dark:text-foreground-night">
-                Output
+                Command
               </span>
               <div className="py-2">
-                {rawOutputText ? (
-                  <Markdown content={`\`\`\`\n${rawOutputText}\n\`\`\``} />
-                ) : (
-                  <p className="text-sm italic text-muted-foreground dark:text-muted-foreground-night">
-                    {isRunning ? "Waiting for output…" : "(no output)"}
-                  </p>
-                )}
+                <Markdown content={`\`\`\`bash\n${command}\n\`\`\``} />
               </div>
             </div>
           )}
+
+          <div>
+            <span className="font-medium text-foreground dark:text-foreground-night">
+              Output
+            </span>
+            <div className="py-2">
+              {rawOutputText ? (
+                <Markdown content={`\`\`\`\n${rawOutputText}\n\`\`\``} />
+              ) : (
+                <p className="text-sm italic text-muted-foreground dark:text-muted-foreground-night">
+                  {isRunning ? "Waiting for output…" : "(no output)"}
+                </p>
+              )}
+            </div>
+          </div>
 
           <ExitCodeBadge exitCode={exitCode} />
         </>

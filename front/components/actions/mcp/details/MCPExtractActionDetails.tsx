@@ -1,8 +1,5 @@
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type {
-  ActionDetailsDisplayContext,
-  ToolExecutionDetailsProps,
-} from "@app/components/actions/mcp/details/types";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
   isExtractQueryResourceType,
   isExtractResultResourceType,
@@ -13,9 +10,6 @@ import {
   CitationIcons,
   CitationTitle,
   CodeBlock,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
   Icon,
   ScanIcon,
 } from "@dust-tt/sparkle";
@@ -41,7 +35,6 @@ interface MCPExtractActionResultsProps {
     contentType: string;
     snippet: string | null;
   };
-  displayContext: ActionDetailsDisplayContext;
 }
 
 export function MCPExtractActionDetails({
@@ -78,70 +71,28 @@ export function MCPExtractActionDetails({
           />
         </div>
 
-        {jsonSchema &&
-          (displayContext === "sidebar-single-action" ? (
-            <div>
-              <span className="font-medium text-foreground dark:text-foreground-night">
-                Schema
-              </span>
-              <div className="py-2">
-                <CodeBlock
-                  className="language-json max-h-60 overflow-y-auto"
-                  wrapLongLines={true}
-                >
-                  {JSON.stringify(jsonSchema, null, 2)}
-                </CodeBlock>
-              </div>
+        {jsonSchema && (
+          <div>
+            <span className="font-medium text-foreground dark:text-foreground-night">
+              Schema
+            </span>
+            <div className="py-2">
+              <CodeBlock
+                className="language-json max-h-60 overflow-y-auto"
+                wrapLongLines={true}
+              >
+                {JSON.stringify(jsonSchema, null, 2)}
+              </CodeBlock>
             </div>
-          ) : (
-            <div>
-              <Collapsible defaultOpen={false}>
-                <CollapsibleTrigger>
-                  <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                    Schema
-                  </span>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="py-2">
-                    <CodeBlock
-                      className="language-json max-h-60 overflow-y-auto"
-                      wrapLongLines={true}
-                    >
-                      {JSON.stringify(jsonSchema, null, 2)}
-                    </CodeBlock>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            </div>
-          ))}
+          </div>
+        )}
 
         {displayContext !== "conversation" && (
           <div>
-            {displayContext === "sidebar-single-action" ? (
-              <>
-                <span className="font-medium text-foreground dark:text-foreground-night">
-                  Results
-                </span>
-                <MCPExtractActionResults
-                  resultResource={resultResource}
-                  displayContext={displayContext}
-                />
-              </>
-            ) : (
-              <Collapsible defaultOpen={false}>
-                <CollapsibleTrigger>
-                  <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                    Results
-                  </span>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <MCPExtractActionResults
-                    resultResource={resultResource}
-                    displayContext={displayContext}
-                  />
-                </CollapsibleContent>
-              </Collapsible>
-            )}
+            <span className="font-medium text-foreground dark:text-foreground-night">
+              Results
+            </span>
+            <MCPExtractActionResults resultResource={resultResource} />
           </div>
         )}
       </div>
@@ -181,7 +132,6 @@ function MCPExtractActionQuery({
 
 function MCPExtractActionResults({
   resultResource,
-  displayContext,
 }: MCPExtractActionResultsProps) {
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -221,40 +171,21 @@ function MCPExtractActionResults({
         </Citation>
       </div>
 
-      {resultResource.snippet &&
-        (displayContext === "sidebar-single-action" ? (
-          <div>
-            <span className="font-medium text-foreground dark:text-foreground-night">
-              Preview
-            </span>
-            <div className="py-2">
-              <CodeBlock
-                className="language-json max-h-60 overflow-y-auto"
-                wrapLongLines={true}
-              >
-                {resultResource.snippet}
-              </CodeBlock>
-            </div>
+      {resultResource.snippet && (
+        <div>
+          <span className="font-medium text-foreground dark:text-foreground-night">
+            Preview
+          </span>
+          <div className="py-2">
+            <CodeBlock
+              className="language-json max-h-60 overflow-y-auto"
+              wrapLongLines={true}
+            >
+              {resultResource.snippet}
+            </CodeBlock>
           </div>
-        ) : (
-          <Collapsible defaultOpen={false}>
-            <CollapsibleTrigger>
-              <span className="text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
-                Preview
-              </span>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="py-2">
-                <CodeBlock
-                  className="language-json max-h-60 overflow-y-auto"
-                  wrapLongLines={true}
-                >
-                  {resultResource.snippet}
-                </CodeBlock>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        ))}
+        </div>
+      )}
     </div>
   );
 }
