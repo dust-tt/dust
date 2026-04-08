@@ -244,7 +244,15 @@ export async function lookupPhoneNumber(
 
     const fetchResult = await fetchReport(client, reportId);
     if (fetchResult.isErr()) {
-      return fetchResult;
+      logger.warn(
+        {
+          attempt: attempt + 1,
+          maxAttempts: MAX_POLL_ATTEMPTS,
+          error: fetchResult.error.message,
+        },
+        "[Persona] fetchReport failed, retrying"
+      );
+      continue;
     }
 
     const report = fetchResult.value;
@@ -298,8 +306,10 @@ export async function lookupPhoneNumber(
     });
   }
 
-  // eng-oncall : we took the 80/20 route for Persona risks report,
-  // Instead of webhooks we poll 5 times the reports api
-  // The kind of reports we create are supposed to be super lightweight, so 5x2s should be enough
-  throw Error("Unexpected: got no Persona report after 5 tries");
+  return new Err(
+    new PhoneLookupError(
+      "lookup_failed",
+      "Phone lookup failed. Please try again."
+    )
+  );
 }
