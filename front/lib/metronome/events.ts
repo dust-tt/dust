@@ -235,7 +235,7 @@ export function buildLlmUsageEvents({
   return [...groups.values()].map((group) => ({
     transaction_id: `llm-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${group.providerId}-${group.modelId}`,
     customer_id: workspaceId,
-    event_type: "llm_usage",
+    event_type: "llm_usage_v2",
     timestamp,
     properties: {
       workspace_id: workspaceId,
@@ -342,7 +342,7 @@ export function buildToolUseEvents({
       `tool-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}`
     ),
     customer_id: workspaceId,
-    event_type: "tool_use",
+    event_type: "tool_use_v2",
     timestamp,
     properties: {
       workspace_id: workspaceId,
