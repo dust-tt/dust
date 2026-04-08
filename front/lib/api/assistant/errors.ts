@@ -1,3 +1,6 @@
+export const CONTEXT_WINDOW_DOC_URL =
+  "https://docs.dust.tt/docs/understanding-llms-context-windows";
+
 const CONTEXT_WINDOW_EXCEEDED_TITLE = "Context window exceeded";
 const CONTEXT_WINDOW_EXCEEDED_MESSAGE =
   "Your message or retrieved data is too large. " +
