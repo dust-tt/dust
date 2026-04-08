@@ -25,7 +25,7 @@ const messageVariants = cva("s-flex s-rounded-2xl s-max-w-full", {
       user: "s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3 s-gap-2 s-w-fit",
       agent: "s-w-full s-gap-3 s-py-4 s-flex-col",
     },
-    isOtherUser: {
+    isTriggeredByOtherUser: {
       true: "",
       false: "",
     },
@@ -35,19 +35,19 @@ const messageVariants = cva("s-flex s-rounded-2xl s-max-w-full", {
       // Other users' agent messages are left-aligned, add more vertical
       // spacing to visually separate them from adjacent messages.
       type: "agent",
-      isOtherUser: true,
+      isTriggeredByOtherUser: true,
       className: "s-py-4",
     },
   ],
   defaultVariants: {
     type: "agent",
-    isOtherUser: false,
+    isTriggeredByOtherUser: false,
   },
 });
 
 interface ConversationMessageContainerProps
   extends React.HTMLAttributes<HTMLDivElement> {
-  isOtherUser?: boolean;
+  isTriggeredByOtherUser?: boolean;
   messageType: MessageType;
   type: ConversationMessageType;
 }
@@ -55,11 +55,11 @@ interface ConversationMessageContainerProps
 export const ConversationMessageContainer = React.forwardRef<
   HTMLDivElement,
   ConversationMessageContainerProps
->(({ children, className, isOtherUser, messageType, type, ...props }, ref) => {
+>(({ children, className, isTriggeredByOtherUser, messageType, type, ...props }, ref) => {
   return (
     <div ref={ref} className={cn(wrapperVariants({ messageType }))}>
       <div
-        className={cn(messageVariants({ type, isOtherUser, className }))}
+        className={cn(messageVariants({ type, isTriggeredByOtherUser, className }))}
         {...props}
       >
         {children}

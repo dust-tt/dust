@@ -979,7 +979,7 @@ export function AgentMessage({
 
   const hideCompletionStatus = isDeleted || isInlineActivityEnabled;
 
-  const isOtherUser =
+  const isTriggeredByOtherUser =
     triggeringUser !== null && triggeringUser.sId !== user.sId;
 
   // Steered messages (continuation of a previous agent response) only need
@@ -988,7 +988,7 @@ export function AgentMessage({
   // TODO(2025-04-08 yuka): Refactor conversation message spacing to handle all
   // cases (steered, other user, gracefully stopped) in a unified way.
   const spacingOverride = isSteered
-    ? isOtherUser
+    ? isTriggeredByOtherUser
       ? "pb-4"
       : "pb-2"
     : isGracefullyStopped
@@ -998,7 +998,7 @@ export function AgentMessage({
   return (
     <ConversationMessageContainer
       messageType="agent"
-      isOtherUser={isOtherUser}
+      isTriggeredByOtherUser={isTriggeredByOtherUser}
       type="agent"
       className={spacingOverride}
     >
