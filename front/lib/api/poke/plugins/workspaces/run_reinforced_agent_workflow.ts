@@ -5,7 +5,7 @@ import { Err, Ok } from "@app/types/shared/result";
 export const runReinforcedAgentWorkflowPlugin = createPlugin({
   manifest: {
     id: "run-reinforced-agent-workflow",
-    name: "Run Reinforced Workflow",
+    name: "Run Reinforced Agents Workflow",
     description:
       "Kick off a one-off reinforced agent workflow run for this workspace.",
     resourceTypes: ["workspaces"],

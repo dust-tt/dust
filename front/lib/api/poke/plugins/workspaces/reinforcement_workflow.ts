@@ -1,16 +1,16 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import {
-  launchReinforcedAgentWorkspaceCron,
-  stopReinforcedAgentWorkspaceCron,
-} from "@app/temporal/reinforced_agent/client";
+  launchReinforcementWorkspaceCron,
+  stopReinforcementWorkspaceCron,
+} from "@app/temporal/reinforcement/client";
 import { Err, Ok } from "@app/types/shared/result";
 
-export const reinforcedAgentWorkflowPlugin = createPlugin({
+export const reinforcementWorkflowPlugin = createPlugin({
   manifest: {
-    id: "reinforced-agent-workflow",
-    name: "Start/Stop Reinforced Agents Workflow",
+    id: "reinforcement-workflow",
+    name: "Start/Stop Reinforcement Workflow",
     description:
-      "Start or stop the reinforced agent cron workflow for this workspace.",
+      "Start or stop the reinforcement cron workflow for this workspace.",
     resourceTypes: ["workspaces"],
     args: {
       action: {
@@ -31,7 +31,7 @@ export const reinforcedAgentWorkflowPlugin = createPlugin({
 
     switch (action) {
       case "start-cron": {
-        const result = await launchReinforcedAgentWorkspaceCron({
+        const result = await launchReinforcementWorkspaceCron({
           workspaceId: workspace.sId,
         });
         if (result.isErr()) {
@@ -39,17 +39,17 @@ export const reinforcedAgentWorkflowPlugin = createPlugin({
         }
         return new Ok({
           display: "text",
-          value: `Reinforced agent cron workflow started for workspace ${workspace.sId}.`,
+          value: `Reinforcement cron workflow started for workspace ${workspace.sId}.`,
         });
       }
       case "stop-cron": {
-        await stopReinforcedAgentWorkspaceCron({
+        await stopReinforcementWorkspaceCron({
           workspaceId: workspace.sId,
           stopReason: "Stopped via poke plugin",
         });
         return new Ok({
           display: "text",
-          value: `Reinforced agent cron workflow stopped for workspace ${workspace.sId}.`,
+          value: `Reinforcement cron workflow stopped for workspace ${workspace.sId}.`,
         });
       }
       default:

@@ -229,6 +229,40 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     });
   }
 
+  /**
+   * Lists suggestions across the workspace, optionally filtered by state and source.
+   */
+  static async listByWorkspace(
+    auth: Authenticator,
+    filters?: {
+      states?: SkillSuggestionState[];
+      sources?: SkillSuggestionSource[];
+      kind?: SkillSuggestionKind;
+      limit?: number;
+    }
+  ): Promise<SkillSuggestionResource[]> {
+    const sourceFilter =
+      filters?.sources && filters.sources.length > 0
+        ? { source: filters.sources }
+        : { source: { [Op.ne]: "synthetic" } };
+
+    const whereClause: WhereOptions<SkillSuggestionModel> = {
+      ...(filters?.states &&
+        filters.states.length > 0 && { state: filters.states }),
+      ...sourceFilter,
+      ...(filters?.kind && { kind: filters.kind }),
+    };
+
+    return this.baseFetch(auth, {
+      where: whereClause,
+      order: [
+        ["createdAt", "DESC"],
+        ["id", "DESC"],
+      ],
+      limit: filters?.limit,
+    });
+  }
+
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
     if (!this.canWrite(auth)) {
       return new Err(
