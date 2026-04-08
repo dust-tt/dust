@@ -147,10 +147,7 @@ function getDynamicToolDisplayLabels({
       return null;
 
     case "gmail":
-      if (
-        toolName === "create_draft" &&
-        isString(inputs.subject)
-      ) {
+      if (toolName === "create_draft" && isString(inputs.subject)) {
         const s = truncateQuery(inputs.subject);
         return {
           running: `Drafting “${s}”`,
@@ -187,16 +184,6 @@ function getDynamicToolDisplayLabels({
       }
       return null;
 
-    case "google_drive":
-      if (toolName === "search_files" && isString(inputs.q)) {
-        const q = truncateQuery(inputs.q);
-        return {
-          running: `Searching Drive “${q}”`,
-          done: `Searched Drive “${q}”`,
-        };
-      }
-      return null;
-
     case "extract_data":
       if (
         toolName === "extract_information_from_documents" &&
@@ -211,9 +198,146 @@ function getDynamicToolDisplayLabels({
       return null;
 
     case "conversation_files":
+      if (toolName === "semantic_search" && isString(inputs.query)) {
+        const q = truncateQuery(inputs.query);
         return {
           running: `Searching files “${q}”`,
           done: `Searched files “${q}”`,
+        };
+      }
+      return null;
+
+    case "github": {
+      const base =
+        isString(inputs.owner) && isString(inputs.repo)
+          ? `github.com/${inputs.owner}/${inputs.repo}`
+          : null;
+      if (
+        toolName === "get_pull_request" &&
+        base &&
+        typeof inputs.pullNumber === "number"
+      ) {
+        const url = `${base}/pull/${inputs.pullNumber}`;
+        return {
+          running: `Retrieving ${url}`,
+          done: `Retrieved ${url}`,
+        };
+      }
+      if (
+        toolName === "get_issue" &&
+        base &&
+        typeof inputs.issueNumber === "number"
+      ) {
+        const url = `${base}/issues/${inputs.issueNumber}`;
+        return {
+          running: `Retrieving ${url}`,
+          done: `Retrieved ${url}`,
+        };
+      }
+      if (toolName === "create_issue" && base && isString(inputs.title)) {
+        const t = truncateQuery(inputs.title);
+        return {
+          running: `Creating issue on ${base}: “${t}”`,
+          done: `Created issue on ${base}: “${t}”`,
+        };
+      }
+      if (
+        toolName === "comment_on_issue" &&
+        base &&
+        typeof inputs.issueNumber === "number"
+      ) {
+        const url = `${base}/issues/${inputs.issueNumber}`;
+        return {
+          running: `Commenting on ${url}`,
+          done: `Commented on ${url}`,
+        };
+      }
+      if (
+        toolName === "create_pull_request_review" &&
+        base &&
+        typeof inputs.pullNumber === "number"
+      ) {
+        const url = `${base}/pull/${inputs.pullNumber}`;
+        return {
+          running: `Reviewing ${url}`,
+          done: `Reviewed ${url}`,
+        };
+      }
+      if (toolName === "list_issues" && base) {
+        return {
+          running: `Listing issues on ${base}`,
+          done: `Listed issues on ${base}`,
+        };
+      }
+      if (toolName === "list_pull_requests" && base) {
+        return {
+          running: `Listing PRs on ${base}`,
+          done: `Listed PRs on ${base}`,
+        };
+      }
+      return null;
+    }
+
+    case "google_calendar":
+      if (toolName === "create_event" && isString(inputs.summary)) {
+        const s = truncateQuery(inputs.summary);
+        return {
+          running: `Creating event “${s}”`,
+          done: `Created event “${s}”`,
+        };
+      }
+      if (toolName === "update_event" && isString(inputs.summary)) {
+        const s = truncateQuery(inputs.summary);
+        return {
+          running: `Updating event “${s}”`,
+          done: `Updated event “${s}”`,
+        };
+      }
+      return null;
+
+    case "outlook_calendar":
+      if (
+        (toolName === "create_event" || toolName === "update_event") &&
+        isString(inputs.subject)
+      ) {
+        const s = truncateQuery(inputs.subject);
+        const verb = toolName === "create_event" ? "Creating" : "Updating";
+        const past = toolName === "create_event" ? "Created" : "Updated";
+        return {
+          running: `${verb} event “${s}”`,
+          done: `${past} event “${s}”`,
+        };
+      }
+      return null;
+
+    case "outlook":
+      if (toolName === "create_draft" && isString(inputs.subject)) {
+        const s = truncateQuery(inputs.subject);
+        return {
+          running: `Drafting “${s}”`,
+          done: `Drafted “${s}”`,
+        };
+      }
+      return null;
+
+    case "google_drive":
+      if (toolName === "search_files" && isString(inputs.q)) {
+        const q = truncateQuery(inputs.q);
+        return {
+          running: `Searching Drive “${q}”`,
+          done: `Searched Drive “${q}”`,
+        };
+      }
+      if (
+        (toolName === "create_document" ||
+          toolName === "create_spreadsheet" ||
+          toolName === "create_presentation") &&
+        isString(inputs.title)
+      ) {
+        const t = truncateQuery(inputs.title);
+        return {
+          running: `Creating “${t}”`,
+          done: `Created “${t}”`,
         };
       }
       return null;
@@ -231,9 +355,7 @@ function getDynamicToolDisplayLabels({
     case "file_generation":
     case "fathom":
     case "freshservice":
-    case "github":
     case "gong":
-    case "google_calendar":
     case "google_sheets":
     case "hubspot":
     case "include_data":
@@ -247,8 +369,6 @@ function getDynamicToolDisplayLabels({
     case "missing_action_catcher":
     case "monday":
     case "openai_usage":
-    case "outlook_calendar":
-    case "outlook":
     case "primitive_types_debugger":
     case "productboard":
     case "common_utilities":
