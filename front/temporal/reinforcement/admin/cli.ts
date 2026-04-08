@@ -4,7 +4,7 @@ import {
   startReinforcedSkillsWorkspaceWorkflow,
   stopAllReinforcedSkillsWorkspaceCrons,
   stopReinforcedSkillsWorkspaceCron,
-} from "@app/temporal/reinforced_skills/client";
+} from "@app/temporal/reinforcement/client";
 import parseArgs from "minimist";
 
 function usage() {

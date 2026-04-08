@@ -21,7 +21,7 @@ export function initializeOpenTelemetryInstrumentation({
     | "dust-agent-loop"
     | "dust-front"
     | "dust-reinforced-agent"
-    | "dust-reinforced-skills";
+    | "dust-reinforcement";
 }): void {
   if (!config.isLangfuseEnabled() || sdk) {
     return;

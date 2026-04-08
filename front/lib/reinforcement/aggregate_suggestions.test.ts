@@ -1,4 +1,4 @@
-import { buildSkillAggregationPrompt } from "@app/lib/reinforced_skills/aggregate_suggestions";
+import { buildSkillAggregationPrompt } from "@app/lib/reinforcement/aggregate_suggestions";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { describe, expect, it } from "vitest";

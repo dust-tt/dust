@@ -1,4 +1,4 @@
-import { buildSkillAnalysisPrompt } from "@app/lib/reinforced_skills/analyze_conversation";
+import { buildSkillAnalysisPrompt } from "@app/lib/reinforcement/analyze_conversation";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { describe, expect, it } from "vitest";
 

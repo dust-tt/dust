@@ -20,7 +20,7 @@ import {
   type TerminalToolCallInfo,
   type TerminalToolCallSuccess,
   TOOL_SCHEMAS,
-} from "@app/lib/reinforced_skills/types";
+} from "@app/lib/reinforcement/types";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
@@ -133,7 +133,7 @@ export function getReinforcedSkillsDefaultOptions(
   return {
     visibility: "test" as const,
     metadata: getReinforcedSkillsMetadata(operationType, contextId),
-    userContextUsername: "reinforced_skills",
+    userContextUsername: "reinforcement",
     userContextOrigin: "reinforcement" as const,
     agentConfigurationId: REINFORCEMENT_SKILLS_AGENT_ID,
   };
@@ -148,9 +148,9 @@ export function reinforcedSkillsConversationTitle(
   contextId: string
 ): string {
   switch (operationType) {
-    case "reinforced_skills_analyze_conversation":
+    case "reinforcement_analyze_conversation":
       return `Reinforced skills analysis of ${contextId}`;
-    case "reinforced_skills_aggregate_suggestions":
+    case "reinforcement_aggregate_suggestions":
       return `Reinforced skills aggregation for ${contextId}`;
     default:
       assertNever(operationType);

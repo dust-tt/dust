@@ -1,8 +1,8 @@
 import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import { formatSkillContext } from "@app/lib/reinforced_skills/format_skill_context";
-import { buildReinforcedSkillsLLMParams } from "@app/lib/reinforced_skills/run_reinforced_analysis";
+import { formatSkillContext } from "@app/lib/reinforcement/format_skill_context";
+import { buildReinforcedSkillsLLMParams } from "@app/lib/reinforcement/run_reinforced_analysis";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { SkillType } from "@app/types/assistant/skill_configuration";

@@ -10,7 +10,7 @@ import {
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
-import * as activities from "@app/temporal/reinforced_skills/activities";
+import * as activities from "@app/temporal/reinforcement/activities";
 import { isDevelopment } from "@app/types/shared/env";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { Context } from "@temporalio/activity";
@@ -27,14 +27,14 @@ export async function runReinforcedSkillsWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
 
   initializeOpenTelemetryInstrumentation({
-    serviceName: "dust-reinforced-skills",
+    serviceName: "dust-reinforcement",
   });
 
   const spanExporter = new NoopSpanExporter();
 
   const worker = await Worker.create({
     ...getWorkflowConfig({
-      workerName: "reinforced_skills",
+      workerName: "reinforcement",
       getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities,

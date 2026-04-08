@@ -1,5 +1,5 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { startReinforcedSkillsWorkspaceWorkflow } from "@app/temporal/reinforced_skills/client";
+import { startReinforcedSkillsWorkspaceWorkflow } from "@app/temporal/reinforcement/client";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const runReinforcedSkillsWorkflowPlugin = createPlugin({

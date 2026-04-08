@@ -1,5 +1,5 @@
 import type { AuthenticatorType } from "@app/lib/auth";
-import type * as activities from "@app/temporal/reinforced_skills/activities";
+import type * as activities from "@app/temporal/reinforcement/activities";
 import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
 import {

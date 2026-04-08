@@ -1,4 +1,4 @@
-import { buildReinforcedSkillsLLMParams } from "@app/lib/reinforced_skills/run_reinforced_analysis";
+import { buildReinforcedSkillsLLMParams } from "@app/lib/reinforcement/run_reinforced_analysis";
 import { describe, expect, it } from "vitest";
 
 describe("buildReinforcedSkillsLLMParams", () => {

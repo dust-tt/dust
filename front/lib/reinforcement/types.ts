@@ -91,8 +91,8 @@ export interface ProcessReinforcedSkillsEventsResult {
 }
 
 export type ReinforcedSkillsOperationType =
-  | "reinforced_skills_analyze_conversation"
-  | "reinforced_skills_aggregate_suggestions";
+  | "reinforcement_analyze_conversation"
+  | "reinforcement_aggregate_suggestions";
 
 export const REINFORCED_SKILLS_METADATA_KEYS = {
   reinforcedSkills: "reinforcedSkills",

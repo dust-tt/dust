@@ -2,7 +2,7 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import {
   launchReinforcedSkillsWorkspaceCron,
   stopReinforcedSkillsWorkspaceCron,
-} from "@app/temporal/reinforced_skills/client";
+} from "@app/temporal/reinforcement/client";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const reinforcedSkillsWorkflowPlugin = createPlugin({

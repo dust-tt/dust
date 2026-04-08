@@ -21,16 +21,16 @@ import {
   buildSkillAggregationBatchMap,
   buildSkillAggregationSystemPrompt,
   loadSkillAggregationContext,
-} from "@app/lib/reinforced_skills/aggregate_suggestions";
+} from "@app/lib/reinforcement/aggregate_suggestions";
 import {
   buildSkillAnalysisPrompt,
   buildSkillAnalysisSystemPrompt,
   buildSkillConversationAnalysisBatchMap,
-} from "@app/lib/reinforced_skills/analyze_conversation";
+} from "@app/lib/reinforcement/analyze_conversation";
 import {
   DEFAULT_MAX_CONVERSATIONS_PER_RUN,
   DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS,
-} from "@app/lib/reinforced_skills/constants";
+} from "@app/lib/reinforcement/constants";
 import {
   buildReinforcedSkillsSpecifications,
   classifySkillToolCalls,
@@ -40,10 +40,10 @@ import {
   processSkillReinforcedEvents,
   REINFORCEMENT_SKILLS_AGENT_ID,
   reinforcedSkillsConversationTitle,
-} from "@app/lib/reinforced_skills/run_reinforced_analysis";
-import { findConversationsWithSkills } from "@app/lib/reinforced_skills/selection";
-import type { ReinforcedSkillsOperationType } from "@app/lib/reinforced_skills/types";
-import { getAuthForWorkspace } from "@app/lib/reinforced_skills/utils";
+} from "@app/lib/reinforcement/run_reinforced_analysis";
+import { findConversationsWithSkills } from "@app/lib/reinforcement/selection";
+import type { ReinforcedSkillsOperationType } from "@app/lib/reinforcement/types";
+import { getAuthForWorkspace } from "@app/lib/reinforcement/utils";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
@@ -331,7 +331,7 @@ export async function analyzeConversationStepActivity({
       auth,
       {
         prompt,
-        operationType: "reinforced_skills_analyze_conversation",
+        operationType: "reinforcement_analyze_conversation",
         contextId: conversationId,
       }
     );
@@ -344,7 +344,7 @@ export async function analyzeConversationStepActivity({
   return runReinforcedSkillsStep({
     auth,
     reinforcementConversationId,
-    operationType: "reinforced_skills_analyze_conversation",
+    operationType: "reinforcement_analyze_conversation",
     systemPrompt: buildSkillAnalysisSystemPrompt(),
     contextId: conversationId,
     source: "synthetic",
@@ -429,7 +429,7 @@ export async function aggregateSuggestionsForSkillStepActivity({
       auth,
       {
         prompt: ctx.prompt,
-        operationType: "reinforced_skills_aggregate_suggestions",
+        operationType: "reinforcement_aggregate_suggestions",
         contextId: skillId,
       }
     );
@@ -438,7 +438,7 @@ export async function aggregateSuggestionsForSkillStepActivity({
   return runReinforcedSkillsStep({
     auth,
     reinforcementConversationId,
-    operationType: "reinforced_skills_aggregate_suggestions",
+    operationType: "reinforcement_aggregate_suggestions",
     systemPrompt: buildSkillAggregationSystemPrompt(),
     contextId: skillId,
     source: "reinforcement",
@@ -498,7 +498,7 @@ export async function checkBatchStatusActivity({
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforced_skills_analyze_conversation"
+    "reinforcement_analyze_conversation"
   );
   if (!llm) {
     throw ApplicationFailure.nonRetryable(
@@ -536,7 +536,7 @@ export async function startSkillConversationAnalysisBatchActivity({
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforced_skills_analyze_conversation"
+    "reinforcement_analyze_conversation"
   );
   if (!llm) {
     logger.warn(
@@ -589,12 +589,12 @@ export async function startSkillConversationAnalysisBatchActivity({
       batchConversations.push({
         newMessages: conversation.messages,
         title: reinforcedSkillsConversationTitle(
-          "reinforced_skills_analyze_conversation",
+          "reinforcement_analyze_conversation",
           conversationSId
         ),
         ...llmParamsWithoutConversation,
         ...getReinforcedSkillsDefaultOptions(
-          "reinforced_skills_analyze_conversation",
+          "reinforcement_analyze_conversation",
           conversationSId
         ),
       });
@@ -655,7 +655,7 @@ export async function processSkillConversationAnalysisBatchResultActivity({
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforced_skills_analyze_conversation"
+    "reinforcement_analyze_conversation"
   );
   if (!llm) {
     return [];
@@ -707,7 +707,7 @@ export async function processSkillConversationAnalysisBatchResultActivity({
         auth,
         events,
         source: "synthetic",
-        operationType: "reinforced_skills_analyze_conversation",
+        operationType: "reinforcement_analyze_conversation",
         contextId: analysedConvId,
         conversation: conversationById.get(analysedConvId),
       });
@@ -792,7 +792,7 @@ export async function startSkillAggregationBatchActivity({
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforced_skills_aggregate_suggestions"
+    "reinforcement_aggregate_suggestions"
   );
   if (!llm) {
     logger.warn(
@@ -831,12 +831,12 @@ export async function startSkillAggregationBatchActivity({
       batchConversations.push({
         newMessages: conversation.messages,
         title: reinforcedSkillsConversationTitle(
-          "reinforced_skills_aggregate_suggestions",
+          "reinforcement_aggregate_suggestions",
           skillId
         ),
         ...llmParamsWithoutConversation,
         ...getReinforcedSkillsDefaultOptions(
-          "reinforced_skills_aggregate_suggestions",
+          "reinforcement_aggregate_suggestions",
           skillId
         ),
       });
@@ -887,7 +887,7 @@ export async function processSkillAggregationBatchResultActivity({
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforced_skills_aggregate_suggestions"
+    "reinforcement_aggregate_suggestions"
   );
   if (!llm) {
     return { needsContinuation: false, suggestionsCreated: 0 };
@@ -920,7 +920,7 @@ export async function processSkillAggregationBatchResultActivity({
       auth,
       events,
       source: "reinforcement",
-      operationType: "reinforced_skills_aggregate_suggestions",
+      operationType: "reinforcement_aggregate_suggestions",
       contextId: skillId,
     });
 

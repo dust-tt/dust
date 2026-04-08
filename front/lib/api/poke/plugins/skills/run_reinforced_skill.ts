@@ -1,6 +1,6 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS } from "@app/lib/reinforced_skills/constants";
-import { startReinforcedSkillsWorkspaceWorkflow } from "@app/temporal/reinforced_skills/client";
+import { DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS } from "@app/lib/reinforcement/constants";
+import { startReinforcedSkillsWorkspaceWorkflow } from "@app/temporal/reinforcement/client";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const runReinforcedSkillPlugin = createPlugin({
