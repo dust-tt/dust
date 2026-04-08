@@ -1,6 +1,6 @@
 # [front] Coding Rules
 
-Shared rules (GEN1-GEN9, SEC1-SEC2, ERR1-ERR2) are in the root `CODING_RULES.md` and apply
+Shared rules (GEN1-GEN11, SEC1-SEC2, ERR1-ERR2) are in the root `CODING_RULES.md` and apply
 automatically. This file contains rules specific to the `front` workspace.
 
 ## BACKEND
@@ -252,42 +252,6 @@ Example:
 export type UserTypeWithWorkspaces = UserType & {
   workspaces: WorkspaceType[];
 };
-```
-
-## TYPESCRIPT
-
-### [TS1] Dynamic imports are forbidden by default in production code
-
-In production TypeScript/TSX code, prefer static imports at the top of the file.
-
-Use dynamic `import()` only when strictly necessary (e.g., runtime gating between Node/Edge,
-optional dependencies, or excluding client-only code from server bundles).
-
-This rule does not apply to CommonJS config files (e.g., `next.config.js`, `tailwind.config.js`)
-or to Vitest patterns such as `vi.mock(import("..."), ...)`.
-
-If a dynamic import is strictly necessary, it must:
-
-- Use a string literal module specifier (no computed paths).
-- Be accompanied by a short comment explaining why a static import is not acceptable.
-
-### [TS2] Using config for environment variables
-
-Never access environment variables directly via `process.env`. Instead, use the `@app/lib/api/config`
-module which provides type-safe access to environment variables.
-
-Example:
-
-```
-// BAD
-const apiUrl = process.env.API_URL;
-const isProduction = process.env.NODE_ENV === "production";
-
-// GOOD
-import config from "@app/lib/api/config";
-
-const apiUrl = config.getApiUrl();
-const isProduction = config.getNodeEnv() === "production";
 ```
 
 ## AUDIT LOGGING
