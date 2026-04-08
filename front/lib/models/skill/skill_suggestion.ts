@@ -1,8 +1,5 @@
 import { ConversationModel } from "@app/lib/models/agent/conversation";
-import {
-  SkillConfigurationModel,
-  SkillVersionModel,
-} from "@app/lib/models/skill";
+import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
@@ -19,7 +16,6 @@ export class SkillSuggestionModel extends WorkspaceAwareModel<SkillSuggestionMod
   declare updatedAt: CreationOptional<Date>;
 
   declare skillConfigurationId: ForeignKey<SkillConfigurationModel["id"]>;
-  declare skillVersionId: ForeignKey<SkillVersionModel["id"]>;
 
   declare kind: SkillSuggestionKind;
   declare suggestion: SkillSuggestionPayload;
@@ -31,7 +27,6 @@ export class SkillSuggestionModel extends WorkspaceAwareModel<SkillSuggestionMod
   declare groupId: string | null;
 
   declare skillConfiguration: NonAttribute<SkillConfigurationModel>;
-  declare skillVersion: NonAttribute<SkillVersionModel>;
   declare sourceConversation: NonAttribute<ConversationModel | null>;
 }
 
@@ -48,10 +43,6 @@ SkillSuggestionModel.init(
       defaultValue: DataTypes.NOW,
     },
     skillConfigurationId: {
-      type: DataTypes.BIGINT,
-      allowNull: false,
-    },
-    skillVersionId: {
       type: DataTypes.BIGINT,
       allowNull: false,
     },
@@ -107,11 +98,6 @@ SkillSuggestionModel.init(
         concurrently: true,
       },
       {
-        name: "skill_suggestions_workspace_skill_version",
-        fields: ["skillVersionId"],
-        concurrently: true,
-      },
-      {
         name: "idx_skill_suggestions_source_conversation_id",
         fields: ["sourceConversationId"],
         concurrently: true,
@@ -133,17 +119,6 @@ SkillSuggestionModel.belongsTo(SkillConfigurationModel, {
 });
 SkillConfigurationModel.hasMany(SkillSuggestionModel, {
   foreignKey: { name: "skillConfigurationId", allowNull: false },
-  onDelete: "RESTRICT",
-  as: "skillSuggestions",
-});
-
-SkillSuggestionModel.belongsTo(SkillVersionModel, {
-  foreignKey: { name: "skillVersionId", allowNull: false },
-  onDelete: "RESTRICT",
-  as: "skillVersion",
-});
-SkillVersionModel.hasMany(SkillSuggestionModel, {
-  foreignKey: { name: "skillVersionId", allowNull: false },
   onDelete: "RESTRICT",
   as: "skillSuggestions",
 });
