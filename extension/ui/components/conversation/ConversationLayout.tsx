@@ -1,5 +1,6 @@
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { SidebarBanners } from "@app/components/navigation/AppStatusBanner";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
@@ -43,6 +44,7 @@ export const ConversationLayout = ({
           <SheetHeader className="bg-muted-background p-0" hideButton>
             <SheetTitle className="hidden" />
           </SheetHeader>
+          <SidebarBanners />
           <div className="flex flex-col grow p-1">
             <AgentSidebarMenu owner={owner} hideActions hideInAppBanner />
           </div>
