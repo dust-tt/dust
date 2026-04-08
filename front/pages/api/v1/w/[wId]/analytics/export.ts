@@ -1,9 +1,74 @@
-/** @ignoreswagger */
+/**
+ * @swagger
+ * /api/v1/w/{wId}/analytics/export:
+ *   get:
+ *     summary: Export workspace analytics as CSV
+ *     description: Export analytics data for the workspace identified by {wId} in CSV format.
+ *     tags:
+ *       - Workspace
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: Unique string identifier for the workspace
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: table
+ *         required: true
+ *         description: |
+ *           The analytics table to export:
+ *           - "usage_metrics": Messages, conversations, and active users over time.
+ *           - "active_users": Daily, weekly, and monthly active user counts.
+ *           - "source": Message volume by context origin (web, slack, etc.).
+ *           - "agents": Top agents by message count.
+ *           - "users": Top users by message count.
+ *           - "skill_usage": Skill executions and unique users over time.
+ *           - "tool_usage": Tool executions and unique users over time.
+ *           - "messages": Detailed message-level logs.
+ *         schema:
+ *           type: string
+ *           enum: [usage_metrics, active_users, source, agents, users, skill_usage, tool_usage, messages]
+ *       - in: query
+ *         name: startDate
+ *         required: true
+ *         description: Start date in YYYY-MM-DD format
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: endDate
+ *         required: true
+ *         description: End date in YYYY-MM-DD format
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: timezone
+ *         required: false
+ *         description: IANA timezone name (defaults to UTC)
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: The analytics data in CSV format
+ *         content:
+ *           text/csv:
+ *             schema:
+ *               type: string
+ *       400:
+ *         description: Invalid request query parameters
+ *       403:
+ *         description: Only workspace admins can access workspace analytics
+ *       405:
+ *         description: Method not supported
+ */
 
 import { exportTable } from "@app/lib/api/analytics/export_tables";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { GetAnalyticsExportRequestSchema } from "@dust-tt/client";
@@ -20,18 +85,6 @@ async function handler(
       api_error: {
         type: "workspace_auth_error",
         message: "Only workspace admins can access workspace analytics.",
-      },
-    });
-  }
-
-  const flags = await getFeatureFlags(auth);
-  if (!flags.includes("analytics_csv_export")) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "The workspace does not have access to the analytics export API.",
       },
     });
   }

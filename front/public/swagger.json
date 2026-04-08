@@ -228,6 +228,100 @@
         }
       }
     },
+    "/api/v1/w/{wId}/analytics/export": {
+      "get": {
+        "summary": "Export workspace analytics as CSV",
+        "description": "Export analytics data for the workspace identified by {wId} in CSV format.",
+        "tags": [
+          "Workspace"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "Unique string identifier for the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "table",
+            "required": true,
+            "description": "The analytics table to export:\n- \"usage_metrics\": Messages, conversations, and active users over time.\n- \"active_users\": Daily, weekly, and monthly active user counts.\n- \"source\": Message volume by context origin (web, slack, etc.).\n- \"agents\": Top agents by message count.\n- \"users\": Top users by message count.\n- \"skill_usage\": Skill executions and unique users over time.\n- \"tool_usage\": Tool executions and unique users over time.\n- \"messages\": Detailed message-level logs.\n",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "usage_metrics",
+                "active_users",
+                "source",
+                "agents",
+                "users",
+                "skill_usage",
+                "tool_usage",
+                "messages"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "startDate",
+            "required": true,
+            "description": "Start date in YYYY-MM-DD format",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "endDate",
+            "required": true,
+            "description": "End date in YYYY-MM-DD format",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "timezone",
+            "required": false,
+            "description": "IANA timezone name (defaults to UTC)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The analytics data in CSV format",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request query parameters"
+          },
+          "403": {
+            "description": "Only workspace admins can access workspace analytics"
+          },
+          "405": {
+            "description": "Method not supported"
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/assistant/agent_configurations": {
       "get": {
         "summary": "List agents",
@@ -5503,7 +5597,8 @@
     "/api/v1/w/{wId}/workspace-usage": {
       "get": {
         "summary": "Get workspace usage data",
-        "description": "Get usage data for the workspace identified by {wId} in CSV or JSON format.",
+        "deprecated": true,
+        "description": "Deprecated: this endpoint will be removed after 2026-06-01.\nUse GET /api/v1/w/{wId}/analytics/export instead.\n\nGet usage data for the workspace identified by {wId} in CSV or JSON format.\n",
         "tags": [
           "Workspace"
         ],
