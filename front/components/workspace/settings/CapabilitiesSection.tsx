@@ -1,4 +1,4 @@
-import { AgentReinforcementToggle } from "@app/components/workspace/settings/AgentReinforcementToggle";
+import { ReinforcementToggle } from "@app/components/workspace/settings/AgentReinforcementToggle";
 import { EmailAgentsToggle } from "@app/components/workspace/settings/EmailAgentsToggle";
 import { InteractiveContentSharingToggle } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
 import { RestrictAgentsPublishingCapability } from "@app/components/workspace/settings/RestrictAgentsPublishingCapability";
@@ -30,7 +30,7 @@ export function CapabilitiesSection({
         )}
         <EmailAgentsToggle owner={owner} />
         {hasFeature("reinforced_agents") && (
-          <AgentReinforcementToggle owner={owner} />
+          <ReinforcementToggle owner={owner} />
         )}
         {publishingRestrictionMessage && (
           <RestrictAgentsPublishingCapability

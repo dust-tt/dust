@@ -246,7 +246,7 @@ describe("POST /api/w/[wId]", () => {
     });
 
     req.body = {
-      allowAgentReinforcement: true,
+      allowReinforcement: true,
     };
 
     await handler(req, res);
@@ -256,7 +256,7 @@ describe("POST /api/w/[wId]", () => {
       workspace: expect.objectContaining({
         id: workspace.id,
         metadata: expect.objectContaining({
-          allowAgentReinforcement: true,
+          allowReinforcement: true,
         }),
       }),
     });
@@ -269,7 +269,7 @@ describe("POST /api/w/[wId]", () => {
     });
 
     req.body = {
-      allowAgentReinforcement: false,
+      allowReinforcement: false,
     };
 
     await handler(req, res);
@@ -279,7 +279,7 @@ describe("POST /api/w/[wId]", () => {
       workspace: expect.objectContaining({
         id: workspace.id,
         metadata: expect.objectContaining({
-          allowAgentReinforcement: false,
+          allowReinforcement: false,
         }),
       }),
     });

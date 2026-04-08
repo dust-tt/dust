@@ -1,28 +1,26 @@
-import { useAgentReinforcementToggle } from "@app/lib/swr/useAgentReinforcementToggle";
+import { useReinforcementToggle } from "@app/lib/swr/useReinforcementToggle";
 import type { WorkspaceType } from "@app/types/user";
 import { ContextItem, SliderToggle, SparklesIcon } from "@dust-tt/sparkle";
 
-interface AgentReinforcementToggleProps {
+interface ReinforcementToggleProps {
   owner: WorkspaceType;
 }
 
-export function AgentReinforcementToggle({
-  owner,
-}: AgentReinforcementToggleProps) {
-  const { isEnabled, isChanging, doToggleAgentReinforcement } =
-    useAgentReinforcementToggle({ owner });
+export function ReinforcementToggle({ owner }: ReinforcementToggleProps) {
+  const { isEnabled, isChanging, doToggleReinforcement } =
+    useReinforcementToggle({ owner });
 
   return (
     <ContextItem
-      title="Allow agent reinforcement"
-      subElement="Allow Dust to analyse conversations to suggest improvement to your agents"
+      title="Allow reinforcement"
+      subElement="Allow Dust to analyse conversations to suggest improvements."
       visual={<SparklesIcon className="h-6 w-6" />}
       hasSeparatorIfLast={true}
       action={
         <SliderToggle
           selected={isEnabled}
           disabled={isChanging}
-          onClick={doToggleAgentReinforcement}
+          onClick={doToggleReinforcement}
         />
       }
     />
