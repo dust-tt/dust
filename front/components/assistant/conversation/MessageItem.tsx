@@ -209,7 +209,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 isAgentMessageWithStreaming(data) &&
                 data.status === "gracefully_stopped"
               ) &&
-              "mb-4"
+              "mb-1"
           )}
         >
           {isUserMessage(data) && (
