@@ -4,7 +4,14 @@ import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import type { UserQuestionAnswer } from "@app/lib/actions/types";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { Button, Card, Checkbox, Input, Spinner } from "@dust-tt/sparkle";
+import {
+  ArrowUpIcon,
+  Button,
+  Card,
+  Checkbox,
+  Input,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 
 interface UserQuestionRequiredProps {
@@ -35,6 +42,7 @@ export function UserQuestionRequired({
 
   const { question } = blockedAction;
   const isTriggeredByCurrentUser = blockedAction.userId === user?.sId;
+  const isCustomResponseEmpty = customResponse.trim().length === 0;
 
   const submitAnswer = useCallback(
     async (answer: UserQuestionAnswer) => {
@@ -74,13 +82,13 @@ export function UserQuestionRequired({
   );
 
   const handleCustomResponseSubmit = useCallback(() => {
-    if (customResponse.trim()) {
+    if (!isCustomResponseEmpty) {
       void submitAnswer({
         selectedOptions: [],
         customResponse: customResponse.trim(),
       });
     }
-  }, [customResponse, submitAnswer]);
+  }, [customResponse, isCustomResponseEmpty, submitAnswer]);
 
   const handleMultiSelectSubmit = useCallback(() => {
     if (selectedOptions.length === 0) {
@@ -162,14 +170,24 @@ export function UserQuestionRequired({
         </div>
       )}
       <div className="flex gap-2">
-        <Button label="Skip" variant="outline" size="xs" onClick={handleSkip} />
-        {question.multiSelect && (
+        <Button label="Skip" variant="outline" size="sm" onClick={handleSkip} />
+        {question.multiSelect ? (
           <Button
             label="Submit"
             variant="primary"
-            size="xs"
+            size="sm"
             disabled={selectedOptions.length === 0}
             onClick={handleMultiSelectSubmit}
+          />
+        ) : (
+          <Button
+            icon={ArrowUpIcon}
+            variant="highlight"
+            size="sm"
+            className="ml-auto"
+            disabled={isCustomResponseEmpty}
+            onClick={handleCustomResponseSubmit}
+            aria-label="Send custom response"
           />
         )}
       </div>
