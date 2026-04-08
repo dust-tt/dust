@@ -481,9 +481,7 @@ export const fetchTree = async (
   }
 
   const skippedSet = new Set(skippedDatabases);
-  const activeDatabases = databases.filter(
-    (db) => !skippedSet.has(db.name)
-  );
+  const activeDatabases = databases.filter((db) => !skippedSet.has(db.name));
 
   const schemas = allSchemas.filter((s) => !EXCLUDE_SCHEMAS.includes(s.name));
   localLogger.info(
