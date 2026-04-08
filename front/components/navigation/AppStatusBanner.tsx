@@ -62,7 +62,11 @@ function StatusBanner({
   );
 }
 
-function AppStatusBanner({ appStatus }: { appStatus: AppStatus }) {
+interface AppStatusBannerProps {
+  appStatus: AppStatus;
+}
+
+function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   const { providersStatus, dustStatus } = appStatus;
 
   if (dustStatus) {
@@ -99,13 +103,15 @@ function AppStatusBanner({ appStatus }: { appStatus: AppStatus }) {
   return null;
 }
 
+interface UnhealthyCredentialsBannerProps {
+  owner: WorkspaceType;
+  subscription: SubscriptionType;
+}
+
 function UnhealthyCredentialsBanner({
   owner,
   subscription,
-}: {
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-}) {
+}: UnhealthyCredentialsBannerProps) {
   const { providersHealth } = useAuth();
 
   if (!providersHealth) {
