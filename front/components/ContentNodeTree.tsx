@@ -1,3 +1,4 @@
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { classNames } from "@app/lib/utils";
@@ -11,10 +12,12 @@ import {
   IconButton,
   ListCheckIcon,
   SearchInput,
+  Spinner,
   Tree,
+  useSheetViewport,
 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
-import React, { useCallback, useContext, useState } from "react";
+import React, { useCallback, useContext, useRef, useState } from "react";
 
 const unselectedChildren = (
   selection: Record<string, ContentNodeTreeItemStatus>,
@@ -105,6 +108,44 @@ const useContentNodeTreeContext = () => {
   return context;
 };
 
+interface ContentNodeTreeInfiniteScrollProps {
+  loadMore?: () => void;
+  hasMore: boolean;
+  isLoadingMore: boolean;
+}
+
+function ContentNodeTreeInfiniteScroll({
+  loadMore,
+  hasMore,
+  isLoadingMore,
+}: ContentNodeTreeInfiniteScrollProps) {
+  const sheetViewport = useSheetViewport();
+  const isLoadingMoreRef = useRef(isLoadingMore);
+  isLoadingMoreRef.current = isLoadingMore;
+
+  const handleNextPage = useCallback(() => {
+    if (loadMore && !isLoadingMoreRef.current) {
+      loadMore();
+    }
+  }, [loadMore]);
+
+  return (
+    <InfiniteScroll
+      nextPage={handleNextPage}
+      hasMore={hasMore}
+      showLoader={isLoadingMore}
+      loader={
+        <div className="flex justify-center py-2">
+          <Spinner size="sm" />
+        </div>
+      }
+      options={
+        sheetViewport ? { root: sheetViewport, rootMargin: "400px" } : undefined
+      }
+    />
+  );
+}
+
 interface ContentNodeTreeChildrenProps {
   depth: number;
   isRoundedBackground?: boolean;
@@ -142,15 +183,17 @@ function ContentNodeTreeChildren({
     isResourcesLoading,
     isResourcesError,
     resourcesError,
-    totalResourceCount,
     nextPageCursor,
     loadMore,
     isLoadingMore,
   } = useResourcesHook(parentId);
 
-  const filteredNodes = resources
-    .filter((n) => filter.trim().length === 0 || n.title.includes(filter))
-    .sort((a, b) => a.title.localeCompare(b.title));
+  const isFiltering = filter.trim().length > 0;
+  const filteredNodes = isFiltering
+    ? resources
+        .filter((n) => n.title.includes(filter))
+        .sort((a, b) => a.title.localeCompare(b.title))
+    : resources;
 
   const getCheckedState = useCallback(
     (node: ContentNode) => {
@@ -344,26 +387,13 @@ function ContentNodeTreeChildren({
           </div>
         </>
       )}
-      <div className="overflow-y-auto p-1">
+      <div className="p-1">
         {tree}
-        {nextPageCursor && (
-          <div className="mt-2 flex flex-col items-center py-2">
-            <div className="mb-2 text-center text-xs text-gray-500">
-              {`Showing ${filteredNodes.length} of ${totalResourceCount ?? filteredNodes.length} items`}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              label={isLoadingMore ? "Loading..." : "Load More"}
-              disabled={isResourcesLoading || isLoadingMore}
-              onClick={() => {
-                if (loadMore) {
-                  loadMore();
-                }
-              }}
-            />
-          </div>
-        )}
+        <ContentNodeTreeInfiniteScroll
+          loadMore={loadMore}
+          hasMore={!!nextPageCursor}
+          isLoadingMore={!!isLoadingMore}
+        />
       </div>
     </>
   );
