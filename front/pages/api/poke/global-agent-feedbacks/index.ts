@@ -42,7 +42,7 @@ export interface GlobalAgentFeedbackItem {
   workspaceId: string;
   workspaceName: string;
   conversationId: string | null;
-  messageSId: string | null;
+  messageId: string | null;
 }
 
 export interface GetGlobalAgentFeedbacksResponseBody {
@@ -146,7 +146,7 @@ async function handler(
     attributes: ["sId", "agentMessageId"],
     where: { agentMessageId: agentMessageIds },
   });
-  const messageSIdByAgentMessageId = new Map(
+  const messageIdByAgentMessageId = new Map(
     messages.map((m) => [m.agentMessageId, m.sId])
   );
 
@@ -164,7 +164,7 @@ async function handler(
       workspaceId: workspace?.sId ?? "unknown",
       workspaceName: workspace?.name ?? "Unknown",
       conversationId: conversationById.get(row.conversationId) ?? null,
-      messageSId: messageSIdByAgentMessageId.get(row.agentMessageId) ?? null,
+      messageId: messageIdByAgentMessageId.get(row.agentMessageId) ?? null,
     };
   });
 

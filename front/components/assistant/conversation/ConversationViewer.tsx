@@ -439,10 +439,10 @@ export const ConversationViewer = ({
       // Optimistic update: remove the suggestion from local state.
       setSuggestionsByMessageSId((prev) => {
         const next = new Map<string, ButlerSuggestionPublicType[]>();
-        for (const [msgSId, suggestions] of prev) {
+        for (const [messageId, suggestions] of prev) {
           const filtered = suggestions.filter((s) => s.sId !== suggestionSId);
           if (filtered.length > 0) {
-            next.set(msgSId, filtered);
+            next.set(messageId, filtered);
           }
         }
         return next;

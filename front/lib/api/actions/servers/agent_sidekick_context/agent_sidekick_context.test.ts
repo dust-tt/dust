@@ -2637,14 +2637,14 @@ describe("agent_sidekick_context tools", () => {
         return;
       }
       const fullConversation = conversationRes.value;
-      const agentMessageSId = fullConversation.content
+      const agentMessageId = fullConversation.content
         .flat()
         .find((m) => m.type === "agent_message")?.sId;
-      expect(agentMessageSId).toBeDefined();
+      expect(agentMessageId).toBeDefined();
 
       const tool = getToolByName("inspect_message");
       const result = await tool.handler(
-        { conversationId: conversation.sId, messageId: agentMessageSId! },
+        { conversationId: conversation.sId, messageId: agentMessageId! },
         createTestExtra(authenticator)
       );
 

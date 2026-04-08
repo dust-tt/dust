@@ -152,8 +152,8 @@ export async function writeBatchUserMessages(
  */
 export interface StoreLlmResultInfo {
   agentMessageModelId: ModelId;
-  agentMessageSId: string;
-  userMessageSId: string;
+  agentMessageId: string;
+  userMessageId: string;
 }
 
 export async function storeLlmResult(
@@ -165,7 +165,7 @@ export async function storeLlmResult(
 ): Promise<StoreLlmResultInfo> {
   const workspace = auth.getNonNullableWorkspace();
 
-  const { agentMessageModel, agentMessageSId, userMessageSId } =
+  const { agentMessageModel, agentMessageId, userMessageId } =
     await withTransaction(async (t: Transaction) => {
       // Find the last user message in this conversation to use as parent.
       const parentMessage = await MessageModel.findOne({
@@ -218,10 +218,10 @@ export async function storeLlmResult(
         { transaction: t }
       );
 
-      const messageSId = generateRandomModelSId();
+      const messageId = generateRandomModelSId();
       await MessageModel.create(
         {
-          sId: messageSId,
+          sId: messageId,
           rank: nextRank,
           conversationId: conversation.id,
           parentId: parentMessage?.id ?? null,
@@ -233,8 +233,8 @@ export async function storeLlmResult(
 
       return {
         agentMessageModel: msg,
-        agentMessageSId: messageSId,
-        userMessageSId: parentMessage?.sId ?? "",
+        agentMessageId: messageId,
+        userMessageId: parentMessage?.sId ?? "",
       };
     });
 
@@ -257,8 +257,8 @@ export async function storeLlmResult(
 
   return {
     agentMessageModelId: agentMessageModel.id,
-    agentMessageSId,
-    userMessageSId,
+    agentMessageId,
+    userMessageId,
   };
 }
 

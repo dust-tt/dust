@@ -83,16 +83,16 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/branches/[bId]/merge",
     mockMergeBranch.mockResolvedValue({
       isErr: () => false,
       value: {
-        mergedUserMessageSId: "msg_user_1",
-        mergedAgentMessageSIds: ["msg_agent_1"],
+        mergedUserMessageId: "msg_user_1",
+        mergedAgentMessageIds: ["msg_agent_1"],
       },
     });
 
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    expect(res._getJSONData().mergedUserMessageSId).toBe("msg_user_1");
-    expect(res._getJSONData().mergedAgentMessageSIds).toEqual(["msg_agent_1"]);
+    expect(res._getJSONData().mergedUserMessageId).toBe("msg_user_1");
+    expect(res._getJSONData().mergedAgentMessageIds).toEqual(["msg_agent_1"]);
     expect(mockMergeBranch).toHaveBeenCalledWith(req.auth, {
       branchId: BRANCH_SID,
       conversationId: CONVERSATION_SID,

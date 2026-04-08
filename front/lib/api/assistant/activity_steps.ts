@@ -73,7 +73,7 @@ export async function contentsToActivitySteps(
   contents: Array<{ step: number; content: AgentContentItemType }>,
   actions: AgentMCPActionWithOutputType[],
   agentConfiguration: LightAgentConfigurationType,
-  messageSId: string
+  messageId: string
 ): Promise<InlineActivityStep[]> {
   const actionsByCallId = new Map(actions.map((a) => [a.functionCallId, a]));
 
@@ -105,7 +105,7 @@ export async function contentsToActivitySteps(
     if (isAgentTextContent(c.content)) {
       const contentParser = new AgentMessageContentParser(
         agentConfiguration,
-        messageSId,
+        messageId,
         getCoTDelimitersConfiguration({ agentConfiguration })
       );
       const parsedContent = await contentParser.parseContents([

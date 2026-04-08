@@ -13,7 +13,7 @@ export async function seedFeedbacks(
     logger.info(
       {
         conversationId: feedbackAsset.conversationId,
-        agentMessageSId: feedbackAsset.agentMessageSId,
+        agentMessageId: feedbackAsset.agentMessageId,
       },
       "Creating feedback"
     );
@@ -37,12 +37,12 @@ export async function seedFeedbacks(
       // Find the message row
       const messageResult = await conversation.getMessageById(
         auth,
-        feedbackAsset.agentMessageSId
+        feedbackAsset.agentMessageId
       );
 
       if (messageResult.isErr()) {
         logger.warn(
-          { agentMessageSId: feedbackAsset.agentMessageSId },
+          { agentMessageId: feedbackAsset.agentMessageId },
           "Agent message not found for feedback, skipping"
         );
         continue;
@@ -51,7 +51,7 @@ export async function seedFeedbacks(
       const messageRow = messageResult.value;
       if (!messageRow.agentMessageId || !messageRow.agentMessage) {
         logger.warn(
-          { agentMessageSId: feedbackAsset.agentMessageSId },
+          { agentMessageId: feedbackAsset.agentMessageId },
           "Agent message not found for feedback, skipping"
         );
         continue;
@@ -72,7 +72,7 @@ export async function seedFeedbacks(
 
       if (existingFeedback) {
         logger.info(
-          { agentMessageSId: feedbackAsset.agentMessageSId },
+          { agentMessageId: feedbackAsset.agentMessageId },
           "Feedback already exists, skipping"
         );
         continue;
@@ -94,7 +94,7 @@ export async function seedFeedbacks(
 
       logger.info(
         {
-          agentMessageSId: feedbackAsset.agentMessageSId,
+          agentMessageId: feedbackAsset.agentMessageId,
           thumbDirection: feedbackAsset.thumbDirection,
         },
         "Feedback created"

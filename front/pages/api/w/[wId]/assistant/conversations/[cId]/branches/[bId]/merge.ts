@@ -9,8 +9,8 @@ import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type MergeConversationBranchResponse = {
-  mergedUserMessageSId: string;
-  mergedAgentMessageSIds: string[];
+  mergedUserMessageId: string;
+  mergedAgentMessageIds: string[];
 };
 
 async function handler(
@@ -105,8 +105,8 @@ async function handler(
   }
 
   res.status(200).json({
-    mergedUserMessageSId: mergeRes.value.mergedUserMessageSId,
-    mergedAgentMessageSIds: mergeRes.value.mergedAgentMessageSIds,
+    mergedUserMessageId: mergeRes.value.mergedUserMessageId,
+    mergedAgentMessageIds: mergeRes.value.mergedAgentMessageIds,
   });
 }
 
