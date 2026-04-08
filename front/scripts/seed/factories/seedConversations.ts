@@ -57,13 +57,13 @@ export async function seedConversations(
 
     // Determine which user to use for this conversation
     let conversationUser = user;
-    if (conv.userSId) {
-      const specifiedUser = additionalUsers.get(conv.userSId);
+    if (conv.userId) {
+      const specifiedUser = additionalUsers.get(conv.userId);
       if (specifiedUser) {
         conversationUser = specifiedUser;
       } else {
         logger.warn(
-          { userSId: conv.userSId },
+          { userId: conv.userId },
           "Specified user not found in additionalUsers, using default user"
         );
       }

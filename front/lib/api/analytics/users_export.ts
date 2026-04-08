@@ -127,12 +127,12 @@ export async function fetchUserExportRows({
 
   const rows: UserExportRow[] = memberships.map((membership) => {
     const user = membership.user;
-    const userSid = user.sId;
-    const metrics = esMetrics.get(userSid);
-    const userId = String(user.id);
+    const userId = user.sId;
+    const metrics = esMetrics.get(userId);
+    const userModelId = String(user.id);
 
     return {
-      userId: userSid,
+      userId,
       userName:
         [user.firstName, user.lastName].filter(Boolean).join(" ") ||
         user.email ||
@@ -141,7 +141,7 @@ export async function fetchUserExportRows({
       messageCount: metrics?.messageCount ?? 0,
       lastMessageSent: metrics?.lastMessageSent ?? "",
       activeDaysCount: metrics?.activeDaysCount ?? 0,
-      groups: groupsMap[userId] ?? "",
+      groups: groupsMap[userModelId] ?? "",
     };
   });
 

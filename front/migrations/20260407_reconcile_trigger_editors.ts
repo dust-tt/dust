@@ -14,11 +14,11 @@ interface AffectedTrigger {
   triggerName: string;
   workspaceModelId: ModelId;
   workspaceId: string;
-  currentEditorId: ModelId;
-  currentEditorSId: string;
+  currentEditorModelId: ModelId;
+  currentEditorId: string;
   currentEditorEmail: string;
-  originalUserId: ModelId;
-  originalUserSId: string;
+  originalUserModelId: ModelId;
+  originalUserId: string;
   originalUserEmail: string;
 }
 
@@ -33,11 +33,11 @@ async function findAffectedTriggers(): Promise<AffectedTrigger[]> {
       t.name AS "triggerName",
       t."workspaceId",
       w."sId" AS "workspaceId",
-      t.editor AS "currentEditorId",
-      curr_u."sId" AS "currentEditorSId",
+      t.editor AS "currentEditorModelId",
+      curr_u."sId" AS "currentEditorId",
       curr_u.email AS "currentEditorEmail",
-      um."userId" AS "originalUserId",
-      orig_u."sId" AS "originalUserSId",
+      um."userId" AS "originalUserModelId",
+      orig_u."sId" AS "originalUserId",
       orig_u.email AS "originalUserEmail"
     FROM triggers t
     JOIN users curr_u ON curr_u.id = t.editor
@@ -104,19 +104,19 @@ makeScript({}, async ({ execute }, logger) => {
       continue;
     }
 
-    const triggerSId = TriggerResource.modelIdToSId({
+    const triggerId = TriggerResource.modelIdToSId({
       id: row.triggerId,
       workspaceId: row.workspaceModelId,
     });
 
     // Auth as the current (admin) editor to pass the permission check.
     const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      row.currentEditorSId,
+      row.currentEditorId,
       row.workspaceId
     );
 
-    const result = await TriggerResource.update(adminAuth, triggerSId, {
-      editor: row.originalUserId,
+    const result = await TriggerResource.update(adminAuth, triggerId, {
+      editor: row.originalUserModelId,
     });
 
     if (result.isErr()) {
@@ -129,13 +129,13 @@ makeScript({}, async ({ execute }, logger) => {
 
     // Re-upsert the Temporal workflow under the original user's identity.
     const originalUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      row.originalUserSId,
+      row.originalUserId,
       row.workspaceId
     );
 
     const trigger = await TriggerResource.fetchById(
       originalUserAuth,
-      triggerSId
+      triggerId
     );
     if (trigger && trigger.status === "enabled") {
       const upsertResult =

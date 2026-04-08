@@ -85,7 +85,7 @@ export function userMentionDirective() {
         const data = node.data || (node.data = {});
         data.hName = "mention_user";
         data.hProperties = {
-          userSId: node.attributes.sId,
+          userId: node.attributes.sId,
           userName: node.children[0].value,
         };
       }
@@ -105,15 +105,15 @@ export function userMentionDirective() {
 export function getUserMentionPlugin(owner: WorkspaceType) {
   const UserMentionPlugin = ({
     userName,
-    userSId,
+    userId,
   }: {
     userName: string;
-    userSId: string;
+    userId: string;
   }) => {
     return (
       <MentionDisplay
         mention={{
-          id: userSId,
+          id: userId,
           label: userName,
           type: "user",
           pictureUrl: "",

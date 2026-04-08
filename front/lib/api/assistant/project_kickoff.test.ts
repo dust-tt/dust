@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 describe("buildProjectKickoffPrompt", () => {
   const userFullName = "Test User";
-  const userSId = "user_123";
+  const userId = "user_123";
 
   const prompt = buildProjectKickoffPrompt({
     projectName: "Test Kickstart",
@@ -21,7 +21,7 @@ describe("buildProjectKickoffPrompt", () => {
     );
     expect(prompt).toContain(`Do NOT use plain \`@${userFullName}\``);
     expect(prompt).not.toContain(
-      `:mention_user[${userFullName}]{sId=${userSId}}`
+      `:mention_user[${userFullName}]{sId=${userId}}`
     );
     expect(prompt).toContain(
       "Do not claim that you already searched anything in this first message."

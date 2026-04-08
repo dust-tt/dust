@@ -65,7 +65,7 @@ export async function enforcePokeSecurityGates(
   logger.info(
     {
       action: "poke_cross_workspace_access",
-      callerUserSId: callerUser?.sId,
+      callerUserId: callerUser?.sId,
       callerUserEmail: callerUser?.email,
       callerWorkspaceId: callerWorkspace.sId,
       targetWorkspaceId,

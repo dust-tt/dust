@@ -60,7 +60,7 @@ export interface ConversationAsset {
   sId: string;
   title: string;
   agentName?: string;
-  userSId?: string;
+  userId: string;
   exchanges: Exchange[];
 }
 

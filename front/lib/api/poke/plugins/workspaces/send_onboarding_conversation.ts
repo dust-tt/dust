@@ -16,9 +16,9 @@ export const sendOnboardingConversationPlugin = createPlugin({
       "This overwrites the user's onboarding metadata and may recreate the conversation even if one exists.",
     resourceTypes: ["workspaces"],
     args: {
-      userSId: {
+      userId: {
         type: "string",
-        label: "User sId",
+        label: "User ID",
         description:
           "Target user stable id (e.g., usr_xxx) belonging to this workspace.",
       },
@@ -36,7 +36,7 @@ export const sendOnboardingConversationPlugin = createPlugin({
       return new Err(new Error("Workspace not found in auth context."));
     }
 
-    const targetUser = await UserResource.fetchById(args.userSId);
+    const targetUser = await UserResource.fetchById(args.userId);
     if (!targetUser) {
       return new Err(new Error("User not found."));
     }
