@@ -1475,8 +1475,8 @@ export async function createAgentMessageFromText(
     citationsAndFilesFromOutputItems?: CitationsAndFilesFromOutputItemsType;
   }
 ): Promise<{
-  messageId: ModelId;
-  messageSId: string;
+  messageModelId: ModelId;
+  messageId: string;
   agentMessageId: ModelId;
 }> {
   const owner = auth.getNonNullableWorkspace();
@@ -1589,8 +1589,8 @@ export async function createAgentMessageFromText(
     }
 
     return {
-      messageId: messageRow.id,
-      messageSId: messageRow.sId,
+      messageModelId: messageRow.id,
+      messageId: messageRow.sId,
       agentMessageId: agentMessageRow.id,
     };
   });
@@ -1604,7 +1604,7 @@ export async function createAgentMessageFromText(
       {
         workspaceId: owner.sId,
         conversationId: conversation.sId,
-        messageSId: created.messageSId,
+        messageId: created.messageId,
       },
       "createAgentMessageFromText: conversation not found for event publish."
     );
@@ -1612,7 +1612,7 @@ export async function createAgentMessageFromText(
   }
 
   const messageRow = await MessageModel.findOne({
-    where: { id: created.messageId, workspaceId: owner.id },
+    where: { id: created.messageModelId, workspaceId: owner.id },
     include: [
       {
         model: AgentMessageModel,
@@ -1627,7 +1627,7 @@ export async function createAgentMessageFromText(
       {
         workspaceId: owner.sId,
         conversationId: conversation.sId,
-        messageSId: created.messageSId,
+        messageId: created.messageId,
       },
       "createAgentMessageFromText: message row missing for batch render."
     );
@@ -1646,7 +1646,7 @@ export async function createAgentMessageFromText(
       {
         workspaceId: owner.sId,
         conversationId: conversation.sId,
-        messageSId: created.messageSId,
+        messageId: created.messageId,
         error: renderedRes.error,
       },
       "createAgentMessageFromText: batchRenderMessages failed."
@@ -1656,7 +1656,7 @@ export async function createAgentMessageFromText(
 
   const agentMessage = renderedRes.value.find(
     (m): m is AgentMessageType =>
-      isAgentMessageType(m) && m.sId === created.messageSId
+      isAgentMessageType(m) && m.sId === created.messageId
   );
 
   if (!agentMessage) {
@@ -1664,7 +1664,7 @@ export async function createAgentMessageFromText(
       {
         workspaceId: owner.sId,
         conversationId: conversation.sId,
-        messageSId: created.messageSId,
+        messageId: created.messageId,
       },
       "createAgentMessageFromText: rendered agent message not found."
     );

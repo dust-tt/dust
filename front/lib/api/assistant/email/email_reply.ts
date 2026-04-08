@@ -80,7 +80,7 @@ async function isEmailAgentsEnabled(
  */
 async function handleBlockedValidation(
   auth: Authenticator,
-  agentMessageSId: string,
+  agentMessageId: string,
   context: EmailReplyContext
 ): Promise<boolean> {
   const conversationResource = await ConversationResource.fetchById(
@@ -90,7 +90,7 @@ async function handleBlockedValidation(
   if (!conversationResource) {
     logger.warn(
       {
-        agentMessageId: agentMessageSId,
+        agentMessageId: agentMessageId,
         conversationId: context.conversationId,
       },
       "[email] Conversation not found for blocked validation check"
@@ -107,7 +107,7 @@ async function handleBlockedValidation(
   const validationRequiredActions = blockedActions.filter(
     (action) =>
       action.status === "blocked_validation_required" &&
-      action.messageId === agentMessageSId
+      action.messageId === agentMessageId
   );
 
   if (validationRequiredActions.length === 0) {
@@ -121,7 +121,7 @@ async function handleBlockedValidation(
   if (!agentConfiguration) {
     logger.warn(
       {
-        agentMessageId: agentMessageSId,
+        agentMessageId: agentMessageId,
         agentConfigurationId: context.agentConfigurationId,
       },
       "[email] Agent configuration not found for blocked validation check"
@@ -140,11 +140,11 @@ async function handleBlockedValidation(
   });
 
   // Re-store context with fresh TTL so it's available when agent resumes.
-  await storeEmailReplyContext(agentMessageSId, context);
+  await storeEmailReplyContext(agentMessageId, context);
 
   logger.info(
     {
-      agentMessageId: agentMessageSId,
+      agentMessageId: agentMessageId,
       conversationId: context.conversationId,
       blockedActionsCount: validationRequiredActions.length,
     },

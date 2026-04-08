@@ -155,7 +155,7 @@ describe("mergeConversationBranch", () => {
       where: {
         workspaceId: workspace.id,
         conversationId: conversation.id,
-        sId: mergeRes.value.mergedUserMessageSId,
+        sId: mergeRes.value.mergedUserMessageId,
       },
       include: [{ model: UserMessageModel, as: "userMessage", required: true }],
     });
@@ -168,7 +168,7 @@ describe("mergeConversationBranch", () => {
       where: {
         workspaceId: workspace.id,
         conversationId: conversation.id,
-        sId: mergeRes.value.mergedAgentMessageSIds,
+        sId: mergeRes.value.mergedAgentMessageIds,
       },
       include: [
         { model: AgentMessageModel, as: "agentMessage", required: true },

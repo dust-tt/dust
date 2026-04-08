@@ -1,13 +1,13 @@
 [
   {
     "conversationId": "SidekickConv01",
-    "agentMessageSId": "SidekickAMsg01",
+    "agentMessageId": "SidekickAMsg01",
     "thumbDirection": "down",
     "content": "The agent should be able to search the internet for recent news. It's useless without web access."
   },
   {
     "conversationId": "SidekickConv02",
-    "agentMessageSId": "SidekickAMsg03",
+    "agentMessageId": "SidekickAMsg03",
     "thumbDirection": "down",
     "content": null
   }

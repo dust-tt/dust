@@ -144,7 +144,7 @@ export async function mergeConversationBranch(
   }
 ): Promise<
   Result<
-    { mergedUserMessageSId: string; mergedAgentMessageSIds: string[] },
+    { mergedUserMessageId: string; mergedAgentMessageIds: string[] },
     DustError<MergeConversationBranchErrorCode>
   >
 > {
@@ -301,7 +301,7 @@ export async function mergeConversationBranch(
 
   let rankCursor = nextRank;
 
-  const mergedAgentMessageSIds: string[] = [];
+  const mergedAgentMessageIds: string[] = [];
   for (const branchAgentMessage of latestBranchAgentMessageRows) {
     const renderedAgent = rendered.find(
       (m) =>
@@ -335,7 +335,7 @@ export async function mergeConversationBranch(
       skipToolsValidation: branchAgentMessage.agentMessage!.skipToolsValidation,
     });
 
-    mergedAgentMessageSIds.push(created.messageSId);
+    mergedAgentMessageIds.push(created.messageId);
   }
 
   await ConversationBranchModel.update(
@@ -346,8 +346,8 @@ export async function mergeConversationBranch(
   );
 
   return new Ok({
-    mergedUserMessageSId: mergedUserMessage.sId,
-    mergedAgentMessageSIds,
+    mergedUserMessageId: mergedUserMessage.sId,
+    mergedAgentMessageIds,
   });
 }
 
