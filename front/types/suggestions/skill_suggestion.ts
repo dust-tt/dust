@@ -77,7 +77,8 @@ const BaseSkillSuggestionSchema = z.object({
   sourceConversationId: z.string().nullable(),
 });
 
-export const SkillSuggestionSchema =
-  BaseSkillSuggestionSchema.and(SkillSuggestionDataSchema);
+export const SkillSuggestionSchema = BaseSkillSuggestionSchema.and(
+  SkillSuggestionDataSchema
+);
 
 export type SkillSuggestionType = z.infer<typeof SkillSuggestionSchema>;
