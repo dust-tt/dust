@@ -2,6 +2,7 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
+import { endMetronomeContract } from "@app/lib/metronome/client";
 import {
   cancelSubscriptionAtPeriodEnd,
   skipSubscriptionFreeTrial,
@@ -147,7 +148,7 @@ async function handler(
       const { action } = bodyValidation.right;
 
       switch (action) {
-        case "cancel_free_trial":
+        case "cancel_free_trial": {
           if (!subscription.trialing) {
             return apiError(req, res, {
               status_code: 400,
@@ -157,7 +158,14 @@ async function handler(
               },
             });
           }
-          if (!subscription.stripeSubscriptionId) {
+
+          const owner = auth.getNonNullableWorkspace();
+          const useMetronomeBilling = await hasFeatureFlag(
+            auth,
+            "metronome_billing"
+          );
+
+          if (!subscription.stripeSubscriptionId && !useMetronomeBilling) {
             return apiError(req, res, {
               status_code: 400,
               api_error: {
@@ -167,10 +175,40 @@ async function handler(
             });
           }
 
-          await cancelSubscriptionAtPeriodEnd({
-            stripeSubscriptionId: subscription.stripeSubscriptionId,
+          if (subscription.stripeSubscriptionId) {
+            await cancelSubscriptionAtPeriodEnd({
+              stripeSubscriptionId: subscription.stripeSubscriptionId,
+            });
+          }
+
+          if (!subscription.metronomeContractId || !owner.metronomeCustomerId) {
+            break;
+          }
+
+          if (!useMetronomeBilling) {
+            // Shadow mode: fire-and-forget.
+            void endMetronomeContract({
+              metronomeCustomerId: owner.metronomeCustomerId,
+              contractId: subscription.metronomeContractId,
+            });
+            break;
+          }
+
+          const result = await endMetronomeContract({
+            metronomeCustomerId: owner.metronomeCustomerId,
+            contractId: subscription.metronomeContractId,
           });
+          if (result.isErr()) {
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: "Failed to end Metronome contract.",
+              },
+            });
+          }
           break;
+        }
         case "pay_now":
           {
             if (!subscription.trialing) {

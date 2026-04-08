@@ -7,7 +7,10 @@ import {
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { getMetronomeContractPackageAliases } from "@app/lib/metronome/client";
+import {
+  endMetronomeContract,
+  getMetronomeContractPackageAliases,
+} from "@app/lib/metronome/client";
 import {
   LEGACY_BUSINESS_PACKAGE_ALIAS,
   LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
@@ -48,6 +51,7 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
   cacheWithRedis,
   invalidateCacheAfterCommit,
@@ -123,6 +127,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   }
 
   get isBilled(): boolean {
+    if (this.status !== "active") {
+      return false;
+    }
+
     return (
       this.stripeSubscriptionId !== null || this.metronomeContractId !== null
     );
@@ -458,6 +466,27 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     );
   }
 
+  static async fetchByMetronomeContractId(
+    workspace: WorkspaceResource,
+    metronomeContractId: string
+  ): Promise<SubscriptionResource | null> {
+    const res = await this.model.findOne({
+      where: { workspaceId: workspace.id, metronomeContractId },
+      include: [PlanModel],
+      order: [["createdAt", "DESC"]],
+    });
+
+    if (!res) {
+      return null;
+    }
+
+    return new this(
+      SubscriptionModel,
+      res.get(),
+      renderPlanFromModel({ plan: res.plan })
+    );
+  }
+
   static async isStripeIdAlreadyUsed(
     stripeSubscriptionId: string
   ): Promise<boolean> {
@@ -587,9 +616,8 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     const now = new Date();
 
     // Find active subscription
-    const activeSubscription = await SubscriptionModel.findOne({
-      where: { workspaceId: workspace.id, status: "active" },
-    });
+    const activeSubscription =
+      await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
 
     // Prevent subscribing to the same plan
     if (activeSubscription && activeSubscription.planId === newPlan.id) {
@@ -613,20 +641,13 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     // Proceed to the termination of the active subscription (if any) and creation of the new one
     const newSubscription = await withTransaction(async (t) => {
       if (activeSubscription) {
-        const endedStatus = activeSubscription.stripeSubscriptionId
+        const endedStatus = activeSubscription.isBilled
           ? "ended_backend_only"
           : "ended";
-
-        await activeSubscription.update(
-          {
-            status: endedStatus,
-            endDate: now,
-          },
-          { transaction: t }
-        );
+        await activeSubscription.markAsEnded(endedStatus, t);
       }
 
-      return SubscriptionModel.create(
+      return SubscriptionResource.makeNew(
         {
           sId: generateRandomModelSId(),
           workspaceId: workspace.id,
@@ -636,7 +657,8 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           stripeSubscriptionId: stripeSubscriptionId ?? null,
           endDate: endDate,
         },
-        { transaction: t }
+        renderPlanFromModel({ plan: newPlan }),
+        t
       );
     });
 
@@ -654,6 +676,28 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       });
     }
 
+    // End Metronome contract on the previous subscription.
+    if (
+      activeSubscription?.metronomeContractId &&
+      workspace.metronomeCustomerId
+    ) {
+      if (activeSubscription.stripeSubscriptionId) {
+        // Shadow mode: fire-and-forget.
+        void endMetronomeContract({
+          metronomeCustomerId: workspace.metronomeCustomerId,
+          contractId: activeSubscription.metronomeContractId,
+        });
+      } else {
+        const result = await endMetronomeContract({
+          metronomeCustomerId: workspace.metronomeCustomerId,
+          contractId: activeSubscription.metronomeContractId,
+        });
+        if (result.isErr()) {
+          throw result.error;
+        }
+      }
+    }
+
     // Clean up WorkOS config for features the new plan doesn't allow.
     if (!newPlan.isSSOAllowed || !newPlan.isSCIMAllowed) {
       await disableWorkOSSSOAndSCIM(workspace, {
@@ -664,11 +708,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
 
     await SubscriptionResource.invalidateSubscriptionCache(workspace.id);
 
-    return new SubscriptionResource(
-      SubscriptionModel,
-      newSubscription.get(),
-      renderPlanFromModel({ plan: newPlan })
-    );
+    return newSubscription;
   }
 
   static async pokeUpgradeWorkspaceToEnterprise(
@@ -1235,22 +1275,45 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     const activeSubscription =
       await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
 
-    if (activeSubscription) {
-      // End the subscription.
-      const endedStatus = activeSubscription.stripeSubscriptionId
-        ? "ended_backend_only"
-        : "ended";
-      await activeSubscription.markAsEnded(endedStatus);
-
-      // Notify Stripe that we ended the subscription if the subscription was a paid one.
-      if (activeSubscription.stripeSubscriptionId) {
-        await cancelSubscriptionImmediately({
-          stripeSubscriptionId: activeSubscription.stripeSubscriptionId,
-        });
-      }
+    if (!activeSubscription) {
+      return null;
     }
 
-    return activeSubscription;
+    // End the subscription. Billed subscriptions use "ended_backend_only" so the
+    // external webhook (Stripe or Metronome) performs the final "ended" transition.
+    const endedStatus = activeSubscription.isBilled
+      ? "ended_backend_only"
+      : "ended";
+    await activeSubscription.markAsEnded(endedStatus);
+
+    // Notify Stripe.
+    if (activeSubscription.stripeSubscriptionId) {
+      await cancelSubscriptionImmediately({
+        stripeSubscriptionId: activeSubscription.stripeSubscriptionId,
+      });
+    }
+
+    if (
+      !activeSubscription.metronomeContractId ||
+      !workspace.metronomeCustomerId
+    ) {
+      return activeSubscription;
+    }
+
+    const res = await endMetronomeContract({
+      metronomeCustomerId: workspace.metronomeCustomerId,
+      contractId: activeSubscription.metronomeContractId,
+    });
+    if (res.isOk()) {
+      return activeSubscription;
+    }
+
+    if (activeSubscription.stripeSubscriptionId) {
+      // Shadow mode: fire-and-forget.
+      return activeSubscription;
+    }
+
+    throw res.error;
   }
 
   private async isSubscriptionOnProOrBusinessPlan(
