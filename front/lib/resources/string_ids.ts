@@ -60,6 +60,9 @@ export const RESOURCES_PREFIX = {
   // Agent suggestions.
   agent_suggestion: "asu",
 
+  // Skill suggestions.
+  skill_suggestion: "ssu",
+
   // Workspace verification.
   workspace_verification_attempt: "wva",
 
