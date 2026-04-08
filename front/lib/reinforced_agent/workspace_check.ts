@@ -4,7 +4,7 @@ import { hasFeatureFlag } from "@app/lib/auth";
 /**
  * Check whether reinforcement is enabled for the workspace:
  * - the `reinforced_agents` feature flag must be active, AND
- * - the workspace must not have opted out via `allowAgentReinforcement` metadata.
+ * - the workspace must not have opted out via `allowReinforcement` metadata.
  */
 export async function hasReinforcementEnabled(
   auth: Authenticator
@@ -14,5 +14,5 @@ export async function hasReinforcementEnabled(
   }
 
   const workspace = auth.getNonNullableWorkspace();
-  return workspace.metadata?.allowAgentReinforcement !== false;
+  return workspace.metadata?.allowReinforcement !== false;
 }

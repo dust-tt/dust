@@ -250,7 +250,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   reinforced_agents: {
     description:
-      "Enable reinforced agents: background analysis of conversations to suggest agent improvements",
+      "Enable reinforcement: background analysis of conversations to suggest improvements to skills.",
     stage: "dust_only",
   },
   collapsible_messages: {

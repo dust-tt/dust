@@ -4,20 +4,20 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
 
-interface UseAgentReinforcementToggleProps {
+interface UseReinforcementToggleProps {
   owner: LightWorkspaceType;
 }
 
-export function useAgentReinforcementToggle({
+export function useReinforcementToggle({
   owner,
-}: UseAgentReinforcementToggleProps) {
+}: UseReinforcementToggleProps) {
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
   const [isEnabled, setIsEnabled] = useState(
-    owner.metadata?.allowAgentReinforcement !== false
+    owner.metadata?.allowReinforcement !== false
   );
 
-  const doToggleAgentReinforcement = async () => {
+  const doToggleReinforcement = async () => {
     setIsChanging(true);
     try {
       const res = await clientFetch(`/api/w/${owner.sId}`, {
@@ -26,7 +26,7 @@ export function useAgentReinforcementToggle({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          allowAgentReinforcement: !isEnabled,
+          allowReinforcement: !isEnabled,
         }),
       });
 
@@ -50,6 +50,6 @@ export function useAgentReinforcementToggle({
   return {
     isEnabled,
     isChanging,
-    doToggleAgentReinforcement,
+    doToggleReinforcement,
   };
 }
