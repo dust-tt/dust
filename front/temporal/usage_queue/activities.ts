@@ -220,6 +220,18 @@ export async function emitMetronomeUsageEventsActivity(
   const { agentMessageId, conversationId, userMessageId } = agentLoopArgs;
   const userMessageOrigin = agentLoopArgs.userMessageOrigin ?? "web";
 
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      agentMessageId,
+      conversationId,
+      messageModelId: agentLoopArgs.dustRunIds ? "with-dustRunIds" : "legacy",
+      dustRunIds: agentLoopArgs.dustRunIds,
+      startStep: agentLoopArgs.startStep,
+    },
+    "[Metronome] Processing usage events"
+  );
+
   // Query agent message with its run IDs.
   const agentMessageRow = await MessageModel.findOne({
     where: {

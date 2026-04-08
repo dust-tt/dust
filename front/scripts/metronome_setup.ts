@@ -128,7 +128,7 @@ interface PackageDef {
 const METRICS: MetricDef[] = [
   {
     name: "LLM Provider Cost (Programmatic)",
-    event_type_filter: { in_values: ["llm_usage"] },
+    event_type_filter: { in_values: ["llm_usage_v2"] },
     property_filters: [
       { name: "cost_micro_usd", exists: true },
       { name: "is_programmatic_usage", in_values: ["true"] },
@@ -138,7 +138,7 @@ const METRICS: MetricDef[] = [
   },
   {
     name: "LLM Provider Cost (User)",
-    event_type_filter: { in_values: ["llm_usage"] },
+    event_type_filter: { in_values: ["llm_usage_v2"] },
     property_filters: [
       { name: "cost_micro_usd", exists: true },
       { name: "is_programmatic_usage", in_values: ["false"] },
@@ -148,7 +148,7 @@ const METRICS: MetricDef[] = [
   },
   {
     name: "Tool Invocations (Programmatic)",
-    event_type_filter: { in_values: ["tool_use"] },
+    event_type_filter: { in_values: ["tool_use_v2"] },
     property_filters: [
       { name: "count", exists: true },
       { name: "is_programmatic_usage", in_values: ["true"] },
@@ -161,7 +161,7 @@ const METRICS: MetricDef[] = [
   },
   {
     name: "Tool Invocations (User)",
-    event_type_filter: { in_values: ["tool_use"] },
+    event_type_filter: { in_values: ["tool_use_v2"] },
     property_filters: [
       { name: "count", exists: true },
       { name: "is_programmatic_usage", in_values: ["false"] },
@@ -516,6 +516,12 @@ async function syncMetrics(): Promise<void> {
     aggregation_key?: string;
     aggregation_type?: string;
     group_keys?: string[][];
+    event_type_filter?: { in_values: string[] };
+    property_filters?: Array<{
+      name: string;
+      exists?: boolean;
+      in_values?: string[];
+    }>;
   }> = [];
   for await (const m of client.v1.billableMetrics.list()) {
     existing.push(m as (typeof existing)[number]);
@@ -536,12 +542,20 @@ async function syncMetrics(): Promise<void> {
     const groupKeysMatch =
       JSON.stringify(ex?.group_keys ?? []) ===
       JSON.stringify(desired.group_keys ?? []);
+    const eventTypeMatch =
+      JSON.stringify(ex?.event_type_filter?.in_values?.sort() ?? []) ===
+      JSON.stringify([...desired.event_type_filter.in_values].sort());
+    const propertyFiltersMatch =
+      JSON.stringify(ex?.property_filters ?? []) ===
+      JSON.stringify(desired.property_filters ?? []);
     const configMatch =
       ex &&
       ex.aggregation_key === desired.aggregation_key &&
       ex.aggregation_type?.toLowerCase() ===
         desired.aggregation_type.toLowerCase() &&
-      groupKeysMatch;
+      groupKeysMatch &&
+      eventTypeMatch &&
+      propertyFiltersMatch;
 
     if (ex && configMatch) {
       console.log(`  ✓ ${desired.name} — up to date (${ex.id})`);
@@ -1113,23 +1127,44 @@ async function main(): Promise<void> {
     }
   }
 
-  // Output constants for lib/metronome/constants.ts
-  const prefix = ENV === "production" ? "PROD" : "DEV";
+  // Output all IDs as TypeScript constants — paste into lib/metronome/constants.ts.
+  function toConstName(prefix: string, name: string): string {
+    return `${prefix}_${name
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "_")
+      .replace(/^_|_$/g, "")}`;
+  }
+
+  const envPrefix = ENV === "production" ? "PROD" : "DEV";
   console.log(
-    `\n=== Constants (${ENV}) — paste into lib/metronome/constants.ts ===`
+    `\n=== TypeScript constants (${ENV}) — paste into lib/metronome/constants.ts ===\n`
   );
-  console.log(
-    `const ${prefix}_FREE_CREDIT_PRODUCT_ID = "${ids.products["Free Monthly Credits"] ?? ""}";`
-  );
-  console.log(
-    `const ${prefix}_COMMIT_PRODUCT_ID = "${ids.products["Prepaid Commit"] ?? ""}";`
-  );
-  console.log(
-    `const ${prefix}_LLM_PROGRAMMATIC_BILLABLE_METRIC_ID =\n  "${ids.metrics["LLM Provider Cost (Programmatic)"] ?? ""}";`
-  );
-  console.log(
-    `const ${prefix}_TOOL_PROGRAMMATIC_BILLABLE_METRIC_ID =\n  "${ids.metrics["Tool Invocations (Programmatic)"] ?? ""}";`
-  );
+
+  console.log("// Metrics");
+  for (const [name, id] of Object.entries(ids.metrics)) {
+    console.log(`const ${toConstName(envPrefix + "_METRIC", name)} = "${id}";`);
+  }
+
+  console.log("\n// Products");
+  for (const [name, id] of Object.entries(ids.products)) {
+    console.log(
+      `const ${toConstName(envPrefix + "_PRODUCT", name)} = "${id}";`
+    );
+  }
+
+  console.log("\n// Rate Cards");
+  for (const [name, id] of Object.entries(ids.rateCards)) {
+    console.log(
+      `const ${toConstName(envPrefix + "_RATE_CARD", name)} = "${id}";`
+    );
+  }
+
+  console.log("\n// Packages");
+  for (const [name, id] of Object.entries(ids.packages)) {
+    console.log(
+      `const ${toConstName(envPrefix + "_PACKAGE", name)} = "${id}";`
+    );
+  }
 
   console.log("\n✓ Done");
 }
