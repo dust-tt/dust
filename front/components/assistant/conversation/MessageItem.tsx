@@ -204,7 +204,12 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           ref={ref}
           className={classNames(
             "mx-auto max-w-conversation",
-            !isNextMessageSameSender && "mb-4"
+            !isNextMessageSameSender &&
+              !(
+                isAgentMessageWithStreaming(data) &&
+                data.status === "gracefully_stopped"
+              ) &&
+              "mb-4"
           )}
         >
           {isUserMessage(data) && (
