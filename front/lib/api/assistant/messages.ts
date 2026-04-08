@@ -213,7 +213,7 @@ function renderUserMessage(
     } else {
       logger.warn(
         {
-          conversationId: message.sId,
+          messageId: message.sId,
           userId: userMessage.userId,
         },
         "User not found for user message while it should have been fetched before. Falling back to user context."
@@ -524,7 +524,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         logger.error(
           {
             workspaceId: auth.getNonNullableWorkspace().sId,
-            conversationId: message.sId,
+            messageId: message.sId,
             agentMessageId: agentMessage.id,
             agentConfigurationId: agentMessage.agentConfigurationId,
             agentConfigurations,
@@ -642,7 +642,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         logger.error(
           {
             workspaceId: auth.getNonNullableWorkspace().sId,
-            conversationId: message.sId,
+            messageId: message.sId,
             agentMessageId: agentMessage.id,
           },
           "Couldn't find parent message for agent message."
