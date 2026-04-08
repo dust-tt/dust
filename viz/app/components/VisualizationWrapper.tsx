@@ -525,7 +525,7 @@ export function makeSendCrossDocumentMessage({
         }
       };
       window.addEventListener("message", listener);
-      window.top?.postMessage(
+      window.parent?.postMessage(
         {
           command,
           messageUniqueId,
