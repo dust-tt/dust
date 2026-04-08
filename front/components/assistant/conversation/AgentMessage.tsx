@@ -91,6 +91,7 @@ import {
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
+  cn,
   ConversationMessageAvatar,
   ConversationMessageContainer,
   ConversationMessageContent,
@@ -981,7 +982,7 @@ export function AgentMessage({
     <ConversationMessageContainer
       messageType="agent"
       type="agent"
-      className={isGracefullyStopped ? "pb-0" : undefined}
+      className={cn(isGracefullyStopped ? "pb-0" : undefined)}
     >
       {!hideHeader && (
         <div className="inline-flex items-center gap-2">
