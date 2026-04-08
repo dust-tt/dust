@@ -340,7 +340,6 @@ const USER_MESSAGE_ORIGINS = [
   "zendesk",
   "onboarding_conversation",
   "agent_sidekick",
-  "project_butler",
   "project_kickoff",
   "reinforced_agent_notification",
   "reinforcement",
@@ -684,7 +683,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "confluence_tool"
-  | "conversation_butler"
   | "conversation_branches"
   | "project_todo"
   | "projects"

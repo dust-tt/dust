@@ -979,7 +979,7 @@
  *           type: string
  *         origin:
  *           type: string
- *           enum: [web, project_kickoff, extension, agent_sidekick, api, cli, cli_programmatic, email, excel, gsheet, make, n8n, powerpoint, raycast, slack, slack_workflow, teams, transcript, triggered_programmatic, triggered, zapier, zendesk, onboarding_conversation, project_butler]
+ *           enum: [web, project_kickoff, extension, agent_sidekick, api, cli, cli_programmatic, email, excel, gsheet, make, n8n, powerpoint, raycast, slack, slack_workflow, teams, transcript, triggered_programmatic, triggered, zapier, zendesk, onboarding_conversation]
  *     PrivateReaction:
  *       type: object
  *       description: A reaction on a message.
@@ -1012,9 +1012,6 @@
  *         - $ref: '#/components/schemas/PrivateAgentMessageNewEvent'
  *         - $ref: '#/components/schemas/PrivateAgentMessageDoneEvent'
  *         - $ref: '#/components/schemas/PrivateConversationTitleEvent'
- *         - $ref: '#/components/schemas/PrivateButlerSuggestionCreatedEvent'
- *         - $ref: '#/components/schemas/PrivateButlerThinkingEvent'
- *         - $ref: '#/components/schemas/PrivateButlerDoneEvent'
  *     PrivateUserMessageNewEvent:
  *       type: object
  *       required: [type, created, messageId, message]
@@ -1072,36 +1069,6 @@
  *           type: integer
  *         title:
  *           type: string
- *     PrivateButlerSuggestionCreatedEvent:
- *       type: object
- *       required: [type, created, suggestion]
- *       properties:
- *         type:
- *           type: string
- *           enum: [butler_suggestion_created]
- *         created:
- *           type: integer
- *         suggestion:
- *           type: object
- *           description: Butler suggestion details
- *     PrivateButlerThinkingEvent:
- *       type: object
- *       required: [type, created]
- *       properties:
- *         type:
- *           type: string
- *           enum: [butler_thinking]
- *         created:
- *           type: integer
- *     PrivateButlerDoneEvent:
- *       type: object
- *       required: [type, created]
- *       properties:
- *         type:
- *           type: string
- *           enum: [butler_done]
- *         created:
- *           type: integer
  *     PrivateAgentMessageEvent:
  *       type: object
  *       description: Server-Sent Event for agent message streaming. Discriminated on the `type` field. Each event also includes a `step` integer.

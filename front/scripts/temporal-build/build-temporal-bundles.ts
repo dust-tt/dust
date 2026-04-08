@@ -40,8 +40,6 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
       return path.join(baseDir, "temporal/triggers/webhook");
     case "analytics_queue":
       return path.join(baseDir, "temporal/analytics_queue");
-    case "butler":
-      return path.join(baseDir, "temporal/butler");
     case "project_todo":
       return path.join(baseDir, "temporal/project_todo");
     case "credit_alerts":

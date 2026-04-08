@@ -152,10 +152,6 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
     color: buildColorClass("rose", 300),
   },
   agent_sidekick: { label: "Sidekick", color: buildColorClass("emerald", 300) },
-  project_butler: {
-    label: "Project Butler",
-    color: buildColorClass("gray", 300),
-  },
   project_kickoff: {
     label: "Project Kickoff",
     color: buildColorClass("lime", 300),

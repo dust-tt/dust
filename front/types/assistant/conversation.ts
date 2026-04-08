@@ -5,7 +5,6 @@ import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 
 import type { ContentFragmentType } from "../content_fragment";
-import type { ButlerSuggestionPublicType } from "../conversation_butler_suggestion";
 import type { AllSupportedWithDustSpecificFileContentType } from "../files";
 import type { ModelId } from "../shared/model_id";
 import type { UserType, WorkspaceType } from "../user";
@@ -107,8 +106,6 @@ export type UserMessageOrigin =
   // have been used as a hack but should be removed and most likely handled as message metadata
   // (to be created).
   | "onboarding_conversation"
-  // for internal use, for the butler in projects
-  | "project_butler"
   // for internal use, for reinforced agent batch LLM operations
   | "reinforcement";
 
@@ -500,25 +497,6 @@ export type ConversationTitleEvent = {
   type: "conversation_title";
   created: number;
   title: string;
-};
-
-// Event sent when a butler suggestion is created.
-export type ButlerSuggestionCreatedEvent = {
-  type: "butler_suggestion_created";
-  created: number;
-  suggestion: ButlerSuggestionPublicType;
-};
-
-// Event sent when the butler starts analyzing a conversation.
-export type ButlerThinkingEvent = {
-  type: "butler_thinking";
-  created: number;
-};
-
-// Event sent when the butler finishes analyzing a conversation.
-export type ButlerDoneEvent = {
-  type: "butler_done";
-  created: number;
 };
 
 export const ConversationMCPServerViewOrigins = [
