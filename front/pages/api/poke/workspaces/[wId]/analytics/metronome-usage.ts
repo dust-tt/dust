@@ -1,0 +1,45 @@
+/** @ignoreswagger */
+import type { GetMetronomeUsageResponse } from "@app/lib/api/analytics/metronome_usage";
+import { handleMetronomeUsageRequest } from "@app/lib/api/analytics/metronome_usage";
+import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import { Authenticator } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
+import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
+
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<WithAPIErrorResponse<GetMetronomeUsageResponse>>,
+  session: SessionWithUser
+): Promise<void> {
+  const { wId } = req.query;
+  if (!isString(wId)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "workspace_not_found",
+        message: "The workspace you're trying to access was not found.",
+      },
+    });
+  }
+
+  const auth = await Authenticator.fromSuperUserSession(session, wId);
+
+  const owner = auth.workspace();
+
+  if (!owner || !auth.isDustSuperUser()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: "Could not find the workspace.",
+      },
+    });
+  }
+
+  return handleMetronomeUsageRequest(req, res, auth);
+}
+
+export default withSessionAuthenticationForPoke(handler);
