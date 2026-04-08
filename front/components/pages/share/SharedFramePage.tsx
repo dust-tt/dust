@@ -8,6 +8,7 @@ import { useShareFrameMetadata } from "@app/lib/swr/share";
 import { getFaviconPath } from "@app/lib/utils";
 import Custom404 from "@app/pages/404";
 import { Spinner } from "@dust-tt/sparkle";
+import { usePostHog } from "posthog-js/react";
 import { useEffect, useMemo, useState } from "react";
 
 // Origins from which the share frame is considered as embedded.
@@ -16,6 +17,7 @@ const EMBEDDED_ORIGINS = ["https://dust.tt/blog/"];
 
 export function SharedFramePage() {
   const token = usePathParam("token");
+  const posthog = usePostHog();
 
   const [isVerified, setIsVerified] = useState(false);
 
@@ -35,9 +37,24 @@ export function SharedFramePage() {
 
   // Only fetch the frame once metadata has resolved. Metadata handles the region redirect, so we
   // need to wait for the correct region to be established before firing this request.
-  const { error: frameError, mutateFrame } = usePublicFrame({
+  const {
+    frameMetadata,
+    error: frameError,
+    mutateFrame,
+  } = usePublicFrame({
     shareToken: shareMetadata ? token : null,
   });
+
+  // Track frame view once the frame successfully loads.
+  useEffect(() => {
+    if (!frameMetadata || !shareMetadata) {
+      return;
+    }
+    posthog.capture("frame_shared_view", {
+      workspace_id: shareMetadata.workspaceId,
+      requires_email_verification: shareMetadata.requiresEmailVerification,
+    });
+  }, [frameMetadata, shareMetadata, posthog]);
 
   // Show the email form when:
   // 1. Metadata says the scope requires email verification, AND

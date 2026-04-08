@@ -4,6 +4,7 @@ import config from "@app/lib/api/config";
 import { useSendOtpVerification, useVerifyOtpCode } from "@app/lib/swr/share";
 import { Button, Input, Label } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePostHog } from "posthog-js/react";
 import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -66,6 +67,7 @@ interface EmailStepFormProps {
 
 function EmailStepForm({ onCodeSent, shareToken }: EmailStepFormProps) {
   const doSendOtp = useSendOtpVerification({ shareToken });
+  const posthog = usePostHog();
 
   const {
     register,
@@ -81,6 +83,9 @@ function EmailStepForm({ onCodeSent, shareToken }: EmailStepFormProps) {
   const onSubmit = async (data: EmailFormValues) => {
     const result = await doSendOtp(data.email);
     if (result.success) {
+      posthog.capture("frame_email_verification_requested", {
+        email: data.email,
+      });
       onCodeSent(data.email);
     } else {
       setError("email", {
@@ -130,6 +135,7 @@ interface CodeStepFormProps {
 function CodeStepForm({ email, onVerified, shareToken }: CodeStepFormProps) {
   const doSendOtp = useSendOtpVerification({ shareToken });
   const doVerifyCode = useVerifyOtpCode({ shareToken });
+  const posthog = usePostHog();
   const [isResending, setIsResending] = useState(false);
   const [resent, setResent] = useState(false);
 
@@ -148,6 +154,8 @@ function CodeStepForm({ email, onVerified, shareToken }: CodeStepFormProps) {
   const onSubmit = async (data: CodeFormValues) => {
     const result = await doVerifyCode(email, data.code);
     if (result.success) {
+      posthog.identify(email);
+      posthog.capture("frame_email_verified", { email });
       onVerified();
     } else {
       setError("code", {
