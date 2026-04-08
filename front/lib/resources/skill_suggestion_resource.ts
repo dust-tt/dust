@@ -221,7 +221,10 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
 
     return this.baseFetch(auth, {
       where: whereClause,
-      order: [["createdAt", "DESC"]],
+      order: [
+        ["createdAt", "DESC"],
+        ["id", "DESC"],
+      ],
       limit: filters?.limit,
     });
   }
