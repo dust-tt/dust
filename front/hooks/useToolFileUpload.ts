@@ -2,17 +2,23 @@ import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
+import type { ToolUploadRequestBody } from "@app/pages/api/w/[wId]/search/tools/upload";
+import type { FileUseCaseMetadata } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
 
 export function useToolFileUpload({
   owner,
   fileUploaderService,
-  conversationId,
+  useCase,
+  useCaseMetadata,
+  onUploadSuccess,
 }: {
   owner: LightWorkspaceType;
   fileUploaderService: FileUploaderService;
-  conversationId?: string;
+  useCase: "conversation" | "project_context";
+  useCaseMetadata: FileUseCaseMetadata;
+  onUploadSuccess: (file: File) => void;
 }) {
   const [uploadingFileKeys, setUploadingFileKeys] = useState<Set<string>>(
     new Set()
@@ -46,6 +52,15 @@ export function useToolFileUpload({
 
       setUploadingFileKeys((prev) => new Set(prev).add(fileKey));
 
+      const body: ToolUploadRequestBody = {
+        serverViewId: toolFile.serverViewId,
+        externalId: toolFile.externalId,
+        useCase,
+        useCaseMetadata,
+        serverName: toolFile.serverName,
+        serverIcon: toolFile.serverIcon,
+      };
+
       try {
         const response = await clientFetch(
           `/api/w/${owner.sId}/search/tools/upload`,
@@ -54,13 +69,7 @@ export function useToolFileUpload({
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-              serverViewId: toolFile.serverViewId,
-              externalId: toolFile.externalId,
-              conversationId,
-              serverName: toolFile.serverName,
-              serverIcon: toolFile.serverIcon,
-            }),
+            body: JSON.stringify(body),
           }
         );
 
@@ -81,6 +90,7 @@ export function useToolFileUpload({
           iconName: toolFile.serverIcon,
           provider: toolFile.serverName,
         });
+        onUploadSuccess(file);
       } catch (error) {
         sendNotification({
           type: "error",
@@ -101,7 +111,9 @@ export function useToolFileUpload({
       fileUploaderService,
       sendNotification,
       getFileKey,
-      conversationId,
+      useCase,
+      useCaseMetadata,
+      onUploadSuccess,
     ]
   );
 
@@ -118,5 +130,6 @@ export function useToolFileUpload({
     isToolFileUploading,
     uploadToolFile,
     removeToolFile,
+    isAnyToolFileUploading: uploadingFileKeys.size > 0,
   };
 }

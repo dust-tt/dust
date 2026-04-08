@@ -10,7 +10,6 @@ import {
   useFileContent,
   useFileSignedUrl,
 } from "@app/lib/swr/files";
-import type { FileWithCreatorType } from "@app/lib/swr/projects";
 import {
   getFileFormatCategory,
   isInteractiveContentType,
@@ -23,6 +22,8 @@ export type MinimalFileForPreview = {
   sId: string;
   fileName: string;
   contentType: string;
+  /** When set (e.g. project knowledge tab), interactive frames resolve in this project space. */
+  projectSpaceId?: string | null;
 };
 
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -187,7 +188,7 @@ function AudioFileRenderer({
 }
 
 interface FileContentRendererProps {
-  file: FileWithCreatorType | MinimalFileForPreview;
+  file: MinimalFileForPreview;
   owner: WorkspaceType;
   previewConfig: FilePreviewConfig;
   rawFileContent: string | null;
@@ -254,11 +255,7 @@ function FileContentRenderer({
       return (
         <FrameRenderer
           fileId={file.sId}
-          projectId={
-            "useCaseMetadata" in file
-              ? (file.useCaseMetadata?.spaceId ?? null)
-              : null
-          }
+          projectId={file.projectSpaceId ?? null}
           owner={owner}
           lastEditedByAgentConfigurationId={undefined}
           contentHash={undefined}
@@ -286,7 +283,7 @@ function FileContentRenderer({
 }
 
 interface FilePreviewContentProps {
-  file: FileWithCreatorType | MinimalFileForPreview | null;
+  file: MinimalFileForPreview | null;
   owner: WorkspaceType;
   isOpen: boolean;
 }
@@ -416,7 +413,7 @@ function FilePreviewContent({ file, owner, isOpen }: FilePreviewContentProps) {
 
 interface FilePreviewSheetProps {
   owner: WorkspaceType;
-  file: FileWithCreatorType | MinimalFileForPreview | null;
+  file: MinimalFileForPreview | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }

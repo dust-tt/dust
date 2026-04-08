@@ -7,19 +7,25 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { FilePreviewSheet } from "@app/components/spaces/FilePreviewSheet";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import type { ContextAttachmentItem } from "@app/lib/api/assistant/conversation/attachments";
+import {
+  isContentNodeAttachmentType,
+  isFileAttachmentType,
+} from "@app/lib/api/assistant/conversation/attachments";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
-import type { FileWithCreatorType } from "@app/lib/swr/projects";
-import { useDeleteProjectFile, useProjectFiles } from "@app/lib/swr/projects";
+import {
+  useAddProjectContextContentNode,
+  useDeleteProjectFile,
+  useProjectContextAttachments,
+} from "@app/lib/swr/projects";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { getSupportedFileExtensions } from "@app/types/files";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ArrowUpOnSquareIcon,
   Avatar,
-  Button,
   DataTable,
   EmptyCTA,
-  EmptyCTAButton,
   Icon,
   PencilSquareIcon,
   SearchInput,
@@ -38,6 +44,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { InputBarAttachmentsPicker } from "../input_bar/InputBarAttachmentsPicker";
 
 interface SpaceKnowledgeTabProps {
   owner: WorkspaceType;
@@ -52,7 +59,7 @@ type MenuItem = {
   onClick: (e: React.MouseEvent) => void;
 };
 
-type ProjectFileWithActions = FileWithCreatorType & {
+type ProjectKnowledgeRow = ContextAttachmentItem & {
   menuItems: MenuItem[];
   onClick: () => void;
 };
@@ -79,22 +86,34 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchText, setSearchText] = useState("");
   const [showRenameDialog, setShowRenameDialog] = useState(false);
-  const [fileToRename, setFileToRename] = useState<FileWithCreatorType | null>(
-    null
-  );
-  const [selectedFile, setSelectedFile] = useState<FileWithCreatorType | null>(
-    null
-  );
+  const [fileToRename, setFileToRename] = useState<{
+    sId: string;
+    fileName: string;
+  } | null>(null);
+  const [selectedFile, setSelectedFile] = useState<{
+    sId: string;
+    fileName: string;
+    contentType: string;
+    projectSpaceId?: string | null;
+  } | null>(null);
   const [showPreviewSheet, setShowPreviewSheet] = useState(false);
   const confirm = useContext(ConfirmContext);
 
-  const { projectFiles, isProjectFilesLoading, mutateProjectFiles } =
-    useProjectFiles({
-      owner,
-      projectId: space.sId,
-    });
+  const {
+    attachments,
+    isProjectContextAttachmentsLoading,
+    mutateProjectContextAttachments,
+  } = useProjectContextAttachments({
+    owner,
+    spaceId: space.sId,
+  });
 
   const deleteProjectFile = useDeleteProjectFile({ owner });
+
+  const addProjectContextContentNode = useAddProjectContextContentNode({
+    owner,
+    spaceId: space.sId,
+  });
 
   const projectFileUpload = useFileUploaderService({
     owner,
@@ -104,24 +123,20 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     },
   });
 
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     await projectFileUpload.handleFileChange(e);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-    void mutateProjectFiles();
+    void mutateProjectContextAttachments();
   };
 
   const handleDroppedFiles = useCallback(
     async (files: File[]) => {
       await projectFileUpload.handleFilesUpload(files);
-      void mutateProjectFiles();
+      void mutateProjectContextAttachments();
     },
-    [projectFileUpload, mutateProjectFiles]
+    [projectFileUpload, mutateProjectContextAttachments]
   );
 
   // Process dropped files from the drag-and-drop context.
@@ -137,45 +152,67 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     void processDroppedFiles();
   }, [droppedFiles, setDroppedFiles, handleDroppedFiles]);
 
-  const handleDeleteFile = async (file: FileWithCreatorType) => {
+  const handleDeleteFile = async (item: ContextAttachmentItem) => {
+    if (!isFileAttachmentType(item)) {
+      return;
+    }
     const confirmed = await confirm({
       title: "Delete file?",
-      message: `Are you sure you want to delete "${file.fileName}"? This action cannot be undone.`,
+      message: `Are you sure you want to delete "${item.title}"? This action cannot be undone.`,
       validateLabel: "Delete",
       validateVariant: "warning",
     });
 
     if (confirmed) {
-      const result = await deleteProjectFile(file.sId);
+      const result = await deleteProjectFile(item.fileId);
       if (result.isOk()) {
-        void mutateProjectFiles();
+        void mutateProjectContextAttachments();
       }
     }
   };
 
-  const columns: ColumnDef<ProjectFileWithActions>[] = useMemo(
+  const openAttachment = useCallback(
+    (item: ContextAttachmentItem) => {
+      if (isFileAttachmentType(item)) {
+        setSelectedFile({
+          sId: item.fileId,
+          fileName: item.title,
+          contentType: item.contentType,
+          projectSpaceId: space.sId,
+        });
+        setShowPreviewSheet(true);
+        return;
+      }
+      if (isContentNodeAttachmentType(item) && item.sourceUrl) {
+        window.open(item.sourceUrl, "_blank", "noopener,noreferrer");
+      }
+    },
+    [space.sId]
+  );
+
+  const columns: ColumnDef<ProjectKnowledgeRow>[] = useMemo(
     () => [
       {
-        id: "fileName",
-        accessorKey: "fileName",
-        header: "File name",
+        id: "title",
+        accessorKey: "title",
+        header: "Name",
         sortingFn: "text",
         meta: {
           className: "w-full",
         },
-        cell: (info: CellContext<ProjectFileWithActions, unknown>) => {
-          const file = info.row.original;
-          const FileIcon = getFileTypeIcon(file.contentType, file.fileName);
+        cell: (info: CellContext<ProjectKnowledgeRow, unknown>) => {
+          const row = info.row.original;
+          const FileIcon = getFileTypeIcon(row.contentType, row.title);
           return (
             <DataTable.CellContent>
               <div className="flex min-w-0 items-center gap-2">
                 <Icon visual={FileIcon} size="sm" className="shrink-0" />
                 <Tooltip
                   tooltipTriggerAsChild
-                  label={file.fileName}
+                  label={row.title}
                   trigger={
                     <span className="min-w-0 truncate text-sm">
-                      {file.fileName}
+                      {row.title}
                     </span>
                   }
                 />
@@ -186,31 +223,31 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
       },
       {
         id: "createdBy",
-        accessorKey: "user",
-        header: "Created by",
+        accessorKey: "creator",
+        header: "Added by",
         meta: {
           className: "w-20 shrink-0 sm:w-[220px]",
         },
-        cell: (info: CellContext<ProjectFileWithActions, unknown>) => {
-          const user = info.row.original.user;
-          if (!user || !user.name) {
+        cell: (info: CellContext<ProjectKnowledgeRow, unknown>) => {
+          const creator = info.row.original.creator;
+          if (!creator?.name) {
             return <DataTable.BasicCellContent label="Unknown" />;
           }
           return (
             <DataTable.CellContent>
               <Tooltip
                 tooltipTriggerAsChild
-                label={user.name}
+                label={creator.name}
                 trigger={
                   <div className="flex min-w-0 items-center gap-2">
                     <Avatar
-                      name={user.name}
-                      visual={user.imageUrl ?? undefined}
+                      name={creator.name}
+                      visual={creator.pictureUrl || undefined}
                       size="xs"
                       isRounded
                     />
                     <span className="hidden truncate text-sm sm:inline">
-                      {user.name}
+                      {creator.name}
                     </span>
                   </div>
                 }
@@ -221,17 +258,22 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
       },
       {
         id: "lastUpdated",
-        accessorKey: "updatedAt",
-        header: "Last Updated",
+        accessorKey: "title",
+        header: "Last updated",
         meta: {
           className: "w-[100px]",
         },
-        cell: (info: CellContext<ProjectFileWithActions, unknown>) => {
-          return (
-            <DataTable.BasicCellContent
-              label={formatDate(info.row.original.updatedAt)}
-            />
-          );
+        cell: (info: CellContext<ProjectKnowledgeRow, unknown>) => {
+          const row = info.row.original;
+          if (isFileAttachmentType(row)) {
+            const ts = row.updatedAt ?? row.createdAt ?? null;
+            return (
+              <DataTable.BasicCellContent
+                label={ts != null ? formatDate(ts) : "—"}
+              />
+            );
+          }
+          return <DataTable.BasicCellContent label="—" />;
         },
       },
       {
@@ -240,59 +282,63 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
         meta: {
           className: "w-12",
         },
-        cell: (info: CellContext<ProjectFileWithActions, unknown>) => (
-          <DataTable.MoreButton menuItems={info.row.original.menuItems} />
-        ),
+        cell: (info: CellContext<ProjectKnowledgeRow, unknown>) => {
+          const items = info.row.original.menuItems;
+          if (items.length === 0) {
+            return null;
+          }
+          return <DataTable.MoreButton menuItems={items} />;
+        },
       },
     ],
     []
   );
 
-  const handleRenameClick = (file: FileWithCreatorType) => {
-    setFileToRename(file);
+  const handleRenameClick = (item: ContextAttachmentItem) => {
+    if (!isFileAttachmentType(item)) {
+      return;
+    }
+    setFileToRename({ sId: item.fileId, fileName: item.title });
     setShowRenameDialog(true);
   };
 
-  const handleFileClick = (file: FileWithCreatorType) => {
-    setSelectedFile(file);
-    setShowPreviewSheet(true);
-  };
-
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  const tableData: ProjectFileWithActions[] = useMemo(() => {
-    return projectFiles.map((file) => ({
-      ...file,
-      onClick: () => handleFileClick(file),
-      menuItems: [
-        {
-          kind: "item" as const,
-          label: "Rename",
-          icon: PencilSquareIcon,
-          onClick: (e: React.MouseEvent) => {
-            e.stopPropagation();
-            handleRenameClick(file);
-          },
-        },
-        {
-          kind: "item" as const,
-          label: "Delete",
-          icon: TrashIcon,
-          variant: "warning" as const,
-          onClick: (e: React.MouseEvent) => {
-            e.stopPropagation();
-            void handleDeleteFile(file);
-          },
-        },
-      ],
+  const tableData: ProjectKnowledgeRow[] = useMemo(() => {
+    return attachments.map((attachment) => ({
+      ...attachment,
+      onClick: () => openAttachment(attachment),
+      menuItems: isFileAttachmentType(attachment)
+        ? [
+            {
+              kind: "item" as const,
+              label: "Rename",
+              icon: PencilSquareIcon,
+              onClick: (e: React.MouseEvent) => {
+                e.stopPropagation();
+                handleRenameClick(attachment);
+              },
+            },
+            {
+              kind: "item" as const,
+              label: "Delete",
+              icon: TrashIcon,
+              variant: "warning" as const,
+              onClick: (e: React.MouseEvent) => {
+                e.stopPropagation();
+                void handleDeleteFile(attachment);
+              },
+            },
+          ]
+        : [],
     }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- handlers only use stable state setters
-  }, [projectFiles]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- stable openAttachment / handlers
+  }, [attachments]);
 
-  const hasFiles = projectFiles.length > 0;
+  const hasFiles = attachments.length > 0;
   const isUploading = projectFileUpload.isProcessingFiles;
   const uploadButtonLabel = isUploading ? "Uploading..." : "Add knowledge";
 
-  if (isProjectFilesLoading) {
+  if (isProjectContextAttachmentsLoading) {
     return (
       <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
         <div className="mx-auto flex w-full flex-col gap-4 py-8">
@@ -304,12 +350,49 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     );
   }
 
+  const attachButton = (
+    <InputBarAttachmentsPicker
+      owner={owner}
+      fileUploaderService={projectFileUpload}
+      onNodeSelect={async (node: DataSourceViewContentNode) => {
+        const result = await addProjectContextContentNode({
+          title: node.title,
+          nodeId: node.internalId,
+          nodeDataSourceViewId: node.dataSourceView.sId,
+          ...(node.sourceUrl != null ? { url: node.sourceUrl } : {}),
+        });
+        if (result.isOk()) {
+          void mutateProjectContextAttachments();
+        }
+      }}
+      onNodeUnselect={(_node: DataSourceViewContentNode) => {
+        // Selection state is not tracked locally; project context is updated on select only.
+      }}
+      onFileChange={() => {
+        void mutateProjectContextAttachments();
+      }}
+      attachedNodes={[]}
+      isLoading={isUploading}
+      buttonLabel={uploadButtonLabel}
+      buttonSize="sm"
+      buttonVariant="outline"
+      toolFileUpload={{
+        useCase: "project_context",
+        useCaseMetadata: {
+          spaceId: space.sId,
+        },
+      }}
+      space={space}
+      type="dropdown"
+    />
+  );
+
   return (
     <>
       <RenameFileDialog
         isOpen={showRenameDialog}
         onClose={() => setShowRenameDialog(false)}
-        onRenamed={() => void mutateProjectFiles()}
+        onRenamed={() => void mutateProjectContextAttachments()}
         owner={owner}
         file={fileToRename}
       />
@@ -334,30 +417,13 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 py-8">
           <div className="flex gap-2">
             <h3 className="heading-2xl flex-1 items-center">Knowledge</h3>
-            {hasFiles && (
-              <Button
-                variant="outline"
-                icon={ArrowUpOnSquareIcon}
-                label={uploadButtonLabel}
-                onClick={handleUploadClick}
-                disabled={isUploading}
-                isLoading={isUploading}
-              />
-            )}
+            {hasFiles && attachButton}
           </div>
 
           {!hasFiles ? (
             <EmptyCTA
               message="No knowledge added to this project yet."
-              action={
-                <EmptyCTAButton
-                  icon={ArrowUpOnSquareIcon}
-                  label={uploadButtonLabel}
-                  onClick={handleUploadClick}
-                  disabled={isUploading}
-                  isLoading={isUploading}
-                />
-              }
+              action={attachButton}
             />
           ) : (
             <>
@@ -365,15 +431,15 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
                 name="knowledge-search"
                 value={searchText}
                 onChange={setSearchText}
-                placeholder="Search files..."
+                placeholder="Search knowledge..."
                 className="w-full"
               />
               <DataTable
                 columns={columns}
                 data={tableData}
                 filter={searchText}
-                filterColumn="fileName"
-                sorting={[{ id: "fileName", desc: false }]}
+                filterColumn="title"
+                sorting={[{ id: "title", desc: false }]}
               />
             </>
           )}
