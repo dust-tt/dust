@@ -89,6 +89,9 @@ export const RESOURCES_PREFIX = {
 
   // Provider credentials (BYOK).
   provider_credential: "pcr",
+
+  // User project notification preferences.
+  user_project_notification_preference: "upnp",
 } as const;
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;

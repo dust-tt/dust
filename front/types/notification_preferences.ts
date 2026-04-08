@@ -71,6 +71,13 @@ export type NotificationCondition =
 export const DEFAULT_NOTIFICATION_CONDITION: NotificationCondition =
   "all_messages";
 
+export type UserProjectNotificationPreference = {
+  sId: string;
+  spaceId: string;
+  userId: string;
+  preference: NotificationCondition;
+};
+
 export const isNotificationCondition = (
   value: unknown
 ): value is NotificationCondition => {
