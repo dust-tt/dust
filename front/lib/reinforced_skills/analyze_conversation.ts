@@ -17,7 +17,7 @@ const ASSEMBLY_ORDER = [
 
 type SectionKey = (typeof ASSEMBLY_ORDER)[number];
 
-export const REINFORCED_SKILL_ANALYSIS_SECTIONS: Record<SectionKey, string> = {
+const REINFORCED_SKILL_ANALYSIS_SECTIONS: Record<SectionKey, string> = {
   primary: `You are a skill improvement analyst. Your job is to analyze a conversation that used one or more skills and suggest concrete improvements to those skills.
 
 You have access to the following tools:
