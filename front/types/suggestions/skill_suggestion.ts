@@ -13,7 +13,11 @@ export const SKILL_SUGGESTION_SOURCES = ["reinforcement", "synthetic"] as const;
 
 export type SkillSuggestionSource = (typeof SKILL_SUGGESTION_SOURCES)[number];
 
-export const SKILL_SUGGESTION_KINDS = ["create", "edit_instructions"] as const;
+export const SKILL_SUGGESTION_KINDS = [
+  "create",
+  "edit_instructions",
+  "tools",
+] as const;
 
 export type SkillSuggestionKind = (typeof SKILL_SUGGESTION_KINDS)[number];
 
@@ -45,9 +49,25 @@ export function isSkillEditInstructionsSuggestion(
   return SkillEditInstructionsSuggestionSchema.safeParse(data).success;
 }
 
+export const SkillToolsSuggestionSchema = z.object({
+  action: z.enum(["add", "remove"]),
+  toolId: z.string(),
+});
+
+export type SkillToolsSuggestionType = z.infer<
+  typeof SkillToolsSuggestionSchema
+>;
+
+export function isSkillToolsSuggestion(
+  data: unknown
+): data is SkillToolsSuggestionType {
+  return SkillToolsSuggestionSchema.safeParse(data).success;
+}
+
 export type SkillSuggestionPayload =
   | SkillCreateSuggestionType
-  | SkillEditInstructionsSuggestionType;
+  | SkillEditInstructionsSuggestionType
+  | SkillToolsSuggestionType;
 
 export const SkillSuggestionDataSchema = z.discriminatedUnion("kind", [
   z.object({
@@ -57,6 +77,10 @@ export const SkillSuggestionDataSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("edit_instructions"),
     suggestion: SkillEditInstructionsSuggestionSchema,
+  }),
+  z.object({
+    kind: z.literal("tools"),
+    suggestion: SkillToolsSuggestionSchema,
   }),
 ]);
 

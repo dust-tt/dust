@@ -8,7 +8,7 @@ import { Err, Ok } from "@app/types/shared/result";
 export const reinforcedAgentWorkflowPlugin = createPlugin({
   manifest: {
     id: "reinforced-agent-workflow",
-    name: "Start/Stop Reinforced Workflow",
+    name: "Start/Stop Reinforced Agents Workflow",
     description:
       "Start or stop the reinforced agent cron workflow for this workspace.",
     resourceTypes: ["workspaces"],
