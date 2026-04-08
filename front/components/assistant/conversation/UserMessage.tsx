@@ -192,6 +192,8 @@ export function UserMessage({
   const methods = useVirtuosoMethods<VirtuosoMessage>();
 
   const isDeleted = message.visibility === "deleted";
+  const isEmpty =
+    !message.content && message.contentFragments.length === 0;
   const isCurrentUser = message.user?.sId === currentUserId;
   const canDelete = (isCurrentUser || isAdmin) && !isDeleted;
   const canEdit = isCurrentUser && !isDeleted;
@@ -355,6 +357,10 @@ export function UserMessage({
                   {message.visibility === "pending" && <Spinner size="xs" />}
                   {isDeleted ? (
                     <DeletedMessage />
+                  ) : isEmpty ? (
+                    <div className="text-faint dark:text-faint-night text-sm">
+                      (no message)
+                    </div>
                   ) : (
                     <UserMessageMarkdown
                       owner={owner}
