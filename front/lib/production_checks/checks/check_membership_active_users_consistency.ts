@@ -54,7 +54,7 @@ export const checkMembershipActiveUsersConsistency: CheckFunction = async (
         GROUP BY msg."workspaceId"
       )
       SELECT
-        w.id as "workspaceId",
+        w.id as "workspaceModelId",
         w."sId" as "workspaceId",
         w."name" as "workspaceName",
         p."code" as "planCode",

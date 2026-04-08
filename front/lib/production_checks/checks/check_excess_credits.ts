@@ -42,7 +42,7 @@ export const checkExcessCredits: CheckFunction = async (
     await frontDb.query(
       `
       SELECT
-        c."workspaceId" as "workspaceId",
+        c."workspaceId" as "workspaceModelId",
         w."sId" as "workspaceId",
         w."name" as "workspaceName",
         SUM(c."consumedAmountMicroUsd") as "totalExcessMicroUsd"
