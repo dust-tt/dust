@@ -201,6 +201,36 @@ const updateSelection = ({
   };
 };
 
+const applySelectionConfigUpdate = ({
+  prevState,
+  dataSourceView,
+  update,
+  selectionMode,
+  keepOnlyOneSpaceIfApplicable,
+}: {
+  prevState: DataSourceViewSelectionConfigurations;
+  dataSourceView: DataSourceViewType;
+  update: Partial<DataSourceViewSelectionConfiguration>;
+  selectionMode: "checkbox" | "radio";
+  keepOnlyOneSpaceIfApplicable: (
+    config: DataSourceViewSelectionConfigurations
+  ) => DataSourceViewSelectionConfigurations;
+}): DataSourceViewSelectionConfigurations => {
+  const { sId } = dataSourceView;
+  const prevConfig =
+    prevState[sId] ?? defaultSelectionConfiguration(dataSourceView);
+  const updatedConfig = { ...prevConfig, ...update };
+
+  if (selectionMode === "radio") {
+    return { [sId]: updatedConfig };
+  }
+
+  return keepOnlyOneSpaceIfApplicable({
+    ...prevState,
+    [sId]: updatedConfig,
+  });
+};
+
 export type useCaseDataSourceViewsSelector =
   | "spaceDatasourceManagement"
   | "assistantBuilder"
@@ -734,36 +764,6 @@ export function DataSourceViewSelector({
     selectionConfiguration.selectedResources.length > 0 ||
     selectionConfiguration.isSelectAll;
 
-  const applySelectAll = useCallback(
-    (nodes: typeof rootNodes) => {
-      setSelectionConfigurations((prevState) => {
-        const { sId } = dataSourceView;
-        const defaultConfig = defaultSelectionConfiguration(dataSourceView);
-        const prevConfig = prevState[sId] ?? defaultConfig;
-        const updatedConfig = {
-          ...prevConfig,
-          selectedResources: nodes,
-          isSelectAll: false,
-        };
-
-        if (selectionMode === "radio") {
-          return { [sId]: updatedConfig };
-        }
-
-        return keepOnlyOneSpaceIfApplicable({
-          ...prevState,
-          [sId]: updatedConfig,
-        });
-      });
-    },
-    [
-      dataSourceView,
-      keepOnlyOneSpaceIfApplicable,
-      setSelectionConfigurations,
-      selectionMode,
-    ]
-  );
-
   const handleSelectAll = () => {
     if (hasActiveSelection) {
       setSelectionConfigurations((prevState) =>
@@ -774,25 +774,15 @@ export function DataSourceViewSelector({
     }
 
     if (isRootSelectable) {
-      setSelectionConfigurations((prevState) => {
-        const { sId } = dataSourceView;
-        const defaultConfig = defaultSelectionConfiguration(dataSourceView);
-        const prevConfig = prevState[sId] ?? defaultConfig;
-        const updatedConfig = {
-          ...prevConfig,
-          selectedResources: [],
-          isSelectAll: true,
-        };
-
-        if (selectionMode === "radio") {
-          return { [sId]: updatedConfig };
-        }
-
-        return keepOnlyOneSpaceIfApplicable({
-          ...prevState,
-          [sId]: updatedConfig,
-        });
-      });
+      setSelectionConfigurations((prevState) =>
+        applySelectionConfigUpdate({
+          prevState,
+          dataSourceView,
+          update: { selectedResources: [], isSelectAll: true },
+          selectionMode,
+          keepOnlyOneSpaceIfApplicable,
+        })
+      );
       return;
     }
 
@@ -903,27 +893,35 @@ export function DataSourceViewSelector({
   );
 
   useEffect(() => {
-    if (selectAllTriggered && hasNextPage && !isLoadingMore) {
-      void loadMore();
+    if (!selectAllTriggered) {
+      return;
     }
-  }, [selectAllTriggered, hasNextPage, isLoadingMore, loadMore]);
-
-  useEffect(() => {
-    if (
-      selectAllTriggered &&
-      rootNodes.length > 0 &&
-      !hasNextPage &&
-      !isLoadingMore
-    ) {
-      applySelectAll(rootNodes);
+    if (hasNextPage && !isLoadingMore) {
+      void loadMore();
+      return;
+    }
+    if (!hasNextPage && !isLoadingMore && rootNodes.length > 0) {
+      setSelectionConfigurations((prevState) =>
+        applySelectionConfigUpdate({
+          prevState,
+          dataSourceView,
+          update: { selectedResources: rootNodes, isSelectAll: false },
+          selectionMode,
+          keepOnlyOneSpaceIfApplicable,
+        })
+      );
       setSelectAllTriggered(false);
     }
   }, [
     selectAllTriggered,
-    rootNodes,
     hasNextPage,
     isLoadingMore,
-    applySelectAll,
+    loadMore,
+    rootNodes,
+    dataSourceView,
+    selectionMode,
+    keepOnlyOneSpaceIfApplicable,
+    setSelectionConfigurations,
   ]);
 
   return (
