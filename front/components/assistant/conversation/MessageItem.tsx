@@ -196,26 +196,32 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return null;
     }
 
+    // TODO: This spacing logic should ideally live in Sparkle's
+    // ConversationMessageContainer, but it depends on conversation-level context
+    // (next message sender, agent status) that Sparkle doesn't have access to.
+    // No bottom margin when the next message is from the same sender (grouped)
+    // or when the agent message is gracefully stopped (steered flow, next
+    // message stays visually attached). Other users' messages get a bit more
+    // spacing since they are left-aligned like agent messages.
+    const isFromOtherUser =
+      isUserMessage(data) && data.user?.sId !== context.user.sId;
+    const isGracefullyStopped =
+      isAgentMessageWithStreaming(data) &&
+      data.status === "gracefully_stopped";
+    const bottomMargin =
+      isNextMessageSameSender || isGracefullyStopped
+        ? undefined
+        : isFromOtherUser
+          ? "mb-3"
+          : "mb-1";
+
     return (
       <>
         {!areSameDate && <MessageDateIndicator message={data} />}
         <div
           key={`message-id-${sId}`}
           ref={ref}
-          className={classNames(
-            "mx-auto max-w-conversation",
-            !isNextMessageSameSender &&
-              !(
-                isAgentMessageWithStreaming(data) &&
-                data.status === "gracefully_stopped"
-              ) &&
-              // Other users' messages and agent messages are left-aligned (unlike
-              // the current user's messages which are right-aligned), so they need
-              // a bit more bottom spacing to visually separate them.
-              (isUserMessage(data) && data.user?.sId !== context.user.sId
-                ? "mb-3"
-                : "mb-1")
-          )}
+          className={classNames("mx-auto max-w-conversation", bottomMargin)}
         >
           {isUserMessage(data) && (
             <UserMessage

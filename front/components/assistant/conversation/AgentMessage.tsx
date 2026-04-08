@@ -989,11 +989,9 @@ export function AgentMessage({
   // cases (steered, other user, gracefully stopped) in a unified way.
   const spacingOverride = isSteered
     ? isTriggeredByOtherUser
-      ? "pb-4"
-      : "pb-2"
-    : isGracefullyStopped
-      ? "py-2"
-      : undefined;
+      ? "s-pb-4"
+      : "s-pb-2"
+    : undefined;
 
   return (
     <ConversationMessageContainer
