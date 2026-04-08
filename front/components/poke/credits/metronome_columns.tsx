@@ -1,5 +1,4 @@
 import { formatMicroUsdToUsd } from "@app/components/poke/credits/columns";
-import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { TYPE_COLORS } from "@app/components/workspace/CreditsList";
 import type { CreditDisplayData } from "@app/types/credits";
 import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
@@ -10,9 +9,7 @@ export function makeColumnsForMetronomeBalances(): ColumnDef<CreditDisplayData>[
   return [
     {
       accessorKey: "sId",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="ID" />
-      ),
+      header: "ID",
       cell: ({ row }) => (
         <span className="font-mono text-xs">
           {row.original.sId.slice(0, 8)}
@@ -21,9 +18,7 @@ export function makeColumnsForMetronomeBalances(): ColumnDef<CreditDisplayData>[
     },
     {
       accessorKey: "type",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Type" />
-      ),
+      header: "Type",
       cell: ({ row }) => {
         const { type } = row.original;
         return (
@@ -35,25 +30,19 @@ export function makeColumnsForMetronomeBalances(): ColumnDef<CreditDisplayData>[
     },
     {
       accessorKey: "initialAmountMicroUsd",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Initial" />
-      ),
+      header: "Initial",
       cell: ({ row }) =>
         formatMicroUsdToUsd(row.original.initialAmountMicroUsd),
     },
     {
       accessorKey: "consumedAmountMicroUsd",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Consumed" />
-      ),
+      header: "Consumed",
       cell: ({ row }) =>
         formatMicroUsdToUsd(row.original.consumedAmountMicroUsd),
     },
     {
       accessorKey: "remainingAmountMicroUsd",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Remaining" />
-      ),
+      header: "Remaining",
       cell: ({ row }) => {
         const remaining = row.original.remainingAmountMicroUsd;
         const initial = row.original.initialAmountMicroUsd;
@@ -70,9 +59,7 @@ export function makeColumnsForMetronomeBalances(): ColumnDef<CreditDisplayData>[
     },
     {
       accessorKey: "startDate",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Start date" />
-      ),
+      header: "Start date",
       cell: ({ row }) => {
         const { startDate } = row.original;
         if (!startDate) {
@@ -87,9 +74,7 @@ export function makeColumnsForMetronomeBalances(): ColumnDef<CreditDisplayData>[
     },
     {
       accessorKey: "expirationDate",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Expiration" />
-      ),
+      header: "Expiration",
       cell: ({ row }) => {
         const { expirationDate } = row.original;
         if (!expirationDate) {
