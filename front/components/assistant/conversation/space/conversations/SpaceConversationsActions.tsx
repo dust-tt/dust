@@ -18,8 +18,10 @@ export function SpaceConversationsActions({
   const suggestions = [
     {
       id: "add-context",
-      label: "Add context",
+      label: "Add knowledge",
       icon: BookOpenIcon,
+      description:
+        "Add files, links, or data sources relevant to this project.",
       onClick: () => {
         window.location.hash = "context";
       },
@@ -30,6 +32,7 @@ export function SpaceConversationsActions({
             id: "manage-members",
             label: "Manage members",
             icon: ContactsUserIcon,
+            description: "Invite people to this project as members or editors.",
             onClick: () => {
               onOpenMembersPanel();
             },
@@ -41,14 +44,14 @@ export function SpaceConversationsActions({
   return (
     <div className="flex flex-col gap-3">
       <h3 className="heading-lg text-foreground dark:text-foreground-night">
-        Suggested actions
+        New Project? Let us help you setup.
       </h3>
       <CardGrid>
         {suggestions.map((suggestion) => (
           <Card
             key={suggestion.id}
             variant="primary"
-            size="md"
+            size="lg"
             onClick={suggestion.onClick}
             className="cursor-pointer"
           >
@@ -57,6 +60,11 @@ export function SpaceConversationsActions({
                 <Icon visual={suggestion.icon} size="sm" />
                 <div className="w-full">{suggestion.label}</div>
               </div>
+              {suggestion.description && (
+                <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  {suggestion.description}
+                </div>
+              )}
             </div>
           </Card>
         ))}
