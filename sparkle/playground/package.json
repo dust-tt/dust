@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@dust-tt/sparkle": "file:..",
+    "@tabler/icons-react": "^3.41.1",
     "@tiptap/core": "^3.15.3",
     "@tiptap/extension-mention": "^3.15.3",
     "@tiptap/extension-placeholder": "^3.15.3",
