@@ -6,8 +6,8 @@ import {
   listMetronomeUsageWithGroups,
 } from "@app/lib/metronome/client";
 import {
-  getLlmProgrammaticBillableMetricId,
-  getToolProgrammaticBillableMetricId,
+  getMetricLlmProviderCostProgrammaticId,
+  getMetricToolInvocationsProgrammaticId,
 } from "@app/lib/metronome/constants";
 import type { MetronomeBalance } from "@app/lib/metronome/types";
 import { METRONOME_CENTS_TO_MICRO_USD } from "@app/lib/metronome/types";
@@ -191,8 +191,8 @@ export async function handleMetronomeUsageRequest(
         });
       }
 
-      const llmMetricId = getLlmProgrammaticBillableMetricId();
-      const toolMetricId = getToolProgrammaticBillableMetricId();
+      const llmMetricId = getMetricLlmProviderCostProgrammaticId();
+      const toolMetricId = getMetricToolInvocationsProgrammaticId();
 
       const {
         groupBy,

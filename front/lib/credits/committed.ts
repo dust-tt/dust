@@ -1,7 +1,7 @@
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
 import { createMetronomeCommit } from "@app/lib/metronome/client";
-import { getCommitProductId } from "@app/lib/metronome/constants";
+import { getProductPrepaidCommitId } from "@app/lib/metronome/constants";
 import type { CustomerFacingInvoiceInfo } from "@app/lib/plans/stripe";
 import {
   ENTERPRISE_N30_PAYMENTS_DAYS,
@@ -521,7 +521,7 @@ async function addMetronomeCommitsForWorkspace({
         CREDIT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000
     );
 
-  const productId = getCommitProductId();
+  const productId = getProductPrepaidCommitId();
 
   const result = await createMetronomeCommit({
     metronomeCustomerId,
