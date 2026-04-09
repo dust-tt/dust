@@ -7,6 +7,7 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { SANDBOX_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox/metadata";
 import config from "@app/lib/api/config";
+import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import {
   generateSandboxExecToken,
   registerExecToken,
@@ -30,15 +31,14 @@ import {
 } from "@app/lib/api/sandbox/image/profile";
 import { recordToolDuration } from "@app/lib/api/sandbox/instrumentation";
 import type { ExecResult } from "@app/lib/api/sandbox/provider";
-import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 const DEFAULT_WORKING_DIRECTORY = "/home/agent";
@@ -110,6 +110,7 @@ function monitorBlockedActions(
   agentMessageId: number
 ): { promise: Promise<{ actionId: string }>; cleanup: () => void } {
   let resolved = false;
+  let graceStarted = false;
   let pollInterval: ReturnType<typeof setInterval> | undefined;
   let unsubscribeFn: (() => void) | undefined;
   let graceTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -132,9 +133,10 @@ function monitorBlockedActions(
 
   const promise = new Promise<{ actionId: string }>((resolve) => {
     const checkAndMaybeResolve = async (actionId: string) => {
-      if (resolved) {
+      if (resolved || graceStarted) {
         return;
       }
+      graceStarted = true;
 
       // Wait for the grace period.
       await new Promise<void>((r) => {
@@ -352,7 +354,9 @@ export function createSandboxTools(
       if (raceResult.type === "exec_completed") {
         // Normal completion — no pause needed. Clean up monitor and token.
         monitor.cleanup();
-        void revokeExecToken(sandbox.sId, execId);
+        void revokeExecToken(sandbox.sId, execId).catch((err) =>
+          logger.error({ error: err }, "Failed to revoke exec token")
+        );
 
         const durationMs = performance.now() - startMs;
         recordToolDuration(
@@ -373,7 +377,9 @@ export function createSandboxTools(
       if (raceResult.type === "exec_error") {
         // Exec threw unexpectedly (not from a pause). Clean up and propagate.
         monitor.cleanup();
-        void revokeExecToken(sandbox.sId, execId);
+        void revokeExecToken(sandbox.sId, execId).catch((err) =>
+          logger.error({ error: err }, "Failed to revoke exec token")
+        );
         return new Err(new MCPError(raceResult.error.message));
       }
 

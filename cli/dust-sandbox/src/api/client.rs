@@ -3,12 +3,14 @@ use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde::{de::DeserializeOwned, Serialize};
 
 use super::types::{
-    ApprovalStatusResponse, CallToolPendingResponse, CallToolRequest, CallToolResponse,
-    MCPServerView, SandboxToolsResponse,
+    ApprovalStatus, ApprovalStatusResponse, CallToolPendingResponse, CallToolRequest,
+    CallToolResponse, MCPServerView, SandboxToolsResponse,
 };
 
 const SANDBOX_TOKEN_ENV: &str = "DUST_SANDBOX_TOKEN";
 const API_URL_ENV: &str = "DUST_API_URL";
+const APPROVAL_TIMEOUT_ENV: &str = "DUST_APPROVAL_TIMEOUT_SECONDS";
+const DEFAULT_APPROVAL_TIMEOUT_SECONDS: u64 = 600;
 
 pub struct DustApiClient {
     client: reqwest::Client,
@@ -155,15 +157,15 @@ impl DustApiClient {
         }
 
         if status == reqwest::StatusCode::ACCEPTED {
-            let pending: CallToolPendingResponse = serde_json::from_str(&body_text)
-                .context("failed to parse 202 response")?;
+            let pending: CallToolPendingResponse =
+                serde_json::from_str(&body_text).context("failed to parse 202 response")?;
 
             eprintln!("Waiting for tool approval...");
 
-            let timeout_seconds: u64 = std::env::var("DUST_APPROVAL_TIMEOUT_SECONDS")
+            let timeout_seconds: u64 = std::env::var(APPROVAL_TIMEOUT_ENV)
                 .ok()
                 .and_then(|v| v.parse().ok())
-                .unwrap_or(600);
+                .unwrap_or(DEFAULT_APPROVAL_TIMEOUT_SECONDS);
 
             let start = std::time::Instant::now();
             loop {
@@ -175,14 +177,11 @@ impl DustApiClient {
 
                 // Poll the same call_tool endpoint via GET with ?actionId=...
                 let poll_result: ApprovalStatusResponse = self
-                    .get(
-                        &call_tool_path,
-                        &[("actionId", &pending.action_id)],
-                    )
+                    .get(&call_tool_path, &[("actionId", &pending.action_id)])
                     .await?;
 
-                match poll_result.status.as_str() {
-                    "approved" => {
+                match poll_result.status {
+                    ApprovalStatus::Approved => {
                         // Re-POST with actionId to execute the tool.
                         let mut re_post_body = serde_json::json!({
                             "toolName": tool_name,
@@ -193,17 +192,14 @@ impl DustApiClient {
                         }
                         return self.post(&call_tool_path, &re_post_body).await;
                     }
-                    "rejected" => {
+                    ApprovalStatus::Rejected => {
                         bail!("Tool execution was rejected by the user");
                     }
-                    "error" => {
+                    ApprovalStatus::Error => {
                         bail!("Tool approval encountered an error");
                     }
-                    "pending" => {
+                    ApprovalStatus::Pending => {
                         // Continue polling.
-                    }
-                    other => {
-                        bail!("Unexpected approval status: {other}");
                     }
                 }
             }

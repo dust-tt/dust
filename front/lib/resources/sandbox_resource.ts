@@ -1,6 +1,6 @@
-import { revokeAllExecTokensForSandbox } from "@app/lib/api/sandbox/access_tokens";
 import config from "@app/lib/api/config";
 import { getSandboxProvider } from "@app/lib/api/sandbox";
+import { revokeAllExecTokensForSandbox } from "@app/lib/api/sandbox/access_tokens";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import {
   recordLifecycleOperation,
@@ -557,10 +557,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return new Ok(undefined);
       }
 
-      const ctx = { workspaceSId: auth.getNonNullableWorkspace().sId };
-      const tracingOpts = { workspaceSId: auth.getNonNullableWorkspace().sId };
+      const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
 
-      const result = await provider.sleep(sandbox.providerId, tracingOpts);
+      const result = await provider.sleep(sandbox.providerId, ctx);
       if (result.isErr()) {
         return result;
       }
@@ -592,7 +591,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return new Ok(undefined);
       }
 
-      const ctx = { workspaceSId: auth.getNonNullableWorkspace().sId };
+      const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
       await sandbox.updateStatus("sleeping", { ctx });
       logger.info(
         { sandbox: sandbox.toLogJSON() },

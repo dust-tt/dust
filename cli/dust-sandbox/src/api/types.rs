@@ -103,6 +103,15 @@ pub struct CallToolPendingResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ApprovalStatus {
+    Pending,
+    Approved,
+    Rejected,
+    Error,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ApprovalStatusResponse {
-    pub status: String,
+    pub status: ApprovalStatus,
 }

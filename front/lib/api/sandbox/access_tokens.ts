@@ -35,7 +35,7 @@ function execTokenRedisKey(sbId: string, execId: string): string {
   return `sandbox:${sbId}:exec:${execId}`;
 }
 
-const REDIS_ORIGIN = "lock" as const;
+const REDIS_ORIGIN = "sandbox_exec_tokens" as const;
 
 export async function registerExecToken(
   sbId: string,

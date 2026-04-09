@@ -44,6 +44,7 @@ export type RedisUsageTagsType =
   | "force_reload_commits"
   | "key_usage_tracking"
   | "lock"
+  | "sandbox_exec_tokens"
   | "mcp_client_side_request"
   | "mcp_client_side_results"
   | "mentions_count"
