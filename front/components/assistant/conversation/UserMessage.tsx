@@ -17,6 +17,7 @@ import { useEditUserMessage } from "@app/hooks/useEditUserMessage";
 import { useHover } from "@app/hooks/useHover";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
@@ -24,6 +25,10 @@ import type {
   UserMessageType,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
+import {
+  isAgentMention,
+  isRichAgentMention,
+} from "@app/types/assistant/mentions";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -152,14 +157,37 @@ export function UserMessage({
     conversationId,
   });
   const confirm = useContext(ConfirmContext);
+  const sendNotification = useSendNotification();
+  const { hasFeature } = useFeatureFlags();
+  const singleAgentInput = hasFeature("enable_steering");
+
+  const originalAgentIds = new Set(
+    message.mentions.filter(isAgentMention).map((m) => m.configurationId)
+  );
 
   const handleSave = async () => {
     const { markdown, mentions } = editorService.getMarkdownAndMentions();
 
+    let filteredMentions = mentions;
+    if (singleAgentInput) {
+      filteredMentions = mentions.filter(
+        (m) => !isRichAgentMention(m) || originalAgentIds.has(m.id)
+      );
+
+      if (filteredMentions.length < mentions.length) {
+        sendNotification({
+          type: "info",
+          title: "Agent mentions removed",
+          description:
+            "Tagging an agent in a sent message won't prompt re-evaluation.",
+        });
+      }
+    }
+
     await editMessage({
       messageId: message.sId,
       content: markdown,
-      mentions,
+      mentions: filteredMentions,
     });
 
     setShouldShowEditor(false);
@@ -170,6 +198,7 @@ export function UserMessage({
     conversationId,
     onEnterKeyDown: handleSave,
     disableAutoFocus: false,
+    disableAgentMentions: singleAgentInput,
   });
 
   const renderName = useCallback(

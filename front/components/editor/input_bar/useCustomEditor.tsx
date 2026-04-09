@@ -192,6 +192,8 @@ export interface CustomEditorProps {
   }) => void;
   longTextPasteCharsThreshold?: number;
   onInlineText?: (fileId: string, textContent: string) => void;
+  // When true, agent suggestions are fully disabled (e.g. edit mode).
+  disableAgentMentions?: boolean;
   // Ref that dynamically controls whether agent suggestions are shown for single agent mode.
   shouldSuggestAgentRef?: React.RefObject<boolean>;
   onFirstAgentMentionPasteRef?: React.RefObject<
@@ -207,6 +209,7 @@ export const buildEditorExtensions = ({
   conversationId,
   spaceId,
   disableUserMentions,
+  disableAgentMentions,
   onInlineText,
   onUrlDetected,
   onAgentSelect,
@@ -219,6 +222,7 @@ export const buildEditorExtensions = ({
   conversationId?: string | null;
   spaceId?: string;
   disableUserMentions?: boolean;
+  disableAgentMentions?: boolean;
   onInlineText?: (fileId: string, textContent: string) => void;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
   onAgentSelect?: (mention: RichMention) => void;
@@ -302,7 +306,7 @@ export const buildEditorExtensions = ({
         conversationId,
         spaceId,
         select: {
-          agents: true,
+          agents: !disableAgentMentions,
           users: !disableUserMentions,
         },
         shouldSuggestAgentRef,
@@ -350,6 +354,7 @@ const useCustomEditor = ({
   onLongTextPaste,
   longTextPasteCharsThreshold,
   onInlineText,
+  disableAgentMentions,
   shouldSuggestAgentRef,
   onFirstAgentMentionPasteRef,
   onAgentMentionsStrippedRef,
@@ -362,6 +367,7 @@ const useCustomEditor = ({
         conversationId,
         spaceId,
         disableUserMentions,
+        disableAgentMentions,
         onInlineText,
         onUrlDetected,
         onAgentSelect,
