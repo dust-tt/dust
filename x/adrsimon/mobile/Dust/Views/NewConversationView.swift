@@ -12,6 +12,7 @@ struct NewConversationView: View {
     let user: User
     let workspaceId: String
     let tokenProvider: TokenProvider
+    var spaceId: String? = nil
     let onConversationCreated: (Conversation) -> Void
 
     @StateObject private var inputBarViewModel: InputBarViewModel
@@ -32,18 +33,21 @@ struct NewConversationView: View {
         user: User,
         workspaceId: String,
         tokenProvider: TokenProvider,
+        spaceId: String? = nil,
         onConversationCreated: @escaping (Conversation) -> Void
     ) {
         self.firstName = firstName
         self.user = user
         self.workspaceId = workspaceId
         self.tokenProvider = tokenProvider
+        self.spaceId = spaceId
         self.onConversationCreated = onConversationCreated
         _inputBarViewModel = StateObject(
             wrappedValue: InputBarViewModel(
                 workspaceId: workspaceId,
                 tokenProvider: tokenProvider,
-                user: user
+                user: user,
+                spaceId: spaceId
             )
         )
     }

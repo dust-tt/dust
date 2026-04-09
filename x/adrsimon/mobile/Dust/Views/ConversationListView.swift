@@ -4,12 +4,15 @@ import SwiftUI
 struct ConversationListView: View {
     @Binding var searchText: String
     let groupedConversations: [(String, [Conversation])]
+    let projects: [Space]
+    @Binding var isProjectsExpanded: Bool
     let user: User
     let currentWorkspace: Workspace?
     let workspaces: [Workspace]
     let isLoading: Bool
     let onNewConversation: () -> Void
     let onSelectConversation: (Conversation) -> Void
+    let onSelectProject: (Space) -> Void
     let onSwitchWorkspace: (Workspace) -> Void
     let onLogout: () -> Void
     var onCatchUp: (() -> Void)?
@@ -22,7 +25,10 @@ struct ConversationListView: View {
         }
         .background(Color.dustBackground)
         .safeAreaInset(edge: .bottom) {
-            bottomBar
+            ConversationListBottomBar(
+                searchText: $searchText,
+                onNewConversation: onNewConversation
+            )
         }
     }
 
@@ -102,6 +108,52 @@ struct ConversationListView: View {
         .liquidGlassCapsule()
     }
 
+    // MARK: - Projects
+
+    private var projectsSection: some View {
+        Section {
+            if isProjectsExpanded {
+                ForEach(projects) { project in
+                    Button {
+                        onSelectProject(project)
+                    } label: {
+                        Text(project.name)
+                            .sparkleCopySm()
+                            .foregroundStyle(Color.dustForeground)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                    }
+                }
+            }
+        } header: {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isProjectsExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text("Projects")
+                        .sparkleLabelXs()
+                        .textCase(.uppercase)
+
+                    SparkleIcon.chevronDown.image
+                        .resizable()
+                        .frame(width: 8, height: 8)
+                        .rotationEffect(.degrees(isProjectsExpanded ? 0 : -90))
+
+                    Spacer()
+                }
+                .foregroundStyle(Color.dustFaint)
+                .padding(.horizontal, 12)
+                .padding(.top, 16)
+                .padding(.bottom, 4)
+            }
+        }
+    }
+
     // MARK: - Middle: Conversation List
 
     private var conversationListSection: some View {
@@ -109,55 +161,42 @@ struct ConversationListView: View {
             if isLoading {
                 ProgressView()
                     .padding(.top, 32)
-            } else if groupedConversations.isEmpty {
-                if searchText.isEmpty {
-                    ContentUnavailableView(
-                        "No conversations yet",
-                        systemImage: "bubble.left.and.bubble.right"
-                    )
-                    .padding(.top, 32)
-                } else {
-                    ContentUnavailableView.search(text: searchText)
-                        .padding(.top, 32)
-                }
             } else {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(groupedConversations, id: \.0) { group, conversations in
-                        Section {
-                            ForEach(conversations) { conversation in
-                                Button {
-                                    onSelectConversation(conversation)
-                                } label: {
-                                    HStack(spacing: 6) {
-                                        if conversation.actionRequired {
-                                            Circle()
-                                                .fill(Color.golden400)
-                                                .frame(width: 8, height: 8)
-                                        } else if conversation.unread {
-                                            Circle()
-                                                .fill(Color.highlight500)
-                                                .frame(width: 8, height: 8)
-                                        }
+                    if !projects.isEmpty {
+                        projectsSection
+                    }
 
-                                        Text(conversation.title ?? "New conversation")
-                                            .sparkleCopySm()
-                                            .foregroundStyle(Color.dustForeground)
-                                            .lineLimit(1)
-                                            .truncationMode(.tail)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
+                    if groupedConversations.isEmpty {
+                        if searchText.isEmpty {
+                            ContentUnavailableView(
+                                "No conversations yet",
+                                systemImage: "bubble.left.and.bubble.right"
+                            )
+                            .padding(.top, 32)
+                        } else {
+                            ContentUnavailableView.search(text: searchText)
+                                .padding(.top, 32)
+                        }
+                    } else {
+                        ForEach(groupedConversations, id: \.0) { group, conversations in
+                            Section {
+                                ForEach(conversations) { conversation in
+                                    Button {
+                                        onSelectConversation(conversation)
+                                    } label: {
+                                        ConversationRowView(conversation: conversation)
                                     }
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
                                 }
+                            } header: {
+                                Text(group)
+                                    .sparkleLabelXs()
+                                    .textCase(.uppercase)
+                                    .foregroundStyle(Color.dustFaint)
+                                    .padding(.horizontal, 12)
+                                    .padding(.top, 16)
+                                    .padding(.bottom, 4)
                             }
-                        } header: {
-                            Text(group)
-                                .sparkleLabelXs()
-                                .textCase(.uppercase)
-                                .foregroundStyle(Color.dustFaint)
-                                .padding(.horizontal, 12)
-                                .padding(.top, 16)
-                                .padding(.bottom, 4)
                         }
                     }
                 }
@@ -166,35 +205,5 @@ struct ConversationListView: View {
         .refreshable {
             await onRefresh?()
         }
-    }
-
-    // MARK: - Bottom: Search + New
-
-    private var bottomBar: some View {
-        HStack(spacing: 12) {
-            HStack(spacing: 6) {
-                SparkleIcon.magnifyingGlass.image
-                    .resizable()
-                    .frame(width: 14, height: 14)
-                    .foregroundStyle(Color.dustFaint)
-                TextField("Search", text: $searchText)
-                    .sparkleCopySm()
-                    .foregroundStyle(Color.dustForeground)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .liquidGlassCapsule()
-
-            Button(action: onNewConversation) {
-                SparkleIcon.chatBubbleBottomCenterPlus.image
-                    .resizable()
-                    .frame(width: 20, height: 20)
-                    .foregroundStyle(Color.dustForeground)
-                    .padding(12)
-            }
-            .liquidGlassCircle()
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
     }
 }

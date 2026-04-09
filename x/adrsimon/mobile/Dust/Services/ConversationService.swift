@@ -15,6 +15,19 @@ enum ConversationService {
         return try await APIClient.authenticatedGet(query, tokenProvider: tokenProvider, snakeCase: false)
     }
 
+    static func fetchSpaceConversations(
+        workspaceId: String,
+        spaceId: String,
+        tokenProvider: TokenProvider,
+        limit: Int = defaultLimit
+    ) async throws -> ConversationsResponse {
+        let endpoint = AppConfig.Endpoints.spaceConversations(workspaceId: workspaceId, spaceId: spaceId)
+        let query = buildQuery(endpoint: endpoint, params: [
+            "limit": "\(limit)",
+        ])
+        return try await APIClient.authenticatedGet(query, tokenProvider: tokenProvider, snakeCase: false)
+    }
+
     static func fetchMessages(
         workspaceId: String,
         conversationId: String,

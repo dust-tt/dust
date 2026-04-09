@@ -3,7 +3,7 @@ import Foundation
 struct CreateConversationRequest: Encodable {
     let title: String? = nil
     let visibility: String = "unlisted"
-    let spaceId: String? = nil
+    let spaceId: String?
     let message: CreateMessagePayload
     var contentFragments: [ContentFragmentPayload] = []
 

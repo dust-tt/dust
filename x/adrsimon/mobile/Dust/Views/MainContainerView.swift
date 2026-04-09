@@ -4,6 +4,8 @@ import SwiftUI
 enum ConversationDestination: Hashable {
     case conversation(Conversation)
     case newConversation
+    case project(Space)
+    case newProjectConversation(Space)
 }
 
 struct MainContainerView: View {
@@ -41,6 +43,8 @@ struct MainContainerView: View {
             ConversationListView(
                 searchText: $viewModel.searchText,
                 groupedConversations: viewModel.groupedConversations,
+                projects: viewModel.projects,
+                isProjectsExpanded: $viewModel.isProjectsExpanded,
                 user: user,
                 currentWorkspace: viewModel.workspace,
                 workspaces: viewModel.workspaces,
@@ -50,6 +54,9 @@ struct MainContainerView: View {
                 },
                 onSelectConversation: { conversation in
                     navigationPath.append(ConversationDestination.conversation(conversation))
+                },
+                onSelectProject: { project in
+                    navigationPath.append(ConversationDestination.project(project))
                 },
                 onSwitchWorkspace: { workspace in
                     navigationPath = NavigationPath()
@@ -85,6 +92,38 @@ struct MainContainerView: View {
                             tokenProvider: tokenProvider,
                             onConversationCreated: { conversation in
                                 navigationPath = NavigationPath([ConversationDestination.conversation(conversation)])
+                            }
+                        )
+                    }
+
+                case let .project(space):
+                    if let workspaceId = viewModel.workspace?.sId {
+                        ProjectConversationsView(
+                            space: space,
+                            workspaceId: workspaceId,
+                            tokenProvider: tokenProvider,
+                            onSelectConversation: { conversation in
+                                navigationPath.append(ConversationDestination.conversation(conversation))
+                            },
+                            onNewConversation: {
+                                navigationPath.append(ConversationDestination.newProjectConversation(space))
+                            }
+                        )
+                    }
+
+                case let .newProjectConversation(space):
+                    if let workspaceId = viewModel.workspace?.sId {
+                        NewConversationView(
+                            firstName: user.firstName,
+                            user: user,
+                            workspaceId: workspaceId,
+                            tokenProvider: tokenProvider,
+                            spaceId: space.sId,
+                            onConversationCreated: { conversation in
+                                navigationPath = NavigationPath([
+                                    ConversationDestination.project(space),
+                                    ConversationDestination.conversation(conversation),
+                                ])
                             }
                         )
                     }
