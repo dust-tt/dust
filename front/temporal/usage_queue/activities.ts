@@ -281,9 +281,10 @@ export async function emitMetronomeUsageEventsActivity(
   // Resolve API key name from the stored numeric FK.
   let apiKeyName: string | null = null;
   if (userMessage?.userContextApiKeyId) {
-    const key = await KeyResource.fetchByModelId(
-      userMessage.userContextApiKeyId
-    );
+    const key = await KeyResource.fetchByWorkspaceAndId({
+      workspace,
+      id: userMessage.userContextApiKeyId,
+    });
     apiKeyName = key?.name ?? null;
   }
 
