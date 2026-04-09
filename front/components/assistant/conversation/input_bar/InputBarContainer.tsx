@@ -429,13 +429,13 @@ const InputBarContainer = ({
           case "users-stripped-for-agent":
             title = "User mentions removed";
             description =
-              "You can't mention both users and agents in the same message.";
+              "You can’t mention both users and agents in the same message.";
             break;
           case "user-conflict":
           case "mixed-conflict":
             title = "Agent mentions removed";
             description =
-              "You can't mention both users and agents in the same message.";
+              "You can’t mention both users and agents in the same message.";
             break;
           default:
             assertNever(payload);
