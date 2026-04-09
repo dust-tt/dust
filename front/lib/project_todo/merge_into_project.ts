@@ -1,13 +1,13 @@
 // TODO: implement "merge".
 //
-// This module will merge the latest conversation_todo_versioned snapshots for all
+// This module will merge the latest takeaway snapshots for all
 // conversations in a project into project_todo rows. It is called by
 // mergeTodosForProjectActivity, which itself is invoked by the per-project
 // projectMergeWorkflow at most once per MERGE_THROTTLE_MS (1 hour by default).
 //
 // High-level algorithm (to be implemented):
 //
-//   1. Fetch all ConversationTodoVersioned snapshots (latest per conversation) for
+//   1. Fetch all takeaway snapshots (latest per conversation) for
 //      conversations that belong to the given spaceId.
 //   2. For each item (actionItem / keyDecision / notableFact):
 //        - Resolve target users (assigneeUserId, relevantUserIds, or conversation participants).

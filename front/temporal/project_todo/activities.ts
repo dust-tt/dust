@@ -4,7 +4,6 @@ import { analyzeConversationTodos } from "@app/lib/project_todo/analyze_conversa
 import { mergeConversationTodosIntoProject } from "@app/lib/project_todo/merge_into_project";
 import logger from "@app/logger/logger";
 import { signalOrStartProjectMergeWorkflow } from "@app/temporal/project_todo/client";
-import { Context } from "@temporalio/activity";
 
 export async function analyzeProjectTodosActivity({
   authType,
@@ -41,8 +40,7 @@ export async function analyzeProjectTodosActivity({
     return;
   }
 
-  const { runId } = Context.current().info.workflowExecution;
-  await analyzeConversationTodos(auth, { conversation, messageId, runId });
+  await analyzeConversationTodos(auth, { conversation, messageId });
 }
 
 // Called by projectTodoWorkflow after a successful analysis run. Uses signalWithStart
@@ -57,7 +55,7 @@ export async function signalOrStartMergeWorkflowActivity({
   await signalOrStartProjectMergeWorkflow({ authType, spaceId });
 }
 
-// Called by projectMergeWorkflow. Merges the latest conversation_todo_versioned snapshots
+// Called by projectMergeWorkflow. Merges the latest takeaway snapshots
 // for all conversations in the project into project_todo rows.
 export async function mergeTodosForProjectActivity({
   authType,

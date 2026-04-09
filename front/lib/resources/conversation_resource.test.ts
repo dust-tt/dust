@@ -5062,7 +5062,6 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   "user_conversation_reads",
   "user_project_digest",
   "conversation_butler_suggestion",
-  "conversation_todo_versioned",
 ];
 
 const KNOWN_MESSAGE_RELATED_MODELS = [

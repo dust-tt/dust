@@ -1,5 +1,5 @@
 import type { NotableFactSchema } from "@app/lib/project_todo/analyze_conversation/types";
-import type { TodoVersionedNotableFact } from "@app/types/conversation_todo_versioned";
+import type { TodoVersionedNotableFact } from "@app/types/takeaways";
 import { v4 as uuidv4 } from "uuid";
 import type { z } from "zod";
 

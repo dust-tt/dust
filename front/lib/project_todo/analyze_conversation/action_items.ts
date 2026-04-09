@@ -1,5 +1,5 @@
 import type { ActionItemSchema } from "@app/lib/project_todo/analyze_conversation/types";
-import type { TodoVersionedActionItem } from "@app/types/conversation_todo_versioned";
+import type { TodoVersionedActionItem } from "@app/types/takeaways";
 import { v4 as uuidv4 } from "uuid";
 import type { z } from "zod";
 
