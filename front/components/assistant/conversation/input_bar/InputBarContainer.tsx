@@ -578,27 +578,50 @@ const InputBarContainer = ({
   const selectedSingleAgentRef = useRef(selectedSingleAgent);
   selectedSingleAgentRef.current = selectedSingleAgent;
 
-  // When a user is mentioned in single-agent mode, deselect the agent and clear capabilities.
-  // Uses a ref so the editor listener (registered once in the useEffect below) always calls
-  // the latest closure without re-registering the listener on every render.
+  // When a user mention is *newly added* in single-agent mode, deselect the agent
+  // and clear capabilities. Only triggers on the transition from no-user-mention to
+  // user-mention so that re-selecting an agent (via card click or URL param) isn't
+  // immediately clobbered by the existing @user mention on the next editor update.
+  // Uses a ref so the editor listener (registered once in the useEffect below) always
+  // calls the latest closure without re-registering the listener on every render.
+  const prevUserMentionedRef = useRef(false);
   const onEditorMentionsChangedRef = useRef((_userMentioned: boolean) => {});
 
   onEditorMentionsChangedRef.current = (userMentioned: boolean) => {
     shouldSuggestAgentRef.current = !(singleAgentInput && userMentioned);
-    if (singleAgentInput && userMentioned) {
+    const wasUserMentioned = prevUserMentionedRef.current;
+    prevUserMentionedRef.current = userMentioned;
+    if (singleAgentInput && userMentioned && !wasUserMentioned) {
       setSelectedSingleAgent(null);
       onResetSelections();
       fileUploaderService.resetUpload();
     }
   };
 
-  // Persist the selected agent to the draft whenever it changes.
+  // When the selected agent changes, remove any @user mentions (which are
+  // incompatible with single-agent mode), notify the user, and persist the draft.
   useEffect(() => {
     if (singleAgentInput && selectedSingleAgent) {
+      const hadUserMentions = editorService.removeUserMentions();
+      if (hadUserMentions) {
+        sendNotification({
+          type: "info",
+          title: "User mentions removed",
+          description:
+            "You can't mention both users and agents in the same message.",
+        });
+      }
+      editorService.focusEnd();
       const { markdown } = editorService.getMarkdownAndMentions();
       saveDraft(markdown, selectedSingleAgent);
     }
-  }, [singleAgentInput, selectedSingleAgent, editorService, saveDraft]);
+  }, [
+    singleAgentInput,
+    selectedSingleAgent,
+    editorService,
+    saveDraft,
+    sendNotification,
+  ]);
 
   // Update the editor ref when the editor is created and listen for updates to the editor.
   useEffect(() => {

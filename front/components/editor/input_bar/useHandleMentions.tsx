@@ -146,13 +146,6 @@ const useHandleMentions = ({
         // @TODO we should handle this in each event handler and not inside the useEffect
         setSelectedSingleAgent(selectedAgent);
         externalAgentSetRef.current = true;
-        // If the restored draft contains @user mentions, clear the editor
-        // to prevent the user-mention handler from calling
-        // setSelectedSingleAgent(null) and overriding the URL agent.
-        const { mentions } = editorService.getMarkdownAndMentions();
-        if (mentions.some((m) => m.type === "user")) {
-          queueMicrotask(() => editorService.clearEditor());
-        }
         return;
       }
       if (!editorService.hasMention(selectedAgent)) {

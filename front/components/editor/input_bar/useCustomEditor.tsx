@@ -153,6 +153,24 @@ const useEditorService = (editor: Editor | null) => {
         return editor?.commands.clearContent();
       },
 
+      removeUserMentions(): boolean {
+        if (!editor) {
+          return false;
+        }
+        const { tr } = editor.state;
+        let modified = false;
+        editor.state.doc.descendants((node, pos) => {
+          if (node.type.name === "mention" && node.attrs.type === "user") {
+            tr.delete(tr.mapping.map(pos), tr.mapping.map(pos + node.nodeSize));
+            modified = true;
+          }
+        });
+        if (modified) {
+          editor.view.dispatch(tr);
+        }
+        return modified;
+      },
+
       setLoading(loading: boolean) {
         if (loading) {
           editor?.view.dom.classList.add("loading-text");
