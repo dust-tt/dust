@@ -11,7 +11,7 @@ import {
   TOOL_EXECUTION_BLOCKED_STATUSES,
 } from "@app/lib/actions/statuses";
 import {
-  getStaticToolDisplayLabels,
+  getToolDisplayLabels,
   getToolNameFromFunctionCallName,
 } from "@app/lib/actions/tool_display_labels";
 import type { StepContext } from "@app/lib/actions/types";
@@ -1031,7 +1031,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     toolName: string
   ): ToolDisplayLabels | null {
     return (
-      getStaticToolDisplayLabels({
+      getToolDisplayLabels({
         internalMCPServerName,
         mcpServerName: this.toolConfiguration.mcpServerName,
         toolName,

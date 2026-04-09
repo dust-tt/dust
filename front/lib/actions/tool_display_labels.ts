@@ -436,7 +436,7 @@ export function getToolNameFromFunctionCallName(functionCallName: string) {
   return functionCallName.split(TOOL_NAME_SEPARATOR).at(-1) ?? functionCallName;
 }
 
-export function getStaticToolDisplayLabels({
+export function getToolDisplayLabels({
   internalMCPServerName,
   mcpServerName,
   toolName,
