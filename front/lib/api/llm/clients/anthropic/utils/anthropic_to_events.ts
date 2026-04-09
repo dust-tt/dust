@@ -550,7 +550,7 @@ async function succeededMessageToEvents(
   const toolCalls: ToolCallEvent[] = [];
   let reasoningGeneratedEvent: ReasoningGeneratedEvent | undefined = undefined;
 
-  for (const block of message.content) {
+  for (const [index, block] of message.content.entries()) {
     switch (block.type) {
       case "text":
         textBlocks.push(block.text);
@@ -571,6 +571,11 @@ async function succeededMessageToEvents(
           isRecord(block.input)
             ? block.input
             : {};
+        events.push({
+          type: "tool_call_started",
+          content: { id: block.id, index, name: block.name },
+          metadata,
+        });
         const toolCallEvent: ToolCallEvent = {
           type: "tool_call",
           content: { id: block.id, name: block.name, arguments: input },
