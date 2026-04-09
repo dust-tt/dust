@@ -55,6 +55,7 @@ import {
 } from "@connectors/types";
 import type {
   AgentMessageSuccessEvent,
+  AnswerUserQuestionResponseType,
   APIError,
   ConversationPublicType,
   LightAgentConfigurationType,
@@ -483,7 +484,7 @@ export async function botValidateToolExecution(
       channel: slackChannel,
       user: slackChatBotMessage.slackUserId,
       text,
-      thread_ts: slackMessageTs,
+      thread_ts: params.slackThreadTs ?? slackMessageTs,
     });
 
     return res;
@@ -522,6 +523,118 @@ export async function botValidateToolExecution(
       );
     }
 
+    return new Err(new Error("An unexpected error occurred"));
+  }
+}
+
+type UserQuestionAnswerParams = {
+  actionId: string;
+  answer: { selectedOptions: number[]; customResponse?: string };
+  conversationId: string;
+  messageId: string;
+  slackChatBotMessageId: number;
+  slackTeamId: string;
+  slackChannel: string;
+  slackThreadTs: string;
+  responseUrl: string | undefined;
+};
+
+export async function botAnswerUserQuestion({
+  actionId,
+  answer,
+  conversationId,
+  messageId,
+  slackChatBotMessageId,
+  slackTeamId,
+  slackChannel,
+  slackThreadTs,
+  responseUrl,
+}: UserQuestionAnswerParams): Promise<
+  Result<AnswerUserQuestionResponseType, Error | APIError>
+> {
+  const slackConfig =
+    await SlackConfigurationResource.fetchByActiveBot(slackTeamId);
+  if (!slackConfig) {
+    return new Err(
+      new Error(
+        `Failed to find a Slack configuration for which the bot is enabled. Slack team id: ${slackTeamId}.`
+      )
+    );
+  }
+  const connector = await ConnectorResource.fetchById(slackConfig.connectorId);
+  if (!connector) {
+    return new Err(new Error("Failed to find connector"));
+  }
+
+  const slackChatBotMessage = await SlackChatBotMessageModel.findOne({
+    where: { id: slackChatBotMessageId },
+  });
+  if (!slackChatBotMessage) {
+    return new Err(new Error("Missing Slack message"));
+  }
+
+  const userEmailHeader =
+    slackChatBotMessage.slackEmail !== "unknown"
+      ? slackChatBotMessage.slackEmail
+      : undefined;
+
+  const dustAPI = new DustAPI(
+    { url: apiConfig.getDustFrontAPIUrl() },
+    {
+      apiKey: connector.workspaceAPIKey,
+      extraHeaders: getHeaderFromUserEmail(userEmailHeader),
+      workspaceId: connector.workspaceId,
+    },
+    logger
+  );
+
+  try {
+    const res = await dustAPI.answerUserQuestion({
+      conversationId,
+      messageId,
+      actionId,
+      answer,
+    });
+
+    if (responseUrl) {
+      const proxyFetch = createProxyAwareFetch();
+      const response = await proxyFetch(responseUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ delete_original: true }),
+      });
+      if (!response.ok) {
+        logger.error(
+          { responseUrl, connectorId: connector.id },
+          "Failed to delete original message using response_url"
+        );
+      }
+    }
+
+    const slackClient = await getSlackClient(connector.id);
+    const confirmationText =
+      answer.selectedOptions.length === 0 && !answer.customResponse
+        ? "Question skipped ⏭️"
+        : "Your answer was submitted ✅";
+    reportSlackUsage({
+      connectorId: connector.id,
+      method: "chat.postEphemeral",
+      channelId: slackChannel,
+      useCase: "bot",
+    });
+    await slackClient.chat.postEphemeral({
+      channel: slackChannel,
+      user: slackChatBotMessage.slackUserId,
+      text: confirmationText,
+      thread_ts: slackThreadTs,
+    });
+
+    return res;
+  } catch (e) {
+    logger.error(
+      { error: e, connectorId: connector.id, slackTeamId },
+      "Unexpected exception answering user question"
+    );
     return new Err(new Error("An unexpected error occurred"));
   }
 }
