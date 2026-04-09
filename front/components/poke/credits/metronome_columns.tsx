@@ -1,27 +1,24 @@
-import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import { formatMicroUsdToUsd } from "@app/components/poke/credits/columns";
 import { TYPE_COLORS } from "@app/components/workspace/CreditsList";
-import type { PokeCreditType } from "@app/pages/api/poke/workspaces/[wId]/credits";
+import type { CreditDisplayData } from "@app/types/credits";
 import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
 import { Chip } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
-export function formatMicroUsdToUsd(microUsdAmount: number): string {
-  return `$${(microUsdAmount / 1_000_000).toFixed(2)}`;
-}
-
-export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
+export function makeColumnsForMetronomeBalances(): ColumnDef<CreditDisplayData>[] {
   return [
     {
-      accessorKey: "id",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="ID" />
+      accessorKey: "sId",
+      header: "ID",
+      cell: ({ row }) => (
+        <span className="font-mono text-xs">
+          {row.original.sId.slice(0, 8)}
+        </span>
       ),
     },
     {
       accessorKey: "type",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Type" />
-      ),
+      header: "Type",
       cell: ({ row }) => {
         const { type } = row.original;
         return (
@@ -33,25 +30,19 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
     },
     {
       accessorKey: "initialAmountMicroUsd",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Initial" />
-      ),
+      header: "Initial",
       cell: ({ row }) =>
         formatMicroUsdToUsd(row.original.initialAmountMicroUsd),
     },
     {
       accessorKey: "consumedAmountMicroUsd",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Consumed" />
-      ),
+      header: "Consumed",
       cell: ({ row }) =>
         formatMicroUsdToUsd(row.original.consumedAmountMicroUsd),
     },
     {
       accessorKey: "remainingAmountMicroUsd",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Remaining" />
-      ),
+      header: "Remaining",
       cell: ({ row }) => {
         const remaining = row.original.remainingAmountMicroUsd;
         const initial = row.original.initialAmountMicroUsd;
@@ -68,9 +59,7 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
     },
     {
       accessorKey: "startDate",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Start date" />
-      ),
+      header: "Start date",
       cell: ({ row }) => {
         const { startDate } = row.original;
         if (!startDate) {
@@ -85,9 +74,7 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
     },
     {
       accessorKey: "expirationDate",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Expiration" />
-      ),
+      header: "Expiration",
       cell: ({ row }) => {
         const { expirationDate } = row.original;
         if (!expirationDate) {
@@ -99,32 +86,6 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
           <span className={`text-sm ${isExpired ? "text-warning" : ""}`}>
             {dateToHumanReadable(expDate)}
             {isExpired && " (Expired)"}
-          </span>
-        );
-      },
-    },
-    {
-      accessorKey: "discount",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Billed discount" />
-      ),
-      cell: ({ row }) => {
-        const { discount } = row.original;
-        if (discount === null) {
-          return <span className="text-gray-400">—</span>;
-        }
-        return <span>{discount}%</span>;
-      },
-    },
-    {
-      accessorKey: "createdAt",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Created" />
-      ),
-      cell: ({ row }) => {
-        return (
-          <span className="text-sm">
-            {dateToHumanReadable(new Date(row.original.createdAt))}
           </span>
         );
       },

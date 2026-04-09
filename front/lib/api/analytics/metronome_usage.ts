@@ -1,6 +1,8 @@
 import type { Authenticator } from "@app/lib/auth";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import {
+  ceilToMidnightUTC,
+  floorToMidnightUTC,
   listMetronomeBalances,
   listMetronomeUsage,
   listMetronomeUsageWithGroups,
@@ -68,6 +70,9 @@ const GROUP_BY_TO_METRICS: Record<MetronomeUsageGroupByType, "llm" | "both"> = {
   origin: "both",
 };
 
+const HOUR_MS = 3_600_000;
+const DAY_MS = 24 * HOUR_MS;
+
 function getTimestampsForWindow(
   start: Date,
   end: Date,
@@ -75,7 +80,7 @@ function getTimestampsForWindow(
 ): number[] {
   const timestamps: number[] = [];
   const current = new Date(start);
-  const incrementMs = windowSize === "DAY" ? 86_400_000 : 3_600_000;
+  const incrementMs = windowSize === "DAY" ? DAY_MS : HOUR_MS;
   while (current < end) {
     timestamps.push(current.getTime());
     current.setTime(current.getTime() + incrementMs);
@@ -212,16 +217,18 @@ export async function handleMetronomeUsageRequest(
         getBillingCycleFromDay(billingCycleStartDay, referenceDate, true);
 
       const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000;
-      const cappedPeriodEnd = new Date(
+      const cappedEnd = new Date(
         Math.min(periodEnd.getTime(), Date.now() + TEN_DAYS_MS)
       );
 
-      const startingOn = periodStart.toISOString();
-      const endingBefore = cappedPeriodEnd.toISOString();
+      const rangeStart = floorToMidnightUTC(periodStart);
+      const rangeEnd = ceilToMidnightUTC(cappedEnd);
+      const startingOn = rangeStart.toISOString();
+      const endingBefore = rangeEnd.toISOString();
 
       const timestamps = getTimestampsForWindow(
-        periodStart,
-        cappedPeriodEnd,
+        rangeStart,
+        rangeEnd,
         windowSize
       );
 
