@@ -2,7 +2,12 @@ import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/o
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import { useWorkspaceTopUsers } from "@app/lib/swr/workspaces";
-import { DataTable, ScrollableDataTable, Spinner } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  DataTable,
+  ScrollableDataTable,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -26,8 +31,16 @@ const columns: ColumnDef<TopUserRowData>[] = [
     cell: (info: TopUserInfo) => {
       const { name, imageUrl } = info.row.original;
       return (
-        <DataTable.CellContent avatarUrl={imageUrl ?? undefined} roundedAvatar>
-          {name}
+        <DataTable.CellContent>
+          <div className="flex items-center gap-2">
+            <Avatar
+              name={name}
+              visual={imageUrl ?? undefined}
+              size="xs"
+              isRounded
+            />
+            <span className="text-sm">{name}</span>
+          </div>
         </DataTable.CellContent>
       );
     },
@@ -123,7 +136,7 @@ export function WorkspaceTopUsersTable({
       <ScrollableDataTable<TopUserRowData>
         data={rows}
         columns={columns}
-        maxHeight="max-h-64"
+        maxHeight="max-h-96"
       />
     );
   }

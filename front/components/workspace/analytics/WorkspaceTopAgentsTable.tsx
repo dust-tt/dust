@@ -141,7 +141,7 @@ export function WorkspaceTopAgentsTable({
       <ScrollableDataTable<TopAgentRowData>
         data={rows}
         columns={columns}
-        maxHeight="max-h-64"
+        maxHeight="max-h-96"
       />
     );
   }
