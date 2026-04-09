@@ -1,6 +1,6 @@
 import {
-  getToolDisplayLabels,
   getStaticToolDisplayLabelsFromFunctionCallName,
+  getToolDisplayLabels,
   getToolNameFromFunctionCallName,
 } from "@app/lib/actions/tool_display_labels";
 import { describe, expect, it } from "vitest";
