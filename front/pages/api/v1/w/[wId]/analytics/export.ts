@@ -61,7 +61,7 @@
  *       400:
  *         description: Invalid request query parameters
  *       403:
- *         description: Only workspace admins can access workspace analytics
+ *         description: Requires an API key with at least builder role
  *       405:
  *         description: Method not supported
  */
@@ -79,12 +79,13 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<string>>,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isAdmin()) {
+  if (!auth.isKey() || !auth.isBuilder()) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
-        message: "Only workspace admins can access workspace analytics.",
+        message:
+          "Requires an API key with at least builder role to access workspace analytics.",
       },
     });
   }
