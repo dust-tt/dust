@@ -1,3 +1,5 @@
+import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { SpaceConversationsPage } from "@app/components/pages/conversation/SpaceConversationsPage";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
@@ -16,9 +18,13 @@ export const ProjectMainPage = () => {
 
   return (
     <ConversationLayout title={spaceInfo?.name ?? ""}>
-      <ExtensionInputBarProvider workspace={workspace}>
-        <SpaceConversationsPage />
-      </ExtensionInputBarProvider>
+      <BlockedActionsProvider owner={workspace}>
+        <GenerationContextProvider>
+          <ExtensionInputBarProvider workspace={workspace}>
+            <SpaceConversationsPage />
+          </ExtensionInputBarProvider>
+        </GenerationContextProvider>
+      </BlockedActionsProvider>
     </ConversationLayout>
   );
 };
