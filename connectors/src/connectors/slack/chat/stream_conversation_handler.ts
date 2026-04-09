@@ -559,6 +559,7 @@ async function streamAgentAnswerToSlack(
         break;
       }
 
+      case "agent_message_gracefully_stopped":
       case "agent_message_success": {
         planHandler?.abortAllChildStreams();
         await planHandler?.deletePlanMessage();

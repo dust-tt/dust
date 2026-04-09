@@ -1531,6 +1531,18 @@ export type AgentMessageSuccessEvent = z.infer<
   typeof AgentMessageSuccessEventSchema
 >;
 
+const AgentMessageGracefullyStoppedEventSchema = z.object({
+  type: z.literal("agent_message_gracefully_stopped"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  message: AgentMessageTypeSchema,
+  runIds: z.array(z.string()),
+});
+export type AgentMessageGracefullyStoppedEvent = z.infer<
+  typeof AgentMessageGracefullyStoppedEventSchema
+>;
+
 const AgentMessageDoneEventSchema = z.object({
   type: z.literal("agent_message_done"),
   created: z.number(),
