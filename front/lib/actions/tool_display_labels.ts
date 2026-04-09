@@ -152,7 +152,7 @@ function getDynamicToolDisplayLabels({
         if (hasOffset) {
           return {
             running: "Continuing to read file",
-            done: "Continued reading file",
+            done: "Read more of file",
           };
         }
         if (hasLimit) {
@@ -252,7 +252,7 @@ function getDynamicToolDisplayLabels({
         if (hasOffset) {
           return {
             running: "Continuing to read file",
-            done: "Continued reading file",
+            done: "Read more of file",
           };
         }
         if (hasLimit) {
@@ -428,8 +428,8 @@ function getDynamicToolDisplayLabels({
         const verb = toolName === "generate_file" ? "Generating" : "Converting";
         const past = toolName === "generate_file" ? "Generated" : "Converted";
         return {
-          running: `${verb} "${name}"`,
-          done: `${past} "${name}"`,
+          running: `${verb} “${name}”`,
+          done: `${past} “${name}”`,
         };
       }
       return null;
@@ -448,9 +448,16 @@ function getDynamicToolDisplayLabels({
       ) {
         const name = truncateQuery(inputs.file_name);
         return {
-          running: `Creating "${name}"`,
-          done: `Created "${name}"`,
+          running: `Creating Frame “${name}”`,
+          done: `Created Frame “${name}”`,
         };
+      }
+      if (
+        toolName === "edit_interactive_content_file" &&
+        isString(inputs.description)
+      ) {
+        const d = truncateQuery(inputs.description);
+        return { running: d, done: d };
       }
       if (
         toolName === "rename_interactive_content_file" &&
@@ -458,8 +465,28 @@ function getDynamicToolDisplayLabels({
       ) {
         const name = truncateQuery(inputs.new_file_name);
         return {
-          running: `Renaming to "${name}"`,
-          done: `Renamed to "${name}"`,
+          running: `Renaming Frame to “${name}”`,
+          done: `Renamed Frame to “${name}”`,
+        };
+      }
+      return null;
+
+    case "skill_management":
+      if (toolName === "enable" && isString(inputs.skillName)) {
+        const name = truncateQuery(inputs.skillName);
+        return {
+          running: `Enabling skill “${name}”`,
+          done: `Enabled skill “${name}”`,
+        };
+      }
+      return null;
+
+    case "ask_user_question":
+      if (toolName === "ask_user_question" && isString(inputs.question)) {
+        const q = truncateQuery(inputs.question);
+        return {
+          running: `Asking: “${q}”`,
+          done: `Asked: “${q}”`,
         };
       }
       return null;
@@ -507,12 +534,10 @@ function getDynamicToolDisplayLabels({
     case "vanta":
     case "front":
     case "zendesk":
-    case "skill_management":
     case "schedules_management":
     case "project_manager":
     case "poke":
     case "project_conversation":
-    case "ask_user_question":
     default:
       return null;
   }
