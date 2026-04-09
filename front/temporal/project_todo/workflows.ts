@@ -2,7 +2,7 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import type * as activities from "@app/temporal/project_todo/activities";
 import {
   MERGE_THROTTLE_MS,
-  TODO_DEBOUNCE_DELAY_MS,
+  TODO_THROTTLE_MS,
 } from "@app/temporal/project_todo/config";
 import {
   mergeRequestSignal,
@@ -24,9 +24,10 @@ const {
   startToCloseTimeout: "10 minutes",
 });
 
-// Per-conversation workflow. Debounces analysis and signals the per-project merge
-// workflow after each successful run. spaceId identifies the project the conversation
-// belongs to and is forwarded to the merge workflow.
+// Per-conversation workflow. Throttles analysis to at most once per TODO_THROTTLE_MS
+// and signals the per-project merge workflow after each successful run. spaceId
+// identifies the project the conversation belongs to and is forwarded to the merge
+// workflow.
 export async function projectTodoWorkflow({
   authType,
   conversationId,
@@ -41,6 +42,7 @@ export async function projectTodoWorkflow({
   let needsAnalysis = true;
   let complete = false;
   let latestMessageId: string | null = null;
+  let isCoolingDown = false;
 
   setHandler(todoRefreshSignal, (msgId: string) => {
     needsAnalysis = true;
@@ -54,14 +56,11 @@ export async function projectTodoWorkflow({
   });
 
   while (!complete) {
-    await condition(() => needsAnalysis);
+    // Wait until there is work to do AND the throttle cool-down has elapsed.
+    await condition(() => needsAnalysis && !isCoolingDown);
     needsAnalysis = false;
+    isCoolingDown = true;
     const msgId = latestMessageId;
-    await sleep(TODO_DEBOUNCE_DELAY_MS);
-
-    if (needsAnalysis) {
-      continue;
-    }
 
     if (msgId) {
       await analyzeProjectTodosActivity({
@@ -73,6 +72,11 @@ export async function projectTodoWorkflow({
       // Uses signalWithStart so the merge workflow is started if not already running.
       await signalOrStartMergeWorkflowActivity({ authType, spaceId });
     }
+
+    // Cool-down: don't run again for TODO_THROTTLE_MS. Exit early if the complete
+    // signal arrives so the final analysis is not delayed unnecessarily.
+    await condition(() => complete, TODO_THROTTLE_MS);
+    isCoolingDown = false;
   }
 
   // Final analysis + merge signal after completion.
