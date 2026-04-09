@@ -155,9 +155,7 @@ export const InputBar = React.memo(function InputBar({
       const name = agentConfigurations.find(
         (a) => a.sId === activeBlockingId
       )?.name;
-      return name
-        ? `Wait for @${name} to finish before switching agent`
-        : null;
+      return name ? `Wait for @${name} to finish before switching agent` : null;
     }
 
     // Check messages with a pending blocked action from a different agent.
