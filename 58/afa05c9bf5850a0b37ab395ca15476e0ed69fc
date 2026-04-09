@@ -1,0 +1,39 @@
+connectors/src/connectors/slack/bot.ts
+  833a10e1d8bc700a 58,487,530-537,539-552,555-572,574-590,592-628,630-641
+front/temporal/agent_loop/lib/run_model.ts
+  833a10e1d8bc700a 310-317
+front/pages/api/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/answer-question.ts
+  833a10e1d8bc700a 1-199
+sdks/js/src/types.ts
+  833a10e1d8bc700a 3553-3572
+sdks/js/src/output_schemas.ts
+  833a10e1d8bc700a 652-653
+connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+  833a10e1d8bc700a 14,76-83,749-771
+sdks/js/src/index.ts
+  833a10e1d8bc700a 2006-2029
+connectors/src/api/webhooks/webhook_slack_bot_interaction.ts
+  833a10e1d8bc700a 2,11,34-40,93-103,110,112-178,180,182-183,185,226-233,281-287,487-561
+connectors/src/connectors/slack/chat/blocks.ts
+  833a10e1d8bc700a 4-5,12-15,22,25,540-610
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.6",
+  "base_commit_sha": "58afa05c9bf5850a0b37ab395ca15476e0ed69fc",
+  "prompts": {
+    "833a10e1d8bc700a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca0ecb4b-da89-4c83-933d-4a9722e91595",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon",
+      "messages": [],
+      "total_additions": 1208,
+      "total_deletions": 540,
+      "accepted_lines": 660,
+      "overriden_lines": 6
+    }
+  }
+}
