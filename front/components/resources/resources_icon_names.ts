@@ -30,7 +30,7 @@ export const CUSTOM_RESOURCE_ALLOWED = [
   "ActionCameraIcon",
   "ActionCardIcon",
   "ActionCarIcon",
-  "ActionChatBubbleBottomCenterText1Icon",
+  "ActionChatBubbleBottomCenterTextIcon",
   "ActionChatBubbleThoughtIcon",
   "ActionCheckCircleIcon",
   "ActionClipboardIcon",
