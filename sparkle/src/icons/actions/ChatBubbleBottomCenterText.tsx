@@ -1,7 +1,7 @@
 import type { SVGProps } from "react";
 import * as React from "react";
 
-const SvgChatBubbleBottomCenterText1 = (props: SVGProps<SVGSVGElement>) => (
+const SvgChatBubbleBottomCenterText = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="1em"
@@ -16,4 +16,4 @@ const SvgChatBubbleBottomCenterText1 = (props: SVGProps<SVGSVGElement>) => (
     />
   </svg>
 );
-export default SvgChatBubbleBottomCenterText1;
+export default SvgChatBubbleBottomCenterText;
