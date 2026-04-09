@@ -24,21 +24,24 @@ import type {
   ToolCall,
 } from "@app/tests/reinforcement-evals/lib/types";
 import { allTestSuites } from "@app/tests/reinforcement-evals/test-suites";
+import { isString } from "@app/types/shared/utils/general";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 function formatToolCallSummary(tc: ToolCall): string {
   const args = tc.arguments as Record<string, unknown>;
   switch (tc.name) {
     case "edit_skill": {
-      const skillId = (args.skillId as string) ?? "?";
+      const skillId = isString(args.skillId) ? args.skillId : "?";
       const parts: string[] = [`skill=${skillId}`];
-      const instructionEdits = args.instructionEdits as unknown[] | undefined;
+      const instructionEdits = Array.isArray(args.instructionEdits)
+        ? args.instructionEdits
+        : undefined;
       if (instructionEdits?.length) {
         parts.push(`${instructionEdits.length} instructionEdit(s)`);
       }
-      const toolEdits = args.toolEdits as
-        | Array<{ action?: string; toolId?: string }>
-        | undefined;
+      const toolEdits = Array.isArray(args.toolEdits)
+        ? args.toolEdits
+        : undefined;
       if (toolEdits?.length) {
         const items = toolEdits
           .map((t) => `${t.action ?? "?"} ${t.toolId ?? "?"}`)

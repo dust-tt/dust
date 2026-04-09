@@ -2,6 +2,7 @@ import type {
   ToolCall,
   ToolCallAssertion,
 } from "@app/tests/reinforcement-evals/lib/types";
+import { isString } from "@app/types/shared/utils/general";
 
 type AssertionResult = { success: true } | { success: false; error: string };
 
@@ -36,7 +37,7 @@ function isToolEditItem(value: unknown): value is ToolEditItem {
 }
 
 function getSkillId(args: Record<string, unknown>): string | undefined {
-  return typeof args.skillId === "string" ? args.skillId : undefined;
+  return isString(args.skillId) ? args.skillId : undefined;
 }
 
 function getInstructionEdits(
