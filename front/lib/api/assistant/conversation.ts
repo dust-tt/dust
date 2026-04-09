@@ -2237,9 +2237,10 @@ async function checkMessagesLimit(
     return new Ok(undefined);
   }
 
-  // Check Metronome pool credits.
+  // Check Metronome credits.
   const owner = auth.getNonNullableWorkspace();
-  if (owner.metronomeCustomerId) {
+  const featureFlags = await getFeatureFlags(auth);
+  if (featureFlags.includes("metronome_billing") && owner.metronomeCustomerId) {
     const user = auth.user();
     if (user) {
       const userSId = user.sId;
