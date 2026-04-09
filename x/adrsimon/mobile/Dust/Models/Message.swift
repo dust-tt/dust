@@ -53,6 +53,31 @@ struct ContentFragment: Codable, Identifiable, Hashable {
     }
 }
 
+// MARK: - Generated File (attached to AgentMessage)
+
+struct GeneratedFile: Codable, Identifiable, Hashable {
+    let fileId: String
+    let title: String
+    let contentType: String
+    let createdAt: Double?
+    let updatedAt: Double?
+    let isInProjectContext: Bool?
+    let hidden: Bool?
+
+    var id: String { fileId }
+    var isVisible: Bool { hidden != true }
+}
+
+// MARK: - Citation (attached to AgentMessage)
+
+struct CitationReference: Codable, Hashable {
+    let title: String
+    let provider: String
+    let contentType: String
+    let description: String?
+    let href: String?
+}
+
 struct AgentConfiguration: Codable {
     let sId: String
     let name: String
@@ -70,6 +95,8 @@ struct AgentMessage: Codable, Identifiable {
     var content: String?
     var chainOfThought: String?
     let configuration: AgentConfiguration
+    var generatedFiles: [GeneratedFile]?
+    var citations: [String: CitationReference]?
 
     var id: String {
         sId

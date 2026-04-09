@@ -339,6 +339,8 @@ final class ConversationDetailViewModel: ObservableObject {
             if let final {
                 msg.content = final.content
                 msg.chainOfThought = final.chainOfThought
+                msg.generatedFiles = final.generatedFiles
+                msg.citations = final.citations
             }
             msg.status = status
         }

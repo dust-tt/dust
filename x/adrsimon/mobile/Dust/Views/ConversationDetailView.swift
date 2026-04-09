@@ -14,6 +14,7 @@ struct ConversationDetailView: View {
     @StateObject private var inputBarViewModel: InputBarViewModel
     @State private var showFilesSheet = false
     @State private var selectedFragment: ContentFragment?
+    @State private var selectedGeneratedFile: GeneratedFile?
 
     init(
         conversation: Conversation,
@@ -82,6 +83,16 @@ struct ConversationDetailView: View {
                     sourceUrl: fragment.sourceUrl
                 )
             }
+        }
+        .sheet(item: $selectedGeneratedFile) { file in
+            AttachmentViewerView(
+                title: file.title,
+                contentType: file.contentType,
+                fileId: file.fileId,
+                workspaceId: workspaceId,
+                tokenProvider: tokenProvider,
+                sourceUrl: nil
+            )
         }
     }
 
@@ -176,6 +187,14 @@ struct ConversationDetailView: View {
                                     onFragmentTap: { fragment in
                                         guard fragment.fileId != nil else { return }
                                         selectedFragment = fragment
+                                    },
+                                    onGeneratedFileTap: { file in
+                                        selectedGeneratedFile = file
+                                    },
+                                    onCitationTap: { citation in
+                                        guard let href = citation.href,
+                                              let url = URL(string: href) else { return }
+                                        UIApplication.shared.open(url)
                                     },
                                     onValidateAction: { approval in
                                         Task { await viewModel.validateAction(approved: approval) }

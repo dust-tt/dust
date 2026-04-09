@@ -11,6 +11,8 @@ struct MessageBubbleView: View {
     var lastError: ErrorInfo?
     var isValidatingAction: Bool = false
     var onFragmentTap: ((ContentFragment) -> Void)?
+    var onGeneratedFileTap: ((GeneratedFile) -> Void)?
+    var onCitationTap: ((CitationReference) -> Void)?
     var onValidateAction: ((ActionApproval) -> Void)?
     var onRetry: ((String) -> Void)?
     var onOpenInBrowser: (() -> Void)?
@@ -30,6 +32,8 @@ struct MessageBubbleView: View {
                 activeActions: activeActions,
                 lastError: lastError,
                 isValidatingAction: isValidatingAction,
+                onGeneratedFileTap: onGeneratedFileTap,
+                onCitationTap: onCitationTap,
                 onValidateAction: onValidateAction,
                 onRetry: onRetry,
                 onOpenInBrowser: onOpenInBrowser
@@ -99,6 +103,8 @@ struct AgentMessageBubble: View {
     var activeActions: [ActiveAction] = []
     var lastError: ErrorInfo?
     var isValidatingAction: Bool = false
+    var onGeneratedFileTap: ((GeneratedFile) -> Void)?
+    var onCitationTap: ((CitationReference) -> Void)?
     var onValidateAction: ((ActionApproval) -> Void)?
     var onRetry: ((String) -> Void)?
     var onOpenInBrowser: (() -> Void)?
@@ -124,6 +130,22 @@ struct AgentMessageBubble: View {
             if let content = message.content, !content.isEmpty {
                 StreamingMarkdownView(rawContent: content, isStreaming: message.isStreaming)
                     .textSelection(!message.isStreaming)
+            }
+
+            if !message.isStreaming,
+               let files = message.generatedFiles?.filter(\.isVisible), !files.isEmpty
+            {
+                GeneratedFilesList(files: files, onTap: onGeneratedFileTap)
+            }
+
+            if !message.isStreaming,
+               let citations = message.citations, !citations.isEmpty,
+               let content = message.content
+            {
+                let mapping = processCiteDirectives(content).mapping
+                if !mapping.isEmpty {
+                    CitationsSection(mapping: mapping, citations: citations, onTap: onCitationTap)
+                }
             }
 
             if message.isStreaming {
@@ -158,39 +180,22 @@ struct AgentMessageBubble: View {
     }
 }
 
-// MARK: - Content Fragments
+// MARK: - Shared File Chip
 
-struct ContentFragmentList: View {
-    let fragments: [ContentFragment]
-    var onTap: ((ContentFragment) -> Void)?
-
-    var body: some View {
-        FlowLayout(spacing: 4) {
-            ForEach(fragments) { fragment in
-                ContentFragmentChip(fragment: fragment, onTap: onTap)
-            }
-        }
-    }
-}
-
-struct ContentFragmentChip: View {
-    let fragment: ContentFragment
-    var onTap: ((ContentFragment) -> Void)?
-
-    private var isTappable: Bool {
-        fragment.fileId != nil && onTap != nil
-    }
+struct FileChip: View {
+    let title: String
+    let contentType: String
+    let isTappable: Bool
+    let onTap: () -> Void
 
     var body: some View {
-        Button {
-            onTap?(fragment)
-        } label: {
+        Button(action: onTap) {
             HStack(spacing: 6) {
-                Image(systemName: Attachment.sfSymbol(for: fragment.contentType))
+                Image(systemName: Attachment.sfSymbol(for: contentType))
                     .font(.system(size: 13))
                     .foregroundStyle(Color.highlight)
 
-                Text(fragment.title)
+                Text(title)
                     .sparkleCopyXs()
                     .foregroundStyle(Color.dustForeground)
                     .lineLimit(1)
@@ -205,9 +210,152 @@ struct ContentFragmentChip: View {
     }
 }
 
+// MARK: - Content Fragments
+
+struct ContentFragmentList: View {
+    let fragments: [ContentFragment]
+    var onTap: ((ContentFragment) -> Void)?
+
+    var body: some View {
+        FlowLayout(spacing: 4) {
+            ForEach(fragments) { fragment in
+                FileChip(
+                    title: fragment.title,
+                    contentType: fragment.contentType,
+                    isTappable: fragment.fileId != nil && onTap != nil,
+                    onTap: { onTap?(fragment) }
+                )
+            }
+        }
+    }
+}
+
+// MARK: - Generated Files
+
+struct GeneratedFilesList: View {
+    let files: [GeneratedFile]
+    var onTap: ((GeneratedFile) -> Void)?
+
+    var body: some View {
+        FlowLayout(spacing: 4, alignment: .leading) {
+            ForEach(files) { file in
+                FileChip(
+                    title: file.title,
+                    contentType: file.contentType,
+                    isTappable: onTap != nil,
+                    onTap: { onTap?(file) }
+                )
+            }
+        }
+    }
+}
+
+// MARK: - Citations
+
+private struct CitationsSection: View {
+    let mapping: [CiteEntry]
+    let citations: [String: CitationReference]
+    var onTap: ((CitationReference) -> Void)?
+
+    @State private var isExpanded = false
+
+    var body: some View {
+        let active = mapping.compactMap { entry in
+            citations[entry.ref].map { CitationCard.Entry(ref: entry.ref, citation: $0) }
+        }
+        if !active.isEmpty {
+            VStack(alignment: .leading, spacing: 0) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("\(active.count) sources")
+                            .sparkleCopyXs()
+                            .foregroundStyle(Color.dustFaint)
+
+                        (isExpanded ? SparkleIcon.chevronUp : SparkleIcon.chevronDown).image
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 10, height: 10)
+                            .foregroundStyle(Color.dustFaint)
+                    }
+                }
+                .buttonStyle(.plain)
+
+                if isExpanded {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(active) { entry in
+                            CitationCard(entry: entry, onTap: onTap)
+                        }
+                    }
+                    .padding(.top, 6)
+                    .transition(.opacity)
+                }
+            }
+        }
+    }
+}
+
+struct CitationCard: View {
+    struct Entry: Identifiable {
+        let ref: String
+        let citation: CitationReference
+        var id: String { ref }
+    }
+
+    let entry: Entry
+    var onTap: ((CitationReference) -> Void)?
+
+    private var hasTapTarget: Bool {
+        entry.citation.href != nil && onTap != nil
+    }
+
+    var body: some View {
+        Button {
+            onTap?(entry.citation)
+        } label: {
+            HStack(spacing: 8) {
+                providerIcon
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 16, height: 16)
+
+                Text(entry.citation.title)
+                    .sparkleCopyXs()
+                    .foregroundStyle(Color.dustForeground)
+                    .lineLimit(1)
+
+                Spacer()
+
+                if entry.citation.href != nil {
+                    SparkleIcon.externalLink.image
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 12, height: 12)
+                        .foregroundStyle(Color.dustFaint)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(Color.dustMutedBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .disabled(!hasTapTarget)
+    }
+
+    private var providerIcon: Image {
+        if let sparkleIcon = MCPServerIcon.icon(for: entry.citation.provider) {
+            return sparkleIcon.image
+        }
+        return Image(systemName: Attachment.sfSymbol(for: entry.citation.contentType))
+    }
+}
+
 // swiftlint:disable identifier_name
 private struct FlowLayout: Layout {
     var spacing: CGFloat = 4
+    var alignment: HorizontalAlignment = .trailing
 
     struct CacheData {
         var sizes: [CGSize]
@@ -234,12 +382,21 @@ private struct FlowLayout: Layout {
         var y = bounds.minY
         for row in cache.rows {
             let rowHeight = row.map { cache.sizes[$0].height }.max() ?? 0
-            var x = bounds.maxX
-            for index in row.reversed() {
-                let size = cache.sizes[index]
-                x -= size.width
-                subviews[index].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
-                x -= spacing
+            if alignment == .leading {
+                var x = bounds.minX
+                for index in row {
+                    let size = cache.sizes[index]
+                    subviews[index].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+                    x += size.width + spacing
+                }
+            } else {
+                var x = bounds.maxX
+                for index in row.reversed() {
+                    let size = cache.sizes[index]
+                    x -= size.width
+                    subviews[index].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+                    x -= spacing
+                }
             }
             y += rowHeight + spacing
         }
