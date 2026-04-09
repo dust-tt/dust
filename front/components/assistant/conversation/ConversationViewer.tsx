@@ -678,13 +678,7 @@ export const ConversationViewer = ({
         ref.current.data.append(
           [placeholderUserMsg, ...placeholderAgentMessages],
           isMentioningAgent
-            ? () => {
-                return {
-                  index: nbMessages, // Avoid jumping around when the agent message is generated.
-                  align: "start",
-                  behavior: customSmoothScroll,
-                };
-              }
+            ? false // Skip append-time scroll; handled by scrollToItem below.
             : (params) => {
                 if (params.scrollLocation.bottomOffset >= 0) {
                   return {
@@ -697,6 +691,19 @@ export const ConversationViewer = ({
                 }
               }
         );
+
+        // Scroll the new user message to the top of the viewport.
+        // We use scrollToItem instead of the append callback because
+        // Virtuoso's append callback clamps the scroll target before applying
+        // the bottom padding needed for align:"start" near the end of the
+        // list, causing the scroll to undershoot.
+        if (isMentioningAgent && ref.current) {
+          ref.current.scrollToItem({
+            index: nbMessages,
+            align: "start",
+            behavior: customSmoothScroll,
+          });
+        }
 
         const result = await submitMessage(messageData);
 
