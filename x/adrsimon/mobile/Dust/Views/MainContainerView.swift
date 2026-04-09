@@ -1,6 +1,11 @@
 import SparkleTokens
 import SwiftUI
 
+enum ConversationDestination: Hashable {
+    case conversation(Conversation)
+    case newConversation
+}
+
 struct MainContainerView: View {
     let user: User
     let onLogout: () -> Void
@@ -8,8 +13,7 @@ struct MainContainerView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @StateObject private var viewModel: ConversationListViewModel
     @Environment(\.scenePhase) private var scenePhase
-    @State private var isDrawerOpen = false
-    @State private var selectedConversation: Conversation?
+    @State private var navigationPath = NavigationPath()
     @State private var showCatchUp = false
 
     private let tokenProvider: TokenProvider
@@ -33,85 +37,60 @@ struct MainContainerView: View {
     }
 
     private var mainContent: some View {
-        NavigationDrawerContainer(
-            isOpen: $isDrawerOpen,
-            drawer: {
-                DrawerView(
-                    searchText: $viewModel.searchText,
-                    groupedConversations: viewModel.groupedConversations,
-                    user: user,
-                    currentWorkspace: viewModel.workspace,
-                    workspaces: viewModel.workspaces,
-                    isLoading: isLoading,
-                    onNewConversation: {
-                        selectedConversation = nil
-                        isDrawerOpen = false
-                    },
-                    onSelectConversation: { conversation in
-                        selectedConversation = conversation
-                        isDrawerOpen = false
-                    },
-                    onSwitchWorkspace: { workspace in
-                        selectedConversation = nil
-                        Task { await viewModel.switchWorkspace(workspace) }
-                    },
-                    onLogout: {
-                        isDrawerOpen = false
-                        onLogout()
-                    },
-                    onCatchUp: viewModel.unreadConversations.isEmpty ? nil : {
-                        showCatchUp = true
-                        isDrawerOpen = false
-                    },
-                    onRefresh: {
-                        await viewModel.refresh()
-                    }
-                )
-            },
-            content: {
-                ZStack(alignment: .topLeading) {
-                    if let conversation = selectedConversation,
-                       let workspaceId = viewModel.workspace?.sId
-                    {
+        NavigationStack(path: $navigationPath) {
+            ConversationListView(
+                searchText: $viewModel.searchText,
+                groupedConversations: viewModel.groupedConversations,
+                user: user,
+                currentWorkspace: viewModel.workspace,
+                workspaces: viewModel.workspaces,
+                isLoading: isLoading,
+                onNewConversation: {
+                    navigationPath.append(ConversationDestination.newConversation)
+                },
+                onSelectConversation: { conversation in
+                    navigationPath.append(ConversationDestination.conversation(conversation))
+                },
+                onSwitchWorkspace: { workspace in
+                    navigationPath = NavigationPath()
+                    Task { await viewModel.switchWorkspace(workspace) }
+                },
+                onLogout: onLogout,
+                onCatchUp: viewModel.unreadConversations.isEmpty ? nil : {
+                    showCatchUp = true
+                },
+                onRefresh: {
+                    await viewModel.refresh()
+                }
+            )
+            .navigationBarHidden(true)
+            .navigationDestination(for: ConversationDestination.self) { destination in
+                switch destination {
+                case let .conversation(conversation):
+                    if let workspaceId = viewModel.workspace?.sId {
                         ConversationDetailView(
                             conversation: conversation,
                             workspaceId: workspaceId,
                             tokenProvider: tokenProvider,
                             user: user,
-                            currentUserEmail: user.email,
-                            onMenu: {
-                                isDrawerOpen = true
+                            currentUserEmail: user.email
+                        )
+                    }
+                case .newConversation:
+                    if let workspaceId = viewModel.workspace?.sId {
+                        NewConversationView(
+                            firstName: user.firstName,
+                            user: user,
+                            workspaceId: workspaceId,
+                            tokenProvider: tokenProvider,
+                            onConversationCreated: { conversation in
+                                navigationPath = NavigationPath([ConversationDestination.conversation(conversation)])
                             }
                         )
-                        .id(conversation.sId)
-                    } else if let workspaceId = viewModel.workspace?.sId {
-                        ZStack(alignment: .topLeading) {
-                            NewConversationView(
-                                firstName: user.firstName,
-                                user: user,
-                                workspaceId: workspaceId,
-                                tokenProvider: tokenProvider,
-                                onConversationCreated: { conversation in
-                                    selectedConversation = conversation
-                                }
-                            )
-
-                            Button {
-                                isDrawerOpen = true
-                            } label: {
-                                SparkleIcon.menu.image
-                                    .resizable()
-                                    .frame(width: 24, height: 24)
-                                    .foregroundStyle(Color.dustForeground)
-                                    .padding(12)
-                            }
-                            .liquidGlassCircle()
-                            .padding(4)
-                        }
                     }
                 }
             }
-        )
+        }
         .fullScreenCover(isPresented: $showCatchUp) {
             if let workspaceId = viewModel.workspace?.sId {
                 CatchUpView(
@@ -125,7 +104,8 @@ struct MainContainerView: View {
                     },
                     onOpenConversation: { conversation in
                         showCatchUp = false
-                        selectedConversation = conversation
+                        navigationPath = NavigationPath()
+                        navigationPath.append(ConversationDestination.conversation(conversation))
                     }
                 )
             }

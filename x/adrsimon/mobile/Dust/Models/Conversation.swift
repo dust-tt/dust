@@ -7,7 +7,7 @@ extension Double {
     }
 }
 
-struct Conversation: Codable, Identifiable {
+struct Conversation: Codable, Identifiable, Hashable {
     let id: Int
     let sId: String
     let created: Double
