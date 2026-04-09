@@ -198,7 +198,7 @@ export async function createMetronomeContract({
 }: {
   metronomeCustomerId: string;
   packageAlias: string;
-  uniquenessKey: string;
+  uniquenessKey?: string;
 }): Promise<Result<{ contractId: string; startingAt: string }, Error>> {
   // Metronome requires starting_at on an hour boundary — round down to current hour.
   const startingAt = floorToHourISO(new Date());
@@ -208,7 +208,7 @@ export async function createMetronomeContract({
       customer_id: metronomeCustomerId,
       package_alias: packageAlias,
       starting_at: startingAt,
-      uniqueness_key: uniquenessKey,
+      ...(uniquenessKey ? { uniqueness_key: uniquenessKey } : {}),
     });
 
     logger.info(
@@ -281,11 +281,11 @@ export async function getMetronomeActiveContract(
 }
 
 /**
- * End (cancel) a Metronome contract at the next hour boundary.
+ * Schedule a Metronome contract to end at the given date (defaults to now).
  * Metronome requires ending_before on an hour boundary; we ceil to avoid
  * dropping usage in the current partial hour.
  */
-export async function endMetronomeContract({
+export async function scheduleMetronomeContractEnd({
   metronomeCustomerId,
   contractId,
   endingBefore,
@@ -294,23 +294,56 @@ export async function endMetronomeContract({
   contractId: string;
   endingBefore?: Date;
 }): Promise<Result<void, Error>> {
+  const endDate = ceilToHourISO(endingBefore ?? new Date());
   try {
     await getMetronomeClient().v1.contracts.updateEndDate({
       customer_id: metronomeCustomerId,
       contract_id: contractId,
-      ending_before: ceilToHourISO(endingBefore ?? new Date()),
+      ending_before: endDate,
+    });
+
+    logger.info(
+      { metronomeCustomerId, contractId, endingBefore: endDate },
+      "[Metronome] Contract end date scheduled"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, contractId, endingBefore: endDate },
+      "[Metronome] Failed to schedule contract end date"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Remove the scheduled end date on a Metronome contract, making it open-ended.
+ * Used when a subscription is reactivated after cancellation.
+ */
+export async function reactivateMetronomeContract({
+  metronomeCustomerId,
+  contractId,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+}): Promise<Result<void, Error>> {
+  try {
+    await getMetronomeClient().v1.contracts.updateEndDate({
+      customer_id: metronomeCustomerId,
+      contract_id: contractId,
     });
 
     logger.info(
       { metronomeCustomerId, contractId },
-      "[Metronome] Contract ended"
+      "[Metronome] Contract reactivated (end date removed)"
     );
     return new Ok(undefined);
   } catch (err) {
     const error = normalizeError(err);
     logger.error(
       { error, metronomeCustomerId, contractId },
-      "[Metronome] Failed to end contract"
+      "[Metronome] Failed to reactivate contract"
     );
     return new Err(error);
   }

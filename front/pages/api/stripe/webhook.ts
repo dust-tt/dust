@@ -26,8 +26,9 @@ import {
 import { handleMetronomeSetupCheckout } from "@app/lib/metronome/checkout";
 import {
   createMetronomeCredit,
-  endMetronomeContract,
   getMetronomeActiveContract,
+  reactivateMetronomeContract,
+  scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
 import { getProductFreeMonthlyCreditId } from "@app/lib/metronome/constants";
 import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/contracts";
@@ -1251,14 +1252,14 @@ async function handler(
                 endDate,
               });
 
-              // Shadow mode: schedule the Metronome contract end at the same time.
+              // Schedule the Metronome contract end (always shadow-billed here).
               if (subscription.metronomeContractId) {
                 const trialingWorkspace =
                   await WorkspaceResource.fetchByModelId(
                     subscription.workspaceId
                   );
                 if (trialingWorkspace?.metronomeCustomerId) {
-                  void endMetronomeContract({
+                  void scheduleMetronomeContractEnd({
                     metronomeCustomerId: trialingWorkspace.metronomeCustomerId,
                     contractId: subscription.metronomeContractId,
                     endingBefore: endDate,
@@ -1306,13 +1307,13 @@ async function handler(
               "Workspace not found for subscription in customer.subscription.updated."
             );
 
-            // Shadow mode: schedule the Metronome contract end at the same time.
+            // Schedule the Metronome contract end (always shadow-billed here).
             if (
               endDate &&
               subscription.metronomeContractId &&
               workspace.metronomeCustomerId
             ) {
-              void endMetronomeContract({
+              void scheduleMetronomeContractEnd({
                 metronomeCustomerId: workspace.metronomeCustomerId,
                 contractId: subscription.metronomeContractId,
                 endingBefore: endDate,
@@ -1323,8 +1324,15 @@ async function handler(
               workspace.sId
             );
             if (!endDate) {
-              // TODO(pricing): reactivate Metronome contract (remove scheduled end date)
-              // by calling updateEndDate without ending_before.
+              if (
+                subscription.metronomeContractId &&
+                workspace.metronomeCustomerId
+              ) {
+                void reactivateMetronomeContract({
+                  metronomeCustomerId: workspace.metronomeCustomerId,
+                  contractId: subscription.metronomeContractId,
+                });
+              }
 
               // Subscription is re-activated, so we need to unpause the connectors and re-enable triggers.
               await restoreWorkspaceAfterSubscription(auth);

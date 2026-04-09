@@ -7,7 +7,7 @@ import { deleteWebhookSource } from "@app/lib/api/webhook_source";
 import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/organization";
 import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { endMetronomeContract } from "@app/lib/metronome/client";
+import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
   AgentChildAgentConfigurationModel,
@@ -729,7 +729,7 @@ export async function deleteWorkspaceActivity({
         )
       : null;
     if (subscription?.metronomeContractId) {
-      const endResult = await endMetronomeContract({
+      const endResult = await scheduleMetronomeContractEnd({
         metronomeCustomerId: workspace.metronomeCustomerId,
         contractId: subscription.metronomeContractId,
       });

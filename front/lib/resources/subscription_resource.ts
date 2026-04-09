@@ -8,11 +8,13 @@ import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import {
-  endMetronomeContract,
   getMetronomeContractPackageAliases,
+  scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
+import { switchMetronomeContractPackage } from "@app/lib/metronome/contracts";
 import {
   LEGACY_BUSINESS_PACKAGE_ALIAS,
+  LEGACY_PRO_ANNUAL_PACKAGE_ALIAS,
   LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
   PRO_OR_BUSINESS_PACKAGE_ALIASES,
 } from "@app/lib/metronome/types";
@@ -133,6 +135,16 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
 
     return (
       this.stripeSubscriptionId !== null || this.metronomeContractId !== null
+    );
+  }
+
+  /**
+   * Shadow-billed: Stripe owns billing, Metronome runs in parallel for invoice comparison.
+   * Both stripeSubscriptionId and metronomeContractId are set.
+   */
+  get isMetronomeShadowBilled(): boolean {
+    return (
+      this.stripeSubscriptionId !== null && this.metronomeContractId !== null
     );
   }
 
@@ -681,20 +693,12 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       activeSubscription?.metronomeContractId &&
       workspace.metronomeCustomerId
     ) {
-      if (activeSubscription.stripeSubscriptionId) {
-        // Shadow mode: fire-and-forget.
-        void endMetronomeContract({
-          metronomeCustomerId: workspace.metronomeCustomerId,
-          contractId: activeSubscription.metronomeContractId,
-        });
-      } else {
-        const result = await endMetronomeContract({
-          metronomeCustomerId: workspace.metronomeCustomerId,
-          contractId: activeSubscription.metronomeContractId,
-        });
-        if (result.isErr()) {
-          throw result.error;
-        }
+      const result = await scheduleMetronomeContractEnd({
+        metronomeCustomerId: workspace.metronomeCustomerId,
+        contractId: activeSubscription.metronomeContractId,
+      });
+      if (result.isErr() && !activeSubscription.isMetronomeShadowBilled) {
+        throw result.error;
       }
     }
 
@@ -722,6 +726,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     }
 
     const plan = await this.findPlanOrThrow(enterpriseDetails.planCode);
+    // TODO(pricing): provision Metronome contract for enterprise plans.
     // End the current subscription if any.
     await this.internalSubscribeWorkspaceToFreePlan({
       workspaceId: owner.sId,
@@ -807,6 +812,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           },
         }
       );
+
       await SubscriptionResource.invalidateSubscriptionCache(owner.id);
       return;
     }
@@ -857,16 +863,34 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       return new Err(stripeResult.error);
     }
 
-    await SubscriptionModel.update(
-      { planId: businessPlan.id },
+    // Switch Metronome contract to Business package.
+    let metronomeContractId: string | undefined;
+    if (this.metronomeContractId && owner.metronomeCustomerId) {
+      const result = await switchMetronomeContractPackage({
+        metronomeCustomerId: owner.metronomeCustomerId,
+        oldContractId: this.metronomeContractId,
+        workspace: owner,
+        packageAlias: LEGACY_BUSINESS_PACKAGE_ALIAS,
+      });
+      if (result.isErr() && !this.isMetronomeShadowBilled) {
+        return new Err(result.error);
+      }
+      if (result.isOk()) {
+        metronomeContractId = result.value.metronomeContractId;
+      }
+    }
+
+    await this.model.update(
+      {
+        planId: businessPlan.id,
+        metronomeContractId,
+      },
       {
         where: {
           sId: this.sId,
         },
       }
     );
-
-    await SubscriptionResource.invalidateSubscriptionCache(owner.id);
 
     return new Ok(undefined);
   }
@@ -953,7 +977,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         : {
             planCode: PRO_PLAN_SEAT_29_CODE,
             allowedPaymentMethods: ["card"] satisfies SupportedPaymentMethod[],
-            metronomePackageAlias: LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
+            metronomePackageAlias:
+              billingPeriod === "yearly"
+                ? LEGACY_PRO_ANNUAL_PACKAGE_ALIAS
+                : LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
           };
 
     const proPlan = await SubscriptionResource.findPlanOrThrow(planCode);
@@ -1311,26 +1338,21 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       return activeSubscription;
     }
 
-    const res = await endMetronomeContract({
+    const res = await scheduleMetronomeContractEnd({
       metronomeCustomerId: workspace.metronomeCustomerId,
       contractId: activeSubscription.metronomeContractId,
     });
-    if (res.isOk()) {
-      return activeSubscription;
+    if (res.isErr() && !activeSubscription.isMetronomeShadowBilled) {
+      throw res.error;
     }
 
-    if (activeSubscription.stripeSubscriptionId) {
-      // Shadow mode: fire-and-forget.
-      return activeSubscription;
-    }
-
-    throw res.error;
+    return activeSubscription;
   }
 
   private async isSubscriptionOnProOrBusinessPlan(
     owner: WorkspaceType
   ): Promise<boolean> {
-    // Check Stripe-billed subscription first (covers shadow mode where both IDs are set).
+    // Check Stripe first (shadow-billed subscriptions have both IDs).
     if (this.stripeSubscriptionId) {
       const stripeSubscription = await getStripeSubscription(
         this.stripeSubscriptionId
