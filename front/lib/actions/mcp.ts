@@ -87,7 +87,7 @@ export type ClientSideMCPToolType = Omit<
   displayLabels?: ToolDisplayLabels;
 };
 
-type WithToolMetadata<
+type WithToolNameMetadata<
   T,
   TOriginalName extends string = string,
   TMCPServerName extends string = string,
@@ -113,13 +113,13 @@ type ExternalServerSideMCPToolType = Omit<
 
 export type InternalServerSideMCPToolConfigurationType<
   N extends InternalMCPServerNameType = InternalMCPServerNameType,
-> = WithToolMetadata<
+> = WithToolNameMetadata<
   InternalServerSideMCPToolType<N>,
   InternalMCPToolNameType<N>
 >;
 
 export type ExternalServerSideMCPToolConfigurationType =
-  WithToolMetadata<ExternalServerSideMCPToolType>;
+  WithToolNameMetadata<ExternalServerSideMCPToolType>;
 
 export type ServerSideMCPToolConfigurationType<
   N extends InternalMCPServerNameType | null = InternalMCPServerNameType | null,
@@ -128,7 +128,7 @@ export type ServerSideMCPToolConfigurationType<
   : ExternalServerSideMCPToolConfigurationType;
 
 export type ClientSideMCPToolConfigurationType =
-  WithToolMetadata<ClientSideMCPToolType>;
+  WithToolNameMetadata<ClientSideMCPToolType>;
 
 export type MCPToolConfigurationType =
   | ServerSideMCPToolConfigurationType
