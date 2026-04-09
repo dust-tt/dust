@@ -23,11 +23,6 @@ import type {
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import type { ToolErrorEvent } from "@app/types/assistant/agent";
-import {
-  isPersonalAuthenticationRequiredErrorContent,
-  type PersonalAuthenticationRequiredErrorContent,
-} from "@app/types/assistant/agent_error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
@@ -247,21 +242,6 @@ export function isMCPApproveExecutionEvent(
   );
 }
 
-function isLegacyToolPersonalAuthRequiredEvent(
-  event: unknown
-): event is ToolErrorEvent & {
-  error: PersonalAuthenticationRequiredErrorContent;
-} {
-  return (
-    typeof event === "object" &&
-    event !== null &&
-    "type" in event &&
-    event.type === "tool_error" &&
-    "error" in event &&
-    isPersonalAuthenticationRequiredErrorContent(event.error)
-  );
-}
-
 function isToolPersonalAuthRequiredEvent(
   event: unknown
 ): event is ToolPersonalAuthRequiredEvent {
@@ -309,7 +289,6 @@ export function isBlockedActionEvent(
     (isMCPApproveExecutionEvent(event) ||
       isToolPersonalAuthRequiredEvent(event) ||
       isToolFileAuthRequiredEvent(event) ||
-      isToolAskUserQuestionEvent(event) ||
-      isLegacyToolPersonalAuthRequiredEvent(event))
+      isToolAskUserQuestionEvent(event))
   );
 }

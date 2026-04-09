@@ -1454,16 +1454,6 @@ const ToolErrorEventSchema = z.object({
 });
 export type ToolErrorEvent = z.infer<typeof ToolErrorEventSchema>;
 
-export function isMCPServerPersonalAuthRequiredError(
-  error: ToolErrorEvent["error"]
-) {
-  return (
-    error.code === "mcp_server_personal_authentication_required" &&
-    error.metadata &&
-    "mcp_server_id" in error.metadata
-  );
-}
-
 const AgentErrorEventSchema = z.object({
   type: z.literal("agent_error"),
   created: z.number(),
