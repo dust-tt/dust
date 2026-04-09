@@ -1,6 +1,6 @@
 import {
-  getStaticToolDisplayLabels,
   getStaticToolDisplayLabelsFromFunctionCallName,
+  getToolDisplayLabels,
   getToolNameFromFunctionCallName,
 } from "@app/lib/actions/tool_display_labels";
 import { describe, expect, it } from "vitest";
@@ -19,12 +19,13 @@ describe("getToolNameFromFunctionCallName", () => {
   });
 });
 
-describe("getStaticToolDisplayLabels", () => {
+describe("getToolDisplayLabels", () => {
   it("resolves labels for internal tools", () => {
     expect(
-      getStaticToolDisplayLabels({
+      getToolDisplayLabels({
         internalMCPServerName: "common_utilities",
         toolName: "wait",
+        inputs: {},
       })
     ).toEqual({
       running: "Waiting",
@@ -34,9 +35,10 @@ describe("getStaticToolDisplayLabels", () => {
 
   it("resolves labels for default remote tools", () => {
     expect(
-      getStaticToolDisplayLabels({
+      getToolDisplayLabels({
         mcpServerName: "Linear",
         toolName: "list_issues",
+        inputs: {},
       })
     ).toEqual({
       running: "Listing issues on Linear",

@@ -1,8 +1,4 @@
 import {
-  isSearchInputType,
-  isWebsearchInputType,
-} from "@app/lib/actions/mcp_internal_actions/types";
-import {
   AgentMessageContentParser,
   getCoTDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
@@ -17,36 +13,6 @@ import {
 import type { InlineActivityStep } from "@app/types/assistant/conversation";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
-const MAX_QUERY_DISPLAY_LENGTH = 60;
-
-function truncateQuery(query: string): string {
-  return query.length > MAX_QUERY_DISPLAY_LENGTH
-    ? query.slice(0, MAX_QUERY_DISPLAY_LENGTH) + "\u2026"
-    : query;
-}
-
-function getToolInlineLabel(
-  action: AgentMCPActionWithOutputType,
-  context: "running" | "done"
-): string | null {
-  if (action.toolName === "websearch" && isWebsearchInputType(action.params)) {
-    const q = truncateQuery(action.params.query);
-    return context === "running"
-      ? `Searching \u201c${q}\u201d`
-      : `Searched \u201c${q}\u201d`;
-  }
-  if (
-    action.toolName === "semantic_search" &&
-    isSearchInputType(action.params)
-  ) {
-    const q = truncateQuery(action.params.query);
-    return context === "running"
-      ? `Searching \u201c${q}\u201d`
-      : `Searched \u201c${q}\u201d`;
-  }
-  return null;
-}
-
 /**
  * Compute the display label for an action (one-line summary).
  * Pure function with no browser dependencies — usable server-side and client-side.
@@ -56,7 +22,6 @@ export function getActionOneLineLabel(
   context: "running" | "done" = "done"
 ): string {
   return (
-    getToolInlineLabel(action, context) ??
     action.displayLabels?.[context] ??
     (action.functionCallName ? asDisplayName(action.functionCallName) : "Tool")
   );

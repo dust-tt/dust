@@ -11,7 +11,7 @@ import {
   TOOL_EXECUTION_BLOCKED_STATUSES,
 } from "@app/lib/actions/statuses";
 import {
-  getStaticToolDisplayLabels,
+  getToolDisplayLabels,
   getToolNameFromFunctionCallName,
 } from "@app/lib/actions/tool_display_labels";
 import type { StepContext } from "@app/lib/actions/types";
@@ -1022,23 +1022,24 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   }
 
   /**
-   * Resolve displayLabels for this action. Checks the persisted toolConfiguration
-   * first (handles dynamic tool names), then falls back to static metadata for
-   * older DB records or remote server defaults.
+   * Resolve displayLabels for this action. Tries dynamic input-aware labels
+   * first (e.g. Searching "query"), then persisted toolConfiguration labels,
+   * then falls back to static metadata for older DB records or remote server defaults.
    */
   private resolveDisplayLabels(
     internalMCPServerName: InternalMCPServerNameType | null,
     toolName: string
   ): ToolDisplayLabels | null {
-    if (this.toolConfiguration.displayLabels) {
-      return this.toolConfiguration.displayLabels;
-    }
-
-    return getStaticToolDisplayLabels({
-      internalMCPServerName,
-      mcpServerName: this.toolConfiguration.mcpServerName,
-      toolName,
-    });
+    return (
+      getToolDisplayLabels({
+        internalMCPServerName,
+        mcpServerName: this.toolConfiguration.mcpServerName,
+        toolName,
+        inputs: this.augmentedInputs,
+      }) ??
+      this.toolConfiguration.displayLabels ??
+      null
+    );
   }
 
   async updateStatus(
