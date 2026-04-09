@@ -1,7 +1,6 @@
 import { runPokeWorker } from "@app/poke/temporal/worker";
 import { runAgentLoopWorker } from "@app/temporal/agent_loop/worker";
 import { runAnalyticsWorker } from "@app/temporal/analytics_queue/worker";
-import { runButlerWorker } from "@app/temporal/butler/worker";
 import { runCreditAlertsWorker } from "@app/temporal/credit_alerts/worker";
 import { runDataRetentionWorker } from "@app/temporal/data_retention/worker";
 import { runESIndexationQueueWorker } from "@app/temporal/es_indexation/worker";
@@ -31,7 +30,6 @@ export type WorkerName =
   | "agent_schedule"
   | "agent_trigger_webhook"
   | "analytics_queue"
-  | "butler"
   | "project_todo"
   | "credit_alerts"
   | "data_retention"
@@ -60,7 +58,6 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   agent_schedule: runAgentTriggerWorker,
   agent_trigger_webhook: runAgentTriggerWebhookWorker,
   analytics_queue: runAnalyticsWorker,
-  butler: runButlerWorker,
   credit_alerts: runCreditAlertsWorker,
   data_retention: runDataRetentionWorker,
   hard_delete: runHardDeleteWorker,

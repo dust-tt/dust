@@ -79,9 +79,8 @@ export const RESOURCES_PREFIX = {
   // Project todos.
   project_todo_state: "pts",
 
-  // Butler
+  // Project user digest and todo versioned.
   user_project_digest: "pje",
-  conversation_butler_suggestion: "cbs",
 
   // Conversation branches.
   conversation_branch: "cbr",

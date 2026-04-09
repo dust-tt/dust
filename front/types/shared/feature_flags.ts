@@ -225,11 +225,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable /run command to directly call tools without LLM",
     stage: "dust_only",
   },
-  conversation_butler: {
-    description:
-      "Enable conversation butler for automated conversation management",
-    stage: "dust_only",
-  },
   project_todo: {
     description: "Enable project todo tab (todos and what's new digest)",
     stage: "dust_only",

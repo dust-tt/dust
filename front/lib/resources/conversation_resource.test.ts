@@ -5061,7 +5061,6 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   "skill_suggestion",
   "user_conversation_reads",
   "user_project_digest",
-  "conversation_butler_suggestion",
 ];
 
 const KNOWN_MESSAGE_RELATED_MODELS = [
@@ -5069,7 +5068,6 @@ const KNOWN_MESSAGE_RELATED_MODELS = [
   "message",
   "message_reaction",
   "mention",
-  "conversation_butler_suggestion",
   "conversation_branch",
 ];
 

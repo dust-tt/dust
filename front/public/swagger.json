@@ -10477,8 +10477,7 @@
               "triggered",
               "zapier",
               "zendesk",
-              "onboarding_conversation",
-              "project_butler"
+              "onboarding_conversation"
             ]
           }
         }
@@ -10533,15 +10532,6 @@
           },
           {
             "$ref": "#/components/schemas/PrivateConversationTitleEvent"
-          },
-          {
-            "$ref": "#/components/schemas/PrivateButlerSuggestionCreatedEvent"
-          },
-          {
-            "$ref": "#/components/schemas/PrivateButlerThinkingEvent"
-          },
-          {
-            "$ref": "#/components/schemas/PrivateButlerDoneEvent"
           }
         ]
       },
@@ -10658,65 +10648,6 @@
           },
           "title": {
             "type": "string"
-          }
-        }
-      },
-      "PrivateButlerSuggestionCreatedEvent": {
-        "type": "object",
-        "required": [
-          "type",
-          "created",
-          "suggestion"
-        ],
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "butler_suggestion_created"
-            ]
-          },
-          "created": {
-            "type": "integer"
-          },
-          "suggestion": {
-            "type": "object",
-            "description": "Butler suggestion details"
-          }
-        }
-      },
-      "PrivateButlerThinkingEvent": {
-        "type": "object",
-        "required": [
-          "type",
-          "created"
-        ],
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "butler_thinking"
-            ]
-          },
-          "created": {
-            "type": "integer"
-          }
-        }
-      },
-      "PrivateButlerDoneEvent": {
-        "type": "object",
-        "required": [
-          "type",
-          "created"
-        ],
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "butler_done"
-            ]
-          },
-          "created": {
-            "type": "integer"
           }
         }
       },

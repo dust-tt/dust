@@ -23,7 +23,6 @@ import {
 } from "@app/types/assistant/mentions";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
-  AnimatedText,
   ArrowDownIcon,
   ArrowUpIcon,
   Button,
@@ -31,7 +30,6 @@ import {
   ContentMessageInline,
   IconButton,
   InformationCircleIcon,
-  SparklesIcon,
   StopIcon,
 } from "@dust-tt/sparkle";
 import {
@@ -306,9 +304,7 @@ export const AgentInputBar = ({
 
   const showStopButton = generatingMessages.length > 0;
   const showMessageNavigation = !context.agentBuilderContext;
-  const showButlerThinking = context.isButlerThinking;
-  const showNavigationContainer =
-    showStopButton || showMessageNavigation || showButlerThinking;
+  const showNavigationContainer = showStopButton || showMessageNavigation;
 
   const getStopButtonLabel = () => {
     if (isStopping) {
@@ -377,22 +373,6 @@ export const AgentInputBar = ({
                   size="xs"
                   tooltip="Next user message"
                 />
-              </>
-            )}
-            {showButlerThinking && (
-              <>
-                {(showStopButton || showMessageNavigation) && (
-                  <div className="h-4 w-px bg-border dark:bg-border-night" />
-                )}
-                <div className="flex items-center gap-1.5 px-2">
-                  <SparklesIcon className="h-3.5 w-3.5 text-highlight" />
-                  <AnimatedText
-                    variant="highlight"
-                    className="text-xs font-medium"
-                  >
-                    Butler
-                  </AnimatedText>
-                </div>
               </>
             )}
           </div>

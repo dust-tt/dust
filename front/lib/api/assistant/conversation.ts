@@ -92,10 +92,6 @@ import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import {
-  launchOrSignalButlerWorkflow,
-  signalButlerComplete,
-} from "@app/temporal/butler/client";
-import {
   launchOrSignalProjectTodoWorkflow,
   signalProjectTodoComplete,
 } from "@app/temporal/project_todo/client";
@@ -489,7 +485,6 @@ export function isUserMessageContextValid(
 
   switch (context.origin) {
     case "api":
-    case "project_butler":
       return true;
     case "excel":
     case "gsheet":
@@ -1035,7 +1030,7 @@ export async function postUserMessage(
   ]);
 
   if (isPartOfProject) {
-    const projectTodoAndConversationButlerParams = {
+    const projectTodoParams = {
       authType: auth.toJSON(),
       spaceId: conversation.spaceId,
       conversationId: conversation.sId,
@@ -1043,21 +1038,10 @@ export async function postUserMessage(
     };
 
     if (featureFlags.includes("project_todo")) {
-      void launchOrSignalProjectTodoWorkflow(
-        projectTodoAndConversationButlerParams
-      );
+      void launchOrSignalProjectTodoWorkflow(projectTodoParams);
 
       if (agentMessages.length === 0) {
-        void signalProjectTodoComplete(projectTodoAndConversationButlerParams);
-      }
-    }
-
-    if (featureFlags.includes("conversation_butler")) {
-      // Fire-and-forget: butler failures must not block message posting.
-      void launchOrSignalButlerWorkflow(projectTodoAndConversationButlerParams);
-
-      if (agentMessages.length === 0) {
-        void signalButlerComplete(projectTodoAndConversationButlerParams);
+        void signalProjectTodoComplete(projectTodoParams);
       }
     }
   }
@@ -1380,7 +1364,7 @@ export async function editUserMessage(
 
   const featureFlags = await getFeatureFlags(auth);
   if (isProjectConversation(conversation)) {
-    const projectTodoAndConversationButlerParams = {
+    const projectTodoParams = {
       authType: auth.toJSON(),
       spaceId: conversation.spaceId,
       conversationId: conversation.sId,
@@ -1388,21 +1372,10 @@ export async function editUserMessage(
     };
 
     if (featureFlags.includes("project_todo")) {
-      void launchOrSignalProjectTodoWorkflow(
-        projectTodoAndConversationButlerParams
-      );
+      void launchOrSignalProjectTodoWorkflow(projectTodoParams);
 
       if (agentMessages.length === 0) {
-        void signalProjectTodoComplete(projectTodoAndConversationButlerParams);
-      }
-    }
-
-    if (featureFlags.includes("conversation_butler")) {
-      // Fire-and-forget: butler failures must not block message editing.
-      void launchOrSignalButlerWorkflow(projectTodoAndConversationButlerParams);
-
-      if (agentMessages.length === 0) {
-        void signalButlerComplete(projectTodoAndConversationButlerParams);
+        void signalProjectTodoComplete(projectTodoParams);
       }
     }
   }
@@ -1889,7 +1862,7 @@ export async function retryAgentMessage(
 
   const featureFlags = await getFeatureFlags(auth);
   if (isProjectConversation(conversation)) {
-    const projectTodoAndConversationButlerParams = {
+    const projectTodoParams = {
       authType: auth.toJSON(),
       spaceId: conversation.spaceId,
       conversationId: conversation.sId,
@@ -1897,14 +1870,7 @@ export async function retryAgentMessage(
     };
 
     if (featureFlags.includes("project_todo")) {
-      void launchOrSignalProjectTodoWorkflow(
-        projectTodoAndConversationButlerParams
-      );
-    }
-
-    if (featureFlags.includes("conversation_butler")) {
-      // Fire-and-forget: butler failures must not block retries.
-      void launchOrSignalButlerWorkflow(projectTodoAndConversationButlerParams);
+      void launchOrSignalProjectTodoWorkflow(projectTodoParams);
     }
   }
 
@@ -2057,7 +2023,7 @@ export async function postNewContentFragment(
 
   const featureFlags = await getFeatureFlags(auth);
   if (isProjectConversation(conversation)) {
-    const projectTodoAndConversationButlerParams = {
+    const projectTodoParams = {
       authType: auth.toJSON(),
       spaceId: conversation.spaceId,
       conversationId: conversation.sId,
@@ -2065,16 +2031,8 @@ export async function postNewContentFragment(
     };
 
     if (featureFlags.includes("project_todo")) {
-      void launchOrSignalProjectTodoWorkflow(
-        projectTodoAndConversationButlerParams
-      );
-      void signalProjectTodoComplete(projectTodoAndConversationButlerParams);
-    }
-
-    if (featureFlags.includes("conversation_butler")) {
-      // Fire-and-forget: butler failures must not block content fragment posting.
-      void launchOrSignalButlerWorkflow(projectTodoAndConversationButlerParams);
-      void signalButlerComplete(projectTodoAndConversationButlerParams);
+      void launchOrSignalProjectTodoWorkflow(projectTodoParams);
+      void signalProjectTodoComplete(projectTodoParams);
     }
   }
 
@@ -2548,9 +2506,6 @@ export async function isConversationEventAllowedForAuth(
       }
       return true;
     case "agent_message_done":
-    case "butler_suggestion_created":
-    case "butler_done":
-    case "butler_thinking":
     case "conversation_title":
     case "user_message_promoted":
       return true;

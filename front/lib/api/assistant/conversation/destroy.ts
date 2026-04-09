@@ -21,7 +21,6 @@ import { ContentFragmentResource } from "@app/lib/resources/content_fragment_res
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import { ConversationButlerSuggestionModel } from "@app/lib/resources/storage/models/conversation_butler_suggestion";
 import {
   ProjectTodoConversationModel,
   ProjectTodoSourceModel,
@@ -70,20 +69,6 @@ async function destroyMessageRelatedResources(
     where: {
       workspaceId: owner.id,
       previousMessageId: messageIds,
-    },
-  });
-
-  await ConversationButlerSuggestionModel.destroy({
-    where: {
-      workspaceId: owner.id,
-      sourceMessageId: messageIds,
-    },
-  });
-
-  await ConversationButlerSuggestionModel.destroy({
-    where: {
-      workspaceId: owner.id,
-      resultMessageId: messageIds,
     },
   });
 
@@ -277,13 +262,6 @@ export async function destroyConversation(
     where: {
       workspaceId: owner.id,
       sourceConversationId: conversation.id,
-    },
-  });
-
-  await ConversationButlerSuggestionModel.destroy({
-    where: {
-      workspaceId: owner.id,
-      conversationId: conversation.id,
     },
   });
 

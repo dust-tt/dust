@@ -3154,43 +3154,6 @@ describe("isConversationEventAllowedForAuth", () => {
     expect(result).toBe(true);
   });
 
-  it("returns true for butler_suggestion_created event", async () => {
-    const event = {
-      type: "butler_suggestion_created" as const,
-      created: Date.now(),
-      suggestion: {
-        sId: "suggestion-1",
-        createdAt: 1,
-        updatedAt: 1,
-        sourceMessageSId: "msg-1",
-        resultMessageSId: null,
-        status: "pending" as const,
-        suggestionType: "rename_title" as const,
-        metadata: { suggestedTitle: "New title" },
-      },
-    };
-    const result = await isConversationEventAllowedForAuth(auth, { event });
-    expect(result).toBe(true);
-  });
-
-  it("returns true for butler_done event", async () => {
-    const event = {
-      type: "butler_done" as const,
-      created: Date.now(),
-    };
-    const result = await isConversationEventAllowedForAuth(auth, { event });
-    expect(result).toBe(true);
-  });
-
-  it("returns true for butler_thinking event", async () => {
-    const event = {
-      type: "butler_thinking" as const,
-      created: Date.now(),
-    };
-    const result = await isConversationEventAllowedForAuth(auth, { event });
-    expect(result).toBe(true);
-  });
-
   it("returns true for conversation_title event", async () => {
     const event = {
       type: "conversation_title" as const,

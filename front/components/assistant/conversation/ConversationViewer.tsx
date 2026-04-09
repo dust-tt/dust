@@ -6,7 +6,6 @@ import {
   parseDataAsMessageIdAndActionId,
   useConversationSidePanelContext,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
   createPlaceholderAgentMessage,
   createPlaceholderUserMessage,
@@ -41,7 +40,6 @@ import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/cit
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
-import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
@@ -56,7 +54,6 @@ import {
   toMentionType,
 } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
-import type { ButlerSuggestionPublicType } from "@app/types/conversation_butler_suggestion";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -73,7 +70,6 @@ import debounce from "lodash/debounce";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, {
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -252,8 +248,6 @@ export const ConversationViewer = ({
   });
   const submitInFlightRef = useRef(false);
 
-  const { setSelectedAgent, setPendingInputText } = useContext(InputBarContext);
-
   const [initialListData, setInitialListData] = useState<
     VirtuosoMessage[] | undefined
   >(undefined);
@@ -397,74 +391,6 @@ export const ConversationViewer = ({
     conversationId: conversationId ?? "",
     workspaceId: owner.sId,
   });
-
-  const [suggestionsByMessageSId, setSuggestionsByMessageSId] = useState(
-    () => new Map<string, ButlerSuggestionPublicType[]>()
-  );
-
-  const [isButlerThinking, setIsButlerThinking] = useState(false);
-
-  const handleSuggestionAction = useCallback(
-    async (
-      suggestionSId: string,
-      status: "accepted" | "dismissed"
-    ): Promise<void> => {
-      // Look up the suggestion before removing it so we can act on acceptance.
-      let matchedSuggestion: ButlerSuggestionPublicType | undefined;
-      for (const suggestions of suggestionsByMessageSId.values()) {
-        matchedSuggestion = suggestions.find((s) => s.sId === suggestionSId);
-        if (matchedSuggestion) {
-          break;
-        }
-      }
-
-      // If accepting a call_agent or create_frame suggestion, pre-fill the input bar
-      // with the agent mention and prompt so the user can review/edit before sending.
-      if (
-        status === "accepted" &&
-        (matchedSuggestion?.suggestionType === "call_agent" ||
-          matchedSuggestion?.suggestionType === "create_frame")
-      ) {
-        const { agentId, agentName, prompt } = matchedSuggestion.metadata;
-        setSelectedAgent({
-          id: agentId,
-          type: "agent",
-          label: agentName,
-          pictureUrl: "",
-          description: "",
-        });
-        setPendingInputText(prompt);
-      }
-
-      // Optimistic update: remove the suggestion from local state.
-      setSuggestionsByMessageSId((prev) => {
-        const next = new Map<string, ButlerSuggestionPublicType[]>();
-        for (const [messageId, suggestions] of prev) {
-          const filtered = suggestions.filter((s) => s.sId !== suggestionSId);
-          if (filtered.length > 0) {
-            next.set(messageId, filtered);
-          }
-        }
-        return next;
-      });
-
-      await clientFetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/butler_suggestions/${suggestionSId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status }),
-        }
-      );
-    },
-    [
-      conversationId,
-      owner.sId,
-      suggestionsByMessageSId,
-      setSelectedAgent,
-      setPendingInputText,
-    ]
-  );
 
   // Hooks related to conversation events streaming.
 
@@ -634,22 +560,6 @@ export const ConversationViewer = ({
 
             window.dispatchEvent(new AgentMessageCompletedEvent());
             void mutateConversationAttachments();
-            break;
-          case "butler_thinking":
-            setIsButlerThinking(true);
-            break;
-          case "butler_done":
-            setIsButlerThinking(false);
-            break;
-          case "butler_suggestion_created":
-            setIsButlerThinking(false);
-            setSuggestionsByMessageSId((prev) => {
-              const { suggestion } = event;
-              const existing = prev.get(suggestion.sourceMessageSId) ?? [];
-              const next = new Map(prev);
-              next.set(suggestion.sourceMessageSId, [...existing, suggestion]);
-              return next;
-            });
             break;
           default:
             ((t: never) => {
@@ -938,9 +848,6 @@ export const ConversationViewer = ({
       draftKey: `conversation-${conversationId}`,
       agentBuilderContext,
       feedbacksByMessageId,
-      isButlerThinking,
-      suggestionsByMessageSId,
-      handleSuggestionAction,
       additionalMarkdownComponents,
       additionalMarkdownPlugins,
       isProjectMember,
@@ -959,9 +866,6 @@ export const ConversationViewer = ({
     conversationId,
     agentBuilderContext,
     feedbacksByMessageId,
-    isButlerThinking,
-    suggestionsByMessageSId,
-    handleSuggestionAction,
     additionalMarkdownComponents,
     additionalMarkdownPlugins,
     isProjectMember,
