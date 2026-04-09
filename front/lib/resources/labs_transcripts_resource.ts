@@ -137,11 +137,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     });
 
     return configurations.map(
-      (configuration) =>
-        new this(
-          this.model,
-          configuration.get()
-        )
+      (configuration) => new this(this.model, configuration.get())
     );
   }
 
