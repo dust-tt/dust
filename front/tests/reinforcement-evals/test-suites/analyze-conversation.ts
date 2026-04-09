@@ -1,9 +1,9 @@
 import {
-  instructionSuggestion,
+  editSkillWithInstructions,
+  editSkillWithTool,
   mockTool,
   noSuggestion,
   type TestSuite,
-  toolSuggestion,
   type WorkspaceContext,
 } from "@app/tests/reinforcement-evals/lib/types";
 
@@ -91,15 +91,15 @@ export const analyzeConversationSuite: TestSuite = {
         },
       ],
       workspaceContext: WORKSPACE_CONTEXT,
-      expectedToolCalls: [instructionSuggestion("skill_meeting_scheduler")],
-      judgeCriteria: `The analyst MUST call suggest_skill_instruction_edits for skill "skill_meeting_scheduler".
+      expectedToolCalls: [editSkillWithInstructions("skill_meeting_scheduler")],
+      judgeCriteria: `The analyst MUST call edit_skill with instructionEdits for skill "skill_meeting_scheduler".
 The suggestion should:
 - Provide clearer instructions that explain the skill should proactively schedule meetings when given enough information (attendee, date, time)
 - Reference that the current instructions ("Help with meetings.") are too vague
 - Include guidance on checking availability before scheduling
 - Have a meaningful analysis referencing the user's confusion
 
-Score 0 if no suggest_skill_instruction_edits call is made.
+Score 0 if no edit_skill with instructionEdits call is made.
 Score 0-1 if the suggestion doesn't substantially improve the instructions' clarity.
 Score 2 if the suggestion improves clarity but misses key details (e.g., check availability first).
 Score 3 if the suggestion provides clear, actionable instructions that would prevent the observed confusion.`,
@@ -140,15 +140,17 @@ Score 3 if the suggestion provides clear, actionable instructions that would pre
         },
       ],
       workspaceContext: WORKSPACE_CONTEXT,
-      expectedToolCalls: [toolSuggestion("skill_research", "mcp_web_search")],
-      judgeCriteria: `The analyst MUST call suggest_skill_tools to suggest adding the Web Search tool
+      expectedToolCalls: [
+        editSkillWithTool("skill_research", "mcp_web_search"),
+      ],
+      judgeCriteria: `The analyst MUST call edit_skill with toolEdits to suggest adding the Web Search tool
 (mcp_web_search) to skill "skill_research". The suggestion should:
 - Recommend adding Web Search (toolId: mcp_web_search) with action "add"
 - Include an analysis explaining that the skill's purpose requires web search for current information
 - Reference that the agent couldn't fulfill the user's core request without this capability
 
-Score 0 if no suggest_skill_tools call is made.
-Score 0-1 if suggest_skill_tools is called but with the wrong tool ID or wrong skill ID.
+Score 0 if no edit_skill with toolEdits call is made.
+Score 0-1 if edit_skill with toolEdits is called but with the wrong tool ID or wrong skill ID.
 Score 2 if the correct tool is suggested but the analysis is weak.
 Score 3 if the correct tool is suggested with a clear, well-reasoned analysis.`,
     },
@@ -199,15 +201,17 @@ Score 3 if the correct tool is suggested with a clear, well-reasoned analysis.`,
         },
       ],
       workspaceContext: WORKSPACE_CONTEXT,
-      expectedToolCalls: [toolSuggestion("skill_code_review", "mcp_calendar")],
-      judgeCriteria: `The analyst MUST call suggest_skill_tools to suggest removing the Calendar tool
+      expectedToolCalls: [
+        editSkillWithTool("skill_code_review", "mcp_calendar"),
+      ],
+      judgeCriteria: `The analyst MUST call edit_skill with toolEdits to suggest removing the Calendar tool
 (mcp_calendar) from skill "skill_code_review". The suggestion should:
 - Recommend removing Calendar (toolId: mcp_calendar) with action "remove"
 - Include an analysis explaining that Calendar is irrelevant to code review and caused confusion
 - Reference the failed tool call and user complaint
 
-Score 0 if no suggest_skill_tools call is made.
-Score 0-1 if suggest_skill_tools is called but with the wrong action (add instead of remove).
+Score 0 if no edit_skill with toolEdits call is made.
+Score 0-1 if edit_skill with toolEdits is called but with the wrong action (add instead of remove).
 Score 2 if the correct tool removal is suggested but the analysis is weak.
 Score 3 if the correct removal is suggested with a clear analysis referencing the confusion it caused.`,
     },
@@ -247,12 +251,12 @@ Score 3 if the correct removal is suggested with a clear analysis referencing th
       ],
       workspaceContext: WORKSPACE_CONTEXT,
       expectedToolCalls: [
-        instructionSuggestion("skill_bug_reporter"),
-        toolSuggestion("skill_bug_reporter", "mcp_jira"),
+        editSkillWithInstructions("skill_bug_reporter"),
+        editSkillWithTool("skill_bug_reporter", "mcp_jira"),
       ],
       judgeCriteria: `The analyst MUST make BOTH types of suggestions for skill "skill_bug_reporter":
-1. suggest_skill_instruction_edits to update instructions to reference the JIRA tool for filing
-2. suggest_skill_tools to add JIRA (mcp_jira) so the skill can actually file bugs
+1. edit_skill with instructionEdits to update instructions to reference the JIRA tool for filing
+2. edit_skill with toolEdits to add JIRA (mcp_jira) so the skill can actually file bugs
 
 The suggestions should be co-dependent — the instructions should reference using JIRA,
 and the tool addition provides the capability.
@@ -344,15 +348,15 @@ Score 3 if no suggestion is created (empty suggestions arrays only).`,
         },
       ],
       workspaceContext: WORKSPACE_CONTEXT,
-      expectedToolCalls: [instructionSuggestion("skill_email_drafter")],
-      judgeCriteria: `The analyst MUST call suggest_skill_instruction_edits for skill "skill_email_drafter".
+      expectedToolCalls: [editSkillWithInstructions("skill_email_drafter")],
+      judgeCriteria: `The analyst MUST call edit_skill with instructionEdits for skill "skill_email_drafter".
 The suggestion should:
 - Add guidance about using a premium, empathetic brand voice
 - Include direction to offer specific remedies when addressing complaints
 - Reference the user's explicit feedback about generic tone and missing remedies
 - Preserve the existing instruction about being professional and concise
 
-Score 0 if no suggest_skill_instruction_edits call is made.
+Score 0 if no edit_skill with instructionEdits call is made.
 Score 0-1 if the suggestion is generic and doesn't address the specific feedback points.
 Score 2 if the suggestion addresses tone but misses the remedy guidance (or vice versa).
 Score 3 if the suggestion addresses both brand voice and remedy guidance with a clear analysis.`,

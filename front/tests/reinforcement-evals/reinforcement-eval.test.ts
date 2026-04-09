@@ -29,30 +29,23 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 function formatToolCallSummary(tc: ToolCall): string {
   const args = tc.arguments as Record<string, unknown>;
   switch (tc.name) {
-    case "suggest_skill_instruction_edits": {
-      const suggestions = args.suggestions as
-        | Array<{ skillId?: string }>
-        | undefined;
-      if (suggestions) {
-        const items = suggestions.map((s) => s.skillId ?? "?").join(", ");
-        return `suggest_skill_instruction_edits(${items})`;
+    case "edit_skill": {
+      const skillId = (args.skillId as string) ?? "?";
+      const parts: string[] = [`skill=${skillId}`];
+      const instructionEdits = args.instructionEdits as unknown[] | undefined;
+      if (instructionEdits?.length) {
+        parts.push(`${instructionEdits.length} instructionEdit(s)`);
       }
-      return "suggest_skill_instruction_edits()";
-    }
-    case "suggest_skill_tools": {
-      const suggestions = args.suggestions as
-        | Array<{ skillId?: string; action?: string; toolId?: string }>
+      const toolEdits = args.toolEdits as
+        | Array<{ action?: string; toolId?: string }>
         | undefined;
-      if (suggestions) {
-        const items = suggestions
-          .map(
-            (s) =>
-              `${s.action ?? "?"} ${s.toolId ?? "?"} on ${s.skillId ?? "?"}`
-          )
+      if (toolEdits?.length) {
+        const items = toolEdits
+          .map((t) => `${t.action ?? "?"} ${t.toolId ?? "?"}`)
           .join(", ");
-        return `suggest_skill_tools(${items})`;
+        parts.push(`toolEdits=[${items}]`);
       }
-      return "suggest_skill_tools()";
+      return `edit_skill(${parts.join(", ")})`;
     }
     default:
       return tc.name;

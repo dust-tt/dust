@@ -1,9 +1,9 @@
 import {
-  instructionSuggestion,
+  editSkillWithInstructions,
+  editSkillWithTool,
   mockTool,
   noSuggestion,
   type TestSuite,
-  toolSuggestion,
   type WorkspaceContext,
 } from "@app/tests/reinforcement-evals/lib/types";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
@@ -13,7 +13,11 @@ const SKILL_SID = "skill_customer_support";
 function makeInstructionSuggestion(input: {
   sId: string;
   analysis: string;
-  instructions: string;
+  instructionEdits: Array<{
+    old_string: string;
+    new_string: string;
+    expected_occurrences?: number;
+  }>;
   skillConfigurationId?: string;
   source?: "reinforcement" | "synthetic";
 }): SkillSuggestionType {
@@ -28,15 +32,12 @@ function makeInstructionSuggestion(input: {
     sourceConversationId: null,
     kind: "edit",
     suggestion: {
-      instructionEdits: [
-        {
-          old_string: "",
-          new_string: input.instructions,
-          expected_occurrences: 1,
-        },
-      ],
+      instructionEdits: input.instructionEdits.map((e) => ({
+        ...e,
+        expected_occurrences: e.expected_occurrences ?? 1,
+      })),
     },
-  } as SkillSuggestionType;
+  };
 }
 
 function makeToolSuggestion(input: {
@@ -60,7 +61,7 @@ function makeToolSuggestion(input: {
     suggestion: {
       toolEdits: [{ action: input.action, toolId: input.toolId }],
     },
-  } as SkillSuggestionType;
+  };
 }
 
 const WORKSPACE_CONTEXT: WorkspaceContext = {
@@ -95,36 +96,51 @@ export const aggregateSuggestionsSuite: TestSuite = {
           sId: "sug-1",
           analysis:
             "User complained that the skill's responses were too blunt and impersonal. The instructions should emphasize a warmer, more empathetic tone.",
-          instructions:
-            "Help customers with their questions. Be professional, warm, and empathetic. Acknowledge the customer's situation before providing solutions.",
+          instructionEdits: [
+            {
+              old_string: "Be professional.",
+              new_string:
+                "Be professional, warm, and empathetic. Acknowledge the customer's situation before providing solutions.",
+            },
+          ],
         }),
         makeInstructionSuggestion({
           sId: "sug-2",
           analysis:
             "User found the skill's language too robotic. The instructions should guide the skill to use more natural, conversational language.",
-          instructions:
-            "Help customers with their questions. Be professional and use natural, conversational language. Avoid formulaic or robotic phrasing.",
+          instructionEdits: [
+            {
+              old_string: "Be professional.",
+              new_string:
+                "Be professional and use natural, conversational language. Avoid formulaic or robotic phrasing.",
+            },
+          ],
         }),
         makeInstructionSuggestion({
           sId: "sug-3",
           analysis:
             "User reported the skill jumped straight to solutions without acknowledging the problem. Instructions should include empathy-first guidance.",
-          instructions:
-            "Help customers with their questions. Be professional. Always acknowledge the customer's frustration before jumping to a solution.",
+          instructionEdits: [
+            {
+              old_string: "Be professional.",
+              new_string:
+                "Be professional. Always acknowledge the customer's frustration before jumping to a solution.",
+            },
+          ],
         }),
       ],
       workspaceContext: WORKSPACE_CONTEXT,
-      expectedToolCalls: [instructionSuggestion(SKILL_SID)],
-      judgeCriteria: `The analyst MUST call suggest_skill_instruction_edits with a single merged suggestion
-for skill "${SKILL_SID}". The merged suggestion should:
+      expectedToolCalls: [editSkillWithInstructions(SKILL_SID)],
+      judgeCriteria: `The analyst MUST call edit_skill with instructionEdits for skill "${SKILL_SID}".
+The merged suggestion should:
 - Combine all three themes: warmth/empathy, natural language, and acknowledge-first approach
 - Mention that 3 conversations support this suggestion
-- Provide well-structured instructions covering all three aspects
-- NOT create 3 separate suggestions — they must be merged into one
+- Provide well-structured instruction edits covering all three aspects
+- NOT create 3 separate edit_skill calls — they must be merged into one
 
-Score 0 if no suggest_skill_instruction_edits call or if it creates 3 separate suggestions.
+Score 0 if no edit_skill call or if it creates 3 separate calls.
 Score 1 if merged but missing one or more key themes (warmth, natural language, acknowledge-first).
-Score 2 if all themes included but the merged instructions are disorganized or analysis is weak.
+Score 2 if all themes included but the merged edits are disorganized or analysis is weak.
 Score 3 if well-merged with all themes, clear structure, and analysis referencing multiple conversations.`,
     },
     {
@@ -164,15 +180,15 @@ Score 3 if well-merged with all themes, clear structure, and analysis referencin
         }),
       ],
       workspaceContext: WORKSPACE_CONTEXT,
-      expectedToolCalls: [toolSuggestion("skill_engineering", "mcp_jira")],
-      judgeCriteria: `The analyst MUST call suggest_skill_tools to suggest adding JIRA (mcp_jira)
+      expectedToolCalls: [editSkillWithTool("skill_engineering", "mcp_jira")],
+      judgeCriteria: `The analyst MUST call edit_skill with toolEdits to suggest adding JIRA (mcp_jira)
 to skill "skill_engineering". The aggregated suggestion should:
 - Merge the 3 individual suggestions into a single recommendation
 - Mention that 3 conversations support this suggestion
 - Include a comprehensive analysis covering the different use cases (ticket creation, sprint status, assignment)
 - Use action "add" with toolId "mcp_jira"
 
-Score 0 if no suggest_skill_tools call or if it creates 3 separate suggestions.
+Score 0 if no edit_skill call or if it creates 3 separate calls.
 Score 1 if merged but analysis doesn't reference multiple conversations/use cases.
 Score 2 if properly merged with multi-conversation reference but analysis could be better.
 Score 3 if well-merged with clear analysis covering all use cases and conversation count.`,
@@ -191,8 +207,13 @@ Score 3 if well-merged with clear analysis covering all use cases and conversati
           sId: "sug-1",
           analysis:
             "User complained about the skill's tone being too cold. The skill should adopt a warmer communication style with more empathy.",
-          instructions:
-            "Help customers with their questions. Be professional, warm, and empathetic. Show care for the customer's needs.",
+          instructionEdits: [
+            {
+              old_string: "Be professional.",
+              new_string:
+                "Be professional, warm, and empathetic. Show care for the customer's needs.",
+            },
+          ],
         }),
       ],
       existingSuggestions: {
@@ -202,8 +223,13 @@ Score 3 if well-merged with clear analysis covering all use cases and conversati
             source: "reinforcement",
             analysis:
               "Multiple users found responses impersonal. Adding warmth and a friendlier tone would improve satisfaction.",
-            instructions:
-              "Help customers with their questions. Be professional. Use a warm, conversational tone. Be friendly and approachable. Show genuine care for the user's needs.",
+            instructionEdits: [
+              {
+                old_string: "Be professional.",
+                new_string:
+                  "Be professional. Use a warm, conversational tone. Be friendly and approachable. Show genuine care for the user's needs.",
+              },
+            ],
           }),
         ],
         rejected: [],
@@ -231,8 +257,13 @@ Score 3 if no suggestion is created.`,
           sId: "sug-1",
           analysis:
             "User was frustrated that the skill didn't acknowledge their problem before jumping to solutions. The skill should show empathy first.",
-          instructions:
-            "Help customers with their questions. Be professional. When users report issues, always acknowledge their frustration and show understanding before providing a solution.",
+          instructionEdits: [
+            {
+              old_string: "Be professional.",
+              new_string:
+                "Be professional. When users report issues, always acknowledge their frustration and show understanding before providing a solution.",
+            },
+          ],
         }),
       ],
       existingSuggestions: {
@@ -243,8 +274,13 @@ Score 3 if no suggestion is created.`,
             source: "reinforcement",
             analysis:
               "Users wanted more empathetic responses. The skill should acknowledge frustration and show understanding before jumping to solutions.",
-            instructions:
-              "Help customers with their questions. Be professional. When users report problems, first acknowledge their frustration. Show understanding and empathy before providing solutions.",
+            instructionEdits: [
+              {
+                old_string: "Be professional.",
+                new_string:
+                  "Be professional. When users report problems, first acknowledge their frustration. Show understanding and empathy before providing solutions.",
+              },
+            ],
           }),
         ],
       },
@@ -273,8 +309,13 @@ Score 3 if no suggestion is created.`,
           skillConfigurationId: "skill_writing",
           analysis:
             "User found responses slightly long. The skill tends to include one or two unnecessary filler sentences at the end.",
-          instructions:
-            "Help users write and edit text. Focus on clarity and correctness. Keep responses concise. Avoid unnecessary filler sentences.",
+          instructionEdits: [
+            {
+              old_string: "Focus on clarity and correctness.",
+              new_string:
+                "Focus on clarity and correctness. Keep responses concise. Avoid unnecessary filler sentences.",
+            },
+          ],
         }),
       ],
       workspaceContext: WORKSPACE_CONTEXT,

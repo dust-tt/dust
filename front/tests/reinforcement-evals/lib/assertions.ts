@@ -5,33 +5,29 @@ import type {
 
 type AssertionResult = { success: true } | { success: false; error: string };
 
-interface InstructionSuggestionItem {
-  skillId: string;
+interface InstructionEditItem {
+  old_string: string;
+  new_string: string;
 }
 
-interface ToolSuggestionItem {
-  skillId: string;
-  toolId: string;
+interface ToolEditItem {
   action: string;
+  toolId: string;
 }
 
-function isInstructionSuggestionItem(
-  value: unknown
-): value is InstructionSuggestionItem {
+function isInstructionEditItem(value: unknown): value is InstructionEditItem {
   return (
     typeof value === "object" &&
     value !== null &&
-    "skillId" in value &&
-    typeof value.skillId === "string"
+    "old_string" in value &&
+    typeof value.old_string === "string"
   );
 }
 
-function isToolSuggestionItem(value: unknown): value is ToolSuggestionItem {
+function isToolEditItem(value: unknown): value is ToolEditItem {
   return (
     typeof value === "object" &&
     value !== null &&
-    "skillId" in value &&
-    typeof value.skillId === "string" &&
     "toolId" in value &&
     typeof value.toolId === "string" &&
     "action" in value &&
@@ -39,24 +35,30 @@ function isToolSuggestionItem(value: unknown): value is ToolSuggestionItem {
   );
 }
 
-function getSuggestions(args: Record<string, unknown>): unknown[] | undefined {
-  const suggestions = args.suggestions;
-  if (!Array.isArray(suggestions)) {
-    return undefined;
+function getSkillId(args: Record<string, unknown>): string | undefined {
+  return typeof args.skillId === "string" ? args.skillId : undefined;
+}
+
+function getInstructionEdits(
+  args: Record<string, unknown>
+): InstructionEditItem[] {
+  const edits = args.instructionEdits;
+  if (!Array.isArray(edits)) {
+    return [];
   }
-  return suggestions;
+  return edits.filter(isInstructionEditItem);
 }
 
-function getInstructionSuggestions(
-  args: Record<string, unknown>
-): InstructionSuggestionItem[] {
-  return (getSuggestions(args) ?? []).filter(isInstructionSuggestionItem);
+function getToolEdits(args: Record<string, unknown>): ToolEditItem[] {
+  const edits = args.toolEdits;
+  if (!Array.isArray(edits)) {
+    return [];
+  }
+  return edits.filter(isToolEditItem);
 }
 
-function getToolSuggestions(
-  args: Record<string, unknown>
-): ToolSuggestionItem[] {
-  return (getSuggestions(args) ?? []).filter(isToolSuggestionItem);
+function findEditSkillCall(toolCalls: ToolCall[]): ToolCall | undefined {
+  return toolCalls.find((tc) => tc.name === "edit_skill");
 }
 
 /**
@@ -67,61 +69,82 @@ export function validateToolCallAssertion(
   toolCalls: ToolCall[]
 ): AssertionResult {
   switch (assertion.type) {
-    case "instructionSuggestion": {
-      const call = toolCalls.find(
-        (tc) => tc.name === "suggest_skill_instruction_edits"
-      );
+    case "editSkillWithInstructions": {
+      const call = findEditSkillCall(toolCalls);
       if (!call) {
         return {
           success: false,
-          error: `Expected suggest_skill_instruction_edits to be called with skillId "${assertion.skillId}", but suggest_skill_instruction_edits was not called`,
+          error: `Expected edit_skill to be called with instructionEdits for skillId "${assertion.skillId}", but edit_skill was not called`,
         };
       }
-      const suggestions = getInstructionSuggestions(call.arguments);
-      if (!suggestions.some((s) => s.skillId === assertion.skillId)) {
+      const skillId = getSkillId(call.arguments);
+      if (skillId !== assertion.skillId) {
         return {
           success: false,
-          error: `Expected suggest_skill_instruction_edits to contain skillId "${assertion.skillId}", but got: ${JSON.stringify(suggestions)}`,
+          error: `Expected edit_skill for skillId "${assertion.skillId}", but got skillId "${skillId}"`,
+        };
+      }
+      const instructionEdits = getInstructionEdits(call.arguments);
+      if (instructionEdits.length === 0) {
+        return {
+          success: false,
+          error: `Expected edit_skill to contain instructionEdits for skillId "${assertion.skillId}", but instructionEdits is empty or missing`,
         };
       }
       return { success: true };
     }
-    case "toolSuggestion": {
-      const call = toolCalls.find((tc) => tc.name === "suggest_skill_tools");
+    case "editSkillWithTool": {
+      const call = findEditSkillCall(toolCalls);
       if (!call) {
         return {
           success: false,
-          error: `Expected suggest_skill_tools to be called with skillId "${assertion.skillId}" and toolId "${assertion.toolId}", but suggest_skill_tools was not called`,
+          error: `Expected edit_skill to be called with toolEdits for skillId "${assertion.skillId}" and toolId "${assertion.toolId}", but edit_skill was not called`,
         };
       }
-      const suggestions = getToolSuggestions(call.arguments);
-      if (
-        !suggestions.some(
-          (s) =>
-            s.skillId === assertion.skillId && s.toolId === assertion.toolId
-        )
-      ) {
+      const skillId = getSkillId(call.arguments);
+      if (skillId !== assertion.skillId) {
         return {
           success: false,
-          error: `Expected suggest_skill_tools to contain skillId "${assertion.skillId}" with toolId "${assertion.toolId}", but got: ${JSON.stringify(suggestions)}`,
+          error: `Expected edit_skill for skillId "${assertion.skillId}", but got skillId "${skillId}"`,
+        };
+      }
+      const toolEdits = getToolEdits(call.arguments);
+      if (!toolEdits.some((t) => t.toolId === assertion.toolId)) {
+        return {
+          success: false,
+          error: `Expected edit_skill to contain toolEdit with toolId "${assertion.toolId}", but got: ${JSON.stringify(toolEdits)}`,
+        };
+      }
+      return { success: true };
+    }
+    case "editSkill": {
+      const call = findEditSkillCall(toolCalls);
+      if (!call) {
+        return {
+          success: false,
+          error: `Expected edit_skill to be called for skillId "${assertion.skillId}", but edit_skill was not called`,
+        };
+      }
+      const skillId = getSkillId(call.arguments);
+      if (skillId !== assertion.skillId) {
+        return {
+          success: false,
+          error: `Expected edit_skill for skillId "${assertion.skillId}", but got skillId "${skillId}"`,
         };
       }
       return { success: true };
     }
     case "noSuggestion": {
-      const suggestionToolNames = new Set([
-        "suggest_skill_instruction_edits",
-        "suggest_skill_tools",
-      ]);
       for (const tc of toolCalls) {
-        if (!suggestionToolNames.has(tc.name)) {
+        if (tc.name !== "edit_skill") {
           continue;
         }
-        const suggestions = getSuggestions(tc.arguments);
-        if (suggestions && suggestions.length > 0) {
+        const instructionEdits = getInstructionEdits(tc.arguments);
+        const toolEdits = getToolEdits(tc.arguments);
+        if (instructionEdits.length > 0 || toolEdits.length > 0) {
           return {
             success: false,
-            error: `Expected no suggestions, but ${tc.name} was called with ${suggestions.length} suggestion(s)`,
+            error: `Expected no suggestions, but edit_skill was called with ${instructionEdits.length} instructionEdit(s) and ${toolEdits.length} toolEdit(s)`,
           };
         }
       }
