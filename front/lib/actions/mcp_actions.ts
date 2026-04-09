@@ -527,74 +527,7 @@ export async function* tryCallMCPTool(
       throw toolError;
     }
 
-    // Type inference is not working here because of them using passthrough in the zod schema.
-    const content: CallToolResult["content"] = (toolCallResult.content ??
-      []) as CallToolResult["content"];
-
-    if (content.length >= MAX_OUTPUT_ITEMS) {
-      return {
-        isError: true,
-        content: [
-          {
-            type: "text",
-            text:
-              "The tool execution failed because of too many output items: " +
-              `${content.length} (max is ${MAX_OUTPUT_ITEMS})`,
-          },
-        ],
-      };
-    }
-
-    let serverType;
-    if (isClientSideMCPToolConfiguration(toolConfiguration)) {
-      serverType = "client";
-    } else if (isServerSideMCPToolConfiguration(toolConfiguration)) {
-      serverType = toolConfiguration.internalMCPServerId
-        ? "internal"
-        : "remote";
-    }
-
-    if (serverType === "remote") {
-      const isValid = isWithinRemoteContentLimit(content);
-      if (!isValid) {
-        const contentMetadata = generateRemoteContentMetadata(content);
-        logger.info(
-          { contentMetadata, isValid },
-          "Information on MCP tool result"
-        );
-
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text:
-                "The tool execution failed because of a tool result content size exceeding " +
-                "the maximum limit.",
-            },
-          ],
-        };
-      }
-    }
-    if (serverType === "internal" || serverType === "client") {
-      // The MCP SDK is now stripping extra properties from the tool result (both client and server).
-      // To keep the same behavior as before, we moved the extra properties on the _meta field of each resource item.
-      // We now need to move them back to the resource items root level.
-      content.forEach((item) => {
-        if (item.type === "resource" && item.resource._meta) {
-          item.resource = {
-            ...item.resource,
-            ...item.resource._meta,
-          };
-          delete item.resource._meta;
-        }
-      });
-    }
-
-    return {
-      isError: (toolCallResult.isError as boolean) ?? false,
-      content,
-    };
+    return postProcessMCPToolResult(toolCallResult, toolConfiguration);
   } catch (error) {
     logger.error(
       {
@@ -685,6 +618,225 @@ export async function* tryCallMCPTool(
     };
   } finally {
     await mcpClient?.close();
+  }
+}
+
+/**
+ * Post-process a raw MCP tool result: enforce content limits and normalize
+ * metadata. Shared between the Temporal agent-loop path and the sandbox REST
+ * endpoint.
+ */
+export function postProcessMCPToolResult(
+  toolCallResult: Awaited<ReturnType<Client["callTool"]>>,
+  toolConfiguration: MCPToolConfigurationType
+): CallToolResult {
+  // Type inference is not working here because of them using passthrough in the zod schema.
+  const content: CallToolResult["content"] = (toolCallResult.content ??
+    []) as CallToolResult["content"];
+
+  if (content.length >= MAX_OUTPUT_ITEMS) {
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text:
+            "The tool execution failed because of too many output items: " +
+            `${content.length} (max is ${MAX_OUTPUT_ITEMS})`,
+        },
+      ],
+    };
+  }
+
+  let serverType;
+  if (isClientSideMCPToolConfiguration(toolConfiguration)) {
+    serverType = "client";
+  } else if (isServerSideMCPToolConfiguration(toolConfiguration)) {
+    serverType = toolConfiguration.internalMCPServerId ? "internal" : "remote";
+  }
+
+  if (serverType === "remote") {
+    const isValid = isWithinRemoteContentLimit(content);
+    if (!isValid) {
+      const contentMetadata = generateRemoteContentMetadata(content);
+      logger.info(
+        { contentMetadata, isValid },
+        "Information on MCP tool result"
+      );
+
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text:
+              "The tool execution failed because of a tool result content size exceeding " +
+              "the maximum limit.",
+          },
+        ],
+      };
+    }
+  }
+  if (serverType === "internal" || serverType === "client") {
+    // The MCP SDK is now stripping extra properties from the tool result (both client and server).
+    // To keep the same behavior as before, we moved the extra properties on the _meta field of each resource item.
+    // We now need to move them back to the resource items root level.
+    content.forEach((item) => {
+      if (item.type === "resource" && item.resource._meta) {
+        item.resource = {
+          ...item.resource,
+          ...item.resource._meta,
+        };
+        delete item.resource._meta;
+      }
+    });
+  }
+
+  return {
+    isError: (toolCallResult.isError as boolean) ?? false,
+    content,
+  };
+}
+
+/**
+ * Simplified MCP tool caller for REST/sandbox context. No progress
+ * notifications, no heartbeats, no Temporal retry logic. Never throws — all
+ * error paths return a CallToolResult with isError: true.
+ */
+export async function callMCPToolForSandbox(
+  auth: Authenticator,
+  inputs: Record<string, unknown> | undefined,
+  agentLoopRunContext: AgentLoopRunContextType
+): Promise<CallToolResult> {
+  const { toolConfiguration } = agentLoopRunContext;
+
+  if (!isMCPToolConfiguration(toolConfiguration)) {
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: "Could not call tool, invalid action configuration: not an MCP action configuration",
+        },
+      ],
+    };
+  }
+
+  if (!isServerSideMCPToolConfiguration(toolConfiguration)) {
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: "Sandbox tool calls only support server-side MCP tools.",
+        },
+      ],
+    };
+  }
+
+  const mcpServerView = await MCPServerViewResource.fetchById(
+    auth,
+    toolConfiguration.mcpServerViewId
+  );
+  if (!mcpServerView) {
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: "Could not call tool: configuration not found",
+        },
+      ],
+    };
+  }
+
+  const connectionParams = makeServerSideMCPConnectionParams(mcpServerView);
+
+  const connectionResult = await connectToMCPServer(auth, {
+    params: connectionParams,
+    agentLoopContext: { runContext: agentLoopRunContext },
+  });
+
+  if (connectionResult.isErr()) {
+    if (
+      connectionResult.error instanceof
+      MCPServerPersonalAuthenticationRequiredError
+    ) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: "Tool requires personal authentication that cannot be completed from sandbox.",
+          },
+        ],
+      };
+    }
+
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: `The tool execution failed with the following error: ${connectionResult.error.message}`,
+        },
+      ],
+    };
+  }
+
+  const mcpClient = connectionResult.value;
+  try {
+    const toolCallResult = await tracer.trace(
+      "mcp.tool.call",
+      { resource: toolConfiguration.originalName },
+      async () =>
+        mcpClient.callTool(
+          {
+            name: toolConfiguration.originalName,
+            arguments: inputs,
+          },
+          CallToolResultSchema,
+          {
+            timeout:
+              toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+          }
+        )
+    );
+
+    return postProcessMCPToolResult(toolCallResult, toolConfiguration);
+  } catch (error) {
+    logger.error(
+      {
+        error,
+        toolName: toolConfiguration.originalName,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      },
+      "Exception calling MCP tool in callMCPToolForSandbox()"
+    );
+
+    if (isMcpTimeoutError(error)) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: "The tool execution timed out.",
+          },
+        ],
+      };
+    }
+
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: `The tool execution failed with the following error: ${normalizeError(error).message}`,
+        },
+      ],
+    };
+  } finally {
+    await mcpClient.close();
   }
 }
 

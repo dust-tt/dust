@@ -1,11 +1,8 @@
 import { FALLBACK_MCP_TOOL_STAKE_LEVEL } from "@app/lib/actions/constants";
-import type {
-  LightServerSideMCPToolConfigurationType,
-  ToolNotificationEvent,
-} from "@app/lib/actions/mcp";
+import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import {
+  callMCPToolForSandbox,
   makeServerSideMCPToolConfigurations,
-  tryCallMCPTool,
 } from "@app/lib/actions/mcp_actions";
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
@@ -36,7 +33,6 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
@@ -44,11 +40,9 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { ModelId } from "@app/types/shared/model_id";
 import { isString } from "@app/types/shared/utils/general";
 import type { CallMCPToolResponseType } from "@dust-tt/client";
 import { CallMCPToolRequestBodySchema } from "@dust-tt/client";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 type CallToolPendingResponseType = {
@@ -285,17 +279,6 @@ async function createBlockedSandboxAction(
   return action.sId;
 }
 
-async function consumeToolGenerator(
-  gen: AsyncGenerator<ToolNotificationEvent, CallToolResult>
-): Promise<CallToolResult> {
-  // Drain all yielded notification events (no streaming in a REST endpoint).
-  let result = await gen.next();
-  while (!result.done) {
-    result = await gen.next();
-  }
-  return result.value;
-}
-
 /**
  * @ignoreswagger
  * internal endpoint
@@ -456,16 +439,7 @@ async function handler(
         });
       }
 
-      // No progress notifications or temporal heartbeats in REST context.
-      const noopProgressToken: ModelId = 0;
-      const result = await consumeToolGenerator(
-        tryCallMCPTool(auth, toolArgs, runContext, {
-          progressToken: noopProgressToken,
-          makeToolNotificationEvent: () =>
-            Promise.reject(new Error("unreachable")),
-          heartbeat: () => {},
-        })
-      );
+      const result = await callMCPToolForSandbox(auth, toolArgs, runContext);
 
       return res.status(200).json({
         success: true,
