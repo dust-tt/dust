@@ -39,19 +39,19 @@ NODE_ENV=development DB_LOGGING_ENABLED=true ./admin/init_db.sh --unsafe > main_
 echo "Second run: Capturing stable production state..."
 NODE_ENV=development DB_LOGGING_ENABLED=true ./admin/init_db.sh --unsafe > main_output.txt
 
-# Determine if there were any stashed changes.
+# Checkout original branch and run command.
+echo "Checking out $original_branch branch..."
+git checkout $original_branch --quiet
+echo "Running command on $original_branch branch..."
+NODE_ENV=development DB_LOGGING_ENABLED=true ./admin/init_db.sh --unsafe > current_output.txt
+
+# Determine if there were any stashed changes and apply them.
 stash_list=$(git stash list)
 if [[ $stash_list == *"$stash_commit_message"* ]]; then
   # Pop the stash if it exists.
   echo "Restoring original changes..."
   git stash pop --quiet
 fi
-
-# Checkout original branch and run command.
-echo "Checking out $original_branch branch..."
-git checkout $original_branch --quiet
-echo "Running command on $original_branch branch..."
-NODE_ENV=development DB_LOGGING_ENABLED=true ./admin/init_db.sh --unsafe > current_output.txt
 
 # Run diff.
 echo "Running diff..."
