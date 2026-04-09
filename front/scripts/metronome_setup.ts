@@ -116,8 +116,10 @@ interface PackageSubscription {
   product_name: string; // resolved to product ID at runtime
   billing_frequency: "MONTHLY" | "QUARTERLY" | "ANNUAL" | "WEEKLY";
   collection_schedule: "ADVANCE" | "ARREARS";
-  quantity_management_mode: "SEAT_BASED" | "MANUAL";
+  quantity_management_mode: "SEAT_BASED" | "QUANTITY_ONLY";
   seat_config?: { seat_group_key: string };
+  /** Required for QUANTITY_ONLY mode — initial seat count (set at contract creation). */
+  initial_quantity?: number;
   proration?: {
     is_prorated: boolean;
     invoice_behavior?: "BILL_IMMEDIATELY" | "BILL_ON_NEXT_COLLECTION_DATE";
@@ -494,8 +496,8 @@ const LEGACY_SEAT_SUBSCRIPTION: PackageSubscription = {
   product_name: "Workspace Seat",
   billing_frequency: "MONTHLY",
   collection_schedule: "ADVANCE",
-  quantity_management_mode: "SEAT_BASED",
-  seat_config: { seat_group_key: "user_id" },
+  quantity_management_mode: "QUANTITY_ONLY",
+  initial_quantity: 1,
   proration: {
     is_prorated: true,
     invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE",
@@ -1208,6 +1210,9 @@ async function syncPackages(): Promise<void> {
             collection_schedule: sub.collection_schedule,
             quantity_management_mode: sub.quantity_management_mode,
             ...(sub.seat_config ? { seat_config: sub.seat_config } : {}),
+            ...(sub.initial_quantity !== undefined
+              ? { initial_quantity: sub.initial_quantity }
+              : {}),
             ...(sub.proration ? { proration: sub.proration } : {}),
           };
         });
