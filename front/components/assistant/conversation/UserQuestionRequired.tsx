@@ -11,6 +11,7 @@ import {
   Counter,
   cn,
   Input,
+  Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -44,6 +45,7 @@ export function UserQuestionRequired({
   const { question } = blockedAction;
   const isTriggeredByCurrentUser = blockedAction.userId === user?.sId;
   const trimmedCustomResponse = customResponse.trim();
+  const isAnswerSubmitting = isSubmitting && !isSkipPending;
   const isCustomResponseSelected =
     trimmedCustomResponse.length > 0 && selectedOptions.length === 0;
 
@@ -127,111 +129,117 @@ export function UserQuestionRequired({
       <div className="text-base font-medium leading-tight text-foreground dark:text-foreground-night">
         {question.question}
       </div>
-      <div className="flex flex-col gap-2">
-        {question.options.map((option, index) => {
-          const isSelected = selectedOptions.includes(index);
+      {isAnswerSubmitting ? (
+        <div className="flex min-h-64 items-center justify-center">
+          <Spinner size="lg" />
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {question.options.map((option, index) => {
+            const isSelected = selectedOptions.includes(index);
 
-          return (
-            <Card
-              key={index}
-              variant="tertiary"
-              className={cn(
-                "flex w-full cursor-pointer items-center gap-2 rounded-2xl p-3 text-left transition-colors",
-                isSelected
-                  ? question.multiSelect
-                    ? [
-                        "border-border bg-muted-background",
-                        "dark:border-border-night dark:bg-muted-background-night",
+            return (
+              <Card
+                key={index}
+                variant="tertiary"
+                className={cn(
+                  "flex w-full cursor-pointer items-center gap-2 rounded-2xl p-3 text-left transition-colors",
+                  isSelected
+                    ? question.multiSelect
+                      ? [
+                          "border-border bg-muted-background",
+                          "dark:border-border-night dark:bg-muted-background-night",
+                        ]
+                      : "bg-muted-background dark:bg-muted-background-night"
+                    : [
+                        "bg-background hover:bg-muted-background/60",
+                        "dark:bg-background-night",
+                        "dark:hover:bg-muted-background-night/60",
                       ]
-                    : "bg-muted-background dark:bg-muted-background-night"
-                  : [
-                      "bg-background hover:bg-muted-background/60",
-                      "dark:bg-background-night",
-                      "dark:hover:bg-muted-background-night/60",
-                    ]
+                )}
+                onClick={() => handleOptionClick(index)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleOptionClick(index);
+                  }
+                }}
+                role="button"
+                tabIndex={isSubmitting ? -1 : 0}
+                aria-pressed={isSelected}
+              >
+                <Counter
+                  value={index + 1}
+                  size="sm"
+                  variant="ghost"
+                  className={cn(
+                    "shrink-0 bg-border-dark text-muted-foreground",
+                    "dark:bg-border-dark-night dark:text-muted-foreground-night"
+                  )}
+                />
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+                    {option.label}
+                  </span>
+                  {option.description && (
+                    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                      {option.description}
+                    </span>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
+          <Card
+            variant="tertiary"
+            className={cn(
+              "flex w-full items-center gap-2 rounded-2xl p-3 transition-colors",
+              isCustomResponseSelected &&
+                "border-border dark:border-border-night",
+              isCustomResponseSelected
+                ? "bg-muted-background dark:bg-muted-background-night"
+                : [
+                    "bg-background hover:bg-muted-background/60",
+                    "dark:bg-background-night",
+                    "dark:hover:bg-muted-background-night/60",
+                  ]
+            )}
+          >
+            <Counter
+              value={question.options.length + 1}
+              size="sm"
+              variant="ghost"
+              className={cn(
+                "shrink-0 bg-border-dark text-muted-foreground",
+                "dark:bg-border-dark-night dark:text-muted-foreground-night"
               )}
-              onClick={() => handleOptionClick(index)}
+            />
+            <Input
+              id={`custom-response-${blockedAction.actionId}`}
+              containerClassName="flex-1"
+              className={cn(
+                "h-auto w-full rounded-none border-transparent bg-transparent",
+                "px-0 py-0 text-sm shadow-none",
+                "focus-visible:border-transparent focus-visible:ring-0"
+              )}
+              placeholder="Type something else"
+              value={customResponse}
+              onFocus={() => {
+                setSelectedOptions([]);
+              }}
+              onChange={(e) => setCustomResponse(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
+                if (e.key === "Enter") {
                   e.preventDefault();
-                  handleOptionClick(index);
+                  handleSubmit();
                 }
               }}
-              role="button"
-              tabIndex={isSubmitting ? -1 : 0}
-              aria-pressed={isSelected}
-            >
-              <Counter
-                value={index + 1}
-                size="sm"
-                variant="ghost"
-                className={cn(
-                  "shrink-0 bg-border-dark text-muted-foreground",
-                  "dark:bg-border-dark-night dark:text-muted-foreground-night"
-                )}
-              />
-              <div className="flex flex-col">
-                <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-                  {option.label}
-                </span>
-                {option.description && (
-                  <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                    {option.description}
-                  </span>
-                )}
-              </div>
-            </Card>
-          );
-        })}
-        <Card
-          variant="tertiary"
-          className={cn(
-            "flex w-full items-center gap-2 rounded-2xl p-3 transition-colors",
-            isCustomResponseSelected &&
-              "border-border dark:border-border-night",
-            isCustomResponseSelected
-              ? "bg-muted-background dark:bg-muted-background-night"
-              : [
-                  "bg-background hover:bg-muted-background/60",
-                  "dark:bg-background-night",
-                  "dark:hover:bg-muted-background-night/60",
-                ]
-          )}
-        >
-          <Counter
-            value={question.options.length + 1}
-            size="sm"
-            variant="ghost"
-            className={cn(
-              "shrink-0 bg-border-dark text-muted-foreground",
-              "dark:bg-border-dark-night dark:text-muted-foreground-night"
-            )}
-          />
-          <Input
-            id={`custom-response-${blockedAction.actionId}`}
-            containerClassName="flex-1"
-            className={cn(
-              "h-auto w-full rounded-none border-transparent bg-transparent",
-              "px-0 py-0 text-sm shadow-none",
-              "focus-visible:border-transparent focus-visible:ring-0"
-            )}
-            placeholder="Type something else"
-            value={customResponse}
-            onFocus={() => {
-              setSelectedOptions([]);
-            }}
-            onChange={(e) => setCustomResponse(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleSubmit();
-              }
-            }}
-            name="custom-response"
-            disabled={isSubmitting}
-          />
-        </Card>
-      </div>
+              name="custom-response"
+              disabled={isSubmitting}
+            />
+          </Card>
+        </div>
+      )}
       {errorMessage && (
         <div className="text-sm font-medium text-warning-800 dark:text-warning-800-night">
           {errorMessage}
