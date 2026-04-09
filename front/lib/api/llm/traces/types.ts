@@ -14,6 +14,7 @@ interface LLMTraceContextBase {
   operationType:
     | "agent_builder_description_suggestion"
     | "project_todo_analyze_conversation"
+    | "project_todo_deduplicate"
     | "agent_builder_emoji_suggestion"
     | "agent_builder_name_suggestion"
     | "agent_builder_tags_suggestion"

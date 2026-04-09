@@ -18,3 +18,4 @@ ALTER TABLE "project_todo_sources"
 -- Step 3: Create index matching TakeawaySourcesModel pattern.
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "project_todo_sources_sourceType_sourceId_idx"
   ON "project_todo_sources" ("sourceType", "sourceId");
+front/lib/project_todo/merge_into_project.ts
