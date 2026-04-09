@@ -1,6 +1,8 @@
 import type { Authenticator } from "@app/lib/auth";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import {
+  ceilToMidnightUTC,
+  floorToMidnightUTC,
   listMetronomeBalances,
   listMetronomeUsage,
   listMetronomeUsageWithGroups,
@@ -70,20 +72,6 @@ const GROUP_BY_TO_METRICS: Record<MetronomeUsageGroupByType, "llm" | "both"> = {
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
-
-// Metronome usage APIs require dates at UTC midnight boundaries.
-function floorToMidnightUTC(d: Date): Date {
-  return new Date(
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
-  );
-}
-
-function ceilToMidnightUTC(d: Date): Date {
-  const floored = floorToMidnightUTC(d);
-  return floored.getTime() < d.getTime()
-    ? new Date(floored.getTime() + DAY_MS)
-    : floored;
-}
 
 function getTimestampsForWindow(
   start: Date,

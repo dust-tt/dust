@@ -25,20 +25,29 @@ export function getMetronomeClient(): Metronome {
   return cachedClient;
 }
 
-// ---------------------------------------------------------------------------
-// Metronome requires dates on hour boundaries.
-// ---------------------------------------------------------------------------
-const HOUR_IN_MS = 3_600_000;
-function floorToHourISO(date: Date): string {
-  return new Date(
-    Math.floor(date.getTime() / HOUR_IN_MS) * HOUR_IN_MS
-  ).toISOString();
+// Metronome requires dates on specific boundaries (hour for contracts, midnight for usage).
+const HOUR_MS = 3_600_000;
+const DAY_MS = 24 * HOUR_MS;
+
+export function floorToHourISO(date: Date): string {
+  return new Date(Math.floor(date.getTime() / HOUR_MS) * HOUR_MS).toISOString();
 }
 
-function ceilToHourISO(date: Date): string {
+export function ceilToHourISO(date: Date): string {
+  return new Date(Math.ceil(date.getTime() / HOUR_MS) * HOUR_MS).toISOString();
+}
+
+export function floorToMidnightUTC(d: Date): Date {
   return new Date(
-    Math.ceil(date.getTime() / HOUR_IN_MS) * HOUR_IN_MS
-  ).toISOString();
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+  );
+}
+
+export function ceilToMidnightUTC(d: Date): Date {
+  const floored = floorToMidnightUTC(d);
+  return floored.getTime() < d.getTime()
+    ? new Date(floored.getTime() + DAY_MS)
+    : floored;
 }
 
 // ---------------------------------------------------------------------------
