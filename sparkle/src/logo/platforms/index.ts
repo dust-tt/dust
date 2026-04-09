@@ -17,6 +17,7 @@ export { default as DocLogo } from "./Doc";
 export { default as DriveLogo } from "./Drive";
 export { default as FathomLogo } from "./Fathom";
 export { default as FigmaLogo } from "./Figma";
+export { default as FirefoxLogo } from "./Firefox";
 export { default as FireworksLogo } from "./Fireworks";
 export { default as FrameLogo } from "./Frame";
 export { default as FreshdeskLogo } from "./Freshdesk";
