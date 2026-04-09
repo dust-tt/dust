@@ -138,9 +138,9 @@ async function getSubscriptionInfo(
       subscription.stripeSubscriptionId
     );
     if (stripeSubscription) {
-      const startTimestamp =
-        stripeSubscription.start_date ??
-        stripeSubscription.current_period_start;
+      // Use current billing period start — not the original subscription start date.
+      // This ensures the Metronome contract aligns with the current billing cycle.
+      const startTimestamp = stripeSubscription.current_period_start;
       // Round to hour boundary (Metronome requirement).
       const rounded = Math.floor(startTimestamp / 3600) * 3600;
       startDate = new Date(rounded * 1000).toISOString();
