@@ -493,8 +493,10 @@ const config = {
   getDatadogApiKey: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DD_API_KEY");
   },
-  getSandboxDevFrontUrl: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable("SBX_DEV_FRONT_URL");
+  getSandboxDevFrontHostName: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "SBX_DEV_FRONT_URL"
+    )?.replace(/^https?:\/\//, "");
   },
   getSandboxGcpArtifactServiceAccountPath: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(

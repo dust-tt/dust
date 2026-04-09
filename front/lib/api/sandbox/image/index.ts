@@ -60,13 +60,10 @@ export function getSandboxImage(
     return imageResult;
   }
 
-  const devFrontUrl = config.getSandboxDevFrontUrl();
-  if (!devFrontUrl) {
+  const devHost = config.getSandboxDevFrontHostName();
+  if (!devHost) {
     return imageResult;
   }
-
-  // E2B allowOut expects hostnames, strip the scheme if present.
-  const devHost = devFrontUrl.replace(/^https?:\/\//, "");
 
   const image = imageResult.value;
   return new Ok(
