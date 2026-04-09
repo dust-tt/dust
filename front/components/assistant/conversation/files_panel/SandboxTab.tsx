@@ -198,7 +198,7 @@ export function SandboxTab({
       )}
       <ScrollArea className="flex-1 p-4">
         <div className="flex flex-col gap-8">
-          {CATEGORY_CONFIG.map(({ value, label }) => {
+          {CATEGORY_CONFIG.map(({ value, plural }) => {
             const categoryFiles = groupedByCategory.get(value);
             if (!categoryFiles || categoryFiles.length === 0) {
               return null;
@@ -206,7 +206,7 @@ export function SandboxTab({
             return (
               <div key={value}>
                 <div className="heading-sm pb-2 text-foreground dark:text-foreground-night">
-                  {label}
+                  {plural}
                 </div>
                 <CardGrid>
                   {categoryFiles.map((entry) => {

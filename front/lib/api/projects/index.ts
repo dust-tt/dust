@@ -3,6 +3,7 @@ export { createDataSourceAndConnectorForProject } from "./connector";
 export {
   addContentNodeToProject,
   addFileToProject,
+  fetchLatestProjectContextFileContentFragment,
   listProjectContentFragments,
   listProjectContextAttachments,
   listProjectContextFiles,

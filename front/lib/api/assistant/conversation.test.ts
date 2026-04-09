@@ -10,6 +10,8 @@ import {
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { publishAgentMessagesEvents } from "@app/lib/api/assistant/streaming/events";
+import * as attachmentsModule from "@app/lib/api/files/attachments";
+import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects";
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
@@ -26,9 +28,13 @@ import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+import type {
+  ContentFragmentInputWithContentNode,
+  ContentFragmentInputWithFileIdType,
+} from "@app/types/api/internal/assistant";
 import { isContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -3078,6 +3084,176 @@ describe("postNewContentFragment", () => {
       }
       // Verify getContentFragmentBlob was not called since the data source view check failed first
       expect(getContentFragmentBlob).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("project-context file reuse in project conversations", () => {
+    it("reuses existing project content fragment and skips attachment upsert and blob fetch", async () => {
+      const user = auth.getNonNullableUser();
+      const projectFile = await ProjectFileFactory.create(
+        auth,
+        user,
+        projectSpace,
+        {
+          contentType: "text/plain",
+          fileName: "project-doc.txt",
+          fileSize: 12,
+          status: "ready",
+        }
+      );
+
+      const latestContext = await fetchLatestProjectContextFileContentFragment(
+        auth,
+        projectSpace,
+        projectFile.sId
+      );
+      expect(latestContext).not.toBeNull();
+
+      const conversationWithoutContent = await ConversationFactory.create(
+        auth,
+        {
+          agentConfigurationId: agentConfig.sId,
+          messagesCreatedAt: [],
+          spaceId: projectSpace.id,
+        }
+      );
+
+      const fetchedConversationResult = await getConversation(
+        auth,
+        conversationWithoutContent.sId
+      );
+      if (fetchedConversationResult.isErr()) {
+        throw new Error("Failed to fetch conversation");
+      }
+      conversation = fetchedConversationResult.value;
+
+      const maybeUpsertSpy = vi.spyOn(
+        attachmentsModule,
+        "maybeUpsertFileAttachment"
+      );
+
+      const input: ContentFragmentInputWithFileIdType = {
+        title: projectFile.fileName,
+        fileId: projectFile.sId,
+      };
+
+      const result = await postNewContentFragment(auth, conversation, input, {
+        username: user.username,
+        fullName: user.fullName(),
+        email: user.email,
+        profilePictureUrl: null,
+      });
+
+      maybeUpsertSpy.mockRestore();
+
+      expect(result.isOk()).toBe(true);
+      expect(maybeUpsertSpy).not.toHaveBeenCalled();
+      expect(getContentFragmentBlob).not.toHaveBeenCalled();
+
+      if (result.isOk()) {
+        expect(result.value.contentFragmentId).toBe(
+          latestContext!.fragment.sId
+        );
+        expect(result.value.contentFragmentType).toBe("file");
+        if (result.value.contentFragmentType === "file") {
+          expect(result.value.fileId).toBe(projectFile.sId);
+          expect(result.value.isInProjectContext).toBe(true);
+        }
+      }
+    });
+
+    it("does not create a second message row when the project fragment is already in the conversation", async () => {
+      const user = auth.getNonNullableUser();
+      const projectFile = await ProjectFileFactory.create(
+        auth,
+        user,
+        projectSpace,
+        {
+          contentType: "text/plain",
+          fileName: "project-doc-duplicate.txt",
+          fileSize: 12,
+          status: "ready",
+        }
+      );
+
+      const latestContext = await fetchLatestProjectContextFileContentFragment(
+        auth,
+        projectSpace,
+        projectFile.sId
+      );
+      expect(latestContext).not.toBeNull();
+      const fragmentModelId = latestContext!.fragment.id;
+
+      const conversationWithoutContent = await ConversationFactory.create(
+        auth,
+        {
+          agentConfigurationId: agentConfig.sId,
+          messagesCreatedAt: [],
+          spaceId: projectSpace.id,
+        }
+      );
+
+      let fetchedConversationResult = await getConversation(
+        auth,
+        conversationWithoutContent.sId
+      );
+      if (fetchedConversationResult.isErr()) {
+        throw new Error("Failed to fetch conversation");
+      }
+      conversation = fetchedConversationResult.value;
+
+      const context = {
+        username: user.username,
+        fullName: user.fullName(),
+        email: user.email,
+        profilePictureUrl: null,
+      };
+
+      const input: ContentFragmentInputWithFileIdType = {
+        title: projectFile.fileName,
+        fileId: projectFile.sId,
+      };
+
+      const first = await postNewContentFragment(
+        auth,
+        conversation,
+        input,
+        context
+      );
+      expect(first.isOk()).toBe(true);
+
+      const messageCountAfterFirst = await MessageModel.count({
+        where: {
+          conversationId: conversation.id,
+          contentFragmentId: fragmentModelId,
+        },
+      });
+      expect(messageCountAfterFirst).toBe(1);
+
+      fetchedConversationResult = await getConversation(
+        auth,
+        conversationWithoutContent.sId
+      );
+      if (fetchedConversationResult.isErr()) {
+        throw new Error("Failed to fetch conversation");
+      }
+      const conversationAfterFirst = fetchedConversationResult.value;
+
+      const second = await postNewContentFragment(
+        auth,
+        conversationAfterFirst,
+        input,
+        context
+      );
+      expect(second.isOk()).toBe(true);
+
+      const messageCountAfterSecond = await MessageModel.count({
+        where: {
+          conversationId: conversation.id,
+          contentFragmentId: fragmentModelId,
+        },
+      });
+      expect(messageCountAfterSecond).toBe(1);
     });
   });
 });

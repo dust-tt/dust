@@ -88,14 +88,14 @@ export function FilesTab({ isLoading, owner, rows }: FilesTabProps) {
       )}
       <ScrollArea className="flex-1 p-4">
         <div className="flex flex-col gap-8">
-          {CATEGORY_CONFIG.map(({ value, label }) => {
+          {CATEGORY_CONFIG.map(({ value, plural }) => {
             const categoryRows = groupedByCategory.get(value);
             if (!categoryRows || categoryRows.length === 0) {
               return null;
             }
             return (
               <div key={value}>
-                <SectionLabel>{label}</SectionLabel>
+                <SectionLabel>{plural}</SectionLabel>
                 <FileCards rows={categoryRows} owner={owner} />
               </div>
             );

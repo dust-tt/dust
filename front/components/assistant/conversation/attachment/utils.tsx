@@ -20,6 +20,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
+import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import {
   isContentNodeContentFragment,
@@ -72,6 +73,7 @@ export const IconForAttachmentCitation = ({
   contentType,
   sourceUrl,
   iconName,
+  fileName,
   size = "md",
 }: {
   provider?: string;
@@ -79,6 +81,8 @@ export const IconForAttachmentCitation = ({
   contentType?: string;
   sourceUrl?: string;
   iconName?: string;
+  /** Improves icons for some MIME types (e.g. extension → frame). */
+  fileName?: string;
   size?: "md" | "sm" | "lg";
 }): ReactNode => {
   const { isDark } = useTheme();
@@ -139,6 +143,11 @@ export const IconForAttachmentCitation = ({
     );
   }
 
+  if (contentType) {
+    const FileIcon = getFileTypeIcon(contentType, fileName);
+    return <Icon visual={FileIcon} size={size} />;
+  }
+
   return <Icon visual={DocumentIcon} size={size} />;
 };
 
@@ -152,7 +161,10 @@ export function contentFragmentToAttachmentCitation(
       id: contentFragment.sId,
       title: `${contentFragment.title} (no longer available)`,
       visual: (
-        <IconForAttachmentCitation contentType={contentFragment.contentType} />
+        <IconForAttachmentCitation
+          contentType={contentFragment.contentType}
+          fileName={contentFragment.title}
+        />
       ),
       fileId:
         contentFragment.contentFragmentType === "file"
@@ -178,6 +190,7 @@ export function contentFragmentToAttachmentCitation(
           provider={provider ?? undefined}
           nodeType={nodeType}
           contentType={contentFragment.contentType}
+          fileName={contentFragment.title}
           sourceUrl={contentFragment.sourceUrl ?? undefined}
         />
       ),
@@ -204,6 +217,7 @@ export function contentFragmentToAttachmentCitation(
       visual: (
         <IconForAttachmentCitation
           contentType={contentFragment.contentType}
+          fileName={contentFragment.title}
           iconName={contentFragment.sourceIcon ?? undefined}
         />
       ),
@@ -231,6 +245,7 @@ export function attachmentToAttachmentCitation(
       visual: (
         <IconForAttachmentCitation
           contentType={attachment.contentType}
+          fileName={attachment.title}
           iconName={attachment.iconName}
         />
       ),
@@ -293,7 +308,12 @@ export function toolGeneratedFileToAttachmentCitation(
     description: file.text,
     title: file.title,
     type: "file",
-    visual: <IconForAttachmentCitation contentType={file.contentType} />,
+    visual: (
+      <IconForAttachmentCitation
+        contentType={file.contentType}
+        fileName={file.title}
+      />
+    ),
     isUploading: false,
   };
 }
