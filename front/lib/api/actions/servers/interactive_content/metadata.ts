@@ -80,8 +80,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     enableAlerting: true,
     stake: "never_ask",
     displayLabels: {
-      running: "Creating new Frame",
-      done: "Create new Frame",
+      running: "Creating new Interactive Content file",
+      done: "Create new Interactive Content file",
     },
   },
   [EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
@@ -138,8 +138,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     enableAlerting: true,
     stake: "never_ask",
     displayLabels: {
-      running: "Updating Frame",
-      done: "Update Frame",
+      running: "Updating Interactive Content file",
+      done: "Update Interactive Content file",
     },
   },
   [REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
@@ -156,8 +156,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     enableAlerting: true,
     stake: "never_ask",
     displayLabels: {
-      running: "Reverting changes on Frame",
-      done: "Revert changes on Frame",
+      running: "Reverting Interactive Content file",
+      done: "Revert Interactive Content file",
     },
   },
   [RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
@@ -178,8 +178,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     enableAlerting: true,
     stake: "never_ask",
     displayLabels: {
-      running: "Renaming Frame",
-      done: "Rename Frame",
+      running: "Renaming Interactive Content file",
+      done: "Rename Interactive Content file",
     },
   },
   [RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
@@ -198,8 +198,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     enableAlerting: true,
     stake: "never_ask",
     displayLabels: {
-      running: "Reading Frame content",
-      done: "Read Frame content",
+      running: "Reading Interactive Content file",
+      done: "Read Interactive Content file",
     },
   },
   [GET_INTERACTIVE_CONTENT_FILE_SHARE_URL_TOOL_NAME]: {
