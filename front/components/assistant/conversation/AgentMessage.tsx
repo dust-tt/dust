@@ -168,7 +168,6 @@ interface AgentMessageProps {
   conversationId: string;
   hideHeader: boolean;
   isLastMessage: boolean;
-  isSteered: boolean;
   agentMessage: AgentMessageWithStreaming;
   messageFeedback: FeedbackSelectorBaseProps;
   owner: WorkspaceType;
@@ -189,7 +188,6 @@ export function AgentMessage({
   conversationId,
   hideHeader,
   isLastMessage,
-  isSteered,
   agentMessage,
   messageFeedback,
   owner,

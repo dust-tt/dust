@@ -19,6 +19,7 @@ import { UserMessage } from "@app/components/assistant/conversation/UserMessage"
 import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
 import { useReaction } from "@app/hooks/useReaction";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { isSupportedImageContentType } from "@app/types/files";
 import type { UserType } from "@app/types/user";
 import { cn } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
@@ -289,7 +290,6 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               conversationId={context.conversation.sId}
               hideHeader={isSteeredAgentMessage}
               isLastMessage={!nextData}
-              isSteered={isSteeredAgentMessage}
               agentMessage={data}
               messageFeedback={messageFeedbackWithSubmit}
               owner={context.owner}
