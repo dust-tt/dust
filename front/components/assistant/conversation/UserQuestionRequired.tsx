@@ -44,6 +44,8 @@ export function UserQuestionRequired({
   const { question } = blockedAction;
   const isTriggeredByCurrentUser = blockedAction.userId === user?.sId;
   const trimmedCustomResponse = customResponse.trim();
+  const isCustomResponseSelected =
+    trimmedCustomResponse.length > 0 && selectedOptions.length === 0;
 
   async function submitAnswer(answer: UserQuestionAnswer) {
     const result = await answerQuestion({
@@ -73,22 +75,15 @@ export function UserQuestionRequired({
   }
 
   function handleSubmit() {
-    if (trimmedCustomResponse.length === 0 && selectedOptions.length === 0) {
+    if (!isCustomResponseSelected && selectedOptions.length === 0) {
       return;
     }
 
-    if (!question.multiSelect && selectedOptions.length > 0) {
-      void submitAnswer({ selectedOptions });
-      return;
-    }
-
-    void submitAnswer({
-      selectedOptions,
-      // The selected options take precedence.
-      ...(selectedOptions.length === 0
-        ? { customResponse: trimmedCustomResponse }
-        : {}),
-    });
+    void submitAnswer(
+      selectedOptions.length > 0
+        ? { selectedOptions }
+        : { selectedOptions, customResponse: trimmedCustomResponse }
+    );
   }
 
   function handleSkip() {
@@ -185,10 +180,9 @@ export function UserQuestionRequired({
           variant="tertiary"
           className={cn(
             "flex w-full items-center gap-2 rounded-2xl p-3 transition-colors",
-            trimmedCustomResponse.length > 0 &&
-              selectedOptions.length === 0 &&
+            isCustomResponseSelected &&
               "border-border dark:border-border-night",
-            trimmedCustomResponse.length > 0 && selectedOptions.length === 0
+            isCustomResponseSelected
               ? "bg-muted-background dark:bg-muted-background-night"
               : [
                   "bg-background hover:bg-muted-background/60",
