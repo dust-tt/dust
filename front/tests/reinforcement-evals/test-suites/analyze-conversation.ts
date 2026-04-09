@@ -7,8 +7,6 @@ import {
   type WorkspaceContext,
 } from "@app/tests/reinforcement-evals/lib/types";
 
-const SKILL_SID = "skill_customer_support";
-
 const WORKSPACE_CONTEXT: WorkspaceContext = {
   tools: [
     mockTool("Slack", "Read and send Slack messages"),
