@@ -27,6 +27,7 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -389,7 +390,7 @@ export async function emitMetronomeUsageEventsActivity(
 export async function emitMetronomeGaugeEventsForAllWorkspacesActivity(): Promise<void> {
   // Only workspaces with a metronomeCustomerId.
   const allWorkspaces = await WorkspaceResource.listAll();
-  const workspaces = allWorkspaces.filter(
+  const metronomeWorkspaces = allWorkspaces.filter(
     (w) => w.metronomeCustomerId !== null
   );
 
@@ -400,10 +401,61 @@ export async function emitMetronomeGaugeEventsForAllWorkspacesActivity(): Promis
     ? now.toISOString().slice(0, 13) // YYYY-MM-DDTHH
     : now.toISOString().slice(0, 10); // YYYY-MM-DD
   const timestamp = now.toISOString();
+  const todayUTC = now.toISOString().slice(0, 10);
+
+  // In production, only emit gauge events for workspaces whose billing cycle
+  // ends today. In dev, emit for all workspaces (hourly schedule).
+  let workspaces: WorkspaceResource[];
+  if (isDevelopment()) {
+    workspaces = metronomeWorkspaces;
+  } else {
+    // Batch-fetch active subscriptions for all Metronome-enabled workspaces.
+    const subscriptionsByWorkspaceId =
+      await SubscriptionResource.fetchActiveByWorkspacesModelId(
+        metronomeWorkspaces.map((w) => w.id)
+      );
+
+    // Filter to workspaces whose billing cycle ends today.
+    workspaces = [];
+    await concurrentExecutor(
+      metronomeWorkspaces,
+      async (workspace) => {
+        const subscription = subscriptionsByWorkspaceId[workspace.id];
+        if (!subscription?.stripeSubscriptionId) {
+          return;
+        }
+        const stripeSubscription = await getStripeSubscription(
+          subscription.stripeSubscriptionId
+        );
+        if (!stripeSubscription) {
+          return;
+        }
+        // Check if today matches the billing cycle boundary.
+        // Before Stripe processes renewal: current_period_end == today.
+        // After Stripe processes renewal: current_period_start == today.
+        const periodStart = new Date(
+          stripeSubscription.current_period_start * 1000
+        )
+          .toISOString()
+          .slice(0, 10);
+        const periodEnd = new Date(stripeSubscription.current_period_end * 1000)
+          .toISOString()
+          .slice(0, 10);
+        if (periodStart === todayUTC || periodEnd === todayUTC) {
+          workspaces.push(workspace);
+        }
+      },
+      { concurrency: 10 }
+    );
+  }
 
   logger.info(
-    { workspaceCount: workspaces.length, dateKey },
-    "[Metronome] Emitting gauge events for Metronome-enabled workspaces"
+    {
+      totalMetronomeWorkspaces: metronomeWorkspaces.length,
+      workspaceCount: workspaces.length,
+      dateKey,
+    },
+    "[Metronome] Emitting gauge events for workspaces with billing cycle ending today"
   );
 
   // Process workspaces in chunks: build events concurrently, then ingest
