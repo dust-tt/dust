@@ -141,7 +141,7 @@ export function useConversationDrafts({
   // Save draft for current conversation (debounced).
   const saveDraft = useCallback(
     (text: string, agentMention?: RichAgentMention | null) => {
-      if (!shouldUseDraft || !userId || !text.trim()) {
+      if (!shouldUseDraft || !userId) {
         return;
       }
 

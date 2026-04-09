@@ -49,6 +49,11 @@ const useHandleMentions = ({
   // Also resets when the conversation changes so stale state doesn't leak.
   const prevConversationIdRef = useRef(conversation?.sId ?? null);
 
+  // Tracks when an agent has been explicitly set via the URL ?agent= param.
+  // When set, the priority resolution effect must not override it with
+  // stickyMentions or the @Dust fallback.
+  const externalAgentSetRef = useRef(false);
+
   useEffect(() => {
     if (!singleAgentInput) {
       return;
@@ -57,7 +62,13 @@ const useHandleMentions = ({
     const currentId = conversation?.sId ?? null;
     if (currentId !== prevConversationIdRef.current) {
       prevConversationIdRef.current = currentId;
+      externalAgentSetRef.current = false;
       setSelectedSingleAgent(null);
+    }
+
+    // An external source (URL param) already set the agent — do not override.
+    if (externalAgentSetRef.current) {
+      return;
     }
 
     // Agent builder: wait for the draft agent to arrive via stickyMentions.
@@ -131,6 +142,14 @@ const useHandleMentions = ({
       if (singleAgentInput) {
         // @TODO we should handle this in each event handler and not inside the useEffect
         setSelectedSingleAgent(selectedAgent);
+        externalAgentSetRef.current = true;
+        // If the restored draft contains @user mentions, clear the editor
+        // to prevent the user-mention handler from calling
+        // setSelectedSingleAgent(null) and overriding the URL agent.
+        const { mentions } = editorService.getMarkdownAndMentions();
+        if (mentions.some((m) => m.type === "user")) {
+          queueMicrotask(() => editorService.clearEditor());
+        }
         return;
       }
       if (!editorService.hasMention(selectedAgent)) {
