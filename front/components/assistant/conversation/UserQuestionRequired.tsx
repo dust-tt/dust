@@ -40,7 +40,6 @@ export function UserQuestionRequired({
 
   const [selectedOptions, setSelectedOptions] = useState<number[]>([]);
   const [customResponse, setCustomResponse] = useState("");
-  const [isCustomResponseFocused, setIsCustomResponseFocused] = useState(false);
 
   const { question } = blockedAction;
   const isTriggeredByCurrentUser = blockedAction.userId === user?.sId;
@@ -119,14 +118,14 @@ export function UserQuestionRequired({
   return (
     <div
       className={cn(
-        "flex flex-col gap-4 rounded-3xl border border-border bg-background p-5",
+        "flex flex-col gap-4 rounded-3xl border border-border bg-background p-4",
         "dark:border-border-night dark:bg-background-night"
       )}
     >
       <div className="text-base font-medium leading-tight text-foreground dark:text-foreground-night">
         {question.question}
       </div>
-      <div className="flex flex-col gap-0">
+      <div className="flex flex-col gap-2">
         {question.options.map((option, index) => {
           const isSelected = selectedOptions.includes(index);
 
@@ -135,9 +134,14 @@ export function UserQuestionRequired({
               key={index}
               variant="tertiary"
               className={cn(
-                "flex w-full cursor-pointer items-center gap-2 rounded-2xl px-4 py-2.5 text-left transition-colors",
+                "flex w-full cursor-pointer items-center gap-2 rounded-2xl p-3 text-left transition-colors",
                 isSelected
-                  ? "bg-muted-background dark:bg-muted-background-night"
+                  ? question.multiSelect
+                    ? [
+                        "border-border bg-muted-background",
+                        "dark:border-border-night dark:bg-muted-background-night",
+                      ]
+                    : "bg-muted-background dark:bg-muted-background-night"
                   : [
                       "bg-background hover:bg-muted-background/60",
                       "dark:bg-background-night",
@@ -160,8 +164,8 @@ export function UserQuestionRequired({
                 size="sm"
                 variant="ghost"
                 className={cn(
-                  "shrink-0 bg-border text-muted-foreground",
-                  "dark:bg-border-night dark:text-muted-foreground-night"
+                  "shrink-0 bg-border-dark text-muted-foreground",
+                  "dark:bg-border-dark-night dark:text-muted-foreground-night"
                 )}
               />
               <div className="flex flex-col">
@@ -180,8 +184,11 @@ export function UserQuestionRequired({
         <Card
           variant="tertiary"
           className={cn(
-            "flex w-full items-center gap-2 rounded-2xl px-4 py-2.5 transition-colors",
-            isCustomResponseFocused
+            "flex w-full items-center gap-2 rounded-2xl p-3 transition-colors",
+            trimmedCustomResponse.length > 0 &&
+              selectedOptions.length === 0 &&
+              "border-border dark:border-border-night",
+            trimmedCustomResponse.length > 0 && selectedOptions.length === 0
               ? "bg-muted-background dark:bg-muted-background-night"
               : [
                   "bg-background hover:bg-muted-background/60",
@@ -195,8 +202,8 @@ export function UserQuestionRequired({
             size="sm"
             variant="ghost"
             className={cn(
-              "shrink-0 bg-border text-muted-foreground",
-              "dark:bg-border-night dark:text-muted-foreground-night"
+              "shrink-0 bg-border-dark text-muted-foreground",
+              "dark:bg-border-dark-night dark:text-muted-foreground-night"
             )}
           />
           <Input
@@ -211,9 +218,7 @@ export function UserQuestionRequired({
             value={customResponse}
             onFocus={() => {
               setSelectedOptions([]);
-              setIsCustomResponseFocused(true);
             }}
-            onBlur={() => setIsCustomResponseFocused(false)}
             onChange={(e) => setCustomResponse(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
