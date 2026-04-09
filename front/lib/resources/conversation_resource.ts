@@ -10,6 +10,7 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { REINFORCEMENT_METADATA_KEYS } from "@app/lib/reinforced_agent/types";
+import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -1392,6 +1393,66 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             agentConfigurationId
           ),
         ],
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return conversations.map((c) => ({
+      id: c.id,
+      created: c.createdAt.getTime(),
+      updated: c.updatedAt.getTime(),
+      sId: c.sId,
+      title: c.title,
+      triggerId: ConversationResource.triggerIdToSId(c.triggerId, workspace.id),
+      actionRequired: false,
+      unread: false,
+      lastReadMs: Date.now(),
+      hasError: c.hasError,
+      requestedSpaceIds: c.requestedSpaceIds.map(String),
+      spaceId: null,
+      depth: c.depth,
+      metadata: c.metadata,
+      branchId: null,
+    }));
+  }
+
+  static async listSkillReinforcementConversations(
+    auth: Authenticator,
+    skillId: string,
+    { after }: { after?: Date } = {}
+  ): Promise<ConversationWithoutContentType[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    // The reinforcedSkillIds metadata field is a JSON array of skill sIds.
+    // We use jsonb_exists to check if the skill sId is present in the array.
+    const conditions: WhereOptions[] = [
+      where(
+        fn(
+          "jsonb_extract_path_text",
+          col("metadata"),
+          REINFORCED_SKILLS_METADATA_KEYS.reinforcedSkills
+        ),
+        "true"
+      ),
+      where(
+        fn(
+          "jsonb_exists",
+          fn(
+            "jsonb_extract_path",
+            col("metadata"),
+            REINFORCED_SKILLS_METADATA_KEYS.reinforcedSkillIds
+          ),
+          skillId
+        ),
+        true
+      ),
+    ];
+
+    const conversations = await ConversationModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        ...(after ? { createdAt: { [Op.gte]: after } } : {}),
+        [Op.and]: conditions,
       },
       order: [["createdAt", "DESC"]],
     });

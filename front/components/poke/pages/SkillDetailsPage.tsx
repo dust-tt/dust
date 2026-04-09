@@ -1,3 +1,4 @@
+import { ReinforcementSkillsConversationDataTable } from "@app/components/poke/conversation/reinforcement_skills_table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { SkillSuggestionDataTable } from "@app/components/poke/skill_suggestions/table";
 import { SkillOverviewTable } from "@app/components/poke/skills/SkillOverviewTable";
@@ -139,6 +140,10 @@ export function SkillDetailsPage() {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="mt-4">
+        <ReinforcementSkillsConversationDataTable owner={owner} skillId={sId} />
       </div>
 
       <SkillSuggestionDataTable owner={owner} skillId={sId} />

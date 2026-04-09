@@ -333,6 +333,7 @@ export async function analyzeConversationStepActivity({
         prompt,
         operationType: "reinforcement_analyze_conversation",
         contextId: conversationId,
+        skillIds: skillSIds,
       }
     );
   }
@@ -430,6 +431,7 @@ export async function aggregateSuggestionsForSkillStepActivity({
         prompt: ctx.prompt,
         operationType: "reinforcement_aggregate_suggestions",
         contextId: skillId,
+        skillIds: [skillId],
       }
     );
   }
@@ -566,7 +568,7 @@ export async function startSkillConversationAnalysisBatchActivity({
   const batchConversations: LlmConversationOptions[] = [];
   const orderedAnalysedConversationIds: string[] = [];
 
-  for (const { conversationSId } of conversationsWithSkills) {
+  for (const { conversationSId, skillSIds } of conversationsWithSkills) {
     const existingReinforcementConvId =
       existingReinforcementConversationMap?.[conversationSId];
 
@@ -596,7 +598,7 @@ export async function startSkillConversationAnalysisBatchActivity({
         ...llmParamsWithoutConversation,
         ...getReinforcedSkillsDefaultOptions(
           "reinforcement_analyze_conversation",
-          conversationSId
+          skillSIds
         ),
       });
       orderedAnalysedConversationIds.push(conversationSId);
@@ -838,7 +840,7 @@ export async function startSkillAggregationBatchActivity({
         ...llmParamsWithoutConversation,
         ...getReinforcedSkillsDefaultOptions(
           "reinforcement_aggregate_suggestions",
-          skillId
+          [skillId]
         ),
       });
     }

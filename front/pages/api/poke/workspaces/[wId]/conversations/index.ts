@@ -23,7 +23,8 @@ async function handler(
     req.query.wId as string
   );
 
-  const { agentId, triggerId, reinforcedAgentId } = req.query;
+  const { agentId, triggerId, reinforcedAgentId, reinforcedSkillId } =
+    req.query;
 
   if (!auth.isDustSuperUser()) {
     return apiError(req, res, {
@@ -50,6 +51,16 @@ async function handler(
           await ConversationResource.listReinforcementConversations(
             auth,
             reinforcedAgentId
+          );
+      } else if (isString(reinforcedSkillId)) {
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+        conversations =
+          await ConversationResource.listSkillReinforcementConversations(
+            auth,
+            reinforcedSkillId,
+            { after: oneWeekAgo }
           );
       } else if (isString(agentId)) {
         // Get conversation IDs for this agent
@@ -92,7 +103,7 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message:
-              "Either agent ID, reinforcedAgent ID or trigger ID is required.",
+              "Either agent ID, reinforcedAgent ID, reinforcedSkill ID or trigger ID is required.",
           },
         });
       }
