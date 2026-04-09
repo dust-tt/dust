@@ -2,7 +2,7 @@ import type { Avatar, Icon } from "@dust-tt/sparkle";
 import {
   ActionAtomIcon,
   ActionBrainIcon,
-  ActionChatBubbleBottomCenterText1Icon,
+  ActionChatBubbleBottomCenterTextIcon,
   ActionChatBubbleThoughtIcon,
   ActionCloudArrowLeftRightIcon,
   ActionDocumentTextIcon,
@@ -129,7 +129,7 @@ void _customCheck;
 export const InternalActionIcons = {
   ActionAtomIcon,
   ActionBrainIcon,
-  ActionChatBubbleBottomCenterText1Icon,
+  ActionChatBubbleBottomCenterTextIcon,
   ActionChatBubbleThoughtIcon,
   ActionCloudArrowLeftRightIcon,
   ActionDocumentTextIcon,

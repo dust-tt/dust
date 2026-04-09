@@ -165,7 +165,7 @@ export const isCustomResourceIconType = (
 export const INTERNAL_ALLOWED_ICONS = [
   "ActionAtomIcon",
   "ActionBrainIcon",
-  "ActionChatBubbleBottomCenterText1Icon",
+  "ActionChatBubbleBottomCenterTextIcon",
   "ActionChatBubbleThoughtIcon",
   "ActionCloudArrowLeftRightIcon",
   "ActionDocumentTextIcon",
