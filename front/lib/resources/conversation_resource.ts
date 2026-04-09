@@ -725,7 +725,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
    * createdAt >= cutoffDate. With excludeHumanOutOfTheLoop, removes conversations where
    * triggerId IS NOT NULL and no user messages are present.
    */
-  static async getConversationSIdsByAgent(
+  static async getConversationIdsByAgent(
     auth: Authenticator,
     {
       agentIds,
@@ -1706,6 +1706,38 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       messageId,
       version
     );
+  }
+
+  static async getPendingUserMessagesInConversation(
+    auth: Authenticator,
+    {
+      conversation,
+      transaction,
+    }: {
+      conversation: ConversationWithoutContentType;
+      transaction?: Transaction;
+    }
+  ): Promise<MessageModel[]> {
+    const owner = auth.getNonNullableWorkspace();
+    const pendingMessages = await MessageModel.findAll({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: owner.id,
+        visibility: "pending",
+        branchId: conversation.branchId
+          ? {
+              [Op.or]: [getResourceIdFromSId(conversation.branchId), null],
+            }
+          : null,
+      },
+      include: [
+        { model: UserMessageModel, as: "userMessage", required: false },
+      ],
+      order: [["rank", "ASC"]],
+      transaction,
+    });
+
+    return pendingMessages;
   }
 
   static async getMessageByIdInConversation(

@@ -2574,18 +2574,11 @@ export async function updateAgentMessageWithFinalStatus(
       // invariant in which case we could have more than one running agent message and could pick
       // the wrong agent compared to user attempt. But should ~never happen so the simplicity is
       // worth it.
-      const pendingMessages = await MessageModel.findAll({
-        where: {
-          conversationId: conversation.id,
-          workspaceId: owner.id,
-          visibility: "pending",
-        },
-        include: [
-          { model: UserMessageModel, as: "userMessage", required: false },
-        ],
-        order: [["rank", "ASC"]],
-        transaction: t,
-      });
+      const pendingMessages =
+        await ConversationResource.getPendingUserMessagesInConversation(auth, {
+          conversation,
+          transaction: t,
+        });
 
       if (pendingMessages.length === 0) {
         return {
