@@ -13,7 +13,7 @@ import {
   isWebsearchInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
-import { isString } from "@app/types/shared/utils/general";
+import { isNumber, isString } from "@app/types/shared/utils/general";
 import { asDisplayName, slugify } from "@app/types/shared/utils/string_utils";
 
 type ToolDisplayLabelsByTool = Record<string, ToolDisplayLabels>;
@@ -141,7 +141,7 @@ function getDynamicToolDisplayLabels({
             done: `Searched for “${g}” in file`,
           };
         }
-        if (typeof inputs.offset === "number" && inputs.offset > 0) {
+        if (isNumber(inputs.offset) && inputs.offset > 0) {
           return {
             running: "Reading more of file",
             done: "Read more of file",
@@ -227,7 +227,7 @@ function getDynamicToolDisplayLabels({
             done: `Searched for “${g}” in file`,
           };
         }
-        if (typeof inputs.offset === "number" && inputs.offset > 0) {
+        if (isNumber(inputs.offset) && inputs.offset > 0) {
           return {
             running: "Reading more of file",
             done: "Read more of file",
