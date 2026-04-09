@@ -10,7 +10,7 @@ import SwiftUI
 // swiftlint:disable:next force_try
 private let mentionRegex = try! NSRegularExpression(pattern: #":mention(?:_user)?\[([^\]]*)\]\{[^}]*\}"#)
 // swiftlint:disable:next force_try
-private let citeRegex = try! NSRegularExpression(pattern: #":cite\[([^\]]*)\]\{[^}]*\}"#)
+private let citeRegex = try! NSRegularExpression(pattern: #":cite\[([^\]]*)\](?:\{[^}]*\})?"#)
 
 func preprocessDirectives(_ markdown: String) -> String {
     var result = markdown
@@ -19,11 +19,55 @@ func preprocessDirectives(_ markdown: String) -> String {
     // :mention[Name]{sId=xxx} / :mention_user[Name]{sId=xxx} → [@Name](dust://mention)
     result = mentionRegex.stringByReplacingMatches(in: result, range: range, withTemplate: "[@$1](dust://mention)")
 
-    // :cite[refs]{} → [refs]
-    let citeRange = NSRange(result.startIndex..., in: result)
-    result = citeRegex.stringByReplacingMatches(in: result, range: citeRange, withTemplate: "[$1]")
+    // :cite[ref1,ref2]{} → ¹² (unicode superscript numbers)
+    result = processCiteDirectives(result).text
 
     return result
+}
+
+/// Single-pass processing of :cite directives. Returns both the transformed markdown
+/// and the ordered mapping of ref keys to sequential numbers.
+func processCiteDirectives(_ markdown: String) -> (text: String, mapping: [CiteEntry]) {
+    var counter = 0
+    var seen: [String: Int] = [:]
+    var ordered: [CiteEntry] = []
+    var result = ""
+    var lastEnd = markdown.startIndex
+    let matches = citeRegex.matches(in: markdown, range: NSRange(location: 0, length: (markdown as NSString).length))
+
+    for match in matches {
+        guard let matchRange = Range(match.range, in: markdown),
+              let refsRange = Range(match.range(at: 1), in: markdown)
+        else { continue }
+
+        result += markdown[lastEnd..<matchRange.lowerBound]
+
+        let markers = markdown[refsRange].split(separator: ",").compactMap { part -> String? in
+            let ref = part.trimmingCharacters(in: .whitespaces)
+            guard !ref.isEmpty else { return nil }
+            if seen[ref] == nil {
+                counter += 1
+                seen[ref] = counter
+                ordered.append(CiteEntry(ref: ref, number: counter))
+            }
+            return superscript(seen[ref]!)
+        }
+        result += markers.joined(separator: "\u{2009}")
+        lastEnd = matchRange.upperBound
+    }
+    result += markdown[lastEnd...]
+    return (result, ordered)
+}
+
+private let superscriptDigits: [Character] = ["⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"]
+
+private func superscript(_ n: Int) -> String {
+    String(String(n).map { superscriptDigits[Int(String($0))!] })
+}
+
+struct CiteEntry {
+    let ref: String
+    let number: Int
 }
 
 // MARK: - Markdown Theme
