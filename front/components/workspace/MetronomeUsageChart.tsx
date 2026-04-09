@@ -23,6 +23,7 @@ import {
   Button,
   ChevronLeftIcon,
   ChevronRightIcon,
+  Chip,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -338,6 +339,9 @@ export function BaseMetronomeUsageChart({
       title={
         <div className="flex items-center gap-2">
           <span>Usage graph</span>
+          <Chip color="info" size="xs">
+            Metronome
+          </Chip>
           <Button
             icon={ChevronLeftIcon}
             size="xs"
