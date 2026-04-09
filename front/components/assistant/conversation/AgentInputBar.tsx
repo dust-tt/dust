@@ -61,6 +61,8 @@ export const AgentInputBar = ({
     conversationId: context.conversation?.sId,
   });
 
+  const agentBuilderContext = context.agentBuilderContext;
+
   const isMobile = useIsMobile();
   const { hasFeature } = useFeatureFlags();
   const singleAgentInput = hasFeature("enable_steering");
@@ -96,7 +98,7 @@ export const AgentInputBar = ({
         ?.richMentions.find(isRichAgentMention) ?? null)
     : null;
 
-  const draftAgent = context.agentBuilderContext?.draftAgent;
+  const draftAgent = agentBuilderContext?.draftAgent;
 
   const autoMentions = useMemo(() => {
     // If we are in the agent builder, we show the draft agent as the sticky mention, all the time.
@@ -118,7 +120,7 @@ export const AgentInputBar = ({
       }
 
       // @sidekick is not available in accessibleAgentIds so we need to skip it
-      if (context.agentBuilderContext) {
+      if (agentBuilderContext) {
         return lastAgentMentionInConversation
           ? [lastAgentMentionInConversation]
           : [];
@@ -160,7 +162,7 @@ export const AgentInputBar = ({
     lastAgentMentionInConversation,
     accessibleAgentIds,
     agentConfigurations,
-    context.agentBuilderContext,
+    agentBuilderContext,
   ]);
 
   // Calculate positions and determine which user messages are navigable.
@@ -303,7 +305,7 @@ export const AgentInputBar = ({
     );
 
   const showStopButton = generatingMessages.length > 0;
-  const showMessageNavigation = !context.agentBuilderContext;
+  const showMessageNavigation = !agentBuilderContext;
   const showNavigationContainer = showStopButton || showMessageNavigation;
 
   const getStopButtonLabel = () => {
@@ -429,10 +431,10 @@ export const AgentInputBar = ({
         conversation={context.conversation}
         draftKey={context.draftKey}
         disableAutoFocus={isMobile}
-        disableUserMentions={!!context.agentBuilderContext}
-        actions={context.agentBuilderContext?.actionsToShow}
-        isSubmitting={context.agentBuilderContext?.isSubmitting === true}
-        isAgentBuilder={!!context.agentBuilderContext}
+        disableUserMentions={!!agentBuilderContext}
+        actions={agentBuilderContext?.actionsToShow}
+        isSubmitting={agentBuilderContext?.isSubmitting === true}
+        isAgentBuilder={!!agentBuilderContext}
       />
     </div>
   );

@@ -72,7 +72,10 @@ const useHandleMentions = ({
     }
 
     // Agent builder: wait for the draft agent to arrive via stickyMentions.
+    // Clear any stale selectedSingleAgent from the previous page while waiting,
+    // so the old agent doesn't flash in the input bar.
     if (isAgentBuilder && (!stickyMentions || stickyMentions.length === 0)) {
+      setSelectedSingleAgent(null);
       return;
     }
 

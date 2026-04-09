@@ -66,7 +66,6 @@ interface InputBarProps {
   isSubmitting?: boolean;
   disable?: boolean;
   isAgentBuilder?: boolean;
-  shouldUseDraft?: boolean;
 }
 
 export const InputBar = React.memo(function InputBar({
@@ -84,7 +83,6 @@ export const InputBar = React.memo(function InputBar({
   isFloating = true,
   isSubmitting = false,
   disable = false,
-  shouldUseDraft = true,
 }: InputBarProps) {
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
   const { hasFeature } = useFeatureFlags();
@@ -113,7 +111,7 @@ export const InputBar = React.memo(function InputBar({
     workspaceId: owner.sId,
     userId: user?.sId ?? null,
     draftKey,
-    shouldUseDraft,
+    shouldUseDraft: !isAgentBuilder,
   });
 
   useEffect(() => {
