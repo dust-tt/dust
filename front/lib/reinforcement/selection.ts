@@ -7,8 +7,8 @@ import type { ModelId } from "@app/types/shared/model_id";
 import { Op } from "sequelize";
 
 export interface ConversationWithSkills {
-  conversationSId: string;
-  skillSIds: string[];
+  conversationId: string;
+  skillIds: string[];
 }
 
 /**
@@ -78,16 +78,16 @@ export async function findConversationsWithSkills(
     return [];
   }
 
-  const convSIdById = new Map<ModelId, string>(
+  const convIdById = new Map<ModelId, string>(
     conversations.map((c) => [c.id, c.sId])
   );
 
-  // Step 3: Build a map of conversationSId -> Set<skillSId>.
+  // Step 3: Build a map of conversationId -> Set<skillId>.
   const conversationSkillMap = new Map<string, Set<string>>();
 
   for (const record of skillRecords) {
-    const convSId = convSIdById.get(record.conversationId);
-    if (!convSId) {
+    const convId = convIdById.get(record.conversationId);
+    if (!convId) {
       continue;
     }
 
@@ -96,31 +96,31 @@ export async function findConversationsWithSkills(
       continue;
     }
 
-    const skillSId = makeSId("skill", {
+    const localSkillId = makeSId("skill", {
       id: customSkillId,
       workspaceId: workspace.id,
     });
 
     // If filtering by skillId, only include matching skills.
-    if (skillId && skillSId !== skillId) {
+    if (skillId && localSkillId !== skillId) {
       continue;
     }
 
-    if (!conversationSkillMap.has(convSId)) {
-      conversationSkillMap.set(convSId, new Set());
+    if (!conversationSkillMap.has(convId)) {
+      conversationSkillMap.set(convId, new Set());
     }
-    conversationSkillMap.get(convSId)!.add(skillSId);
+    conversationSkillMap.get(convId)!.add(localSkillId);
   }
 
   // Step 4: Convert to array and cap at maxConversations.
   const results: ConversationWithSkills[] = [];
-  for (const [conversationSId, skillSIds] of conversationSkillMap) {
+  for (const [conversationId, skillIds] of conversationSkillMap) {
     if (results.length >= maxConversations) {
       break;
     }
     results.push({
-      conversationSId,
-      skillSIds: [...skillSIds],
+      conversationId,
+      skillIds: [...skillIds],
     });
   }
 
