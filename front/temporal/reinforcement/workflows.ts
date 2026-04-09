@@ -374,7 +374,7 @@ export async function reinforcedSkillsWorkspaceWorkflow({
         continuations.map((c) => c.analysedConversationId)
       );
       pendingConversations = pendingConversations.filter((c) =>
-        continuingIds.has(c.conversationSId)
+        continuingIds.has(c.conversationId)
       );
       step++;
     }
@@ -405,12 +405,12 @@ export async function reinforcedSkillsWorkspaceWorkflow({
     // Phase 2: Analyze conversations concurrently via streaming multi-step.
     await concurrentExecutor(
       conversationsWithSkills,
-      ({ conversationSId, skillSIds }) =>
+      ({ conversationId, skillIds }) =>
         runMultiStepStreamingLoop((reinforcementConversationId) =>
           analyzeConversationStepActivity({
             workspaceId,
-            conversationId: conversationSId,
-            skillSIds,
+            conversationId,
+            skillIds,
             reinforcementConversationId,
           })
         ),

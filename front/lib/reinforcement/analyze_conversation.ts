@@ -137,22 +137,22 @@ ${conversationText}
  */
 export async function buildSkillConversationAnalysisBatchMap(
   auth: Authenticator,
-  conversationsWithSkills: { conversationSId: string; skillSIds: string[] }[]
+  conversationsWithSkills: { conversationId: string; skillIds: string[] }[]
 ): Promise<Map<string, LLMStreamParameters> | null> {
   const batchMap = new Map<string, LLMStreamParameters>();
 
   // Collect all unique skill sIds across all conversations.
-  const allSkillSIds = [
-    ...new Set(conversationsWithSkills.flatMap((c) => c.skillSIds)),
+  const allSkillIds = [
+    ...new Set(conversationsWithSkills.flatMap((c) => c.skillIds)),
   ];
 
   // Fetch all skills at once.
-  const skills = await SkillResource.fetchByIds(auth, allSkillSIds);
-  const skillBySId = new Map(skills.map((s) => [s.sId, s]));
+  const skills = await SkillResource.fetchByIds(auth, allSkillIds);
+  const skillById = new Map(skills.map((s) => [s.sId, s]));
 
-  for (const { conversationSId, skillSIds } of conversationsWithSkills) {
+  for (const { conversationId, skillIds } of conversationsWithSkills) {
     const conversationRes = await getShrinkWrappedConversation(auth, {
-      conversationId: conversationSId,
+      conversationId,
       includeFeedback: true,
       includeActionDetails: true,
     });
@@ -160,7 +160,7 @@ export async function buildSkillConversationAnalysisBatchMap(
       logger.warn(
         {
           workspaceId: auth.getNonNullableWorkspace().sId,
-          conversationSId,
+          conversationId,
           error: conversationRes.error,
         },
         "ReinforcedSkills: conversation not found, skipping in batch"
@@ -168,8 +168,8 @@ export async function buildSkillConversationAnalysisBatchMap(
       continue;
     }
 
-    const resolvedSkills = skillSIds
-      .map((sId) => skillBySId.get(sId))
+    const resolvedSkills = skillIds
+      .map((sId) => skillById.get(sId))
       .filter((s): s is SkillResource => s !== undefined);
 
     if (resolvedSkills.length === 0) {
@@ -182,7 +182,7 @@ export async function buildSkillConversationAnalysisBatchMap(
       conversationRes.value.text,
       skillTypes
     );
-    batchMap.set(conversationSId, buildReinforcedSkillsLLMParams(prompt));
+    batchMap.set(conversationId, buildReinforcedSkillsLLMParams(prompt));
   }
 
   if (batchMap.size === 0) {
