@@ -1515,6 +1515,120 @@
         }
       }
     },
+    "/api/v1/w/{wId}/assistant/conversations/{cId}/messages/{mId}/answer-question": {
+      "post": {
+        "summary": "Answer a user question in a conversation message",
+        "description": "Submits an answer to a question asked by an agent in a specific message",
+        "tags": [
+          "Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Workspace ID"
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Conversation ID"
+          },
+          {
+            "in": "path",
+            "name": "mId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Message ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "actionId",
+                  "answer"
+                ],
+                "properties": {
+                  "actionId": {
+                    "type": "string",
+                    "description": "ID of the action to answer"
+                  },
+                  "answer": {
+                    "type": "object",
+                    "required": [
+                      "selectedOptions"
+                    ],
+                    "properties": {
+                      "selectedOptions": {
+                        "type": "array",
+                        "items": {
+                          "type": "integer"
+                        },
+                        "description": "Indices of selected options"
+                      },
+                      "customResponse": {
+                        "type": "string",
+                        "description": "Optional free-text response"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Answer submitted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or action not blocked"
+          },
+          "403": {
+            "description": "User not authorized to answer this question"
+          },
+          "404": {
+            "description": "Conversation, message, or action not found"
+          },
+          "405": {
+            "description": "Method not allowed"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/w/{wId}/assistant/conversations/{cId}/messages/{mId}/edit": {
       "post": {
         "tags": [
