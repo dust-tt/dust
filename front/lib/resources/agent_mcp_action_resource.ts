@@ -1030,12 +1030,16 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     internalMCPServerName: InternalMCPServerNameType | null,
     toolName: string
   ): ToolDisplayLabels | null {
-    return getStaticToolDisplayLabels({
-      internalMCPServerName,
-      mcpServerName: this.toolConfiguration.mcpServerName,
-      toolName,
-      inputs: this.augmentedInputs,
-    }) ?? this.toolConfiguration.displayLabels ?? null;
+    return (
+      getStaticToolDisplayLabels({
+        internalMCPServerName,
+        mcpServerName: this.toolConfiguration.mcpServerName,
+        toolName,
+        inputs: this.augmentedInputs,
+      }) ??
+      this.toolConfiguration.displayLabels ??
+      null
+    );
   }
 
   async updateStatus(
