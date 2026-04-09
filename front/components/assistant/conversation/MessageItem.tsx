@@ -28,25 +28,27 @@ import React, { useMemo } from "react";
 // Inter-message spacing lives here (not in Sparkle) because it depends on
 // conversation-level context (who sent the message, steering flow, grouping).
 // Sparkle message components only handle padding inside the bubble.
-//
-// Each message controls its own top margin:
-// - No margin: grouped with previous message (same sender or steered flow)
-// - mt-1: default gap between user messages
-// - mt-2: agent messages (no visible bubble, so margin replaces padding)
-// - mt-3: messages from other workspace users (extra visual separation)
+// The last message also gets a margin-bottom for breathing space (see MessageItem).
 function getMessageTopMargin({
   data,
+  prevData,
   currentUserId,
   isPreviousMessageSameSender,
   isSteeredAgentMessage,
   isPreviousAgentMessageSteered,
 }: {
   data: VirtuosoMessage;
+  prevData: VirtuosoMessage | null;
   currentUserId: string;
   isPreviousMessageSameSender: boolean | null;
   isSteeredAgentMessage: boolean;
   isPreviousAgentMessageSteered: boolean;
 }): string | undefined {
+  // Previous message has reactions — add extra space to clear them.
+  if (prevData && prevData.reactions.length > 0) {
+    return "mt-8";
+  }
+
   // No margin when visually grouped with the previous message.
   if (
     isPreviousMessageSameSender ||
@@ -64,7 +66,7 @@ function getMessageTopMargin({
   // Agent messages have no visible bubble background, so they need
   // more top margin to compensate for the lack of internal padding.
   if (isAgentMessageWithStreaming(data)) {
-    return "mt-2";
+    return "mt-4";
   }
 
   return "mt-1";
@@ -236,6 +238,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
     const topMargin = getMessageTopMargin({
       data,
+      prevData,
       currentUserId: context.user.sId,
       isPreviousMessageSameSender,
       isSteeredAgentMessage,
@@ -248,7 +251,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         <div
           key={`message-id-${sId}`}
           ref={ref}
-          className={cn("mx-auto max-w-conversation", topMargin)}
+          className={cn("mx-auto max-w-conversation", topMargin, !nextData && "mb-4")}
         >
           {isUserMessage(data) && (
             <UserMessage

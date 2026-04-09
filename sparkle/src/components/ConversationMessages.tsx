@@ -45,10 +45,7 @@ export const ConversationMessageContainer = React.forwardRef<
 >(({ children, className, messageType, type, ...props }, ref) => {
   return (
     <div ref={ref} className={cn(wrapperVariants({ messageType }))}>
-      <div
-        className={cn(messageVariants({ type, className }))}
-        {...props}
-      >
+      <div className={cn(messageVariants({ type, className }))} {...props}>
         {children}
       </div>
     </div>

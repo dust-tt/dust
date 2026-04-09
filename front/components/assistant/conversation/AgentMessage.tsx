@@ -980,10 +980,7 @@ export function AgentMessage({
   const hideCompletionStatus = isDeleted || isInlineActivityEnabled;
 
   return (
-    <ConversationMessageContainer
-      messageType="agent"
-      type="agent"
-    >
+    <ConversationMessageContainer messageType="agent" type="agent">
       {!hideHeader && (
         <div className="inline-flex items-center gap-2">
           <ConversationMessageAvatar
