@@ -60,8 +60,6 @@ export function UserQuestionRequired({
   }
 
   function handleOptionClick(index: number) {
-    setCustomResponse("");
-
     if (question.multiSelect) {
       setSelectedOptions((prev) =>
         prev.includes(index)
@@ -71,28 +69,24 @@ export function UserQuestionRequired({
       return;
     }
 
-    setSelectedOptions((prev) => (prev[0] === index ? [] : [index]));
+    void submitAnswer({ selectedOptions: [index] });
   }
 
   function handleCustomResponseChange(value: string) {
-    setSelectedOptions([]);
     setCustomResponse(value);
   }
 
   function handleSubmit() {
-    if (trimmedCustomResponse.length > 0) {
-      void submitAnswer({
-        selectedOptions: [],
-        customResponse: trimmedCustomResponse,
-      });
+    if (trimmedCustomResponse.length === 0 && selectedOptions.length === 0) {
       return;
     }
 
-    if (selectedOptions.length === 0) {
-      return;
-    }
-
-    void submitAnswer({ selectedOptions });
+    void submitAnswer({
+      selectedOptions,
+      ...(trimmedCustomResponse.length > 0
+        ? { customResponse: trimmedCustomResponse }
+        : {}),
+    });
   }
 
   function handleSkip() {
