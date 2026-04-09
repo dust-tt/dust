@@ -1,3 +1,4 @@
+import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { clientFetch } from "@app/lib/egress/client";
 import { untrustedFetch } from "@app/lib/egress/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -47,6 +48,100 @@ const isBinaryContent = (contentType: string | null): boolean => {
 };
 
 const HEAD_FETCH_TIMEOUT_MS = 5000;
+const PDF_DOWNLOAD_TIMEOUT_MS = 60_000;
+const PDF_MAX_DOWNLOAD_SIZE_BYTES = 50 * 1024 * 1024;
+
+const isPdfContent = (contentType: string | null, url: string): boolean => {
+  if (contentType?.toLowerCase().startsWith("application/pdf")) {
+    return true;
+  }
+  if (!contentType || contentType.startsWith("application/octet-stream")) {
+    try {
+      return new URL(url).pathname.toLowerCase().endsWith(".pdf");
+    } catch {
+      return false;
+    }
+  }
+  return false;
+};
+
+const fetchPdf = async (
+  url: string
+): Promise<BrowseScrapeSuccessResponse | BrowseScrapeErrorResponse> => {
+  try {
+    const response = await untrustedFetch(url, {
+      signal: AbortSignal.timeout(PDF_DOWNLOAD_TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+      return {
+        error: `Failed to download PDF: HTTP ${response.status}`,
+        status: response.status,
+        url,
+      };
+    }
+
+    const contentLengthHeader = response.headers.get("content-length");
+    if (contentLengthHeader) {
+      const contentLength = parseInt(contentLengthHeader, 10);
+      if (contentLength > PDF_MAX_DOWNLOAD_SIZE_BYTES) {
+        const sizeMB = Math.round(contentLength / 1024 / 1024);
+        return {
+          error: `PDF too large (${sizeMB}MB). Maximum supported size is ${Math.round(PDF_MAX_DOWNLOAD_SIZE_BYTES / 1024 / 1024)}MB.`,
+          status: 413,
+          url,
+        };
+      }
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length > PDF_MAX_DOWNLOAD_SIZE_BYTES) {
+      const sizeMB = Math.round(buffer.length / 1024 / 1024);
+      return {
+        error: `PDF too large (${sizeMB}MB). Maximum supported size is ${Math.round(PDF_MAX_DOWNLOAD_SIZE_BYTES / 1024 / 1024)}MB.`,
+        status: 413,
+        url,
+      };
+    }
+
+    const extractionResult = await extractTextFromBuffer(
+      buffer,
+      "application/pdf"
+    );
+
+    if (extractionResult.isErr()) {
+      logger.error(
+        { url, error: extractionResult.error },
+        "[Firecrawl] Text extraction failed"
+      );
+      return {
+        error: `Failed to extract text from PDF: ${extractionResult.error}`,
+        status: 500,
+        url,
+      };
+    }
+
+    logger.info(
+      { url, textLength: extractionResult.value.length },
+      "[Firecrawl] Successfully extracted text from PDF"
+    );
+
+    return {
+      markdown: extractionResult.value,
+      title: undefined,
+      description: undefined,
+      status: 200,
+      url,
+    };
+  } catch (error) {
+    logger.error({ url, error }, "[Firecrawl] Unexpected error");
+    return {
+      error: `Failed to fetch PDF: ${errorToString(error)}`,
+      status: 500,
+      url,
+    };
+  }
+};
 
 /**
  * Makes a HEAD request to check if the URL points to binary content
@@ -178,6 +273,14 @@ const browseUrlFirecrawl = async (
       status: binaryCheck.status,
       url,
     };
+  }
+
+  if (isPdfContent(binaryCheck.contentType, url)) {
+    logger.info(
+      { url },
+      "[Firecrawl] PDF detected, extracting directly via Tika"
+    );
+    return fetchPdf(url);
   }
 
   const fc = new FirecrawlApp({
