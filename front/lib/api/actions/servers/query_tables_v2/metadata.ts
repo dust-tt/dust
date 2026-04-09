@@ -34,7 +34,7 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
       description: z
         .string()
         .describe(
-          "A short, high-level description of the goal, not the query itself. Use infinitive verbs (e.g. " +
+          "The reason this query is being run and what it achieves, in a few words. Use infinitive verbs (e.g. " +
             '"Analyze revenue trends", "Identify top customers").'
         ),
       query: z
