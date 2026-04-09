@@ -69,6 +69,7 @@ export function UserQuestionRequired({
       return;
     }
 
+    setSelectedOptions([index]);
     void submitAnswer({ selectedOptions: [index] });
   }
 
@@ -78,6 +79,11 @@ export function UserQuestionRequired({
 
   function handleSubmit() {
     if (trimmedCustomResponse.length === 0 && selectedOptions.length === 0) {
+      return;
+    }
+
+    if (!question.multiSelect && selectedOptions.length > 0) {
+      void submitAnswer({ selectedOptions });
       return;
     }
 
