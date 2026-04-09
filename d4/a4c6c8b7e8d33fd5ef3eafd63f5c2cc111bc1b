@@ -1,0 +1,25 @@
+connectors/src/connectors/slack/bot.ts
+  833a10e1d8bc700a 58,487,530-537,539-552,555-572,574-590,592-628,630-641
+connectors/src/api/webhooks/webhook_slack_bot_interaction.ts
+  833a10e1d8bc700a 2,11,34-40,93-103,110,112-178,180,182-183,185,226-233,281-287,487-561
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.6",
+  "base_commit_sha": "d4a4c6c8b7e8d33fd5ef3eafd63f5c2cc111bc1b",
+  "prompts": {
+    "833a10e1d8bc700a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca0ecb4b-da89-4c83-933d-4a9722e91595",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 290,
+      "overriden_lines": 0
+    }
+  }
+}
