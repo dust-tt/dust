@@ -10,7 +10,7 @@ export function isString(value: unknown): value is string {
 }
 
 export function isNumber(value: unknown): value is number {
-  return typeof value === "number";
+  return typeof value === "number" && !Number.isNaN(value);
 }
 
 export function isNumberOrBoolean(value: unknown): value is number | boolean {
