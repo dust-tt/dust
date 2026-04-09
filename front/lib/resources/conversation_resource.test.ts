@@ -3452,7 +3452,7 @@ describe("Space Handling", () => {
     });
 
     async function createPendingUserMessage(
-      conversationId: number,
+      conversationModelId: number,
       rank: number,
       branchId: number | null = null
     ) {
@@ -3473,7 +3473,7 @@ describe("Space Handling", () => {
       return MessageModel.create({
         sId: generateRandomModelSId(),
         rank,
-        conversationId,
+        conversationId: conversationModelId,
         parentId: null,
         userMessageId: userMessageRow.id,
         workspaceId: workspace.id,
@@ -3641,18 +3641,9 @@ describe("Space Handling", () => {
       );
       assert(conversationResource, "Conversation resource not found");
 
-      const msg3 = await createPendingUserMessage(
-        conversationResource.id,
-        30
-      );
-      const msg1 = await createPendingUserMessage(
-        conversationResource.id,
-        10
-      );
-      const msg2 = await createPendingUserMessage(
-        conversationResource.id,
-        20
-      );
+      const msg3 = await createPendingUserMessage(conversationResource.id, 30);
+      const msg1 = await createPendingUserMessage(conversationResource.id, 10);
+      const msg2 = await createPendingUserMessage(conversationResource.id, 20);
 
       const pending =
         await ConversationResource.getPendingUserMessagesInConversation(auth, {
