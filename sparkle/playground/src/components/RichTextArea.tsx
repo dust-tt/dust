@@ -578,6 +578,8 @@ export type RichTextAreaHandle = {
   insertInstructionSnippet: (options: { id: string; label: string }) => void;
   setContent: (text: string) => void;
   applyRandomSuggestions: (changes: string[]) => void;
+  /** Replace the first occurrence of `oldText` with a remove/add suggestion pair. */
+  applyInlineSuggestion: (oldText: string, newText: string) => boolean;
   hasSuggestions: () => boolean;
   acceptAllSuggestions: () => void;
   rejectAllSuggestions: () => void;
@@ -604,6 +606,8 @@ type RichTextAreaProps = {
   variant?: "default" | "compact" | "embedded";
   showFormattingMenu?: boolean;
   showAskSidekickMenu?: boolean;
+  /** Called once when the TipTap editor instance is ready (imperative methods work). */
+  onEditorReady?: () => void;
 };
 
 export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
@@ -625,6 +629,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       variant = "default",
       showFormattingMenu = false,
       showAskSidekickMenu: showAskSidekickMenu = true,
+      onEditorReady,
     },
     ref
   ) => {
@@ -702,6 +707,13 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       editable: !readOnly,
       content: defaultValue,
     });
+
+    useEffect(() => {
+      if (!editor) {
+        return;
+      }
+      editor.setEditable(!readOnly);
+    }, [editor, readOnly]);
 
     const insertSuggestion = useMemo(() => {
       return (options: { addedText: string; removedText?: string }) => {
@@ -878,6 +890,49 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       };
     }, [editor]);
 
+    const applyInlineSuggestion = useMemo(() => {
+      return (oldText: string, newText: string): boolean => {
+        if (!editor || oldText.length === 0) {
+          return false;
+        }
+        const { doc } = editor.state;
+        let found: { from: number; to: number } | null = null;
+        doc.descendants((node, pos) => {
+          if (found) {
+            return false;
+          }
+          if (!node.isText || !node.text) {
+            return true;
+          }
+          const idx = node.text.indexOf(oldText);
+          if (idx === -1) {
+            return true;
+          }
+          found = { from: pos + idx, to: pos + idx + oldText.length };
+          return false;
+        });
+        if (!found) {
+          return false;
+        }
+        return editor.commands.insertContentAt(
+          { from: found.from, to: found.to },
+          [
+            {
+              type: "text",
+              text: oldText,
+              marks: [{ type: "suggestionRemove" }],
+            },
+            { type: "text", text: " " },
+            {
+              type: "text",
+              text: newText,
+              marks: [{ type: "suggestionAdd" }],
+            },
+          ]
+        );
+      };
+    }, [editor]);
+
     const hasSuggestions = useMemo(() => {
       return () => {
         if (!editor) return false;
@@ -1038,6 +1093,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         insertInstructionSnippet,
         setContent,
         applyRandomSuggestions,
+        applyInlineSuggestion,
         hasSuggestions,
         acceptAllSuggestions,
         rejectAllSuggestions,
@@ -1048,11 +1104,30 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         insertInstructionSnippet,
         setContent,
         applyRandomSuggestions,
+        applyInlineSuggestion,
         hasSuggestions,
         acceptAllSuggestions,
         rejectAllSuggestions,
       ]
     );
+
+    const onEditorReadyRef = React.useRef(onEditorReady);
+    onEditorReadyRef.current = onEditorReady;
+    const lastEditorForReadyRef = React.useRef<typeof editor>(null);
+
+    useEffect(() => {
+      if (!editor) {
+        return;
+      }
+      if (lastEditorForReadyRef.current === editor) {
+        return;
+      }
+      lastEditorForReadyRef.current = editor;
+      const frameId = requestAnimationFrame(() => {
+        onEditorReadyRef.current?.();
+      });
+      return () => cancelAnimationFrame(frameId);
+    }, [editor]);
 
     const isOnSuggestion = () => {
       return (
@@ -1165,9 +1240,16 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
               "s-flex s-w-full s-flex-col",
               "s-rounded-xl s-border s-bg-muted-background dark:s-bg-muted-background-night s-transition s-duration-100",
               "s-border-border dark:s-border-border-night",
-              "focus-within:s-border-border-focus dark:focus-within:s-border-border-focus-night",
-              "focus-within:s-outline-none focus-within:s-ring-2",
-              "focus-within:s-ring-highlight/20 dark:focus-within:s-ring-highlight/50",
+              !readOnly && [
+                "focus-within:s-border-border-focus dark:focus-within:s-border-border-focus-night",
+                "focus-within:s-outline-none focus-within:s-ring-2",
+                "focus-within:s-ring-highlight/20 dark:focus-within:s-ring-highlight/50",
+              ],
+              readOnly && [
+                "s-border-dashed s-border-warning-300 dark:s-border-warning-300-night",
+                "s-bg-warning-50/40 dark:s-bg-warning-50-night/20",
+                "[&_.ProseMirror]:cursor-not-allowed [&_.tiptap]:cursor-not-allowed",
+              ],
               "s-min-h-40",
               containerClassName
             )}
