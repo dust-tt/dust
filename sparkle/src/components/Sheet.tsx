@@ -222,11 +222,11 @@ const ScrollContainer = ({
     setViewport(viewportRef.current);
   }, []);
 
+  const value = React.useMemo(() => viewport, [viewport]);
+
   if (noScroll) {
     return <div className={className}>{children}</div>;
   }
-
-  const value = React.useMemo(() => viewport, [viewport]);
 
   return (
     <ScrollArea className={className} viewportRef={viewportRef}>
