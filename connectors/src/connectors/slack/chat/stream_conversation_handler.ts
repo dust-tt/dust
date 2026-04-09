@@ -432,11 +432,6 @@ async function streamAgentAnswerToSlack(
       }
 
       case "tool_error": {
-        // tool_personal_auth_required is always followed by a tool_error;
-        // ignore it so the stream stays open while the user authenticates.
-        if (pendingPersonalAuth) {
-          break;
-        }
         return new Err(
           new Error(
             `Tool message error: code: ${event.error.code} message: ${event.error.message}`
