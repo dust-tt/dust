@@ -101,6 +101,12 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
       "**Critical:** Multiple matches or inexact matches will cause failure. " +
       "Validation (Tailwind, TypeScript) is non-blocking: warnings are returned but the edit succeeds.",
     schema: {
+      description: z
+        .string()
+        .describe(
+          "The reason this edit is being made and what it achieves, in a few words. " +
+            'Use infinitive verbs (e.g. "Fix chart colors", "Add filtering controls").'
+        ),
       file_id: z
         .string()
         .describe(
