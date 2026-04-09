@@ -134,7 +134,7 @@ async function createReinforcedAction(
       secretName: null,
       dustProject: null,
       availability: "auto",
-      permission: meta.stake,
+      permission: meta?.stake ?? "never_ask",
       toolServerId: "agent_sidekick_context",
       retryPolicy: "no_retry",
     },

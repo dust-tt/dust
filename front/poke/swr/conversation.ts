@@ -7,6 +7,7 @@ export interface PokeConversationsFetchProps extends PokeConditionalFetchProps {
   agentId?: string;
   triggerId?: string;
   reinforcedAgentId?: string;
+  reinforcedSkillId?: string;
 }
 
 export function usePokeConversations({
@@ -15,6 +16,7 @@ export function usePokeConversations({
   agentId,
   triggerId,
   reinforcedAgentId,
+  reinforcedSkillId,
 }: PokeConversationsFetchProps) {
   const { fetcher } = useFetcher();
   const conversationsFetcher: Fetcher<PokeListConversations> = fetcher;
@@ -22,6 +24,8 @@ export function usePokeConversations({
   let url: string | null = null;
   if (reinforcedAgentId) {
     url = `/api/poke/workspaces/${owner.sId}/conversations?reinforcedAgentId=${reinforcedAgentId}`;
+  } else if (reinforcedSkillId) {
+    url = `/api/poke/workspaces/${owner.sId}/conversations?reinforcedSkillId=${reinforcedSkillId}`;
   } else if (agentId) {
     url = `/api/poke/workspaces/${owner.sId}/conversations?agentId=${agentId}`;
   } else if (triggerId) {

@@ -32,7 +32,7 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const REINFORCEMENT_SKILLS_AGENT_ID = "reinforcement_skills";
+export const REINFORCEMENT_SKILLS_AGENT_ID = "reinforcement";
 
 // Tool schemas for reinforced skills (exploration + terminal).
 const REINFORCED_SKILLS_TOOL_DEFINITIONS: Record<
@@ -128,11 +128,11 @@ export function classifySkillToolCalls(
 
 export function getReinforcedSkillsDefaultOptions(
   operationType: ReinforcedSkillsOperationType,
-  contextId: string
+  skillIds: string[]
 ) {
   return {
     visibility: "test" as const,
-    metadata: getReinforcedSkillsMetadata(operationType, contextId),
+    metadata: getReinforcedSkillsMetadata(operationType, skillIds),
     userContextUsername: "reinforcement",
     userContextOrigin: "reinforcement" as const,
     agentConfigurationId: REINFORCEMENT_SKILLS_AGENT_ID,
@@ -191,10 +191,12 @@ export async function createReinforcedSkillsConversation(
     prompt,
     operationType,
     contextId,
+    skillIds,
   }: {
     prompt: { systemPrompt: string; userMessage: string };
     operationType: ReinforcedSkillsOperationType;
     contextId: string;
+    skillIds: string[];
   }
 ): Promise<string> {
   const llmParams = buildReinforcedSkillsLLMParams(prompt);
@@ -204,7 +206,7 @@ export async function createReinforcedSkillsConversation(
     newMessages: llmConversation.messages,
     title: reinforcedSkillsConversationTitle(operationType, contextId),
     ...llmParamsWithoutConversation,
-    ...getReinforcedSkillsDefaultOptions(operationType, contextId),
+    ...getReinforcedSkillsDefaultOptions(operationType, skillIds),
   });
   if (writeResult.isErr()) {
     throw writeResult.error;

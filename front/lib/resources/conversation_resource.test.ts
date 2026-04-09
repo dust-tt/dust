@@ -11,6 +11,7 @@ import {
   getReinforcementMetadata,
   REINFORCEMENT_METADATA_KEYS,
 } from "@app/lib/reinforced_agent/types";
+import { getReinforcedSkillsMetadata } from "@app/lib/reinforcement/types";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -405,6 +406,180 @@ describe("listReinforcementConversations", () => {
       [REINFORCEMENT_METADATA_KEYS.reinforcedAgent]: true,
       [REINFORCEMENT_METADATA_KEYS.reinforcedAgentConfigurationId]: "agent-1",
     });
+  });
+});
+
+describe("listSkillReinforcementConversations", () => {
+  let auth: Authenticator;
+  let anotherAuth: Authenticator;
+
+  beforeEach(async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "admin" });
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const anotherWorkspace = await WorkspaceFactory.basic();
+    const anotherUser = await UserFactory.basic();
+    await MembershipFactory.associate(anotherWorkspace, anotherUser, {
+      role: "admin",
+    });
+    anotherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      anotherUser.sId,
+      anotherWorkspace.sId
+    );
+  });
+
+  it("should return conversations matching the given skill in reinforcedSkillIds", async () => {
+    // Create aggregation conversation for skill-1.
+    const aggregationConvo = await ConversationResource.makeNew(
+      auth,
+      {
+        sId: generateRandomModelSId(),
+        title: "Aggregation for skill-1",
+        visibility: "test",
+        requestedSpaceIds: [],
+        metadata: getReinforcedSkillsMetadata(
+          "reinforcement_aggregate_suggestions",
+          ["skill-1"]
+        ),
+      },
+      null
+    );
+
+    // Create analysis conversation with skill-1 in the array.
+    const analysisConvo = await ConversationResource.makeNew(
+      auth,
+      {
+        sId: generateRandomModelSId(),
+        title: "Analysis with skill-1",
+        visibility: "test",
+        requestedSpaceIds: [],
+        metadata: getReinforcedSkillsMetadata(
+          "reinforcement_analyze_conversation",
+          ["skill-1", "skill-3"]
+        ),
+      },
+      null
+    );
+
+    // Create aggregation conversation for skill-2 (should be excluded).
+    await ConversationResource.makeNew(
+      auth,
+      {
+        sId: generateRandomModelSId(),
+        title: "Aggregation for skill-2",
+        visibility: "test",
+        requestedSpaceIds: [],
+        metadata: getReinforcedSkillsMetadata(
+          "reinforcement_aggregate_suggestions",
+          ["skill-2"]
+        ),
+      },
+      null
+    );
+
+    // Create a regular (non-reinforcement) conversation (should be excluded).
+    await ConversationResource.makeNew(
+      auth,
+      {
+        sId: generateRandomModelSId(),
+        title: "Regular conversation",
+        visibility: "unlisted",
+        requestedSpaceIds: [],
+        metadata: {},
+      },
+      null
+    );
+
+    // Create aggregation conversation in another workspace (should be excluded).
+    await ConversationResource.makeNew(
+      anotherAuth,
+      {
+        sId: generateRandomModelSId(),
+        title: "Other workspace aggregation",
+        visibility: "test",
+        requestedSpaceIds: [],
+        metadata: getReinforcedSkillsMetadata(
+          "reinforcement_aggregate_suggestions",
+          ["skill-1"]
+        ),
+      },
+      null
+    );
+
+    const results =
+      await ConversationResource.listSkillReinforcementConversations(
+        auth,
+        "skill-1"
+      );
+
+    expect(results).toHaveLength(2);
+    const resultSIds = results.map((r) => r.sId).sort();
+    const expectedSIds = [aggregationConvo.sId, analysisConvo.sId].sort();
+    expect(resultSIds).toEqual(expectedSIds);
+  });
+
+  it("should filter conversations by after date when provided", async () => {
+    // Create an old conversation (2 weeks ago).
+    const twoWeeksAgo = new Date();
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+
+    await ConversationResource.makeNew(
+      auth,
+      {
+        sId: generateRandomModelSId(),
+        title: "Old aggregation",
+        visibility: "test",
+        requestedSpaceIds: [],
+        createdAt: twoWeeksAgo,
+        metadata: getReinforcedSkillsMetadata(
+          "reinforcement_aggregate_suggestions",
+          ["skill-1"]
+        ),
+      },
+      null
+    );
+
+    // Create a recent conversation.
+    const recentConvo = await ConversationResource.makeNew(
+      auth,
+      {
+        sId: generateRandomModelSId(),
+        title: "Recent aggregation",
+        visibility: "test",
+        requestedSpaceIds: [],
+        metadata: getReinforcedSkillsMetadata(
+          "reinforcement_aggregate_suggestions",
+          ["skill-1"]
+        ),
+      },
+      null
+    );
+
+    // Without after filter: both returned.
+    const allResults =
+      await ConversationResource.listSkillReinforcementConversations(
+        auth,
+        "skill-1"
+      );
+    expect(allResults).toHaveLength(2);
+
+    // With after filter (1 week ago): only the recent one.
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+    const filteredResults =
+      await ConversationResource.listSkillReinforcementConversations(
+        auth,
+        "skill-1",
+        { after: oneWeekAgo }
+      );
+    expect(filteredResults).toHaveLength(1);
+    expect(filteredResults[0].sId).toBe(recentConvo.sId);
   });
 });
 

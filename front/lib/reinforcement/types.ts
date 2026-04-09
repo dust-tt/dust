@@ -97,17 +97,17 @@ export type ReinforcedSkillsOperationType =
 export const REINFORCED_SKILLS_METADATA_KEYS = {
   reinforcedSkills: "reinforcedSkills",
   reinforcedOperationType: "reinforcedOperationType",
-  reinforcedSkillId: "reinforcedSkillId",
+  reinforcedSkillIds: "reinforcedSkillIds",
 } as const;
 
 export function getReinforcedSkillsMetadata(
   reinforcedOperationType: ReinforcedSkillsOperationType,
-  reinforcedSkillId: string
+  reinforcedSkillIds: string[]
 ) {
   return {
     [REINFORCED_SKILLS_METADATA_KEYS.reinforcedSkills]: true,
     [REINFORCED_SKILLS_METADATA_KEYS.reinforcedOperationType]:
       reinforcedOperationType,
-    [REINFORCED_SKILLS_METADATA_KEYS.reinforcedSkillId]: reinforcedSkillId,
+    [REINFORCED_SKILLS_METADATA_KEYS.reinforcedSkillIds]: reinforcedSkillIds,
   };
 }
