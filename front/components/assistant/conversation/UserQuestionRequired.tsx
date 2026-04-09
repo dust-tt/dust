@@ -44,12 +44,18 @@ export function UserQuestionRequired({
 
   const { question } = blockedAction;
   const isTriggeredByCurrentUser = blockedAction.userId === user?.sId;
+
   const trimmedCustomResponse = customResponse.trim();
-  const isAnswerSubmitting = isSubmitting && !isSkipPending;
   const isCustomResponseSelected =
     trimmedCustomResponse.length > 0 && selectedOptions.length === 0;
 
-  async function submitAnswer(answer: UserQuestionAnswer, isSkip = false) {
+  const isAnswerSubmitting = isSubmitting && !isSkipPending;
+  const isSkipSubmitting = isSubmitting && isSkipPending;
+
+  async function submitAnswer(
+    answer: UserQuestionAnswer,
+    { isSkip = false }: { isSkip?: boolean } = {}
+  ) {
     setIsSkipPending(isSkip);
     const result = await answerQuestion({
       conversationId,
@@ -104,7 +110,7 @@ export function UserQuestionRequired({
       return;
     }
 
-    void submitAnswer({ selectedOptions: [] }, true);
+    void submitAnswer({ selectedOptions: [] }, { isSkip: true });
   }
 
   if (!isTriggeredByCurrentUser) {
@@ -251,13 +257,13 @@ export function UserQuestionRequired({
           variant="outline"
           size="sm"
           onClick={handleSkip}
-          isLoading={isSubmitting && isSkipPending}
+          isLoading={isSkipSubmitting}
         />
         <Button
           icon={ArrowUpIcon}
           variant="highlight"
           size="sm"
-          isLoading={isSubmitting && !isSkipPending}
+          isLoading={isAnswerSubmitting}
           disabled={
             trimmedCustomResponse.length === 0 && selectedOptions.length === 0
           }
