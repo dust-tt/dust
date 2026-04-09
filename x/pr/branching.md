@@ -25,6 +25,7 @@ conversation, with explicit lineage back to its parent.
   `https://dust4ai.slack.com/archives/C0AQ23Y6JGH/p1775655809989229`
 - Compaction proposal:
   `https://github.com/dust-tt/dust/pull/23974/changes`
+- Figma: https://www.figma.com/design/wJJMfVF6bluurSKfrEuysc/Product---WIP?node-id=5347-9855&t=uWJaIVJ4CZsDIcN0-0
 - Existing intra-conversation branch model:
   `front/lib/models/agent/conversation_branch.ts`
 
@@ -34,21 +35,20 @@ Forking creates a new conversation, not a new branch inside the existing one.
 
 At fork time:
 
-- we create a new child conversation in the same space / project as the parent
+- we create a new child conversation (in the same space project as the parent if applicable)
 - we persist an explicit lineage row between parent and child
-- we seed the child with the parent's conversation-level setup that the forking
-  user can read
+- we seed the child with the parent's conversation-level setup that the forking user can read
 - we deep-copy the parent conversation files / filesystem into the child
 - we initialize the child with a compaction message at the top of the child
 - we leave the parent unchanged
 
-For the first version, lineage is surfaced as a compact parent link in the forked
-conversation. We do not build a full branch tree yet.
+For the first version, lineage is surfaced as a parent link in the forked
+conversation. We do not build a full branch tree (yet).
 
-For the first version, the UI supports both:
+The UI supports both:
 
-- fork from the conversation's current visible state
-- fork from a specific message
+- fork from the conversation's current visible state (= last message)
+- fork from a specific earlier message
 
 The backend always persists the resolved source message so both entry points
 share the same creation flow.
@@ -71,7 +71,7 @@ existing intra-conversation branch feature.
 This stream is responsible for the message injected at the top of the child
 conversation.
 
-The target design uses the real compaction flow from the compaction proposal:
+The target design uses the compaction flow from the parallel compaction proposal:
 
 - a `CompactionMessage` is the first real message of the child conversation
 - the fork creation flow relies on the `compactConversation` lifecycle and
@@ -101,7 +101,7 @@ This stream gives the forked conversation its own working files.
 The important decision here is that the child gets a hard / deep copy of the
 parent conversation files and filesystem state. We do not keep shallow
 references to parent files because the filesystem is becoming mutable and the
-fork must be isolated.
+fork must be isolated. A notable exception is Dust knowledge (connections, folders), since it is read-only reference nodes to data (content nodes); for that we can only reuse the content node pointer.
 
 This stream is written behind a small abstraction so the current
 conversation datasource implementation can later be replaced by the proper
@@ -114,9 +114,7 @@ This stream adds:
 - the `Branch conversation` action in the conversation menu
 - the `Branch conversation` action in the per-message menu
 - the lightweight lineage surface in the child conversation
-
-For the first version, this remains intentionally small. A link back to the parent
-conversation is enough.
+- the lightweight lineage surface in the parent conversation
 
 ### Main Changes
 
@@ -152,12 +150,10 @@ Foreign-key constraints:
 
 The fork flow is:
 
-1. validate read access on the parent conversation and on the concrete setup /
-   resources that will be copied
+1. validate read access on the parent conversation and on the concrete setup / resources that will be copied
 2. resolve the source message if the UI did not specify one
-3. create the child conversation in the same space
-4. copy readable conversation-level setup from the parent and recompute child
-   access requirements from what was actually copied
+3. create the child conversation in the same space/project
+4. copy readable conversation-level setup from the parent and recompute child access requirements from what was actually copied
 5. persist the lineage row with `branchedAt`
 6. seed the child files / filesystem
 7. create the initial compaction message in the child
@@ -204,9 +200,6 @@ The user who forked becomes the initial participant of the child.
 Private conversation payloads expose fork lineage so the UI can render a
 small "Branched from ..." surface in the child conversation.
 
-For the first version, we only need direct parent information. We do not expose a
-full tree.
-
 #### Files and Filesystem Isolation
 
 This is the critical behavior boundary of the feature.
@@ -222,17 +215,9 @@ That means:
 This also means we do not reuse the current inferred parent/child traversal
 logic used for `run_agent` file access. Fork lineage must be first-class.
 
-### PR Sequence
+### Sequence
 
-PRs stay as small as possible while remaining self-contained.
-
-PRs 1-4 can land behind an internal flag to unblock development while
-compaction is still not shipped.
-
-The feature is not broadly released before PR 5 switches fork initialization to
-the shipped compaction flow.
-
-#### PR 1: Fork Lineage Model
+#### 1: Fork Lineage Model
 
 Scope:
 
@@ -241,12 +226,9 @@ Scope:
 - add the new feature flag
 - add read-side lineage types for private conversations
 
-Why first:
+Small, low-risk foundation, unblocks all later streams
 
-- small, low-risk foundation
-- unblocks all later streams
-
-#### PR 2: Backend Fork Creation
+#### 2: Backend Fork Creation
 
 Scope:
 
@@ -259,14 +241,14 @@ Scope:
 - respect compaction blocking semantics in the child when real compaction is
   available
 
-If the compaction PR is not shipped yet, this PR uses the artificial
+Until compaction is shipped, this uses the artificial
 placeholder behind the same fork initialization seam.
 
-This PR lands before filesystem seeding is complete as long as the feature
+This lands before filesystem seeding is complete as long as the feature
 remains internal / flagged. That gives us a usable backend slice for text-only
 conversations and lets compaction work proceed in parallel.
 
-#### PR 3: Filesystem / File Seeding
+#### 3: Filesystem / File Seeding
 
 Scope:
 
@@ -274,26 +256,19 @@ Scope:
 - remap child file metadata
 - ensure child mount paths / filesystem state are isolated
 
-Why separate:
+This is the part most exposed to the ongoing filesystem rework.
 
-- this is the part most exposed to the ongoing filesystem rework
-- it is easier to reason about if isolated from the generic fork creation flow
-
-#### PR 4: Menu Action and Child Lineage UI
+#### 4: Menu Action and Child Lineage UI
 
 Scope:
 
 - add `Branch conversation` to the conversation menu
 - add `Branch conversation` to the per-message menu
 - add the lightweight "Branched from ..." UI in the child conversation
+- add the lightweight "XXX branched this conversation: " UI in the parent conversation
 - wire the UI to the backend endpoint
 
-Why after PR 3:
-
-- once the backend and file seeding are ready, the UI can expose the feature
-  without shipping an obviously incomplete experience
-
-#### PR 5: Switch Fork Initialization to Shipped Compaction
+#### 5: Switch Fork Initialization to Shipped Compaction
 
 Scope:
 
@@ -313,10 +288,3 @@ Why separate:
 - full branch tree UI
 - removing the old intra-conversation branch feature
 - shared parent/child mutable filesystem state
-
-### Critical Caveats
-
-- Do not use the existing `conversation_branch` model or APIs for this work.
-- Do not treat the current conversation datasource shape as the long-term
-  contract. Keep file seeding behind an adapter.
-- Do not infer fork lineage from messages or file ancestry. Store it explicitly.
