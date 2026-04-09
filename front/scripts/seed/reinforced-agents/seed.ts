@@ -1,7 +1,7 @@
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { makeScript } from "@app/scripts/helpers";
 import { createSeedContext } from "@app/scripts/seed/factories";
-import { seedReinforcedAgents } from "@app/scripts/seed/reinforced-agents/seedReinforcedAgents";
+import { seedReinforcement } from "@app/scripts/seed/reinforced-agents/seedReinforcedAgents";
 
 makeScript({}, async ({ execute }, logger) => {
   const ctx = await createSeedContext({ execute, logger });
@@ -13,7 +13,7 @@ makeScript({}, async ({ execute }, logger) => {
     logger.info("Feature flag enabled");
   }
 
-  await seedReinforcedAgents(ctx);
+  await seedReinforcement(ctx);
 
-  logger.info("Reinforced agents seed completed");
+  logger.info("Reinforcement seed completed");
 });
