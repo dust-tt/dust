@@ -314,7 +314,7 @@
             "description": "Invalid request query parameters"
           },
           "403": {
-            "description": "Only workspace admins can access workspace analytics"
+            "description": "Requires an API key with at least builder role"
           },
           "405": {
             "description": "Method not supported"
