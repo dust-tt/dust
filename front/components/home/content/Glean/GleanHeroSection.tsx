@@ -6,23 +6,22 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import type { ReactNode } from "react";
 
-interface PaidLandingHeroSectionProps {
+interface GleanHeroSectionProps {
   headline: ReactNode;
   subtitle: string;
   ctaButtonText: string;
+  ctaButtonLink: string;
   secondaryButtonText: string;
   secondaryButtonLink: string;
-  trackingPrefix: string;
 }
 
-export function PaidLandingHeroSection({
+export function GleanHeroSection({
   headline,
   subtitle,
   ctaButtonText,
   secondaryButtonText,
   secondaryButtonLink,
-  trackingPrefix,
-}: PaidLandingHeroSectionProps) {
+}: GleanHeroSectionProps) {
   return (
     <section className="w-full">
       <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen overflow-hidden bg-white px-6 pb-12 pt-20">
@@ -31,12 +30,20 @@ export function PaidLandingHeroSection({
           <motion.div
             className="absolute -top-32 left-[30%] h-64 w-64 rounded-full bg-[#FFC4D9] opacity-30"
             animate={{ y: [0, 15, 0] }}
-            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+            transition={{
+              duration: 8,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
           />
           <motion.div
             className="absolute -top-16 left-[20%] h-32 w-32 bg-[#EE5338] opacity-20"
             animate={{ rotate: [0, 5, 0] }}
-            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+            transition={{
+              duration: 10,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
           />
           <motion.div
             className="absolute -left-12 top-[20%] h-80 w-32 rounded-r-2xl bg-[#489467] opacity-20"
@@ -51,7 +58,11 @@ export function PaidLandingHeroSection({
           <motion.div
             className="absolute -bottom-20 left-0 h-64 w-80 rounded-tr-[100px] bg-[#FF9F1C] opacity-25"
             animate={{ y: [0, -10, 0] }}
-            transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
+            transition={{
+              duration: 11,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
           />
           <motion.div
             className="absolute -bottom-32 -right-16 h-[28rem] w-[28rem] rounded-full bg-[#96D3FF] opacity-30"
@@ -167,7 +178,7 @@ export function PaidLandingHeroSection({
                 label={ctaButtonText}
                 onClick={withTracking(
                   TRACKING_AREAS.COMPETITIVE,
-                  `${trackingPrefix}_hero_comparison`,
+                  "glean_hero_comparison",
                   () => {
                     const el = document.getElementById("dust-deep-dive");
                     if (el) {
@@ -182,7 +193,7 @@ export function PaidLandingHeroSection({
                 label={secondaryButtonText}
                 onClick={withTracking(
                   TRACKING_AREAS.COMPETITIVE,
-                  `${trackingPrefix}_hero_expert`,
+                  "glean_hero_expert",
                   () => {
                     // eslint-disable-next-line react-hooks/immutability
                     window.location.href = appendUTMParams(secondaryButtonLink);

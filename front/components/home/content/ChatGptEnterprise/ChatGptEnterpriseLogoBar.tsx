@@ -1,6 +1,10 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import Image from "next/image";
 
+interface ChatGptEnterpriseLogoBarProps {
+  title: string;
+}
+
 const LOGOS = [
   "blueground",
   "clay",
@@ -15,11 +19,9 @@ const LOGOS = [
   "whatnot",
 ];
 
-interface PaidLandingLogoBarProps {
-  title: string;
-}
-
-export function PaidLandingLogoBar({ title }: PaidLandingLogoBarProps) {
+export function ChatGptEnterpriseLogoBar({
+  title,
+}: ChatGptEnterpriseLogoBarProps) {
   return (
     <section className="w-full">
       <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen border-y border-gray-100 bg-gray-50/50 py-6 md:py-10">
@@ -30,6 +32,7 @@ export function PaidLandingLogoBar({ title }: PaidLandingLogoBarProps) {
           <div className="relative overflow-hidden opacity-60">
             <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-gray-50/80 to-transparent" />
             <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-gray-50/80 to-transparent" />
+
             <div className="flex w-max animate-marquee items-center gap-x-12">
               {LOGOS.map((name) => (
                 <Image
