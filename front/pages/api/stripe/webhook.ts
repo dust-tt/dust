@@ -26,6 +26,7 @@ import {
 import { handleMetronomeSetupCheckout } from "@app/lib/metronome/checkout";
 import {
   createMetronomeCredit,
+  endMetronomeContract,
   getMetronomeActiveContract,
 } from "@app/lib/metronome/client";
 import { getProductFreeMonthlyCreditId } from "@app/lib/metronome/constants";
@@ -1249,6 +1250,21 @@ async function handler(
               await subscription.markAsCanceled({
                 endDate,
               });
+
+              // Shadow mode: schedule the Metronome contract end at the same time.
+              if (subscription.metronomeContractId) {
+                const trialingWorkspace =
+                  await WorkspaceResource.fetchByModelId(
+                    subscription.workspaceId
+                  );
+                if (trialingWorkspace?.metronomeCustomerId) {
+                  void endMetronomeContract({
+                    metronomeCustomerId: trialingWorkspace.metronomeCustomerId,
+                    contractId: subscription.metronomeContractId,
+                    endingBefore: endDate,
+                  });
+                }
+              }
             }
           }
 
@@ -1290,10 +1306,26 @@ async function handler(
               "Workspace not found for subscription in customer.subscription.updated."
             );
 
+            // Shadow mode: schedule the Metronome contract end at the same time.
+            if (
+              endDate &&
+              subscription.metronomeContractId &&
+              workspace.metronomeCustomerId
+            ) {
+              void endMetronomeContract({
+                metronomeCustomerId: workspace.metronomeCustomerId,
+                contractId: subscription.metronomeContractId,
+                endingBefore: endDate,
+              });
+            }
+
             const auth = await Authenticator.internalAdminForWorkspace(
               workspace.sId
             );
             if (!endDate) {
+              // TODO(pricing): reactivate Metronome contract (remove scheduled end date)
+              // by calling updateEndDate without ending_before.
+
               // Subscription is re-activated, so we need to unpause the connectors and re-enable triggers.
               await restoreWorkspaceAfterSubscription(auth);
 

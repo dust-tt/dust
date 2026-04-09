@@ -298,15 +298,17 @@ export async function getMetronomeActiveContract(
 export async function endMetronomeContract({
   metronomeCustomerId,
   contractId,
+  endingBefore,
 }: {
   metronomeCustomerId: string;
   contractId: string;
+  endingBefore?: Date;
 }): Promise<Result<void, Error>> {
   try {
     await getMetronomeClient().v1.contracts.updateEndDate({
       customer_id: metronomeCustomerId,
       contract_id: contractId,
-      ending_before: ceilToHourISO(new Date()),
+      ending_before: ceilToHourISO(endingBefore ?? new Date()),
     });
 
     logger.info(
