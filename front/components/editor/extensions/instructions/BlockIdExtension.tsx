@@ -1,16 +1,16 @@
+import { generateShortBlockId } from "@app/lib/generate_short_block_id";
 import UniqueID from "@tiptap/extension-unique-id";
 
-/**
- * Generates a short random ID (8-character hex string).
- * Uses crypto API for secure randomness.
- */
-function generateShortId(): string {
-  const bytes = new Uint8Array(4);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-}
-
 export const BLOCK_ID_ATTRIBUTE = "block-id";
+
+// Node types that receive block IDs
+export const BLOCK_ID_UNIQUE_ID_NODE_TYPES = [
+  "heading",
+  "instructionBlock",
+  "orderedList",
+  "paragraph",
+  "bulletList",
+] as const;
 
 /**
  * Block ID extension that adds unique IDs to block-level nodes
@@ -22,13 +22,7 @@ export const BLOCK_ID_ATTRIBUTE = "block-id";
  * Renders as `data-block-id` attribute in HTML output.
  */
 export const BlockIdExtension = UniqueID.configure({
-  types: [
-    "heading",
-    "instructionBlock",
-    "orderedList",
-    "paragraph",
-    "bulletList",
-  ],
+  types: [...BLOCK_ID_UNIQUE_ID_NODE_TYPES],
   attributeName: BLOCK_ID_ATTRIBUTE,
-  generateID: generateShortId,
+  generateID: generateShortBlockId,
 });
