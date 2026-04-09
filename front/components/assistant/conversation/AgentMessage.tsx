@@ -979,26 +979,10 @@ export function AgentMessage({
 
   const hideCompletionStatus = isDeleted || isInlineActivityEnabled;
 
-  const isTriggeredByOtherUser =
-    triggeringUser !== null && triggeringUser.sId !== user.sId;
-
-  // Steered messages (continuation of a previous agent response) only need
-  // bottom padding to stay visually attached to the message above.
-  // Other users' messages get more spacing since they are left-aligned.
-  // TODO(2025-04-08 yuka): Refactor conversation message spacing to handle all
-  // cases (steered, other user, gracefully stopped) in a unified way.
-  const spacingOverride = isSteered
-    ? isTriggeredByOtherUser
-      ? "s-pb-4"
-      : "s-pb-2"
-    : undefined;
-
   return (
     <ConversationMessageContainer
       messageType="agent"
-      isTriggeredByOtherUser={isTriggeredByOtherUser}
       type="agent"
-      className={spacingOverride}
     >
       {!hideHeader && (
         <div className="inline-flex items-center gap-2">

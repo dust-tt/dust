@@ -20,10 +20,55 @@ import { UserMessage } from "@app/components/assistant/conversation/UserMessage"
 import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
 import { useReaction } from "@app/hooks/useReaction";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { classNames } from "@app/lib/utils";
 import type { UserType } from "@app/types/user";
+import { cn } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import React, { useMemo } from "react";
+
+// Inter-message spacing lives here (not in Sparkle) because it depends on
+// conversation-level context (who sent the message, steering flow, grouping).
+// Sparkle message components only handle padding inside the bubble.
+//
+// Each message controls its own top margin:
+// - No margin: grouped with previous message (same sender or steered flow)
+// - mt-1: default gap between user messages
+// - mt-2: agent messages (no visible bubble, so margin replaces padding)
+// - mt-3: messages from other workspace users (extra visual separation)
+function getMessageTopMargin({
+  data,
+  currentUserId,
+  isPreviousMessageSameSender,
+  isSteeredAgentMessage,
+  isPreviousAgentMessageSteered,
+}: {
+  data: VirtuosoMessage;
+  currentUserId: string;
+  isPreviousMessageSameSender: boolean | null;
+  isSteeredAgentMessage: boolean;
+  isPreviousAgentMessageSteered: boolean;
+}): string | undefined {
+  // No margin when visually grouped with the previous message.
+  if (
+    isPreviousMessageSameSender ||
+    isSteeredAgentMessage ||
+    isPreviousAgentMessageSteered
+  ) {
+    return undefined;
+  }
+
+  // Other users' messages get extra spacing.
+  if (isUserMessage(data) && data.user?.sId !== currentUserId) {
+    return "mt-3";
+  }
+
+  // Agent messages have no visible bubble background, so they need
+  // more top margin to compensate for the lack of internal padding.
+  if (isAgentMessageWithStreaming(data)) {
+    return "mt-2";
+  }
+
+  return "mt-1";
+}
 
 interface MessageItemProps {
   allowBranchMessages?: boolean;
@@ -123,13 +168,6 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       getMessageDate(prevData).toDateString() ===
         getMessageDate(data).toDateString();
 
-    const isNextMessageSameSender =
-      nextData &&
-      isUserMessage(data) &&
-      isUserMessage(nextData) &&
-      data.user?.sId !== undefined &&
-      data.user.sId === nextData.user?.sId;
-
     const isPreviousMessageSameSender =
       prevData &&
       isUserMessage(data) &&
@@ -196,24 +234,13 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return null;
     }
 
-    // TODO: This spacing logic should ideally live in Sparkle's
-    // ConversationMessageContainer, but it depends on conversation-level context
-    // (next message sender, agent status) that Sparkle doesn't have access to.
-    // No bottom margin when the next message is from the same sender (grouped)
-    // or when the agent message is gracefully stopped (steered flow, next
-    // message stays visually attached). Other users' messages get a bit more
-    // spacing since they are left-aligned like agent messages.
-    const isFromOtherUser =
-      isUserMessage(data) && data.user?.sId !== context.user.sId;
-    const isGracefullyStopped =
-      isAgentMessageWithStreaming(data) &&
-      data.status === "gracefully_stopped";
-    const bottomMargin =
-      isNextMessageSameSender || isGracefullyStopped
-        ? undefined
-        : isFromOtherUser
-          ? "mb-3"
-          : "mb-1";
+    const topMargin = getMessageTopMargin({
+      data,
+      currentUserId: context.user.sId,
+      isPreviousMessageSameSender,
+      isSteeredAgentMessage,
+      isPreviousAgentMessageSteered,
+    });
 
     return (
       <>
@@ -221,7 +248,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         <div
           key={`message-id-${sId}`}
           ref={ref}
-          className={classNames("mx-auto max-w-conversation", bottomMargin)}
+          className={cn("mx-auto max-w-conversation", topMargin)}
         >
           {isUserMessage(data) && (
             <UserMessage

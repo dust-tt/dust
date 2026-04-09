@@ -23,43 +23,30 @@ const messageVariants = cva("s-flex s-rounded-2xl s-max-w-full", {
   variants: {
     type: {
       user: "s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3 s-gap-2 s-w-fit",
-      agent: "s-w-full s-gap-3 s-py-2 s-flex-col",
-    },
-    isTriggeredByOtherUser: {
-      true: "",
-      false: "",
+      agent: "s-w-full s-gap-3 s-flex-col",
     },
   },
-  compoundVariants: [
-    {
-      // Other users' agent messages are left-aligned, add more vertical
-      // spacing to visually separate them from adjacent messages.
-      type: "agent",
-      isTriggeredByOtherUser: true,
-      className: "s-py-4",
-    },
-  ],
   defaultVariants: {
     type: "agent",
-    isTriggeredByOtherUser: false,
   },
 });
 
 interface ConversationMessageContainerProps
   extends React.HTMLAttributes<HTMLDivElement> {
-  isTriggeredByOtherUser?: boolean;
   messageType: MessageType;
   type: ConversationMessageType;
 }
 
+// This component should only contain padding (inside the bubble).
+// Any margin (inter-message spacing) should live outside of Sparkle.
 export const ConversationMessageContainer = React.forwardRef<
   HTMLDivElement,
   ConversationMessageContainerProps
->(({ children, className, isTriggeredByOtherUser, messageType, type, ...props }, ref) => {
+>(({ children, className, messageType, type, ...props }, ref) => {
   return (
     <div ref={ref} className={cn(wrapperVariants({ messageType }))}>
       <div
-        className={cn(messageVariants({ type, isTriggeredByOtherUser, className }))}
+        className={cn(messageVariants({ type, className }))}
         {...props}
       >
         {children}
