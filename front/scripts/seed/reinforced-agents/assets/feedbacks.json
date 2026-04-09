@@ -22,5 +22,11 @@
     "agentMessageId": "RAAMsg08",
     "thumbDirection": "up",
     "content": null
+  },
+  {
+    "conversationId": "RADustConv02",
+    "agentMessageId": "RADAMsg02",
+    "thumbDirection": "down",
+    "content": "The analysis is completely wrong. The haiku is about moonlight and shadows, not seasons. The agent fabricated an interpretation that has nothing to do with the actual poem."
   }
 ]

@@ -1,0 +1,6 @@
+{
+  "name": "Poem Analyser",
+  "agentFacingDescription": "Guidelines for analysing poems: structure, themes, imagery, and literary devices.",
+  "userFacingDescription": "Analyse poems by examining their structure, themes, imagery, and literary devices.",
+  "instructions": "# Poem Analysis Guide\n\nWhen analysing a poem, follow these steps:\n\n1. **Structure**: Identify the form (haiku, sonnet, free verse), line count, and syllable patterns.\n2. **Theme**: Determine the central idea or emotion the poet conveys.\n3. **Imagery**: Note sensory details — what do you see, hear, feel, taste, smell?\n4. **Literary devices**: Look for metaphor, simile, personification, alliteration, and juxtaposition.\n5. **Tone & mood**: Describe the emotional atmosphere and the poet's attitude.\n6. **Word choice**: Highlight key words that carry weight or double meaning.\n7. **Context**: If known, consider the poet's background and the era of writing.\n\nAlways quote specific lines to support your analysis. Keep the explanation accessible and concise."
+}
