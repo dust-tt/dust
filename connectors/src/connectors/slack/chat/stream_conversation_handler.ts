@@ -11,6 +11,7 @@ import {
   makeToolAuthenticationBlock,
   makeToolFileAuthorizationBlock,
   makeToolValidationBlock,
+  makeUserQuestionBlock,
   type SlackMessageUpdate,
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/blocks";
@@ -71,6 +72,14 @@ export const SlackBlockIdToolValidationSchema = t.intersection([
     workspaceId: t.string,
   }),
 ]);
+
+export const SlackUserQuestionActionValueSchema = t.type({
+  workspaceId: t.string,
+  conversationId: t.string,
+  messageId: t.string,
+  actionId: t.string,
+  slackChatBotMessageId: t.number,
+});
 
 export function getAuthResponseUrlRedisKey(
   workspaceId: string,
@@ -737,12 +746,33 @@ async function streamAgentAnswerToSlack(
         return new Ok(undefined);
       }
 
+      case "tool_ask_user_question": {
+        const questionValue = JSON.stringify({
+          workspaceId: connector.workspaceId,
+          conversationId: event.conversationId,
+          messageId: event.messageId,
+          actionId: event.actionId,
+          slackChatBotMessageId: slackChatBotMessage.id,
+        });
+
+        if (slackUserId && !slackUserInfo.is_bot) {
+          await slackClient.chat.postEphemeral({
+            channel: slackChannelId,
+            user: slackUserId,
+            text: event.question.question,
+            blocks: makeUserQuestionBlock({
+              question: event.question,
+              value: questionValue,
+            }),
+            thread_ts: slackMessageTs,
+          });
+        }
+        break;
+      }
+
       case "agent_context_pruned":
       case "agent_message_done":
       case "tool_call_started":
-      // TODO(2026-04-02 ask-user-question): add support for the AskUserQuestion tool on Slack.
-      // Temporarily we will not add the tool for messages coming from Slack to avoid receiving this event at all here.
-      case "tool_ask_user_question":
         // No-op.
         break;
 

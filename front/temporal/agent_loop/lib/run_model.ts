@@ -72,7 +72,10 @@ import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { AgentActionsEvent } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-import type { AgentMessageType } from "@app/types/assistant/conversation";
+import type {
+  AgentMessageType,
+  UserMessageOrigin,
+} from "@app/types/assistant/conversation";
 import { isTextContent } from "@app/types/assistant/generation";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -307,11 +310,16 @@ export async function runModel(
     );
   }
 
-  // Filter out ask_user_question for non-web origins (e.g. Slack, API).
-  const filteredMcpActions =
-    userMessage.context.origin !== "web"
-      ? mcpActions.filter((s) => s.serverName !== "ask_user_question")
-      : mcpActions;
+  // Filter out ask_user_question for origins that don't support interactive questions.
+  const ASK_USER_QUESTION_ALLOWED_ORIGINS: UserMessageOrigin[] = [
+    "web",
+    "slack",
+  ];
+  const filteredMcpActions = !ASK_USER_QUESTION_ALLOWED_ORIGINS.includes(
+    userMessage.context.origin
+  )
+    ? mcpActions.filter((s) => s.serverName !== "ask_user_question")
+    : mcpActions;
 
   const isLastStep = step === agentConfiguration.maxStepsPerRun;
 

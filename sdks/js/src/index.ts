@@ -17,6 +17,8 @@ import type {
   AgentMessagePublicType,
   AgentMessageSuccessEvent,
   AgentToolCallStartedEvent,
+  AnswerUserQuestionRequestBodyType,
+  AnswerUserQuestionResponseType,
   APIError,
   AppsCheckRequestType,
   BlockedActionsResponseType,
@@ -62,6 +64,7 @@ import type {
   ValidateActionResponseType,
 } from "./types";
 import {
+  AnswerUserQuestionResponseSchema,
   APIErrorSchema,
   AppsCheckResponseSchema,
   BlockedActionsResponseSchema,
@@ -1998,6 +2001,30 @@ export class DustAPI {
     });
 
     return this._resultFromResponse(ValidateActionResponseSchema, res);
+  }
+
+  async answerUserQuestion({
+    conversationId,
+    messageId,
+    actionId,
+    answer,
+    signal,
+  }: AnswerUserQuestionRequestBodyType & {
+    conversationId: string;
+    messageId: string;
+    signal?: AbortSignal;
+  }): Promise<Result<AnswerUserQuestionResponseType, APIError>> {
+    const res = await this.request({
+      method: "POST",
+      path: `assistant/conversations/${conversationId}/messages/${messageId}/answer-question`,
+      body: {
+        actionId,
+        answer,
+      },
+      signal,
+    });
+
+    return this._resultFromResponse(AnswerUserQuestionResponseSchema, res);
   }
 
   async registerMCPServer({

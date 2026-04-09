@@ -1,4 +1,5 @@
 import {
+  botAnswerUserQuestion,
   botReplaceMention,
   botValidateToolExecution,
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
@@ -7,6 +8,7 @@ import {
   getAuthResponseUrlRedisKey,
   SlackBlockIdStaticAgentConfigSchema,
   SlackBlockIdToolValidationSchema,
+  SlackUserQuestionActionValueSchema,
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/stream_conversation_handler";
 // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
@@ -29,6 +31,13 @@ export const REJECT_TOOL_EXECUTION = "reject_tool_execution";
 export const AUTHENTICATE_TOOL = "authenticate_tool";
 export const LEAVE_FEEDBACK_UP = "leave_feedback_up";
 export const LEAVE_FEEDBACK_DOWN = "leave_feedback_down";
+export const ANSWER_USER_QUESTION_SUBMIT = "answer_user_question_submit";
+export const ANSWER_USER_QUESTION_SKIP = "answer_user_question_skip";
+// Block IDs / action IDs for reading state.values when Submit is clicked.
+export const USER_QUESTION_TEXT_BLOCK_ID = "question_text_input";
+export const USER_QUESTION_TEXT_ACTION_ID = "question_text_element";
+export const USER_QUESTION_OPTIONS_BLOCK_ID = "question_options";
+export const USER_QUESTION_OPTIONS_ACTION_ID = "question_checkboxes";
 
 const ToolValidationActionsCodec = t.union([
   t.literal(APPROVE_TOOL_EXECUTION),
@@ -81,41 +90,99 @@ const AuthenticateToolActionSchema = t.type({
   value: t.string,
 });
 
+const AnswerUserQuestionButtonSchema = t.type({
+  type: t.literal("button"),
+  action_id: t.union([
+    t.literal(ANSWER_USER_QUESTION_SUBMIT),
+    t.literal(ANSWER_USER_QUESTION_SKIP),
+  ]),
+  block_id: t.string,
+  action_ts: t.string,
+  value: t.string,
+});
+
 export type RequestToolPermissionActionValueParsed = {
   status: "approved" | "rejected";
   agentName: string;
   toolName: string;
 };
 
-const BlockActionsPayloadSchema = t.type({
-  type: t.literal("block_actions"),
-  team: t.type({
-    id: t.string,
-    domain: t.string,
-  }),
-  channel: t.type({
-    id: t.string,
-    name: t.string,
-  }),
-  container: t.type({
-    message_ts: t.string,
-    channel_id: t.string,
-    thread_ts: t.string,
-  }),
-  user: t.type({
-    id: t.string,
-  }),
-  actions: t.array(
-    t.union([
-      StaticAgentConfigSchema,
-      ToolValidationActionsSchema,
-      FeedbackActionSchema,
-      AuthenticateToolActionSchema,
-    ])
-  ),
-  trigger_id: t.union([t.string, t.undefined]),
-  response_url: t.string,
+const BlockActionsStateSchema = t.record(
+  t.string,
+  t.record(t.string, t.unknown)
+);
+
+type BlockActionsState = t.TypeOf<typeof BlockActionsStateSchema>;
+
+const RadioStateSchema = t.type({
+  selected_option: t.type({ value: t.string }),
 });
+
+const CheckboxStateSchema = t.type({
+  selected_options: t.array(t.type({ value: t.string })),
+});
+
+const TextInputStateSchema = t.type({
+  value: t.union([t.string, t.null]),
+});
+
+function getStateSelectedOptions(
+  state: { values: BlockActionsState } | undefined,
+  blockId: string,
+  actionId: string
+): number[] {
+  const el = state?.values?.[blockId]?.[actionId];
+  const radio = RadioStateSchema.decode(el);
+  if (!isLeft(radio)) {
+    return [parseInt(radio.right.selected_option.value)];
+  }
+  const checkboxes = CheckboxStateSchema.decode(el);
+  if (!isLeft(checkboxes)) {
+    return checkboxes.right.selected_options.map((o) => parseInt(o.value));
+  }
+  return [];
+}
+
+function getStateTextValue(
+  state: { values: BlockActionsState } | undefined,
+  blockId: string,
+  actionId: string
+): string | undefined {
+  const el = state?.values?.[blockId]?.[actionId];
+  const decoded = TextInputStateSchema.decode(el);
+  if (isLeft(decoded) || !decoded.right.value) {
+    return undefined;
+  }
+  return decoded.right.value;
+}
+
+const BlockActionsPayloadSchema = t.intersection([
+  t.type({
+    type: t.literal("block_actions"),
+    team: t.type({
+      id: t.string,
+      domain: t.string,
+    }),
+    channel: t.type({
+      id: t.string,
+      name: t.string,
+    }),
+    container: t.type({
+      message_ts: t.string,
+      channel_id: t.string,
+      thread_ts: t.string,
+    }),
+    user: t.type({
+      id: t.string,
+    }),
+    actions: t.array(t.unknown),
+    trigger_id: t.union([t.string, t.undefined]),
+    response_url: t.string,
+  }),
+  t.partial({
+    state: t.type({ values: BlockActionsStateSchema }),
+  }),
+]);
 
 const ViewSubmissionPayloadSchema = t.type({
   type: t.literal("view_submission"),
@@ -155,6 +222,14 @@ const ViewSubmissionPayloadSchema = t.type({
     }),
   }),
 });
+
+const KnownActionSchema = t.union([
+  StaticAgentConfigSchema,
+  ToolValidationActionsSchema,
+  FeedbackActionSchema,
+  AuthenticateToolActionSchema,
+  AnswerUserQuestionButtonSchema,
+]);
 
 export const SlackInteractionPayloadSchema = t.union([
   BlockActionsPayloadSchema,
@@ -203,7 +278,13 @@ const _webhookSlackBotInteractionsAPIHandler = async (
   if (payload.type === "block_actions") {
     const responseUrl = payload.response_url;
 
-    for (const action of payload.actions) {
+    for (const rawAction of payload.actions) {
+      const actionDecoded = KnownActionSchema.decode(rawAction);
+      if (isLeft(actionDecoded)) {
+        continue;
+      }
+      const action = actionDecoded.right;
+
       if (action.action_id === STATIC_AGENT_CONFIG) {
         const blockIdValidation = SlackBlockIdStaticAgentConfigSchema.decode(
           JSON.parse(action.block_id)
@@ -403,6 +484,81 @@ const _webhookSlackBotInteractionsAPIHandler = async (
         const redisKey = getAuthResponseUrlRedisKey(workspaceId, messageId);
         const redis = await redisClient({ origin: "slack_auth" });
         await redis.set(redisKey, responseUrl, { EX: 1800 });
+      } else if (
+        action.action_id === ANSWER_USER_QUESTION_SUBMIT ||
+        action.action_id === ANSWER_USER_QUESTION_SKIP
+      ) {
+        const valueValidation = SlackUserQuestionActionValueSchema.decode(
+          JSON.parse(action.value)
+        );
+
+        if (isLeft(valueValidation)) {
+          const pathError = reporter.formatValidationErrors(
+            valueValidation.left
+          );
+          logger.error(
+            {
+              error: pathError,
+              value: action.value,
+            },
+            "Invalid value format in user question answer"
+          );
+          return;
+        }
+
+        const {
+          workspaceId,
+          conversationId,
+          messageId,
+          actionId,
+          slackChatBotMessageId,
+        } = valueValidation.right;
+
+        let answer: { selectedOptions: number[]; customResponse?: string };
+
+        if (action.action_id === ANSWER_USER_QUESTION_SUBMIT) {
+          const selectedOptions = getStateSelectedOptions(
+            payload.state,
+            USER_QUESTION_OPTIONS_BLOCK_ID,
+            USER_QUESTION_OPTIONS_ACTION_ID
+          );
+          const customResponse =
+            selectedOptions.length === 0
+              ? getStateTextValue(
+                  payload.state,
+                  USER_QUESTION_TEXT_BLOCK_ID,
+                  USER_QUESTION_TEXT_ACTION_ID
+                )
+              : undefined;
+          answer = { selectedOptions, customResponse };
+        } else {
+          answer = { selectedOptions: [] };
+        }
+
+        const answerRes = await botAnswerUserQuestion({
+          actionId,
+          answer,
+          conversationId,
+          messageId,
+          slackChatBotMessageId,
+          responseUrl,
+          slackTeamId: payload.team.id,
+          slackChannel: payload.channel.id,
+          slackThreadTs: payload.container.thread_ts,
+        });
+
+        if (answerRes.isErr()) {
+          logger.error(
+            {
+              error: answerRes.error,
+              workspaceId,
+              conversationId,
+              messageId,
+              actionId,
+            },
+            "Failed to answer user question"
+          );
+        }
       }
     }
   }

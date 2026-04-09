@@ -1,18 +1,28 @@
 // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import type { RequestToolPermissionActionValueParsed } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import {
+  ANSWER_USER_QUESTION_SKIP,
+  ANSWER_USER_QUESTION_SUBMIT,
   APPROVE_TOOL_EXECUTION,
   AUTHENTICATE_TOOL,
   LEAVE_FEEDBACK_DOWN,
   LEAVE_FEEDBACK_UP,
   REJECT_TOOL_EXECUTION,
   STATIC_AGENT_CONFIG,
+  USER_QUESTION_OPTIONS_ACTION_ID,
+  USER_QUESTION_OPTIONS_BLOCK_ID,
+  USER_QUESTION_TEXT_ACTION_ID,
+  USER_QUESTION_TEXT_BLOCK_ID,
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import type { MessageFootnotes } from "@connectors/lib/bot/citations";
 import { makeDustAppUrl } from "@connectors/lib/bot/conversation_utils";
 import { truncate } from "@connectors/types";
-import type { LightAgentConfigurationType } from "@dust-tt/client";
+import type {
+  LightAgentConfigurationType,
+  UserQuestionItemType,
+} from "@dust-tt/client";
+import type { KnownBlock } from "@slack/web-api";
 import slackifyMarkdown from "slackify-markdown";
 
 /*
@@ -527,6 +537,77 @@ export function makeToolAuthenticationBlock({
   ];
 }
 
+/**
+ * Creates Slack blocks for an agent question to the user.
+ * Single-select: buttons per option, submits immediately on click.
+ * Multi-select: checkboxes + Submit button reads state.values.
+ */
+export function makeUserQuestionBlock({
+  question,
+  value,
+}: {
+  question: UserQuestionItemType;
+  value: string;
+}) {
+  const blocks: KnownBlock[] = [
+    {
+      type: "section",
+      text: { type: "mrkdwn", text: question.question },
+    },
+  ];
+
+  if (question.options.length > 0) {
+    blocks.push({
+      type: "actions",
+      block_id: USER_QUESTION_OPTIONS_BLOCK_ID,
+      elements: [
+        {
+          type: question.multiSelect ? "checkboxes" : "radio_buttons",
+          action_id: USER_QUESTION_OPTIONS_ACTION_ID,
+          options: question.options.map((opt, index) => ({
+            text: { type: "plain_text", text: opt.label },
+            ...(opt.description
+              ? { description: { type: "plain_text", text: opt.description } }
+              : {}),
+            value: String(index),
+          })),
+        },
+      ],
+    });
+  }
+
+  blocks.push({
+    type: "input",
+    block_id: USER_QUESTION_TEXT_BLOCK_ID,
+    label: { type: "plain_text", text: " " },
+    element: {
+      type: "plain_text_input",
+      action_id: USER_QUESTION_TEXT_ACTION_ID,
+      placeholder: { type: "plain_text", text: "Type something else…" },
+    },
+  });
+
+  blocks.push({
+    type: "actions",
+    elements: [
+      {
+        type: "button",
+        text: { type: "plain_text", text: "Skip" },
+        action_id: ANSWER_USER_QUESTION_SKIP,
+        value,
+      },
+      {
+        type: "button",
+        text: { type: "plain_text", text: "Submit" },
+        action_id: ANSWER_USER_QUESTION_SUBMIT,
+        value,
+        style: "primary",
+      },
+    ],
+  });
+
+  return blocks;
+}
 export function makeToolFileAuthorizationBlock({
   agentName,
   fileName,
