@@ -141,46 +141,8 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { validateRelativePath } from "@app/types/shared/utils/url_utils";
 import { GenericServerException, OauthException } from "@workos-inc/node";
-import crypto from "crypto";
 import { sealData } from "iron-session";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-const OAUTH_NONCE_COOKIE = "workos_oauth_nonce";
-const OAUTH_NONCE_MAX_AGE_SECONDS = 600; // 10 minutes — matches typical auth code TTL
-
-function getSessionCookieParams(): {
-  domain: string | undefined;
-  secureFlag: string;
-} {
-  return {
-    domain: config.getWorkOSSessionCookieDomain(),
-    secureFlag: isDevelopment() ? "" : "; Secure",
-  };
-}
-
-function buildExpiredCookie(
-  name: string,
-  path: string,
-  domain: string | undefined,
-  secureFlag: string
-): string {
-  const domainAttr = domain ? `; Domain=${domain}` : "";
-  return `${name}=${domainAttr}; Path=${path}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secureFlag}; SameSite=Lax`;
-}
-
-/**
- * Decode the payload of a JWT without signature verification.
- * Safe here because the token was just received from WorkOS over an authenticated TLS channel.
- * Do NOT copy this pattern for tokens received from untrusted sources.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function decodeJwtPayload(token: string): Record<string, any> {
-  const parts = token.split(".");
-  if (parts.length !== 3 || !parts[1]) {
-    throw new Error("Invalid JWT format: expected 3 dot-separated segments");
-  }
-  return JSON.parse(Buffer.from(parts[1], "base64").toString());
-}
 
 function isValidScreenHint(
   screenHint: string | string[] | undefined
@@ -224,11 +186,10 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       code_challenge_method,
     } = req.query;
 
-    const defaultRedirectUri = `${config.getAuthRedirectBaseUrl()}/api/workos/callback`;
-    const redirectUri = getValidatedRedirectUri(
-      redirect_uri,
-      defaultRedirectUri
-    );
+    const redirectUri =
+      redirect_uri && isString(redirect_uri)
+        ? redirect_uri
+        : `${config.getAuthRedirectBaseUrl()}/api/workos/callback`;
 
     let organizationIdToUse;
 
@@ -266,19 +227,11 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       : null;
     // Extract UTM params from query to preserve through OAuth flow
     const utmParams = extractUTMParams(req.query);
-
-    // Generate a cryptographic nonce to bind the OAuth flow to this browser session,
-    // preventing login CSRF / session fixation attacks (RFC 6749 Section 10.12).
-    const oauthNonce = crypto.randomBytes(32).toString("base64url");
     const state = {
-      nonce: oauthNonce,
       ...(sanitizedReturnTo ? { returnTo: sanitizedReturnTo } : {}),
       ...(organizationIdToUse ? { organizationId: organizationIdToUse } : {}),
       ...(Object.keys(utmParams).length > 0 ? { utm: utmParams } : {}),
     };
-
-    // State always has at least the nonce, so it's never empty.
-    const encodedState = Buffer.from(JSON.stringify(state)).toString("base64");
 
     const authorizationUrl = getWorkOS().userManagement.getAuthorizationUrl({
       // Specify that we'd like AuthKit to handle the authentication flow
@@ -287,7 +240,10 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       redirectUri,
       clientId: config.getWorkOSClientId(),
       ...enterpriseParams,
-      state: encodedState,
+      state:
+        Object.keys(state).length > 0
+          ? Buffer.from(JSON.stringify(state)).toString("base64")
+          : undefined,
       ...(isValidScreenHint(screenHint) ? { screenHint } : {}),
       ...(isString(loginHint) ? { loginHint } : {}),
       ...(isString(code_challenge) ? { codeChallenge: code_challenge } : {}),
@@ -296,15 +252,6 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
         : {}),
     });
 
-    // Store the nonce in an HttpOnly cookie so the callback can verify the flow
-    // originated from this browser session.
-    const { domain, secureFlag } = getSessionCookieParams();
-    const domainAttr = domain ? `; Domain=${domain}` : "";
-    const nonceCookie = `${OAUTH_NONCE_COOKIE}=${oauthNonce}${domainAttr}; Path=/api/workos/callback; HttpOnly${secureFlag}; SameSite=Lax; Max-Age=${OAUTH_NONCE_MAX_AGE_SECONDS}`;
-
-    res.setHeader("Set-Cookie", nonceCookie);
-    // authorizationUrl is built by the WorkOS SDK and always points to WorkOS's auth server.
-    // redirectUri is a query parameter WorkOS validates against its registered URIs — not the redirect destination.
     res.redirect(authorizationUrl);
   } catch (error) {
     logger.error({ error }, "Error during WorkOS login");
@@ -372,7 +319,9 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
       codeVerifier: code_verifier,
     });
 
-    const jwtPayload = decodeJwtPayload(authResult.accessToken);
+    const jwtPayload = JSON.parse(
+      Buffer.from(authResult.accessToken.split(".")[1], "base64").toString()
+    );
     const expiresIn = jwtPayload.exp
       ? jwtPayload.exp - Math.floor(Date.now() / 1000)
       : undefined;
@@ -452,52 +401,9 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let stateObj: Record<string, any>;
-  try {
-    stateObj = isString(state)
-      ? JSON.parse(Buffer.from(state, "base64").toString("utf-8"))
-      : {};
-  } catch {
-    return redirectTo(
-      res,
-      "/login-error?reason=invalid-state&type=workos-callback"
-    );
-  }
-
-  // Clear the nonce cookie immediately (single-use) regardless of outcome.
-  const { domain, secureFlag } = getSessionCookieParams();
-  const clearNonceCookie = buildExpiredCookie(
-    OAUTH_NONCE_COOKIE,
-    "/api/workos/callback",
-    domain,
-    secureFlag
-  );
-
-  // Verify the OAuth nonce to prevent login CSRF / session fixation.
-  // The nonce in the state must match the one stored in the browser's cookie.
-  // Use constant-time comparison to prevent timing side-channel leakage.
-  const nonceCookie = req.cookies[OAUTH_NONCE_COOKIE];
-  const nonceMatch =
-    isString(stateObj.nonce) &&
-    isString(nonceCookie) &&
-    stateObj.nonce.length === nonceCookie.length &&
-    crypto.timingSafeEqual(
-      Buffer.from(stateObj.nonce),
-      Buffer.from(nonceCookie)
-    );
-  if (!nonceMatch) {
-    logger.warn(
-      { hasNonce: !!stateObj.nonce, hasCookie: !!nonceCookie },
-      "OAuth callback nonce mismatch — possible CSRF attempt"
-    );
-    getStatsDClient().increment("login.callback.nonce_mismatch");
-    res.setHeader("Set-Cookie", clearNonceCookie);
-    return redirectTo(
-      res,
-      "/login-error?reason=nonce-mismatch&type=workos-callback"
-    );
-  }
+  const stateObj = isString(state)
+    ? JSON.parse(Buffer.from(state, "base64").toString("utf-8"))
+    : {};
 
   let callbackWorkspaceId: string | undefined;
 
@@ -514,7 +420,10 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       throw new Error("Sealed session not found");
     }
 
-    const decodedPayload = decodeJwtPayload(accessToken);
+    // Decode and inspect JWT content
+    const decodedPayload = JSON.parse(
+      Buffer.from(accessToken.split(".")[1], "base64").toString()
+    );
 
     const sessionCookie: SessionCookie = {
       sessionData: sealedSession,
@@ -631,15 +540,17 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       if (organizationId) {
         params.set("organizationId", organizationId);
       }
-      res.setHeader("Set-Cookie", clearNonceCookie);
       res.redirect(
         `${targetRegionInfo.url}/api/workos/login?${params.toString()}`
       );
       return;
     }
 
-    // Set session cookie and redirect to returnTo URL.
-    // domain and secureFlag are already defined above (nonce cleanup).
+    // Set session cookie and redirect to returnTo URL
+    const domain = config.getWorkOSSessionCookieDomain();
+    // In development (localhost), omit Secure flag as it requires HTTPS
+    // Safari strictly enforces this and will not set cookies with Secure flag on HTTP
+    const secureFlag = isDevelopment() ? "" : "; Secure";
 
     // Indicator cookie for client-side session detection (UI only, not for auth).
     // Not HttpOnly so it can be read by JavaScript. Max-Age matches workos_session (30 days).
@@ -649,14 +560,12 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
 
     if (domain) {
       res.setHeader("Set-Cookie", [
-        clearNonceCookie,
         `workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secureFlag}; SameSite=Lax`,
         `workos_session=${sealedCookie}; Domain=${domain}; Path=/; HttpOnly${secureFlag}; SameSite=Lax; Max-Age=2592000`,
         indicatorCookie,
       ]);
     } else {
       res.setHeader("Set-Cookie", [
-        clearNonceCookie,
         `workos_session=${sealedCookie}; Path=/; HttpOnly${secureFlag}; SameSite=Lax; Max-Age=2592000`,
         indicatorCookie,
       ]);
@@ -712,7 +621,6 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     // WorkOS captures these on their side.
 
     getStatsDClient().increment("login.callback.error", 1);
-    res.setHeader("Set-Cookie", clearNonceCookie);
     redirectTo(res, `/login-error?type=workos-callback`);
   }
 }
@@ -755,26 +663,22 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
     }
   }
 
-  const { domain, secureFlag } = getSessionCookieParams();
+  const domain = config.getWorkOSSessionCookieDomain();
+  // In development (localhost), omit Secure flag as it requires HTTPS
+  const secureFlag = isDevelopment() ? "" : "; Secure";
 
-  // Clear both session cookie and indicator cookie.
-  // buildExpiredCookie sets HttpOnly; the indicator cookie is not HttpOnly (JS-readable),
-  // so we build it inline with the same expiry pattern.
-  const expiredIndicator = domain
-    ? `${DUST_HAS_SESSION}=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT${secureFlag}; SameSite=Lax`
-    : `${DUST_HAS_SESSION}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT${secureFlag}; SameSite=Lax`;
-
+  // Clear both session cookie and indicator cookie
   if (domain) {
     res.setHeader("Set-Cookie", [
-      buildExpiredCookie("workos_session", "/", undefined, secureFlag),
-      buildExpiredCookie("workos_session", "/", domain, secureFlag),
-      expiredIndicator,
+      `workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secureFlag}; SameSite=Lax`,
+      `workos_session=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secureFlag}; SameSite=Lax`,
       `${DUST_HAS_SESSION}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT${secureFlag}; SameSite=Lax`,
+      `${DUST_HAS_SESSION}=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT${secureFlag}; SameSite=Lax`,
     ]);
   } else {
     res.setHeader("Set-Cookie", [
-      buildExpiredCookie("workos_session", "/", undefined, secureFlag),
-      expiredIndicator,
+      `workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secureFlag}; SameSite=Lax`,
+      `${DUST_HAS_SESSION}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT${secureFlag}; SameSite=Lax`,
     ]);
   }
 
@@ -815,68 +719,14 @@ async function handleRevokeSession(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-// Lazily cached set of allowed origins for redirect_uri validation.
-let cachedAllowedOrigins: Set<string> | null = null;
-function getAllowedRedirectOrigins(): Set<string> {
-  if (!cachedAllowedOrigins) {
-    const urls = [
-      config.getClientFacingUrl(),
-      config.getAuthRedirectBaseUrl(),
-      config.getAppUrl(),
-    ];
-    cachedAllowedOrigins = new Set(
-      urls.flatMap((u) => {
-        try {
-          return [new URL(u).origin];
-        } catch {
-          return [];
-        }
-      })
-    );
-  }
-  return cachedAllowedOrigins;
-}
-
-/**
- * Returns the redirect_uri to use for the WorkOS authorization flow.
- * WorkOS validates redirect_uri against its registered URIs in the dashboard —
- * we trust it as the authority rather than maintaining a parallel local allowlist.
- */
-function getValidatedRedirectUri(
-  redirectUri: string | string[] | undefined,
-  defaultUri: string
-): string {
-  if (!redirectUri || !isString(redirectUri)) {
-    return defaultUri;
-  }
-  return redirectUri;
-}
-
 function redirectTo(res: NextApiResponse, sanitizedReturnTo: string) {
-  if (sanitizedReturnTo.startsWith("/")) {
-    // Relative path — prefix with app URL unless it's an API path.
-    if (sanitizedReturnTo.startsWith("/api")) {
-      res.redirect(sanitizedReturnTo);
-    } else {
-      res.redirect(`${config.getAppUrl()}${sanitizedReturnTo}`);
-    }
-    return;
+  if (
+    sanitizedReturnTo.startsWith("/api") ||
+    sanitizedReturnTo.startsWith("http://") ||
+    sanitizedReturnTo.startsWith("https://")
+  ) {
+    res.redirect(sanitizedReturnTo);
+  } else {
+    res.redirect(`${config.getAppUrl()}${sanitizedReturnTo}`);
   }
-
-  // Absolute URL — only allow trusted origins.
-  try {
-    const parsed = new URL(sanitizedReturnTo);
-    if (getAllowedRedirectOrigins().has(parsed.origin)) {
-      res.redirect(sanitizedReturnTo);
-      return;
-    }
-  } catch {
-    // Invalid URL — fall through to safe default.
-  }
-
-  logger.warn(
-    { sanitizedReturnTo },
-    "redirectTo rejected untrusted absolute URL, falling back to app root"
-  );
-  res.redirect(config.getAppUrl());
 }
