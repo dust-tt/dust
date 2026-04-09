@@ -401,10 +401,9 @@ export async function emitMetronomeGaugeEventsForAllWorkspacesActivity(): Promis
     ? now.toISOString().slice(0, 13) // YYYY-MM-DDTHH
     : now.toISOString().slice(0, 10); // YYYY-MM-DD
   const timestamp = now.toISOString();
-  const todayUTC = now.toISOString().slice(0, 10);
 
   // In production, only emit gauge events for workspaces whose billing cycle
-  // ends today. In dev, emit for all workspaces (hourly schedule).
+  // ends within the next 24h. In dev, emit for all workspaces (hourly schedule).
   let workspaces: WorkspaceResource[];
   if (isDevelopment()) {
     workspaces = metronomeWorkspaces;
@@ -415,7 +414,8 @@ export async function emitMetronomeGaugeEventsForAllWorkspacesActivity(): Promis
         metronomeWorkspaces.map((w) => w.id)
       );
 
-    // Filter to workspaces whose billing cycle ends today.
+    // Filter to workspaces whose billing cycle ends within the next 24 hours.
+    const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     const results = await concurrentExecutor(
       metronomeWorkspaces,
       async (workspace): Promise<WorkspaceResource | null> => {
@@ -429,20 +429,10 @@ export async function emitMetronomeGaugeEventsForAllWorkspacesActivity(): Promis
         if (!stripeSubscription) {
           return null;
         }
-        // Check if today matches the billing cycle boundary.
-        // Before Stripe processes renewal: current_period_end == today.
-        // After Stripe processes renewal: current_period_start == today.
-        const periodStart = new Date(
-          stripeSubscription.current_period_start * 1000
-        )
-          .toISOString()
-          .slice(0, 10);
-        const periodEnd = new Date(stripeSubscription.current_period_end * 1000)
-          .toISOString()
-          .slice(0, 10);
-        return periodStart === todayUTC || periodEnd === todayUTC
-          ? workspace
-          : null;
+        const periodEnd = new Date(
+          stripeSubscription.current_period_end * 1000
+        );
+        return periodEnd >= now && periodEnd <= in24h ? workspace : null;
       },
       { concurrency: 10 }
     );
