@@ -22,8 +22,22 @@ export const discoverToolsSkill = {
       { includeGlobalSpace: true }
     );
 
+    // When the official Notion MCP is present, hide the internal Notion server.
+    const hasOfficialNotion = allToolsets.some(
+      (t) => t.serverType === "remote" && t.toJSON().server.name === "Notion"
+    );
+
     const availableToolsets = allToolsets.filter((toolset) => {
       const mcpServerView = toolset.toJSON();
+
+      if (
+        hasOfficialNotion &&
+        mcpServerView.serverType === "internal" &&
+        mcpServerView.server.name === "notion"
+      ) {
+        return false;
+      }
+
       return (
         getMCPServerRequirements(mcpServerView).noRequirement &&
         mcpServerView.server.availability !== "auto_hidden_builder"
