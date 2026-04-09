@@ -243,6 +243,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable conversation branches",
     stage: "dust_only",
   },
+  sessions_branching: {
+    description: "Enable sessions branching",
+    stage: "dust_only",
+  },
   reinforced_agents: {
     description:
       "Enable reinforcement: background analysis of conversations to suggest improvements to skills.",
