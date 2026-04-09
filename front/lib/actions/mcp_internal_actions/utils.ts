@@ -3,7 +3,6 @@ import {
   getInternalMCPServerInfo,
   matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type {
   AuthRequiredOutputResourceType,
   EarlyExitOutputResourceType,
@@ -11,6 +10,7 @@ import type {
   SingleResourceToolOutput,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { hasNoRequiredProperties } from "@app/lib/utils/json_schemas";
 import type { OAuthProvider } from "@app/types/oauth/lib";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -103,7 +103,7 @@ export function isJITMCPServerView(view: MCPServerViewType): boolean {
   return (
     !matchesInternalMCPServerName(view.server.sId, "agent_memory") &&
     // Only tools that do not require any configuration can be enabled directly in a conversation.
-    getMCPServerRequirements(view).noRequirement
+    hasNoRequiredProperties(view)
   );
 }
 
