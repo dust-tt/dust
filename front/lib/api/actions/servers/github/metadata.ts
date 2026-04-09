@@ -36,7 +36,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
   get_pull_request: {
     description:
       "Retrieve a pull request from a specified GitHub repository including" +
-      " its associated description, diff, comments and reviews.",
+      " its associated description, creation time (createdAt), merge time" +
+      " (mergedAt when merged), diff, comments and reviews.",
     schema: {
       owner: z
         .string()

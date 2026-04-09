@@ -105,6 +105,8 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
               pullRequest(number: $pullNumber) {
                 title
                 body
+                createdAt
+                mergedAt
                 commits(last: ${GITHUB_GET_PULL_REQUEST_ACTION_MAX_COMMITS}) {
                   nodes {
                     commit {
@@ -157,6 +159,8 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
             pullRequest: {
               title: string;
               body: string;
+              createdAt: string;
+              mergedAt: string | null;
               commits: {
                 nodes: {
                   commit: {
@@ -202,6 +206,8 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
 
         const pullTitle = pull.repository.pullRequest.title;
         const pullBody = pull.repository.pullRequest.body;
+        const pullCreatedAt = pull.repository.pullRequest.createdAt;
+        const pullMergedAt = pull.repository.pullRequest.mergedAt;
         const pullCommits = pull.repository.pullRequest.commits.nodes.map(
           (n) => {
             return {
@@ -312,8 +318,16 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
         // their defauilt response type)
         const pullDiff = diffWithPositions(diff.data as string);
 
+        const createdAtLine = `CREATED_AT: ${new Date(pullCreatedAt).toISOString()}\n\n`;
+        const mergedAtLine =
+          pullMergedAt != null
+            ? `MERGED_AT: ${new Date(pullMergedAt).toISOString()}\n\n`
+            : `MERGED_AT: (not merged)\n\n`;
+
         const content =
           `TITLE: ${pullTitle}\n\n` +
+          createdAtLine +
+          mergedAtLine +
           `BODY:\n` +
           `${pullBody}\n\n` +
           `COMMITS:\n` +
