@@ -361,12 +361,81 @@ function getDynamicToolDisplayLabels({
         (toolName === "create_document" ||
           toolName === "create_spreadsheet" ||
           toolName === "create_presentation") &&
-        isString(inputs.title)
+        isString(inputs.description)
       ) {
-        const t = truncateQuery(inputs.title);
+        const t = truncateQuery(inputs.description);
         return {
           running: `Creating “${t}”`,
           done: `Created “${t}”`,
+        };
+      }
+      return null;
+
+    case "sandbox":
+      if (toolName === "bash" && isString(inputs.description)) {
+        const t = truncateQuery(inputs.description);
+        return { running: t, done: t };
+      }
+      return null;
+
+    case "query_tables_v2":
+      if (
+        toolName === "execute_database_query" &&
+        isString(inputs.description)
+      ) {
+        const t = truncateQuery(inputs.description);
+        return { running: t, done: t };
+      }
+      return null;
+
+    case "data_warehouses":
+      if (toolName === "query" && isString(inputs.description)) {
+        const t = truncateQuery(inputs.description);
+        return { running: t, done: t };
+      }
+      return null;
+
+    case "file_generation":
+      if (
+        (toolName === "generate_file" || toolName === "convert_file_format") &&
+        isString(inputs.file_name)
+      ) {
+        const name = truncateQuery(inputs.file_name);
+        const verb = toolName === "generate_file" ? "Generating" : "Converting";
+        const past = toolName === "generate_file" ? "Generated" : "Converted";
+        return {
+          running: `${verb} "${name}"`,
+          done: `${past} "${name}"`,
+        };
+      }
+      return null;
+
+    case "run_agent":
+      if (isString(inputs.description)) {
+        const d = truncateQuery(inputs.description);
+        return { running: d, done: d };
+      }
+      return null;
+
+    case "interactive_content":
+      if (
+        toolName === "create_interactive_content_file" &&
+        isString(inputs.file_name)
+      ) {
+        const name = truncateQuery(inputs.file_name);
+        return {
+          running: `Creating "${name}"`,
+          done: `Created "${name}"`,
+        };
+      }
+      if (
+        toolName === "rename_interactive_content_file" &&
+        isString(inputs.new_file_name)
+      ) {
+        const name = truncateQuery(inputs.new_file_name);
+        return {
+          running: `Renaming to "${name}"`,
+          done: `Renamed to "${name}"`,
         };
       }
       return null;
@@ -380,15 +449,12 @@ function getDynamicToolDisplayLabels({
     case "ashby":
     case "confluence":
     case "databricks":
-    case "data_warehouses":
-    case "file_generation":
     case "fathom":
     case "freshservice":
     case "gong":
     case "google_sheets":
     case "hubspot":
     case "include_data":
-    case "interactive_content":
     case "slideshow":
     case "jira":
     case "luma":
@@ -402,7 +468,6 @@ function getDynamicToolDisplayLabels({
     case "productboard":
     case "common_utilities":
     case "jit_testing":
-    case "run_agent":
     case "run_dust_app":
     case "salesforce":
     case "salesloft":
@@ -418,13 +483,11 @@ function getDynamicToolDisplayLabels({
     case "vanta":
     case "front":
     case "zendesk":
-    case "query_tables_v2":
     case "skill_management":
     case "schedules_management":
     case "project_manager":
     case "poke":
     case "project_conversation":
-    case "sandbox":
     case "ask_user_question":
     default:
       return null;
