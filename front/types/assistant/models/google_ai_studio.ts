@@ -9,6 +9,8 @@ export const GEMINI_3_1_FLASH_IMAGE_MODEL_ID =
 export const GEMINI_2_5_PRO_MODEL_ID = "gemini-2.5-pro" as const;
 export const GEMINI_3_PRO_MODEL_ID = "gemini-3-pro-preview" as const;
 export const GEMINI_3_1_PRO_MODEL_ID = "gemini-3.1-pro-preview" as const;
+export const GEMINI_3_1_FLASH_LITE_MODEL_ID =
+  "gemini-3.1-flash-lite-preview" as const;
 export const GEMINI_3_FLASH_MODEL_ID = "gemini-3-flash-preview" as const;
 
 export const GEMINI_2_5_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
@@ -22,12 +24,34 @@ export const GEMINI_2_5_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   description: "Google's lightweight large context model (1m context).",
   shortDescription: "Google's lightweight model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
   supportsResponseFormat: false, // response format not compatible with tool use
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "light",
+  defaultReasoningEffort: "light",
+  useNativeLightReasoning: true,
+  tokenizer: { type: "tiktoken", base: "cl100k_base" },
+  supportsBatchProcessing: true,
+};
+export const GEMINI_3_1_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
+  modelId: GEMINI_3_1_FLASH_LITE_MODEL_ID,
+  displayName: "Gemini 3.1 Flash Lite (Preview)",
+  contextSize: 1_000_000,
+  recommendedTopK: 64,
+  recommendedExhaustiveTopK: 64,
+  largeModel: false,
+  description: "Google's latest lightweight large context model (1m context).",
+  shortDescription: "Google's latest lightweight model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "high",
   defaultReasoningEffort: "light",
   useNativeLightReasoning: true,
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
