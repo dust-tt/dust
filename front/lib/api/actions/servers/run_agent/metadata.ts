@@ -53,8 +53,8 @@ export const RUN_AGENT_TOOL_SCHEMA = {
   description: z
     .string()
     .describe(
-      "A short summary of what the agent will do, using infinitive verbs (e.g. " +
-        '"Analyze Q1 revenue trends", "Summarize the latest support tickets").'
+      "A short, high-level description of the goal, not the detailed instructions. Use infinitive verbs (e.g. " +
+        '"Review Q1 performance", "Assess support backlog").'
     ),
   query: z
     .string()

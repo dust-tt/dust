@@ -17,8 +17,8 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
       description: z
         .string()
         .describe(
-          "A short, user-facing summary of what this command does, using infinitive verbs (e.g. " +
-            '"Install dependencies", "Run test suite").'
+          "A short, high-level description of the goal, not the implementation details. Use infinitive verbs (e.g. " +
+            '"Set up environment", "Generate the chart").'
         ),
       command: z
         .string()
