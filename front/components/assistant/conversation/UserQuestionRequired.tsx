@@ -40,7 +40,6 @@ export function UserQuestionRequired({
 
   const [selectedOptions, setSelectedOptions] = useState<number[]>([]);
   const [customResponse, setCustomResponse] = useState("");
-  const [isCustomResponseFocused, setIsCustomResponseFocused] = useState(false);
 
   const { question } = blockedAction;
   const isTriggeredByCurrentUser = blockedAction.userId === user?.sId;
@@ -139,8 +138,8 @@ export function UserQuestionRequired({
                 isSelected
                   ? question.multiSelect
                     ? [
-                        "border-border bg-background",
-                        "dark:border-border-night dark:bg-background-night",
+                        "border-border bg-muted-background",
+                        "dark:border-border-night dark:bg-muted-background-night",
                       ]
                     : "bg-muted-background dark:bg-muted-background-night"
                   : [
@@ -165,8 +164,8 @@ export function UserQuestionRequired({
                 size="sm"
                 variant="ghost"
                 className={cn(
-                  "shrink-0 bg-border text-muted-foreground",
-                  "dark:bg-border-night dark:text-muted-foreground-night"
+                  "shrink-0 bg-border-dark text-muted-foreground",
+                  "dark:bg-border-dark-night dark:text-muted-foreground-night"
                 )}
               />
               <div className="flex flex-col">
@@ -186,8 +185,10 @@ export function UserQuestionRequired({
           variant="tertiary"
           className={cn(
             "flex w-full items-center gap-2 rounded-2xl p-3 transition-colors",
-            question.multiSelect && "border-border dark:border-border-night",
-            isCustomResponseFocused
+            trimmedCustomResponse.length > 0 &&
+              selectedOptions.length === 0 &&
+              "border-border dark:border-border-night",
+            trimmedCustomResponse.length > 0 && selectedOptions.length === 0
               ? "bg-muted-background dark:bg-muted-background-night"
               : [
                   "bg-background hover:bg-muted-background/60",
@@ -201,8 +202,8 @@ export function UserQuestionRequired({
             size="sm"
             variant="ghost"
             className={cn(
-              "shrink-0 bg-border text-muted-foreground",
-              "dark:bg-border-night dark:text-muted-foreground-night"
+              "shrink-0 bg-border-dark text-muted-foreground",
+              "dark:bg-border-dark-night dark:text-muted-foreground-night"
             )}
           />
           <Input
@@ -217,9 +218,7 @@ export function UserQuestionRequired({
             value={customResponse}
             onFocus={() => {
               setSelectedOptions([]);
-              setIsCustomResponseFocused(true);
             }}
-            onBlur={() => setIsCustomResponseFocused(false)}
             onChange={(e) => setCustomResponse(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
