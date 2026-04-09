@@ -4,6 +4,7 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type {
@@ -206,5 +207,45 @@ export async function purgeExpiredSyntheticSuggestionsActivity(
   logger.info(
     { totalDeleted },
     "Done purging expired synthetic agent suggestions."
+  );
+}
+
+export async function purgeExpiredSyntheticSkillSuggestionsActivity(
+  batchSize: number = BATCH_SIZE
+) {
+  const cutoffDate = getSyntheticSuggestionsDeletionCutoffDate();
+
+  logger.info(
+    {},
+    `About to purge synthetic skill suggestions created before ${cutoffDate.toISOString()}.`
+  );
+
+  const workspaces = await WorkspaceResource.listAll();
+
+  let totalDeleted = 0;
+
+  for (const workspace of workspaces) {
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    let hasMore = true;
+
+    do {
+      const deletedCount = await SkillSuggestionResource.deleteExpiredSynthetic(
+        auth,
+        cutoffDate,
+        {
+          limit: batchSize,
+        }
+      );
+
+      totalDeleted += deletedCount;
+      hasMore = deletedCount === batchSize;
+
+      Context.current().heartbeat();
+    } while (hasMore);
+  }
+
+  logger.info(
+    { totalDeleted },
+    "Done purging expired synthetic skill suggestions."
   );
 }
