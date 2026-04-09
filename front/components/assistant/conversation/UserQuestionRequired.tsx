@@ -11,7 +11,6 @@ import {
   Counter,
   cn,
   Input,
-  Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -131,8 +130,6 @@ export function UserQuestionRequired({
       <div className="flex flex-col gap-2">
         {question.options.map((option, index) => {
           const isSelected = selectedOptions.includes(index);
-          const isSubmittingOption =
-            isSubmitting && !isSkipPending && isSelected;
 
           return (
             <Card
@@ -164,33 +161,25 @@ export function UserQuestionRequired({
               tabIndex={isSubmitting ? -1 : 0}
               aria-pressed={isSelected}
             >
-              {isSubmittingOption ? (
-                <div className="flex w-full items-center justify-center py-1">
-                  <Spinner size="sm" />
-                </div>
-              ) : (
-                <>
-                  <Counter
-                    value={index + 1}
-                    size="sm"
-                    variant="ghost"
-                    className={cn(
-                      "shrink-0 bg-border-dark text-muted-foreground",
-                      "dark:bg-border-dark-night dark:text-muted-foreground-night"
-                    )}
-                  />
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-                      {option.label}
-                    </span>
-                    {option.description && (
-                      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                        {option.description}
-                      </span>
-                    )}
-                  </div>
-                </>
-              )}
+              <Counter
+                value={index + 1}
+                size="sm"
+                variant="ghost"
+                className={cn(
+                  "shrink-0 bg-border-dark text-muted-foreground",
+                  "dark:bg-border-dark-night dark:text-muted-foreground-night"
+                )}
+              />
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+                  {option.label}
+                </span>
+                {option.description && (
+                  <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                    {option.description}
+                  </span>
+                )}
+              </div>
             </Card>
           );
         })}
@@ -209,46 +198,38 @@ export function UserQuestionRequired({
                 ]
           )}
         >
-          {isSubmitting && !isSkipPending && isCustomResponseSelected ? (
-            <div className="flex w-full items-center justify-center py-1">
-              <Spinner size="sm" />
-            </div>
-          ) : (
-            <>
-              <Counter
-                value={question.options.length + 1}
-                size="sm"
-                variant="ghost"
-                className={cn(
-                  "shrink-0 bg-border-dark text-muted-foreground",
-                  "dark:bg-border-dark-night dark:text-muted-foreground-night"
-                )}
-              />
-              <Input
-                id={`custom-response-${blockedAction.actionId}`}
-                containerClassName="flex-1"
-                className={cn(
-                  "h-auto w-full rounded-none border-transparent bg-transparent",
-                  "px-0 py-0 text-sm shadow-none",
-                  "focus-visible:border-transparent focus-visible:ring-0"
-                )}
-                placeholder="Type something else"
-                value={customResponse}
-                onFocus={() => {
-                  setSelectedOptions([]);
-                }}
-                onChange={(e) => setCustomResponse(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleSubmit();
-                  }
-                }}
-                name="custom-response"
-                disabled={isSubmitting}
-              />
-            </>
-          )}
+          <Counter
+            value={question.options.length + 1}
+            size="sm"
+            variant="ghost"
+            className={cn(
+              "shrink-0 bg-border-dark text-muted-foreground",
+              "dark:bg-border-dark-night dark:text-muted-foreground-night"
+            )}
+          />
+          <Input
+            id={`custom-response-${blockedAction.actionId}`}
+            containerClassName="flex-1"
+            className={cn(
+              "h-auto w-full rounded-none border-transparent bg-transparent",
+              "px-0 py-0 text-sm shadow-none",
+              "focus-visible:border-transparent focus-visible:ring-0"
+            )}
+            placeholder="Type something else"
+            value={customResponse}
+            onFocus={() => {
+              setSelectedOptions([]);
+            }}
+            onChange={(e) => setCustomResponse(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleSubmit();
+              }
+            }}
+            name="custom-response"
+            disabled={isSubmitting}
+          />
         </Card>
       </div>
       {errorMessage && (
