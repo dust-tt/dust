@@ -47,11 +47,15 @@ conversation. We do not build a full branch tree (yet).
 
 The UI supports both:
 
-- fork from the conversation's current visible state (= last message)
-- fork from a specific earlier message
+- fork from the conversation's current visible state (= latest agent message)
+- fork from a specific earlier agent message
 
 The backend always persists the resolved source message so both entry points
 share the same creation flow.
+
+Only agent messages are valid fork points. They are the only stable completed
+turn boundary for seeding the child; forking from user messages or content
+fragments would start the child from an incomplete state.
 
 ### Multiple Streams
 
@@ -151,7 +155,8 @@ Foreign-key constraints:
 The fork flow is:
 
 1. validate read access on the parent conversation and on the concrete setup / resources that will be copied
-2. resolve the source message if the UI did not specify one
+2. resolve the source message if the UI did not specify one, and validate that
+   it is an agent message
 3. create the child conversation in the same space/project
 4. copy readable conversation-level setup from the parent and recompute child access requirements from what was actually copied
 5. persist the lineage row with `branchedAt`
