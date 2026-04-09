@@ -267,7 +267,11 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         <div
           key={`message-id-${sId}`}
           ref={ref}
-          className={cn("mx-auto max-w-conversation", topMargin, !nextData && "mb-4")}
+          className={cn(
+            "mx-auto max-w-conversation",
+            topMargin,
+            !nextData && "mb-4"
+          )}
         >
           {isUserMessage(data) && (
             <UserMessage
