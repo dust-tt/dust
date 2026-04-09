@@ -260,7 +260,7 @@ export function BaseMetronomeUsageChart({
     }
     const futurePoints = points.filter((p) => p.timestamp > nowMs);
     return !futurePoints.every(
-      (p) => p.totalRemainingCreditsMicroUsd > 4 * maxCumulatedValue
+      (p) => p.totalInitialCreditsMicroUsd > 4 * maxCumulatedValue
     );
   }, [points, maxCumulatedValue, nowMs, displayMode]);
 
@@ -308,8 +308,7 @@ export function BaseMetronomeUsageChart({
     if (displayMode === "cumulative") {
       return points.map((point) => {
         const dataPoint: ChartDataPoint = { timestamp: point.timestamp };
-        dataPoint.totalCreditsMicroUsd =
-          (maxCumulatedValue ?? 0) + point.totalRemainingCreditsMicroUsd;
+        dataPoint.totalCreditsMicroUsd = point.totalInitialCreditsMicroUsd;
         for (const g of point.groups) {
           dataPoint[g.groupKey] = g.cumulatedValueMicroUsd;
         }
@@ -323,7 +322,7 @@ export function BaseMetronomeUsageChart({
       }
       return dataPoint;
     });
-  }, [points, displayMode, maxCumulatedValue]);
+  }, [points, displayMode]);
 
   const ChartComponent =
     displayMode === "daily" ? BarChart : groupBy ? AreaChart : LineChart;
