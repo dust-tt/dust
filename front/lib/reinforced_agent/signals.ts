@@ -148,7 +148,7 @@ export async function fetchReinforcementAutoTrackSignals(
         agentIds,
         lookbackWindowDays
       ),
-      ConversationResource.getConversationSIdsByAgent(auth, {
+      ConversationResource.getConversationIdsByAgent(auth, {
         agentIds,
         cutoffDate,
         excludeHumanOutOfTheLoop: true,

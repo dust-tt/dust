@@ -3430,6 +3430,285 @@ describe("Space Handling", () => {
     });
   });
 
+  describe("getPendingUserMessagesInConversation", () => {
+    let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
+    let auth: Authenticator;
+    let conversation: ConversationWithoutContentType;
+    let agents: LightAgentConfigurationType[];
+
+    beforeEach(async () => {
+      workspace = await WorkspaceFactory.basic();
+      const user = await UserFactory.basic();
+      auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+      agents = await setupTestAgents(workspace, user);
+
+      conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agents[0].sId,
+        messagesCreatedAt: [],
+      });
+    });
+
+    async function createPendingUserMessage(
+      conversationId: number,
+      rank: number,
+      branchId: number | null = null
+    ) {
+      const user = auth.getNonNullableUser();
+      const userMessageRow = await UserMessageModel.create({
+        userId: user.id,
+        workspaceId: workspace.id,
+        content: `Pending message rank ${rank}`,
+        userContextUsername: "testuser",
+        userContextTimezone: "UTC",
+        userContextFullName: "Test User",
+        userContextEmail: "test@example.com",
+        userContextProfilePictureUrl: null,
+        userContextOrigin: "web",
+        clientSideMCPServerIds: [],
+      });
+
+      return MessageModel.create({
+        sId: generateRandomModelSId(),
+        rank,
+        conversationId,
+        parentId: null,
+        userMessageId: userMessageRow.id,
+        workspaceId: workspace.id,
+        visibility: "pending",
+        branchId,
+      });
+    }
+
+    it("returns pending messages with null branchId when conversation has no branch", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const msg1 = await createPendingUserMessage(conversationResource.id, 10);
+      const msg2 = await createPendingUserMessage(conversationResource.id, 11);
+
+      const pending =
+        await ConversationResource.getPendingUserMessagesInConversation(auth, {
+          conversation,
+        });
+
+      expect(pending).toHaveLength(2);
+      expect(pending.map((m) => m.id)).toEqual([msg1.id, msg2.id]);
+    });
+
+    it("excludes pending messages that belong to a different branch", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const user = auth.getNonNullableUser();
+
+      // Create a main-thread message to anchor the branch.
+      const anchorUserMessageRow = await UserMessageModel.create({
+        userId: user.id,
+        workspaceId: workspace.id,
+        content: "Anchor message",
+        userContextUsername: "testuser",
+        userContextTimezone: "UTC",
+        userContextFullName: "Test User",
+        userContextEmail: "test@example.com",
+        userContextProfilePictureUrl: null,
+        userContextOrigin: "web",
+        clientSideMCPServerIds: [],
+      });
+      const anchorMessage = await MessageModel.create({
+        sId: generateRandomModelSId(),
+        rank: 0,
+        conversationId: conversationResource.id,
+        parentId: null,
+        userMessageId: anchorUserMessageRow.id,
+        workspaceId: workspace.id,
+      });
+
+      // Create two branches.
+      const branchA = await ConversationBranchResource.makeNew(auth, {
+        state: "open",
+        previousMessageId: anchorMessage.id,
+        conversationId: conversationResource.id,
+        userId: user.id,
+      });
+      const branchB = await ConversationBranchResource.makeNew(auth, {
+        state: "open",
+        previousMessageId: anchorMessage.id,
+        conversationId: conversationResource.id,
+        userId: user.id,
+      });
+
+      // Create a pending message on branchA.
+      const msgOnA = await createPendingUserMessage(
+        conversationResource.id,
+        10,
+        branchA.id
+      );
+      // Create a pending message on branchB.
+      await createPendingUserMessage(conversationResource.id, 11, branchB.id);
+      // Create a pending message with no branch.
+      const msgNoBranch = await createPendingUserMessage(
+        conversationResource.id,
+        12
+      );
+
+      // Query with conversation scoped to branchA.
+      const conversationOnBranchA: ConversationWithoutContentType = {
+        ...conversation,
+        branchId: branchA.sId,
+      };
+
+      const pending =
+        await ConversationResource.getPendingUserMessagesInConversation(auth, {
+          conversation: conversationOnBranchA,
+        });
+
+      // Should include the message on branchA and the one with null branchId,
+      // but NOT the message on branchB.
+      expect(pending).toHaveLength(2);
+      expect(pending.map((m) => m.id)).toEqual([msgOnA.id, msgNoBranch.id]);
+    });
+
+    it("excludes all branched pending messages when conversation has no branch", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const user = auth.getNonNullableUser();
+
+      // Create a main-thread anchor message.
+      const anchorUserMessageRow = await UserMessageModel.create({
+        userId: user.id,
+        workspaceId: workspace.id,
+        content: "Anchor",
+        userContextUsername: "testuser",
+        userContextTimezone: "UTC",
+        userContextFullName: "Test User",
+        userContextEmail: "test@example.com",
+        userContextProfilePictureUrl: null,
+        userContextOrigin: "web",
+        clientSideMCPServerIds: [],
+      });
+      const anchorMessage = await MessageModel.create({
+        sId: generateRandomModelSId(),
+        rank: 0,
+        conversationId: conversationResource.id,
+        parentId: null,
+        userMessageId: anchorUserMessageRow.id,
+        workspaceId: workspace.id,
+      });
+
+      const branch = await ConversationBranchResource.makeNew(auth, {
+        state: "open",
+        previousMessageId: anchorMessage.id,
+        conversationId: conversationResource.id,
+        userId: user.id,
+      });
+
+      // A pending message on the branch.
+      await createPendingUserMessage(conversationResource.id, 10, branch.id);
+      // A pending message with no branch.
+      const msgNoBranch = await createPendingUserMessage(
+        conversationResource.id,
+        11
+      );
+
+      // Query with the main conversation (branchId: null).
+      const pending =
+        await ConversationResource.getPendingUserMessagesInConversation(auth, {
+          conversation,
+        });
+
+      // Only the null-branch message is returned.
+      expect(pending).toHaveLength(1);
+      expect(pending[0].id).toBe(msgNoBranch.id);
+    });
+
+    it("returns pending messages ordered by rank", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const msg3 = await createPendingUserMessage(
+        conversationResource.id,
+        30
+      );
+      const msg1 = await createPendingUserMessage(
+        conversationResource.id,
+        10
+      );
+      const msg2 = await createPendingUserMessage(
+        conversationResource.id,
+        20
+      );
+
+      const pending =
+        await ConversationResource.getPendingUserMessagesInConversation(auth, {
+          conversation,
+        });
+
+      expect(pending.map((m) => m.id)).toEqual([msg1.id, msg2.id, msg3.id]);
+    });
+
+    it("does not return visible or deleted messages", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      // Create one pending message.
+      const pendingMsg = await createPendingUserMessage(
+        conversationResource.id,
+        10
+      );
+
+      // Create a visible message (default visibility).
+      const user = auth.getNonNullableUser();
+      const visibleUserMessageRow = await UserMessageModel.create({
+        userId: user.id,
+        workspaceId: workspace.id,
+        content: "Visible message",
+        userContextUsername: "testuser",
+        userContextTimezone: "UTC",
+        userContextFullName: "Test User",
+        userContextEmail: "test@example.com",
+        userContextProfilePictureUrl: null,
+        userContextOrigin: "web",
+        clientSideMCPServerIds: [],
+      });
+      await MessageModel.create({
+        sId: generateRandomModelSId(),
+        rank: 11,
+        conversationId: conversationResource.id,
+        parentId: null,
+        userMessageId: visibleUserMessageRow.id,
+        workspaceId: workspace.id,
+        visibility: "visible",
+      });
+
+      const pending =
+        await ConversationResource.getPendingUserMessagesInConversation(auth, {
+          conversation,
+        });
+
+      expect(pending).toHaveLength(1);
+      expect(pending[0].id).toBe(pendingMsg.id);
+    });
+  });
+
   describe("fetchMessagesForPage", () => {
     let auth: Authenticator;
     let conversation: ConversationWithoutContentType;

@@ -81,7 +81,7 @@ export async function listRecentConversationsForAgent(
 ): Promise<string[]> {
   const auth = await getAuthForWorkspace(workspaceId);
 
-  const convSIdsByAgent = await ConversationResource.getConversationSIdsByAgent(
+  const convSIdsByAgent = await ConversationResource.getConversationIdsByAgent(
     auth,
     {
       agentIds: [agentConfigurationId],
