@@ -36,7 +36,8 @@ At fork time:
 
 - we create a new child conversation in the same space / project as the parent
 - we persist an explicit lineage row between parent and child
-- we seed the child with the parent's conversation-level setup
+- we seed the child with the parent's conversation-level setup that the forking
+  user can read
 - we deep-copy the parent conversation files / filesystem into the child
 - we initialize the child with a compaction message at the top of the child
 - we leave the parent unchanged
@@ -44,10 +45,13 @@ At fork time:
 For the first version, lineage is surfaced as a compact parent link in the forked
 conversation. We do not build a full branch tree yet.
 
-For the first version, the UI starts from the conversation menu and forks from the
-conversation's current visible state. The backend still persists the
-resolved source message so we stay compatible with a future "branch from here"
-UI.
+For the first version, the UI supports both:
+
+- fork from the conversation's current visible state
+- fork from a specific message
+
+The backend always persists the resolved source message so both entry points
+share the same creation flow.
 
 ### Multiple Streams
 
@@ -77,13 +81,18 @@ The target design uses the real compaction flow from the compaction proposal:
 - the child remains blocked for posting while the initial compaction is in the
   `created` state
 
-Until compaction ships, the fork flow uses an artificial compaction
-placeholder. That placeholder reuses the rendered conversation-for-model view
-at the last message of the root conversation and stores it as the initial
-message in the child, explicitly stating that it is a forked starting point.
+Until compaction ships, the fork flow can use an artificial compaction
+placeholder internally. That placeholder reuses the rendered
+conversation-for-model view at the resolved source message of the parent
+conversation and stores it as the initial message in the child, explicitly
+stating that it is a forked starting point.
 
 Compaction happens after the fork is created. We never compact the
 parent conversation as part of the fork action.
+
+This placeholder path exists only to unblock internal development and
+integration work while compaction is still in flight. Before release, fork
+initialization switches to the shipped compaction flow.
 
 #### 3. Filesystem and File Seeding
 
@@ -103,6 +112,7 @@ filesystem / MCP version without rewriting the fork flow.
 This stream adds:
 
 - the `Branch conversation` action in the conversation menu
+- the `Branch conversation` action in the per-message menu
 - the lightweight lineage surface in the child conversation
 
 For the first version, this remains intentionally small. A link back to the parent
@@ -142,10 +152,12 @@ Foreign-key constraints:
 
 The fork flow is:
 
-1. validate read access on the parent conversation
+1. validate read access on the parent conversation and on the concrete setup /
+   resources that will be copied
 2. resolve the source message if the UI did not specify one
 3. create the child conversation in the same space
-4. copy conversation-level setup from the parent
+4. copy readable conversation-level setup from the parent and recompute child
+   access requirements from what was actually copied
 5. persist the lineage row with `branchedAt`
 6. seed the child files / filesystem
 7. create the initial compaction message in the child
@@ -160,15 +172,24 @@ In the target design, step 7 uses the real compaction shape:
 
 Until compaction ships, step 7 uses an artificial placeholder with the same
 product role: the placeholder reuses the conversation rendering for model at
-the last message of the root conversation and explicitly states that it is a
-forked message.
+the resolved source message and explicitly states that it is a forked message.
 
-The child inherits:
+The child carries forward:
 
 - the same space / project
-- the parent's `requestedSpaceIds`
-- the parent's conversation-level enabled MCP server views
-- the parent's conversation skills
+- the parent's conversation-level enabled MCP server views that the forking
+  user can read
+- the parent's conversation skills that the forking user can read
+- the copied files / filesystem state that the forking user can read
+
+The child access model is derived from the setup, tools, skills, and data that
+were actually copied into the child.
+
+That means:
+
+- we do not blindly copy the parent's `requestedSpaceIds`
+- we recompute child access requirements from the copied setup and files
+- the child inherits access rights from the resources it is actually given
 
 The child does not inherit:
 
@@ -176,7 +197,7 @@ The child does not inherit:
 - read state
 - unread state
 
-The creator of the fork becomes the initial participant of the child.
+The user who forked becomes the initial participant of the child.
 
 #### Read-Side Lineage
 
@@ -204,6 +225,12 @@ logic used for `run_agent` file access. Fork lineage must be first-class.
 ### PR Sequence
 
 PRs stay as small as possible while remaining self-contained.
+
+PRs 1-4 can land behind an internal flag to unblock development while
+compaction is still not shipped.
+
+The feature is not broadly released before PR 5 switches fork initialization to
+the shipped compaction flow.
 
 #### PR 1: Fork Lineage Model
 
@@ -257,6 +284,7 @@ Why separate:
 Scope:
 
 - add `Branch conversation` to the conversation menu
+- add `Branch conversation` to the per-message menu
 - add the lightweight "Branched from ..." UI in the child conversation
 - wire the UI to the backend endpoint
 
@@ -276,12 +304,13 @@ Scope:
 Why separate:
 
 - compaction is already being developed independently
-- this keeps the forking work moving without blocking on compaction shipping
+- this keeps the forking work moving internally without blocking on compaction
+  shipping
+- this is the release gate for broad exposure of the feature
 
 ### Non-Goals for the First Version
 
 - full branch tree UI
-- message-level "branch from here" UI
 - removing the old intra-conversation branch feature
 - shared parent/child mutable filesystem state
 
