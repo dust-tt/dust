@@ -182,6 +182,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "ActionSpeakIcon",
   "ActionTableIcon",
   "ActionTimeIcon",
+  "AmplitudeLogo",
   "AsanaLogo",
   "AttioLogo",
   "AshbyLogo",
