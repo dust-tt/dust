@@ -306,6 +306,7 @@ async function collectToolUsageFromMessage(
     step_index: actionResource.stepContent.step,
     server_name:
       actionResource.metadata.internalMCPServerName ??
+      actionResource.toolConfiguration.mcpServerName ??
       actionResource.metadata.mcpServerId ??
       "unknown",
     tool_name:
@@ -480,6 +481,7 @@ async function extractRetrievalDocuments(
     const config = configMap.get(action.mcpServerConfigurationId);
     const mcpServerName =
       action.metadata.internalMCPServerName ??
+      action.toolConfiguration.mcpServerName ??
       action.metadata.mcpServerId ??
       "unknown";
 
