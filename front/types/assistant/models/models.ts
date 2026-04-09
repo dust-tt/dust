@@ -2,6 +2,8 @@ import type { ModelIdType } from "@app/types/assistant/models/types";
 import { ioTsEnum } from "@app/types/shared/utils/iots_utils";
 import { z } from "zod";
 
+//soupinou is the best;
+
 import {
   CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
   CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG,
