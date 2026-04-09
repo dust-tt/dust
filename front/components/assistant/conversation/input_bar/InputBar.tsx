@@ -152,10 +152,10 @@ export const InputBar = React.memo(function InputBar({
       (gm) => gm.agentId && gm.agentId !== selectedSingleAgent.id
     )?.agentId;
     if (activeBlockingId) {
-      const name = agentConfigurations.find(
-        (a) => a.sId === activeBlockingId
-      )?.name;
-      return name ? `Wait for @${name} to finish before switching agent` : null;
+      const name =
+        agentConfigurations.find((a) => a.sId === activeBlockingId)?.name ??
+        "another agent";
+      return `Wait for @${name} to finish before switching agents`;
     }
 
     // Check messages with a pending blocked action from a different agent.
@@ -167,12 +167,10 @@ export const InputBar = React.memo(function InputBar({
         getFirstBlockedActionForMessage(m.messageId)
     );
     if (blockedActionMessage) {
-      const name = agentConfigurations.find(
-        (a) => a.sId === blockedActionMessage.agentId
-      )?.name;
-      return name
-        ? `Resolve the pending action from @${name} before switching agents`
-        : null;
+      const name =
+        agentConfigurations.find((a) => a.sId === blockedActionMessage.agentId)
+          ?.name ?? "another agent";
+      return `Resolve the pending action from @${name} before switching agents`;
     }
 
     return null;
