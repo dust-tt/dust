@@ -3550,6 +3550,26 @@ export type ValidateActionRequestBodyType = z.infer<
   typeof ValidateActionRequestBodySchema
 >;
 
+export const AnswerUserQuestionResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+export type AnswerUserQuestionResponseType = z.infer<
+  typeof AnswerUserQuestionResponseSchema
+>;
+
+export const AnswerUserQuestionRequestBodySchema = z.object({
+  actionId: z.string(),
+  answer: z.object({
+    selectedOptions: z.array(z.number()),
+    customResponse: z.string().optional(),
+  }),
+});
+
+export type AnswerUserQuestionRequestBodyType = z.infer<
+  typeof AnswerUserQuestionRequestBodySchema
+>;
+
 export const ClientSideMCPServerNameSchema = z.string().min(5).max(30);
 
 export const PublicRegisterMCPRequestBodySchema = z.object({

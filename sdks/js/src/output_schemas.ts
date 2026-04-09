@@ -649,6 +649,8 @@ export const UserQuestionItemSchema = z.object({
   multiSelect: z.boolean(),
 });
 
+export type UserQuestionItemType = z.infer<typeof UserQuestionItemSchema>;
+
 export const UserAnswerRequiredOutputResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
   type: z.literal("tool_user_answer_required"),
