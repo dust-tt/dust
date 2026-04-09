@@ -13,7 +13,7 @@ import {
   isWebsearchInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
-import { isString } from "@app/types/shared/utils/general";
+import { isNumber, isString } from "@app/types/shared/utils/general";
 import { asDisplayName, slugify } from "@app/types/shared/utils/string_utils";
 
 type ToolDisplayLabelsByTool = Record<string, ToolDisplayLabels>;
@@ -133,6 +133,35 @@ function getDynamicToolDisplayLabels({
           done: `Searched “${q}”`,
         };
       }
+      if (toolName === "cat") {
+        if (isString(inputs.grep)) {
+          const g = truncateQuery(inputs.grep);
+          return {
+            running: `Searching for “${g}” in file`,
+            done: `Searched for “${g}” in file`,
+          };
+        }
+        const hasOffset = isNumber(inputs.offset) && inputs.offset > 0;
+        const hasLimit = isNumber(inputs.limit);
+        if (hasOffset && hasLimit) {
+          return {
+            running: "Reading a section of file",
+            done: "Read a section of file",
+          };
+        }
+        if (hasOffset) {
+          return {
+            running: "Continuing to read file",
+            done: "Continued reading file",
+          };
+        }
+        if (hasLimit) {
+          return {
+            running: "Reading the beginning of file",
+            done: "Read the beginning of file",
+          };
+        }
+      }
       return null;
 
     case "image_generation":
@@ -204,12 +233,34 @@ function getDynamicToolDisplayLabels({
           done: `Searched files “${q}”`,
         };
       }
-      if (toolName === "cat" && isString(inputs.grep)) {
-        const g = truncateQuery(inputs.grep);
-        return {
-          running: `Searching for “${g}” in file`,
-          done: `Searched for “${g}” in file`,
-        };
+      if (toolName === "cat") {
+        if (isString(inputs.grep)) {
+          const g = truncateQuery(inputs.grep);
+          return {
+            running: `Searching for “${g}” in file`,
+            done: `Searched for “${g}” in file`,
+          };
+        }
+        const hasOffset = isNumber(inputs.offset) && inputs.offset > 0;
+        const hasLimit = isNumber(inputs.limit);
+        if (hasOffset && hasLimit) {
+          return {
+            running: "Reading a section of file",
+            done: "Read a section of file",
+          };
+        }
+        if (hasOffset) {
+          return {
+            running: "Continuing to read file",
+            done: "Continued reading file",
+          };
+        }
+        if (hasLimit) {
+          return {
+            running: "Reading the beginning of file",
+            done: "Read the beginning of file",
+          };
+        }
       }
       return null;
 
@@ -221,7 +272,7 @@ function getDynamicToolDisplayLabels({
       if (
         toolName === "get_pull_request" &&
         base &&
-        typeof inputs.pullNumber === "number"
+        isNumber(inputs.pullNumber)
       ) {
         const url = `${base}/pull/${inputs.pullNumber}`;
         return {
@@ -229,11 +280,7 @@ function getDynamicToolDisplayLabels({
           done: `Retrieved ${url}`,
         };
       }
-      if (
-        toolName === "get_issue" &&
-        base &&
-        typeof inputs.issueNumber === "number"
-      ) {
+      if (toolName === "get_issue" && base && isNumber(inputs.issueNumber)) {
         const url = `${base}/issues/${inputs.issueNumber}`;
         return {
           running: `Retrieving ${url}`,
@@ -250,7 +297,7 @@ function getDynamicToolDisplayLabels({
       if (
         toolName === "comment_on_issue" &&
         base &&
-        typeof inputs.issueNumber === "number"
+        isNumber(inputs.issueNumber)
       ) {
         const url = `${base}/issues/${inputs.issueNumber}`;
         return {
@@ -261,7 +308,7 @@ function getDynamicToolDisplayLabels({
       if (
         toolName === "create_pull_request_review" &&
         base &&
-        typeof inputs.pullNumber === "number"
+        isNumber(inputs.pullNumber)
       ) {
         const url = `${base}/pull/${inputs.pullNumber}`;
         return {
@@ -348,6 +395,75 @@ function getDynamicToolDisplayLabels({
       }
       return null;
 
+    case "sandbox":
+      if (toolName === "bash" && isString(inputs.description)) {
+        const t = truncateQuery(inputs.description);
+        return { running: t, done: t };
+      }
+      return null;
+
+    case "query_tables_v2":
+      if (
+        toolName === "execute_database_query" &&
+        isString(inputs.description)
+      ) {
+        const t = truncateQuery(inputs.description);
+        return { running: t, done: t };
+      }
+      return null;
+
+    case "data_warehouses":
+      if (toolName === "query" && isString(inputs.description)) {
+        const t = truncateQuery(inputs.description);
+        return { running: t, done: t };
+      }
+      return null;
+
+    case "file_generation":
+      if (
+        (toolName === "generate_file" || toolName === "convert_file_format") &&
+        isString(inputs.file_name)
+      ) {
+        const name = truncateQuery(inputs.file_name);
+        const verb = toolName === "generate_file" ? "Generating" : "Converting";
+        const past = toolName === "generate_file" ? "Generated" : "Converted";
+        return {
+          running: `${verb} "${name}"`,
+          done: `${past} "${name}"`,
+        };
+      }
+      return null;
+
+    case "run_agent":
+      if (isString(inputs.description)) {
+        const d = truncateQuery(inputs.description);
+        return { running: d, done: d };
+      }
+      return null;
+
+    case "interactive_content":
+      if (
+        toolName === "create_interactive_content_file" &&
+        isString(inputs.file_name)
+      ) {
+        const name = truncateQuery(inputs.file_name);
+        return {
+          running: `Creating "${name}"`,
+          done: `Created "${name}"`,
+        };
+      }
+      if (
+        toolName === "rename_interactive_content_file" &&
+        isString(inputs.new_file_name)
+      ) {
+        const name = truncateQuery(inputs.new_file_name);
+        return {
+          running: `Renaming to "${name}"`,
+          done: `Renamed to "${name}"`,
+        };
+      }
+      return null;
+
     // All other servers: no dynamic labels.
     case "agent_sidekick_agent_state":
     case "agent_sidekick_context":
@@ -357,15 +473,12 @@ function getDynamicToolDisplayLabels({
     case "ashby":
     case "confluence":
     case "databricks":
-    case "data_warehouses":
-    case "file_generation":
     case "fathom":
     case "freshservice":
     case "gong":
     case "google_sheets":
     case "hubspot":
     case "include_data":
-    case "interactive_content":
     case "slideshow":
     case "jira":
     case "luma":
@@ -379,7 +492,6 @@ function getDynamicToolDisplayLabels({
     case "productboard":
     case "common_utilities":
     case "jit_testing":
-    case "run_agent":
     case "run_dust_app":
     case "salesforce":
     case "salesloft":
@@ -395,13 +507,11 @@ function getDynamicToolDisplayLabels({
     case "vanta":
     case "front":
     case "zendesk":
-    case "query_tables_v2":
     case "skill_management":
     case "schedules_management":
     case "project_manager":
     case "poke":
     case "project_conversation":
-    case "sandbox":
     case "ask_user_question":
     default:
       return null;

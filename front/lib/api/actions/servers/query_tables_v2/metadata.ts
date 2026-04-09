@@ -31,6 +31,12 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
     schema: {
       tables:
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE],
+      description: z
+        .string()
+        .describe(
+          "The reason this query is being run and what it achieves, in a few words. Use infinitive verbs (e.g. " +
+            '"Analyze revenue trends", "Identify top customers").'
+        ),
       query: z
         .string()
         .describe(

@@ -137,6 +137,12 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
           "Array of table identifiers in the format 'table-<dataSourceId>-<nodeId>'. " +
             "All tables must be from the same warehouse (same dataSourceId)."
         ),
+      description: z
+        .string()
+        .describe(
+          "The reason this query is being run and what it achieves, in a few words. Use infinitive verbs (e.g. " +
+            '"Analyze revenue trends", "Identify top customers").'
+        ),
       query: z
         .string()
         .describe(

@@ -50,6 +50,12 @@ export const RUN_AGENT_CONFIGURABLE_PROPERTIES = {
 };
 
 export const RUN_AGENT_TOOL_SCHEMA = {
+  description: z
+    .string()
+    .describe(
+      "The reason this agent is being called and what it achieves, in a few words. Use infinitive verbs (e.g. " +
+        '"Review Q1 performance", "Assess support backlog").'
+    ),
   query: z
     .string()
     .describe(

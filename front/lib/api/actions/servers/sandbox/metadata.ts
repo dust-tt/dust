@@ -14,6 +14,12 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
       "Use this for running scripts, installing packages, or executing code. " +
       "The sandbox persists for the duration of the conversation.",
     schema: {
+      description: z
+        .string()
+        .describe(
+          "The reason this command is being run and what it achieves, in a few words. Use infinitive verbs (e.g. " +
+            '"Set up environment", "Generate the chart").'
+        ),
       command: z
         .string()
         .describe(
