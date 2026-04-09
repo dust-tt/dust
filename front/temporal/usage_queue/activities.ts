@@ -27,6 +27,7 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -389,7 +390,7 @@ export async function emitMetronomeUsageEventsActivity(
 export async function emitMetronomeGaugeEventsForAllWorkspacesActivity(): Promise<void> {
   // Only workspaces with a metronomeCustomerId.
   const allWorkspaces = await WorkspaceResource.listAll();
-  const workspaces = allWorkspaces.filter(
+  const metronomeWorkspaces = allWorkspaces.filter(
     (w) => w.metronomeCustomerId !== null
   );
 
@@ -401,9 +402,55 @@ export async function emitMetronomeGaugeEventsForAllWorkspacesActivity(): Promis
     : now.toISOString().slice(0, 10); // YYYY-MM-DD
   const timestamp = now.toISOString();
 
+  // In production, only emit gauge events for workspaces whose billing cycle
+  // ends within the next 24h. In dev, emit for all workspaces (hourly schedule).
+  let workspaces: WorkspaceResource[];
+  if (isDevelopment()) {
+    workspaces = metronomeWorkspaces;
+  } else {
+    // Batch-fetch active subscriptions for all Metronome-enabled workspaces.
+    const subscriptionsByWorkspaceId =
+      await SubscriptionResource.fetchActiveByWorkspacesModelId(
+        metronomeWorkspaces.map((w) => w.id)
+      );
+
+    // The cron runs at 2am UTC. We check for cycles ending between 3am today
+    // and 3am tomorrow to cover the full day with a 1h buffer after launch.
+    const todayAt3am = new Date(now);
+    todayAt3am.setUTCHours(3, 0, 0, 0);
+    const tomorrowAt3am = new Date(todayAt3am.getTime() + 24 * 60 * 60 * 1000);
+    const results = await concurrentExecutor(
+      metronomeWorkspaces,
+      async (workspace): Promise<WorkspaceResource | null> => {
+        const subscription = subscriptionsByWorkspaceId[workspace.id];
+        if (!subscription?.stripeSubscriptionId) {
+          return null;
+        }
+        const stripeSubscription = await getStripeSubscription(
+          subscription.stripeSubscriptionId
+        );
+        if (!stripeSubscription) {
+          return null;
+        }
+        const periodEnd = new Date(
+          stripeSubscription.current_period_end * 1000
+        );
+        return periodEnd >= todayAt3am && periodEnd <= tomorrowAt3am
+          ? workspace
+          : null;
+      },
+      { concurrency: 10 }
+    );
+    workspaces = results.filter((w): w is WorkspaceResource => w !== null);
+  }
+
   logger.info(
-    { workspaceCount: workspaces.length, dateKey },
-    "[Metronome] Emitting gauge events for Metronome-enabled workspaces"
+    {
+      totalMetronomeWorkspaces: metronomeWorkspaces.length,
+      workspaceCount: workspaces.length,
+      dateKey,
+    },
+    "[Metronome] Emitting gauge events for workspaces with billing cycle ending today"
   );
 
   // Process workspaces in chunks: build events concurrently, then ingest
