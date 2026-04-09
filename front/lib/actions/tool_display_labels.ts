@@ -272,7 +272,7 @@ function getDynamicToolDisplayLabels({
       if (
         toolName === "get_pull_request" &&
         base &&
-        typeof inputs.pullNumber === "number"
+        isNumber(inputs.pullNumber)
       ) {
         const url = `${base}/pull/${inputs.pullNumber}`;
         return {
@@ -283,7 +283,7 @@ function getDynamicToolDisplayLabels({
       if (
         toolName === "get_issue" &&
         base &&
-        typeof inputs.issueNumber === "number"
+        isNumber(inputs.issueNumber)
       ) {
         const url = `${base}/issues/${inputs.issueNumber}`;
         return {
@@ -301,7 +301,7 @@ function getDynamicToolDisplayLabels({
       if (
         toolName === "comment_on_issue" &&
         base &&
-        typeof inputs.issueNumber === "number"
+        isNumber(inputs.issueNumber)
       ) {
         const url = `${base}/issues/${inputs.issueNumber}`;
         return {
@@ -312,7 +312,7 @@ function getDynamicToolDisplayLabels({
       if (
         toolName === "create_pull_request_review" &&
         base &&
-        typeof inputs.pullNumber === "number"
+        isNumber(inputs.pullNumber)
       ) {
         const url = `${base}/pull/${inputs.pullNumber}`;
         return {
