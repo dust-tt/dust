@@ -21,7 +21,8 @@ export async function createWorkspace(
 
   return createWorkspaceInternal({
     name: externalUser.nickname,
-    isBusiness: false,
+    isBusiness: utmParams?.seatbased === "true",
+    partnerName: utmParams?.partner,
     planCode: null,
     endDate: null,
     utmParams,
@@ -31,12 +32,14 @@ export async function createWorkspace(
 export async function createWorkspaceInternal({
   name,
   isBusiness,
+  partnerName,
   planCode,
   endDate,
   utmParams,
 }: {
   name: string;
   isBusiness: boolean;
+  partnerName?: string;
   planCode: string | null;
   endDate: Date | null;
   utmParams?: UTMParams;
@@ -60,9 +63,11 @@ export async function createWorkspaceInternal({
 
   const metadata: {
     isBusiness: boolean;
+    partnerName?: string;
     utmTracking?: UTMParams & { capturedAt: number };
   } = {
     isBusiness,
+    ...(partnerName ? { partnerName } : {}),
   };
 
   if (utmParams && Object.keys(utmParams).length > 0) {

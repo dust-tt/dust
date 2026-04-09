@@ -431,6 +431,7 @@ export interface WorkspaceMetadata {
   autoCreateSpaceForProvisionedGroups?: boolean;
   disableManualInvitations?: boolean;
   phoneCountry?: string;
+  partnerName?: string;
 }
 
 export async function updateWorkspaceMetadata(
