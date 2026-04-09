@@ -280,11 +280,7 @@ function getDynamicToolDisplayLabels({
           done: `Retrieved ${url}`,
         };
       }
-      if (
-        toolName === "get_issue" &&
-        base &&
-        isNumber(inputs.issueNumber)
-      ) {
+      if (toolName === "get_issue" && base && isNumber(inputs.issueNumber)) {
         const url = `${base}/issues/${inputs.issueNumber}`;
         return {
           running: `Retrieving ${url}`,
