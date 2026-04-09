@@ -66,7 +66,6 @@ export function UserQuestionRequired({
 
     if (result.success) {
       removeCompletedAction(blockedAction.actionId);
-      return;
     }
 
     setIsSkipPending(false);
