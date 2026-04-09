@@ -13,7 +13,6 @@ import {
   isWebsearchInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import { asDisplayName, slugify } from "@app/types/shared/utils/string_utils";
 
