@@ -5,17 +5,17 @@ import {
   isImportableSkillStatus,
 } from "@app/lib/skill_detection";
 import {
-  Checkbox,
   Chip,
   ContentMessage,
-  ContextItem,
-  cn,
+  createSelectionColumn,
+  DataTable,
   InformationCircleIcon,
-  Label,
   PuzzleIcon,
+  ScrollableDataTable,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef, useState } from "react";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import { useEffect, useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 const STATUS_CHIP_LABEL: Record<
@@ -26,6 +26,55 @@ const STATUS_CHIP_LABEL: Record<
   skill_already_exists: "Override existing skill",
   invalid: "Invalid skill format",
 };
+
+interface SkillRowData {
+  name: string;
+  status: DetectedSkillStatus;
+  onClick?: () => void;
+  onDoubleClick?: () => void;
+}
+
+type SkillCellInfo = CellContext<SkillRowData, unknown>;
+
+function getColumns(): ColumnDef<SkillRowData>[] {
+  return [
+    createSelectionColumn<SkillRowData>(),
+    {
+      id: "name",
+      accessorKey: "name",
+      header: "Skill name",
+      cell: (info: SkillCellInfo) => (
+        <DataTable.CellContent icon={PuzzleIcon}>
+          {info.row.original.name}
+        </DataTable.CellContent>
+      ),
+      meta: {
+        sizeRatio: 60,
+      },
+    },
+    {
+      id: "status",
+      accessorKey: "status",
+      header: "Status",
+      cell: (info: SkillCellInfo) => {
+        const { status } = info.row.original;
+        if (status === "ready") {
+          return null;
+        }
+        return (
+          <Chip
+            label={STATUS_CHIP_LABEL[status]}
+            size="xs"
+            color={status === "skill_already_exists" ? "info" : "warning"}
+          />
+        );
+      },
+      meta: {
+        sizeRatio: 40,
+      },
+    },
+  ];
+}
 
 interface DetectedSkillsListProps {
   detectedSkills: DetectedSkillSummary[];
@@ -38,58 +87,47 @@ export function DetectedSkillsList({
   isDetecting,
   detectError,
 }: DetectedSkillsListProps) {
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const [canScrollDown, setCanScrollDown] = useState(false);
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    const root = scrollRef.current;
-    if (!sentinel || !root) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => setCanScrollDown(!entry.isIntersecting),
-      { root, threshold: 0.1 }
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, []);
-
-  const { control } = useFormContext<ImportFormValues>();
+  const { control, setValue } = useFormContext<ImportFormValues>();
   const { field: selectedField } = useController({
     name: "selectedSkillNames",
     control,
   });
 
-  const importableNames = useMemo(
+  const rows = useMemo<SkillRowData[]>(
     () =>
-      detectedSkills
-        .filter((s) => isImportableSkillStatus(s.status))
-        .map((s) => s.name),
+      detectedSkills.map((s) => ({
+        name: s.name,
+        status: s.status,
+      })),
     [detectedSkills]
   );
 
-  const allSelected =
-    importableNames.length > 0 &&
-    importableNames.every((n) => selectedField.value.includes(n));
+  const columns = useMemo(() => getColumns(), []);
 
-  const toggleAll = () => {
-    if (allSelected) {
-      selectedField.onChange([]);
-    } else {
-      selectedField.onChange(importableNames);
+  // Build rowSelection state from selectedSkillNames form field.
+  const rowSelection = useMemo(() => {
+    const selection: Record<string, boolean> = {};
+    for (const name of selectedField.value) {
+      selection[name] = true;
     }
+    return selection;
+  }, [selectedField.value]);
+
+  // Sync rowSelection changes back to the form field.
+  const setRowSelection = (newSelection: Record<string, boolean>) => {
+    const names = Object.keys(newSelection).filter((k) => newSelection[k]);
+    setValue("selectedSkillNames", names, { shouldValidate: true });
   };
 
-  const toggleSkill = (name: string) => {
-    if (selectedField.value.includes(name)) {
-      selectedField.onChange(selectedField.value.filter((n) => n !== name));
-    } else {
-      selectedField.onChange([...selectedField.value, name]);
+  // Auto-select all importable skills when detected skills change.
+  useEffect(() => {
+    if (detectedSkills.length > 0) {
+      const importableNames = detectedSkills
+        .filter((s) => isImportableSkillStatus(s.status))
+        .map((s) => s.name);
+      setValue("selectedSkillNames", importableNames, { shouldValidate: true });
     }
-  };
+  }, [detectedSkills, setValue]);
 
   return (
     <>
@@ -108,71 +146,18 @@ export function DetectedSkillsList({
           <Spinner size="md" />
         </div>
       )}
-      {detectedSkills.length > 0 && (
-        <div className="flex flex-col">
-          {importableNames.length > 1 && (
-            <ContextItem.List>
-              <ContextItem
-                title="Skill name"
-                visual={
-                  <Checkbox
-                    id="select-all-skills"
-                    size="xs"
-                    checked={allSelected}
-                    onCheckedChange={toggleAll}
-                  />
-                }
-              />
-            </ContextItem.List>
-          )}
-          <div ref={scrollRef} className="relative max-h-64 overflow-y-auto">
-            <ContextItem.List>
-              {detectedSkills.map((skill) => (
-                <ContextItem
-                  key={skill.name}
-                  title={
-                    <Label className="text-sm font-normal" htmlFor={skill.name}>
-                      {skill.name}
-                    </Label>
-                  }
-                  visual={
-                    <div className="flex items-center gap-3">
-                      <Checkbox
-                        id={skill.name}
-                        size="xs"
-                        checked={selectedField.value.includes(skill.name)}
-                        disabled={!isImportableSkillStatus(skill.status)}
-                        onCheckedChange={() => toggleSkill(skill.name)}
-                      />
-                      <ContextItem.Visual visual={PuzzleIcon} />
-                    </div>
-                  }
-                  action={
-                    skill.status !== "ready" ? (
-                      <Chip
-                        label={STATUS_CHIP_LABEL[skill.status]}
-                        size="xs"
-                        color={
-                          skill.status === "skill_already_exists"
-                            ? "info"
-                            : "warning"
-                        }
-                      />
-                    ) : undefined
-                  }
-                />
-              ))}
-            </ContextItem.List>
-            <div ref={sentinelRef} className="h-px" />
-            <div
-              className={cn(
-                "pointer-events-none sticky -bottom-px left-0 right-0 -mt-12 h-12 bg-gradient-to-t",
-                "from-background via-background/60 to-transparent transition-opacity duration-300 dark:from-background-night dark:via-background-night/60",
-                canScrollDown ? "opacity-100" : "opacity-0"
-              )}
-            />
-          </div>
-        </div>
+      {rows.length > 0 && (
+        <ScrollableDataTable<SkillRowData>
+          data={rows}
+          columns={columns}
+          maxHeight="max-h-64"
+          enableRowSelection={(row) =>
+            isImportableSkillStatus(row.original.status)
+          }
+          rowSelection={rowSelection}
+          setRowSelection={setRowSelection}
+          getRowId={(row) => row.name}
+        />
       )}
     </>
   );
