@@ -285,4 +285,29 @@ describe("parseToolArguments", () => {
       });
     });
   });
+
+  describe("standalone null characters (not caught by Latin-1 fix)", () => {
+    it("should strip \\u0000 followed by 1 hex digit then non-hex", () => {
+      const result = parseToolArguments('{"query":"caf\\u0000e"}', "test");
+      expect(result).toEqual({ query: "cafe" });
+    });
+
+    it("should strip \\u0000 followed by non-hex character", () => {
+      const result = parseToolArguments('{"query":"he\\u0000llo"}', "test");
+      expect(result).toEqual({ query: "hello" });
+    });
+
+    it("should strip multiple standalone nulls in one string", () => {
+      const result = parseToolArguments(
+        '{"query":"h\\u0000e\\u0000llo"}',
+        "test"
+      );
+      expect(result).toEqual({ query: "hello" });
+    });
+
+    it("should strip standalone \\u0000 with no trailing hex", () => {
+      const result = parseToolArguments('{"query":"test\\u0000"}', "test");
+      expect(result).toEqual({ query: "test" });
+    });
+  });
 });
