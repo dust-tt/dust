@@ -1022,24 +1022,20 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   }
 
   /**
-   * Resolve displayLabels for this action. Checks the persisted toolConfiguration
-   * first (handles dynamic tool names), then falls back to static metadata for
-   * older DB records or remote server defaults.
+   * Resolve displayLabels for this action. Tries dynamic input-aware labels
+   * first (e.g. Searching "query"), then persisted toolConfiguration labels,
+   * then falls back to static metadata for older DB records or remote server defaults.
    */
   private resolveDisplayLabels(
     internalMCPServerName: InternalMCPServerNameType | null,
     toolName: string
   ): ToolDisplayLabels | null {
-    if (this.toolConfiguration.displayLabels) {
-      return this.toolConfiguration.displayLabels;
-    }
-
     return getStaticToolDisplayLabels({
       internalMCPServerName,
       mcpServerName: this.toolConfiguration.mcpServerName,
       toolName,
       inputs: this.augmentedInputs,
-    });
+    }) ?? this.toolConfiguration.displayLabels ?? null;
   }
 
   async updateStatus(
