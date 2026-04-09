@@ -211,12 +211,20 @@ function getDynamicToolDisplayLabels({
           done: `Searched files “${q}”`,
         };
       }
-      if (toolName === "cat" && isString(inputs.grep)) {
-        const g = truncateQuery(inputs.grep);
-        return {
-          running: `Searching for “${g}” in file`,
-          done: `Searched for “${g}” in file`,
-        };
+      if (toolName === "cat") {
+        if (isString(inputs.grep)) {
+          const g = truncateQuery(inputs.grep);
+          return {
+            running: `Searching for “${g}” in file`,
+            done: `Searched for “${g}” in file`,
+          };
+        }
+        if (typeof inputs.offset === "number" && inputs.offset > 0) {
+          return {
+            running: "Reading more of file",
+            done: "Read more of file",
+          };
+        }
       }
       return null;
 
