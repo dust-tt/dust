@@ -19,6 +19,7 @@ export function buildSkillInstructionsExtensions(
   const baseExtensions: Extensions = [
     InstructionsDocumentExtension,
     InstructionsRootExtension,
+    Markdown,
     StarterKit.configure({
       document: false,
       orderedList: {
@@ -62,7 +63,6 @@ export function buildSkillInstructionsExtensions(
         class: "mt-4 mb-3",
       },
     }),
-    Markdown,
     BlockIdExtension,
     KnowledgeNode,
   ];
