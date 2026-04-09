@@ -1576,6 +1576,27 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(updated);
   }
 
+  static async markAsUnreadForAuthUser(
+    auth: Authenticator,
+    {
+      conversation,
+    }: {
+      conversation: ConversationWithoutContentType;
+    }
+  ) {
+    if (!auth.user()) {
+      return new Err(new Error("user_not_authenticated"));
+    }
+    await UserConversationReadsModel.destroy({
+      where: {
+        conversationId: conversation.id,
+        userId: auth.getNonNullableUser().id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    return new Ok(undefined);
+  }
+
   static async getActionRequiredAndLastReadAtForUser(
     auth: Authenticator,
     id: number

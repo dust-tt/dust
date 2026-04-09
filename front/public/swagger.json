@@ -1427,8 +1427,8 @@
         }
       },
       "patch": {
-        "summary": "Mark a conversation as read",
-        "description": "Mark a conversation as read in the workspace identified by {wId}.",
+        "summary": "Update conversation read status",
+        "description": "Mark a conversation as read or unread in the workspace identified by {wId}.",
         "tags": [
           "Conversations"
         ],
@@ -6355,10 +6355,7 @@
                     ],
                     "properties": {
                       "read": {
-                        "type": "boolean",
-                        "enum": [
-                          true
-                        ]
+                        "type": "boolean"
                       }
                     }
                   },
