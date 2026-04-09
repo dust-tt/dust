@@ -1,3 +1,7 @@
+import {
+  DAY_MS,
+  getTimestampsForWindow,
+} from "@app/lib/api/analytics/time_utils";
 import type { MetricsBucket } from "@app/lib/api/assistant/observability/messages_metrics";
 import {
   buildMetricAggregates,
@@ -171,19 +175,6 @@ function calculateCreditTotalsPerTimestamp(
   return creditTotalsMap;
 }
 
-function getTimestampsInRange(startOfMonth: Date, endDate: Date): number[] {
-  const timestamps = [];
-  const current = new Date(startOfMonth);
-  for (
-    let timestamp = current;
-    timestamp < endDate;
-    timestamp.setUTCHours(timestamp.getUTCHours() + 4)
-  ) {
-    timestamps.push(timestamp.getTime());
-  }
-  return timestamps;
-}
-
 function getSelectedFilterClauses(
   filterParams: Partial<Record<GroupByType, string[]>> | undefined,
   excluded?: GroupByType
@@ -319,12 +310,16 @@ export async function handleProgrammaticCostRequest(
         getBillingCycleFromDay(billingCycleStartDay, referenceDate, true);
 
       // Cap periodEnd to 10 days in the future to avoid too big empty chart areas.
-      const TEN_DAYS_IN_MS = 10 * 24 * 60 * 60 * 1000;
+      const TEN_DAYS_MS = 10 * DAY_MS;
       const cappedPeriodEnd = new Date(
-        Math.min(periodEnd.getTime(), Date.now() + TEN_DAYS_IN_MS)
+        Math.min(periodEnd.getTime(), Date.now() + TEN_DAYS_MS)
       );
 
-      const timestamps = getTimestampsInRange(periodStart, cappedPeriodEnd);
+      const timestamps = getTimestampsForWindow(
+        periodStart,
+        cappedPeriodEnd,
+        "FOUR_HOURS"
+      );
 
       // Fetch all credits for the workspace (including free credits and fully consumed ones)
       // We'll filter them per timestamp in calculateCreditTotalsPerTimestamp
