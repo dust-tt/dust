@@ -165,17 +165,22 @@ function BaseSearchInputWithPopover<T>(
   }: SearchInputWithPopoverBaseProps<T>,
   ref: Ref<HTMLInputElement>
 ) {
+  // biome-ignore lint/correctness/useHookAtTopLevel: this is a forwardRef render function, Biome can't trace the forwardRef call
   const [selectedIndex, setSelectedIndex] = useState(0);
+  // biome-ignore lint/correctness/useHookAtTopLevel: this is a forwardRef render function
   const itemRefs = useRef<(HTMLElement | null)[]>([]);
   const showHeader =
     Boolean(stickyTopContent) ||
     (items.length > 0 && (displayItemCount || onSelectAll));
   const showBottom = Boolean(stickyBottomContent);
 
+  // biome-ignore lint/correctness/useHookAtTopLevel: this is a forwardRef render function
   useEffect(() => {
     itemRefs.current = new Array(items.length).fill(null);
   }, [items.length]);
 
+  // biome-ignore lint/correctness/useHookAtTopLevel: this is a forwardRef render function
+  // biome-ignore lint/correctness/useExhaustiveDependencies: items is a prop, resetting index on change is intentional
   useEffect(() => {
     setSelectedIndex(0);
   }, [items]);
