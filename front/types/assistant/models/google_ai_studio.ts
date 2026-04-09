@@ -51,7 +51,7 @@ export const GEMINI_3_1_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: true,
   supportsResponseFormat: true,
   minimumReasoningEffort: "none",
-  maximumReasoningEffort: "light",
+  maximumReasoningEffort: "high",
   defaultReasoningEffort: "light",
   useNativeLightReasoning: true,
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
