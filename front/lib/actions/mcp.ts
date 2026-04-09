@@ -96,9 +96,10 @@ type WithToolMetadata<
   mcpServerName: TMCPServerName;
 };
 
-type InternalServerSideMCPToolType<
-  N extends InternalMCPServerNameType,
-> = Omit<ServerSideMCPToolType, "internalMCPServerId" | "name"> & {
+type InternalServerSideMCPToolType<N extends InternalMCPServerNameType> = Omit<
+  ServerSideMCPToolType,
+  "internalMCPServerId" | "name"
+> & {
   internalMCPServerId: string;
   name: InternalMCPToolNameType<N>;
 };
@@ -121,9 +122,7 @@ export type ExternalServerSideMCPToolConfigurationType =
   WithToolMetadata<ExternalServerSideMCPToolType>;
 
 export type ServerSideMCPToolConfigurationType<
-  N extends InternalMCPServerNameType | null =
-    | InternalMCPServerNameType
-    | null,
+  N extends InternalMCPServerNameType | null = InternalMCPServerNameType | null,
 > = N extends InternalMCPServerNameType
   ? InternalServerSideMCPToolConfigurationType<N>
   : ExternalServerSideMCPToolConfigurationType;
@@ -146,9 +145,7 @@ type LightMCPToolType<T> = Omit<
 >;
 
 export type LightServerSideMCPToolConfigurationType<
-  N extends InternalMCPServerNameType | null =
-    | InternalMCPServerNameType
-    | null,
+  N extends InternalMCPServerNameType | null = InternalMCPServerNameType | null,
 > = LightMCPToolType<ServerSideMCPToolConfigurationType<N>>;
 
 export type LightClientSideMCPToolConfigurationType =

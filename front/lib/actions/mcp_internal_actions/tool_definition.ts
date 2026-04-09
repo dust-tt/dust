@@ -144,8 +144,8 @@ type InternalMCPToolType<TName extends string = string> = Omit<
 };
 
 export type ServerMetadata<
-  TServerName extends InternalMCPServerDefinitionType["name"] =
-    InternalMCPServerDefinitionType["name"],
+  TServerName extends
+    InternalMCPServerDefinitionType["name"] = InternalMCPServerDefinitionType["name"],
   TToolName extends string = string,
 > = {
   serverInfo: InternalMCPServerDefinitionType & { name: TServerName };

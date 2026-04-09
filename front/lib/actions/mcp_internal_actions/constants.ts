@@ -1307,9 +1307,7 @@ export function getInternalMCPServerToolStakes(
 
 export function getInternalMCPServerToolDisplayLabels<
   N extends InternalMCPServerNameType,
->(
-  name: N
-): Record<string, ToolDisplayLabels> | null {
+>(name: N): Record<string, ToolDisplayLabels> | null {
   const server = INTERNAL_MCP_SERVERS[name];
   const displayLabelsByTool: Record<string, ToolDisplayLabels> = {};
   let hasDisplayLabels = false;
@@ -1372,9 +1370,9 @@ export function matchesInternalMCPServerName(
   return false;
 }
 
-export function getInternalMCPServerMetadata<N extends InternalMCPServerNameType>(
-  name: N
-): (typeof INTERNAL_MCP_SERVERS)[N]["metadata"] {
+export function getInternalMCPServerMetadata<
+  N extends InternalMCPServerNameType,
+>(name: N): (typeof INTERNAL_MCP_SERVERS)[N]["metadata"] {
   const server = INTERNAL_MCP_SERVERS[name];
 
   return server.metadata;
