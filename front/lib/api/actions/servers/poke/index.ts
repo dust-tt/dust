@@ -9,7 +9,7 @@ function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = makeInternalMCPServer(POKE_SERVER_NAME);
+  const server = makeInternalMCPServer("poke");
 
   // Gate at server creation: if the caller is not a Dust super user, register
   // a single error tool so the agent gets a clear message.
