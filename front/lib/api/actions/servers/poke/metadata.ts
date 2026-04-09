@@ -261,7 +261,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
 
 export const POKE_SERVER = {
   serverInfo: {
-    name: POKE_SERVER_NAME,
+    name: "poke",
     version: "1.0.0",
     description:
       "Dust-internal tools for cross-workspace data access (poke). Requires super user privileges.",
