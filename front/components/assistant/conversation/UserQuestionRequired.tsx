@@ -73,10 +73,6 @@ export function UserQuestionRequired({
     void submitAnswer({ selectedOptions: [index] });
   }
 
-  function handleCustomResponseChange(value: string) {
-    setCustomResponse(value);
-  }
-
   function handleSubmit() {
     if (trimmedCustomResponse.length === 0 && selectedOptions.length === 0) {
       return;
@@ -217,7 +213,7 @@ export function UserQuestionRequired({
               setIsCustomResponseFocused(true);
             }}
             onBlur={() => setIsCustomResponseFocused(false)}
-            onChange={(e) => handleCustomResponseChange(e.target.value)}
+            onChange={(e) => setCustomResponse(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
