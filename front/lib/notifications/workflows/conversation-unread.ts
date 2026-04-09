@@ -24,6 +24,7 @@ import { renderEmail } from "@app/lib/notifications/email-templates/conversation
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
+import { UserProjectNotificationPreferenceResource } from "@app/lib/resources/user_project_notification_preferences_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
@@ -46,6 +47,7 @@ import {
   NOTIFICATION_PREFERENCES_DELAYS,
 } from "@app/types/notification_preferences";
 import { isDevelopment } from "@app/types/shared/env";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -1072,18 +1074,21 @@ export const conversationUnreadWorkflow = workflow(
  * always notified regardless of their preference.
  */
 export const filterParticipantsByNotifyCondition = async ({
+  auth,
   participants,
   mentionedUserIds,
   totalParticipantCount,
+  spaceModelId,
 }: {
+  auth: Authenticator;
   participants: (UserType & { lastReadAt: Date | null })[];
   mentionedUserIds: Set<string>;
   totalParticipantCount: number;
+  spaceModelId: ModelId | null;
 }): Promise<(UserType & { lastReadAt: Date | null })[]> => {
   const userModelIds = participants.map((p) => p.id);
 
-  // Bulk query for all preferences.
-  const preferences = await UserMetadataModel.findAll({
+  const generalPreferences = await UserMetadataModel.findAll({
     where: {
       userId: { [Op.in]: userModelIds },
       key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
@@ -1091,16 +1096,26 @@ export const filterParticipantsByNotifyCondition = async ({
     attributes: ["userId", "value"],
   });
 
-  const preferenceMap = new Map<number, NotificationCondition>();
-  for (const pref of preferences) {
+  const generalPreferenceMap = new Map<number, NotificationCondition>();
+  for (const pref of generalPreferences) {
     if (isNotificationCondition(pref.value)) {
-      preferenceMap.set(pref.userId, pref.value);
+      generalPreferenceMap.set(pref.userId, pref.value);
     }
   }
 
+  const projectPreferenceMap = spaceModelId
+    ? await UserProjectNotificationPreferenceResource.fetchAllBySpaceAndUsers(
+        auth,
+        { spaceModelId, userModelIds }
+      )
+    : new Map<ModelId, NotificationCondition>();
+
   return participants.filter((participant) => {
+    // Project-level preference overrides the general one if present.
     const notifyCondition =
-      preferenceMap.get(participant.id) ?? DEFAULT_NOTIFICATION_CONDITION;
+      projectPreferenceMap.get(participant.id) ??
+      generalPreferenceMap.get(participant.id) ??
+      DEFAULT_NOTIFICATION_CONDITION;
     switch (notifyCondition) {
       case "all_messages":
         return true;
@@ -1178,9 +1193,11 @@ export const triggerConversationUnreadNotifications = async (
 
   // Filter participants based on their notification condition preference.
   const participants = await filterParticipantsByNotifyCondition({
+    auth,
     participants: allParticipants,
     mentionedUserIds: new Set(detailsResult.value.mentionedUserIds),
     totalParticipantCount: totalParticipants.length,
+    spaceModelId: conversation.spaceId,
   });
 
   if (participants.length === 0) {

@@ -4,6 +4,7 @@ import { getNovuClient } from "@app/lib/notifications";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
+import { UserProjectNotificationPreferenceResource } from "@app/lib/resources/user_project_notification_preferences_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -16,6 +17,7 @@ import {
   isNotificationCondition,
   type NotificationCondition,
 } from "@app/types/notification_preferences";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -26,12 +28,14 @@ import { Op } from "sequelize";
 const NOTIFICATION_DELAY_MS = 15_000; // 15 seconds
 
 export const filterMembersByNotifyCondition = async (
-  members: UserResource[]
+  auth: Authenticator,
+  members: UserResource[],
+  spaceModelId: ModelId
 ): Promise<UserResource[]> => {
   const userModelIds = members.map((p) => p.id);
 
-  // Bulk query for all preferences.
-  const preferences = await UserMetadataModel.findAll({
+  // Bulk query for general and project-level preferences.
+  const generalPreferences = await UserMetadataModel.findAll({
     where: {
       userId: { [Op.in]: userModelIds },
       key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
@@ -39,16 +43,28 @@ export const filterMembersByNotifyCondition = async (
     attributes: ["userId", "value"],
   });
 
-  const preferenceMap = new Map<number, NotificationCondition>();
-  for (const pref of preferences) {
+  const projectPreferenceMap =
+    await UserProjectNotificationPreferenceResource.fetchAllBySpaceAndUsers(
+      auth,
+      {
+        spaceModelId,
+        userModelIds,
+      }
+    );
+
+  const generalPreferenceMap = new Map<number, NotificationCondition>();
+  for (const pref of generalPreferences) {
     if (isNotificationCondition(pref.value)) {
-      preferenceMap.set(pref.userId, pref.value);
+      generalPreferenceMap.set(pref.userId, pref.value);
     }
   }
 
   return members.filter((member) => {
+    // Project-level preference overrides the general one if present.
     const notifyCondition =
-      preferenceMap.get(member.id) ?? DEFAULT_NOTIFICATION_CONDITION;
+      projectPreferenceMap.get(member.id) ??
+      generalPreferenceMap.get(member.id) ??
+      DEFAULT_NOTIFICATION_CONDITION;
     switch (notifyCondition) {
       case "all_messages":
         return true;
@@ -128,8 +144,11 @@ const triggerProjectNewConversationNotifications = async (
     (member) => member.sId !== userThatCreatedConversation.sId
   );
 
-  const usersToNotify =
-    await filterMembersByNotifyCondition(otherProjectMembers);
+  const usersToNotify = await filterMembersByNotifyCondition(
+    auth,
+    otherProjectMembers,
+    space.id
+  );
 
   if (usersToNotify.length === 0) {
     return new Ok(undefined);

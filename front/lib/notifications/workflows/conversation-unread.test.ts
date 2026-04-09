@@ -168,20 +168,26 @@ describe("conversation-unread workflow business logic", () => {
   });
 
   describe("filterParticipantsByNotifyCondition", () => {
-    let workspace: WorkspaceType;
+    let workspace: LightWorkspaceType;
+    let auth: Authenticator;
+    let space: SpaceResource;
     let user1: UserResource;
     let user2: UserResource;
     let user3: UserResource;
 
     beforeEach(async () => {
-      workspace = await WorkspaceFactory.basic();
-      user1 = await UserFactory.basic();
+      const result = await createResourceTest({ role: "admin" });
+      workspace = result.workspace;
+      user1 = result.user;
+      auth = result.authenticator;
+
       user2 = await UserFactory.basic();
       user3 = await UserFactory.basic();
 
-      await MembershipFactory.associate(workspace, user1, { role: "user" });
       await MembershipFactory.associate(workspace, user2, { role: "user" });
       await MembershipFactory.associate(workspace, user3, { role: "user" });
+
+      space = await SpaceFactory.project(workspace);
     });
 
     const makeParticipant = (
@@ -200,9 +206,11 @@ describe("conversation-unread workflow business logic", () => {
 
       const participants = [makeParticipant(user1)];
       const result = await filterParticipantsByNotifyCondition({
+        auth,
         participants,
         mentionedUserIds: new Set(),
         totalParticipantCount: 5,
+        spaceModelId: space.id,
       });
 
       expect(result).toHaveLength(1);
@@ -217,9 +225,11 @@ describe("conversation-unread workflow business logic", () => {
 
       const participants = [makeParticipant(user1)];
       const result = await filterParticipantsByNotifyCondition({
+        auth,
         participants,
         mentionedUserIds: new Set([user1.sId]),
         totalParticipantCount: 5,
+        spaceModelId: space.id,
       });
 
       expect(result).toHaveLength(1);
@@ -234,9 +244,11 @@ describe("conversation-unread workflow business logic", () => {
 
       const participants = [makeParticipant(user1)];
       const result = await filterParticipantsByNotifyCondition({
+        auth,
         participants,
         mentionedUserIds: new Set(),
         totalParticipantCount: 5,
+        spaceModelId: space.id,
       });
 
       expect(result).toHaveLength(0);
@@ -250,9 +262,11 @@ describe("conversation-unread workflow business logic", () => {
 
       const participants = [makeParticipant(user1)];
       const result = await filterParticipantsByNotifyCondition({
+        auth,
         participants,
         mentionedUserIds: new Set(),
         totalParticipantCount: 1, // Single participant exception
+        spaceModelId: space.id,
       });
 
       expect(result).toHaveLength(1);
@@ -267,9 +281,11 @@ describe("conversation-unread workflow business logic", () => {
 
       const participants = [makeParticipant(user1)];
       const result = await filterParticipantsByNotifyCondition({
+        auth,
         participants,
         mentionedUserIds: new Set([user1.sId]),
         totalParticipantCount: 1,
+        spaceModelId: space.id,
       });
 
       expect(result).toHaveLength(0);
@@ -279,9 +295,11 @@ describe("conversation-unread workflow business logic", () => {
       // No preference set for user1
       const participants = [makeParticipant(user1)];
       const result = await filterParticipantsByNotifyCondition({
+        auth,
         participants,
         mentionedUserIds: new Set(),
         totalParticipantCount: 5,
+        spaceModelId: space.id,
       });
 
       expect(result).toHaveLength(1);
@@ -310,15 +328,173 @@ describe("conversation-unread workflow business logic", () => {
       ];
 
       const result = await filterParticipantsByNotifyCondition({
+        auth,
         participants,
         mentionedUserIds: new Set([user2.sId]), // Only user2 is mentioned
         totalParticipantCount: 3,
+        spaceModelId: space.id,
       });
 
       expect(result).toHaveLength(2);
       expect(result.map((p) => p.sId).sort()).toEqual(
         [user1.sId, user2.sId].sort()
       );
+    });
+
+    it("should handle null spaceModelId (no project preferences)", async () => {
+      await user1.setMetadata(
+        CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+        "all_messages"
+      );
+
+      const participants = [makeParticipant(user1)];
+      const result = await filterParticipantsByNotifyCondition({
+        auth,
+        participants,
+        mentionedUserIds: new Set(),
+        totalParticipantCount: 5,
+        spaceModelId: null,
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0].sId).toBe(user1.sId);
+    });
+
+    describe("project-level preference overrides", () => {
+      async function setProjectPreference(
+        user: UserResource,
+        preference: "all_messages" | "only_mentions" | "never"
+      ) {
+        const { UserProjectNotificationPreferenceResource } = await import(
+          "@app/lib/resources/user_project_notification_preferences_resource"
+        );
+        const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          user.sId,
+          workspace.sId
+        );
+        await UserProjectNotificationPreferenceResource.setPreference(
+          userAuth,
+          { spaceModelId: space.id, preference }
+        );
+      }
+
+      it("should override general 'all_messages' with project 'never'", async () => {
+        await user1.setMetadata(
+          CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+          "all_messages"
+        );
+        await setProjectPreference(user1, "never");
+
+        const participants = [makeParticipant(user1)];
+        const result = await filterParticipantsByNotifyCondition({
+          auth,
+          participants,
+          mentionedUserIds: new Set(),
+          totalParticipantCount: 5,
+          spaceModelId: space.id,
+        });
+
+        expect(result).toHaveLength(0);
+      });
+
+      it("should override general 'never' with project 'all_messages'", async () => {
+        await user1.setMetadata(
+          CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+          "never"
+        );
+        await setProjectPreference(user1, "all_messages");
+
+        const participants = [makeParticipant(user1)];
+        const result = await filterParticipantsByNotifyCondition({
+          auth,
+          participants,
+          mentionedUserIds: new Set(),
+          totalParticipantCount: 5,
+          spaceModelId: space.id,
+        });
+
+        expect(result).toHaveLength(1);
+        expect(result[0].sId).toBe(user1.sId);
+      });
+
+      it("should fall back to general preference when no project preference exists", async () => {
+        await user1.setMetadata(
+          CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+          "never"
+        );
+
+        const participants = [makeParticipant(user1)];
+        const result = await filterParticipantsByNotifyCondition({
+          auth,
+          participants,
+          mentionedUserIds: new Set(),
+          totalParticipantCount: 5,
+          spaceModelId: space.id,
+        });
+
+        expect(result).toHaveLength(0);
+      });
+
+      it("should override general 'only_mentions' with project 'all_messages'", async () => {
+        await user1.setMetadata(
+          CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+          "only_mentions"
+        );
+        await setProjectPreference(user1, "all_messages");
+
+        const participants = [makeParticipant(user1)];
+        const result = await filterParticipantsByNotifyCondition({
+          auth,
+          participants,
+          mentionedUserIds: new Set(), // Not mentioned
+          totalParticipantCount: 5,
+          spaceModelId: space.id,
+        });
+
+        // Would be excluded by general "only_mentions", but project overrides to "all_messages"
+        expect(result).toHaveLength(1);
+        expect(result[0].sId).toBe(user1.sId);
+      });
+
+      it("should handle mixed general and project preferences across users", async () => {
+        // user1: general=never, project=all_messages -> included
+        await user1.setMetadata(
+          CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+          "never"
+        );
+        await setProjectPreference(user1, "all_messages");
+
+        // user2: general=all_messages, no project pref -> included
+        await user2.setMetadata(
+          CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+          "all_messages"
+        );
+
+        // user3: general=all_messages, project=never -> excluded
+        await user3.setMetadata(
+          CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+          "all_messages"
+        );
+        await setProjectPreference(user3, "never");
+
+        const participants = [
+          makeParticipant(user1),
+          makeParticipant(user2),
+          makeParticipant(user3),
+        ];
+        const result = await filterParticipantsByNotifyCondition({
+          auth,
+          participants,
+          mentionedUserIds: new Set(),
+          totalParticipantCount: 3,
+          spaceModelId: space.id,
+        });
+
+        expect(result).toHaveLength(2);
+        expect(result.map((p) => p.sId).sort()).toEqual(
+          [user1.sId, user2.sId].sort()
+        );
+      });
     });
   });
 
