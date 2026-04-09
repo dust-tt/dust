@@ -1316,9 +1316,9 @@ function AgentMessageContent({
   );
 
   return (
-    <div className="flex flex-col gap-y-4">
-      {isInlineActivityEnabled ? (
-        <CitationsContext.Provider value={citationsContextValue}>
+    <CitationsContext.Provider value={citationsContextValue}>
+      <div className="flex flex-col gap-y-4">
+        {isInlineActivityEnabled ? (
           <InlineActivitySteps
             agentMessage={agentMessage}
             lastAgentStateClassification={agentMessage.streaming.agentState}
@@ -1327,36 +1327,36 @@ function AgentMessageContent({
             onOpenDetails={onOpenDetails}
             owner={owner}
           />
-        </CitationsContext.Provider>
-      ) : (
-        <AgentMessageActions
-          agentMessage={agentMessage}
-          lastAgentStateClassification={agentMessage.streaming.agentState}
-          actionProgress={agentMessage.streaming.actionProgress}
-          pendingToolCalls={agentMessage.streaming.pendingToolCalls}
-          owner={owner}
+        ) : (
+          <AgentMessageActions
+            agentMessage={agentMessage}
+            lastAgentStateClassification={agentMessage.streaming.agentState}
+            actionProgress={agentMessage.streaming.actionProgress}
+            pendingToolCalls={agentMessage.streaming.pendingToolCalls}
+            owner={owner}
+          />
+        )}
+        <AgentMessageInteractiveContentGeneratedFiles
+          files={interactiveFiles}
         />
-      )}
-      <AgentMessageInteractiveContentGeneratedFiles files={interactiveFiles} />
-      {completedImages.length > 0 && (
-        <InteractiveImageGrid
-          images={completedImages.map((image) => ({
-            imageUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=view&version=processed`,
-            downloadUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=download`,
-            alt: image.title,
-            title: image.title,
-            isLoading: false,
-          }))}
-        />
-      )}
+        {completedImages.length > 0 && (
+          <InteractiveImageGrid
+            images={completedImages.map((image) => ({
+              imageUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=view&version=processed`,
+              downloadUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=download`,
+              alt: image.title,
+              title: image.title,
+              isLoading: false,
+            }))}
+          />
+        )}
 
-      {agentMessage.content !== null &&
-        !(
-          isInlineActivityEnabled &&
-          agentMessage.streaming.agentState !== "done"
-        ) && (
-          <div>
-            <CitationsContext.Provider value={citationsContextValue}>
+        {agentMessage.content !== null &&
+          !(
+            isInlineActivityEnabled &&
+            agentMessage.streaming.agentState !== "done"
+          ) && (
+            <div>
               <AgentMessageMarkdown
                 content={sanitizeVisualizationContent(agentMessage.content)}
                 owner={owner}
@@ -1369,60 +1369,60 @@ function AgentMessageContent({
                 additionalMarkdownComponents={additionalMarkdownComponents}
                 additionalMarkdownPlugins={additionalMarkdownPlugins}
               />
-            </CitationsContext.Provider>
+            </div>
+          )}
+        {generatedFiles.length > 0 && (
+          <div className="mt-2 grid grid-cols-5 gap-1">
+            {getCitations({
+              activeReferences: generatedFiles.map((file) => ({
+                index: -1,
+                document: {
+                  fileId: file.fileId,
+                  contentType: file.contentType,
+                  href: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`,
+                  title: file.title,
+                },
+              })),
+              owner,
+              conversationId,
+            })}
           </div>
         )}
-      {generatedFiles.length > 0 && (
-        <div className="mt-2 grid grid-cols-5 gap-1">
-          {getCitations({
-            activeReferences: generatedFiles.map((file) => ({
-              index: -1,
-              document: {
-                fileId: file.fileId,
-                contentType: file.contentType,
-                href: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`,
-                title: file.title,
-              },
-            })),
-            owner,
-            conversationId,
-          })}
-        </div>
-      )}
-      {agentMessage.status === "cancelled" && (
-        <div className="flex flex-col gap-2">
-          <div className="text-sm text-faint dark:text-faint-night">
-            Message generation was interrupted
-          </div>
-          <div>
-            <ButtonGroupDropdown
-              trigger={
-                <Button
-                  variant="outline"
-                  size="xs"
-                  icon={MoreIcon}
-                  className="text-muted-foreground"
-                />
-              }
-              items={[
-                {
-                  label: "Retry",
-                  icon: ArrowPathIcon,
-                  onSelect: () => {
-                    void retryHandler({
-                      conversationId,
-                      messageId: agentMessage.sId,
-                    });
+        {agentMessage.status === "cancelled" && (
+          <div className="flex flex-col gap-2">
+            <div className="text-sm text-faint dark:text-faint-night">
+              Message generation was interrupted
+            </div>
+            <div>
+              <ButtonGroupDropdown
+                trigger={
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    icon={MoreIcon}
+                    className="text-muted-foreground"
+                  />
+                }
+                items={[
+                  {
+                    label: "Retry",
+                    icon: ArrowPathIcon,
+                    onSelect: () => {
+                      void retryHandler({
+                        conversationId,
+                        messageId: agentMessage.sId,
+                      });
+                    },
+                    disabled: isRetryHandlerProcessing,
                   },
-                  disabled: isRetryHandlerProcessing,
-                },
-              ]}
-              align="end"
-            />
+                ]}
+                align="end"
+              />
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </CitationsContext.Provider>
   );
 }
 
