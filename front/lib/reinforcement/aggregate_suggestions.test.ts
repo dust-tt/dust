@@ -41,9 +41,15 @@ function makeInstructionSuggestion(
     state: "pending",
     source: "synthetic",
     sourceConversationId: null,
-    kind: "edit_instructions",
+    kind: "edit",
     suggestion: {
-      instructions: "Always verify data before responding.",
+      instructionEdits: [
+        {
+          old_string: "verify data",
+          new_string: "always verify data before responding",
+          expected_occurrences: 1,
+        },
+      ],
     },
     ...overrides,
   } as SkillSuggestionType;
@@ -61,10 +67,9 @@ function makeToolSuggestion(
     state: "pending",
     source: "synthetic",
     sourceConversationId: null,
-    kind: "tools",
+    kind: "edit",
     suggestion: {
-      action: "add",
-      toolId: "tool-search",
+      toolEdits: [{ action: "add", toolId: "tool-search" }],
     },
     ...overrides,
   } as SkillSuggestionType;
@@ -78,14 +83,20 @@ describe("buildSkillAggregationPrompt", () => {
       { pending: [], rejected: [] }
     );
 
-    expect(userMessage).toContain("Skill: DataLookup");
+    expect(userMessage).toContain('name="DataLookup"');
   });
 
-  it("formats instruction suggestions with skillId and instructions", () => {
+  it("formats instruction suggestions with skillId and edits", () => {
     const suggestion = makeInstructionSuggestion({
       skillConfigurationId: "skl_target",
       suggestion: {
-        instructions: "New improved instructions.",
+        instructionEdits: [
+          {
+            old_string: "old text",
+            new_string: "New improved instructions.",
+            expected_occurrences: 1,
+          },
+        ],
       },
     } as Partial<SkillSuggestionType>);
     const { userMessage } = buildSkillAggregationPrompt(
@@ -94,9 +105,9 @@ describe("buildSkillAggregationPrompt", () => {
       { pending: [], rejected: [] }
     );
 
-    expect(userMessage).toContain("kind: edit_instructions");
-    expect(userMessage).toContain("skillId: skl_target");
-    expect(userMessage).toContain("instructions: New improved instructions.");
+    expect(userMessage).toContain('kind="edit"');
+    expect(userMessage).toContain("<skillId>skl_target</skillId>");
+    expect(userMessage).toContain("New improved instructions.");
   });
 
   it("formats tool suggestions with action and toolId", () => {
@@ -106,9 +117,9 @@ describe("buildSkillAggregationPrompt", () => {
       { pending: [], rejected: [] }
     );
 
-    expect(userMessage).toContain("kind: tools");
-    expect(userMessage).toContain("action: add");
-    expect(userMessage).toContain("toolId: tool-search");
+    expect(userMessage).toContain('kind="edit"');
+    expect(userMessage).toContain('action="add"');
+    expect(userMessage).toContain('toolId="tool-search"');
   });
 
   it("shows N/A when analysis is null", () => {
@@ -119,7 +130,7 @@ describe("buildSkillAggregationPrompt", () => {
       { pending: [], rejected: [] }
     );
 
-    expect(userMessage).toContain("analysis: N/A");
+    expect(userMessage).toContain("<analysis>N/A</analysis>");
   });
 
   it("numbers multiple suggestions sequentially", () => {
@@ -177,15 +188,14 @@ describe("buildSkillAggregationPrompt", () => {
     expect(userMessage).not.toContain("Previously rejected suggestions");
   });
 
-  it("system prompt mentions the suggestion tools", () => {
+  it("system prompt mentions the suggestion tool", () => {
     const { systemPrompt } = buildSkillAggregationPrompt(
       makeSkill(),
       [makeInstructionSuggestion()],
       { pending: [], rejected: [] }
     );
 
-    expect(systemPrompt).toContain("suggest_skill_instruction_edits");
-    expect(systemPrompt).toContain("suggest_skill_tools");
+    expect(systemPrompt).toContain("edit_skill");
   });
 
   it("includes skill configured tools in user message", () => {
@@ -203,7 +213,8 @@ describe("buildSkillAggregationPrompt", () => {
       { pending: [], rejected: [] }
     );
 
-    expect(userMessage).toContain("### Configured tools");
-    expect(userMessage).toContain("web_search (ID: tool-ws)");
+    expect(userMessage).toContain("<tools>");
+    expect(userMessage).toContain('name="web_search"');
+    expect(userMessage).toContain('sId="tool-ws"');
   });
 });

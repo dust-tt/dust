@@ -56,6 +56,15 @@ export function pluralize(count: number) {
   return count !== 1 ? "s" : "";
 }
 
+// Encode text for use in XML element bodies and double-quoted attributes
+export function escapeXml(text: string): string {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
 const HTML_ENTITIES: Record<string, string> = {
   "&nbsp;": " ",
   "&amp;": "&",

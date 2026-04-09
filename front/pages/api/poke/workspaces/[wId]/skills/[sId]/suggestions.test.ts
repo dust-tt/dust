@@ -38,7 +38,7 @@ describe("GET /api/poke/workspaces/[wId]/skills/[sId]/suggestions", () => {
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
     expect(data.suggestions).toHaveLength(1);
-    expect(data.suggestions[0].kind).toBe("edit_instructions");
+    expect(data.suggestions[0].kind).toBe("edit");
   });
 
   it("returns empty array when skill has no suggestions", async () => {
