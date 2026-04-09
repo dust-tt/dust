@@ -185,12 +185,12 @@ export function SkillsAgentBuilderPlaygroundView({
       .map((user) => user.fullName || `${user.firstName} ${user.lastName}`);
   }, [selectedEditorIds]);
 
-  const initialInstruction = useMemo(
-    () => mockInstructionCases[0] ?? "",
+  const initialInstruction = useMemo(() => mockInstructionCases[0] ?? "", []);
+
+  const versionDiffContent = useMemo(
+    () => parseDiffLinesForVersionPreview(),
     []
   );
-
-  const versionDiffContent = useMemo(() => parseDiffLinesForVersionPreview(), []);
 
   const seedInstructionsDemo = useCallback(() => {
     const api = richTextAreaRef.current;
@@ -260,7 +260,9 @@ export function SkillsAgentBuilderPlaygroundView({
         variant="default"
         className="s-mx-4"
         title="Create new skill"
-        rightActions={<BarHeader.ButtonBar variant="close" onClose={handleCancel} />}
+        rightActions={
+          <BarHeader.ButtonBar variant="close" onClose={handleCancel} />
+        }
       />
 
       <ScrollArea className="s-min-h-0 s-flex-1">
@@ -321,163 +323,165 @@ export function SkillsAgentBuilderPlaygroundView({
                 Commands and constraints the model follows when this skill runs.
               </p>
             </div>
-            <div
-              role="group"
-              aria-labelledby="playground-instructions-heading"
-            >
-            <RichTextArea
-              ref={richTextAreaRef}
-              placeholder="Write instructions for your skill..."
-              readOnly={instructionLocked}
-              onSuggestionsChange={setHasSuggestionsState}
-              onEditorReady={seedInstructionsDemo}
-              topBar={
-                <div className="s-flex s-flex-1 s-flex-wrap s-items-center s-gap-2 s-px-3 s-py-2">
-                  <Button
-                    icon={HeadingIcon}
-                    size="icon"
-                    variant="ghost-secondary"
-                    tooltip="Heading"
-                  />
-                  <Button
-                    icon={BoldIcon}
-                    size="icon"
-                    variant="ghost-secondary"
-                    tooltip="Bold"
-                    tooltipShortcut="Cmd+B"
-                  />
-                  <Button
-                    icon={ItalicIcon}
-                    size="icon"
-                    variant="ghost-secondary"
-                    tooltip="Italic"
-                    tooltipShortcut="Cmd+I"
-                  />
-                  <Separator orientation="vertical" />
-                  <Button
-                    icon={LinkIcon}
-                    size="icon"
-                    variant="ghost-secondary"
-                    tooltip="Insert a link"
-                  />
-                  <Button
-                    icon={ListCheckIcon}
-                    size="icon"
-                    variant="ghost-secondary"
-                    tooltip="Bulleted list"
-                  />
-                  <Button
-                    icon={ListOrdered2Icon}
-                    size="icon"
-                    variant="ghost-secondary"
-                    tooltip="Ordered list"
-                  />
-                  <Separator orientation="vertical" />
-                  <Button
-                    icon={QuoteTextIcon}
-                    size="icon"
-                    variant="ghost-secondary"
-                    tooltip="Quotation block"
-                  />
-                  <Button
-                    icon={CodeBlockIcon}
-                    size="icon"
-                    variant="ghost-secondary"
-                    tooltip="Code Block"
-                  />
-                  <Separator orientation="vertical" />
-                  <Button
-                    icon={TagBlockIcon}
-                    size="icon"
-                    variant="ghost-secondary"
-                    tooltip="XML tag"
-                  />
-                  <Separator orientation="vertical" />
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        size="icon"
-                        variant="ghost-secondary"
-                        icon={HistoryIcon}
-                        isSelect
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuLabel label="Version history" />
-                      {versionHistoryItems.map((item) => (
-                        <DropdownMenuItem
-                          key={item.id}
-                          label={item.date}
-                          description={item.author}
-                          onSelect={() => {
-                            window.setTimeout(() => setSelectedVersion(item), 0);
+            <div role="group" aria-labelledby="playground-instructions-heading">
+              <RichTextArea
+                ref={richTextAreaRef}
+                placeholder="Write instructions for your skill..."
+                readOnly={instructionLocked}
+                onSuggestionsChange={setHasSuggestionsState}
+                onEditorReady={seedInstructionsDemo}
+                topBar={
+                  <div className="s-flex s-flex-1 s-flex-wrap s-items-center s-gap-2 s-px-3 s-py-2">
+                    <Button
+                      icon={HeadingIcon}
+                      size="icon"
+                      variant="ghost-secondary"
+                      tooltip="Heading"
+                    />
+                    <Button
+                      icon={BoldIcon}
+                      size="icon"
+                      variant="ghost-secondary"
+                      tooltip="Bold"
+                      tooltipShortcut="Cmd+B"
+                    />
+                    <Button
+                      icon={ItalicIcon}
+                      size="icon"
+                      variant="ghost-secondary"
+                      tooltip="Italic"
+                      tooltipShortcut="Cmd+I"
+                    />
+                    <Separator orientation="vertical" />
+                    <Button
+                      icon={LinkIcon}
+                      size="icon"
+                      variant="ghost-secondary"
+                      tooltip="Insert a link"
+                    />
+                    <Button
+                      icon={ListCheckIcon}
+                      size="icon"
+                      variant="ghost-secondary"
+                      tooltip="Bulleted list"
+                    />
+                    <Button
+                      icon={ListOrdered2Icon}
+                      size="icon"
+                      variant="ghost-secondary"
+                      tooltip="Ordered list"
+                    />
+                    <Separator orientation="vertical" />
+                    <Button
+                      icon={QuoteTextIcon}
+                      size="icon"
+                      variant="ghost-secondary"
+                      tooltip="Quotation block"
+                    />
+                    <Button
+                      icon={CodeBlockIcon}
+                      size="icon"
+                      variant="ghost-secondary"
+                      tooltip="Code Block"
+                    />
+                    <Separator orientation="vertical" />
+                    <Button
+                      icon={TagBlockIcon}
+                      size="icon"
+                      variant="ghost-secondary"
+                      tooltip="XML tag"
+                    />
+                    <Separator orientation="vertical" />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost-secondary"
+                          icon={HistoryIcon}
+                          isSelect
+                        />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuLabel label="Version history" />
+                        {versionHistoryItems.map((item) => (
+                          <DropdownMenuItem
+                            key={item.id}
+                            label={item.date}
+                            description={item.author}
+                            onSelect={() => {
+                              window.setTimeout(
+                                () => setSelectedVersion(item),
+                                0
+                              );
+                            }}
+                          />
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      label="Suggest"
+                      disabled={instructionLocked}
+                      onClick={() => {
+                        richTextAreaRef.current?.applyRandomSuggestions(
+                          mockSuggestionChanges
+                        );
+                        setTimeout(checkForSuggestions, 100);
+                      }}
+                    />
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      label="Add fake"
+                      disabled={instructionLocked}
+                      onClick={() => {
+                        if (!mockInstructionCases.length) return;
+                        const i = Math.floor(
+                          Math.random() * mockInstructionCases.length
+                        );
+                        richTextAreaRef.current?.setContent(
+                          mockInstructionCases[i]
+                        );
+                      }}
+                    />
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      label="Reset demo"
+                      disabled={instructionLocked}
+                      onClick={seedInstructionsDemo}
+                    />
+                    <div className="s-flex-1" />
+                    {hasSuggestionsState ? (
+                      <div className="s-ml-auto s-flex s-gap-2">
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          icon={XMarkIcon}
+                          label="Reject all"
+                          tooltip="Reject all suggestions"
+                          onClick={() => {
+                            richTextAreaRef.current?.rejectAllSuggestions();
+                            checkForSuggestions();
                           }}
                         />
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    label="Suggest"
-                    disabled={instructionLocked}
-                    onClick={() => {
-                      richTextAreaRef.current?.applyRandomSuggestions(
-                        mockSuggestionChanges
-                      );
-                      setTimeout(checkForSuggestions, 100);
-                    }}
-                  />
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    label="Add fake"
-                    disabled={instructionLocked}
-                    onClick={() => {
-                      if (!mockInstructionCases.length) return;
-                      const i = Math.floor(
-                        Math.random() * mockInstructionCases.length
-                      );
-                      richTextAreaRef.current?.setContent(mockInstructionCases[i]);
-                    }}
-                  />
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    label="Reset demo"
-                    disabled={instructionLocked}
-                    onClick={seedInstructionsDemo}
-                  />
-                  <div className="s-flex-1" />
-                  {hasSuggestionsState ? (
-                    <div className="s-ml-auto s-flex s-gap-2">
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        icon={XMarkIcon}
-                        label="Reject all"
-                        tooltip="Reject all suggestions"
-                        onClick={() => {
-                          richTextAreaRef.current?.rejectAllSuggestions();
-                          checkForSuggestions();
-                        }}
-                      />
-                      <Button
-                        size="xs"
-                        icon={CheckIcon}
-                        variant="highlight-secondary"
-                        label="Accept all"
-                        tooltip="Accept all suggestions"
-                        onClick={() => {
-                          richTextAreaRef.current?.acceptAllSuggestions();
-                          checkForSuggestions();
-                        }}
-                      />
-                    </div>
-                  ) : null}
-                </div>
-              }
-            />
+                        <Button
+                          size="xs"
+                          icon={CheckIcon}
+                          variant="highlight-secondary"
+                          label="Accept all"
+                          tooltip="Accept all suggestions"
+                          onClick={() => {
+                            richTextAreaRef.current?.acceptAllSuggestions();
+                            checkForSuggestions();
+                          }}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                }
+              />
             </div>
           </section>
 
@@ -568,7 +572,9 @@ export function SkillsAgentBuilderPlaygroundView({
               </div>
             </div>
             <Collapsible defaultOpen>
-              <CollapsibleTrigger variant="secondary">Advanced</CollapsibleTrigger>
+              <CollapsibleTrigger variant="secondary">
+                Advanced
+              </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="s-pt-3">
                   <label className="s-flex s-items-center s-gap-2 s-text-sm">
@@ -593,9 +599,7 @@ export function SkillsAgentBuilderPlaygroundView({
             type="button"
           />
         }
-        rightActions={
-          <Button variant="highlight" label="Save" type="button" />
-        }
+        rightActions={<Button variant="highlight" label="Save" type="button" />}
       />
 
       <Sheet open={isSpacesSheetOpen} onOpenChange={setIsSpacesSheetOpen}>
@@ -617,7 +621,9 @@ export function SkillsAgentBuilderPlaygroundView({
                     itemsAlignment="center"
                     onClick={() => toggleDraftSpace(space.id)}
                     className={
-                      selected ? "s-bg-primary-50 dark:s-bg-primary-50-night" : ""
+                      selected
+                        ? "s-bg-primary-50 dark:s-bg-primary-50-night"
+                        : ""
                     }
                   >
                     <Icon
@@ -635,7 +641,8 @@ export function SkillsAgentBuilderPlaygroundView({
                     <Checkbox
                       checked={selected}
                       onCheckedChange={(checked: boolean | "indeterminate") => {
-                        if (checked !== "indeterminate") toggleDraftSpace(space.id);
+                        if (checked !== "indeterminate")
+                          toggleDraftSpace(space.id);
                       }}
                       onClick={(e: MouseEvent<HTMLButtonElement>) => {
                         e.stopPropagation();
