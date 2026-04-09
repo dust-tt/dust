@@ -116,7 +116,7 @@ async function setupTest({
   endDate?: string;
   timezone?: string;
 } = {}) {
-  const result = await createPublicApiMockRequest({ systemKey: true });
+  const result = await createPublicApiMockRequest();
 
   const query: Record<string, string> = {
     wId: result.workspace.sId,
@@ -133,24 +133,16 @@ async function setupTest({
 }
 
 describe("GET /api/v1/w/[wId]/analytics/export", () => {
-  it("returns 403 for non-admin API key", async () => {
-    const { req, res } = await createPublicApiMockRequest();
+  it("returns 200 for regular (builder) API key", async () => {
+    const { req, res } = await setupTest();
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData()).toEqual({
-      error: {
-        type: "workspace_auth_error",
-        message: "Only workspace admins can access workspace analytics.",
-      },
-    });
+    expect(res._getStatusCode()).toBe(200);
   });
 
   it("returns 400 for missing required query params", async () => {
-    const { req, res, workspace } = await createPublicApiMockRequest({
-      systemKey: true,
-    });
+    const { req, res, workspace } = await createPublicApiMockRequest();
     req.query = { wId: workspace.sId };
 
     await handler(req, res);
@@ -189,7 +181,6 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     for (const method of ["POST", "PUT", "DELETE", "PATCH"] as const) {
       const result = await createPublicApiMockRequest({
         method,
-        systemKey: true,
       });
       result.req.query = {
         wId: result.workspace.sId,
