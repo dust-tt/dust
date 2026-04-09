@@ -33,6 +33,16 @@ export function SpaceConversationListItem({
 }: SpaceConversationListItemProps) {
   const router = useAppRouter();
 
+  const validMessages = conversation.content.filter((message) => {
+    return (
+      (isUserMessageTypeWithContentFragments(message) &&
+        message.visibility === "visible" &&
+        !isHiddenMessage(message)) ||
+      (!isUserMessageTypeWithContentFragments(message) &&
+        message.status === "succeeded")
+    );
+  });
+
   const firstVisibleMessage = conversation.content.find(isVisibleMessage);
 
   // Compute the reply section avatars.
@@ -40,7 +50,7 @@ export function SpaceConversationListItem({
     const avatars: Parameters<typeof Avatar.Stack>[0]["avatars"] = [];
     // Lookup the messages in reverse order and collect the users and agents icons
     // Slice to skip the first message as it's not a reply.
-    for (const message of conversation.content.slice(1)) {
+    for (const message of validMessages.slice(1)) {
       if (isUserMessageTypeWithContentFragments(message)) {
         avatars.push({
           isRounded: true,
@@ -57,13 +67,13 @@ export function SpaceConversationListItem({
       }
     }
     return uniqBy(avatars.reverse(), "visual");
-  }, [conversation.content]);
+  }, [validMessages]);
 
   const countUnreadMessages = useMemo(() => {
-    return conversation.content.filter((message) => {
+    return validMessages.filter((message) => {
       return isMessageUnread(message, conversation.lastReadMs);
     }).length;
-  }, [conversation.content, conversation.lastReadMs]);
+  }, [validMessages, conversation.lastReadMs]);
 
   if (!firstVisibleMessage) {
     return null;
@@ -77,7 +87,7 @@ export function SpaceConversationListItem({
 
   const time = moment(conversation.updated).fromNow();
 
-  const replyCount = conversation.content.length - 1;
+  const replyCount = validMessages.length - 1;
 
   let creatorName = "Unknown";
   let creatorVisual: string | undefined;
