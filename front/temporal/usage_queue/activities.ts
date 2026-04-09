@@ -414,8 +414,11 @@ export async function emitMetronomeGaugeEventsForAllWorkspacesActivity(): Promis
         metronomeWorkspaces.map((w) => w.id)
       );
 
-    // Filter to workspaces whose billing cycle ends within the next 24 hours.
-    const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    // The cron runs at 2am UTC. We check for cycles ending between 3am today
+    // and 3am tomorrow to cover the full day with a 1h buffer after launch.
+    const todayAt3am = new Date(now);
+    todayAt3am.setUTCHours(3, 0, 0, 0);
+    const tomorrowAt3am = new Date(todayAt3am.getTime() + 24 * 60 * 60 * 1000);
     const results = await concurrentExecutor(
       metronomeWorkspaces,
       async (workspace): Promise<WorkspaceResource | null> => {
@@ -432,7 +435,9 @@ export async function emitMetronomeGaugeEventsForAllWorkspacesActivity(): Promis
         const periodEnd = new Date(
           stripeSubscription.current_period_end * 1000
         );
-        return periodEnd >= now && periodEnd <= in24h ? workspace : null;
+        return periodEnd >= todayAt3am && periodEnd <= tomorrowAt3am
+          ? workspace
+          : null;
       },
       { concurrency: 10 }
     );
