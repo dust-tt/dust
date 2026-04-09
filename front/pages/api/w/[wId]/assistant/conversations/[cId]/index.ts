@@ -96,7 +96,6 @@
  *                 properties:
  *                   read:
  *                     type: boolean
- *                     enum: [true]
  *               - type: object
  *                 required:
  *                   - spaceId
@@ -146,7 +145,7 @@ const PatchConversationsRequestBodySchema = t.union([
     title: t.string,
   }),
   t.type({
-    read: t.literal(true),
+    read: t.boolean,
   }),
   t.type({
     spaceId: t.string,
@@ -278,9 +277,15 @@ async function handler(
           }
           return res.status(200).json({ success: true });
         } else if ("read" in bodyValidation.right) {
-          await ConversationResource.markAsReadForAuthUser(auth, {
-            conversation,
-          });
+          if (bodyValidation.right.read) {
+            await ConversationResource.markAsReadForAuthUser(auth, {
+              conversation,
+            });
+          } else {
+            await ConversationResource.markAsUnreadForAuthUser(auth, {
+              conversation,
+            });
+          }
 
           return res.status(200).json({ success: true });
         } else if ("spaceId" in bodyValidation.right) {

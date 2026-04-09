@@ -64,8 +64,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
  *       500:
  *         description: Internal Server Error.
  *   patch:
- *     summary: Mark a conversation as read
- *     description: Mark a conversation as read in the workspace identified by {wId}.
+ *     summary: Update conversation read status
+ *     description: Mark a conversation as read or unread in the workspace identified by {wId}.
  *     tags:
  *       - Conversations
  *     security:
@@ -202,6 +202,10 @@ async function handler(
       const { read } = r.data;
       if (read) {
         await ConversationResource.markAsReadForAuthUser(auth, {
+          conversation: conversationRes.value,
+        });
+      } else {
+        await ConversationResource.markAsUnreadForAuthUser(auth, {
           conversation: conversationRes.value,
         });
       }

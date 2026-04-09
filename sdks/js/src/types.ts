@@ -2141,7 +2141,7 @@ export type GetConversationResponseType = z.infer<
 >;
 
 export const PatchConversationRequestSchema = z.object({
-  read: z.literal(true),
+  read: z.boolean(),
 });
 
 export type PatchConversationRequestType = z.infer<
