@@ -724,8 +724,8 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
           await stopRetrieveTranscriptsWorkflow(config);
           stoppedCount++;
           logger.info(
-            { sId: config.sId },
-            `Stopped transcript workflow for config sId=${config.sId}.`
+            { configId: config.sId },
+            `Stopped transcript workflow for config ${config.sId}.`
           );
         }
       }
