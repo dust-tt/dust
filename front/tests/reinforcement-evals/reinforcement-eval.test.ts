@@ -24,35 +24,31 @@ import type {
   ToolCall,
 } from "@app/tests/reinforcement-evals/lib/types";
 import { allTestSuites } from "@app/tests/reinforcement-evals/test-suites";
+import { isString } from "@app/types/shared/utils/general";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 function formatToolCallSummary(tc: ToolCall): string {
   const args = tc.arguments as Record<string, unknown>;
   switch (tc.name) {
-    case "suggest_skill_instruction_edits": {
-      const suggestions = args.suggestions as
-        | Array<{ skillId?: string }>
-        | undefined;
-      if (suggestions) {
-        const items = suggestions.map((s) => s.skillId ?? "?").join(", ");
-        return `suggest_skill_instruction_edits(${items})`;
+    case "edit_skill": {
+      const skillId = isString(args.skillId) ? args.skillId : "?";
+      const parts: string[] = [`skill=${skillId}`];
+      const instructionEdits = Array.isArray(args.instructionEdits)
+        ? args.instructionEdits
+        : undefined;
+      if (instructionEdits?.length) {
+        parts.push(`${instructionEdits.length} instructionEdit(s)`);
       }
-      return "suggest_skill_instruction_edits()";
-    }
-    case "suggest_skill_tools": {
-      const suggestions = args.suggestions as
-        | Array<{ skillId?: string; action?: string; toolId?: string }>
-        | undefined;
-      if (suggestions) {
-        const items = suggestions
-          .map(
-            (s) =>
-              `${s.action ?? "?"} ${s.toolId ?? "?"} on ${s.skillId ?? "?"}`
-          )
+      const toolEdits = Array.isArray(args.toolEdits)
+        ? args.toolEdits
+        : undefined;
+      if (toolEdits?.length) {
+        const items = toolEdits
+          .map((t) => `${t.action ?? "?"} ${t.toolId ?? "?"}`)
           .join(", ");
-        return `suggest_skill_tools(${items})`;
+        parts.push(`toolEdits=[${items}]`);
       }
-      return "suggest_skill_tools()";
+      return `edit_skill(${parts.join(", ")})`;
     }
     default:
       return tc.name;

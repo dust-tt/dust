@@ -50,21 +50,22 @@ IMPORTANT: You must include both REASONING: and SCORE: labels. The score MUST ap
 
 ## General Evaluation Checklist (apply to all scenarios)
 
-1. **Correct Tool Usage**: Did the analyst call the right tool(s) for the situation?
-   - suggest_skill_instruction_edits for instruction improvements
-   - suggest_skill_tools for tool additions/removals
+1. **Correct Tool Usage**: Did the analyst call edit_skill with the right fields?
+   - instructionEdits for instruction improvements (search-and-replace edits)
+   - toolEdits for tool additions/removals
+   - Both can appear in a single edit_skill call
 2. **Suggestion Quality**: Are the suggestions specific, actionable, and well-reasoned?
    - Does the analysis field explain WHY the change is needed?
    - Is the suggested content appropriate and well-written?
 3. **Scope Appropriateness**: Did it avoid over-engineering?
    - Focused on the actual issue rather than rewriting everything
    - Suggestions preserve the skill's existing goals
-4. **If suggest_skill_instruction_edits was called**:
-   - Do the instructions directly address the identified issue?
-   - Are they in the same language as the existing instructions?
-   - Would they meaningfully improve the skill?
-5. **If suggest_skill_tools was called**:
-   - Is the correct tool/skill ID used?
+4. **If instructionEdits are present**:
+   - Do the edits directly address the identified issue?
+   - Are the old_string values accurate matches of the existing instructions?
+   - Would the new_string replacements meaningfully improve the skill?
+5. **If toolEdits are present**:
+   - Is the correct toolId used?
    - Is the action (add/remove) appropriate?
    - Does the analysis explain the use case?
 

@@ -189,19 +189,27 @@ export interface ToolCall {
 }
 
 export type ToolCallAssertion =
-  | { type: "instructionSuggestion"; skillId: string }
-  | { type: "toolSuggestion"; skillId: string; toolId: string }
+  | { type: "editSkillWithInstructions"; skillId: string }
+  | { type: "editSkillWithTool"; skillId: string; toolId: string }
+  | { type: "editSkill"; skillId: string }
   | { type: "noSuggestion" };
 
-export function instructionSuggestion(skillId: string): ToolCallAssertion {
-  return { type: "instructionSuggestion", skillId };
+/** Expects an edit_skill call with instructionEdits for the given skill. */
+export function editSkillWithInstructions(skillId: string): ToolCallAssertion {
+  return { type: "editSkillWithInstructions", skillId };
 }
 
-export function toolSuggestion(
+/** Expects an edit_skill call with a toolEdit for the given skill and tool. */
+export function editSkillWithTool(
   skillId: string,
   toolId: string
 ): ToolCallAssertion {
-  return { type: "toolSuggestion", skillId, toolId };
+  return { type: "editSkillWithTool", skillId, toolId };
+}
+
+/** Expects an edit_skill call for the given skill (any edit type). */
+export function editSkill(skillId: string): ToolCallAssertion {
+  return { type: "editSkill", skillId };
 }
 
 export function noSuggestion(): ToolCallAssertion {
