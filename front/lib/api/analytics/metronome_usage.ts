@@ -1,3 +1,9 @@
+import type { WindowSize } from "@app/lib/api/analytics/time_utils";
+import {
+  DAY_MS,
+  FOUR_HOURS_MS,
+  getTimestampsForWindow,
+} from "@app/lib/api/analytics/time_utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import {
@@ -31,7 +37,7 @@ const QuerySchema = z.object({
   groupByCount: z.coerce.number().optional().default(5),
   selectedPeriod: z.string().optional(),
   billingCycleStartDay: z.coerce.number().min(1).max(31),
-  windowSize: z.enum(["HOUR", "DAY"]).optional().default("DAY"),
+  windowSize: z.enum(["HOUR", "FOUR_HOURS", "DAY"]).optional().default("DAY"),
 });
 
 export interface MetronomeUsagePointGroup {
@@ -70,22 +76,29 @@ const GROUP_BY_TO_METRICS: Record<MetronomeUsageGroupByType, "llm" | "both"> = {
   origin: "both",
 };
 
-const HOUR_MS = 3_600_000;
-const DAY_MS = 24 * HOUR_MS;
+type MetronomeWindowSize = "HOUR" | "DAY";
 
-function getTimestampsForWindow(
-  start: Date,
-  end: Date,
-  windowSize: "HOUR" | "DAY"
-): number[] {
-  const timestamps: number[] = [];
-  const current = new Date(start);
-  const incrementMs = windowSize === "DAY" ? DAY_MS : HOUR_MS;
-  while (current < end) {
-    timestamps.push(current.getTime());
-    current.setTime(current.getTime() + incrementMs);
+function getMetronomeWindowSize(windowSize: WindowSize): MetronomeWindowSize {
+  switch (windowSize) {
+    case "FOUR_HOURS":
+    case "HOUR":
+      return "HOUR";
+    case "DAY":
+      return "DAY";
+    default:
+      assertNever(windowSize);
   }
-  return timestamps;
+}
+
+function aggregateToFourHourBuckets(
+  hourlyMap: Map<number, number>
+): Map<number, number> {
+  const aggregated = new Map<number, number>();
+  for (const [ts, value] of hourlyMap) {
+    const bucket = ts - (ts % FOUR_HOURS_MS);
+    aggregated.set(bucket, (aggregated.get(bucket) ?? 0) + value);
+  }
+  return aggregated;
 }
 
 interface ParsedBalance {
@@ -216,7 +229,7 @@ export async function handleMetronomeUsageRequest(
       const { cycleStart: periodStart, cycleEnd: periodEnd } =
         getBillingCycleFromDay(billingCycleStartDay, referenceDate, true);
 
-      const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000;
+      const TEN_DAYS_MS = 10 * DAY_MS;
       const cappedEnd = new Date(
         Math.min(periodEnd.getTime(), Date.now() + TEN_DAYS_MS)
       );
@@ -237,13 +250,16 @@ export async function handleMetronomeUsageRequest(
       const groupValues: Record<string, Map<number, number>> = {};
       const availableGroups: MetronomeUsageAvailableGroup[] = [];
 
+      const metronomeApiWindowSize = getMetronomeWindowSize(windowSize);
+      const needsFourHourAggregation = windowSize === "FOUR_HOURS";
+
       if (!groupBy) {
         const result = await listMetronomeUsage({
           customerIds: [metronomeCustomerId],
           billableMetricIds: [llmMetricId, toolMetricId],
           startingOn,
           endingBefore,
-          windowSize,
+          windowSize: metronomeApiWindowSize,
         });
 
         if (result.isErr()) {
@@ -256,10 +272,13 @@ export async function handleMetronomeUsageRequest(
           });
         }
 
-        const totalMap = new Map<number, number>();
+        let totalMap = new Map<number, number>();
         for (const entry of result.value) {
           const ts = new Date(entry.startTimestamp).getTime();
           totalMap.set(ts, (totalMap.get(ts) ?? 0) + (entry.value ?? 0));
+        }
+        if (needsFourHourAggregation) {
+          totalMap = aggregateToFourHourBuckets(totalMap);
         }
         groupValues["total"] = totalMap;
 
@@ -275,7 +294,7 @@ export async function handleMetronomeUsageRequest(
           customerId: metronomeCustomerId,
           startingOn,
           endingBefore,
-          windowSize,
+          windowSize: metronomeApiWindowSize,
           groupKey: [eventProperty],
         };
 
@@ -334,6 +353,13 @@ export async function handleMetronomeUsageRequest(
               mergedGroupMap.set(key, keyMap);
             }
             keyMap.set(ts, (keyMap.get(ts) ?? 0) + (entry.value ?? 0));
+          }
+        }
+
+        if (needsFourHourAggregation) {
+          for (const key of [...mergedGroupMap.keys()]) {
+            const tsMap = mergedGroupMap.get(key)!;
+            mergedGroupMap.set(key, aggregateToFourHourBuckets(tsMap));
           }
         }
 
