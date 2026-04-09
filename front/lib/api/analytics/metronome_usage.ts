@@ -212,8 +212,10 @@ export async function handleMetronomeUsageRequest(
         getBillingCycleFromDay(billingCycleStartDay, referenceDate, true);
 
       const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000;
+      const minDate = new Date(Date.now() + TEN_DAYS_MS);
+      minDate.setUTCHours(0, 0, 0, 0);
       const cappedPeriodEnd = new Date(
-        Math.min(periodEnd.getTime(), Date.now() + TEN_DAYS_MS)
+        Math.min(periodEnd.getTime(), minDate.getTime())
       );
 
       const startingOn = periodStart.toISOString();
