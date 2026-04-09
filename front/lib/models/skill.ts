@@ -45,6 +45,10 @@ const SKILL_MODEL_ATTRIBUTES = {
     type: DataTypes.TEXT,
     allowNull: false,
   },
+  instructionsHtml: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
   requestedSpaceIds: {
     type: DataTypes.ARRAY(DataTypes.BIGINT),
     allowNull: false,
@@ -100,6 +104,7 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare agentFacingDescription: string;
   declare userFacingDescription: string;
   declare instructions: string;
+  declare instructionsHtml: string | null;
   declare icon: string | null;
 
   declare editedBy: ForeignKey<UserModel["id"]> | null;

@@ -14,6 +14,7 @@ function makeSkill(overrides: Partial<SkillType> = {}): SkillType {
     agentFacingDescription: "A test skill",
     userFacingDescription: "A test skill for users",
     instructions: null,
+    instructionsHtml: null,
     icon: null,
     source: null,
     sourceMetadata: null,

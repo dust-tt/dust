@@ -33,6 +33,7 @@ export const SkillSchema = z.object({
   agentFacingDescription: z.string(),
   userFacingDescription: z.string(),
   instructions: z.string().nullable(),
+  instructionsHtml: z.string().nullable(),
   icon: z.string().nullable(),
   source: z.enum(SKILL_SOURCES).nullable(),
   sourceMetadata: SkillSourceMetadataSchema.nullable(),
