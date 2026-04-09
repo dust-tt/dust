@@ -203,6 +203,7 @@ const InputBarContainer = ({
   const { selectedSingleAgent, setSelectedSingleAgent } =
     useContext(InputBarContext);
   const [hasUserMention, setHasUserMention] = useState(false);
+  const canSubmitEmpty = singleAgentInput && !!selectedSingleAgent;
 
   const agentsById = useMemo(
     () => new Map(allAgents.map((a) => [a.sId, a])),
@@ -403,9 +404,14 @@ const InputBarContainer = ({
         onShake();
         return;
       }
-      onEnterKeyDown(isEmpty, markdownAndMentions, resetEditorText, setLoading);
+      onEnterKeyDown(
+        isEmpty && !canSubmitEmpty,
+        markdownAndMentions,
+        resetEditorText,
+        setLoading
+      );
     },
-    [isBlockedByAgentSwitch, onEnterKeyDown, onShake]
+    [isBlockedByAgentSwitch, canSubmitEmpty, onEnterKeyDown, onShake]
   );
 
   onFirstAgentMentionPasteRef.current = singleAgentInput
@@ -880,6 +886,13 @@ const InputBarContainer = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const isSubmitDisabled =
+    (isEmpty && !canSubmitEmpty) ||
+    isSubmitting ||
+    disableInput ||
+    isBlockedByAgentSwitch ||
+    voiceTranscriberService.status !== "idle";
+
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const hideButtons = singleAgentInput && hasUserMention;
 
@@ -1221,13 +1234,7 @@ const InputBarContainer = ({
             }
             icon={ArrowUpIcon}
             variant={isBlockedByAgentSwitch ? "ghost-secondary" : "highlight"}
-            disabled={
-              isEmpty ||
-              isSubmitting ||
-              disableInput ||
-              isBlockedByAgentSwitch ||
-              voiceTranscriberService.status !== "idle"
-            }
+            disabled={isSubmitDisabled}
             tooltip={
               blockedByGeneratingAgentName
                 ? `Wait for @${blockedByGeneratingAgentName} to finish before switching agent`
@@ -1250,7 +1257,7 @@ const InputBarContainer = ({
                 }
               }
               onEnterKeyDown(
-                editorService.isEmpty(),
+                editorService.isEmpty() && !canSubmitEmpty,
                 editorService.getMarkdownAndMentions(),
                 () => {
                   editorService.clearEditor();
