@@ -1360,6 +1360,278 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10018,
+    name: "Amplitude",
+    description:
+      "Amplitude tools for product analytics — search, query, and create charts, dashboards, notebooks, experiments, and cohorts (Region: US).",
+    url: "https://mcp.amplitude.com/mcp",
+    icon: "AmplitudeLogo",
+    documentationUrl: "https://amplitude.com/docs/amplitude-ai/amplitude-mcp",
+    connectionInstructions:
+      "Amplitude uses OAuth. You will be prompted to sign in with your Amplitude account. Access is scoped to the projects you already have permission to view. Admins can disable MCP access org-wide via Settings > Content Access > MCP.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      search: "never_ask",
+      get_from_url: "never_ask",
+      get_context: "never_ask",
+      get_charts: "never_ask",
+      get_dashboard: "never_ask",
+      get_cohorts: "never_ask",
+      get_experiments: "never_ask",
+      get_event_properties: "never_ask",
+      get_session_replays: "never_ask",
+      get_users: "never_ask",
+      query_chart: "never_ask",
+      query_charts: "never_ask",
+      query_dataset: "never_ask",
+      query_experiment: "never_ask",
+      get_feedback_insights: "never_ask",
+      get_feedback_comments: "never_ask",
+      get_feedback_mentions: "never_ask",
+      get_feedback_sources: "never_ask",
+      save_chart_edits: "low",
+      create_chart: "low",
+      create_dashboard: "low",
+      create_notebook: "low",
+      create_experiment: "low",
+      create_cohort: "low",
+    },
+    toolDisplayLabels: {
+      search: {
+        running: "Searching on Amplitude",
+        done: "Search on Amplitude",
+      },
+      get_from_url: {
+        running: "Fetching from Amplitude URL",
+        done: "Fetched from Amplitude URL",
+      },
+      get_context: {
+        running: "Fetching context from Amplitude",
+        done: "Fetched context from Amplitude",
+      },
+      get_charts: {
+        running: "Fetching charts from Amplitude",
+        done: "Fetched charts from Amplitude",
+      },
+      get_dashboard: {
+        running: "Fetching dashboard from Amplitude",
+        done: "Fetched dashboard from Amplitude",
+      },
+      get_cohorts: {
+        running: "Fetching cohorts from Amplitude",
+        done: "Fetched cohorts from Amplitude",
+      },
+      get_experiments: {
+        running: "Fetching experiments from Amplitude",
+        done: "Fetched experiments from Amplitude",
+      },
+      get_event_properties: {
+        running: "Fetching event properties from Amplitude",
+        done: "Fetched event properties from Amplitude",
+      },
+      get_session_replays: {
+        running: "Fetching session replays from Amplitude",
+        done: "Fetched session replays from Amplitude",
+      },
+      get_users: {
+        running: "Fetching users from Amplitude",
+        done: "Fetched users from Amplitude",
+      },
+      query_chart: {
+        running: "Querying chart on Amplitude",
+        done: "Queried chart on Amplitude",
+      },
+      query_charts: {
+        running: "Querying charts on Amplitude",
+        done: "Queried charts on Amplitude",
+      },
+      query_dataset: {
+        running: "Querying dataset on Amplitude",
+        done: "Queried dataset on Amplitude",
+      },
+      query_experiment: {
+        running: "Querying experiment on Amplitude",
+        done: "Queried experiment on Amplitude",
+      },
+      get_feedback_insights: {
+        running: "Fetching feedback insights from Amplitude",
+        done: "Fetched feedback insights from Amplitude",
+      },
+      get_feedback_comments: {
+        running: "Fetching feedback comments from Amplitude",
+        done: "Fetched feedback comments from Amplitude",
+      },
+      get_feedback_mentions: {
+        running: "Fetching feedback mentions from Amplitude",
+        done: "Fetched feedback mentions from Amplitude",
+      },
+      get_feedback_sources: {
+        running: "Fetching feedback sources from Amplitude",
+        done: "Fetched feedback sources from Amplitude",
+      },
+      save_chart_edits: {
+        running: "Saving chart edits on Amplitude",
+        done: "Saved chart edits on Amplitude",
+      },
+      create_chart: {
+        running: "Creating chart on Amplitude",
+        done: "Created chart on Amplitude",
+      },
+      create_dashboard: {
+        running: "Creating dashboard on Amplitude",
+        done: "Created dashboard on Amplitude",
+      },
+      create_notebook: {
+        running: "Creating notebook on Amplitude",
+        done: "Created notebook on Amplitude",
+      },
+      create_experiment: {
+        running: "Creating experiment on Amplitude",
+        done: "Created experiment on Amplitude",
+      },
+      create_cohort: {
+        running: "Creating cohort on Amplitude",
+        done: "Created cohort on Amplitude",
+      },
+    },
+  },
+  {
+    id: 10019,
+    name: "Amplitude Europe",
+    description:
+      "Amplitude tools for product analytics — search, query, and create charts, dashboards, notebooks, experiments, and cohorts (Region: EU).",
+    url: "https://mcp.eu.amplitude.com/mcp",
+    icon: "AmplitudeLogo",
+    documentationUrl: "https://amplitude.com/docs/amplitude-ai/amplitude-mcp",
+    connectionInstructions:
+      "Amplitude uses OAuth. You will be prompted to sign in with your Amplitude account. Access is scoped to the projects you already have permission to view. Admins can disable MCP access org-wide via Settings > Content Access > MCP.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      search: "never_ask",
+      get_from_url: "never_ask",
+      get_context: "never_ask",
+      get_charts: "never_ask",
+      get_dashboard: "never_ask",
+      get_cohorts: "never_ask",
+      get_experiments: "never_ask",
+      get_event_properties: "never_ask",
+      get_session_replays: "never_ask",
+      get_users: "never_ask",
+      query_chart: "never_ask",
+      query_charts: "never_ask",
+      query_dataset: "never_ask",
+      query_experiment: "never_ask",
+      get_feedback_insights: "never_ask",
+      get_feedback_comments: "never_ask",
+      get_feedback_mentions: "never_ask",
+      get_feedback_sources: "never_ask",
+      save_chart_edits: "low",
+      create_chart: "low",
+      create_dashboard: "low",
+      create_notebook: "low",
+      create_experiment: "low",
+      create_cohort: "low",
+    },
+    toolDisplayLabels: {
+      search: {
+        running: "Searching on Amplitude",
+        done: "Search on Amplitude",
+      },
+      get_from_url: {
+        running: "Fetching from Amplitude URL",
+        done: "Fetched from Amplitude URL",
+      },
+      get_context: {
+        running: "Fetching context from Amplitude",
+        done: "Fetched context from Amplitude",
+      },
+      get_charts: {
+        running: "Fetching charts from Amplitude",
+        done: "Fetched charts from Amplitude",
+      },
+      get_dashboard: {
+        running: "Fetching dashboard from Amplitude",
+        done: "Fetched dashboard from Amplitude",
+      },
+      get_cohorts: {
+        running: "Fetching cohorts from Amplitude",
+        done: "Fetched cohorts from Amplitude",
+      },
+      get_experiments: {
+        running: "Fetching experiments from Amplitude",
+        done: "Fetched experiments from Amplitude",
+      },
+      get_event_properties: {
+        running: "Fetching event properties from Amplitude",
+        done: "Fetched event properties from Amplitude",
+      },
+      get_session_replays: {
+        running: "Fetching session replays from Amplitude",
+        done: "Fetched session replays from Amplitude",
+      },
+      get_users: {
+        running: "Fetching users from Amplitude",
+        done: "Fetched users from Amplitude",
+      },
+      query_chart: {
+        running: "Querying chart on Amplitude",
+        done: "Queried chart on Amplitude",
+      },
+      query_charts: {
+        running: "Querying charts on Amplitude",
+        done: "Queried charts on Amplitude",
+      },
+      query_dataset: {
+        running: "Querying dataset on Amplitude",
+        done: "Queried dataset on Amplitude",
+      },
+      query_experiment: {
+        running: "Querying experiment on Amplitude",
+        done: "Queried experiment on Amplitude",
+      },
+      get_feedback_insights: {
+        running: "Fetching feedback insights from Amplitude",
+        done: "Fetched feedback insights from Amplitude",
+      },
+      get_feedback_comments: {
+        running: "Fetching feedback comments from Amplitude",
+        done: "Fetched feedback comments from Amplitude",
+      },
+      get_feedback_mentions: {
+        running: "Fetching feedback mentions from Amplitude",
+        done: "Fetched feedback mentions from Amplitude",
+      },
+      get_feedback_sources: {
+        running: "Fetching feedback sources from Amplitude",
+        done: "Fetched feedback sources from Amplitude",
+      },
+      save_chart_edits: {
+        running: "Saving chart edits on Amplitude",
+        done: "Saved chart edits on Amplitude",
+      },
+      create_chart: {
+        running: "Creating chart on Amplitude",
+        done: "Created chart on Amplitude",
+      },
+      create_dashboard: {
+        running: "Creating dashboard on Amplitude",
+        done: "Created dashboard on Amplitude",
+      },
+      create_notebook: {
+        running: "Creating notebook on Amplitude",
+        done: "Created notebook on Amplitude",
+      },
+      create_experiment: {
+        running: "Creating experiment on Amplitude",
+        done: "Created experiment on Amplitude",
+      },
+      create_cohort: {
+        running: "Creating cohort on Amplitude",
+        done: "Created cohort on Amplitude",
+      },
+    },
+  },
 ];
 
 export const isDefaultRemoteMcpServerURL = (url: string | undefined) => {

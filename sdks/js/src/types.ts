@@ -3154,6 +3154,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionSpeakIcon"
   | "ActionTableIcon"
   | "ActionTimeIcon"
+  | "AmplitudeLogo"
   | "AsanaLogo"
   | "AshbyLogo"
   | "AttioLogo"
