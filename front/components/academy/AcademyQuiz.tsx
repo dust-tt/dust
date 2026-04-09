@@ -341,7 +341,11 @@ export function AcademyQuiz({
                 );
               })}
               {isLoading && messages[messages.length - 1]?.role === "user" && (
-                <ConversationMessageContainer messageType="agent" type="agent">
+                <ConversationMessageContainer
+                  messageType="agent"
+                  type="agent"
+                  className="py-2"
+                >
                   <ConversationMessageAvatar name={AGENT_NAME} type="agent" />
                   <div className="flex min-w-0 flex-col gap-1">
                     <ConversationMessageTitle

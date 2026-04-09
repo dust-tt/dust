@@ -246,13 +246,6 @@ export function UserMessage({
   // Otherwise, show it to the side of the message.
   const showBottomActionMenu = !isDeleted && (hasReactions || isMobile);
   const showSideActionMenu = !isDeleted && !hasReactions && !isMobile;
-  // With reactions the button is always below; without, CSS container query floats it to the side.
-  // Deleted messages have no action menu → tight spacing.
-  const actionMenuBottomMargin = isDeleted
-    ? "mb-1"
-    : hasReactions
-      ? "mb-8"
-      : "mb-8 @sm/conversation:mb-1";
 
   const displayChip =
     message.version > 0 || isTriggeredOrigin(message.context.origin);
@@ -341,8 +334,7 @@ export function UserMessage({
             type="user"
             className={cn(
               isCurrentUser ? "ml-auto" : undefined,
-              "relative max-w-conversation @xxxs/conversation:max-w-[95%] @xxs/conversation:max-w-[80%] @xs/conversation:max-w-[85%]",
-              actionMenuBottomMargin
+              "relative max-w-conversation @xxxs/conversation:max-w-[95%] @xxs/conversation:max-w-[80%] @xs/conversation:max-w-[85%]"
             )}
             ref={userMessageHoveredRef}
           >

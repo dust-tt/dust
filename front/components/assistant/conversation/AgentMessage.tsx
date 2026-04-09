@@ -168,6 +168,7 @@ interface AgentMessageProps {
   conversationId: string;
   hideHeader: boolean;
   isLastMessage: boolean;
+  isSteered: boolean;
   agentMessage: AgentMessageWithStreaming;
   messageFeedback: FeedbackSelectorBaseProps;
   owner: WorkspaceType;
@@ -188,6 +189,7 @@ export function AgentMessage({
   conversationId,
   hideHeader,
   isLastMessage,
+  isSteered,
   agentMessage,
   messageFeedback,
   owner,
@@ -1351,12 +1353,13 @@ function AgentMessageContent({
           />
         )}
 
-        {agentMessage.content !== null &&
-          !(
-            isInlineActivityEnabled &&
-            agentMessage.streaming.agentState !== "done"
-          ) && (
-            <div>
+      {agentMessage.content &&
+        !(
+          isInlineActivityEnabled &&
+          agentMessage.streaming.agentState !== "done"
+        ) && (
+          <div>
+            <CitationsContext.Provider value={citationsContextValue}>
               <AgentMessageMarkdown
                 content={sanitizeVisualizationContent(agentMessage.content)}
                 owner={owner}
