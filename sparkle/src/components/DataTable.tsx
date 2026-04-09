@@ -210,6 +210,7 @@ export function DataTable<TData extends TBaseData>({
     getRowId,
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: table is recreated every render, adding it would cause infinite re-runs
   useEffect(() => {
     if (filterColumn) {
       table.getColumn(filterColumn)?.setFilterValue(filter);

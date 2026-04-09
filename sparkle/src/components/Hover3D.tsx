@@ -25,6 +25,20 @@ const isTouchDevice = () => {
   return "ontouchstart" in window || navigator.maxTouchPoints > 0;
 };
 
+const clamp = (value: number, min: number, max: number) => {
+  return Math.min(Math.max(value, min), max);
+};
+
+const map = (
+  value: number,
+  istart: number,
+  istop: number,
+  ostart: number,
+  ostop: number
+) => {
+  return ostart + (ostop - ostart) * ((value - istart) / (istop - istart));
+};
+
 interface Hover3DProps {
   children: React.ReactNode;
   xOffset?: number;
@@ -61,18 +75,6 @@ function Hover3D({
     }px)`
   );
   const [transition, setTransition] = useState("");
-  const clamp = (value: number, min: number, max: number) => {
-    return Math.min(Math.max(value, min), max);
-  };
-  const map = (
-    value: number,
-    istart: number,
-    istop: number,
-    ostart: number,
-    ostop: number
-  ) => {
-    return ostart + (ostop - ostart) * ((value - istart) / (istop - istart));
-  };
 
   // Detect touch device on mount
   useEffect(() => {

@@ -44,9 +44,6 @@ export function DiffBlock({
   collapsedLines = DEFAULT_COLLAPSED_LINES,
 }: DiffBlockProps) {
   const hasContent = changes !== undefined || children !== undefined;
-  if (!hasContent) {
-    return null;
-  }
 
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -56,6 +53,7 @@ export function DiffBlock({
   const [collapsedHeight, setCollapsedHeight] = useState<number>();
   const [expandedHeight, setExpandedHeight] = useState<number>();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: changes/children are props that trigger re-measurement when content changes
   useLayoutEffect(() => {
     const element = contentRef.current;
     const container = containerRef.current;
@@ -101,6 +99,10 @@ export function DiffBlock({
       resizeObserver.disconnect();
     };
   }, [changes, children, collapsedLines]);
+
+  if (!hasContent) {
+    return null;
+  }
 
   const shouldClamp = isCollapsible && !isExpanded;
 
