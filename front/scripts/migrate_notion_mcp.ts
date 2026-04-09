@@ -145,7 +145,7 @@ makeScript(
       "Resolved old and new Notion MCP server views"
     );
 
-    // Find all agent MCP server configurations pointing to the old view.
+    // Find active agent MCP server configurations pointing to the old view.
     const agentMCPConfigs = await AgentMCPServerConfigurationModel.findAll({
       where: {
         workspaceId: workspaceModelId,
@@ -155,6 +155,7 @@ makeScript(
         {
           model: AgentConfigurationModel,
           attributes: ["id", "sId", "name", "status"],
+          where: { status: "active" },
         },
       ],
     });
@@ -183,10 +184,14 @@ makeScript(
 
     try {
       for (const config of agentMCPConfigs) {
+        const agent = config.get("agent_configuration") as
+          | AgentConfigurationModel
+          | undefined;
         logger.info(
           {
             configId: config.id,
             sId: config.sId,
+            agentName: agent?.name ?? "unknown",
             oldMcpServerViewId: config.mcpServerViewId,
             oldInternalMCPServerId: config.internalMCPServerId,
           },
