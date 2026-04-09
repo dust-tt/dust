@@ -164,6 +164,7 @@ export function SubscriptionsDataTable({
 
 interface ActiveSubscriptionTableProps {
   owner: WorkspaceType;
+  metronomeCustomerId: string | null;
   subscription: SubscriptionType;
   subscriptions: SubscriptionType[];
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
@@ -171,6 +172,7 @@ interface ActiveSubscriptionTableProps {
 
 export function ActiveSubscriptionTable({
   owner,
+  metronomeCustomerId,
   subscription,
   subscriptions,
   programmaticUsageConfig,
@@ -240,7 +242,7 @@ export function ActiveSubscriptionTable({
                   <PokeTableCell>Metronome Contract</PokeTableCell>
                   <PokeTableCell>
                     <LinkWrapper
-                      href={`https://app.metronome.com/${isDevelopment() ? "sandbox/" : ""}contracts/${subscription.metronomeContractId}`}
+                      href={`https://app.metronome.com/${isDevelopment() ? "sandbox/" : ""}customers/${metronomeCustomerId}/contracts/${subscription.metronomeContractId}`}
                       target="_blank"
                       className="text-xs text-highlight-400"
                     >

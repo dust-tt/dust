@@ -7,28 +7,43 @@
  * 3. If so, end the old contract and create a new one using the latest package alias
  * 4. Update metronomeContractId on the subscription
  *
+ * Enterprise plans: reads the Stripe subscription to extract tiered pricing
+ * (MAU price, floor/included seats) and creates a Metronome contract with
+ * rate overrides matching the Stripe pricing.
+ *
  * Run with: npx tsx scripts/migrate_metronome_contracts.ts [--execute] [-w workspaceId]
  *
  * Without --execute, runs in dry-run mode (logs what would happen, no changes).
  */
 
 import { getMetronomeClient } from "@app/lib/metronome/client";
+import {
+  CURRENCY_TO_CREDIT_TYPE_ID,
+  getProductMauBilling1Id,
+  getProductMauBilling5Id,
+  getProductMauBilling10Id,
+  getProductPrepaidCommitId,
+} from "@app/lib/metronome/constants";
 import { provisionSeatsForContract } from "@app/lib/metronome/seats";
 import {
   LEGACY_BUSINESS_PACKAGE_ALIAS,
+  LEGACY_ENTERPRISE_PACKAGE_ALIAS,
   LEGACY_PRO_ANNUAL_PACKAGE_ALIAS,
   LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
 } from "@app/lib/metronome/types";
 import {
+  isEntreprisePlanPrefix,
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
-import { getStripeSubscription } from "@app/lib/plans/stripe";
+import { getStripeClient, getStripeSubscription } from "@app/lib/plans/stripe";
+import { isMauReportUsage } from "@app/lib/plans/usage/types";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import type { LightWorkspaceType } from "@app/types/user";
+import type Stripe from "stripe";
 import { makeScript } from "./helpers";
 import { runOnAllWorkspaces } from "./workspace_helpers";
 
@@ -41,6 +56,232 @@ const ALIAS_MIGRATION: Record<string, string> = {
   "legacy-business-45": LEGACY_BUSINESS_PACKAGE_ALIAS,
   "legacy-pro-27-annual": LEGACY_PRO_ANNUAL_PACKAGE_ALIAS,
 };
+
+// ---------------------------------------------------------------------------
+// Enterprise Stripe pricing extraction
+// ---------------------------------------------------------------------------
+
+/** MAU threshold from Stripe metadata REPORT_USAGE (e.g. "MAU_1", "MAU_5", "MAU_10"). */
+type MauThreshold = "MAU_1" | "MAU_5" | "MAU_10";
+
+/**
+ * Enterprise pricing extracted from Stripe's tiered price.
+ * All amounts in cents (USD or EUR).
+ */
+interface EnterprisePricingCents {
+  /** Currency of the Stripe price (e.g. "usd", "eur"). */
+  currency: string;
+  /** Per-MAU overage price in cents (from the last tier's unit_amount). */
+  mauPriceCents: number;
+  /** Monthly floor amount in cents (flat_amount on the first tier, 0 if none). */
+  floorCents: number;
+  /** Number of included seats (up_to on the first tier). */
+  includedSeats: number;
+  /** Which MAU threshold this price uses (MAU_1, MAU_5, MAU_10). */
+  mauThreshold: MauThreshold;
+}
+
+function getMauProductId(threshold: MauThreshold): string {
+  switch (threshold) {
+    case "MAU_1":
+      return getProductMauBilling1Id();
+    case "MAU_5":
+      return getProductMauBilling5Id();
+    case "MAU_10":
+      return getProductMauBilling10Id();
+  }
+}
+
+/**
+ * Extract enterprise MAU pricing from a Stripe subscription.
+ *
+ * Enterprise subscriptions on prod_PsyrjK1wsV9vgW have a metered, tiered price
+ * with metadata REPORT_USAGE=MAU_1. The tiered structure is:
+ *   - Tier 1: up_to=N, flat_amount=floor, unit_amount=0 (included seats)
+ *   - Tier 2: up_to=inf, unit_amount=per_mau_price (overage)
+ *
+ * Returns undefined if the subscription has no MAU price item.
+ */
+async function extractEnterprisePricing(
+  stripeSubscription: Stripe.Subscription,
+  logger: Logger
+): Promise<EnterprisePricingCents | undefined> {
+  const stripe = getStripeClient();
+
+  for (const item of stripeSubscription.items.data) {
+    const reportUsage = item.price.metadata?.REPORT_USAGE;
+    if (!isMauReportUsage(reportUsage)) {
+      continue;
+    }
+
+    // Validate it's one of our known MAU thresholds.
+    if (
+      reportUsage !== "MAU_1" &&
+      reportUsage !== "MAU_5" &&
+      reportUsage !== "MAU_10"
+    ) {
+      logger.warn(
+        { reportUsage, priceId: item.price.id },
+        "Unknown MAU threshold — skipping"
+      );
+      continue;
+    }
+
+    // For tiered prices, Stripe doesn't include tiers in the subscription item
+    // by default. Retrieve the full price with tiers expanded.
+    const price = await stripe.prices.retrieve(item.price.id, {
+      expand: ["tiers"],
+    });
+
+    if (!price.tiers || price.tiers.length < 2) {
+      logger.warn(
+        { priceId: price.id, tiersCount: price.tiers?.length },
+        "Enterprise price missing expected tiers"
+      );
+      return undefined;
+    }
+
+    const firstTier = price.tiers[0];
+    const lastTier = price.tiers[price.tiers.length - 1];
+
+    return {
+      currency: price.currency,
+      mauPriceCents: lastTier.unit_amount ?? 0,
+      floorCents: firstTier.flat_amount ?? 0,
+      includedSeats: firstTier.up_to ?? 0,
+      mauThreshold: reportUsage,
+    };
+  }
+
+  return undefined;
+}
+
+/**
+ * Apply enterprise pricing on a Metronome contract to match Stripe's tiered pricing.
+ *
+ * Uses a recurring prepaid commit to model the floor + included seats:
+ * 1. A monthly recurring commit of `floorCents` with rate_type COMMIT_RATE.
+ *    Usage draws down the commit at the per-MAU commit rate, so the commit
+ *    covers `floor / mauPrice` MAUs (the included seats).
+ * 2. A commit-specific override sets the commit rate to the per-MAU price.
+ * 3. The list rate (overage beyond the commit) is set to the same per-MAU price.
+ *
+ * Result: single invoice per period with the floor as the minimum charge,
+ * included seats consumed from the commit, and overage billed at the list rate.
+ *
+ * If the customer uses MAU-5 or MAU-10 instead of MAU-1, disables the default
+ * MAU-1 product and enables the correct one.
+ */
+async function applyEnterpriseOverrides({
+  metronomeCustomerId,
+  contractId,
+  pricing,
+  startDate,
+  logger,
+  workspaceId,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  pricing: EnterprisePricingCents;
+  startDate: string;
+  logger: Logger;
+  workspaceId: string;
+}): Promise<void> {
+  const client = getMetronomeClient();
+  const targetProductId = getMauProductId(pricing.mauThreshold);
+
+  const creditTypeId = CURRENCY_TO_CREDIT_TYPE_ID[pricing.currency];
+  if (!creditTypeId) {
+    throw new Error(
+      `Unsupported currency "${pricing.currency}" for enterprise pricing — add it to CURRENCY_TO_CREDIT_TYPE_ID`
+    );
+  }
+
+  logger.info(
+    {
+      workspaceId,
+      contractId,
+      mauThreshold: pricing.mauThreshold,
+      mauPriceCents: pricing.mauPriceCents,
+      floorCents: pricing.floorCents,
+      includedSeats: pricing.includedSeats,
+      currency: pricing.currency,
+    },
+    `Applying enterprise overrides for MAU Billing (${pricing.mauThreshold})`
+  );
+
+  // --- Build overrides ---
+  const overrides = [];
+
+  if (pricing.mauThreshold !== "MAU_1") {
+    // Disable the default MAU-1 product (base package includes it at $45).
+    overrides.push({
+      product_id: getProductMauBilling1Id(),
+      starting_at: startDate,
+      type: "OVERWRITE" as const,
+      entitled: false,
+      overwrite_rate: { rate_type: "FLAT" as const, price: 0 },
+    });
+  }
+
+  // List rate override: per-MAU price in the customer's currency.
+  // Also used by the recurring commit (rate_type: LIST_RATE) to determine
+  // drawdown rate, so floor / mauPrice = included seats.
+  overrides.push({
+    product_id: targetProductId,
+    starting_at: startDate,
+    type: "OVERWRITE" as const,
+    entitled: true,
+    overwrite_rate: {
+      rate_type: "FLAT" as const,
+      price: pricing.mauPriceCents,
+      credit_type_id: creditTypeId,
+    },
+  });
+
+  // --- Build recurring commit for the floor ---
+  const recurringCommits =
+    pricing.floorCents > 0
+      ? [
+          {
+            product_id: getProductPrepaidCommitId(),
+            name: "MAU Floor (monthly minimum)",
+            starting_at: startDate,
+            // LIST_RATE: drawdown uses the list rate override (per-MAU price),
+            // so floor / mauPrice = number of included MAUs.
+            rate_type: "LIST_RATE" as const,
+            priority: 100,
+            access_amount: {
+              credit_type_id: creditTypeId,
+              unit_price: pricing.floorCents,
+              quantity: 1,
+            },
+            commit_duration: { value: 1, unit: "PERIODS" as const },
+            recurrence_frequency: "MONTHLY" as const,
+            applicable_product_ids: [targetProductId],
+          },
+        ]
+      : [];
+
+  await client.v2.contracts.edit({
+    customer_id: metronomeCustomerId,
+    contract_id: contractId,
+    add_overrides: overrides,
+    ...(recurringCommits.length > 0
+      ? { add_recurring_commits: recurringCommits }
+      : {}),
+  });
+
+  logger.info(
+    {
+      workspaceId,
+      contractId,
+      mauThreshold: pricing.mauThreshold,
+      hasFloor: pricing.floorCents > 0,
+    },
+    "Enterprise overrides applied"
+  );
+}
 
 /**
  * Get the current package IDs for the latest versions (by listing packages and
@@ -115,12 +356,20 @@ async function getPackageInfo(): Promise<{
 /**
  * Get the package alias and contract start date from the workspace's active subscription.
  * Returns undefined if no active paid subscription.
+ *
+ * For enterprise plans, also extracts the per-MAU pricing from the Stripe subscription
+ * so it can be applied as a rate override on the Metronome contract.
  */
 async function getSubscriptionInfo(
   workspaceId: number,
   logger: Logger
 ): Promise<
-  | { packageAlias: string; startDate: string; subscriptionModelId: number }
+  | {
+      packageAlias: string;
+      startDate: string;
+      subscriptionModelId: number;
+      enterprisePricing?: EnterprisePricingCents;
+    }
   | undefined
 > {
   const subscription =
@@ -133,8 +382,9 @@ async function getSubscriptionInfo(
   // Get Stripe subscription start date, rounded to hour boundary (Metronome requirement).
   let startDate: string | undefined;
   let isAnnual = false;
+  let stripeSubscription: Stripe.Subscription | null = null;
   try {
-    const stripeSubscription = await getStripeSubscription(
+    stripeSubscription = await getStripeSubscription(
       subscription.stripeSubscriptionId
     );
     if (stripeSubscription) {
@@ -162,9 +412,37 @@ async function getSubscriptionInfo(
     return undefined;
   }
 
+  const planCode = subscription.getPlan().code;
+
+  // Enterprise plans: extract MAU pricing from Stripe tiers.
+  if (isEntreprisePlanPrefix(planCode)) {
+    if (!stripeSubscription) {
+      return undefined;
+    }
+
+    const enterprisePricing = await extractEnterprisePricing(
+      stripeSubscription,
+      logger
+    );
+    if (!enterprisePricing) {
+      logger.warn(
+        { workspaceId, planCode },
+        "Enterprise plan but no MAU pricing found in Stripe — skipping"
+      );
+      return undefined;
+    }
+
+    return {
+      packageAlias: LEGACY_ENTERPRISE_PACKAGE_ALIAS,
+      startDate,
+      subscriptionModelId: subscription.id,
+      enterprisePricing,
+    };
+  }
+
   // Determine alias from plan code + billing interval.
-  const isPro = subscription.getPlan().code === PRO_PLAN_SEAT_29_CODE;
-  const isBusiness = subscription.getPlan().code === PRO_PLAN_SEAT_39_CODE;
+  const isPro = planCode === PRO_PLAN_SEAT_29_CODE;
+  const isBusiness = planCode === PRO_PLAN_SEAT_39_CODE;
   let packageAlias: string;
   if (isBusiness) {
     packageAlias = LEGACY_BUSINESS_PACKAGE_ALIAS;
@@ -239,6 +517,8 @@ async function migrateWorkspace(
     }
 
     const targetPackageAlias = subInfo.packageAlias;
+    const isEnterprise = targetPackageAlias === LEGACY_ENTERPRISE_PACKAGE_ALIAS;
+
     logger.info(
       {
         workspaceId: workspace.sId,
@@ -248,6 +528,11 @@ async function migrateWorkspace(
         targetPackageId,
         startDate: subInfo.startDate,
         subscriptionModelId: subInfo.subscriptionModelId,
+        ...(isEnterprise && subInfo.enterprisePricing
+          ? {
+              enterprisePricing: subInfo.enterprisePricing,
+            }
+          : {}),
         action: "CREATE_NEW",
       },
       `${execute ? "" : "[DRYRUN] "}Creating new contract (no existing contract)`
@@ -275,22 +560,36 @@ async function migrateWorkspace(
       "New contract created (aligned to Stripe subscription start)"
     );
 
-    // Provision seats for all existing members.
-    const seatResult = await provisionSeatsForContract({
-      metronomeCustomerId,
-      contractId: newContractId,
-      workspace,
-      startingAt: subInfo.startDate,
-    });
-    if (seatResult.isErr()) {
-      logger.error(
-        {
-          workspaceId: workspace.sId,
-          contractId: newContractId,
-          error: seatResult.error.message,
-        },
-        "Failed to provision seats on new contract"
-      );
+    // For enterprise contracts, apply rate overrides to match Stripe pricing.
+    if (isEnterprise && subInfo.enterprisePricing) {
+      await applyEnterpriseOverrides({
+        metronomeCustomerId,
+        contractId: newContractId,
+        pricing: subInfo.enterprisePricing,
+        startDate: subInfo.startDate,
+        logger,
+        workspaceId: workspace.sId,
+      });
+    }
+
+    // Provision seats for all existing members (for seat-based plans).
+    if (!isEnterprise) {
+      const seatResult = await provisionSeatsForContract({
+        metronomeCustomerId,
+        contractId: newContractId,
+        workspace,
+        startingAt: subInfo.startDate,
+      });
+      if (seatResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            contractId: newContractId,
+            error: seatResult.error.message,
+          },
+          "Failed to provision seats on new contract"
+        );
+      }
     }
 
     // Update metronomeContractId on the subscription.
@@ -360,7 +659,6 @@ async function migrateWorkspace(
       continue;
     }
 
-    // Already on the latest version?
     if (contractPackageId === targetPackageId) {
       logger.info(
         {
@@ -368,9 +666,8 @@ async function migrateWorkspace(
           contractId: contract.id,
           targetAlias,
         },
-        "Contract already on target package — skipping"
+        "Contract already on target package — will recreate"
       );
-      continue;
     }
 
     logger.info(
@@ -436,25 +733,42 @@ async function migrateWorkspace(
       "New contract created (same starting_at as old)"
     );
 
-    // 3. Provision seats on the new contract.
-    const seatResult2 = await provisionSeatsForContract({
-      metronomeCustomerId,
-      contractId: newContractId,
-      workspace,
-      startingAt: contract.starting_at,
-    });
-    if (seatResult2.isErr()) {
-      logger.error(
-        {
-          workspaceId: workspace.sId,
+    // 3. For enterprise contracts migrating to the enterprise package, apply overrides.
+    if (targetAlias === LEGACY_ENTERPRISE_PACKAGE_ALIAS) {
+      const subInfo = await getSubscriptionInfo(workspace.id, logger);
+      if (subInfo?.enterprisePricing) {
+        await applyEnterpriseOverrides({
+          metronomeCustomerId,
           contractId: newContractId,
-          error: seatResult2.error.message,
-        },
-        "Failed to provision seats on new contract"
-      );
+          pricing: subInfo.enterprisePricing,
+          startDate: contract.starting_at,
+          logger,
+          workspaceId: workspace.sId,
+        });
+      }
     }
 
-    // 4. Update metronomeContractId on the active subscription.
+    // 4. Provision seats on the new contract (for seat-based plans).
+    if (targetAlias !== LEGACY_ENTERPRISE_PACKAGE_ALIAS) {
+      const seatResult2 = await provisionSeatsForContract({
+        metronomeCustomerId,
+        contractId: newContractId,
+        workspace,
+        startingAt: contract.starting_at,
+      });
+      if (seatResult2.isErr()) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            contractId: newContractId,
+            error: seatResult2.error.message,
+          },
+          "Failed to provision seats on new contract"
+        );
+      }
+    }
+
+    // 5. Update metronomeContractId on the active subscription.
     const activeSubscription =
       await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
 

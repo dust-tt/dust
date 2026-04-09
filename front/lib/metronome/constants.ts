@@ -7,43 +7,45 @@ import { isDevelopment } from "@app/types/shared/env";
 
 // Metrics
 const DEV_METRIC_LLM_PROVIDER_COST_PROGRAMMATIC =
-  "8bd72d3e-e338-46b9-bf9d-60f7ae6a8fa6";
+  "2251e7d7-0a02-45ee-8bc3-edc0961a97ac";
 const DEV_METRIC_LLM_PROVIDER_COST_USER =
-  "eab9a2d9-c76f-4647-a7fe-623790296f27";
+  "7c9d1949-f221-4c16-9810-de4ca34e9fc6";
 const DEV_METRIC_TOOL_INVOCATIONS_PROGRAMMATIC =
-  "23b1b4dd-1766-4974-88d9-aacbe22437be";
-const DEV_METRIC_TOOL_INVOCATIONS_USER = "96226d69-0f02-42bd-a2d1-9f5d0c4015cb";
+  "9266a43d-8615-4df4-9ff3-3501c474d889";
+const DEV_METRIC_TOOL_INVOCATIONS_USER = "c4558ec4-6d47-4246-aadc-9a0e74ca9393";
 const DEV_METRIC_REGISTERED_USERS = "85c130a1-afc2-4135-8dae-72427b173aef";
 const DEV_METRIC_MAU_1_MESSAGES = "5b6d92b6-6cf1-4348-809e-93dd751666d7";
 const DEV_METRIC_MAU_5_MESSAGES = "3c264b7d-5437-4f19-abcc-3a9e9a4204e1";
 const DEV_METRIC_MAU_10_MESSAGES = "152837b9-c662-4b86-bb4f-afabf18d4a40";
 
 // Products
-const DEV_PRODUCT_PROGRAMMATIC_USAGE = "61a2b400-04ca-4939-b706-5c6c9859b2c6";
-const DEV_PRODUCT_AI_USAGE_USER = "00418a5c-1053-423c-97da-1ba0ea2ec0cd";
+const DEV_PRODUCT_PROGRAMMATIC_USAGE = "8797d133-8301-4282-b3f2-fd811c9aa5b1";
+const DEV_PRODUCT_AI_USAGE_USER = "4804c415-ec80-4125-9cb1-e71b0f268ca3";
 const DEV_PRODUCT_AI_USAGE_PROGRAMMATIC =
-  "9c1cc7c6-2b59-4c49-ba6b-143c3930cdd7";
+  "80712396-3ffe-4471-901b-64730f8acf0f";
 const DEV_PRODUCT_TOOL_USAGE_PROGRAMMATIC =
-  "584fa254-0a31-47cf-8107-1ce50bce8586";
-const DEV_PRODUCT_TOOL_USAGE_USER = "0a90d9d4-453f-464d-9472-14993c93e292";
+  "715493fd-8480-4755-a0b6-6e3c6cb4e156";
+const DEV_PRODUCT_TOOL_USAGE_USER = "0a25bc30-4fb4-49f7-94e3-2b2a95c30bdd";
 const DEV_PRODUCT_WORKSPACE_SEAT = "e1532e1d-4964-4656-b6db-070fafafc44c";
-// const DEV_PRODUCT_MAU_BILLING_1 = "06868f2b-f519-48c6-95e9-e28579306b2d";
-// const DEV_PRODUCT_MAU_BILLING_5 = "7193add5-a895-4f40-aaa3-80e49603355c";
-// const DEV_PRODUCT_MAU_BILLING_10 = "972dcb2f-0909-4444-8f29-ac26e042dbbc";
+const DEV_PRODUCT_MAU_BILLING_1 = "06868f2b-f519-48c6-95e9-e28579306b2d";
+const DEV_PRODUCT_MAU_BILLING_5 = "7193add5-a895-4f40-aaa3-80e49603355c";
+const DEV_PRODUCT_MAU_BILLING_10 = "972dcb2f-0909-4444-8f29-ac26e042dbbc";
 const DEV_PRODUCT_FREE_MONTHLY_CREDITS = "04f41dd1-ba27-42e3-93d5-6121712a4b67";
 const DEV_PRODUCT_PREPAID_COMMIT = "5f4331b7-4bf6-488b-9a0c-51bd139ac91c";
 const DEV_PRODUCT_PAYG_OVERAGE = "f4583c77-d226-48bb-97a3-46a8087b97fe";
 
 // Rate Cards
-// const DEV_RATE_CARD_LEGACY_PRO_29 = "16e39785-9e74-4c01-bca0-e1d52dd77798";
-// const DEV_RATE_CARD_LEGACY_BUSINESS_45 = "89727fbf-ddea-40b4-bad7-46b6398dd201";
-// const DEV_RATE_CARD_LEGACY_PRO_27_ANNUAL =
-//   "6044555b-e223-40ab-ac30-e922d44fc9d6";
+const DEV_RATE_CARD_LEGACY_PRO_29 = "1da852d8-65d0-470b-a6c8-f3e7d95d727e";
+const DEV_RATE_CARD_LEGACY_BUSINESS_45 = "7e891ab9-21c0-4f83-b309-8a8841816609";
+const DEV_RATE_CARD_LEGACY_PRO_27_ANNUAL =
+  "aa256b1d-4c44-498b-964b-b23e7210222b";
+const DEV_RATE_CARD_LEGACY_ENTERPRISE = "c07a67ff-c26a-4550-9cf3-f98d2ddb4705";
 
 // Packages
-const DEV_PACKAGE_LEGACY_PRO_29 = "f55ceaeb-56c6-4007-b3bc-01cbb9a458b4";
-const DEV_PACKAGE_LEGACY_BUSINESS_45 = "bec4b726-252f-4ae1-bf2b-c848c2119648";
-const DEV_PACKAGE_LEGACY_PRO_27_ANNUAL = "1b458342-3f7f-4103-a08f-8ceeb68e23bd";
+const DEV_PACKAGE_LEGACY_PRO_29 = "1db8fc59-6fc1-4351-8806-549de566797d";
+const DEV_PACKAGE_LEGACY_BUSINESS_45 = "ee20fbc5-22f7-4e29-b14a-cb2fb6c9ae60";
+const DEV_PACKAGE_LEGACY_PRO_27_ANNUAL = "4886d12c-45bd-4551-bff3-306b24a5c83e";
+const DEV_PACKAGE_LEGACY_ENTERPRISE = "a01630e0-2f1f-4feb-9ae5-074db2292e63";
 
 // --- PROD (production) — TODO: update after running setup script in production ---
 
@@ -70,32 +72,53 @@ const PROD_PRODUCT_TOOL_USAGE_PROGRAMMATIC =
   "109097e2-ed2d-4848-ba53-c4cbfa94cbdc";
 const PROD_PRODUCT_TOOL_USAGE_USER = "0edd3afa-f89f-44c0-9e5d-dbace04cb133";
 const PROD_PRODUCT_WORKSPACE_SEAT = "5c2e2986-1305-4406-96a2-2296e66b5a25";
-// const PROD_PRODUCT_MAU_BILLING_1 = "4135a928-9447-42a5-9b66-bb35b57c7155";
-// const PROD_PRODUCT_MAU_BILLING_5 = "565bef07-0348-4da8-8d4e-22de0ce856fe";
-// const PROD_PRODUCT_MAU_BILLING_10 = "c34f8b46-68e0-43d3-833e-753e3150ff07";
+const PROD_PRODUCT_MAU_BILLING_1 = "4135a928-9447-42a5-9b66-bb35b57c7155";
+const PROD_PRODUCT_MAU_BILLING_5 = "565bef07-0348-4da8-8d4e-22de0ce856fe";
+const PROD_PRODUCT_MAU_BILLING_10 = "c34f8b46-68e0-43d3-833e-753e3150ff07";
 const PROD_PRODUCT_FREE_MONTHLY_CREDITS =
   "7379999c-5492-4e68-968f-345a26f6da63";
 const PROD_PRODUCT_PREPAID_COMMIT = "1408c9fc-dea1-4269-bd6d-1bc0aa1f1218";
 const PROD_PRODUCT_PAYG_OVERAGE = "f6b27a6e-86fc-4964-8076-371a912cee09";
 
 // Rate Cards
-// const PROD_RATE_CARD_LEGACY_PRO_29 = "ab1ecdac-67b0-4803-8d17-13e3415d3e1d";
-// const PROD_RATE_CARD_LEGACY_BUSINESS_45 =
-//   "db5cea19-6421-4912-8511-9f514fc0ece2";
-// const PROD_RATE_CARD_LEGACY_PRO_27_ANNUAL =
-//   "7042405c-c89e-4538-80e6-e42ead7087e8";
+const PROD_RATE_CARD_LEGACY_PRO_29 = "ab1ecdac-67b0-4803-8d17-13e3415d3e1d";
+const PROD_RATE_CARD_LEGACY_BUSINESS_45 =
+  "db5cea19-6421-4912-8511-9f514fc0ece2";
+const PROD_RATE_CARD_LEGACY_PRO_27_ANNUAL =
+  "7042405c-c89e-4538-80e6-e42ead7087e8";
+const PROD_RATE_CARD_LEGACY_ENTERPRISE = "df225bf4-3183-4d10-96aa-e9eb87bb6b0a";
 
 // Packages
 const PROD_PACKAGE_LEGACY_PRO_29 = "a8d782ea-b8e4-460d-99eb-393536254a01";
 const PROD_PACKAGE_LEGACY_BUSINESS_45 = "c362bd20-43a1-4c1f-957d-d889dfe34704";
 const PROD_PACKAGE_LEGACY_PRO_27_ANNUAL =
   "e52b9a0e-f151-4284-aa4a-87d0bddf23d0";
+const PROD_PACKAGE_LEGACY_ENTERPRISE = "7d1d8d4e-c488-4dfd-8c9a-e74529c1010e";
+
+// --- Credit type IDs (stable across envs unless noted) ---
+
+// USD and EUR are the same in sandbox and production.
+export const CREDIT_TYPE_USD_ID = "2714e483-4ff1-48e4-9e25-ac732e8f24f2";
+export const CREDIT_TYPE_EUR_ID = "58f0be15-cc47-4220-bdaf-072ab0e44f96";
+
+// AWU (Agentic Work Units) differs per environment.
+const DEV_CREDIT_TYPE_AWU_ID = "1ad632f0-4e5a-44d6-a1bf-aa6f6bc550d8";
+const PROD_CREDIT_TYPE_AWU_ID = "e53a841e-b741-4bc3-8148-f377c1fb2501";
+
+/** Map Stripe currency code to Metronome credit type ID. */
+export const CURRENCY_TO_CREDIT_TYPE_ID: Record<string, string> = {
+  usd: CREDIT_TYPE_USD_ID,
+  eur: CREDIT_TYPE_EUR_ID,
+};
 
 // --- Accessors ---
 
 function devOrProd<T>(dev: T, prod: T): T {
   return isDevelopment() ? dev : prod;
 }
+
+export const getCreditTypeAwuId = () =>
+  devOrProd(DEV_CREDIT_TYPE_AWU_ID, PROD_CREDIT_TYPE_AWU_ID);
 
 // Metrics
 export const getMetricLlmProviderCostProgrammaticId = () =>
@@ -155,6 +178,28 @@ export const getProductPrepaidCommitId = () =>
   devOrProd(DEV_PRODUCT_PREPAID_COMMIT, PROD_PRODUCT_PREPAID_COMMIT);
 export const getProductPaygOverageId = () =>
   devOrProd(DEV_PRODUCT_PAYG_OVERAGE, PROD_PRODUCT_PAYG_OVERAGE);
+export const getProductMauBilling1Id = () =>
+  devOrProd(DEV_PRODUCT_MAU_BILLING_1, PROD_PRODUCT_MAU_BILLING_1);
+export const getProductMauBilling5Id = () =>
+  devOrProd(DEV_PRODUCT_MAU_BILLING_5, PROD_PRODUCT_MAU_BILLING_5);
+export const getProductMauBilling10Id = () =>
+  devOrProd(DEV_PRODUCT_MAU_BILLING_10, PROD_PRODUCT_MAU_BILLING_10);
+
+// Rate Cards
+export const getRateCardLegacyPro29Id = () =>
+  devOrProd(DEV_RATE_CARD_LEGACY_PRO_29, PROD_RATE_CARD_LEGACY_PRO_29);
+export const getRateCardLegacyBusiness45Id = () =>
+  devOrProd(
+    DEV_RATE_CARD_LEGACY_BUSINESS_45,
+    PROD_RATE_CARD_LEGACY_BUSINESS_45
+  );
+export const getRateCardLegacyPro27AnnualId = () =>
+  devOrProd(
+    DEV_RATE_CARD_LEGACY_PRO_27_ANNUAL,
+    PROD_RATE_CARD_LEGACY_PRO_27_ANNUAL
+  );
+export const getRateCardLegacyEnterpriseId = () =>
+  devOrProd(DEV_RATE_CARD_LEGACY_ENTERPRISE, PROD_RATE_CARD_LEGACY_ENTERPRISE);
 
 // Packages
 export const getPackageLegacyPro29Id = () =>
@@ -166,3 +211,5 @@ export const getPackageLegacyPro27AnnualId = () =>
     DEV_PACKAGE_LEGACY_PRO_27_ANNUAL,
     PROD_PACKAGE_LEGACY_PRO_27_ANNUAL
   );
+export const getPackageLegacyEnterpriseId = () =>
+  devOrProd(DEV_PACKAGE_LEGACY_ENTERPRISE, PROD_PACKAGE_LEGACY_ENTERPRISE);
