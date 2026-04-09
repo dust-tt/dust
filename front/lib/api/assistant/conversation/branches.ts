@@ -278,6 +278,8 @@ export async function mergeConversationBranch(
         : undefined,
     // We do not want to run any tool validations for those synthesized messages.
     skipToolsValidation: true,
+    // We do not want to auto-mention @dust for branches's merge.
+    skipDustAutoMention: true,
     // Ensure we don't accidentally attribute to someone else.
     doNotAssociateUser: false,
   });

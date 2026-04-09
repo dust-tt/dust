@@ -42,11 +42,11 @@ function getCompletionLabel(
 ): string {
   switch (status) {
     case "failed":
-      return `Errored after ${formatDurationString(completionDurationMs)}`;
+      return `Errored after ${formatDurationString(Math.max(completionDurationMs, 0))}`;
     case "cancelled":
-      return `Cancelled after ${formatDurationString(completionDurationMs)}`;
+      return `Cancelled after ${formatDurationString(Math.max(completionDurationMs, 0))}`;
     default:
-      return `Completed in ${formatDurationString(completionDurationMs)}`;
+      return `Completed in ${formatDurationString(Math.max(completionDurationMs, 0))}`;
   }
 }
 
