@@ -528,25 +528,20 @@ describe("listSkillReinforcementConversations", () => {
     const twoWeeksAgo = new Date();
     twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
 
-    const oldConvo = await ConversationResource.makeNew(
+    await ConversationResource.makeNew(
       auth,
       {
         sId: generateRandomModelSId(),
         title: "Old aggregation",
         visibility: "test",
         requestedSpaceIds: [],
+        createdAt: twoWeeksAgo,
         metadata: getReinforcedSkillsMetadata(
           "reinforcement_aggregate_suggestions",
           ["skill-1"]
         ),
       },
       null
-    );
-
-    // Manually backdate the conversation.
-    await ConversationModel.update(
-      { createdAt: twoWeeksAgo },
-      { where: { sId: oldConvo.sId } }
     );
 
     // Create a recent conversation.
