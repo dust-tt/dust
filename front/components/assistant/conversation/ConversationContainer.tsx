@@ -164,6 +164,10 @@ export function ConversationContainerVirtuoso({
 
   const { startConversationRef } = useWelcomeTourGuide();
 
+  // Forces a full remount of ConversationViewer (Virtuoso list, messages, InputBar)
+  // when switching conversations.
+  const conversationViewerKey = activeConversationId;
+
   const body = (
     <DropzoneContainer
       description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
@@ -175,7 +179,7 @@ export function ConversationContainerVirtuoso({
           user={user}
           conversationId={activeConversationId}
           setPlanLimitReached={setPlanLimitReached}
-          key={activeConversationId}
+          key={conversationViewerKey}
           clientSideMCPServerIds={clientSideMCPServerIds}
         />
       ) : (
