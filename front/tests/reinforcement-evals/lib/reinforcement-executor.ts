@@ -43,6 +43,7 @@ function makeSkillType(config: MockSkillConfig): SkillType {
     agentFacingDescription: config.description ?? "",
     userFacingDescription: config.description ?? "",
     instructions: config.instructions ?? null,
+    instructionsHtml: null,
     icon: null,
     source: null,
     sourceMetadata: null,
