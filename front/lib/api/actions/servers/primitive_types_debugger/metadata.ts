@@ -6,9 +6,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const PRIMITIVE_TYPES_DEBUGGER_TOOL_NAME =
-  "primitive_types_debugger" as const;
-
 // Schema for tool_without_user_config
 const toolWithoutUserConfigSchema = {
   query: z.string(),

@@ -4,8 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const SLACK_BOT_TOOL_NAME = "slack_bot" as const;
-
 export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
   post_message: {
     description:

@@ -4,8 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const POKE_SERVER_NAME = "poke" as const;
-
 // ─── Workspace Context ───────────────────────────────────────────────────────
 
 export const GET_WORKSPACE_METADATA_TOOL_NAME = "get_workspace_metadata";

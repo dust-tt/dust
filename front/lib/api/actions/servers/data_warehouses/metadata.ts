@@ -6,8 +6,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const DATA_WAREHOUSES_TOOL_NAME = "data_warehouses" as const;
-
 // Constants
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;

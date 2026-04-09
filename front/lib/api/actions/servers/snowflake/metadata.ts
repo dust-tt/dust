@@ -4,7 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const SNOWFLAKE_TOOL_NAME = "snowflake" as const;
 export const MAX_QUERY_ROWS = 1000;
 
 export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({

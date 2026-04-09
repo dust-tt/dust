@@ -4,8 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const VAL_TOWN_TOOL_NAME = "val_town" as const;
-
 export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
   create_val: {
     description:

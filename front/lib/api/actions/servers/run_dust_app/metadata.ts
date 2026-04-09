@@ -6,8 +6,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const RUN_DUST_APP_TOOL_NAME = "run_dust_app" as const;
-
 /**
  * Tools metadata for run_dust_app server.
  *

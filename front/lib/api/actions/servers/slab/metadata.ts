@@ -4,8 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const SLAB_TOOL_NAME = "slab" as const;
-
 const MAX_CONTENT_SIZE = 32000;
 
 export const SLAB_TOOLS_METADATA = createToolsRecord({

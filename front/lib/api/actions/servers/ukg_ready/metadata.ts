@@ -4,8 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const UKG_READY_TOOL_NAME = "ukg_ready" as const;
-
 export const UKG_READY_TOOLS_METADATA = createToolsRecord({
   get_my_info: {
     description:

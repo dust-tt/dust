@@ -11,7 +11,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const EXTRACT_DATA_TOOL_NAME = "extract_data" as const;
 export const EXTRACT_DATA_MAIN_TOOL_NAME =
   "extract_information_from_documents" as const;
 
