@@ -493,6 +493,9 @@ const config = {
   getDatadogApiKey: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DD_API_KEY");
   },
+  getSandboxDevFrontUrl: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("SBX_DEV_FRONT_URL");
+  },
   getSandboxGcpArtifactServiceAccountPath: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
       "SBX_GCP_ARTIFACT_SERVICE_ACCOUNT"

@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import {
   getRegisteredImages,
   getSandboxImageFromRegistry,
@@ -6,6 +7,7 @@ import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import type { ToolEntry, ToolProfile } from "@app/lib/api/sandbox/image/types";
 import type { Authenticator } from "@app/lib/auth";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -49,7 +51,30 @@ export function getToolsForProvider(
 export function getSandboxImage(
   _auth?: Authenticator
 ): Result<SandboxImage, Error> {
-  return getSandboxImageFromRegistry({ name: "dust-base" });
+  const imageResult = getSandboxImageFromRegistry({ name: "dust-base" });
+  if (imageResult.isErr()) {
+    return imageResult;
+  }
+
+  if (!isDevelopment()) {
+    return imageResult;
+  }
+
+  const devFrontUrl = config.getSandboxDevFrontUrl();
+  if (!devFrontUrl) {
+    return imageResult;
+  }
+
+  // E2B allowOut expects hostnames, strip the scheme if present.
+  const devHost = devFrontUrl.replace(/^https?:\/\//, "");
+
+  const image = imageResult.value;
+  return new Ok(
+    image.withNetwork({
+      mode: image.network.mode,
+      allowlist: [...(image.network.allowlist ?? []), devHost],
+    })
+  );
 }
 
 export { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
