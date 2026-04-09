@@ -416,19 +416,18 @@ export async function emitMetronomeGaugeEventsForAllWorkspacesActivity(): Promis
       );
 
     // Filter to workspaces whose billing cycle ends today.
-    workspaces = [];
-    await concurrentExecutor(
+    const results = await concurrentExecutor(
       metronomeWorkspaces,
-      async (workspace) => {
+      async (workspace): Promise<WorkspaceResource | null> => {
         const subscription = subscriptionsByWorkspaceId[workspace.id];
         if (!subscription?.stripeSubscriptionId) {
-          return;
+          return null;
         }
         const stripeSubscription = await getStripeSubscription(
           subscription.stripeSubscriptionId
         );
         if (!stripeSubscription) {
-          return;
+          return null;
         }
         // Check if today matches the billing cycle boundary.
         // Before Stripe processes renewal: current_period_end == today.
@@ -441,12 +440,13 @@ export async function emitMetronomeGaugeEventsForAllWorkspacesActivity(): Promis
         const periodEnd = new Date(stripeSubscription.current_period_end * 1000)
           .toISOString()
           .slice(0, 10);
-        if (periodStart === todayUTC || periodEnd === todayUTC) {
-          workspaces.push(workspace);
-        }
+        return periodStart === todayUTC || periodEnd === todayUTC
+          ? workspace
+          : null;
       },
       { concurrency: 10 }
     );
+    workspaces = results.filter((w): w is WorkspaceResource => w !== null);
   }
 
   logger.info(
