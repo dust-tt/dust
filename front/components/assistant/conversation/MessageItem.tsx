@@ -20,6 +20,7 @@ import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
 import { useReaction } from "@app/hooks/useReaction";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { classNames } from "@app/lib/utils";
+import { isSupportedImageContentType } from "@app/types/files";
 import type { UserType } from "@app/types/user";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import React, { useMemo } from "react";
@@ -100,6 +101,17 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       isSubmittingThumb,
     };
 
+    const hasImageCitation =
+      isUserMessage(data) &&
+      data.contentFragments.some((fragment) => {
+        const attachmentCitation =
+          contentFragmentToAttachmentCitation(fragment);
+        return (
+          attachmentCitation.type === "file" &&
+          isSupportedImageContentType(attachmentCitation.contentType)
+        );
+      });
+
     const citations =
       isUserMessage(data) && data.contentFragments.length > 0
         ? data.contentFragments.map((contentFragment, index) => {
@@ -112,6 +124,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 key={index}
                 attachmentCitation={attachmentCitation}
                 conversationId={context.conversation?.sId}
+                compact={!hasImageCitation}
               />
             );
           })

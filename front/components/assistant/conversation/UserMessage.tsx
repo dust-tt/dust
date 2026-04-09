@@ -351,6 +351,7 @@ export function UserMessage({
                 citations={citations}
                 type="user"
                 className={cn(shouldShowBiggerUserMessage && "@sm:min-w-100")}
+                reversed={isCurrentUser}
               >
                 <div className="flex items-center gap-2">
                   {message.visibility === "pending" && <Spinner size="xs" />}
