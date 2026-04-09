@@ -96,20 +96,20 @@ export async function findConversationsWithSkills(
       continue;
     }
 
-    const skillId = makeSId("skill", {
+    const localSkillId = makeSId("skill", {
       id: customSkillId,
       workspaceId: workspace.id,
     });
 
     // If filtering by skillId, only include matching skills.
-    if (skillId && skillId !== skillId) {
+    if (skillId && localSkillId !== skillId) {
       continue;
     }
 
     if (!conversationSkillMap.has(convId)) {
       conversationSkillMap.set(convId, new Set());
     }
-    conversationSkillMap.get(convId)!.add(skillId);
+    conversationSkillMap.get(convId)!.add(localSkillId);
   }
 
   // Step 4: Convert to array and cap at maxConversations.
