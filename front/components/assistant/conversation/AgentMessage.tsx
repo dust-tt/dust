@@ -1318,13 +1318,16 @@ function AgentMessageContent({
   return (
     <div className="flex flex-col gap-y-4">
       {isInlineActivityEnabled ? (
-        <InlineActivitySteps
-          agentMessage={agentMessage}
-          lastAgentStateClassification={agentMessage.streaming.agentState}
-          completedSteps={agentMessage.streaming.inlineActivitySteps}
-          pendingToolCalls={agentMessage.streaming.pendingToolCalls}
-          onOpenDetails={onOpenDetails}
-        />
+        <CitationsContext.Provider value={citationsContextValue}>
+          <InlineActivitySteps
+            agentMessage={agentMessage}
+            lastAgentStateClassification={agentMessage.streaming.agentState}
+            completedSteps={agentMessage.streaming.inlineActivitySteps}
+            pendingToolCalls={agentMessage.streaming.pendingToolCalls}
+            onOpenDetails={onOpenDetails}
+            owner={owner}
+          />
+        </CitationsContext.Provider>
       ) : (
         <AgentMessageActions
           agentMessage={agentMessage}
