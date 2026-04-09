@@ -26,9 +26,17 @@ function makeInstructionSuggestion(input: {
     state: "pending",
     source: input.source ?? "synthetic",
     sourceConversationId: null,
-    kind: "edit_instructions",
-    suggestion: { instructions: input.instructions },
-  };
+    kind: "edit",
+    suggestion: {
+      instructionEdits: [
+        {
+          old_string: "",
+          new_string: input.instructions,
+          expected_occurrences: 1,
+        },
+      ],
+    },
+  } as SkillSuggestionType;
 }
 
 function makeToolSuggestion(input: {
@@ -48,9 +56,11 @@ function makeToolSuggestion(input: {
     state: "pending",
     source: input.source ?? "synthetic",
     sourceConversationId: null,
-    kind: "tools",
-    suggestion: { action: input.action, toolId: input.toolId },
-  };
+    kind: "edit",
+    suggestion: {
+      toolEdits: [{ action: input.action, toolId: input.toolId }],
+    },
+  } as SkillSuggestionType;
 }
 
 const WORKSPACE_CONTEXT: WorkspaceContext = {
