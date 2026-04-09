@@ -6,9 +6,13 @@ import type { Authenticator } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentConfigurationType,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 const SKILL_KNOWLEDGE_FILE_SYSTEM_SERVER_NAME = "skill_knowledge_file_system";
@@ -252,4 +256,51 @@ export async function createSkillKnowledgeDataWarehouseServer(
     dataSources: dataSourceConfigurations,
     serverNameOverride: SKILL_KNOWLEDGE_DATA_WAREHOUSE_SERVER_NAME,
   });
+}
+
+/**
+ * Resolves all skill-based MCP servers for an agent in a conversation.
+ * Includes skill MCP servers and skill knowledge servers (file system / data warehouse).
+ * Shared between the agent loop, sandbox tools endpoint, and call_tool endpoint.
+ */
+export async function resolveSkillMCPServers(
+  auth: Authenticator,
+  {
+    agentConfiguration,
+    conversation,
+  }: {
+    agentConfiguration: AgentConfigurationType;
+    conversation: ConversationType;
+  }
+): Promise<MCPServerConfigurationType[]> {
+  const { enabledSkills } = await SkillResource.listForAgentLoop(auth, {
+    agentConfiguration,
+    conversation,
+  });
+
+  const skillServers = await getSkillServers(auth, {
+    agentConfiguration,
+    skills: enabledSkills,
+  });
+
+  const {
+    documentDataSourceConfigurations,
+    warehouseDataSourceConfigurations,
+  } = await getSkillDataSourceConfigurations(auth, { skills: enabledSkills });
+
+  const fileSystemServer = await createSkillKnowledgeFileSystemServer(auth, {
+    dataSourceConfigurations: documentDataSourceConfigurations,
+  });
+  const dataWarehouseServer = await createSkillKnowledgeDataWarehouseServer(
+    auth,
+    { dataSourceConfigurations: warehouseDataSourceConfigurations }
+  );
+  if (fileSystemServer) {
+    skillServers.push(fileSystemServer);
+  }
+  if (dataWarehouseServer) {
+    skillServers.push(dataWarehouseServer);
+  }
+
+  return skillServers;
 }

@@ -14,6 +14,7 @@ import {
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
+import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
@@ -134,6 +135,16 @@ async function buildSandboxAgentLoopContext(
     serverSideConfig = jitServers.find(
       (s) => s.mcpServerViewId === mcpServerViewId
     );
+  }
+
+  if (!serverSideConfig) {
+    const skillServers = await resolveSkillMCPServers(auth, {
+      agentConfiguration,
+      conversation,
+    });
+    serverSideConfig = skillServers
+      .filter(isServerSideMCPServerConfiguration)
+      .find((s) => s.mcpServerViewId === mcpServerViewId);
   }
 
   if (!serverSideConfig) {
