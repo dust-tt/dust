@@ -1,0 +1,25 @@
+front/pages/api/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/answer-question.ts
+  833a10e1d8bc700a 1-199
+front/temporal/agent_loop/lib/run_model.ts
+  833a10e1d8bc700a 310-317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.6",
+  "base_commit_sha": "df9b9029d705f342744beef7b24c0086cbaea61d",
+  "prompts": {
+    "833a10e1d8bc700a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca0ecb4b-da89-4c83-933d-4a9722e91595",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 608,
+      "overriden_lines": 0
+    }
+  }
+}
