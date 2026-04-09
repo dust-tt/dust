@@ -1,0 +1,47 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "581047b84849be6e6347d5d3f4e38bc407617172",
+  "prompts": {
+    "03aa2f3db9135a02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b2e1c76-f0e7-4ad7-9f73-f1881c905499",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Zeid Marouf",
+      "messages": [],
+      "total_additions": 8,
+      "total_deletions": 4,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "c25a2f36ae1a925b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "429640e7-6578-4c0c-b481-70812548519a",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Zeid Marouf",
+      "messages": [],
+      "total_additions": 358,
+      "total_deletions": 259,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "ce2b9bf916acff17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ed5d3a9-2ba5-4144-a34b-d1fd1840a8b6",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Zeid Marouf",
+      "messages": [],
+      "total_additions": 593,
+      "total_deletions": 285,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  }
+}
