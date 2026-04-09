@@ -141,10 +141,24 @@ function getDynamicToolDisplayLabels({
             done: `Searched for “${g}” in file`,
           };
         }
-        if (isNumber(inputs.offset) && inputs.offset > 0) {
+        const hasOffset = isNumber(inputs.offset) && inputs.offset > 0;
+        const hasLimit = isNumber(inputs.limit);
+        if (hasOffset && hasLimit) {
           return {
-            running: "Reading more of file",
-            done: "Read more of file",
+            running: "Reading a section of file",
+            done: "Read a section of file",
+          };
+        }
+        if (hasOffset) {
+          return {
+            running: "Continuing to read file",
+            done: "Continued reading file",
+          };
+        }
+        if (hasLimit) {
+          return {
+            running: "Reading the beginning of file",
+            done: "Read the beginning of file",
           };
         }
       }
@@ -227,10 +241,24 @@ function getDynamicToolDisplayLabels({
             done: `Searched for “${g}” in file`,
           };
         }
-        if (isNumber(inputs.offset) && inputs.offset > 0) {
+        const hasOffset = isNumber(inputs.offset) && inputs.offset > 0;
+        const hasLimit = isNumber(inputs.limit);
+        if (hasOffset && hasLimit) {
           return {
-            running: "Reading more of file",
-            done: "Read more of file",
+            running: "Reading a section of file",
+            done: "Read a section of file",
+          };
+        }
+        if (hasOffset) {
+          return {
+            running: "Continuing to read file",
+            done: "Continued reading file",
+          };
+        }
+        if (hasLimit) {
+          return {
+            running: "Reading the beginning of file",
+            done: "Read the beginning of file",
           };
         }
       }
