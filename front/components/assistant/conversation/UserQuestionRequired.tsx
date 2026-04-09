@@ -119,14 +119,14 @@ export function UserQuestionRequired({
   return (
     <div
       className={cn(
-        "flex flex-col gap-4 rounded-3xl border border-border bg-background p-5",
+        "flex flex-col gap-4 rounded-3xl border border-border bg-background p-4",
         "dark:border-border-night dark:bg-background-night"
       )}
     >
       <div className="text-base font-medium leading-tight text-foreground dark:text-foreground-night">
         {question.question}
       </div>
-      <div className="flex flex-col gap-0">
+      <div className="flex flex-col gap-2">
         {question.options.map((option, index) => {
           const isSelected = selectedOptions.includes(index);
 
@@ -135,9 +135,14 @@ export function UserQuestionRequired({
               key={index}
               variant="tertiary"
               className={cn(
-                "flex w-full cursor-pointer items-center gap-2 rounded-2xl px-4 py-2.5 text-left transition-colors",
+                "flex w-full cursor-pointer items-center gap-2 rounded-2xl p-3 text-left transition-colors",
                 isSelected
-                  ? "bg-muted-background dark:bg-muted-background-night"
+                  ? question.multiSelect
+                    ? [
+                        "border-border bg-background",
+                        "dark:border-border-night dark:bg-background-night",
+                      ]
+                    : "bg-muted-background dark:bg-muted-background-night"
                   : [
                       "bg-background hover:bg-muted-background/60",
                       "dark:bg-background-night",
@@ -180,7 +185,8 @@ export function UserQuestionRequired({
         <Card
           variant="tertiary"
           className={cn(
-            "flex w-full items-center gap-2 rounded-2xl px-4 py-2.5 transition-colors",
+            "flex w-full items-center gap-2 rounded-2xl p-3 transition-colors",
+            question.multiSelect && "border-border dark:border-border-night",
             isCustomResponseFocused
               ? "bg-muted-background dark:bg-muted-background-night"
               : [
