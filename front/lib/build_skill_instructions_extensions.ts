@@ -1,20 +1,27 @@
-import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
 import { BlockIdExtension } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/instructions/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
 import { KnowledgeNode } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
-import { SlashCommandExtension } from "@app/components/editor/extensions/skill_builder/SlashCommandExtension";
 import { markdownStyles } from "@dust-tt/sparkle";
 import type { Extensions } from "@tiptap/core";
-import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
 import { StarterKit } from "@tiptap/starter-kit";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
+/**
+ * Build the TipTap extension list for the skill instructions editor.
+ *
+ * @param isReadOnly - When true, only the base parsing/rendering extensions are
+ *   included. When false, caller must supply `editableExtensions` with the
+ *   browser-only extensions (SlashCommand, Placeholder, CharacterCount, etc.)
+ *   that cannot be statically imported in server/Node contexts.
+ * @param editableExtensions - Extensions appended when `isReadOnly` is false.
+ */
 export function buildSkillInstructionsExtensions(
-  isReadOnly: boolean
+  isReadOnly: boolean,
+  editableExtensions: Extensions = []
 ): Extensions {
   const baseExtensions: Extensions = [
     InstructionsDocumentExtension,
@@ -68,18 +75,7 @@ export function buildSkillInstructionsExtensions(
   ];
 
   if (!isReadOnly) {
-    baseExtensions.push(
-      SlashCommandExtension,
-      AgentInstructionDiffExtension,
-      Placeholder.configure({
-        placeholder: "What does this skill do? How should it behave?",
-        emptyNodeClass:
-          "first:before:text-gray-400 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
-      }),
-      CharacterCount.configure({
-        limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
-      })
-    );
+    baseExtensions.push(...editableExtensions);
   }
 
   return baseExtensions;

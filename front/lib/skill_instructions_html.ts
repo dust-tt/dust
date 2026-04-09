@@ -3,18 +3,18 @@ import {
   BLOCK_ID_UNIQUE_ID_NODE_TYPES,
 } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
-import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
 import { buildSkillInstructionsExtensions } from "@app/lib/build_skill_instructions_extensions";
 import { generateShortBlockId } from "@app/lib/generate_short_block_id";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { JSONContent } from "@tiptap/core";
-import { generateJSON } from "@tiptap/html";
+import { generateJSON } from "@tiptap/html/server";
 import { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string";
 import * as cheerio from "cheerio";
 import { marked } from "marked";
 
 const EMPTY_SKILL_INNER_HTML = "<p></p>";
 const SKILL_EDITOR_EXTENSIONS = buildSkillInstructionsExtensions(true);
+const ZWS = "\u200B";
 
 const NODE_TYPES_WITH_BLOCK_ID = new Set<string>([
   ...BLOCK_ID_UNIQUE_ID_NODE_TYPES,
@@ -39,7 +39,7 @@ function addBlockIds(node: JSONContent | undefined): void {
 }
 
 /**
- * Strip presentation attributes from HTML so it is not permanently stored
+ * Strip presentation attributes from HTML so it is not permanently stored.
  */
 function stripPresentationAttributes(html: string): string {
   const $ = cheerio.load(html, { xmlMode: false }, false);
@@ -51,12 +51,23 @@ function stripPresentationAttributes(html: string): string {
 }
 
 /**
+ * Prepare markdown for conversion to HTML.
+ *
+ * Inserts a zero-width space after every `<` that is not already ZWS-prefixed.
+ * We do not require more complex logic given InstructionBlockExtension is not used in the skill editor.
+ *
+ */
+function preprocessMarkdownForConversion(markdown: string): string {
+  return markdown.replace(new RegExp(`<(?!${ZWS})`, "g"), `<${ZWS}`);
+}
+
+/**
  * Convert Markdown to stored skill instructionsHtml.
  * Uses the same extension schema as the browser editor, then strips CSS class attrs.
  */
 export function convertMarkdownToBlockHtml(markdown: string): string {
   const processed = markdown.trim()
-    ? preprocessMarkdownForEditor(markdown)
+    ? preprocessMarkdownForConversion(markdown)
     : "";
   const innerHtml =
     processed === ""
@@ -68,10 +79,10 @@ export function convertMarkdownToBlockHtml(markdown: string): string {
   const json = generateJSON(wrapped, SKILL_EDITOR_EXTENSIONS);
   addBlockIds(json);
 
-  const html = renderToHTMLString({
+  const rendered = renderToHTMLString({
     content: json,
     extensions: SKILL_EDITOR_EXTENSIONS,
   });
 
-  return stripPresentationAttributes(html);
+  return stripPresentationAttributes(rendered);
 }

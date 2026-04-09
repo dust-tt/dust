@@ -1,7 +1,13 @@
+import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
-import { buildSkillInstructionsExtensions } from "@app/lib/build_skill_instructions_extensions";
+import { SlashCommandExtension } from "@app/components/editor/extensions/skill_builder/SlashCommandExtension";
+import {
+  buildSkillInstructionsExtensions,
+  INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
+} from "@app/lib/build_skill_instructions_extensions";
 import { cn } from "@dust-tt/sparkle";
+import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import type { Transaction } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -86,6 +92,19 @@ interface UseSkillInstructionsEditorProps {
   onDelete?: (editor: Editor) => void;
 }
 
+const skillInstructionsEditableExtensions = [
+  SlashCommandExtension,
+  AgentInstructionDiffExtension,
+  Placeholder.configure({
+    placeholder: "What does this skill do? How should it behave?",
+    emptyNodeClass:
+      "first:before:text-gray-400 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
+  }),
+  CharacterCount.configure({
+    limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
+  }),
+];
+
 export function useSkillInstructionsEditor({
   content,
   isReadOnly,
@@ -94,7 +113,11 @@ export function useSkillInstructionsEditor({
   onDelete,
 }: UseSkillInstructionsEditorProps) {
   const extensions = useMemo(
-    () => buildSkillInstructionsExtensions(isReadOnly),
+    () =>
+      buildSkillInstructionsExtensions(
+        isReadOnly,
+        skillInstructionsEditableExtensions
+      ),
     [isReadOnly]
   );
 
