@@ -1,6 +1,7 @@
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
+  Avatar,
   createSelectionColumn,
   DataTable,
   SearchInput,
@@ -130,15 +131,22 @@ export function MemberSelectionTable({
         meta: {
           className: "w-full",
         },
-        cell: (info: CellContext<MemberRowData, unknown>) => (
-          <DataTable.CellContent
-            avatarUrl={info.row.original.image}
-            roundedAvatar
-            description={info.row.original.email}
-          >
-            {info.row.original.fullName}
-          </DataTable.CellContent>
-        ),
+        cell: (info: CellContext<MemberRowData, unknown>) => {
+          const { fullName, image, email } = info.row.original;
+          return (
+            <DataTable.CellContent description={email}>
+              <div className="flex items-center gap-2">
+                <Avatar
+                  name={fullName}
+                  visual={image || undefined}
+                  size="xs"
+                  isRounded
+                />
+                <span className="text-sm">{fullName}</span>
+              </div>
+            </DataTable.CellContent>
+          );
+        },
       },
       ...(extraColumns ?? []),
     ];
