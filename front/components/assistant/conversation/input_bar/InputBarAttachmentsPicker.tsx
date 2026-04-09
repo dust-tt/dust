@@ -248,6 +248,11 @@ export const InputBarAttachmentsPicker = ({
     disabled: !isOpen,
   });
 
+  const spacesMap = useMemo(
+    () => Object.fromEntries(spaces.map((space) => [space.sId, space])),
+    [spaces]
+  );
+
   const spaceIds = useMemo(() => {
     // We are having a conversation within a specific space, so we only allow datasources/tools from that space and the global space.
     // This is a project v1 limitation.
@@ -274,17 +279,14 @@ export const InputBarAttachmentsPicker = ({
     pageSize: PAGE_SIZE,
     disabled: isSpacesLoading || !searchQuery,
     spaceIds,
+    projectId:
+      spaceId && spacesMap?.[spaceId]?.kind === "project" ? spaceId : undefined,
     viewType: "all",
     includeDataSources: true,
     searchSourceUrls: true,
     includeTools: true,
     prioritizeSpaceAccess: true,
   });
-
-  const spacesMap = useMemo(
-    () => Object.fromEntries(spaces.map((space) => [space.sId, space])),
-    [spaces]
-  );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {

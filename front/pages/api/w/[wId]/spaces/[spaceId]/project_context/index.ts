@@ -1,5 +1,9 @@
 /** @ignoreswagger */
-import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import {
+  type ConversationAttachmentType,
+  isContentNodeAttachmentType,
+  isFileAttachmentType,
+} from "@app/lib/api/assistant/conversation/attachments";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   addContentNodeToProject,
@@ -12,7 +16,6 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { ContentNodeType } from "@app/types/core/content_node";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
@@ -40,6 +43,12 @@ export type PostProjectContextContentNodeResponseBody = {
   };
 };
 
+const ProjectContextQuerySchema = z.object({
+  spaceId: z.string(),
+  query: z.string().optional(),
+  type: z.enum(["file", "content-node"]).optional(),
+});
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
@@ -49,16 +58,19 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const { spaceId } = req.query;
-  if (!isString(spaceId)) {
+  const queryValidation = ProjectContextQuerySchema.safeParse(req.query);
+  if (!queryValidation.success) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid spaceId query parameter.",
+        message:
+          "Invalid query parameters. Expected `spaceId` (string), optional `query` (string), optional `type` (`file` | `content-node`).",
       },
     });
   }
+
+  const { spaceId, query, type } = queryValidation.data;
 
   const space = await SpaceResource.fetchById(auth, spaceId);
   if (!space || !space.canRead(auth)) {
@@ -74,7 +86,28 @@ async function handler(
   switch (req.method) {
     case "GET": {
       const attachments = await listProjectContextAttachments(auth, space);
-      res.status(200).json({ attachments });
+
+      const q = query?.trim().toLowerCase() ?? "";
+      const t = type ?? "";
+
+      const filtered = attachments.filter((a) => {
+        if (t) {
+          if (t === "file" && !isFileAttachmentType(a)) {
+            return false;
+          }
+          if (t === "content-node" && !isContentNodeAttachmentType(a)) {
+            return false;
+          }
+        }
+
+        if (q.length > 0 && !a.title.toLowerCase().includes(q)) {
+          return false;
+        }
+
+        return true;
+      });
+
+      res.status(200).json({ attachments: filtered });
       return;
     }
 

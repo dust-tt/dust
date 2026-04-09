@@ -852,7 +852,7 @@ export const ConversationViewer = ({
       additionalMarkdownPlugins,
       isProjectMember,
       isProjectRestricted: spaceInfo?.isRestricted,
-      projectSpaceId: conversation?.spaceId ?? undefined,
+      projectId: conversation?.spaceId ?? undefined,
       projectSpaceName: spaceInfo?.name,
       branchIdToApprove: branchIdToApprove ?? undefined,
       setBranchIdToApprove,

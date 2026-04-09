@@ -1,5 +1,7 @@
+import type { FileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { clientEventSource } from "@app/lib/egress/client";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
+import { useProjectContextAttachments } from "@app/lib/swr/projects";
 import { emptyArray } from "@app/lib/swr/swr";
 import type { ContentNodeWithParent } from "@app/types/connectors/connectors_api";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
@@ -8,7 +10,7 @@ import type { DataSourceViewType } from "@app/types/data_source_view";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { EventSourcePolyfill } from "event-source-polyfill";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 export type DataSourceViewContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
@@ -31,6 +33,7 @@ export function useUnifiedSearch({
   pageSize = 25,
   disabled = false,
   spaceIds,
+  projectId,
   viewType = "all",
   excludeNonRemoteDatabaseTables = false,
   includeDataSources = true,
@@ -43,6 +46,7 @@ export function useUnifiedSearch({
   pageSize?: number;
   disabled?: boolean;
   spaceIds?: string[];
+  projectId?: string;
   viewType?: Exclude<ContentNodesViewType, "data_warehouse">;
   excludeNonRemoteDatabaseTables?: boolean;
   includeDataSources?: boolean;
@@ -50,7 +54,7 @@ export function useUnifiedSearch({
   includeTools?: boolean;
   prioritizeSpaceAccess?: boolean;
 }) {
-  const [knowledgeResults, setKnowledgeResults] = useState<
+  const [rawKnowledgeResults, setRawKnowledgeResults] = useState<
     DataSourceViewContentNode[]
   >([]);
   const [toolResults, setToolResults] = useState<ToolSearchResult[]>([]);
@@ -61,6 +65,41 @@ export function useUnifiedSearch({
   const [nextPageCursor, setNextPageCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const eventSourceRef = useRef<EventSourcePolyfill | null>(null);
+
+  const {
+    attachments: projectContextAttachments,
+    isProjectContextAttachmentsLoading,
+  } = useProjectContextAttachments({
+    owner,
+    spaceId: projectId ?? "",
+    query,
+    type: "file",
+    disabled: disabled || !projectId,
+  });
+
+  const projectContextFiles = useMemo((): FileAttachmentType[] => {
+    // Server-side filtering (`type=file`) ensures the endpoint returns only file attachments.
+    return projectContextAttachments as FileAttachmentType[];
+  }, [projectContextAttachments]);
+
+  const projectContextFileIds = useMemo(() => {
+    return new Set(projectContextFiles.map((f) => f.fileId));
+  }, [projectContextFiles]);
+
+  const knowledgeResults = useMemo(() => {
+    if (!projectId || projectContextFileIds.size === 0) {
+      return rawKnowledgeResults;
+    }
+
+    // If a project file also exists as a `dust_project` knowledge node (Core),
+    // we only keep the file representation.
+    return rawKnowledgeResults.filter((n) => {
+      if (n.dataSource.connectorProvider !== "dust_project") {
+        return true;
+      }
+      return !projectContextFileIds.has(n.internalId);
+    });
+  }, [projectId, projectContextFileIds, rawKnowledgeResults]);
 
   const loadPage = useCallback(
     async (cursor?: string | null, appendResults = false) => {
@@ -116,12 +155,12 @@ export function useUnifiedSearch({
           if (chunk.knowledgeResults) {
             const { knowledgeResults } = chunk;
             if (appendResults) {
-              setKnowledgeResults((prev) => [
+              setRawKnowledgeResults((prev) => [
                 ...prev,
                 ...knowledgeResults.nodes,
               ]);
             } else {
-              setKnowledgeResults(knowledgeResults.nodes);
+              setRawKnowledgeResults(knowledgeResults.nodes);
             }
             setNextPageCursor(knowledgeResults.nextPageCursor);
             setHasMore(!!knowledgeResults.nextPageCursor);
@@ -168,7 +207,7 @@ export function useUnifiedSearch({
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useLayoutEffect(() => {
-    setKnowledgeResults([]);
+    setRawKnowledgeResults([]);
     setToolResults([]);
     setNextPageCursor(null);
     setHasMore(false);
@@ -220,6 +259,12 @@ export function useUnifiedSearch({
         : emptyArray<DataSourceViewContentNode>(),
     toolResults:
       toolResults.length > 0 ? toolResults : emptyArray<ToolSearchResult>(),
+    projectContextFiles:
+      projectContextFiles.length > 0
+        ? projectContextFiles
+        : emptyArray<FileAttachmentType>(),
+    isProjectContextFilesLoading:
+      !!projectId && isProjectContextAttachmentsLoading,
     isSearchLoading,
     isLoadingNextPage,
     isSearchValidating,

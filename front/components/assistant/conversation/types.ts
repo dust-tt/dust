@@ -114,7 +114,7 @@ export type VirtuosoMessageListContext = {
   // Project membership fields (undefined for non-project conversations)
   isProjectMember?: boolean;
   isProjectRestricted?: boolean;
-  projectSpaceId?: string;
+  projectId?: string;
   projectSpaceName?: string;
   branchIdToApprove?: string;
   setBranchIdToApprove?: (branchId: string | null) => void;
