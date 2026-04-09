@@ -70,6 +70,18 @@ export function isLightServerSideMCPToolConfiguration(
   );
 }
 
+export function isLightServerSideMCPToolConfigurationWithName<
+  N extends InternalMCPServerNameType,
+>(
+  config: unknown,
+  name: N
+): config is LightServerSideMCPToolConfigurationType<N> {
+  return (
+    isLightServerSideMCPToolConfiguration(config) &&
+    matchesInternalMCPServerName(config.internalMCPServerId, name)
+  );
+}
+
 export function isLightClientSideMCPToolConfiguration(
   arg: unknown
 ): arg is LightClientSideMCPToolConfigurationType {
@@ -101,10 +113,12 @@ export function isServerSideMCPServerConfigurationWithName(
   );
 }
 
-export function isServerSideMCPToolConfigurationWithName(
+export function isServerSideMCPToolConfigurationWithName<
+  N extends InternalMCPServerNameType,
+>(
   config: MCPToolConfigurationType,
-  name: InternalMCPServerNameType
-): config is ServerSideMCPToolConfigurationType {
+  name: N
+): config is ServerSideMCPToolConfigurationType<N> {
   return (
     isServerSideMCPToolConfiguration(config) &&
     matchesInternalMCPServerName(config.internalMCPServerId, name)

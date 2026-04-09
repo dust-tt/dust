@@ -1134,7 +1134,7 @@ type InternalMCPServerEntryCommon = {
 
 type InternalMCPServerEntryWithMetadata<K extends InternalMCPServerNameType> =
   InternalMCPServerEntryCommon & {
-    metadata: ServerMetadata;
+    metadata: ServerMetadata<K>;
     serverInfo?: InternalMCPServerDefinitionType & { name: K };
     tools_stakes?: Record<string, MCPToolStakeLevelType>;
   };
@@ -1156,6 +1156,24 @@ type InternalMCPServerEntry =
 
 export type InternalMCPServerNameType =
   (typeof AVAILABLE_INTERNAL_MCP_SERVER_NAMES)[number];
+
+type StaticInternalMCPToolNameType<N extends InternalMCPServerNameType> =
+  (typeof INTERNAL_MCP_SERVERS)[N]["metadata"]["tools"][number]["name"];
+
+type DynamicInternalMCPToolNameOverrides = {
+  data_sources_file_system: "find_tags";
+  extract_data: "find_tags";
+  include_data: "find_tags";
+  missing_action_catcher: string;
+  run_agent: string;
+  run_dust_app: string;
+  search: "find_tags";
+};
+
+export type InternalMCPToolNameType<N extends InternalMCPServerNameType> =
+  N extends keyof DynamicInternalMCPToolNameOverrides
+    ? StaticInternalMCPToolNameType<N> | DynamicInternalMCPToolNameOverrides[N]
+    : StaticInternalMCPToolNameType<N>;
 
 type AutoServerKeys<T> = {
   [K in keyof T]: T[K] extends { availability: "auto" | "auto_hidden_builder" }
@@ -1287,25 +1305,27 @@ export function getInternalMCPServerToolStakes(
   return server.metadata.tools_stakes;
 }
 
-// TODO(2026-01-27 MCP): improve typing once all servers are migrated to the metadata pattern.
-// Goal is to tie the tool name to the server name.
-export function getInternalMCPServerToolDisplayLabels(
-  name: InternalMCPServerNameType
+export function getInternalMCPServerToolDisplayLabels<
+  N extends InternalMCPServerNameType,
+>(
+  name: N
 ): Record<string, ToolDisplayLabels> | null {
   const server = INTERNAL_MCP_SERVERS[name];
+  const displayLabelsByTool: Record<string, ToolDisplayLabels> = {};
+  let hasDisplayLabels = false;
 
-  const entries = server.metadata.tools
-    .filter(
-      (tool): tool is typeof tool & { displayLabels: ToolDisplayLabels } =>
-        tool.displayLabels !== undefined
-    )
-    .map((tool) => [tool.name, tool.displayLabels] as const);
+  for (const tool of server.metadata.tools) {
+    if (tool.displayLabels) {
+      displayLabelsByTool[tool.name] = tool.displayLabels;
+      hasDisplayLabels = true;
+    }
+  }
 
-  if (entries.length === 0) {
+  if (!hasDisplayLabels) {
     return null;
   }
 
-  return Object.fromEntries(entries);
+  return displayLabelsByTool;
 }
 
 export function getInternalMCPServerInfo(
@@ -1352,10 +1372,10 @@ export function matchesInternalMCPServerName(
   return false;
 }
 
-export function getInternalMCPServerMetadata(
-  name: InternalMCPServerNameType
-): ServerMetadata {
-  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+export function getInternalMCPServerMetadata<N extends InternalMCPServerNameType>(
+  name: N
+): (typeof INTERNAL_MCP_SERVERS)[N]["metadata"] {
+  const server = INTERNAL_MCP_SERVERS[name];
 
   return server.metadata;
 }
