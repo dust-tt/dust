@@ -121,7 +121,7 @@ export async function getWorkspacePoolCreditBalance(
 export async function hasUserSeatCredits(
   _workspaceSId: string,
   _userSId: string
-): Promise<true> {
+): Promise<boolean> {
   // TODO: implement seat credit tracking and enforcement.
   // For now, we return `true` to allow usage.
   return true;
@@ -165,18 +165,12 @@ export async function hasCredits(
     hasWorkspacePoolCredits(workspaceSId, metronomeCustomerId),
   ]);
 
+  if (seatResult === false && poolResult === false) {
+    return false;
+  }
+
   // If either has credits, allow.
-  if (seatResult === true || poolResult === true) {
-    return true;
-  }
-
-  // Graceful degradation: if pool is indeterminate, allow usage.
-  if (poolResult === null) {
-    return true;
-  }
-
-  // Pool is explicitly false (and seat is always true for now, but guard anyway).
-  return false;
+  return true;
 }
 
 // ---------------------------------------------------------------------------
