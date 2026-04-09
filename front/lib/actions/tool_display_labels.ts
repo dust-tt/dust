@@ -397,10 +397,8 @@ function getDynamicToolDisplayLabels({
     case "project_conversation":
     case "sandbox":
     case "ask_user_question":
-      return null;
-
     default:
-      assertNever(internalMCPServerName);
+      return null;
   }
 }
 
