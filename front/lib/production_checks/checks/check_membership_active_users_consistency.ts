@@ -51,6 +51,10 @@ export const checkMembershipActiveUsersConsistency: CheckFunction = async (
           COUNT(DISTINCT um."userId")::int as "activeUsersByMessagesCount"
         FROM messages msg
         JOIN user_messages um ON msg."userMessageId" = um.id
+        JOIN memberships m ON m."userId" = um."userId"
+          AND m."workspaceId" = msg."workspaceId"
+          AND m."firstUsedAt" IS NOT NULL
+          AND m."endAt" IS NULL
         GROUP BY msg."workspaceId"
       )
       SELECT
