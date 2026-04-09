@@ -40,6 +40,7 @@ export function UserQuestionRequired({
 
   const [selectedOptions, setSelectedOptions] = useState<number[]>([]);
   const [customResponse, setCustomResponse] = useState("");
+  const [isSkipPending, setIsSkipPending] = useState(false);
 
   const { question } = blockedAction;
   const isTriggeredByCurrentUser = blockedAction.userId === user?.sId;
@@ -47,7 +48,8 @@ export function UserQuestionRequired({
   const isCustomResponseSelected =
     trimmedCustomResponse.length > 0 && selectedOptions.length === 0;
 
-  async function submitAnswer(answer: UserQuestionAnswer) {
+  async function submitAnswer(answer: UserQuestionAnswer, isSkip = false) {
+    setIsSkipPending(isSkip);
     const result = await answerQuestion({
       conversationId,
       messageId,
@@ -57,10 +59,16 @@ export function UserQuestionRequired({
 
     if (result.success) {
       removeCompletedAction(blockedAction.actionId);
+      return;
     }
-  }
 
+    setIsSkipPending(false);
+  }
   function handleOptionClick(index: number) {
+    if (isSubmitting) {
+      return;
+    }
+
     if (question.multiSelect) {
       setSelectedOptions((prev) =>
         prev.includes(index)
@@ -75,6 +83,10 @@ export function UserQuestionRequired({
   }
 
   function handleSubmit() {
+    if (isSubmitting) {
+      return;
+    }
+
     if (!isCustomResponseSelected && selectedOptions.length === 0) {
       return;
     }
@@ -87,15 +99,11 @@ export function UserQuestionRequired({
   }
 
   function handleSkip() {
-    void submitAnswer({ selectedOptions: [] });
-  }
+    if (isSubmitting) {
+      return;
+    }
 
-  if (isSubmitting) {
-    return (
-      <div className="flex justify-center py-4">
-        <Spinner size="sm" />
-      </div>
-    );
+    void submitAnswer({ selectedOptions: [] }, true);
   }
 
   if (!isTriggeredByCurrentUser) {
@@ -123,6 +131,8 @@ export function UserQuestionRequired({
       <div className="flex flex-col gap-2">
         {question.options.map((option, index) => {
           const isSelected = selectedOptions.includes(index);
+          const isSubmittingOption =
+            isSubmitting && !isSkipPending && isSelected;
 
           return (
             <Card
@@ -151,28 +161,36 @@ export function UserQuestionRequired({
                 }
               }}
               role="button"
-              tabIndex={0}
+              tabIndex={isSubmitting ? -1 : 0}
               aria-pressed={isSelected}
             >
-              <Counter
-                value={index + 1}
-                size="sm"
-                variant="ghost"
-                className={cn(
-                  "shrink-0 bg-border-dark text-muted-foreground",
-                  "dark:bg-border-dark-night dark:text-muted-foreground-night"
-                )}
-              />
-              <div className="flex flex-col">
-                <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-                  {option.label}
-                </span>
-                {option.description && (
-                  <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                    {option.description}
-                  </span>
-                )}
-              </div>
+              {isSubmittingOption ? (
+                <div className="flex w-full items-center justify-center py-1">
+                  <Spinner size="sm" />
+                </div>
+              ) : (
+                <>
+                  <Counter
+                    value={index + 1}
+                    size="sm"
+                    variant="ghost"
+                    className={cn(
+                      "shrink-0 bg-border-dark text-muted-foreground",
+                      "dark:bg-border-dark-night dark:text-muted-foreground-night"
+                    )}
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+                      {option.label}
+                    </span>
+                    {option.description && (
+                      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                        {option.description}
+                      </span>
+                    )}
+                  </div>
+                </>
+              )}
             </Card>
           );
         })}
@@ -191,37 +209,46 @@ export function UserQuestionRequired({
                 ]
           )}
         >
-          <Counter
-            value={question.options.length + 1}
-            size="sm"
-            variant="ghost"
-            className={cn(
-              "shrink-0 bg-border-dark text-muted-foreground",
-              "dark:bg-border-dark-night dark:text-muted-foreground-night"
-            )}
-          />
-          <Input
-            id={`custom-response-${blockedAction.actionId}`}
-            containerClassName="flex-1"
-            className={cn(
-              "h-auto w-full rounded-none border-transparent bg-transparent",
-              "px-0 py-0 text-sm shadow-none",
-              "focus-visible:border-transparent focus-visible:ring-0"
-            )}
-            placeholder="Type something else"
-            value={customResponse}
-            onFocus={() => {
-              setSelectedOptions([]);
-            }}
-            onChange={(e) => setCustomResponse(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleSubmit();
-              }
-            }}
-            name="custom-response"
-          />
+          {isSubmitting && !isSkipPending && isCustomResponseSelected ? (
+            <div className="flex w-full items-center justify-center py-1">
+              <Spinner size="sm" />
+            </div>
+          ) : (
+            <>
+              <Counter
+                value={question.options.length + 1}
+                size="sm"
+                variant="ghost"
+                className={cn(
+                  "shrink-0 bg-border-dark text-muted-foreground",
+                  "dark:bg-border-dark-night dark:text-muted-foreground-night"
+                )}
+              />
+              <Input
+                id={`custom-response-${blockedAction.actionId}`}
+                containerClassName="flex-1"
+                className={cn(
+                  "h-auto w-full rounded-none border-transparent bg-transparent",
+                  "px-0 py-0 text-sm shadow-none",
+                  "focus-visible:border-transparent focus-visible:ring-0"
+                )}
+                placeholder="Type something else"
+                value={customResponse}
+                onFocus={() => {
+                  setSelectedOptions([]);
+                }}
+                onChange={(e) => setCustomResponse(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleSubmit();
+                  }
+                }}
+                name="custom-response"
+                disabled={isSubmitting}
+              />
+            </>
+          )}
         </Card>
       </div>
       {errorMessage && (
@@ -230,11 +257,18 @@ export function UserQuestionRequired({
         </div>
       )}
       <div className="flex items-center justify-between gap-3">
-        <Button label="Skip" variant="outline" size="sm" onClick={handleSkip} />
+        <Button
+          label="Skip"
+          variant="outline"
+          size="sm"
+          onClick={handleSkip}
+          isLoading={isSubmitting && isSkipPending}
+        />
         <Button
           icon={ArrowUpIcon}
           variant="highlight"
           size="sm"
+          isLoading={isSubmitting && !isSkipPending}
           disabled={
             trimmedCustomResponse.length === 0 && selectedOptions.length === 0
           }
