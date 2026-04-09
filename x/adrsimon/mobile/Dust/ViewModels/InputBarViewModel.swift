@@ -22,16 +22,18 @@ final class InputBarViewModel: ObservableObject {
     private let workspaceId: String
     private let tokenProvider: TokenProvider
     private let user: User
+    private let spaceId: String?
 
     /// Continuations waiting for all uploads to finish.
     private var uploadWaiters: [CheckedContinuation<Void, Never>] = []
     /// Active upload tasks, keyed by attachment ID for cancellation.
     private var uploadTasks: [UUID: Task<Void, Never>] = [:]
 
-    init(workspaceId: String, tokenProvider: TokenProvider, user: User) {
+    init(workspaceId: String, tokenProvider: TokenProvider, user: User, spaceId: String? = nil) {
         self.workspaceId = workspaceId
         self.tokenProvider = tokenProvider
         self.user = user
+        self.spaceId = spaceId
     }
 
     func loadAgents() async {
@@ -148,6 +150,7 @@ final class InputBarViewModel: ObservableObject {
         let fragmentPayloads = buildContentFragmentPayloads()
 
         let request = CreateConversationRequest(
+            spaceId: spaceId,
             message: CreateMessagePayload(
                 content: text,
                 mentions: resolveMentions(),

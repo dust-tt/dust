@@ -74,5 +74,13 @@ enum AppConfig {
         static func retryMessage(workspaceId: String, conversationId: String, messageId: String) -> String {
             "/api/v1/w/\(workspaceId)/assistant/conversations/\(conversationId)/messages/\(messageId)/retry"
         }
+
+        static func spacesSummary(workspaceId: String) -> String {
+            "/api/w/\(workspaceId)/assistant/conversations/spaces"
+        }
+
+        static func spaceConversations(workspaceId: String, spaceId: String) -> String {
+            "/api/w/\(workspaceId)/assistant/conversations/spaces/\(spaceId)"
+        }
     }
 }
