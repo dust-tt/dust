@@ -85,7 +85,8 @@ export function UserQuestionRequired({
 
     void submitAnswer({
       selectedOptions,
-      ...(trimmedCustomResponse.length > 0
+      // The selected options take precedence.
+      ...(selectedOptions.length === 0
         ? { customResponse: trimmedCustomResponse }
         : {}),
     });
