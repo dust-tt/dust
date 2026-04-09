@@ -106,11 +106,11 @@ export function UserQuestionRequired({
   if (!isTriggeredByCurrentUser) {
     return (
       <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        Waiting for{" "}
+        Waiting for&nbsp;
         <span className="font-semibold">
           {triggeringUser?.fullName ?? "another user"}
-        </span>{" "}
-        to answer.
+        </span>
+        &nbsp; to answer.
       </div>
     );
   }
