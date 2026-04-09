@@ -263,8 +263,8 @@ function getDynamicToolDisplayLabels({
           done: `Retrieved ${url}`,
         };
       }
-      if (toolName === "create_issue" && base && isString(inputs.title)) {
-        const t = truncateQuery(inputs.title);
+      if (toolName === "create_issue" && base && isString(inputs.description)) {
+        const t = truncateQuery(inputs.description);
         return {
           running: `Creating issue on ${base}: “${t}”`,
           done: `Created issue on ${base}: “${t}”`,
