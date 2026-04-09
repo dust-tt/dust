@@ -81,6 +81,27 @@ function getLastUpdatedTimestamp(row: ContextAttachmentItem): number | null {
   );
 }
 
+function knowledgeRowKindRank(row: ProjectKnowledgeRow): number {
+  if (isContentNodeAttachmentType(row)) {
+    return 0;
+  }
+  if (isFileAttachmentType(row)) {
+    return 1;
+  }
+  return 2;
+}
+
+function compareKnowledgeRowsByKindThenTitle(
+  a: ProjectKnowledgeRow,
+  b: ProjectKnowledgeRow
+): number {
+  const diff = knowledgeRowKindRank(a) - knowledgeRowKindRank(b);
+  if (diff !== 0) {
+    return diff;
+  }
+  return a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+}
+
 export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
   return (
     <FileDropProvider>
@@ -244,7 +265,8 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
         id: "title",
         accessorKey: "title",
         header: "Name",
-        sortingFn: "text",
+        sortingFn: (rowA, rowB) =>
+          compareKnowledgeRowsByKindThenTitle(rowA.original, rowB.original),
         meta: {
           className: "w-full",
         },
@@ -300,9 +322,10 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
       {
         id: "createdBy",
         accessorKey: "creator",
-        header: "Added by",
+        header: "By",
         meta: {
-          className: "w-20 shrink-0 sm:w-[220px]",
+          className: "w-12 min-w-12 max-w-12 sm:w-14 sm:min-w-14 sm:max-w-14",
+          tooltip: "Added by",
         },
         cell: (info: CellContext<ProjectKnowledgeRow, unknown>) => {
           const creator = info.row.original.creator;
@@ -315,17 +338,14 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
                 tooltipTriggerAsChild
                 label={creator.name}
                 trigger={
-                  <div className="flex min-w-0 items-center gap-2">
+                  <span className="inline-flex cursor-default">
                     <Avatar
                       name={creator.name}
                       visual={creator.pictureUrl || undefined}
                       size="xs"
                       isRounded
                     />
-                    <span className="hidden truncate text-sm sm:inline">
-                      {creator.name}
-                    </span>
-                  </div>
+                  </span>
                 }
               />
             </DataTable.CellContent>
@@ -338,7 +358,8 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
         header: "Last updated",
         sortingFn: "basic",
         meta: {
-          className: "w-[100px]",
+          className:
+            "min-w-[100px] w-[100px] max-w-[100px] whitespace-nowrap sm:min-w-[112px] sm:w-[112px] sm:max-w-[112px]",
         },
         cell: (info: CellContext<ProjectKnowledgeRow, unknown>) => {
           const row = info.row.original;
