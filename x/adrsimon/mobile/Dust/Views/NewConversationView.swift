@@ -97,6 +97,7 @@ struct NewConversationView: View {
             }
         }
         .background(Color.dustBackground)
+        .navigationBarTitleDisplayMode(.inline)
         .task {
             await inputBarViewModel.loadAgents()
         }
