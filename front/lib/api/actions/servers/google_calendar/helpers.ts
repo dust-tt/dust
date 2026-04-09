@@ -288,7 +288,9 @@ export function formatEventAsText(event: EnrichedGoogleCalendarEvent): string {
         return `${ep.uri}${ep.label ? ` (${ep.label})` : ` (${type})`}`;
       });
     if (meetingLinks.length > 0) {
-      lines.push(`Meeting Link${meetingLinks.length > 1 ? "s" : ""}: ${meetingLinks.join(", ")}`);
+      lines.push(
+        `Meeting Link${meetingLinks.length > 1 ? "s" : ""}: ${meetingLinks.join(", ")}`
+      );
     }
   }
 
