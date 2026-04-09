@@ -229,6 +229,7 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
   "gemini-3.1-flash-lite-preview": {
     input: 0.25,
     output: 1.5,
+    cache_read_input_tokens: 0.025,
   },
   "gemini-2.5-pro": {
     input: 1.25,
