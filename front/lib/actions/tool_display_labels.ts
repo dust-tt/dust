@@ -205,6 +205,13 @@ function getDynamicToolDisplayLabels({
           done: `Searched files “${q}”`,
         };
       }
+      if (toolName === "cat" && isString(inputs.grep)) {
+        const g = truncateQuery(inputs.grep);
+        return {
+          running: `Searching for “${g}” in file`,
+          done: `Searched for “${g}” in file`,
+        };
+      }
       return null;
 
     case "github": {
