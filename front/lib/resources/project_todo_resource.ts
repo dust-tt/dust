@@ -227,10 +227,10 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     auth: Authenticator,
     {
       sourceType,
-      sourceConversationId,
+      sourceId,
     }: {
       sourceType: ProjectTodoSourceType;
-      sourceConversationId: ModelId | null;
+      sourceId: string;
     },
     transaction?: Transaction
   ): Promise<void> {
@@ -239,7 +239,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
         projectTodoId: this.id,
         sourceType,
-        sourceConversationId: sourceConversationId ?? null,
+        sourceId,
       },
       { transaction }
     );
@@ -249,10 +249,10 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     auth: Authenticator,
     {
       sourceType,
-      sourceConversationId,
+      sourceId,
     }: {
       sourceType: ProjectTodoSourceType;
-      sourceConversationId: ModelId | null;
+      sourceId: string;
     },
     transaction?: Transaction
   ): Promise<void> {
@@ -261,7 +261,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
         projectTodoId: this.id,
         sourceType,
-        sourceConversationId: sourceConversationId ?? null,
+        sourceId,
       },
       transaction,
     });
