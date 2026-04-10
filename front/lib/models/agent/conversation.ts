@@ -693,6 +693,12 @@ CompactionMessageModel.init(
   {
     modelName: "compaction_message",
     sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["workspaceId"],
+        concurrently: true,
+      },
+    ],
   }
 );
 
