@@ -75,7 +75,7 @@ jobs:
           exit 1
 
   prepare:
-    needs: [check-branch]
+    needs: [ check-branch ]
     runs-on: ubuntu-latest
     outputs:
       short_sha: ${{ steps.short_sha.outputs.short_sha }}
@@ -87,7 +87,7 @@ jobs:
 
   notify-start:
     if: ${{ !inputs.skip_slack }}
-    needs: [prepare]
+    needs: [ prepare ]
     runs-on: ubuntu-latest
     outputs:
       thread_ts: ${{ inputs.thread_ts || steps.build_message.outputs.thread_ts }}
@@ -106,7 +106,7 @@ jobs:
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
 
   deploy:
-    needs: [prepare, notify-start]
+    needs: [ prepare, notify-start ]
     if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     outputs:
@@ -192,6 +192,7 @@ jobs:
               && format('--preview-alias {0}', steps.branch.outputs.sanitized)
               || '' }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          wranglerVersion: "4.80.0"
 
       - name: Extract version ID
         id: extract_version
