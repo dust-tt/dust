@@ -17,6 +17,8 @@ import { useEditUserMessage } from "@app/hooks/useEditUserMessage";
 import { useHover } from "@app/hooks/useHover";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { AGENT_MENTION_REGEX } from "@app/lib/mentions/format";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
@@ -24,6 +26,10 @@ import type {
   UserMessageType,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
+import {
+  isAgentMention,
+  isRichAgentMention,
+} from "@app/types/assistant/mentions";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -52,7 +58,7 @@ import { BubbleMenu } from "@tiptap/react/menus";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { cva } from "class-variance-authority";
 import type React from "react";
-import { useCallback, useContext, useState } from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 
 interface UserMessageEditorProps {
   editor: Editor | null;
@@ -152,14 +158,42 @@ export function UserMessage({
     conversationId,
   });
   const confirm = useContext(ConfirmContext);
+  const sendNotification = useSendNotification();
+  const { hasFeature } = useFeatureFlags();
+  const singleAgentInput = hasFeature("enable_steering");
+
+  const originalAgentIds = useMemo(
+    () =>
+      new Set(
+        message.mentions.filter(isAgentMention).map((m) => m.configurationId)
+      ),
+    [message.mentions]
+  );
 
   const handleSave = async () => {
     const { markdown, mentions } = editorService.getMarkdownAndMentions();
 
+    let content = markdown;
+    let filteredMentions = mentions;
+    if (singleAgentInput) {
+      filteredMentions = mentions.filter(
+        (m) => !isRichAgentMention(m) || originalAgentIds.has(m.id)
+      );
+
+      if (filteredMentions.length < mentions.length) {
+        // Strip agent mention syntax from the markdown to match the filtered mentions array.
+        content = markdown
+          .replaceAll(AGENT_MENTION_REGEX, (_match, _label, agentId) =>
+            originalAgentIds.has(agentId) ? _match : ""
+          )
+          .trim();
+      }
+    }
+
     await editMessage({
       messageId: message.sId,
-      content: markdown,
-      mentions,
+      content,
+      mentions: filteredMentions,
     });
 
     setShouldShowEditor(false);
@@ -170,6 +204,9 @@ export function UserMessage({
     conversationId,
     onEnterKeyDown: handleSave,
     disableAutoFocus: false,
+    // This editor is only mounted in edit mode, so singleAgentInput
+    // alone is sufficient to disable agent mentions (edit mode is implied).
+    disableAgentMentions: singleAgentInput,
   });
 
   const renderName = useCallback(
