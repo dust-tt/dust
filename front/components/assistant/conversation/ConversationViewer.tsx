@@ -675,9 +675,14 @@ export const ConversationViewer = ({
         const isMentioningAgent = mentions.some(isRichAgentMention);
 
         const nbMessages = ref.current.data.get().length;
+        // When steering (hasRunningAgent), the message is pending and no new
+        // agent message is created — stay at the current scroll position.
+        const shouldScrollToUserMessage =
+          isMentioningAgent && !hasRunningAgent;
+
         ref.current.data.append(
           [placeholderUserMsg, ...placeholderAgentMessages],
-          isMentioningAgent
+          shouldScrollToUserMessage
             ? false // Skip append-time scroll; handled by scrollToItem below.
             : (params) => {
                 if (params.scrollLocation.bottomOffset >= 0) {
@@ -697,7 +702,7 @@ export const ConversationViewer = ({
         // Virtuoso's append callback clamps the scroll target before applying
         // the bottom padding needed for align:"start" near the end of the
         // list, causing the scroll to undershoot.
-        if (isMentioningAgent && ref.current) {
+        if (shouldScrollToUserMessage && ref.current) {
           ref.current.scrollToItem({
             index: nbMessages,
             align: "start",
