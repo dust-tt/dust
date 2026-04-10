@@ -1,0 +1,25 @@
+front/lib/resources/subscription_resource.ts
+  068bbc100a060eab 14,17,141-150,696-701,729,815,866,868-878,880-881,994-997,1359-1360,1363,1369
+front/lib/plans/stripe.ts
+  068bbc100a060eab 546-547,549,557,560-563,575-582,584
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "a260abe59985cdd5ca1a9d6b46157f7eba528f8d",
+  "prompts": {
+    "068bbc100a060eab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ca0ebdb-9a62-4038-94b7-8a530c09bf58",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Alexandre Pinon",
+      "messages": [],
+      "total_additions": 74825,
+      "total_deletions": 60,
+      "accepted_lines": 49,
+      "overriden_lines": 0
+    }
+  }
+}
