@@ -1,0 +1,83 @@
+name: Lint & Build & Test (egress-proxy)
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      egress-proxy-changed: ${{ steps.changes.outputs.egress-proxy }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for relevant changes
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          base: ${{ github.event.repository.default_branch }}
+          filters: |
+            egress-proxy:
+              - 'egress-proxy/**'
+              - 'dockerfiles/egress-proxy.Dockerfile'
+              - '.github/workflows/build-egress-proxy.yml'
+              - 'lefthook.yml'
+
+      - name: Workflow Decision Summary
+        env:
+          EGRESS_PROXY_CHANGES: ${{ steps.changes.outputs.egress-proxy }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ "${EGRESS_PROXY_CHANGES}" == "true" ]; then
+            echo "egress-proxy changes detected vs ${DEFAULT_BRANCH} - running tests"
+          else
+            echo "No egress-proxy changes vs ${DEFAULT_BRANCH} - skipping tests"
+          fi
+
+  test:
+    runs-on: ubuntu-latest
+    needs: check-changes
+    if: needs.check-changes.outputs.egress-proxy-changed == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install minimal stable
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: cargo, clippy, rustfmt, rust-std, rustc
+
+      - name: Install test dependencies
+        run: sudo apt-get update && sudo apt-get install -y openssl
+
+      - name: Setup Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: egress-proxy
+
+      - name: Format
+        working-directory: egress-proxy
+        run: cargo fmt --all -- --check
+
+      - name: Lint
+        working-directory: egress-proxy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Build
+        working-directory: egress-proxy
+        run: cargo build
+
+      - name: Test
+        working-directory: egress-proxy
+        run: cargo test --all
+
+      - name: Build Docker image
+        run: docker build -f dockerfiles/egress-proxy.Dockerfile -t dust-egress-proxy-ci .

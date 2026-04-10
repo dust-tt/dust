@@ -1,0 +1,26 @@
+[package]
+name = "egress-proxy"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "egress-proxy"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0"
+# TODO(sandbox-egress): Nice-to-have cleanup after PR1 stabilizes: relax exact pins where safe
+# and remove transitional dependencies that are no longer needed.
+axum = "=0.8.4"
+clap = { version = "=4.5.40", features = ["derive", "env"] }
+jsonwebtoken = { version = "10.3.0", default-features = false, features = ["aws_lc_rs"] }
+rustls = "0.23"
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "1.0.57"
+tokio = { version = "1.38", features = ["full"] }
+tokio-rustls = "0.26"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+[dev-dependencies]
+tempfile = "3.20.0"
