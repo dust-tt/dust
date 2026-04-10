@@ -3,7 +3,10 @@ import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { RegionInfo } from "@app/lib/api/regions/config";
-import type { MCPConnectionType } from "@app/lib/swr/mcp_servers";
+import {
+  isMCPCreateServerError,
+  type MCPConnectionType,
+} from "@app/lib/swr/mcp_servers";
 import type { CreateMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp";
 import type { DiscoverOAuthMetadataResponseBody } from "@app/pages/api/w/[wId]/mcp/discover_oauth_metadata";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
@@ -35,20 +38,33 @@ export type CreateMCPServerDialogSubmitErrorKind =
 export class CreateMCPServerDialogSubmitError extends Error {
   readonly kind: CreateMCPServerDialogSubmitErrorKind;
   readonly remoteMCPServerOAuthDiscoveryDone: boolean;
+  readonly isRemoteServerError: boolean;
 
   constructor({
     kind,
     message,
     remoteMCPServerOAuthDiscoveryDone,
+    isRemoteServerError = false,
   }: {
     kind: CreateMCPServerDialogSubmitErrorKind;
     message: string;
     remoteMCPServerOAuthDiscoveryDone: boolean;
+    isRemoteServerError?: boolean;
   }) {
     super(message);
     this.kind = kind;
     this.remoteMCPServerOAuthDiscoveryDone = remoteMCPServerOAuthDiscoveryDone;
+    this.isRemoteServerError = isRemoteServerError;
   }
+}
+
+export function isCreateServerError(
+  error: Error
+): error is CreateMCPServerDialogSubmitError & { kind: "create_server" } {
+  return (
+    error instanceof CreateMCPServerDialogSubmitError &&
+    error.kind === "create_server"
+  );
 }
 
 type DiscoverOAuthMetadataFn = (
@@ -290,12 +306,15 @@ export async function submitCreateMCPServerDialogForm({
     });
 
     if (createRes.isErr()) {
+      const err = createRes.error;
       return new Err(
         new CreateMCPServerDialogSubmitError({
           kind: "create_server",
-          message: createRes.error.message,
+          message: err.message,
           remoteMCPServerOAuthDiscoveryDone:
             nextRemoteMCPServerOAuthDiscoveryDone,
+          isRemoteServerError:
+            isMCPCreateServerError(err) && err.isRemoteServerError,
         })
       );
     }
