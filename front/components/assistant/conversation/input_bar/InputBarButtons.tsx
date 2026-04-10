@@ -77,7 +77,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
-  const handleAgentDetailsClick = (agentSId: string) => {
+  const handleAgentDetailsClick = (agentId: string) => {
     setQueryParam(router, "agentDetails", agentSId);
   };
 
