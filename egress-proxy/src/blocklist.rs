@@ -33,6 +33,8 @@ fn is_unsafe_ipv4(ip: Ipv4Addr) -> bool {
         || ip.is_private()
         || ip.is_link_local()
         || ip.is_unspecified()
+        // Explicitly block the well-known cloud metadata service address. This is already covered
+        // by the link-local check above, but keeping it visible documents the SSRF risk.
         || ip == Ipv4Addr::new(169, 254, 169, 254)
 }
 
