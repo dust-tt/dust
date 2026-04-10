@@ -36,6 +36,11 @@ const killSwitchMap: Record<
     description:
       "Disable Firecrawl for webbrowse tool, use Spider.cloud instead",
   },
+  global_dust_agents_fallback: {
+    title: "Dust Agents Fallback Provider",
+    description:
+      "Force dust and deep-dive agents to use non-Anthropic models (OpenAI > Gemini > others). ONLY USE when either latest Sonnet or Opus models are down.",
+  },
 };
 
 export function KillPage() {

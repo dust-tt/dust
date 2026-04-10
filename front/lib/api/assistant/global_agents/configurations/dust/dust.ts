@@ -65,6 +65,7 @@ import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
 import { GPT_5_4_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type {
   ModelConfigurationType,
+  ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 
@@ -74,6 +75,7 @@ interface DustLikeGlobalAgentArgs {
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   hasDeepDive: boolean;
   globalAgentContext?: GlobalAgentContext;
+  excludeProviders?: ReadonlySet<ModelProviderIdType>;
 }
 
 const INSTRUCTION_SECTIONS = {
@@ -320,6 +322,7 @@ function _getDustLikeGlobalAgent(
     mcpServerViews,
     hasDeepDive,
     globalAgentContext,
+    excludeProviders = new Set<ModelProviderIdType>(),
   }: DustLikeGlobalAgentArgs,
   {
     agentId,
@@ -364,18 +367,19 @@ function _getDustLikeGlobalAgent(
     }
 
     if (!auth.isUpgraded()) {
-      return getSmallWhitelistedModel(auth);
+      return getSmallWhitelistedModel(auth, excludeProviders);
     }
 
     if (
       preferredModelConfiguration &&
+      !excludeProviders.has(preferredModelConfiguration.providerId) &&
       isProviderWhitelisted(auth, preferredModelConfiguration.providerId)
     ) {
       isPreferredModel = true;
       return preferredModelConfiguration;
     }
 
-    return getLargeWhitelistedModel(auth);
+    return getLargeWhitelistedModel(auth, excludeProviders);
   })();
 
   const model: AgentModelConfigurationType = modelConfiguration
