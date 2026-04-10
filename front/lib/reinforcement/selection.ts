@@ -10,6 +10,7 @@ import { AgentMessageSkillModel } from "@app/lib/models/skill/conversation_skill
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { makeSId } from "@app/lib/resources/string_ids";
+import { daysAgo } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -59,17 +60,8 @@ async function fetchEligibleSkillIds(
   auth: Authenticator
 ): Promise<Set<ModelId>> {
   const workspace = auth.getNonNullableWorkspace();
-  const now = new Date();
-
-  const stalenessThreshold = new Date(now);
-  stalenessThreshold.setDate(
-    stalenessThreshold.getDate() - SKILL_STALENESS_THRESHOLD_DAYS
-  );
-
-  const pendingSuggestionCutoff = new Date(now);
-  pendingSuggestionCutoff.setDate(
-    pendingSuggestionCutoff.getDate() - PENDING_SUGGESTION_MAX_AGE_DAYS
-  );
+  const stalenessThreshold = daysAgo(SKILL_STALENESS_THRESHOLD_DAYS);
+  const pendingSuggestionCutoff = daysAgo(PENDING_SUGGESTION_MAX_AGE_DAYS);
 
   // Parallel queries: stale skills and skills with pending reinforcement suggestions.
   const [recentSkills, pendingSuggestions] = await Promise.all([
@@ -157,9 +149,11 @@ async function discoverConversations(
   }
 
   // Post-filter: discard records where the skill was invoked by a custom agent.
+  // A null agentConfigurationId means the skill was added to the conversation
+  // directly (not via an agent config), which is eligible.
   const filteredRecords = skillRecords.filter(
     (r) =>
-      r.agentConfigurationId !== null && isGlobalAgentId(r.agentConfigurationId)
+      r.agentConfigurationId === null || isGlobalAgentId(r.agentConfigurationId)
   );
 
   if (filteredRecords.length === 0) {
@@ -237,6 +231,7 @@ async function discoverConversations(
  * and tool error counts.
  */
 async function fetchConversationSignals(
+  workspaceId: ModelId,
   conversationIds: ModelId[]
 ): Promise<ConversationSignals> {
   if (conversationIds.length === 0) {
@@ -252,12 +247,10 @@ async function fetchConversationSignals(
     MessageModel.findAll({
       attributes: [
         "conversationId",
-        [
-          frontSequelize.fn("COUNT", frontSequelize.col("MessageModel.id")),
-          "count",
-        ],
+        [frontSequelize.fn("COUNT", frontSequelize.col("message.id")), "count"],
       ],
       where: {
+        workspaceId,
         conversationId: { [Op.in]: conversationIds },
         userMessageId: { [Op.ne]: null },
       },
@@ -269,15 +262,10 @@ async function fetchConversationSignals(
     AgentMessageFeedbackModel.findAll({
       attributes: [
         "conversationId",
-        [
-          frontSequelize.fn(
-            "COUNT",
-            frontSequelize.col("AgentMessageFeedbackModel.id")
-          ),
-          "count",
-        ],
+        [frontSequelize.fn("COUNT", frontSequelize.col("id")), "count"],
       ],
       where: {
+        workspaceId,
         conversationId: { [Op.in]: conversationIds },
       },
       group: ["conversationId"],
@@ -288,10 +276,7 @@ async function fetchConversationSignals(
     MessageModel.findAll({
       attributes: [
         "conversationId",
-        [
-          frontSequelize.fn("COUNT", frontSequelize.col("MessageModel.id")),
-          "count",
-        ],
+        [frontSequelize.fn("COUNT", frontSequelize.col("message.id")), "count"],
       ],
       include: [
         {
@@ -303,10 +288,11 @@ async function fetchConversationSignals(
         },
       ],
       where: {
+        workspaceId,
         conversationId: { [Op.in]: conversationIds },
         agentMessageId: { [Op.ne]: null },
       },
-      group: ["MessageModel.conversationId"],
+      group: ["message.conversationId"],
       raw: true,
     }),
   ]);
@@ -498,7 +484,10 @@ export async function findConversationsWithSkills(
 
   // Stage 3: Fetch signals.
   const candidateConversationIds = [...conversationSkillMap.keys()];
-  const signals = await fetchConversationSignals(candidateConversationIds);
+  const signals = await fetchConversationSignals(
+    workspace.id,
+    candidateConversationIds
+  );
 
   // Stage 4: Score and select.
   const results = scoreAndSelectConversations(
