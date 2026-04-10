@@ -37,12 +37,12 @@ import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   cancelSubscriptionImmediately,
   createMetronomeSetupCheckoutSession,
+  createStripeBusinessSubscription,
   createStripeSubscriptionCheckoutSession,
   getBusinessProPlanProductId,
   getProPlanProductId,
   getStripeSubscription,
   type SupportedPaymentMethod,
-  upgradeProSubscriptionToBusiness,
 } from "@app/lib/plans/stripe";
 import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial/limits";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
@@ -830,7 +830,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
 
   /**
    * Upgrades a Pro subscription to Business plan.
-   * This updates both Stripe (swaps product/price to Business monthly) and the database plan.
    * Only allowed for workspaces that are whitelisted for Business (metadata.isBusiness = true).
    */
   async upgradeToBusinessPlan(
@@ -850,19 +849,22 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       PRO_PLAN_SEAT_39_CODE
     );
 
-    if (this.stripeSubscriptionId) {
-      const stripeResult = await upgradeProSubscriptionToBusiness({
-        stripeSubscriptionId: this.stripeSubscriptionId,
+    const oldStripeSubscriptionId = this.stripeSubscriptionId;
+    let newStripeSubscriptionId: string | null = null;
+    if (oldStripeSubscriptionId) {
+      const stripeResult = await createStripeBusinessSubscription({
+        stripeSubscriptionId: oldStripeSubscriptionId,
         owner,
         planCode: PRO_PLAN_SEAT_39_CODE,
       });
       if (stripeResult.isErr()) {
         return new Err(stripeResult.error);
       }
+      newStripeSubscriptionId = stripeResult.value.stripeSubscriptionId;
     }
 
     // Switch Metronome contract to Business package.
-    let metronomeContractId: string | undefined;
+    let newMetronomeContractId: string | null = null;
     if (this.metronomeContractId && owner.metronomeCustomerId) {
       const result = await switchMetronomeContractPackage({
         metronomeCustomerId: owner.metronomeCustomerId,
@@ -874,21 +876,35 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         return new Err(result.error);
       }
       if (result.isOk()) {
-        metronomeContractId = result.value.metronomeContractId;
+        newMetronomeContractId = result.value.metronomeContractId;
       }
     }
 
-    await this.model.update(
-      {
-        planId: businessPlan.id,
-        metronomeContractId,
-      },
-      {
-        where: {
-          sId: this.sId,
+    await withTransaction(async (t) => {
+      await this.markAsEnded("ended_backend_only", t);
+      await SubscriptionResource.makeNew(
+        {
+          sId: generateRandomModelSId(),
+          workspaceId: this.workspaceId,
+          planId: businessPlan.id,
+          status: "active",
+          trialing: false,
+          startDate: new Date(),
+          endDate: null,
+          stripeSubscriptionId: newStripeSubscriptionId,
+          metronomeContractId: newMetronomeContractId,
         },
-      }
-    );
+        renderPlanFromModel({ plan: businessPlan }),
+        t
+      );
+    });
+
+    // Cancel after DB flip so the webhook finds ended_backend_only and does not scrub.
+    if (oldStripeSubscriptionId) {
+      await cancelSubscriptionImmediately({
+        stripeSubscriptionId: oldStripeSubscriptionId,
+      });
+    }
 
     return new Ok(undefined);
   }
