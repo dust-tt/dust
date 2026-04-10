@@ -94,12 +94,16 @@ export function ProjectsBrowsePopover({ owner }: ProjectsBrowsePopoverProps) {
 
   return (
     <div className="hidden sm:block">
-      <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverRoot open={isOpen} onOpenChange={setIsOpen} modal>
         <PopoverTrigger asChild>
           <Button size="xs" icon={MoreIcon} variant="ghost" />
         </PopoverTrigger>
-        <PopoverContent className="w-80 p-0" align="start">
-          <div className="p-3 pb-2">
+        <PopoverContent
+          className="flex w-80 max-h-[--radix-popover-content-available-height] flex-col p-0"
+          align="start"
+          collisionPadding={16}
+        >
+          <div className="shrink-0 p-3 pb-2">
             <SearchInput
               name="browse-projects-search"
               placeholder="Search projects..."
@@ -107,7 +111,7 @@ export function ProjectsBrowsePopover({ owner }: ProjectsBrowsePopoverProps) {
               onChange={setSearchQuery}
             />
           </div>
-          <div className="max-h-[40rem] overflow-y-auto px-2 pb-2">
+          <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
             {isSearching && filteredProjects.length === 0 ? (
               <ProjectBrowseItemSkeleton count={5} />
             ) : filteredProjects.length === 0 ? (
