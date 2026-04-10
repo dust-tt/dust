@@ -608,7 +608,7 @@ const InputBarContainer = ({
           type: "info",
           title: "User mentions removed",
           description:
-            "You can't mention both users and agents in the same message.",
+            "You can’t mention both users and agents in the same message.",
         });
       }
       editorService.focusEnd();
