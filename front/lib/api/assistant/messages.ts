@@ -37,6 +37,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import {
   ConversationError,
+  isCompactionMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import {
@@ -796,7 +797,9 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
     let tempContentFragments: ContentFragmentType[] = [];
 
     renderedMessages.forEach((message) => {
-      if (isContentFragmentType(message)) {
+      if (isCompactionMessageType(message)) {
+        return;
+      } else if (isContentFragmentType(message)) {
         tempContentFragments.push(message); // Collect content fragments.
       } else {
         let messageWithContentFragments: UserMessageTypeWithContentFragments;

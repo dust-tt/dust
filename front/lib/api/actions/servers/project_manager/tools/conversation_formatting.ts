@@ -2,6 +2,7 @@ import { isMessageUnread } from "@app/components/assistant/conversation/utils";
 import {
   type AgentMessageType,
   type ConversationType,
+  isCompactionMessageType,
   isLightConversationType,
   type LightAgentMessageType,
   type LightConversationType,
@@ -58,6 +59,9 @@ export function formatConversationForDisplay(
 
   if (isLightConversationType(conversation)) {
     for (const msg of conversation.content) {
+      if (isCompactionMessageType(msg)) {
+        continue;
+      }
       const formattedMessage = formatMessage(msg, conversation.lastReadMs);
       if (formattedMessage) {
         messages.push(formattedMessage);
@@ -67,7 +71,7 @@ export function formatConversationForDisplay(
     for (const versions of conversation.content) {
       // Only take the last version of each rank
       const msg = versions[versions.length - 1];
-      if (!msg) {
+      if (!msg || isCompactionMessageType(msg)) {
         continue;
       }
 

@@ -12,7 +12,7 @@ Type-only change, no DB or runtime impact.
 
 - Add `CompactionMessageStatus = "created" | "succeeded" | "failed"` to
   `front/types/assistant/conversation.ts`.
-- Add `CompactionMessageType` (with `type: "compaction_message"`, `status`, `summary`) to
+- Add `CompactionMessageType` (with `type: "compaction_message"`, `status`, `content`) to
   `front/types/assistant/conversation.ts`.
 - Add `isCompactionMessageType()` type guard.
 - Add `CompactionMessageType` to the `MessageType` union (line 37), the `LegacyLightMessageType`
@@ -24,7 +24,7 @@ Type-only change, no DB or runtime impact.
 DB schema change, no runtime behavior.
 
 - Add `CompactionMessageModel` in `front/lib/models/agent/conversation.ts` with fields: `status`,
-  `summary` (TEXT, nullable).
+  `content` (TEXT, nullable).
 - Migration: create `compaction_message` table, add `compactionMessageId` FK on `message` table.
 - Update `MessageModel` (line 662): add `compactionMessageId` FK declaration.
 - Update `MessageModel` validation hook (line 809): extend the exactly-one-FK-non-null check to
@@ -121,14 +121,14 @@ Core orchestration. No feature flag needed — compaction is inert until Phase 5
 
 - Add `compactConversation()` in `front/lib/api/assistant/conversation.ts`:
   - Acquire `getConversationRankVersionLock`.
-  - Create `CompactionMessage` with `status: "created"`, `summary: null`.
+  - Create `CompactionMessage` with `status: "created"`, `content: null`.
   - Publish `CompactionMessageNewEvent`.
   - Launch `compactConversationWorkflow` (fire-and-forget).
 - In `postUserMessage` (line ~528): check for `CompactionMessageModel` with
   `status: "created"` in the conversation — return 409 if found (same pattern as steering's
   pending message check).
 - In `compactConversationActivity`:
-  - On success: update `CompactionMessage` to `status: "succeeded"` + `summary`.
+  - On success: update `CompactionMessage` to `status: "succeeded"` + `content`.
   - On failure: update to `status: "failed"`.
   - Publish `CompactionMessageDoneEvent`.
 
@@ -142,7 +142,7 @@ The LLM call that produces the summary.
     conversation + "summarize" instruction, see `x/spolu/compaction/claude_compaction.md` for
     reference).
   - Call the LLM via `callModel` / `queryModelWithStreaming` to generate the summary.
-  - Store the summary on the `CompactionMessage`.
+  - Store the content on the `CompactionMessage`.
 - Add the compaction prompt template (can live in the activity file or a dedicated prompt file
   under `front/temporal/compaction/`).
 

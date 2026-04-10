@@ -16,6 +16,7 @@ import type {
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 import {
+  isCompactionMessageType,
   isLightAgentMessageWithActionsType,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
@@ -194,8 +195,11 @@ export const isSidekickBootstrapMessage = (
 export const convertLightMessageTypeToVirtuosoMessages = (
   messages: LightMessageType[]
 ) =>
-  messages.map((message) =>
-    isUserMessageTypeWithContentFragments(message)
-      ? message
-      : makeInitialMessageStreamState(message)
-  );
+  messages
+    // TODO(compaction): Add support for compaction messages in the UI instead of filtering.
+    .filter((message) => !isCompactionMessageType(message))
+    .map((message) =>
+      isUserMessageTypeWithContentFragments(message)
+        ? message
+        : makeInitialMessageStreamState(message)
+    );

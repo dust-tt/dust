@@ -31,6 +31,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import {
   isAgentMessageType,
+  isCompactionMessageType,
   isProjectConversation,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
@@ -323,7 +324,7 @@ export async function validateUserMention(
         },
       });
     }
-  } else if (isContentFragmentType(message)) {
+  } else if (isContentFragmentType(message) || isCompactionMessageType(message)) {
     return new Err({
       status_code: 400,
       api_error: {
@@ -365,6 +366,7 @@ export async function validateUserMention(
     if (
       latestMessage.visibility !== "deleted" &&
       !isContentFragmentType(latestMessage) &&
+      !isCompactionMessageType(latestMessage) &&
       latestMessage.richMentions.some(
         (m) => isPendingStatus(m.status) && m.id === userId
       )
@@ -517,7 +519,7 @@ export async function dismissMention(
         },
       });
     }
-  } else if (isContentFragmentType(message)) {
+  } else if (isContentFragmentType(message) || isCompactionMessageType(message)) {
     return new Err({
       status_code: 400,
       api_error: {
@@ -568,6 +570,7 @@ export async function dismissMention(
     if (
       latestMessage.visibility !== "deleted" &&
       !isContentFragmentType(latestMessage) &&
+      !isCompactionMessageType(latestMessage) &&
       latestMessage.richMentions.some(predicate)
     ) {
       const mentionModel = await MentionModel.findOne({

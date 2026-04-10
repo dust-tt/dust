@@ -19,6 +19,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import {
   isAgentMessageType,
+  isCompactionMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import type {
@@ -202,6 +203,9 @@ export async function renderAllMessages(
           messages.push(renderedContentFragment);
         }
       }
+    } else if (isCompactionMessageType(m)) {
+      // Compaction messages are not rendered for now.
+      continue;
     } else {
       assertNever(m);
     }

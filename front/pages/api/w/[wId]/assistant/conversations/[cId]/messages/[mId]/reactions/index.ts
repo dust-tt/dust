@@ -23,6 +23,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import {
   isAgentMessageType,
+  isCompactionMessageType,
   isProjectConversation,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
@@ -110,7 +111,7 @@ async function handler(
   }
 
   const message = conversation.content.flat().find((m) => m.sId === messageId);
-  if (!message) {
+  if (!message || isCompactionMessageType(message)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

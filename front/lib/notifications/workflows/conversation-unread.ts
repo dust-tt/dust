@@ -25,6 +25,7 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import {
   ConversationError,
+  isCompactionMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import { isRichUserMention } from "@app/types/assistant/mentions";
@@ -215,7 +216,10 @@ const getConversationDetails = async ({
       ? message.content
       : "";
 
-  if (isContentFragmentType(message)) {
+  if (isCompactionMessageType(message)) {
+    // Compaction messages don't trigger notifications.
+    return new Err(new ConversationError("message_not_found"));
+  } else if (isContentFragmentType(message)) {
     // Content fragments don't have author info.
     author = "Someone else";
     authorIsAgent = false;
@@ -243,7 +247,7 @@ const getConversationDetails = async ({
   const hasUnreadMessages = unreadMessages.length > 0;
 
   const hasUnreadMentions = unreadMessages.some((msg) => {
-    if (isContentFragmentType(msg)) {
+    if (isContentFragmentType(msg) || isCompactionMessageType(msg)) {
       return false;
     }
     return msg.richMentions.some(

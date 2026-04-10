@@ -37,18 +37,21 @@ export type MessageReactionType = {
 export type MessageType =
   | AgentMessageType
   | UserMessageType
-  | ContentFragmentType;
+  | ContentFragmentType
+  | CompactionMessageType;
 
 // This is the old format where content fragments are separated from the user messages.
 export type LegacyLightMessageType =
   | LightAgentMessageType
   | UserMessageType
-  | ContentFragmentType;
+  | ContentFragmentType
+  | CompactionMessageType;
 
 // This is the new format where content fragments are attached to the user messages.
 export type LightMessageType =
   | LightAgentMessageType
-  | UserMessageTypeWithContentFragments;
+  | UserMessageTypeWithContentFragments
+  | CompactionMessageType;
 
 /**
  * User messages
@@ -316,6 +319,30 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
 }
 
 /**
+ * Compaction messages
+ */
+export type CompactionMessageStatus = "created" | "succeeded" | "failed";
+
+export type CompactionMessageType = {
+  type: "compaction_message";
+  id: ModelId;
+  sId: string;
+  created: number;
+  visibility: MessageVisibility;
+  version: number;
+  rank: number;
+  branchId: string | null;
+  status: CompactionMessageStatus; // Lifecycle: created → succeeded | failed.
+  content: string | null; // null while status is "created".
+};
+
+export function isCompactionMessageType(
+  arg: MessageType | LegacyLightMessageType | LightMessageType
+): arg is CompactionMessageType {
+  return arg.type === "compaction_message";
+}
+
+/**
  * Conversations
  */
 
@@ -369,7 +396,12 @@ export type ConversationWithoutContentType = {
 export type ConversationType = ConversationWithoutContentType & {
   owner: WorkspaceType;
   visibility: ConversationVisibility;
-  content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
+  content: (
+    | UserMessageType[]
+    | AgentMessageType[]
+    | ContentFragmentType[]
+    | CompactionMessageType[]
+  )[];
 };
 
 /**
@@ -379,7 +411,11 @@ export type ConversationType = ConversationWithoutContentType & {
 export type LightConversationType = ConversationWithoutContentType & {
   owner: WorkspaceType;
   visibility: ConversationVisibility;
-  content: (LightAgentMessageType | UserMessageTypeWithContentFragments)[];
+  content: (
+    | LightAgentMessageType
+    | UserMessageTypeWithContentFragments
+    | CompactionMessageType
+  )[];
 };
 
 export function isLightConversationType(
