@@ -26,6 +26,7 @@ import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import {
   ConversationError,
   isCompactionMessageType,
+  isLightAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import { isRichUserMention } from "@app/types/assistant/mentions";
@@ -232,7 +233,7 @@ const getConversationDetails = async ({
     mentionedUserIds = message.richMentions
       .filter((m) => isRichUserMention(m) && m.status === "approved")
       .map((m) => m.id);
-  } else if (message.type === "agent_message") {
+  } else if (isLightAgentMessageType(message)) {
     author = message.configuration.name
       ? `@${message.configuration.name}`
       : "An agent";
