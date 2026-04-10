@@ -1,3 +1,4 @@
+import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
 import { ThinkingStep } from "@app/components/assistant/conversation/actions/inline/ThinkingStep";
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
@@ -17,13 +18,13 @@ import type {
 } from "@app/types/assistant/conversation";
 import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { WorkspaceType } from "@app/types/user";
 import {
   AnimatedText,
   CheckIcon,
   ChevronRightIcon,
   cn,
   Icon,
-  Markdown,
   ToolsIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -34,6 +35,7 @@ interface InlineActivityStepsProps {
   completedSteps: InlineActivityStep[];
   pendingToolCalls: PendingToolCall[];
   onOpenDetails?: (messageId: string) => void;
+  owner: WorkspaceType;
 }
 
 function getCompletionLabel(
@@ -73,6 +75,7 @@ export function InlineActivitySteps({
   completedSteps,
   pendingToolCalls,
   onOpenDetails,
+  owner,
 }: InlineActivityStepsProps) {
   const isAgentMessageWithActions =
     isLightAgentMessageWithActionsType(agentMessage);
@@ -226,8 +229,9 @@ export function InlineActivitySteps({
                 case "content":
                   return (
                     <div key={step.id}>
-                      <Markdown
+                      <AgentMessageMarkdown
                         content={step.content}
+                        owner={owner}
                         isStreaming={false}
                         isLastMessage={false}
                       />
@@ -284,13 +288,11 @@ export function InlineActivitySteps({
             {/* Active writing (streaming content tokens) */}
             {showActiveWriting && agentMessage.content ? (
               <div>
-                <Markdown
+                <AgentMessageMarkdown
                   content={agentMessage.content}
+                  owner={owner}
                   isStreaming={false}
                   streamingState="streaming"
-                  enableAnimation
-                  animationDurationSeconds={0.3}
-                  delimiter=" "
                   isLastMessage={false}
                 />
               </div>
