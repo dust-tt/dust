@@ -74,9 +74,7 @@ vi.mock("@app/lib/api/workos/organization_primitives", async () => {
   };
 });
 
-const listEnabledKillSwitches = vi.hoisted(() =>
-  vi.fn().mockResolvedValue([])
-);
+const listEnabledKillSwitches = vi.hoisted(() => vi.fn().mockResolvedValue([]));
 vi.mock("@app/lib/resources/kill_switch_resource", () => ({
   KillSwitchResource: {
     listEnabledKillSwitches,
@@ -497,9 +495,7 @@ describe("WorkspaceResource", () => {
     });
 
     it("filters out anthropic when global_blacklist_anthropic is enabled", async () => {
-      listEnabledKillSwitches.mockResolvedValue([
-        "global_blacklist_anthropic",
-      ]);
+      listEnabledKillSwitches.mockResolvedValue(["global_blacklist_anthropic"]);
 
       const result =
         await WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches([
@@ -512,9 +508,7 @@ describe("WorkspaceResource", () => {
     });
 
     it("filters out openai when global_blacklist_openai is enabled", async () => {
-      listEnabledKillSwitches.mockResolvedValue([
-        "global_blacklist_openai",
-      ]);
+      listEnabledKillSwitches.mockResolvedValue(["global_blacklist_openai"]);
 
       const result =
         await WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches([
@@ -543,9 +537,7 @@ describe("WorkspaceResource", () => {
     });
 
     it("uses MODEL_PROVIDER_IDS and filters anthropic when whiteListedProviders is null and anthropic is blacklisted", async () => {
-      listEnabledKillSwitches.mockResolvedValue([
-        "global_blacklist_anthropic",
-      ]);
+      listEnabledKillSwitches.mockResolvedValue(["global_blacklist_anthropic"]);
 
       const result =
         await WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches(
@@ -559,9 +551,7 @@ describe("WorkspaceResource", () => {
     });
 
     it("uses MODEL_PROVIDER_IDS and filters openai when whiteListedProviders is null and openai is blacklisted", async () => {
-      listEnabledKillSwitches.mockResolvedValue([
-        "global_blacklist_openai",
-      ]);
+      listEnabledKillSwitches.mockResolvedValue(["global_blacklist_openai"]);
 
       const result =
         await WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches(

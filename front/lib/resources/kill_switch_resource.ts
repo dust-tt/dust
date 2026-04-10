@@ -75,9 +75,7 @@ export class KillSwitchResource extends BaseResource<KillSwitchModel> {
     return KillSwitchResource.listEnabledKillSwitchesCached();
   }
 
-  static async isKillSwitchEnabled(
-    type: KillSwitchType
-  ): Promise<boolean> {
+  static async isKillSwitchEnabled(type: KillSwitchType): Promise<boolean> {
     const enabledKillSwitches =
       await KillSwitchResource.listEnabledKillSwitches();
     return enabledKillSwitches.includes(type);

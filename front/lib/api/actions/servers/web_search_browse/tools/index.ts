@@ -115,10 +115,9 @@ async function handleWebbrowser(
     isLightServerSideMCPToolConfiguration(toolConfiguration) &&
     toolConfiguration.additionalConfiguration[USE_SUMMARY_SWITCH] === true;
 
-  const isFirecrawlDisabled =
-    await KillSwitchResource.isKillSwitchEnabled(
-      "global_disable_firecrawl"
-    );
+  const isFirecrawlDisabled = await KillSwitchResource.isKillSwitchEnabled(
+    "global_disable_firecrawl"
+  );
   const browsingProvider = isFirecrawlDisabled ? "spider" : "firecrawl";
 
   const results = await browseUrls(urls, 8, "markdown", {

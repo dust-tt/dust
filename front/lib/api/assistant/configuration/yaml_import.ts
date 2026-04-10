@@ -35,9 +35,7 @@ async function importAgentConfiguration(
   agentConfigurationId?: string
 ): Promise<ImportResult> {
   const isSaveAgentConfigurationsEnabled =
-    await KillSwitchResource.isKillSwitchEnabled(
-      "save_agent_configurations"
-    );
+    await KillSwitchResource.isKillSwitchEnabled("save_agent_configurations");
   if (isSaveAgentConfigurationsEnabled) {
     return new Err({
       status_code: 400,
