@@ -5,7 +5,7 @@ import {
   findMetronomeCustomerByAlias,
   scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
-import { provisionSeatsForContract } from "@app/lib/metronome/seats";
+import { syncSeatCount } from "@app/lib/metronome/seats";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -50,7 +50,7 @@ export async function switchMetronomeContractPackage({
 
   const { contractId: metronomeContractId, startingAt } = contractResult.value;
 
-  await provisionSeatsForContract({
+  await syncSeatCount({
     metronomeCustomerId,
     contractId: metronomeContractId,
     workspace,
@@ -110,7 +110,7 @@ export async function provisionMetronomeCustomerAndContract({
   const { contractId: metronomeContractId, startingAt } = contractResult.value;
 
   // Provision all existing workspace members as seats on the new contract.
-  await provisionSeatsForContract({
+  await syncSeatCount({
     metronomeCustomerId,
     contractId: metronomeContractId,
     workspace,
