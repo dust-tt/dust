@@ -677,8 +677,7 @@ export const ConversationViewer = ({
         const nbMessages = ref.current.data.get().length;
         // When steering (hasRunningAgent), the message is pending and no new
         // agent message is created — stay at the current scroll position.
-        const shouldScrollToUserMessage =
-          isMentioningAgent && !hasRunningAgent;
+        const shouldScrollToUserMessage = isMentioningAgent && !hasRunningAgent;
 
         ref.current.data.append(
           [placeholderUserMsg, ...placeholderAgentMessages],
