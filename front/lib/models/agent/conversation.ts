@@ -685,7 +685,7 @@ export class MessageModel extends WorkspaceAwareModel<MessageModel> {
   declare conversation?: NonAttribute<ConversationModel>;
   declare branch?: NonAttribute<ConversationBranchModel>;
 
-  get branchSId(): string | null {
+  getBranchId(): string | null {
     return this.branchId
       ? makeSId("conversation_branch", {
           id: this.branchId,

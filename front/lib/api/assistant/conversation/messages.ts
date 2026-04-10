@@ -626,6 +626,6 @@ export async function getUserMessageIdFromMessageId(
     userMessageVersion: parentMessage.version,
     userMessageUserId: parentMessage.userMessage.userId,
     userMessageOrigin: parentMessage.userMessage.userContextOrigin,
-    branchId: agentMessage.branchSId,
+    branchId: agentMessage.getBranchId(),
   };
 }

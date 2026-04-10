@@ -328,10 +328,10 @@ export async function getConversationMessageType(
     return null;
   }
 
-  if (message.branchSId) {
+  if (message.getBranchId()) {
     const branch = await ConversationBranchResource.fetchById(
       auth,
-      message.branchSId
+      message.getBranchId()!
     );
     if (!branch || !branch.canRead(auth)) {
       return null;

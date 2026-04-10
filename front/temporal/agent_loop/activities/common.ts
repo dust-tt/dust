@@ -503,7 +503,7 @@ export async function notifyWorkflowError(
     completedTs: messageRow.agentMessage.completedAt?.getTime() ?? null,
     sId: messageRow.sId,
     type: "agent_message",
-    branchId: messageRow.branchSId,
+    branchId: messageRow.getBranchId(),
     visibility: messageRow.visibility,
     version: messageRow.version,
 
