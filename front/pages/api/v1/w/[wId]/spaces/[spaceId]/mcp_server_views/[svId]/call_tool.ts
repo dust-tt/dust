@@ -43,8 +43,8 @@ import type {
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { CallMCPToolResponseType } from "@dust-tt/client";
-import { CallMCPToolRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 type CallToolPendingResponseType = {
   status: "pending";
@@ -154,7 +154,7 @@ async function buildSandboxAgentLoopContext(
   const actualPermission =
     view.getToolPermission(toolName) ?? FALLBACK_MCP_TOOL_STAKE_LEVEL;
 
-  const [toolConfiguration] = makeServerSideMCPToolConfigurations(
+  const [fullToolConfiguration] = makeServerSideMCPToolConfigurations(
     serverSideConfig,
     [
       {
@@ -167,6 +167,16 @@ async function buildSandboxAgentLoopContext(
       },
     ]
   );
+
+  // Strip inputSchema and description so the runtime object matches
+  // LightServerSideMCPToolConfigurationType — the isLight type guard checks
+  // !("inputSchema" in arg), so keeping it would cause the approval flow to be
+  // silently skipped.
+  const {
+    inputSchema: _is,
+    description: _d,
+    ...toolConfiguration
+  } = fullToolConfiguration;
 
   return {
     runContext: {
@@ -348,7 +358,17 @@ async function handler(
 
   switch (method) {
     case "POST": {
-      const bodyRes = CallMCPToolRequestBodySchema.safeParse(req.body);
+      // Permissive body schema: toolName is optional for re-POST (actionId
+      // carries the tool info). We validate toolName manually on the initial-
+      // POST path below.
+      const bodyRes = z
+        .object({
+          toolName: z.string().optional(),
+          arguments: z.record(z.unknown()).optional(),
+          actionId: z.string().optional(),
+        })
+        .safeParse(req.body);
+
       if (!bodyRes.success) {
         return apiError(req, res, {
           status_code: 400,
@@ -359,11 +379,111 @@ async function handler(
         });
       }
 
-      const {
-        toolName,
-        arguments: toolArgs = {},
-        actionId: actionIdParam,
-      } = bodyRes.data;
+      const { actionId: actionIdParam } = bodyRes.data;
+
+      // ── Re-POST after approval ──────────────────────────────────────
+      // When actionId is present the client is executing a previously-
+      // approved tool call. The action record stores the tool name and
+      // arguments, so the body only *needs* actionId (toolName/arguments
+      // are optional here for resilience against body-parsing issues).
+      if (actionIdParam) {
+        const sandboxClaims = await extractSandboxClaims(req);
+        if (!sandboxClaims) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Valid sandbox token required.",
+            },
+          });
+        }
+
+        const action = await AgentMCPActionResource.fetchById(
+          auth,
+          actionIdParam
+        );
+        if (!action) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Action not found.",
+            },
+          });
+        }
+
+        if (action.status !== "ready_allowed_explicitly") {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Action is not approved (status: ${action.status}).`,
+            },
+          });
+        }
+
+        // Prefer the action's stored data; fall back to the request body.
+        const toolName =
+          action.toolConfiguration.originalName ?? bodyRes.data.toolName;
+        if (!toolName) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Could not determine tool name from action or request body.",
+            },
+          });
+        }
+
+        const toolArgs = bodyRes.data.arguments ?? action.augmentedInputs ?? {};
+
+        const agentLoopContext = await buildSandboxAgentLoopContext(
+          auth,
+          sandboxClaims,
+          {
+            mcpServerViewId: view.sId,
+            toolName,
+            mcpServerId: view.mcpServerId,
+            view,
+          }
+        );
+
+        const runContext = agentLoopContext?.runContext;
+        if (!runContext) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Valid sandbox token required.",
+            },
+          });
+        }
+
+        const result = await callMCPToolForSandbox(auth, toolArgs, runContext);
+
+        return res.status(200).json({
+          success: true,
+          result: {
+            content: result.content,
+            isError: result.isError === true,
+          },
+        });
+      }
+
+      // ── Initial POST (first tool call) ──────────────────────────────
+      const { toolName } = bodyRes.data;
+      if (!toolName) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "toolName is required.",
+          },
+        });
+      }
+
+      const toolArgs = bodyRes.data.arguments ?? {};
 
       // Build agent loop context from sandbox token if available.
       const sandboxClaims = await extractSandboxClaims(req);
@@ -382,60 +502,30 @@ async function handler(
         runContext &&
         isLightServerSideMCPToolConfiguration(runContext.toolConfiguration)
       ) {
-        if (actionIdParam) {
-          // Re-POST after approval: verify the action is approved and proceed.
-          const action = await AgentMCPActionResource.fetchById(
-            auth,
-            actionIdParam
-          );
-          if (!action) {
-            return apiError(req, res, {
-              status_code: 404,
-              api_error: {
-                type: "invalid_request_error",
-                message: "Action not found.",
-              },
-            });
+        const { status } = await getExecutionStatusFromConfig(
+          auth,
+          runContext.toolConfiguration,
+          runContext.agentMessage,
+          {
+            agentId: runContext.agentConfiguration.sId,
+            toolInputs: toolArgs,
           }
+        );
 
-          if (action.status !== "ready_allowed_explicitly") {
-            return apiError(req, res, {
-              status_code: 403,
-              api_error: {
-                type: "invalid_request_error",
-                message: `Action is not approved (status: ${action.status}).`,
-              },
-            });
-          }
+        if (status === "blocked_validation_required") {
+          const actionId = await createBlockedSandboxAction(auth, {
+            agentConfiguration: runContext.agentConfiguration,
+            agentMessage: runContext.agentMessage,
+            conversation: runContext.conversation,
+            toolConfiguration: runContext.toolConfiguration,
+            toolArgs,
+          });
 
-          // Action is approved — skip stake check, proceed to execution.
-        } else {
-          // First POST: check stakes and potentially return 202.
-          const { status } = await getExecutionStatusFromConfig(
-            auth,
-            runContext.toolConfiguration,
-            runContext.agentMessage,
-            {
-              agentId: runContext.agentConfiguration.sId,
-              toolInputs: toolArgs,
-            }
-          );
-
-          if (status === "blocked_validation_required") {
-            const actionId = await createBlockedSandboxAction(auth, {
-              agentConfiguration: runContext.agentConfiguration,
-              agentMessage: runContext.agentMessage,
-              conversation: runContext.conversation,
-              toolConfiguration: runContext.toolConfiguration,
-              toolArgs,
-            });
-
-            // Return 202 immediately — the client polls call_tool.
-            return res.status(202).json({
-              status: "pending",
-              actionId,
-            });
-          }
+          // Return 202 immediately — the client polls call_tool.
+          return res.status(202).json({
+            status: "pending",
+            actionId,
+          });
         }
       }
 

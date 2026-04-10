@@ -71,31 +71,6 @@ impl DustApiClient {
             .context(format!("failed to parse response from GET {url}"))
     }
 
-    async fn post<B: Serialize, T: DeserializeOwned>(
-        &self,
-        path: &str,
-        body: &B,
-    ) -> anyhow::Result<T> {
-        let url = self.url(path);
-        let resp = self
-            .client
-            .post(&url)
-            .json(body)
-            .send()
-            .await
-            .context(format!("POST {url}"))?;
-
-        let status = resp.status();
-        if !status.is_success() {
-            let body = resp.text().await.unwrap_or_default();
-            bail!("POST {url} returned {status}: {body}");
-        }
-
-        resp.json::<T>()
-            .await
-            .context(format!("failed to parse response from POST {url}"))
-    }
-
     pub async fn list_tools(
         &self,
         server: Option<&str>,
@@ -182,7 +157,10 @@ impl DustApiClient {
 
                 match poll_result.status {
                     ApprovalStatus::Approved => {
-                        // Re-POST with actionId to execute the tool.
+                        // Re-POST with actionId to execute the approved tool.
+                        // Use post_raw (not post) so we can handle non-200
+                        // success codes explicitly — the generic post method
+                        // treats any 2xx as a valid CallToolResponse.
                         let mut re_post_body = serde_json::json!({
                             "toolName": tool_name,
                             "actionId": pending.action_id,
@@ -190,7 +168,16 @@ impl DustApiClient {
                         if let Some(args) = &arguments {
                             re_post_body["arguments"] = args.clone();
                         }
-                        return self.post(&call_tool_path, &re_post_body).await;
+
+                        let (re_status, re_body) =
+                            self.post_raw(&call_tool_path, &re_post_body).await?;
+
+                        if re_status == reqwest::StatusCode::OK {
+                            return serde_json::from_str::<CallToolResponse>(&re_body)
+                                .context("failed to parse re-POST response");
+                        }
+
+                        bail!("re-POST call_tool returned {re_status}: {re_body}");
                     }
                     ApprovalStatus::Rejected => {
                         bail!("Tool execution was rejected by the user");
