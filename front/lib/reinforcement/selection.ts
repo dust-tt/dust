@@ -1,10 +1,10 @@
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { AgentMessageSkillModel } from "@app/lib/models/skill/conversation_skill";
-import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { daysAgo } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
@@ -59,26 +59,16 @@ async function fetchEligibleSkillIds(
   const stalenessThreshold = daysAgo(SKILL_STALENESS_THRESHOLD_DAYS);
   const pendingSuggestionCutoff = daysAgo(PENDING_SUGGESTION_MAX_AGE_DAYS);
 
-  // Parallel queries: stale skills and skills with pending reinforcement suggestions.
+  // Parallel queries: recently modified active skills and pending reinforcement suggestions.
   const [recentSkills, pendingSuggestions] = await Promise.all([
-    // Active skills that have been modified recently.
-    SkillConfigurationModel.findAll({
-      attributes: ["id"],
-      where: {
-        workspaceId: workspace.id,
-        status: "active",
-        updatedAt: { [Op.gte]: stalenessThreshold },
-      },
+    SkillResource.listByWorkspace(auth, {
+      status: "active",
+      updatedAfter: stalenessThreshold,
     }),
-    // Pending reinforcement suggestions.
-    SkillSuggestionModel.findAll({
-      attributes: ["skillConfigurationId"],
-      where: {
-        workspaceId: workspace.id,
-        state: "pending",
-        source: "reinforcement",
-        createdAt: { [Op.gte]: pendingSuggestionCutoff },
-      },
+    SkillSuggestionResource.listByWorkspace(auth, {
+      states: ["pending"],
+      sources: ["reinforcement"],
+      createdAfter: pendingSuggestionCutoff,
     }),
   ]);
 
