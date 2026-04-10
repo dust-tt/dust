@@ -1,0 +1,25 @@
+connectors/src/connectors/slack/chat/slack_stream_handler.ts
+  833a10e1d8bc700a 62-71
+firebase-functions/webhook-router/docker-compose.yml
+  833a10e1d8bc700a 18-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "0a813b959bfb0b1cae8e0a4095c3f5f16c34c92d",
+  "prompts": {
+    "833a10e1d8bc700a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca0ecb4b-da89-4c83-933d-4a9722e91595",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 5184,
+      "total_deletions": 5191,
+      "accepted_lines": 42,
+      "overriden_lines": 0
+    }
+  }
+}
