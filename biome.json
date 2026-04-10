@@ -90,6 +90,10 @@
       "plugins": ["./.grit/patterns/noSparkleClassInFront.grit"]
     },
     {
+      "includes": ["front/**/*.tsx"],
+      "plugins": ["./.grit/patterns/noAssertNeverInFront.grit"]
+    },
+    {
       "includes": ["cli/dust-cli/**", "sparkle/**"],
       "javascript": {
         "jsxRuntime": "reactClassic"

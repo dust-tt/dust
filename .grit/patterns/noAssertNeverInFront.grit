@@ -1,0 +1,21 @@
+engine biome(1.0)
+language js
+
+// Prevents usage of assertNever (the throwing variant) in .tsx files.
+// Frontend components must use assertNeverAndIgnore instead to avoid
+// crashing the app when the server introduces new enum values before
+// the client is redeployed.
+//
+// Note: Due to Biome GritQL bug #5801, import patterns with multiple named
+// specifiers don't match. This handles single-specifier imports only.
+pattern assert_never_import() {
+    `import { assertNever } from "@app/types/shared/utils/assert_never"`
+}
+
+assert_never_import() as $import where {
+    register_diagnostic(
+        span = $import,
+        message = "Do not import assertNever in frontend components — it throws at runtime and crashes the app when unknown enum values arrive after a deploy. Use assertNeverAndIgnore instead (from the same module).",
+        severity = "error"
+    )
+}
