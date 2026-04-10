@@ -5,6 +5,7 @@ import {
   isCompactionMessageType,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { stripMarkdown } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import type { Avatar } from "@dust-tt/sparkle";
@@ -12,7 +13,6 @@ import { ConversationListItem, ReplySection } from "@dust-tt/sparkle";
 import uniqBy from "lodash/uniqBy";
 import moment from "moment";
 import { useMemo } from "react";
-
 import { isHiddenMessage } from "../../types";
 import { isMessageUnread } from "../../utils";
 
@@ -69,12 +69,14 @@ export function SpaceConversationListItem({
         });
       } else if (isCompactionMessageType(message)) {
         // Nothing to do unless we want to show that the conversation was compacted.
-      } else {
+      } else if (message.type === "agent_message") {
         avatars.push({
           isRounded: false,
           name: "@" + (message.configuration.name ?? ""),
           visual: message.configuration.pictureUrl ?? "",
         });
+      } else {
+        assertNever(message);
       }
     }
     return uniqBy(avatars.reverse(), "visual");
@@ -112,9 +114,11 @@ export function SpaceConversationListItem({
       firstVisibleMessage.user?.image ??
       firstVisibleMessage.context?.profilePictureUrl ??
       undefined;
-  } else {
+  } else if (firstVisibleMessage.type === "agent_message") {
     creatorName = `@${firstVisibleMessage.configuration.name}`;
     creatorVisual = firstVisibleMessage.configuration.pictureUrl || undefined;
+  } else {
+    assertNever(firstVisibleMessage);
   }
 
   return (
