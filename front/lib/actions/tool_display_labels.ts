@@ -141,26 +141,33 @@ function getDynamicToolDisplayLabels({
             done: `Searched for “${g}” in file`,
           };
         }
-        const hasOffset = isNumber(inputs.offset) && inputs.offset > 0;
-        const hasLimit = isNumber(inputs.limit);
-        if (hasOffset && hasLimit) {
+        const offset = isNumber(inputs.offset)
+          ? inputs.offset.toLocaleString()
+          : null;
+        const limit = isNumber(inputs.limit)
+          ? inputs.limit.toLocaleString()
+          : null;
+
+        if (offset && limit) {
           return {
-            running: "Reading a section of file",
-            done: "Read a section of file",
+            running: `Reading file (next ~${limit} characters)`,
+            done: `Read file (next ~${limit} characters)`,
+          };
+        } else if (limit) {
+          return {
+            running: `Reading file (first ~${limit} characters)`,
+            done: `Read file (first ~${limit} characters)`,
+          };
+        } else if (offset) {
+          return {
+            running: `Reading file (from character ${offset})`,
+            done: `Read file (from character ${offset})`,
           };
         }
-        if (hasOffset) {
-          return {
-            running: "Continuing to read file",
-            done: "Read more of file",
-          };
-        }
-        if (hasLimit) {
-          return {
-            running: "Reading the beginning of file",
-            done: "Read the beginning of file",
-          };
-        }
+        return {
+          running: `Reading file`,
+          done: `Read file`,
+        };
       }
       return null;
 
@@ -241,26 +248,33 @@ function getDynamicToolDisplayLabels({
             done: `Searched for “${g}” in file`,
           };
         }
-        const hasOffset = isNumber(inputs.offset) && inputs.offset > 0;
-        const hasLimit = isNumber(inputs.limit);
-        if (hasOffset && hasLimit) {
+        const offset = isNumber(inputs.offset)
+          ? inputs.offset.toLocaleString()
+          : null;
+        const limit = isNumber(inputs.limit)
+          ? inputs.limit.toLocaleString()
+          : null;
+
+        if (offset && limit) {
           return {
-            running: "Reading a section of file",
-            done: "Read a section of file",
+            running: `Reading file (next ~${limit} characters)`,
+            done: `Read file (next ~${limit} characters)`,
+          };
+        } else if (limit) {
+          return {
+            running: `Reading file (first ~${limit} characters)`,
+            done: `Read file (first ~${limit} characters)`,
+          };
+        } else if (offset) {
+          return {
+            running: `Reading file (from character ${offset})`,
+            done: `Read file (from character ${offset})`,
           };
         }
-        if (hasOffset) {
-          return {
-            running: "Continuing to read file",
-            done: "Read more of file",
-          };
-        }
-        if (hasLimit) {
-          return {
-            running: "Reading the beginning of file",
-            done: "Read the beginning of file",
-          };
-        }
+        return {
+          running: `Reading file`,
+          done: `Read file`,
+        };
       }
       return null;
 
@@ -277,21 +291,21 @@ function getDynamicToolDisplayLabels({
         const url = `${base}/pull/${inputs.pullNumber}`;
         return {
           running: `Retrieving ${url}`,
-          done: `Retrieved ${url}`,
+          done: `Retrieve ${url}`,
         };
       }
       if (toolName === "get_issue" && base && isNumber(inputs.issueNumber)) {
         const url = `${base}/issues/${inputs.issueNumber}`;
         return {
           running: `Retrieving ${url}`,
-          done: `Retrieved ${url}`,
+          done: `Retrieve ${url}`,
         };
       }
       if (toolName === "create_issue" && base && isString(inputs.title)) {
         const t = truncateQuery(inputs.title);
         return {
           running: `Creating issue on ${base}: “${t}”`,
-          done: `Created issue on ${base}: “${t}”`,
+          done: `Create issue on ${base}: “${t}”`,
         };
       }
       if (
@@ -302,7 +316,7 @@ function getDynamicToolDisplayLabels({
         const url = `${base}/issues/${inputs.issueNumber}`;
         return {
           running: `Commenting on ${url}`,
-          done: `Commented on ${url}`,
+          done: `Comment on ${url}`,
         };
       }
       if (
@@ -313,19 +327,19 @@ function getDynamicToolDisplayLabels({
         const url = `${base}/pull/${inputs.pullNumber}`;
         return {
           running: `Reviewing ${url}`,
-          done: `Reviewed ${url}`,
+          done: `Review ${url}`,
         };
       }
       if (toolName === "list_issues" && base) {
         return {
           running: `Listing issues on ${base}`,
-          done: `Listed issues on ${base}`,
+          done: `List issues on ${base}`,
         };
       }
       if (toolName === "list_pull_requests" && base) {
         return {
           running: `Listing PRs on ${base}`,
-          done: `Listed PRs on ${base}`,
+          done: `List PRs on ${base}`,
         };
       }
       return null;
@@ -336,14 +350,14 @@ function getDynamicToolDisplayLabels({
         const s = truncateQuery(inputs.summary);
         return {
           running: `Creating event “${s}”`,
-          done: `Created event “${s}”`,
+          done: `Create event “${s}”`,
         };
       }
       if (toolName === "update_event" && isString(inputs.summary)) {
         const s = truncateQuery(inputs.summary);
         return {
           running: `Updating event “${s}”`,
-          done: `Updated event “${s}”`,
+          done: `Update event “${s}”`,
         };
       }
       return null;
@@ -355,7 +369,7 @@ function getDynamicToolDisplayLabels({
       ) {
         const s = truncateQuery(inputs.subject);
         const verb = toolName === "create_event" ? "Creating" : "Updating";
-        const past = toolName === "create_event" ? "Created" : "Updated";
+        const past = toolName === "create_event" ? "Create" : "Update";
         return {
           running: `${verb} event “${s}”`,
           done: `${past} event “${s}”`,
@@ -368,7 +382,7 @@ function getDynamicToolDisplayLabels({
         const s = truncateQuery(inputs.subject);
         return {
           running: `Drafting “${s}”`,
-          done: `Drafted “${s}”`,
+          done: `Draft “${s}”`,
         };
       }
       return null;
@@ -378,7 +392,7 @@ function getDynamicToolDisplayLabels({
         const q = truncateQuery(inputs.q);
         return {
           running: `Searching Drive “${q}”`,
-          done: `Searched Drive “${q}”`,
+          done: `Search Drive “${q}”`,
         };
       }
       if (
@@ -390,7 +404,7 @@ function getDynamicToolDisplayLabels({
         const t = truncateQuery(inputs.title);
         return {
           running: `Creating “${t}”`,
-          done: `Created “${t}”`,
+          done: `Create “${t}”`,
         };
       }
       return null;
@@ -426,7 +440,7 @@ function getDynamicToolDisplayLabels({
       ) {
         const name = truncateQuery(inputs.file_name);
         const verb = toolName === "generate_file" ? "Generating" : "Converting";
-        const past = toolName === "generate_file" ? "Generated" : "Converted";
+        const past = toolName === "generate_file" ? "Generate" : "Convert";
         return {
           running: `${verb} “${name}”`,
           done: `${past} “${name}”`,
@@ -449,7 +463,7 @@ function getDynamicToolDisplayLabels({
         const name = truncateQuery(inputs.file_name);
         return {
           running: `Creating Frame “${name}”`,
-          done: `Created Frame “${name}”`,
+          done: `Create Frame “${name}”`,
         };
       }
       if (
@@ -457,7 +471,7 @@ function getDynamicToolDisplayLabels({
         isString(inputs.description)
       ) {
         const d = truncateQuery(inputs.description);
-        return { running: d, done: d };
+        return { running: `Editing Frame: ${d}`, done: `Edit Frame: ${d}` };
       }
       if (
         toolName === "rename_interactive_content_file" &&
@@ -466,17 +480,17 @@ function getDynamicToolDisplayLabels({
         const name = truncateQuery(inputs.new_file_name);
         return {
           running: `Renaming Frame to “${name}”`,
-          done: `Renamed Frame to “${name}”`,
+          done: `Rename Frame to “${name}”`,
         };
       }
       return null;
 
     case "skill_management":
-      if (toolName === "enable" && isString(inputs.skillName)) {
+      if (toolName === "enable_skill" && isString(inputs.skillName)) {
         const name = truncateQuery(inputs.skillName);
         return {
           running: `Enabling skill “${name}”`,
-          done: `Enabled skill “${name}”`,
+          done: `Enable skill “${name}”`,
         };
       }
       return null;
@@ -486,7 +500,7 @@ function getDynamicToolDisplayLabels({
         const q = truncateQuery(inputs.question);
         return {
           running: `Asking: “${q}”`,
-          done: `Asked: “${q}”`,
+          done: `Ask: “${q}”`,
         };
       }
       return null;
