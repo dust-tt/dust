@@ -200,7 +200,8 @@ The token count is already available in the finalization path of the agent loop:
 - `finalizeSuccessfulAgentLoopActivity` and `finalizeGracefullyStoppedAgentLoopActivity` both have
   access to the `agentLoopArgs` which contains `runIds`.
 - Query `RunResource.listByDustRunIds()` → take the last run → `listRunUsages()` → read
-  `promptTokens`.
+  `promptTokens`. Note: ensure results are returned ordered (e.g., by `createdAt`) so that "last
+  run" is deterministic.
 - Alternatively, surface the token count earlier in the agent loop (it's available from the
   `TokenUsageEvent` during streaming) and pass it through to finalization.
 
@@ -329,6 +330,28 @@ export type CompactionMessageDoneEvent = {
 The frontend subscribes to these events to:
 - Show a loading/compacting indicator when `compaction_message_new` arrives.
 - Update the compaction message and re-enable input when `compaction_message_done` arrives.
+
+### Interaction with Steering
+
+Steering and compaction can race: an agent message pushes the conversation past the compaction
+threshold, but before it finishes (and before compaction fires), a steering message is promoted.
+Once the agent message completes, both the compaction and the promoted steering message want to
+proceed concurrently.
+
+Steering should take precedence when it was pending before compaction triggered — this preserves
+the user's perceived message ordering (they sent the message before the system decided to compact).
+Compaction then runs after the steering message has been promoted and its agent reply completed (or
+at least promoted), so the compaction summary covers the steered exchange as well.
+
+This ordering means the conversation may temporarily exceed the context window between the steering
+message being processed and compaction completing. This is why we must retain context pruning as a
+catch-all safety net: compaction is the primary mechanism for managing context size, but pruning
+remains the backstop when compaction hasn't kicked in yet and the context window is exhausted.
+
+Initially, compaction will be user-triggered (blocking the input bar once context usage reaches a
+high threshold). But triggers, wake-ups, and API calls can still produce agent messages that push
+past the context window without user interaction — so the system must be resilient to compaction
+arriving _after_ the context window has been exceeded.
 
 ---
 
