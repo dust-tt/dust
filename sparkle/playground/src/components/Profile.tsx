@@ -79,6 +79,23 @@ const NOTIFICATION_DELAY_LABELS: Record<NotificationPreferencesDelay, string> =
     daily: "a day",
   };
 
+type UnifiedDefaultEvent = "all_activity" | "when_mentioned" | "never";
+
+const UNIFIED_DEFAULT_EVENT_LABELS: Record<UnifiedDefaultEvent, string> = {
+  all_activity: "All activity",
+  when_mentioned: "When mentioned",
+  never: "Never",
+};
+
+const UNIFIED_DEFAULT_EVENT_DESCRIPTIONS: Record<
+  UnifiedDefaultEvent,
+  string | undefined
+> = {
+  all_activity: "New messages in project and conversations",
+  when_mentioned: "New messages when directly mentioned",
+  never: "No notifications",
+};
+
 interface ToolRow {
   id: string;
   name: string;
@@ -184,6 +201,14 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
   const [projectNewConvInApp, setProjectNewConvInApp] = useState(true);
   const [projectNewConvEmail, setProjectNewConvEmail] = useState(false);
   const [projectNewConvEmailDelay, setProjectNewConvEmailDelay] =
+    useState<NotificationPreferencesDelay>("1_hour");
+
+  const [unifiedEvent, setUnifiedEvent] =
+    useState<UnifiedDefaultEvent>("all_activity");
+  const [unifiedInApp, setUnifiedInApp] = useState(true);
+  const [unifiedEmail, setUnifiedEmail] = useState(true);
+  const [unifiedSlack, setUnifiedSlack] = useState(false);
+  const [unifiedEmailDelay, setUnifiedEmailDelay] =
     useState<NotificationPreferencesDelay>("1_hour");
 
   const filteredTools = useMemo(() => {
@@ -695,6 +720,113 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
               </>
             )}
           </div>
+        </div>
+
+        <Separator />
+        <Page.SectionHeader
+          title="Default Notification Settings"
+          description="Tell us what you’d generally like to be notified about."
+        />
+        <div className="s-items-center s-pt-1.5 s-space-y-1">
+          Notify me{" "}
+          <DropdownMenu>
+            <DropdownMenuTrigger>
+              <Button
+                variant="outline"
+                size="sm"
+                isSelect
+                label={UNIFIED_DEFAULT_EVENT_LABELS[unifiedEvent]}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                label={UNIFIED_DEFAULT_EVENT_LABELS.all_activity}
+                description={UNIFIED_DEFAULT_EVENT_DESCRIPTIONS.all_activity}
+                onClick={() => setUnifiedEvent("all_activity")}
+              />
+              <DropdownMenuItem
+                label={UNIFIED_DEFAULT_EVENT_LABELS.when_mentioned}
+                description={UNIFIED_DEFAULT_EVENT_DESCRIPTIONS.when_mentioned}
+                onClick={() => setUnifiedEvent("when_mentioned")}
+              />
+              <DropdownMenuItem
+                label={UNIFIED_DEFAULT_EVENT_LABELS.never}
+                description={UNIFIED_DEFAULT_EVENT_DESCRIPTIONS.never}
+                onClick={() => setUnifiedEvent("never")}
+              />
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {unifiedEvent !== "never" && (
+            <>
+              {", "}by{" "}
+              <DropdownMenu>
+                <DropdownMenuTrigger>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    isSelect
+                    label={
+                      [
+                        unifiedInApp && "In-app popup",
+                        unifiedEmail && "Email",
+                        unifiedSlack && "Slack",
+                      ]
+                        .filter(Boolean)
+                        .join(", ") || "None"
+                    }
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuCheckboxItem
+                    checked={unifiedInApp}
+                    onCheckedChange={(checked) =>
+                      setUnifiedInApp(checked === true)
+                    }
+                    label="In-app popup"
+                  />
+                  <DropdownMenuCheckboxItem
+                    checked={unifiedEmail}
+                    onCheckedChange={(checked) =>
+                      setUnifiedEmail(checked === true)
+                    }
+                    label="Email"
+                  />
+                  <DropdownMenuCheckboxItem
+                    checked={unifiedSlack}
+                    onCheckedChange={(checked) =>
+                      setUnifiedSlack(checked === true)
+                    }
+                    label="Slack"
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {unifiedEmail && (
+                <>
+                  {". "}Email me max once{" "}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        isSelect
+                        label={NOTIFICATION_DELAY_LABELS[unifiedEmailDelay]}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
+                        <DropdownMenuItem
+                          key={delay}
+                          label={NOTIFICATION_DELAY_LABELS[delay]}
+                          onClick={() => setUnifiedEmailDelay(delay)}
+                        />
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  .
+                </>
+              )}
+            </>
+          )}
         </div>
 
         <Separator />
