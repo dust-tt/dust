@@ -1351,14 +1351,13 @@ function AgentMessageContent({
           />
         )}
 
-      {agentMessage.content !== null &&
-        agentMessage.content !== "" &&
-        !(
-          isInlineActivityEnabled &&
-          agentMessage.streaming.agentState !== "done"
-        ) && (
-          <div>
-            <CitationsContext.Provider value={citationsContextValue}>
+        {agentMessage.content !== null &&
+          agentMessage.content !== "" &&
+          !(
+            isInlineActivityEnabled &&
+            agentMessage.streaming.agentState !== "done"
+          ) && (
+            <div>
               <AgentMessageMarkdown
                 content={sanitizeVisualizationContent(agentMessage.content)}
                 owner={owner}

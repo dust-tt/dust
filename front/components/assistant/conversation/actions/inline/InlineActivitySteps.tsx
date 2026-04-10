@@ -19,6 +19,7 @@ import type {
 import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
+import type { WorkspaceType } from "@app/types/user";
 import {
   AnimatedText,
   CheckIcon,
