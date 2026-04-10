@@ -11,10 +11,21 @@ import {
   stopEnterprisePAYG,
 } from "@app/lib/credits/payg";
 import {
+  updateDiscountOverride,
+  updatePAYGRecurringCredit,
+} from "@app/lib/metronome/client";
+import {
+  getProductPaygOverageId,
+  getProductProgrammaticUsageId,
+} from "@app/lib/metronome/constants";
+import {
   getStripeSubscription,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
@@ -337,6 +348,54 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       );
       if (createResult.isErr()) {
         return createResult;
+      }
+    }
+
+    // Sync discount and PAYG to Metronome contract if workspace is Metronome-billed.
+    const workspace = auth.getNonNullableWorkspace();
+    const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+    if (workspaceResource?.metronomeCustomerId) {
+      const sub = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+        workspace.id
+      );
+      if (sub?.metronomeContractId) {
+        // Sync discount override.
+        const discountResult = await updateDiscountOverride({
+          metronomeCustomerId: workspaceResource.metronomeCustomerId,
+          contractId: sub.metronomeContractId,
+          productId: getProductProgrammaticUsageId(),
+          discountPercent: defaultDiscountPercent,
+        });
+        if (discountResult.isErr()) {
+          logger.error(
+            {
+              workspaceId: workspace.sId,
+              error: discountResult.error,
+            },
+            "[Metronome] Failed to sync discount override — config saved but Metronome not updated"
+          );
+        }
+
+        // Sync PAYG recurring credit.
+        const paygCapCents =
+          paygEnabled && paygCapDollars
+            ? Math.round(paygCapDollars * 100)
+            : null;
+        const paygResult = await updatePAYGRecurringCredit({
+          metronomeCustomerId: workspaceResource.metronomeCustomerId,
+          contractId: sub.metronomeContractId,
+          paygOverageProductId: getProductPaygOverageId(),
+          paygCapCents,
+        });
+        if (paygResult.isErr()) {
+          logger.error(
+            {
+              workspaceId: workspace.sId,
+              error: paygResult.error,
+            },
+            "[Metronome] Failed to sync PAYG recurring credit — config saved but Metronome not updated"
+          );
+        }
       }
     }
 

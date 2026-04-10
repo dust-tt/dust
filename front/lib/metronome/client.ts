@@ -426,6 +426,211 @@ export async function updateSubscriptionQuantity({
 }
 
 // ---------------------------------------------------------------------------
+// Discount overrides
+// ---------------------------------------------------------------------------
+
+/**
+ * Set or remove a discount multiplier override on a product for a contract.
+ * Used to apply the defaultDiscountPercent from programmatic usage configuration.
+ *
+ * - discountPercent > 0: adds a MULTIPLIER override of (1 - discount/100)
+ *   If one already exists on the same product, removes it first.
+ * - discountPercent = 0: removes any existing MULTIPLIER override on the product.
+ */
+export async function updateDiscountOverride({
+  metronomeCustomerId,
+  contractId,
+  productId,
+  discountPercent,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  productId: string;
+  discountPercent: number;
+}): Promise<Result<void, Error>> {
+  try {
+    const client = getMetronomeClient();
+
+    // Find existing MULTIPLIER override on this product.
+    const contractsResponse = await client.v2.contracts.list({
+      customer_id: metronomeCustomerId,
+    });
+    const contract = contractsResponse.data.find(
+      (c: { id: string }) => c.id === contractId
+    );
+    const existingOverride = (contract?.overrides ?? []).find(
+      (o: { product_id?: string; type?: string }) =>
+        o.product_id === productId && o.type === "MULTIPLIER"
+    );
+
+    const removeOverrides = existingOverride?.id
+      ? [{ id: existingOverride.id }]
+      : [];
+
+    const addOverrides =
+      discountPercent > 0
+        ? [
+            {
+              product_id: productId,
+              starting_at: floorToHourISO(new Date()),
+              type: "MULTIPLIER" as const,
+              multiplier: 1 - discountPercent / 100,
+              priority: 100,
+            },
+          ]
+        : [];
+
+    // Skip if nothing to do.
+    if (removeOverrides.length === 0 && addOverrides.length === 0) {
+      return new Ok(undefined);
+    }
+
+    await client.v2.contracts.edit({
+      customer_id: metronomeCustomerId,
+      contract_id: contractId,
+      ...(removeOverrides.length > 0
+        ? { remove_overrides: removeOverrides }
+        : {}),
+      ...(addOverrides.length > 0 ? { add_overrides: addOverrides } : {}),
+    });
+
+    logger.info(
+      {
+        metronomeCustomerId,
+        contractId,
+        productId,
+        discountPercent,
+      },
+      "[Metronome] Discount override updated"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, contractId, productId, discountPercent },
+      "[Metronome] Failed to update discount override"
+    );
+    return new Err(error);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// PAYG recurring credits
+// ---------------------------------------------------------------------------
+
+const PAYG_CREDIT_NAME = "PAYG Overage (monthly)";
+
+/**
+ * Create, update or remove a recurring PAYG credit on a Metronome contract.
+ *
+ * - paygCapCents > 0: creates or updates a recurring credit with the given cap.
+ * - paygCapCents = 0 or null: ends any existing recurring PAYG credit.
+ *
+ * Uses the "PAYG Overage" FIXED product and applies to all usage-tagged products.
+ */
+export async function updatePAYGRecurringCredit({
+  metronomeCustomerId,
+  contractId,
+  paygOverageProductId,
+  paygCapCents,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  paygOverageProductId: string;
+  paygCapCents: number | null;
+}): Promise<Result<void, Error>> {
+  try {
+    const client = getMetronomeClient();
+    const USD_CREDIT_TYPE_ID = "2714e483-4ff1-48e4-9e25-ac732e8f24f2";
+
+    // Find existing recurring PAYG credit on the contract.
+    const contractsResponse = await client.v2.contracts.list({
+      customer_id: metronomeCustomerId,
+    });
+    const contract = contractsResponse.data.find(
+      (c: { id: string }) => c.id === contractId
+    );
+    const existingRecurringCredit = (contract?.recurring_credits ?? []).find(
+      (rc: { product?: { id?: string }; name?: string }) =>
+        rc.product?.id === paygOverageProductId || rc.name === PAYG_CREDIT_NAME
+    );
+
+    const now = floorToHourISO(new Date());
+
+    if (paygCapCents && paygCapCents > 0) {
+      if (existingRecurringCredit?.id) {
+        // Update existing recurring credit cap.
+        await client.v2.contracts.edit({
+          customer_id: metronomeCustomerId,
+          contract_id: contractId,
+          update_recurring_credits: [
+            {
+              recurring_credit_id: existingRecurringCredit.id,
+              access_amount: {
+                unit_price: paygCapCents,
+                quantity: 1,
+              },
+            },
+          ],
+        });
+      } else {
+        // Create new recurring credit.
+        await client.v2.contracts.edit({
+          customer_id: metronomeCustomerId,
+          contract_id: contractId,
+          add_recurring_credits: [
+            {
+              product_id: paygOverageProductId,
+              name: PAYG_CREDIT_NAME,
+              starting_at: now,
+              priority: 200, // Lower priority than prepaid commits (100).
+              access_amount: {
+                credit_type_id: USD_CREDIT_TYPE_ID,
+                unit_price: paygCapCents,
+                quantity: 1,
+              },
+              commit_duration: { value: 1, unit: "PERIODS" as const },
+              recurrence_frequency: "MONTHLY" as const,
+              applicable_product_tags: ["usage"],
+            },
+          ],
+        });
+      }
+    } else if (existingRecurringCredit?.id) {
+      // Disable: end the recurring credit now.
+      await client.v2.contracts.edit({
+        customer_id: metronomeCustomerId,
+        contract_id: contractId,
+        update_recurring_credits: [
+          {
+            recurring_credit_id: existingRecurringCredit.id,
+            ending_before: now,
+          },
+        ],
+      });
+    }
+
+    logger.info(
+      {
+        metronomeCustomerId,
+        contractId,
+        paygCapCents,
+        action: existingRecurringCredit ? "update" : "create",
+      },
+      "[Metronome] PAYG recurring credit updated"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, contractId, paygCapCents },
+      "[Metronome] Failed to update PAYG recurring credit"
+    );
+    return new Err(error);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Commits
 // ---------------------------------------------------------------------------
 
