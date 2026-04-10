@@ -203,13 +203,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         userMessageId: { [Op.ne]: null },
       },
       group: ["conversationId"],
-      raw: true,
     });
 
     const result = new Map<ModelId, number>();
     for (const row of rows) {
-      const r = row as unknown as { conversationId: ModelId; count: string };
-      result.set(r.conversationId, parseInt(r.count, 10));
+      result.set(row.conversationId, parseInt(row.get("count") as string, 10));
     }
     return result;
   }
@@ -244,13 +242,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         agentMessageId: { [Op.ne]: null },
       },
       group: ["message.conversationId"],
-      raw: true,
     });
 
     const result = new Map<ModelId, number>();
     for (const row of rows) {
-      const r = row as unknown as { conversationId: ModelId; count: string };
-      result.set(r.conversationId, parseInt(r.count, 10));
+      result.set(row.conversationId, parseInt(row.get("count") as string, 10));
     }
     return result;
   }

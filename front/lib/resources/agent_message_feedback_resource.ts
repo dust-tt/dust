@@ -380,13 +380,11 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
         conversationId: { [Op.in]: conversationIds },
       },
       group: ["conversationId"],
-      raw: true,
     });
 
     const result = new Map<ModelId, number>();
     for (const row of rows) {
-      const r = row as unknown as { conversationId: ModelId; count: string };
-      result.set(r.conversationId, parseInt(r.count, 10));
+      result.set(row.conversationId, parseInt(row.get("count") as string, 10));
     }
     return result;
   }
