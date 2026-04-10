@@ -3,9 +3,9 @@ import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { TOOLSETS_TOOLS_METADATA } from "@app/lib/api/actions/servers/toolsets/metadata";
 import apiConfig from "@app/lib/api/config";
@@ -52,9 +52,7 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
         (mcpServerView) =>
           !mcpServerViewIdsFromAgentConfiguration.includes(mcpServerView.sId)
       )
-      .filter(
-        (mcpServerView) => getMCPServerRequirements(mcpServerView).noRequirement
-      )
+      .filter(isJITMCPServerView)
       .filter(
         (mcpServerView) =>
           mcpServerView.server.availability !== "auto_hidden_builder"

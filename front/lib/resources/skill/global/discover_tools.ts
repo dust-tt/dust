@@ -1,4 +1,4 @@
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import { buildToolsetsContext } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -25,7 +25,7 @@ export const discoverToolsSkill = {
     const availableToolsets = allToolsets.filter((toolset) => {
       const mcpServerView = toolset.toJSON();
       return (
-        getMCPServerRequirements(mcpServerView).noRequirement &&
+        isJITMCPServerView(mcpServerView) &&
         mcpServerView.server.availability !== "auto_hidden_builder"
       );
     });
