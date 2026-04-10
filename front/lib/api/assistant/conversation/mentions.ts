@@ -324,7 +324,10 @@ export async function validateUserMention(
         },
       });
     }
-  } else if (isContentFragmentType(message) || isCompactionMessageType(message)) {
+  } else if (
+    isContentFragmentType(message) ||
+    isCompactionMessageType(message)
+  ) {
     return new Err({
       status_code: 400,
       api_error: {
@@ -519,7 +522,10 @@ export async function dismissMention(
         },
       });
     }
-  } else if (isContentFragmentType(message) || isCompactionMessageType(message)) {
+  } else if (
+    isContentFragmentType(message) ||
+    isCompactionMessageType(message)
+  ) {
     return new Err({
       status_code: 400,
       api_error: {
