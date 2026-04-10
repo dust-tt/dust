@@ -1,3 +1,4 @@
+import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
@@ -133,35 +134,57 @@ export const InputBar = React.memo(function InputBar({
     [getAndClearPendingInputText]
   );
 
-  const { getConversationGeneratingMessages } = useGenerationContext();
+  const { generatingMessages, getConversationGeneratingMessages } =
+    useGenerationContext();
+  const { getFirstBlockedActionForMessage } = useBlockedActionsContext();
 
   // In single-agent mode, block submission when the selected agent differs from
   // the agent that is currently generating a response.
-  const blockedByGeneratingAgentName = useMemo(() => {
+  const agentSwitchBlockMessage = useMemo(() => {
     if (!singleAgentInput || !selectedSingleAgent) {
       return null;
     }
-    const generatingMessages = getConversationGeneratingMessages(
-      conversation?.sId ?? ""
-    );
-    const blockingAgentId = generatingMessages.find(
+    const conversationId = conversation?.sId ?? "";
+
+    // Check actively generating messages (excludes blocked-action messages).
+    const activeGenerating = getConversationGeneratingMessages(conversationId);
+    const activeBlockingId = activeGenerating.find(
       (gm) => gm.agentId && gm.agentId !== selectedSingleAgent.id
     )?.agentId;
-    if (!blockingAgentId) {
-      return null;
+    if (activeBlockingId) {
+      const name =
+        agentConfigurations.find((a) => a.sId === activeBlockingId)?.name ??
+        "another agent";
+      return `Wait for @${name} to finish before switching agents`;
     }
-    return (
-      agentConfigurations.find((a) => a.sId === blockingAgentId)?.name ?? null
+
+    // Check messages with a pending blocked action from a different agent.
+    const blockedActionMessage = generatingMessages.find(
+      (m) =>
+        m.conversationId === conversationId &&
+        m.agentId &&
+        m.agentId !== selectedSingleAgent.id &&
+        getFirstBlockedActionForMessage(m.messageId)
     );
+    if (blockedActionMessage) {
+      const name =
+        agentConfigurations.find((a) => a.sId === blockedActionMessage.agentId)
+          ?.name ?? "another agent";
+      return `Resolve the pending action from @${name} before switching agents`;
+    }
+
+    return null;
   }, [
     singleAgentInput,
     selectedSingleAgent,
     getConversationGeneratingMessages,
+    generatingMessages,
+    getFirstBlockedActionForMessage,
     conversation?.sId,
     agentConfigurations,
   ]);
 
-  const isBlockedByAgentSwitch = blockedByGeneratingAgentName !== null;
+  const isBlockedByAgentSwitch = agentSwitchBlockMessage !== null;
 
   // Tools selection
 
@@ -456,7 +479,7 @@ export const InputBar = React.memo(function InputBar({
             saveDraft={saveDraft}
             getDraft={getDraft}
             user={user}
-            blockedByGeneratingAgentName={blockedByGeneratingAgentName}
+            agentSwitchBlockMessage={agentSwitchBlockMessage}
             onShake={handleShake}
           />
         </div>

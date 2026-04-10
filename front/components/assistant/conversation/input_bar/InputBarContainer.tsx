@@ -131,7 +131,7 @@ export interface InputBarContainerProps {
   actions: InputBarAction[];
   allAgents: LightAgentConfigurationType[];
   attachedNodes: DataSourceViewContentNode[];
-  blockedByGeneratingAgentName: string | null;
+  agentSwitchBlockMessage: string | null;
   onShake: () => void;
   conversation?: ConversationWithoutContentType;
   space?: SpaceType;
@@ -192,10 +192,10 @@ const InputBarContainer = ({
   selectedSkills,
   saveDraft,
   user,
-  blockedByGeneratingAgentName,
+  agentSwitchBlockMessage,
   onShake,
 }: InputBarContainerProps) => {
-  const isBlockedByAgentSwitch = blockedByGeneratingAgentName !== null;
+  const isBlockedByAgentSwitch = agentSwitchBlockMessage !== null;
   const { subscription } = useAuth();
   const isMobile = useIsMobile();
   const { hasFeature } = useFeatureFlags();
@@ -1235,11 +1235,7 @@ const InputBarContainer = ({
             icon={ArrowUpIcon}
             variant={isBlockedByAgentSwitch ? "ghost-secondary" : "highlight"}
             disabled={isSubmitDisabled}
-            tooltip={
-              blockedByGeneratingAgentName
-                ? `Wait for @${blockedByGeneratingAgentName} to finish before switching agent`
-                : undefined
-            }
+            tooltip={agentSwitchBlockMessage ?? undefined}
             className={cn(
               isBlockedByAgentSwitch &&
                 "hover:s-bg-transparent dark:hover:s-bg-transparent hover:s-text-muted-foreground dark:hover:s-text-muted-foreground-night"
