@@ -4,6 +4,7 @@ import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import {
   AgentMessageFeedbackModel,
   AgentMessageModel,
+  CompactionMessageModel,
   MentionModel,
   MessageModel,
   MessageReactionModel,
@@ -205,6 +206,7 @@ export async function destroyConversation(
       "userMessageId",
       "agentMessageId",
       "contentFragmentId",
+      "compactionMessageId",
     ],
     where: {
       conversationId: conversation.id,
@@ -221,6 +223,9 @@ export async function destroyConversation(
     );
     const agentMessageIds = removeNulls(
       messagesChunk.map((m) => m.agentMessageId)
+    );
+    const compactionMessageIds = removeNulls(
+      messagesChunk.map((m) => m.compactionMessageId)
     );
     const messageAndContentFragmentIds = removeNulls(
       messagesChunk.map((m) => {
@@ -267,6 +272,13 @@ export async function destroyConversation(
 
     await destroyContentFragments(auth, messageAndContentFragmentIds, {
       conversationId: conversation.sId,
+    });
+
+    await CompactionMessageModel.destroy({
+      where: {
+        id: compactionMessageIds,
+        workspaceId: owner.id,
+      },
     });
 
     await destroyMessageRelatedResources(auth, messageIds);

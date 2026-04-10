@@ -25,6 +25,7 @@ import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import {
   AgentMessageFeedbackModel,
   AgentMessageModel,
+  CompactionMessageModel,
   ConversationModel,
   ConversationParticipantModel,
   MentionModel,
@@ -195,6 +196,7 @@ export function loadAllModels() {
     AgentMessageModel,
     AgentMessageFeedbackModel,
     ContentFragmentModel,
+    CompactionMessageModel,
     MessageModel,
     MessageReactionModel,
     MentionModel,
