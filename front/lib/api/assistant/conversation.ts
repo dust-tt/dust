@@ -49,6 +49,7 @@ import {
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
+import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects";
 import { isModelAvailable, isProviderWhitelisted } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -73,7 +74,6 @@ import { ConversationBranchResource } from "@app/lib/resources/conversation_bran
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -1914,6 +1914,71 @@ export async function postNewContentFragment(
           "Only content fragments from the project space or the global space are allowed in a project conversation"
         )
       );
+    }
+  }
+
+  // If the user attaches a project-context file to a project conversation, reuse the existing
+  // project content fragment and only create the message row at send time.
+  if (isProjectConversation(conversation) && "fileId" in cf) {
+    const project = await SpaceResource.fetchById(auth, conversation.spaceId);
+    if (project?.isProject()) {
+      const r = await fetchLatestProjectContextFileContentFragment(
+        auth,
+        project,
+        cf.fileId
+      );
+      if (r) {
+        const alreadyPresent = conversation.content.some((versions) => {
+          const latest = versions[versions.length - 1];
+          return (
+            isContentFragmentType(latest) &&
+            latest.contentFragmentVersion === "latest" &&
+            latest.contentFragmentId === r.fragment.sId
+          );
+        });
+
+        if (!alreadyPresent) {
+          await withTransaction(async (t) => {
+            await getConversationRankVersionLock(auth, conversation, t);
+
+            const nextMessageRank =
+              ((await MessageModel.max<number | null, MessageModel>("rank", {
+                where: {
+                  workspaceId: owner.id,
+                  conversationId: conversation.id,
+                  branchId: conversation.branchId
+                    ? getResourceIdFromSId(conversation.branchId)
+                    : null,
+                },
+                transaction: t,
+              })) ?? -1) + 1;
+
+            await MessageModel.create(
+              {
+                sId: generateRandomModelSId(),
+                rank: nextMessageRank,
+                conversationId: conversation.id,
+                branchId: conversation.branchId
+                  ? getResourceIdFromSId(conversation.branchId)
+                  : null,
+                contentFragmentId: r.fragment.id,
+                workspaceId: owner.id,
+              },
+              { transaction: t }
+            );
+
+            await ConversationResource.markAsUpdated(auth, { conversation, t });
+          });
+        }
+
+        const rendered =
+          await ContentFragmentResource.renderToContentFragmentType(
+            auth,
+            r.fragment,
+            { kind: "project_context", file: r.file }
+          );
+        return new Ok(rendered);
+      }
     }
   }
 

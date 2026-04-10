@@ -1,3 +1,4 @@
+import { getSingularFileCategoryLabelForContentType } from "@app/components/assistant/conversation/files_panel/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { NodePathTooltip } from "@app/components/NodePathTooltip";
 import { getIcon } from "@app/components/resources/resources_icons";
@@ -15,6 +16,7 @@ import {
   isFolder,
   isWebsite,
 } from "@app/lib/data_sources";
+import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import type {
   ToolSearchResult,
   ToolSearchServerResult,
@@ -48,22 +50,38 @@ import {
   DropdownMenuTrigger,
   Icon,
   Input,
+  LoadingBlock,
   MagnifyingGlassIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ButtonVariantType } from "@dust-tt/sparkle/dist/esm/components/Button";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-const getKeyForDataSource = (dataSource: DataSourceType) => {
-  if (dataSource.connectorProvider === "webcrawler") {
+const SEARCH_RESULTS_PLACEHOLDER_COUNT = 5;
+
+const getKeyForConnectorProvider = ({
+  connectorProvider,
+  dataSourceSId,
+}: {
+  connectorProvider: DataSourceType["connectorProvider"];
+  dataSourceSId: string;
+}) => {
+  if (connectorProvider === "webcrawler") {
     return `ds-webcrawler`;
-  } else if (!dataSource.connectorProvider) {
+  } else if (!connectorProvider) {
     return `ds-folder`;
-  } else if (dataSource.connectorProvider === "dust_project") {
+  } else if (connectorProvider === "dust_project") {
     return `ds-project`;
   } else {
-    return `ds-${dataSource.sId}`;
+    return `ds-${dataSourceSId}`;
   }
+};
+
+const getKeyForDataSource = (dataSource: DataSourceType) => {
+  return getKeyForConnectorProvider({
+    connectorProvider: dataSource.connectorProvider,
+    dataSourceSId: dataSource.sId,
+  });
 };
 
 interface InputBarAttachmentsPickerProps {
@@ -91,6 +109,10 @@ interface InputBarAttachmentsPickerProps {
 }
 
 const PAGE_SIZE = 25;
+const PROJECT_FILTER_KEY = getKeyForConnectorProvider({
+  connectorProvider: "dust_project",
+  dataSourceSId: "project",
+});
 
 interface KnowledgeNodeCheckboxItemProps {
   item: DataSourceViewContentNode;
@@ -202,6 +224,39 @@ const ToolFileCheckboxItem = ({
   );
 };
 
+interface ProjectFileItemProps {
+  item: { fileId: string; title: string; contentType: string };
+  projectName: string;
+  isAttached: boolean;
+  isDisabled: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}
+
+const ProjectFileItem = ({
+  item,
+  projectName,
+  isAttached,
+  isDisabled,
+  onCheckedChange,
+}: ProjectFileItemProps) => {
+  const FileIcon = getFileTypeIcon(item.contentType, item.title);
+  const fileKind = getSingularFileCategoryLabelForContentType(item.contentType);
+  const description = projectName
+    ? `${fileKind} in "${projectName}" knowledge`
+    : `${fileKind} in project knowledge`;
+  return (
+    <DropdownMenuCheckboxItem
+      label={item.title}
+      icon={<Icon visual={FileIcon} size="md" />}
+      description={description}
+      checked={isAttached}
+      disabled={isDisabled}
+      onCheckedChange={onCheckedChange}
+      truncateText
+    />
+  );
+};
+
 export const InputBarAttachmentsPicker = ({
   owner,
   fileUploaderService,
@@ -265,9 +320,16 @@ export const InputBarAttachmentsPicker = ({
     }
   }, [spaces, spaceId]);
 
+  const projectId =
+    spaceId && spacesMap?.[spaceId]?.kind === "project" ? spaceId : undefined;
+  const projectName =
+    projectId && spacesMap[projectId]?.name ? spacesMap[projectId].name : "";
+
   const {
     knowledgeResults: searchResultNodes,
     toolResults: toolFileResults,
+    projectContextFiles,
+    isProjectContextFilesLoading,
     isSearchLoading,
     isLoadingNextPage,
     isSearchValidating,
@@ -279,14 +341,24 @@ export const InputBarAttachmentsPicker = ({
     pageSize: PAGE_SIZE,
     disabled: isSpacesLoading || !searchQuery,
     spaceIds,
-    projectId:
-      spaceId && spacesMap?.[spaceId]?.kind === "project" ? spaceId : undefined,
+    projectId,
     viewType: "all",
     includeDataSources: true,
     searchSourceUrls: true,
     includeTools: true,
     prioritizeSpaceAccess: true,
   });
+
+  const attachedFileIds = useMemo(() => {
+    return new Set(fileUploaderService.fileBlobs.map((b) => b.fileId ?? b.id));
+  }, [fileUploaderService.fileBlobs]);
+
+  const projectFilesWithResults = useMemo(() => {
+    if (!projectId) {
+      return [];
+    }
+    return projectContextFiles;
+  }, [projectContextFiles, projectId]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
@@ -363,6 +435,7 @@ export const InputBarAttachmentsPicker = ({
   // Auto-select new datasources/tools as they appear
   useEffect(() => {
     const allKeys = [
+      ...(projectFilesWithResults.length > 0 ? [PROJECT_FILTER_KEY] : []),
       ...Object.keys(dataSourcesWithResults),
       ...Object.keys(serversWithResults),
     ];
@@ -381,7 +454,11 @@ export const InputBarAttachmentsPicker = ({
         return hasChanges ? updated : prev;
       });
     }
-  }, [dataSourcesWithResults, serversWithResults]);
+  }, [
+    dataSourcesWithResults,
+    serversWithResults,
+    projectFilesWithResults.length,
+  ]);
 
   const handleFilterClick = (key: string) => {
     setSelectedDataSourcesAndTools((prev) => ({
@@ -408,21 +485,50 @@ export const InputBarAttachmentsPicker = ({
   });
 
   const showLoader =
-    isSearchLoading || isLoadingNextPage || isSearchValidating || isDebouncing;
+    isSearchLoading ||
+    isLoadingNextPage ||
+    isSearchValidating ||
+    isDebouncing ||
+    isProjectContextFilesLoading;
 
-  const availableSources: DropdownMenuFilterOption[] = useMemo(
-    () => [
-      ...Object.entries(dataSourcesWithResults).map(([key, r]) => ({
+  const availableSources: DropdownMenuFilterOption[] = useMemo(() => {
+    const options = new Map<string, DropdownMenuFilterOption>();
+
+    for (const [key, r] of Object.entries(dataSourcesWithResults)) {
+      options.set(key, {
         value: key,
-        label: getDisplayNameForDataSource(r.dataSource, true),
-      })),
-      ...Object.entries(serversWithResults).map(([key, s]) => ({
+        label:
+          key === PROJECT_FILTER_KEY
+            ? "Projects"
+            : getDisplayNameForDataSource(r.dataSource, true),
+      });
+    }
+
+    for (const [key, s] of Object.entries(serversWithResults)) {
+      options.set(key, {
         value: key,
         label: asDisplayToolName(s.server.serverName),
-      })),
-    ],
-    [dataSourcesWithResults, serversWithResults]
-  );
+      });
+    }
+
+    // Ensure project files share the same filter chip as project knowledge.
+    if (projectFilesWithResults.length > 0) {
+      options.set(PROJECT_FILTER_KEY, {
+        value: PROJECT_FILTER_KEY,
+        label: "Projects",
+      });
+    }
+
+    return Array.from(options.values());
+  }, [
+    dataSourcesWithResults,
+    serversWithResults,
+    projectFilesWithResults.length,
+  ]);
+
+  // Chips only exist once at least one source has hits; paired with showLoader = still fetching.
+  const showSearchResultPlaceholders =
+    showLoader && availableSources.length === 0;
 
   const selectedFilterKeys = useMemo(
     () =>
@@ -433,6 +539,7 @@ export const InputBarAttachmentsPicker = ({
   );
 
   const allUnselected = selectedFilterKeys.length === 0;
+
   const Wrapper = type === "dropdown" ? DropdownMenu : DropdownMenuSub;
   const ContentWrapper =
     type === "dropdown" ? DropdownMenuContent : DropdownMenuSubContent;
@@ -523,7 +630,8 @@ export const InputBarAttachmentsPicker = ({
               placeholder="Search"
               value={search}
               onChange={setSearch}
-              disabled={isLoading}
+              disabled={false}
+              isLoading={showLoader}
               onKeyDown={(e) => {
                 if (e.key === "ArrowDown") {
                   e.preventDefault();
@@ -539,6 +647,7 @@ export const InputBarAttachmentsPicker = ({
                   icon={CloudArrowUpIcon}
                   label="Upload File"
                   onClick={() => fileInputRef.current?.click()}
+                  className="ml-4"
                 />
               }
             />
@@ -548,80 +657,124 @@ export const InputBarAttachmentsPicker = ({
       >
         {searchQuery ? (
           <div ref={itemsContainerRef}>
-            {(showLoader || availableSources.length > 1) && (
-              <div className="flex flex-wrap items-center">
-                {availableSources.length > 1 && (
-                  <DropdownMenuFilters
-                    filters={availableSources}
-                    selectedValues={selectedFilterKeys}
-                    onSelectFilter={handleFilterClick}
-                  />
-                )}
-                {showLoader && (
-                  <div className="flex items-center justify-center gap-0.5 p-2 grow">
-                    <Button size="xs" isLoading={true} variant="ghost" />
-                  </div>
+            <div className="flex flex-wrap items-center">
+              <DropdownMenuFilters
+                filters={availableSources}
+                selectedValues={selectedFilterKeys}
+                onSelectFilter={handleFilterClick}
+              />
+
+              {availableSources.length === 0 && showLoader && (
+                <LoadingBlock
+                  // LoadingBlock defaults to dark:bg-muted-background-night, same as the menu
+                  // surface, so skeletons read as invisible; match menu row hover contrast.
+                  className="h-7 w-20 bg-muted-background dark:!bg-muted-night p-2 mt-2"
+                />
+              )}
+            </div>
+
+            {showSearchResultPlaceholders ? (
+              <div className="flex flex-col gap-2 px-2 py-2">
+                {Array.from(
+                  { length: SEARCH_RESULTS_PLACEHOLDER_COUNT },
+                  (_, i) => (
+                    <LoadingBlock
+                      key={i}
+                      // LoadingBlock defaults to dark:bg-muted-background-night, same as the menu
+                      // surface, so skeletons read as invisible; match menu row hover contrast.
+                      className="h-11 w-full bg-muted-background dark:border-border-night dark:!bg-muted-night"
+                    />
+                  )
                 )}
               </div>
-            )}
-            {Object.keys(serversWithResults).length === 0 ? (
-              // No tools results, show knowledge nodes as returned by the search.
-              dataSourcesNodes
-                .filter(
-                  (item) =>
-                    allUnselected ||
-                    selectedDataSourcesAndTools[
-                      getKeyForDataSource(item.dataSource)
-                    ]
-                )
-                .map((item) => (
-                  <KnowledgeNodeCheckboxItem
-                    key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
-                    item={item}
-                    owner={owner}
-                    attachedNodes={attachedNodes}
-                    onNodeSelect={onNodeSelect}
-                    onNodeUnselect={onNodeUnselect}
-                    spacesMap={spacesMap}
-                  />
-                ))
             ) : (
-              // Show grouped results, first knowledge nodes, then tools.
               <>
-                {Object.entries(dataSourcesWithResults).map(([key, r]) => {
-                  const isSelected =
-                    allUnselected || selectedDataSourcesAndTools[key];
-                  return isSelected
-                    ? r.results.map((item) => (
-                        <KnowledgeNodeCheckboxItem
-                          key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
-                          item={item}
-                          owner={owner}
-                          attachedNodes={attachedNodes}
-                          onNodeSelect={onNodeSelect}
-                          onNodeUnselect={onNodeUnselect}
-                          spacesMap={spacesMap}
-                        />
-                      ))
-                    : null;
-                })}
-                {Object.entries(serversWithResults).map(([key, r]) => {
-                  const isSelected =
-                    allUnselected || selectedDataSourcesAndTools[key];
-                  return isSelected
-                    ? r.results.map((item) => (
-                        <ToolFileCheckboxItem
-                          key={`tool-${getToolFileKey(item)}`}
-                          item={item}
-                          isLoading={isLoading}
-                          isToolFileAttached={isToolFileAttached}
-                          isToolFileUploading={isToolFileUploading}
-                          uploadToolFile={uploadToolFile}
-                          removeToolFile={removeToolFile}
-                        />
-                      ))
-                    : null;
-                })}
+                {(allUnselected ||
+                  selectedDataSourcesAndTools[PROJECT_FILTER_KEY]) &&
+                  projectFilesWithResults.map((f) => (
+                    <ProjectFileItem
+                      key={`project-file-${f.fileId}`}
+                      item={f}
+                      projectName={projectName}
+                      isAttached={attachedFileIds.has(f.fileId)}
+                      isDisabled={isLoading || disabled}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          fileUploaderService.addUploadedFile({
+                            fileId: f.fileId,
+                            filename: f.title,
+                            // We only fetch `type=file` from the project context endpoint.
+                            contentType: f.contentType as any,
+                            size: 0,
+                            id: f.fileId,
+                          });
+                        } else {
+                          fileUploaderService.removeFile(f.fileId);
+                        }
+                        onFileChange?.();
+                      }}
+                    />
+                  ))}
+                {Object.keys(serversWithResults).length === 0 ? (
+                  // No tools results, show knowledge nodes as returned by the search.
+                  dataSourcesNodes
+                    .filter(
+                      (item) =>
+                        allUnselected ||
+                        selectedDataSourcesAndTools[
+                          getKeyForDataSource(item.dataSource)
+                        ]
+                    )
+                    .map((item) => (
+                      <KnowledgeNodeCheckboxItem
+                        key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
+                        item={item}
+                        owner={owner}
+                        attachedNodes={attachedNodes}
+                        onNodeSelect={onNodeSelect}
+                        onNodeUnselect={onNodeUnselect}
+                        spacesMap={spacesMap}
+                      />
+                    ))
+                ) : (
+                  // Show grouped knowledge nodes, then tools (project files are rendered above).
+                  <>
+                    {Object.entries(dataSourcesWithResults).map(([key, r]) => {
+                      const isSelected =
+                        allUnselected || selectedDataSourcesAndTools[key];
+                      return isSelected
+                        ? r.results.map((item) => (
+                            <KnowledgeNodeCheckboxItem
+                              key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
+                              item={item}
+                              owner={owner}
+                              attachedNodes={attachedNodes}
+                              onNodeSelect={onNodeSelect}
+                              onNodeUnselect={onNodeUnselect}
+                              spacesMap={spacesMap}
+                            />
+                          ))
+                        : null;
+                    })}
+                    {Object.entries(serversWithResults).map(([key, r]) => {
+                      const isSelected =
+                        allUnselected || selectedDataSourcesAndTools[key];
+                      return isSelected
+                        ? r.results.map((item) => (
+                            <ToolFileCheckboxItem
+                              key={`tool-${getToolFileKey(item)}`}
+                              item={item}
+                              isLoading={isLoading}
+                              isToolFileAttached={isToolFileAttached}
+                              isToolFileUploading={isToolFileUploading}
+                              uploadToolFile={uploadToolFile}
+                              removeToolFile={removeToolFile}
+                            />
+                          ))
+                        : null;
+                    })}
+                  </>
+                )}
               </>
             )}
             {availableSources.length === 0 && !showLoader && (

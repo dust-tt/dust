@@ -49,6 +49,26 @@ const ProjectContextQuerySchema = z.object({
   type: z.enum(["file", "content-node"]).optional(),
 });
 
+/** Lowercase + strip separators so "Hello World 4" matches query "helloworld". */
+function normalizeAttachmentSearchKey(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function attachmentTitleMatchesQuery(title: string, q: string): boolean {
+  if (q.length === 0) {
+    return true;
+  }
+  const lowerTitle = title.toLowerCase();
+  if (lowerTitle.includes(q)) {
+    return true;
+  }
+  const normalizedQuery = normalizeAttachmentSearchKey(q);
+  if (normalizedQuery.length === 0) {
+    return false;
+  }
+  return normalizeAttachmentSearchKey(title).includes(normalizedQuery);
+}
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
@@ -100,7 +120,7 @@ async function handler(
           }
         }
 
-        if (q.length > 0 && !a.title.toLowerCase().includes(q)) {
+        if (!attachmentTitleMatchesQuery(a.title, q)) {
           return false;
         }
 

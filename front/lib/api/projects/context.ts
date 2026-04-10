@@ -189,6 +189,50 @@ export async function listProjectContextAttachments(
 }
 
 /**
+ * Fetches the latest project-context `ContentFragmentResource` for a given file in a project space.
+ * Returns null when the file or fragment cannot be found (or is not in that project context).
+ */
+export async function fetchLatestProjectContextFileContentFragment(
+  auth: Authenticator,
+  space: SpaceResource,
+  fileId: string // file sId
+): Promise<{ file: FileResource; fragment: ContentFragmentResource } | null> {
+  const file = await FileResource.fetchById(auth, fileId);
+  if (!file) {
+    return null;
+  }
+
+  if (file.useCase !== "project_context") {
+    return null;
+  }
+  if (file.useCaseMetadata?.spaceId !== space.sId) {
+    return null;
+  }
+
+  const row = await ContentFragmentModel.findOne({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      spaceId: space.id,
+      fileId: file.id,
+      version: "latest",
+    },
+    order: [["createdAt", "DESC"]],
+  });
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    file,
+    fragment: new ContentFragmentResource(
+      ContentFragmentResource.model,
+      row.get()
+    ),
+  };
+}
+
+/**
  * Indexes a project context file in the project data source (when possible) and
  * ensures a latest `content_fragments` row for the file. Core upsert failures
  * are logged and do not block the content fragment sync (file may still be used raw).

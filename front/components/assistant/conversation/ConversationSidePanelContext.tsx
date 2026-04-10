@@ -44,7 +44,7 @@ interface ConversationSidePanelContextType {
   data: string | undefined;
 }
 
-const ConversationSidePanelContext = React.createContext<
+export const ConversationSidePanelContext = React.createContext<
   ConversationSidePanelContextType | undefined
 >(undefined);
 

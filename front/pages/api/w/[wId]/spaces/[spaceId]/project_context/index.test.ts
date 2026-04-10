@@ -125,6 +125,42 @@ describe("/api/w/[wId]/spaces/[spaceId]/project_context", () => {
       expect(titles).toEqual(["Budget 2026.txt"]);
     });
 
+    it("filters attachments by query (spacing/camelCase-style titles)", async () => {
+      const { auth, req, res, user, globalSpace } =
+        await createPrivateApiMockRequest({
+          method: "GET",
+          role: "user",
+        });
+
+      const space = globalSpace;
+
+      await ProjectFileFactory.create(auth, user, space, {
+        contentType: "text/plain",
+        fileName: "Hello World 4.tsx",
+        fileSize: 100,
+        status: "ready",
+      });
+
+      await ProjectFileFactory.create(auth, user, space, {
+        contentType: "text/plain",
+        fileName: "Other.txt",
+        fileSize: 100,
+        status: "ready",
+      });
+
+      req.query.spaceId = space.sId;
+      req.query.query = "helloworld";
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      const responseData = res._getJSONData();
+      const titles = responseData.attachments.map(
+        (a: { title: string }) => a.title
+      );
+      expect(titles).toEqual(["Hello World 4.tsx"]);
+    });
+
     it("filters attachments by type=content-node", async () => {
       const { req, res, globalSpace } = await createPrivateApiMockRequest({
         method: "GET",
