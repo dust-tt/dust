@@ -158,7 +158,6 @@ export function UserMessage({
     conversationId,
   });
   const confirm = useContext(ConfirmContext);
-  const sendNotification = useSendNotification();
   const { hasFeature } = useFeatureFlags();
   const singleAgentInput = hasFeature("enable_steering");
 
