@@ -116,7 +116,7 @@ async function handleWebbrowser(
     toolConfiguration.additionalConfiguration[USE_SUMMARY_SWITCH] === true;
 
   const isFirecrawlDisabled =
-    await KillSwitchResource.isKillSwitchEnabledCached(
+    await KillSwitchResource.isKillSwitchEnabled(
       "global_disable_firecrawl"
     );
   const browsingProvider = isFirecrawlDisabled ? "spider" : "firecrawl";

@@ -206,7 +206,7 @@ async function handler(
 
     case "PATCH": {
       const isSaveDataSourceViewsEnabled =
-        await KillSwitchResource.isKillSwitchEnabledCached(
+        await KillSwitchResource.isKillSwitchEnabled(
           "save_data_source_views"
         );
       if (isSaveDataSourceViewsEnabled) {
