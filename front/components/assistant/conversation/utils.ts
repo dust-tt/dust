@@ -247,46 +247,40 @@ export function getSteerGroupInfo({
   }
 
   // Compute total duration and completion status across the steered chain.
+  // Sum individual completionDurationMs values rather than using wall-clock
+  // difference, so that MCP action wait times are properly excluded.
   let groupDurationMs: number | null = null;
   let isGroupComplete = false;
   if (groupRoot) {
-    const rootMsg = messages.find((m) => m.sId === groupRoot);
-    // Collect all agent messages in the chain from root forward.
     const rootIndex = messages.findIndex((m) => m.sId === groupRoot);
-    let lastMsg = rootIndex >= 0 ? messages[rootIndex] : null;
-    let allDone = lastMsg
-      ? isAgentMessageWithStreaming(lastMsg) && lastMsg.status !== "created"
-      : false;
+    let allDone = true;
+    let totalDurationMs = 0;
+    let hasAnyDuration = false;
 
     for (
-      let i = (rootIndex >= 0 ? rootIndex : currentIndex) + 1;
+      let i = rootIndex >= 0 ? rootIndex : currentIndex;
       i < messages.length;
       i++
     ) {
       const m = messages[i];
       if (isAgentMessageWithStreaming(m)) {
         if (m.configuration.sId === configurationId) {
-          lastMsg = m;
           if (m.status === "created") {
             allDone = false;
           }
-        }
-        // Stop at first agent message not in this chain.
-        if (m.configuration.sId !== configurationId) {
+          if (m.completionDurationMs !== null) {
+            totalDurationMs += m.completionDurationMs;
+            hasAnyDuration = true;
+          }
+        } else {
+          // Stop at first agent message not in this chain.
           break;
         }
       }
     }
 
     isGroupComplete = allDone;
-    if (
-      rootMsg &&
-      lastMsg &&
-      isAgentMessageWithStreaming(lastMsg) &&
-      lastMsg.completedTs !== null
-    ) {
-      groupDurationMs = lastMsg.completedTs - rootMsg.created;
-    }
+    groupDurationMs = hasAnyDuration ? totalDurationMs : null;
   }
 
   return {

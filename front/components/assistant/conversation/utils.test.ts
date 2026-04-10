@@ -6,7 +6,11 @@ function makeAgentMessage(
   sId: string,
   configurationSId: string,
   status: string,
-  opts?: { created?: number; completedTs?: number | null }
+  opts?: {
+    created?: number;
+    completedTs?: number | null;
+    completionDurationMs?: number | null;
+  }
 ): VirtuosoMessage {
   return {
     sId,
@@ -16,6 +20,7 @@ function makeAgentMessage(
     streaming: {},
     created: opts?.created ?? 0,
     completedTs: opts?.completedTs ?? null,
+    completionDurationMs: opts?.completionDurationMs ?? null,
   } as unknown as VirtuosoMessage;
 }
 
@@ -239,16 +244,18 @@ describe("getSteerGroupInfo", () => {
   });
 
   describe("groupDurationMs", () => {
-    it("computes total duration from root creation to last message completion", () => {
+    it("sums individual completionDurationMs values across the group", () => {
       const messages = [
         makeAgentMessage("a1", "config-1", "gracefully_stopped", {
           created: 1000,
           completedTs: 3000,
+          completionDurationMs: 2000,
         }),
         makeUserMessage("u1"),
         makeAgentMessage("a2", "config-1", "succeeded", {
           created: 4000,
           completedTs: 8000,
+          completionDurationMs: 3500,
         }),
       ];
 
@@ -259,11 +266,11 @@ describe("getSteerGroupInfo", () => {
         agentStatus: "gracefully_stopped",
       });
 
-      // Duration = last completedTs (8000) - root created (1000) = 7000ms
-      expect(rootResult.groupDurationMs).toBe(7000);
+      // Duration = sum of individual durations: 2000 + 3500 = 5500ms
+      expect(rootResult.groupDurationMs).toBe(5500);
     });
 
-    it("returns null duration when last message has no completedTs", () => {
+    it("returns null duration when no message has completionDurationMs", () => {
       const messages = [
         makeAgentMessage("a1", "config-1", "gracefully_stopped", {
           created: 1000,
