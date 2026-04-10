@@ -50,7 +50,7 @@ type AuditAction =
 ```typescript
 import {
   emitAuditLogEvent,
-  buildWorkspaceTarget,
+  emitAuditLogEventDirect,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 
@@ -59,7 +59,7 @@ void emitAuditLogEvent({
   auth,
   action: "resource.verb",
   targets: [
-    buildWorkspaceTarget(auth.getNonNullableWorkspace()),
+    emitAuditLogEventDirect(auth.getNonNullableWorkspace()),
     { type: "target_resource", id: resource.sId, name: resource.name },
   ],
   context: getAuditLogContext(auth, req),
@@ -74,7 +74,7 @@ void emitAuditLogEvent({
 ```typescript
 import {
   emitAuditLogEventDirect,
-  buildWorkspaceTarget,
+  emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 
 void emitAuditLogEventDirect({
@@ -82,7 +82,7 @@ void emitAuditLogEventDirect({
   action: "resource.verb",
   actor: { type: "system", id: "temporal", name: "Directory Sync" },
   targets: [
-    buildWorkspaceTarget(workspace),
+    emitAuditLogEventDirect(workspace),
     { type: "user", id: user.sId, name: user.fullName },
   ],
   context: { location: "internal" },

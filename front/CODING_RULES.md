@@ -292,7 +292,7 @@ export type UserTypeWithWorkspaces = UserType & {
 
 ### [AUDIT7] Targets always include the workspace as the first target
 
-- Use `buildWorkspaceTarget(auth.getNonNullableWorkspace())` or `buildWorkspaceTarget(workspace)`
+- Use `emitAuditLogEventDirect(auth.getNonNullableWorkspace())` or `emitAuditLogEventDirect(workspace)`
 - Additional targets follow: `{ type: "user", id: user.sId, name: user.fullName() }`, `{ type: "api_key", id: key.sId }`, etc.
 
 ### [AUDIT8] Action names follow `<resource>.<verb>` dot notation
