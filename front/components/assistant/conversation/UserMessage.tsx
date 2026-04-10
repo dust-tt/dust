@@ -32,6 +32,7 @@ import {
 } from "@app/types/assistant/mentions";
 import type { WorkspaceType } from "@app/types/user";
 import {
+  ActionTimeIcon,
   Avatar,
   BoltIcon,
   Button,
@@ -47,7 +48,6 @@ import {
   LinkIcon,
   MoreIcon,
   PencilSquareIcon,
-  Spinner,
   Toolbar,
   Tooltip,
   TrashIcon,
@@ -382,7 +382,6 @@ export function UserMessage({
                 reversed={isCurrentUser}
               >
                 <div className="flex items-center gap-2">
-                  {message.visibility === "pending" && <Spinner size="xs" />}
                   {isDeleted ? (
                     <DeletedMessage />
                   ) : isEmpty ? (
@@ -434,6 +433,17 @@ export function UserMessage({
               />
             )}
           </ConversationMessageContainer>
+        </div>
+      )}
+      {message.visibility === "pending" && isLastMessage && (
+        <div
+          className={cn(
+            "mr-3 flex items-center gap-1 text-xs text-gray-400",
+            isCurrentUser && "justify-end"
+          )}
+        >
+          <Icon visual={ActionTimeIcon} size="xs" />
+          Waiting for agent
         </div>
       )}
     </>
