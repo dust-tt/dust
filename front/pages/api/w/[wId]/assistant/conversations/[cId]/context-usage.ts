@@ -50,10 +50,7 @@ async function handler(
       }
 
       const lastAgentMessage =
-        await ConversationResource.getMostRecentAgentMessageInConversation(
-          auth,
-          { conversation }
-        );
+        await conversation.getMostRecentAgentMessage(auth);
 
       if (!lastAgentMessage || !lastAgentMessage.runIds?.length) {
         return apiError(req, res, {
