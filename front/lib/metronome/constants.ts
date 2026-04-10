@@ -34,19 +34,6 @@ const DEV_PRODUCT_FREE_MONTHLY_CREDITS = "04f41dd1-ba27-42e3-93d5-6121712a4b67";
 const DEV_PRODUCT_PREPAID_COMMIT = "5f4331b7-4bf6-488b-9a0c-51bd139ac91c";
 const DEV_PRODUCT_PAYG_OVERAGE = "f4583c77-d226-48bb-97a3-46a8087b97fe";
 
-// Rate Cards
-const DEV_RATE_CARD_LEGACY_PRO_29 = "1da852d8-65d0-470b-a6c8-f3e7d95d727e";
-const DEV_RATE_CARD_LEGACY_BUSINESS_45 = "7e891ab9-21c0-4f83-b309-8a8841816609";
-const DEV_RATE_CARD_LEGACY_PRO_27_ANNUAL =
-  "aa256b1d-4c44-498b-964b-b23e7210222b";
-const DEV_RATE_CARD_LEGACY_ENTERPRISE = "c07a67ff-c26a-4550-9cf3-f98d2ddb4705";
-
-// Packages
-const DEV_PACKAGE_LEGACY_PRO_29 = "1db8fc59-6fc1-4351-8806-549de566797d";
-const DEV_PACKAGE_LEGACY_BUSINESS_45 = "ee20fbc5-22f7-4e29-b14a-cb2fb6c9ae60";
-const DEV_PACKAGE_LEGACY_PRO_27_ANNUAL = "4886d12c-45bd-4551-bff3-306b24a5c83e";
-const DEV_PACKAGE_LEGACY_ENTERPRISE = "a01630e0-2f1f-4feb-9ae5-074db2292e63";
-
 // --- PROD (production) — TODO: update after running setup script in production ---
 
 // Metrics
@@ -79,21 +66,6 @@ const PROD_PRODUCT_FREE_MONTHLY_CREDITS =
   "7379999c-5492-4e68-968f-345a26f6da63";
 const PROD_PRODUCT_PREPAID_COMMIT = "1408c9fc-dea1-4269-bd6d-1bc0aa1f1218";
 const PROD_PRODUCT_PAYG_OVERAGE = "f6b27a6e-86fc-4964-8076-371a912cee09";
-
-// Rate Cards
-const PROD_RATE_CARD_LEGACY_PRO_29 = "ab1ecdac-67b0-4803-8d17-13e3415d3e1d";
-const PROD_RATE_CARD_LEGACY_BUSINESS_45 =
-  "db5cea19-6421-4912-8511-9f514fc0ece2";
-const PROD_RATE_CARD_LEGACY_PRO_27_ANNUAL =
-  "7042405c-c89e-4538-80e6-e42ead7087e8";
-const PROD_RATE_CARD_LEGACY_ENTERPRISE = "df225bf4-3183-4d10-96aa-e9eb87bb6b0a";
-
-// Packages
-const PROD_PACKAGE_LEGACY_PRO_29 = "a8d782ea-b8e4-460d-99eb-393536254a01";
-const PROD_PACKAGE_LEGACY_BUSINESS_45 = "c362bd20-43a1-4c1f-957d-d889dfe34704";
-const PROD_PACKAGE_LEGACY_PRO_27_ANNUAL =
-  "e52b9a0e-f151-4284-aa4a-87d0bddf23d0";
-const PROD_PACKAGE_LEGACY_ENTERPRISE = "7d1d8d4e-c488-4dfd-8c9a-e74529c1010e";
 
 // --- Credit type IDs (stable across envs unless noted) ---
 
@@ -184,32 +156,3 @@ export const getProductMauBilling5Id = () =>
   devOrProd(DEV_PRODUCT_MAU_BILLING_5, PROD_PRODUCT_MAU_BILLING_5);
 export const getProductMauBilling10Id = () =>
   devOrProd(DEV_PRODUCT_MAU_BILLING_10, PROD_PRODUCT_MAU_BILLING_10);
-
-// Rate Cards
-export const getRateCardLegacyPro29Id = () =>
-  devOrProd(DEV_RATE_CARD_LEGACY_PRO_29, PROD_RATE_CARD_LEGACY_PRO_29);
-export const getRateCardLegacyBusiness45Id = () =>
-  devOrProd(
-    DEV_RATE_CARD_LEGACY_BUSINESS_45,
-    PROD_RATE_CARD_LEGACY_BUSINESS_45
-  );
-export const getRateCardLegacyPro27AnnualId = () =>
-  devOrProd(
-    DEV_RATE_CARD_LEGACY_PRO_27_ANNUAL,
-    PROD_RATE_CARD_LEGACY_PRO_27_ANNUAL
-  );
-export const getRateCardLegacyEnterpriseId = () =>
-  devOrProd(DEV_RATE_CARD_LEGACY_ENTERPRISE, PROD_RATE_CARD_LEGACY_ENTERPRISE);
-
-// Packages
-export const getPackageLegacyPro29Id = () =>
-  devOrProd(DEV_PACKAGE_LEGACY_PRO_29, PROD_PACKAGE_LEGACY_PRO_29);
-export const getPackageLegacyBusiness45Id = () =>
-  devOrProd(DEV_PACKAGE_LEGACY_BUSINESS_45, PROD_PACKAGE_LEGACY_BUSINESS_45);
-export const getPackageLegacyPro27AnnualId = () =>
-  devOrProd(
-    DEV_PACKAGE_LEGACY_PRO_27_ANNUAL,
-    PROD_PACKAGE_LEGACY_PRO_27_ANNUAL
-  );
-export const getPackageLegacyEnterpriseId = () =>
-  devOrProd(DEV_PACKAGE_LEGACY_ENTERPRISE, PROD_PACKAGE_LEGACY_ENTERPRISE);

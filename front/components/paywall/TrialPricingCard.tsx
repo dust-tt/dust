@@ -1,7 +1,7 @@
 import {
-  getPriceWithCurrency,
   PRO_PLAN_COST_MONTHLY,
   PRO_PLAN_COST_YEARLY,
+  usePriceWithCurrency,
 } from "@app/lib/client/subscription";
 import type { BillingPeriod } from "@app/types/plan";
 import {
@@ -33,10 +33,9 @@ export function TrialPricingCard({
   onSubscribe,
   isSubmitting,
 }: TrialPricingCardProps) {
-  const price =
-    billingPeriod === "monthly"
-      ? getPriceWithCurrency(PRO_PLAN_COST_MONTHLY)
-      : getPriceWithCurrency(PRO_PLAN_COST_YEARLY);
+  const rawPrice =
+    billingPeriod === "monthly" ? PRO_PLAN_COST_MONTHLY : PRO_PLAN_COST_YEARLY;
+  const price = usePriceWithCurrency(rawPrice);
 
   return (
     <div className="flex flex-col gap-6">
