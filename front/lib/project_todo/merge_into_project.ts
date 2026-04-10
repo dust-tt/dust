@@ -38,6 +38,8 @@ import {
   batchDeduplicateCandidates,
   type DeduplicateCandidate,
   type DeduplicationMap,
+  makeDedupGroupKey,
+  makeDedupResultKey,
 } from "@app/lib/project_todo/deduplicate_candidates";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
@@ -233,17 +235,42 @@ async function collectConversationCandidates(
       .filter((id): id is ModelId => id !== undefined);
   }
 
-  async function collectForItem(
-    itemId: string,
-    targetUserIds: ModelId[],
-    blob: TodoBlob
-  ): Promise<void> {
-    for (const userId of targetUserIds) {
-      const existing = await ProjectTodoResource.fetchBySourceId(auth, {
-        sourceId: itemId,
-        userId,
-      });
+  // Build all (itemId, targetUserIds, blob) triples up-front so we can
+  // batch-fetch source links in a single pass below.
+  const itemTriples: Array<{
+    itemId: string;
+    targetUserIds: ModelId[];
+    blob: TodoBlob;
+  }> = [
+    ...takeaway.actionItems.map((item) => ({
+      itemId: item.sId,
+      targetUserIds: resolveTargetUserIds(
+        item.assigneeUserId ? [item.assigneeUserId] : []
+      ),
+      blob: actionItemBlob(item),
+    })),
+    ...takeaway.keyDecisions.map((item) => ({
+      itemId: item.sId,
+      targetUserIds: resolveTargetUserIds(item.relevantUserIds),
+      blob: keyDecisionBlob(item),
+    })),
+    ...takeaway.notableFacts.map((item) => ({
+      itemId: item.sId,
+      targetUserIds: resolveTargetUserIds(item.relevantUserIds),
+      blob: notableFactBlob(item),
+    })),
+  ];
 
+  // Batch-fetch all existing source links for this takeaway in 3 queries
+  // instead of one per (item, user) pair.
+  const allItemIds = itemTriples.map((t) => t.itemId);
+  const existingByKey = await ProjectTodoResource.fetchBySourceIds(auth, {
+    sourceIds: allItemIds,
+  });
+
+  for (const { itemId, targetUserIds, blob } of itemTriples) {
+    for (const userId of targetUserIds) {
+      const existing = existingByKey.get(`${itemId}:${userId}`) ?? null;
       if (existing !== null) {
         // Source link exists — update content if it has changed.
         await updateTodoIfChanged(existing, auth, blob);
@@ -251,23 +278,6 @@ async function collectConversationCandidates(
         candidates.push({ itemId, userId, blob, conversationSId });
       }
     }
-  }
-
-  for (const item of takeaway.actionItems) {
-    const targetUserIds = resolveTargetUserIds(
-      item.assigneeUserId ? [item.assigneeUserId] : []
-    );
-    await collectForItem(item.sId, targetUserIds, actionItemBlob(item));
-  }
-
-  for (const item of takeaway.keyDecisions) {
-    const targetUserIds = resolveTargetUserIds(item.relevantUserIds);
-    await collectForItem(item.sId, targetUserIds, keyDecisionBlob(item));
-  }
-
-  for (const item of takeaway.notableFacts) {
-    const targetUserIds = resolveTargetUserIds(item.relevantUserIds);
-    await collectForItem(item.sId, targetUserIds, notableFactBlob(item));
   }
 
   return candidates;
@@ -310,7 +320,7 @@ async function buildDeduplicationMap(
         userId,
       });
       for (const todo of todos) {
-        const key = `${userId}:${todo.category}`;
+        const key = makeDedupGroupKey(userId, todo.category);
         const group = existingTodosByGroup.get(key) ?? [];
         group.push(todo);
         existingTodosByGroup.set(key, group);
@@ -356,7 +366,8 @@ async function createOrLinkTodos(
     newCandidates,
     async (candidate) => {
       const match =
-        dedupMap.get(`${candidate.userId}:${candidate.itemId}`) ?? null;
+        dedupMap.get(makeDedupResultKey(candidate.userId, candidate.itemId)) ??
+        null;
 
       if (match !== null) {
         // Semantic duplicate found — link the new source to the existing todo.

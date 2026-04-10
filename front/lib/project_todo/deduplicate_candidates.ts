@@ -35,6 +35,22 @@ export type DeduplicateCandidate = {
 // a genuinely new item (no duplicate found or dedup was skipped).
 export type DeduplicationMap = Map<string, ProjectTodoResource>;
 
+// Key helpers — exported so the builder (this file) and the consumer
+// (merge_into_project.ts) always use the same format.
+
+// Groups candidates/todos by user and category for per-group LLM calls.
+export function makeDedupGroupKey(
+  userId: ModelId,
+  category: ProjectTodoCategory
+): string {
+  return `${userId}:${category}`;
+}
+
+// Identifies a specific (candidate, user) pair in the DeduplicationMap.
+export function makeDedupResultKey(userId: ModelId, itemId: string): string {
+  return `${userId}:${itemId}`;
+}
+
 // ── LLM tool ─────────────────────────────────────────────────────────────────
 
 const REPORT_DUPLICATES_FUNCTION_NAME = "report_duplicates";
@@ -119,6 +135,8 @@ function buildDeduplicationPrompt(
 
 // Returns a map from candidate index (0-based) to the sId of the matching
 // existing TODO, or an empty map on failure (treat all candidates as new).
+// Precondition: all candidates must share the same category — batchDeduplicateCandidates
+// enforces this by grouping on makeDedupGroupKey before calling here.
 async function runDeduplicationLLMCall(
   auth: Authenticator,
   {
@@ -225,10 +243,10 @@ export async function batchDeduplicateCandidates(
 ): Promise<DeduplicationMap> {
   const deduplicationMap: DeduplicationMap = new Map();
 
-  // Group candidates by `${userId}:${category}`.
+  // Group candidates by (userId, category).
   const groups = new Map<string, DeduplicateCandidate[]>();
   for (const candidate of candidates) {
-    const key = `${candidate.userId}:${candidate.category}`;
+    const key = makeDedupGroupKey(candidate.userId, candidate.category);
     const group = groups.get(key) ?? [];
     group.push(candidate);
     groups.set(key, group);
@@ -261,7 +279,7 @@ export async function batchDeduplicateCandidates(
         const matched = todosBySId.get(matchedSId);
         if (matched) {
           deduplicationMap.set(
-            `${candidate.userId}:${candidate.itemId}`,
+            makeDedupResultKey(candidate.userId, candidate.itemId),
             matched
           );
         }

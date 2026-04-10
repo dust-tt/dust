@@ -150,29 +150,14 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
   }
 
   // Returns only the latest version of each logical todo for the given space.
-  // Fetches all version rows ordered by (sId ASC, version DESC) then keeps
-  // only the first occurrence per sId, which has the highest version number.
   static async fetchLatestBySpace(
     auth: Authenticator,
     { spaceId }: { spaceId: ModelId }
   ): Promise<ProjectTodoResource[]> {
-    const all = await this.baseFetch(auth, {
-      where: { spaceId, userId: auth.getNonNullableUser().id },
-      order: [
-        ["sId", "ASC"],
-        ["version", "DESC"],
-      ],
+    return this.fetchLatestBySpaceForUser(auth, {
+      spaceId,
+      userId: auth.getNonNullableUser().id,
     });
-
-    // O(n) deduplication — keep the first occurrence per sId (highest version).
-    const latestBySId = new Map<string, ProjectTodoResource>();
-    for (const todo of all) {
-      if (!latestBySId.has(todo.sId)) {
-        latestBySId.set(todo.sId, todo);
-      }
-    }
-
-    return Array.from(latestBySId.values());
   }
 
   // Returns the latest version of each logical todo for an explicit target userId
@@ -217,48 +202,73 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     });
   }
 
-  // Returns the latest version of an agent-created todo linked to the given
-  // source item for a specific user, or null if none exists.
-  // Used by the merge workflow to decide whether to create or update a todo.
-  static async fetchBySourceId(
+  // Batch variant of fetchBySourceId. Returns a map from `${sourceId}:${userId}`
+  // to the latest version of each matching todo. Replaces per-item lookups in the
+  // merge workflow with three queries total instead of N*(2–3).
+  static async fetchBySourceIds(
     auth: Authenticator,
-    {
-      sourceId,
-      userId,
-    }: {
-      sourceId: string;
-      userId: ModelId;
+    { sourceIds }: { sourceIds: string[] }
+  ): Promise<Map<string, ProjectTodoResource>> {
+    if (sourceIds.length === 0) {
+      return new Map();
     }
-  ): Promise<ProjectTodoResource | null> {
+
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    // Find source rows for this specific source item.
+    // Step 1: Find all source links for the given item IDs in a single query.
     const sources = await ProjectTodoSourceModel.findAll({
-      where: {
-        workspaceId,
-        sourceId,
-      },
+      where: { workspaceId, sourceId: { [Op.in]: sourceIds } },
     });
-
     if (sources.length === 0) {
-      return null;
+      return new Map();
     }
 
-    const projectTodoModelIds = sources.map((s) => s.projectTodoId);
-
-    // Among the matched todos, find the one owned by the target user. There
-    // should be at most one such row, but we pick the first for safety.
-    const matched = await this.baseFetch(auth, {
-      where: { id: { [Op.in]: projectTodoModelIds }, userId },
-      limit: 1,
+    // Step 2: Fetch the linked todo rows (any version) to resolve their stable
+    // sIds — sources point to a specific version's PK, not the sId directly.
+    const linkedModelIds = [...new Set(sources.map((s) => s.projectTodoId))];
+    const linkedRows = await this.baseFetch(auth, {
+      where: { id: { [Op.in]: linkedModelIds } },
     });
-
-    if (matched.length === 0) {
-      return null;
+    if (linkedRows.length === 0) {
+      return new Map();
     }
 
-    // Return the latest version of the todo using its stable sId.
-    return this.fetchBySId(auth, matched[0].sId);
+    // Step 3: Batch-fetch all versions of those todos and keep the latest per sId.
+    const uniqueSIds = [...new Set(linkedRows.map((t) => t.sId))];
+    const allVersions = await this.baseFetch(auth, {
+      where: { sId: { [Op.in]: uniqueSIds } },
+      order: [
+        ["sId", "ASC"],
+        ["version", "DESC"],
+      ],
+    });
+    const latestBySId = new Map<string, ProjectTodoResource>();
+    for (const todo of allVersions) {
+      if (!latestBySId.has(todo.sId)) {
+        latestBySId.set(todo.sId, todo);
+      }
+    }
+
+    // Build a lookup from linked row model id → sId to bridge sources to latest.
+    const sIdByModelId = new Map<ModelId, string>(
+      linkedRows.map((t) => [t.id, t.sId])
+    );
+
+    // Result: `${sourceId}:${userId}` → latest ProjectTodoResource.
+    const result = new Map<string, ProjectTodoResource>();
+    for (const source of sources) {
+      const sId = sIdByModelId.get(source.projectTodoId);
+      if (!sId) {
+        continue;
+      }
+      const latest = latestBySId.get(sId);
+      if (!latest) {
+        continue;
+      }
+      result.set(`${source.sourceId}:${latest.userId}`, latest);
+    }
+
+    return result;
   }
 
   // ── Output conversation links (todo => conversation) ────────────────────
