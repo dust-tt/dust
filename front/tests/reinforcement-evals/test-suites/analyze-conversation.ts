@@ -361,5 +361,209 @@ Score 0-1 if the suggestion is generic and doesn't address the specific feedback
 Score 2 if the suggestion addresses tone but misses the remedy guidance (or vice versa).
 Score 3 if the suggestion addresses both brand voice and remedy guidance with a clear analysis.`,
     },
+    {
+      scenarioId: "multi-skill-targeted-feedback",
+      type: "analysis",
+      skillConfigs: [
+        {
+          name: "GitHub Reporter",
+          sId: "skill_github_reporter",
+          description:
+            "Extracts data from GitHub repositories including issues, PRs, and project boards for the engineering team",
+          instructions: `You are the GitHub Reporter skill for Acme Corp's engineering team. Use this skill to extract repository activity, issues, and pull requests from our GitHub organization.
+
+## Projects
+
+Our GitHub organization contains the following repositories:
+- **CoreEngine**: The main backend service handling API requests, authentication, and data processing.
+- **FrontendUI**: The customer-facing React web application and design system.
+- **InfraOps**: Infrastructure-as-code, CI/CD pipelines, and deployment tooling.
+- **MobileApp**: The iOS and Android mobile application built with React Native.
+
+## Tools
+
+- Use \`github-list-issues\` to retrieve open and closed issues for one or more repositories. Always specify the project names in the \`projects\` parameter.
+- Use \`github-list-prs\` to retrieve pull requests (open, merged, closed) for one or more repositories. Always specify the project names in the \`projects\` parameter.
+- Use \`github-get-repo-stats\` to retrieve commit activity, contributor stats, and release history for a single repository.
+
+When reporting, group results by repository and include issue/PR status.`,
+          tools: [{ name: "GitHub", sId: "mcp_github" }],
+        },
+        {
+          name: "Jira Extractor",
+          sId: "skill_jira_extractor",
+          description:
+            "Extracts tickets, sprint data, and project status from Jira for the engineering and product teams",
+          instructions: `You are the Jira Extractor skill for Acme Corp. Use this skill to retrieve tickets, sprint progress, and project status from our Jira instance.
+
+## Projects
+
+Our Jira workspace contains the following projects:
+- **ENG** (Engineering): Backend and infrastructure work items, bugs, and technical debt.
+- **FRONT** (Frontend): UI/UX tasks, design implementation, and frontend bugs.
+- **MOBILE** (Mobile): Mobile app features, platform-specific bugs, and release tracking.
+- **PROD** (Product): Product requirements, feature specifications, and roadmap items.
+
+## Tools
+
+- Use \`jira-get-sprint-status\` to retrieve the current sprint's progress, including ticket counts by status and completion percentage. Specify the \`board\` parameter (e.g., "Engineering", "Frontend", "Mobile").
+- Use \`jira-search-issues\` to search for issues using JQL queries. Use this for filtered searches (e.g., by assignee, label, priority, or date range).
+- Use \`jira-create-issue\` to create new tickets. Always set the \`project\`, \`summary\`, \`description\`, and \`issueType\` fields. Default issue type is "Task" unless the user specifies otherwise.
+
+When presenting sprint data, always include the sprint name, overall progress percentage, and a breakdown of tickets by status (To Do, In Progress, Done).`,
+          tools: [{ name: "JIRA", sId: "mcp_jira" }],
+        },
+        {
+          name: "Notion Publisher",
+          sId: "skill_notion_publisher",
+          description:
+            "Publishes reports and documents to the Acme Corp Notion workspace",
+          instructions: `You are the Notion Publisher skill for Acme Corp. Use this skill to read content from Notion, create new pages, and update existing pages in our shared workspace.
+
+## Workspace sections
+
+Our Notion workspace is organized into the following top-level sections:
+- **Engineering Reports**: Weekly and monthly engineering reports, incident post-mortems, and architecture decision records.
+- **Product Specs**: Product requirements documents, feature specs, and design briefs.
+- **Meeting Notes**: Agendas and notes from team standups, retrospectives, and planning sessions.
+- **Team Wiki**: Onboarding guides, process documentation, and team directories.
+
+## Tools
+
+- Use \`notion-search\` to find existing pages by title or content. Use this before creating a new page to avoid duplicates.
+- Use \`notion-get-page\` to retrieve the full content of an existing Notion page by its page ID.
+- Use \`notion-create-page\` to create a new page. Always specify the \`database\` (section name) and \`title\`. Use the appropriate section based on the content type.
+- Use \`notion-update-page\` to edit the content of an existing page by its page ID. Use this to append or replace sections of a page.
+
+## Content structure
+
+When creating or updating pages, follow these formatting rules:
+- Start with an H1 title matching the page title.
+- Use H2 headings for major sections (e.g., "GitHub Activity", "Jira Sprint Status").
+- Use tables for structured data (issues, PRs, tickets) with columns for key, title, status, and assignee.
+- Use bullet points for summaries and highlights.
+- Always include a "Generated on" date at the bottom of reports.`,
+          tools: [{ name: "Notion", sId: "mcp_notion" }],
+        },
+      ],
+      conversation: [
+        {
+          role: "user",
+          content:
+            "I need a combined report of our GitHub activity and Jira sprint status. Pull the data from both and publish it as a report on Notion.",
+        },
+        {
+          role: "agent",
+          content:
+            "I'll gather data from both GitHub and Jira, then publish the combined report to Notion.",
+          actions: [
+            {
+              functionCallName: "github-list-issues",
+              status: "succeeded",
+              params: {
+                projects: ["CoreEngine", "FrontendUI", "InfraOps", "MobileApp"],
+              },
+              output:
+                '{"issues": [{"project": "CoreEngine", "title": "Fix auth flow", "status": "open"}, {"project": "FrontendUI", "title": "Update dashboard", "status": "closed"}]}',
+            },
+            {
+              functionCallName: "github-list-prs",
+              status: "succeeded",
+              params: {
+                projects: ["CoreEngine", "FrontendUI", "InfraOps", "MobileApp"],
+              },
+              output:
+                '{"prs": [{"project": "CoreEngine", "title": "Refactor auth module", "status": "merged"}, {"project": "MobileApp", "title": "Add push notifications", "status": "open"}]}',
+            },
+            {
+              functionCallName: "jira-get-sprint-status",
+              status: "succeeded",
+              params: { board: "Engineering" },
+              output:
+                '{"sprint": "Sprint 24", "progress": "75%", "tickets": [{"key": "ENG-401", "summary": "API rate limiting", "status": "In Progress"}, {"key": "ENG-402", "summary": "DB migration", "status": "Done"}]}',
+            },
+            {
+              functionCallName: "notion-create-page",
+              status: "succeeded",
+              params: {
+                database: "Engineering Reports",
+                title: "GitHub & Jira Combined Report",
+                content:
+                  "# GitHub & Jira Combined Report\n\n## GitHub Activity\n\n| Project | Title | Type | Status |\n|---|---|---|---|\n| CoreEngine | Fix auth flow | Issue | Open |\n| CoreEngine | Refactor auth module | PR | Merged |\n| FrontendUI | Update dashboard | Issue | Closed |\n| MobileApp | Add push notifications | PR | Open |\n\n## Jira Sprint Status\n\n**Sprint 24** — 75% complete\n\n| Key | Summary | Status |\n|---|---|---|\n| ENG-401 | API rate limiting | In Progress |\n| ENG-402 | DB migration | Done |\n\n*Generated on 2026-04-10*",
+              },
+              output:
+                '{"pageId": "page_abc123", "url": "https://notion.so/report-abc123"}',
+            },
+          ],
+        },
+        {
+          role: "agent",
+          content:
+            "I've published the combined report to Notion. Here's a summary:\n\n**GitHub Activity:**\n- CoreEngine: 1 open issue (Fix auth flow), 1 merged PR (Refactor auth module)\n- FrontendUI: 1 closed issue (Update dashboard)\n- MobileApp: 1 open PR (Add push notifications)\n\n**Jira Sprint 24 (75% complete):**\n- ENG-401: API rate limiting (In Progress)\n- ENG-402: DB migration (Done)\n\nFull report: https://notion.so/report-abc123",
+        },
+        {
+          role: "user",
+          content:
+            "The info looks wrong for GitHub — you are missing all the tickets from project DevCode. That's one of our most active repos and it's not in the report at all.",
+        },
+        {
+          role: "agent",
+          content:
+            "You're right, I'm sorry about that. Let me pull the data from the DevCode repository and update the report.",
+          actions: [
+            {
+              functionCallName: "github-list-issues",
+              status: "succeeded",
+              params: { projects: ["DevCode"] },
+              output:
+                '{"issues": [{"project": "DevCode", "title": "Implement caching layer", "status": "open"}, {"project": "DevCode", "title": "Fix race condition in worker", "status": "open"}, {"project": "DevCode", "title": "Add retry logic for webhooks", "status": "closed"}]}',
+            },
+            {
+              functionCallName: "github-list-prs",
+              status: "succeeded",
+              params: { projects: ["DevCode"] },
+              output:
+                '{"prs": [{"project": "DevCode", "title": "Add caching middleware", "status": "open"}, {"project": "DevCode", "title": "Fix worker pool exhaustion", "status": "merged"}]}',
+            },
+            {
+              functionCallName: "notion-update-page",
+              status: "succeeded",
+              params: {
+                pageId: "page_abc123",
+                content:
+                  "## DevCode Activity\n\n| Title | Type | Status |\n|---|---|---|\n| Implement caching layer | Issue | Open |\n| Fix race condition in worker | Issue | Open |\n| Add retry logic for webhooks | Issue | Closed |\n| Add caching middleware | PR | Open |\n| Fix worker pool exhaustion | PR | Merged |",
+              },
+              output: '{"success": true}',
+            },
+          ],
+        },
+        {
+          role: "agent",
+          content:
+            "I've updated the Notion report with the DevCode data. Here's what was added:\n\n**DevCode:**\n- 2 open issues (Implement caching layer, Fix race condition in worker), 1 closed issue (Add retry logic for webhooks)\n- 1 open PR (Add caching middleware), 1 merged PR (Fix worker pool exhaustion)\n\nThe report at https://notion.so/report-abc123 now includes all five repositories.",
+          feedback: {
+            direction: "down",
+            comment:
+              "GitHub skill is missing the DevCode project. The report was incomplete because it doesn't know about all our repositories.",
+          },
+        },
+      ],
+      workspaceContext: WORKSPACE_CONTEXT,
+      expectedToolCalls: [editSkillWithInstructions("skill_github_reporter")],
+      judgeCriteria: `The analyst MUST call edit_skill with instructionEdits ONLY for skill "skill_github_reporter".
+The suggestion should:
+- Add "DevCode" to the list of known GitHub projects in the skill instructions
+- Reference that the current project list is incomplete and caused missing data in the report
+- Keep the existing projects (CoreEngine, FrontendUI, InfraOps, MobileApp) and add DevCode
+
+CRITICAL constraints:
+- There MUST NOT be any edit_skill call targeting "skill_jira_extractor" or "skill_notion_publisher"
+- The user's complaint is specifically about GitHub missing the DevCode project — the Jira and Notion skills worked correctly
+- Only the GitHub Reporter skill needs updating
+
+Score 0 if no edit_skill call is made for skill_github_reporter, or if edit_skill is called for skill_jira_extractor or skill_notion_publisher.
+Score 1 if edit_skill is called only for skill_github_reporter but the suggestion doesn't specifically mention adding DevCode to the project list.
+Score 3 if edit_skill is called only for skill_github_reporter, the suggestion adds DevCode to the project list, and no other skills are modified.`,
+    },
   ],
 };
