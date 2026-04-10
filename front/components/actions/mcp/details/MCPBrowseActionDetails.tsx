@@ -29,7 +29,11 @@ function BrowseResultItem({ result }: BrowseResultItemProps) {
   return (
     <Card variant={isSuccess ? "primary" : "warning"} size="sm" {...linkProps}>
       <div className="flex items-start gap-2">
-        <FaviconIcon websiteUrl={result.uri} size="md" className="mt-0.5 shrink-0" />
+        <FaviconIcon
+          websiteUrl={result.uri}
+          size="md"
+          className="mt-0.5 shrink-0"
+        />
         <div className="min-w-0 flex-1">
           <span className="truncate text-sm font-medium">{title}</span>
           {subtitle && (
@@ -68,13 +72,15 @@ export function MCPBrowseActionDetails({
       visual={GlobeAltIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
-        {(displayContext === "conversation" ||
-          browseResults.length === 0) &&
+        {(displayContext === "conversation" || browseResults.length === 0) &&
         urls ? (
           <div className="flex flex-col gap-1">
             {urls.map((url, idx) => (
               <div className="group flex items-center gap-1" key={idx}>
-                <FaviconIcon websiteUrl={url} className="grayscale transition-all duration-150 group-hover:grayscale-0" />
+                <FaviconIcon
+                  websiteUrl={url}
+                  className="grayscale transition-all duration-150 group-hover:grayscale-0"
+                />
                 <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                   {url}
                 </span>
