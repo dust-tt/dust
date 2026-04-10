@@ -3,7 +3,6 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { RunResource } from "@app/lib/resources/run_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -49,10 +48,9 @@ async function handler(
         });
       }
 
-      const lastAgentMessage =
-        await conversation.getLatestCompletedAgentMessage(auth);
-
-      if (!lastAgentMessage || !lastAgentMessage.runIds?.length) {
+      const run =
+        await conversation.getLatestCompletedAgentMessageRun(auth);
+      if (!run) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -62,24 +60,7 @@ async function handler(
         });
       }
 
-      // runIds is ordered chronologically (appended step by step in the agent loop), so the last
-      // element is the most recent run.
-      const run = await RunResource.fetchByDustRunId(auth, {
-        dustRunId: lastAgentMessage.runIds[lastAgentMessage.runIds.length - 1],
-      });
-
-      if (!run) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "conversation_context_usage_not_found",
-            message: "No run found for the last agent message.",
-          },
-        });
-      }
-
       const usages = await run.listRunUsages(auth);
-
       if (usages.length === 0) {
         return apiError(req, res, {
           status_code: 404,
@@ -90,9 +71,10 @@ async function handler(
         });
       }
 
-      // Take the max promptTokens across usages of the last run — in a multi-step agent loop, each
-      // step sees all previous steps' outputs, so the last step's promptTokens is the full context
-      // size as seen by the model.
+      // Take the max promptTokens across usages of the last run — in a
+      // multi-step agent loop, each step sees all previous steps' outputs, so
+      // the last step's promptTokens is the full context size as seen by the
+      // model.
       const lastUsage = usages[usages.length - 1];
       const contextUsage = Math.max(...usages.map((u) => u.promptTokens));
       const modelConfig = getModelConfigByModelId(lastUsage.modelId);

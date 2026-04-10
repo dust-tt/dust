@@ -18,6 +18,7 @@ import {
   createResourcePermissionsFromSpacesWithMap,
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
+import { RunResource } from "@app/lib/resources/run_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
@@ -1835,12 +1836,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return pendingMessages;
   }
 
-  async getLatestCompletedAgentMessage(
+  async getLatestCompletedAgentMessageRun(
     auth: Authenticator
-  ): Promise<AgentMessageModel | null> {
+  ): Promise<RunResource | null> {
     const owner = auth.getNonNullableWorkspace();
 
-    return AgentMessageModel.findOne({
+    const agentMessage = await AgentMessageModel.findOne({
       where: {
         workspaceId: owner.id,
         status: ["succeeded", "gracefully_stopped"],
@@ -1858,6 +1859,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       ],
       order: [["createdAt", "DESC"]],
     });
+
+    if (!agentMessage?.runIds?.length) {
+      return null;
+    }
+
+    // runIds is ordered chronologically (appended step by step in the agent loop), so the last
+    // element is the most recent run.
+    const lastRunId = agentMessage.runIds[agentMessage.runIds.length - 1];
+
+    return RunResource.fetchByDustRunId(auth, { dustRunId: lastRunId });
   }
 
   static async getMessageByIdInConversation(
