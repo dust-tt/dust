@@ -11,7 +11,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetConversationContextUsageResponse = {
   model: SupportedModel;
-  promptTokens: number;
+  contextUsage: number;
   contextSize: number;
 };
 
@@ -94,7 +94,7 @@ async function handler(
       // step sees all previous steps' outputs, so the last step's promptTokens is the full context
       // size as seen by the model.
       const lastUsage = usages[usages.length - 1];
-      const promptTokens = Math.max(...usages.map((u) => u.promptTokens));
+      const contextUsage = Math.max(...usages.map((u) => u.promptTokens));
       const modelConfig = getModelConfigByModelId(lastUsage.modelId);
 
       return res.status(200).json({
@@ -102,7 +102,7 @@ async function handler(
           providerId: lastUsage.providerId,
           modelId: lastUsage.modelId,
         },
-        promptTokens,
+        contextUsage,
         contextSize: modelConfig?.contextSize ?? 0,
       });
     }
