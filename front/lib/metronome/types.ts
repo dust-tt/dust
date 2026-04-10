@@ -12,6 +12,7 @@ import type { Commit, Credit } from "@metronome/sdk/resources/shared";
 export const LEGACY_PRO_MONTHLY_PACKAGE_ALIAS = "legacy-pro-monthly";
 export const LEGACY_PRO_ANNUAL_PACKAGE_ALIAS = "legacy-pro-annual";
 export const LEGACY_BUSINESS_PACKAGE_ALIAS = "legacy-business";
+export const LEGACY_ENTERPRISE_PACKAGE_ALIAS = "legacy-enterprise";
 
 export const PRO_OR_BUSINESS_PACKAGE_ALIASES: ReadonlySet<string> = new Set([
   LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
