@@ -11,6 +11,7 @@ import {
   Counter,
   cn,
   Input,
+  QuestionOption,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -140,61 +141,18 @@ export function UserQuestionRequired({
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          {question.options.map((option, index) => {
-            const isSelected = selectedOptions.includes(index);
-
-            return (
-              <Card
-                key={index}
-                variant="tertiary"
-                className={cn(
-                  "flex w-full cursor-pointer items-center gap-2 rounded-2xl p-3 text-left transition-colors",
-                  isSelected
-                    ? question.multiSelect
-                      ? [
-                          "border-border bg-muted-background",
-                          "dark:border-border-night dark:bg-muted-background-night",
-                        ]
-                      : "bg-muted-background dark:bg-muted-background-night"
-                    : [
-                        "bg-background hover:bg-muted-background/60",
-                        "dark:bg-background-night",
-                        "dark:hover:bg-muted-background-night/60",
-                      ]
-                )}
-                onClick={() => handleOptionClick(index)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    handleOptionClick(index);
-                  }
-                }}
-                role="button"
-                tabIndex={isSubmitting ? -1 : 0}
-                aria-pressed={isSelected}
-              >
-                <Counter
-                  value={index + 1}
-                  size="sm"
-                  variant="ghost"
-                  className={cn(
-                    "shrink-0 bg-border-dark text-muted-foreground",
-                    "dark:bg-border-dark-night dark:text-muted-foreground-night"
-                  )}
-                />
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-                    {option.label}
-                  </span>
-                  {option.description && (
-                    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                      {option.description}
-                    </span>
-                  )}
-                </div>
-              </Card>
-            );
-          })}
+          {question.options.map((option, index) => (
+            <QuestionOption
+              key={index}
+              label={option.label}
+              description={option.description}
+              counterValue={index + 1}
+              selected={selectedOptions.includes(index)}
+              selectionStyle={question.multiSelect ? "multi" : "single"}
+              disabled={isSubmitting}
+              onClick={() => handleOptionClick(index)}
+            />
+          ))}
           <Card
             variant="tertiary"
             className={cn(
