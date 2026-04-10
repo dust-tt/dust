@@ -263,7 +263,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           className={cn(
             "mx-auto max-w-conversation",
             topMargin,
-            !nextData && "mb-4"
+            !nextData && "mb-8"
           )}
         >
           {isUserMessage(data) && (
