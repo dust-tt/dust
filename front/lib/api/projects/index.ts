@@ -6,7 +6,6 @@ export {
   fetchLatestProjectContextFileContentFragment,
   listProjectContentFragments,
   listProjectContextAttachments,
-  listProjectContextFiles,
   removeContentNodeFromProject,
   removeFileFromProject,
 } from "./context";

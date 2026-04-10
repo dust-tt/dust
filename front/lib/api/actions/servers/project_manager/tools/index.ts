@@ -13,24 +13,21 @@ import {
   withErrorHandling,
 } from "@app/lib/api/actions/servers/project_manager/helpers";
 import { PROJECT_MANAGER_TOOLS_METADATA } from "@app/lib/api/actions/servers/project_manager/metadata";
-import { formatConversationsForDisplay } from "@app/lib/api/actions/servers/project_manager/tools/conversation_formatting";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { renderAttachmentXml } from "@app/lib/api/assistant/conversation/attachments";
 import config from "@app/lib/api/config";
 import {
   addFileToProject,
-  listProjectContextFiles,
+  fetchLatestProjectContextFileContentFragment,
+  listProjectContextAttachments,
 } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getProjectRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import {
   contentTypeFromFileName,
   isAllSupportedFileContentType,
-  isSupportedFileContentType,
 } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
@@ -310,6 +307,58 @@ export function createProjectManagerTools(
       }, "Failed to update file");
     },
 
+    attach_to_conversation: async (params) => {
+      return withErrorHandling(async () => {
+        if (!agentLoopContext?.runContext?.conversation) {
+          return new Err(
+            new MCPError("No conversation context available", {
+              tracked: false,
+            })
+          );
+        }
+
+        const contextRes = await getProjectSpace(auth, {
+          agentLoopContext,
+          dustProject: params.dustProject,
+        });
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { space } = contextRes.value;
+        const { fileId } = params;
+
+        const projectFile = await fetchLatestProjectContextFileContentFragment(
+          auth,
+          space,
+          fileId
+        );
+        if (!projectFile) {
+          return new Err(
+            new MCPError("File not found in this project context", {
+              tracked: false,
+            })
+          );
+        }
+        const { file } = projectFile;
+
+        return new Ok([
+          {
+            type: "resource" as const,
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+              uri: file.getPublicUrl(auth),
+              fileId: file.sId,
+              title: file.fileName,
+              contentType: file.contentType,
+              snippet: file.snippet,
+              text: `File "${file.fileName}" (${file.sId}) attached to the current conversation.`,
+            },
+          },
+        ]);
+      }, "Failed to attach project file to conversation");
+    },
+
     edit_description: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getWritableProjectContext(auth, {
@@ -368,15 +417,7 @@ export function createProjectManagerTools(
           space
         );
 
-        const files = await listProjectContextFiles(auth, space);
-
-        const fileList = files
-          .filter((file) => isSupportedFileContentType(file.contentType))
-          .map((file) => ({
-            fileId: file.sId,
-            fileName: file.fileName,
-            contentType: file.contentType,
-          }));
+        const attachments = await listProjectContextAttachments(auth, space);
 
         // Construct project URL
         const projectPath = getProjectRoute(owner.sId, space.sId);
@@ -390,85 +431,26 @@ export function createProjectManagerTools(
               name: space.name,
               url: projectUrl,
               description: metadata?.description ?? null,
-              fileCount: files.length,
-              files: fileList,
+              context: {
+                count: attachments.length,
+                attachments: attachments
+                  .map((a) =>
+                    renderAttachmentXml({
+                      attachment: a,
+                      content: "",
+                      // When in the project context, the flags might be misleading, version is useless (it's always the latest)
+                      // eg: a csv might have been uploaded in a convo (becoming queryable) but then moved to the project context.
+                      // This will be obsolete once we run query directly in the sandbox.
+                      hideFlagsAndVersion: true,
+                    })
+                  )
+                  .join("\n"),
+              },
             },
             message: "Successfully retrieved project information",
           })
         );
       }, "Failed to get project information");
-    },
-
-    list_unread: async (params) => {
-      return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, {
-          agentLoopContext,
-          dustProject: params.dustProject,
-        });
-        if (contextRes.isErr()) {
-          return contextRes;
-        }
-
-        const { space } = contextRes.value;
-        const { daysBack = 30, limit = 20 } = params;
-
-        // Calculate the cutoff date for the time window
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - daysBack);
-
-        // List conversations in the project space updated since cutoff
-        const spaceConversations =
-          await ConversationResource.listConversationsInSpace(auth, {
-            spaceId: space.sId,
-            options: {
-              updatedSince: cutoffDate.getTime(),
-              excludeTest: true,
-            },
-          });
-
-        // Fetch full conversations with content
-        const conversationResults = await concurrentExecutor(
-          spaceConversations,
-          async (c) => getConversation(auth, c.sId, false),
-          { concurrency: 10 }
-        );
-
-        // Extract successful conversations
-        const conversationsFull = conversationResults
-          .filter((r) => r.isOk())
-          .map((r) => r.value);
-
-        // Filter for unread conversations based on the unread flag, and apply limit
-        const unreadConversations = conversationsFull.filter((c) => c.unread);
-
-        // Apply limit
-        const limitedConversations = unreadConversations.slice(0, limit);
-
-        if (limitedConversations.length === 0) {
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `No unread conversations found in project "${space.name}" from the last ${daysBack} days.`,
-            },
-          ]);
-        }
-
-        const formattedConversations = formatConversationsForDisplay(
-          limitedConversations,
-          auth.getNonNullableWorkspace().sId
-        );
-
-        return new Ok(
-          makeSuccessResponse({
-            success: true,
-            count: limitedConversations.length,
-            total: unreadConversations.length,
-            daysBack,
-            conversations: formattedConversations,
-            message: `Found ${limitedConversations.length} unread conversation(s) in project "${space.name}"${unreadConversations.length > limit ? ` (showing first ${limit} of ${unreadConversations.length})` : ""}.`,
-          })
-        );
-      }, "Failed to search unread conversations");
     },
   };
 

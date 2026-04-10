@@ -294,23 +294,30 @@ export function renderLargePasteXml({
 export function renderAttachmentXml({
   attachment,
   content = null,
+  hideFlagsAndVersion = false,
 }: {
   attachment: ConversationAttachmentType;
   content?: string | null;
+  hideFlagsAndVersion?: boolean;
 }): string {
   const params = [
     `id="${conversationAttachmentId(attachment)}"`,
     `type="${attachment.contentType}"`,
     `title="${attachment.title}"`,
-    `version="${attachment.contentFragmentVersion}"`,
-    `isInProjectContext="${attachment.isInProjectContext}"`,
-    `isIncludable="${attachment.isIncludable}"`,
-    `isQueryable="${attachment.isQueryable}"`,
-    `isSearchable="${attachment.isSearchable}"`,
+    ...(hideFlagsAndVersion
+      ? []
+      : [
+          `version="${attachment.contentFragmentVersion}"`,
+          `isInProjectContext="${attachment.isInProjectContext}"`,
+          `isIncludable="${attachment.isIncludable}"`,
+          `isQueryable="${attachment.isQueryable}"`,
+          `isSearchable="${attachment.isSearchable}"`,
+        ]),
   ];
 
   if (isContentNodeAttachmentType(attachment) && attachment.sourceUrl) {
     params.push(`sourceUrl="${attachment.sourceUrl}"`);
+    params.push(`nodeId="${attachment.nodeId}"`);
   }
 
   let tag = `<attachment ${params.join(" ")}`;

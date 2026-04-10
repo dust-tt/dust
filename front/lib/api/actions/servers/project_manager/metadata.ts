@@ -73,6 +73,24 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
       done: "Update file in project",
     },
   },
+  attach_to_conversation: {
+    description:
+      "Attach an existing project context file to the current conversation without creating or copying a new file.",
+    schema: {
+      fileId: z
+        .string()
+        .describe("ID of an existing file in the project context to attach"),
+      dustProject:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        ].optional(),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Attaching project file to conversation",
+      done: "Attach project file to conversation",
+    },
+  },
   edit_description: {
     description:
       "Edit the project description. Only plain text is accepted (no markdown, HTML, or formatting). Descriptions should be brief and concise.",
@@ -108,42 +126,13 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
       done: "Get project information",
     },
   },
-  list_unread: {
-    description:
-      "List unread conversations in the project. Returns conversations that have been updated since the user last read them, " +
-      "within an optional time window (defaults to 30 days).",
-    schema: {
-      daysBack: z
-        .number()
-        .optional()
-        .default(30)
-        .describe(
-          "Number of days to look back for unread conversations (default: 30 days)"
-        ),
-      limit: z
-        .number()
-        .optional()
-        .default(20)
-        .describe(
-          "Maximum number of conversations to return (default: 20, max: 100)"
-        ),
-      dustProject:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-        ].optional(),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Searching unread conversations",
-      done: "Search unread conversations",
-    },
-  },
 });
 
 const PROJECT_MANAGER_INSTRUCTIONS =
   "Project files and metadata are shared across all conversations in this project. " +
   "Only text-based files are supported for adding/updating. " +
   "You can add/update files by providing text content directly, or by copying from existing files (like those you've generated). " +
+  "You can also attach an existing project context file to the current conversation without recreating it. " +
   "Requires write permissions on the project space. " +
   "After adding or updating files, always list the file names you changed in your response so the user knows exactly what was modified.";
 
