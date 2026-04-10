@@ -1,4 +1,6 @@
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import { isAdmin } from "@app/types/user";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   ChromeLogo,
@@ -15,7 +17,7 @@ const EXTENSION_BANNER_URL =
 
 const EMAIL_IMAGE_PATH = "/static/Email_Banner.png";
 const EMAIL_BANNER_LOCAL_STORAGE_KEY = "email-banner-dismissed";
-const EMAIL_BANNER_URL = "https://docs.dust.tt/docs/email-agents";
+const EMAIL_DOCS_URL = "https://docs.dust.tt/docs/email-agents";
 
 interface ExtensionBannerProps {
   showExtensionBanner: boolean;
@@ -93,11 +95,19 @@ function ExtensionBanner({
 }
 
 interface EmailBannerProps {
+  owner: WorkspaceType;
   showEmailBanner: boolean;
   onShowEmailBanner: (open: boolean) => void;
 }
 
-function EmailBanner({ showEmailBanner, onShowEmailBanner }: EmailBannerProps) {
+function EmailBanner({
+  owner,
+  showEmailBanner,
+  onShowEmailBanner,
+}: EmailBannerProps) {
+  const emailEnabled = owner.metadata?.allowEmailAgents === true;
+  const userIsAdmin = isAdmin(owner);
+
   const onDismiss = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
@@ -105,9 +115,22 @@ function EmailBanner({ showEmailBanner, onShowEmailBanner }: EmailBannerProps) {
     onShowEmailBanner(false);
   };
 
-  const onLearnMore = () => {
-    window.open(EMAIL_BANNER_URL, "_blank", "noopener,noreferrer");
-  };
+  const ctaUrl = emailEnabled
+    ? // TODO: replace with mailto link content.
+      EMAIL_DOCS_URL
+    : userIsAdmin
+      ? `/w/${owner.sId}/workspace`
+      : null;
+
+  const onCtaClick = ctaUrl
+    ? () => {
+        window.open(
+          ctaUrl,
+          emailEnabled ? "_blank" : "_self",
+          "noopener,noreferrer",
+        );
+      }
+    : undefined;
 
   if (!showEmailBanner) {
     return null;
@@ -119,11 +142,11 @@ function EmailBanner({ showEmailBanner, onShowEmailBanner }: EmailBannerProps) {
       transition={{ duration: 0.1, ease: "easeIn" }}
       exit={{ opacity: 0, translateY: "120%" }}
       className="relative z-10 mx-2 mb-2 hidden max-w-[300px] cursor-pointer flex-col rounded-2xl border border-border-dark bg-white shadow-md dark:border-border-night dark:bg-background-night sm:flex"
-      onClick={withTracking(
-        TRACKING_AREAS.EMAIL,
-        "cta_email_banner",
-        onLearnMore,
-      )}
+      onClick={
+        onCtaClick
+          ? withTracking(TRACKING_AREAS.EMAIL, "cta_email_banner", onCtaClick)
+          : undefined
+      }
     >
       <div className="relative overflow-hidden rounded-t-2xl">
         <img
@@ -148,29 +171,71 @@ function EmailBanner({ showEmailBanner, onShowEmailBanner }: EmailBannerProps) {
         <h4 className="mb-3 text-xs leading-tight text-primary dark:text-primary-night">
           Forward any email to an agent — get answers right in your inbox.
         </h4>
-        <Button
-          variant="highlight"
-          size="xs"
-          icon={MovingMailIcon}
-          label="Learn more"
-          onClick={withTracking(
-            TRACKING_AREAS.EMAIL,
-            "cta_email_banner",
-            onLearnMore,
-          )}
+        <EmailBannerCta
+          emailEnabled={emailEnabled}
+          userIsAdmin={userIsAdmin}
+          onCtaClick={onCtaClick}
         />
       </div>
     </motion.div>
   );
 }
 
-interface StackedInAppBannersProps {
-  owner: { sId: string };
+interface EmailBannerCtaProps {
+  emailEnabled: boolean;
+  userIsAdmin: boolean;
+  onCtaClick: (() => void) | undefined;
 }
 
-export function StackedInAppBanners({
-  owner: _owner,
-}: StackedInAppBannersProps) {
+function EmailBannerCta({
+  emailEnabled,
+  userIsAdmin,
+  onCtaClick,
+}: EmailBannerCtaProps) {
+  if (emailEnabled) {
+    return (
+      <Button
+        variant="highlight"
+        size="xs"
+        icon={MovingMailIcon}
+        label="Try it now"
+        onClick={
+          onCtaClick
+            ? withTracking(TRACKING_AREAS.EMAIL, "cta_email_banner", onCtaClick)
+            : undefined
+        }
+      />
+    );
+  }
+
+  if (userIsAdmin) {
+    return (
+      <Button
+        variant="highlight"
+        size="xs"
+        icon={MovingMailIcon}
+        label="Enable in settings"
+        onClick={
+          onCtaClick
+            ? withTracking(TRACKING_AREAS.EMAIL, "cta_email_banner", onCtaClick)
+            : undefined
+        }
+      />
+    );
+  }
+
+  return (
+    <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+      Ask your admin to enable email agents.
+    </p>
+  );
+}
+
+interface StackedInAppBannersProps {
+  owner: WorkspaceType;
+}
+
+export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
   const [showExtensionBanner, setShowExtensionBanner] = useState(() => {
     return localStorage.getItem(EXTENSION_BANNER_LOCAL_STORAGE_KEY) !== "true";
   });
@@ -182,6 +247,7 @@ export function StackedInAppBanners({
     <AnimatePresence>
       <EmailBanner
         key="email-banner"
+        owner={owner}
         showEmailBanner={showEmailBanner}
         onShowEmailBanner={setShowEmailBanner}
       />
