@@ -1,4 +1,4 @@
-import { BlockIdExtension } from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
+import { BlockIdExtension } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
 import { stripHtmlAttributes } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import type { Editor } from "@tiptap/core";
