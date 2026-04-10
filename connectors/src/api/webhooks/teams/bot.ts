@@ -8,7 +8,6 @@ import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
 import type { MentionMatch } from "@connectors/lib/bot/mentions";
 import { processMessageForMention } from "@connectors/lib/bot/mentions";
 import { MicrosoftBotMessageModel } from "@connectors/lib/models/microsoft_bot";
-import { getActionName } from "@connectors/lib/tools_utils";
 import type { Logger } from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { getHeaderFromUserEmail } from "@connectors/types";
@@ -410,9 +409,8 @@ async function streamAgentResponse({
         break;
       }
       case "tool_params": {
-        const action = getActionName(event.action);
         const streamingCard = createStreamingAdaptiveCard({
-          response: action,
+          response: event.action.displayLabels?.running ?? "Running a tool",
           agentName: mention.agentName,
           conversationUrl: null,
           workspaceId: connector.workspaceId,
