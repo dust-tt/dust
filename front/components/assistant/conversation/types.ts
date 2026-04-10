@@ -163,7 +163,8 @@ export const isHandoverUserMessage = (msg: VirtuosoMessage): boolean =>
 
 export const isAgentMessageWithStreaming = (
   msg: VirtuosoMessage
-): msg is AgentMessageWithStreaming => "streaming" in msg;
+): msg is AgentMessageWithStreaming =>
+  "streaming" in msg && msg.type === "agent_message";
 
 export const getMessageDate = (msg: VirtuosoMessage): Date =>
   new Date(msg.created);
