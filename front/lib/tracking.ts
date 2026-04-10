@@ -128,7 +128,7 @@ export function withTracking<T extends Element = HTMLElement>(
   area: TrackingArea | string,
   object: string,
   handler?: (e: React.MouseEvent<T>) => void | Promise<void>,
-  extra?: TrackingExtra
+  extra?: TrackingExtra,
 ) {
   return (e: React.MouseEvent<T>) => {
     trackEvent({ area, object, action: TRACKING_ACTIONS.CLICK, extra });

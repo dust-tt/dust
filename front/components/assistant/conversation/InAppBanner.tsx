@@ -1,5 +1,10 @@
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { Button, ChromeLogo, MovingMailIcon, XMarkIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  ChromeLogo,
+  MovingMailIcon,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 
@@ -45,7 +50,7 @@ function ExtensionBanner({
       onClick={withTracking(
         TRACKING_AREAS.EXTENSION,
         "cta_extension_banner",
-        onLearnMore
+        onLearnMore,
       )}
     >
       <div className="relative overflow-hidden rounded-t-2xl">
@@ -79,7 +84,7 @@ function ExtensionBanner({
           onClick={withTracking(
             TRACKING_AREAS.EXTENSION,
             "cta_extension_banner",
-            onLearnMore
+            onLearnMore,
           )}
         />
       </div>
@@ -117,7 +122,7 @@ function EmailBanner({ showEmailBanner, onShowEmailBanner }: EmailBannerProps) {
       onClick={withTracking(
         TRACKING_AREAS.EMAIL,
         "cta_email_banner",
-        onLearnMore
+        onLearnMore,
       )}
     >
       <div className="relative overflow-hidden rounded-t-2xl">
@@ -151,7 +156,7 @@ function EmailBanner({ showEmailBanner, onShowEmailBanner }: EmailBannerProps) {
           onClick={withTracking(
             TRACKING_AREAS.EMAIL,
             "cta_email_banner",
-            onLearnMore
+            onLearnMore,
           )}
         />
       </div>
