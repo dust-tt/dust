@@ -149,7 +149,6 @@ export function UserQuestionRequired({
               counterValue={index + 1}
               selected={selectedOptions.includes(index)}
               selectionStyle={question.multiSelect ? "multi" : "single"}
-              disabled={isSubmitting}
               onClick={() => handleOptionClick(index)}
             />
           ))}

@@ -11,7 +11,6 @@ export interface QuestionOptionProps {
   counterValue?: number;
   selected?: boolean;
   selectionStyle?: QuestionOptionSelectionStyle;
-  disabled?: boolean;
   className?: string;
   onClick?: () => void;
 }
@@ -22,7 +21,6 @@ export function QuestionOption({
   counterValue,
   selected = false,
   selectionStyle = "single",
-  disabled = false,
   className,
   onClick,
 }: QuestionOptionProps) {
@@ -30,8 +28,7 @@ export function QuestionOption({
     <Card
       variant="tertiary"
       className={cn(
-        "s-flex s-w-full s-items-center s-gap-2 s-rounded-2xl s-p-3 s-text-left s-transition-colors",
-        disabled && "s-pointer-events-none s-opacity-60",
+        "s-flex s-w-full s-cursor-pointer s-items-center s-gap-2 s-rounded-2xl s-p-3 s-text-left s-transition-colors",
         selected
           ? selectionStyle === "multi"
             ? [
@@ -46,7 +43,7 @@ export function QuestionOption({
             ],
         className
       )}
-      onClick={disabled ? undefined : onClick}
+      onClick={onClick}
     >
       {counterValue && (
         <Counter
@@ -54,12 +51,12 @@ export function QuestionOption({
           size="sm"
           variant="ghost"
           className={cn(
-            "s-shrink-0 s-bg-primary-100 s-text-muted-foreground",
-            "dark:s-bg-primary-100-night dark:s-text-muted-foreground-night"
+            "s-shrink-0 s-bg-border-dark s-text-muted-foreground",
+            "dark:s-bg-border-dark-night dark:s-text-muted-foreground-night"
           )}
         />
       )}
-      <div className="s-flex s-min-w-0 s-flex-col">
+      <div className="s-flex s-flex-col">
         <span className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
           {label}
         </span>
