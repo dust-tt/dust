@@ -1,4 +1,4 @@
-import { convertMarkdownToBlockHtml } from "@app/lib/skill_instructions_html";
+import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import * as cheerio from "cheerio";
 import { describe, expect, it } from "vitest";

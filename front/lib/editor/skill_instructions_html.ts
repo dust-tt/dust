@@ -4,6 +4,7 @@ import {
 } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
+import { preprocessMarkdown } from "@app/lib/editor/skill_instructions_preprocessing";
 import { generateShortBlockId } from "@app/lib/generate_short_block_id";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { JSONContent } from "@tiptap/core";
@@ -16,7 +17,6 @@ const SKILL_EDITOR_EXTENSIONS = buildSkillInstructionsExtensions(true);
 const MARKDOWN_MANAGER = new MarkdownManager({
   extensions: SKILL_EDITOR_EXTENSIONS,
 });
-const ZWS = "\u200B";
 
 const NODE_TYPES_WITH_BLOCK_ID = new Set<string>([
   ...BLOCK_ID_UNIQUE_ID_NODE_TYPES,
@@ -53,24 +53,11 @@ function stripPresentationAttributes(html: string): string {
 }
 
 /**
- * Prepare markdown for conversion to HTML.
- *
- * Inserts a zero-width space after every `<` that is not already ZWS-prefixed.
- * We do not require more complex logic given InstructionBlockExtension is not used in the skill editor.
- *
- */
-function preprocessMarkdownForConversion(markdown: string): string {
-  return markdown.replace(new RegExp(`<(?!${ZWS})`, "g"), `<${ZWS}`);
-}
-
-/**
  * Convert Markdown to stored skill instructionsHtml.
  * Uses the same extension schema as the browser editor, then strips CSS class attrs.
  */
 export function convertMarkdownToBlockHtml(markdown: string): string {
-  const preprocessed = markdown.trim()
-    ? preprocessMarkdownForConversion(markdown)
-    : null;
+  const preprocessed = markdown.trim() ? preprocessMarkdown(markdown) : null;
   const parsedDoc = preprocessed ? MARKDOWN_MANAGER.parse(preprocessed) : null;
 
   const json: JSONContent = {
