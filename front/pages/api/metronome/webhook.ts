@@ -160,8 +160,7 @@ async function handler(
             break;
           }
 
-          // Shadow mode: Stripe owns the subscription lifecycle.
-          if (subscription.stripeSubscriptionId) {
+          if (subscription.isMetronomeShadowBilled) {
             logger.info(
               { contractId, workspaceId: workspace.sId },
               "[Metronome Webhook] contract.end: shadow contract ended, Stripe handles subscription"

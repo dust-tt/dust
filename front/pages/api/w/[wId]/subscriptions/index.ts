@@ -2,7 +2,7 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
-import { endMetronomeContract } from "@app/lib/metronome/client";
+import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import {
   cancelSubscriptionAtPeriodEnd,
   skipSubscriptionFreeTrial,
@@ -185,20 +185,11 @@ async function handler(
             break;
           }
 
-          if (!useMetronomeBilling) {
-            // Shadow mode: fire-and-forget.
-            void endMetronomeContract({
-              metronomeCustomerId: owner.metronomeCustomerId,
-              contractId: subscription.metronomeContractId,
-            });
-            break;
-          }
-
-          const result = await endMetronomeContract({
+          const result = await scheduleMetronomeContractEnd({
             metronomeCustomerId: owner.metronomeCustomerId,
             contractId: subscription.metronomeContractId,
           });
-          if (result.isErr()) {
+          if (result.isErr() && useMetronomeBilling) {
             return apiError(req, res, {
               status_code: 500,
               api_error: {
