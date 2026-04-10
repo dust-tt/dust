@@ -30,12 +30,13 @@ export function QuestionOption({
       className={cn(
         "s-flex s-w-full s-cursor-pointer s-items-center s-gap-2 s-rounded-2xl s-p-3 s-text-left s-transition-colors",
         selected
-          ? selectionStyle === "multi"
-            ? [
-                "s-border-border dark:s-border-border-night",
-                "s-bg-muted-background dark:s-bg-muted-background-night",
-              ]
-            : "s-bg-muted-background dark:s-bg-muted-background-night"
+          ? [
+              "s-bg-muted-background dark:s-bg-muted-background-night",
+              // Add a border in multi-select mode.
+              ...(selectionStyle === "multi"
+                ? ["s-border-border dark:s-border-border-night"]
+                : []),
+            ]
           : [
               "s-bg-background hover:s-bg-muted-background/60",
               "dark:s-bg-background-night",
