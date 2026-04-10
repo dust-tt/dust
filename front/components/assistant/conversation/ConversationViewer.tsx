@@ -11,6 +11,7 @@ import {
   createPlaceholderUserMessage,
 } from "@app/components/assistant/conversation/lib";
 import { MessageItem } from "@app/components/assistant/conversation/MessageItem";
+import { SteerGroupCollapseProvider } from "@app/components/assistant/conversation/SteerGroupCollapseContext";
 import type {
   VirtuosoMessage,
   VirtuosoMessageListContext,
@@ -875,7 +876,7 @@ export const ConversationViewer = ({
   ]);
 
   return (
-    <>
+    <SteerGroupCollapseProvider>
       {(conversationError || isMessagesError) && (
         <ConversationErrorDisplay
           error={conversationError || isMessagesError}
@@ -920,6 +921,6 @@ export const ConversationViewer = ({
           enforceStickyFooterAtBottom
         />
       </VirtuosoMessageListLicense>
-    </>
+    </SteerGroupCollapseProvider>
   );
 };

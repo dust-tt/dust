@@ -2,6 +2,7 @@ import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMark
 import { ThinkingStep } from "@app/components/assistant/conversation/actions/inline/ThinkingStep";
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { useSteerGroupCollapse } from "@app/components/assistant/conversation/SteerGroupCollapseContext";
 import type {
   AgentStateClassification,
   PendingToolCall,
@@ -37,6 +38,9 @@ interface InlineActivityStepsProps {
   pendingToolCalls: PendingToolCall[];
   onOpenDetails?: (messageId: string) => void;
   owner: WorkspaceType;
+  steerGroupId?: string | null;
+  groupDurationMs?: number | null;
+  isGroupComplete?: boolean;
 }
 
 function getCompletionLabel(
@@ -77,6 +81,9 @@ export function InlineActivitySteps({
   pendingToolCalls,
   onOpenDetails,
   owner,
+  steerGroupId,
+  groupDurationMs,
+  isGroupComplete,
 }: InlineActivityStepsProps) {
   const isAgentMessageWithActions =
     isLightAgentMessageWithActionsType(agentMessage);
@@ -88,7 +95,23 @@ export function InlineActivitySteps({
   const isDone =
     lastAgentStateClassification === "done" || agentMessage.status === "failed";
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  // When part of a steer group, use shared collapse state (collapsed by default).
+  // For standalone messages, collapse by default if already done (loading existing
+  // conversation), expand if actively streaming.
+  const groupCollapse = useSteerGroupCollapse(steerGroupId ?? null);
+  const [localCollapsed, setLocalCollapsed] = useState(isDone);
+  const isCollapsed = groupCollapse
+    ? groupCollapse.isCollapsed
+    : localCollapsed;
+  const toggleCollapsed = groupCollapse
+    ? groupCollapse.toggle
+    : () => setLocalCollapsed((c) => !c);
+
+  // In a steer group, only the first message (the group root) shows the toggle header.
+  // Other messages in the group just show their timeline content, controlled by the group.
+  const isInGroup = !!steerGroupId;
+  const isGroupRoot = steerGroupId === agentMessage.sId;
+  const showHeader = !isInGroup || isGroupRoot;
 
   const openBreakdownPanel = (actionId?: string) => {
     if (onOpenDetails) {
@@ -107,20 +130,24 @@ export function InlineActivitySteps({
   const isActing = lastAgentStateClassification === "acting";
   const showPendingToolCalls = pendingToolCalls.length > 0;
 
-  const headerLabel =
-    agentMessage.completionDurationMs !== null
-      ? getCompletionLabel(
-          agentMessage.status,
-          agentMessage.completionDurationMs
-        )
-      : isDone
-        ? "Completed"
-        : null;
+  // For group roots, show completion label only when the entire group is done,
+  // using the total group duration rather than this individual message's duration.
+  const effectiveDurationMs = isGroupRoot
+    ? (groupDurationMs ?? null)
+    : agentMessage.completionDurationMs;
+  const effectiveIsDone = isGroupRoot ? !!isGroupComplete : isDone;
 
-  const toggleCollapse = () => setIsCollapsed((c) => !c);
+  const headerLabel = effectiveIsDone
+    ? effectiveDurationMs !== null
+      ? getCompletionLabel(agentMessage.status, effectiveDurationMs)
+      : "Completed"
+    : null;
+
+  const toggleCollapse = toggleCollapsed;
 
   // Done with no steps: show a static line — no toggle, not clickable.
-  if (isDone && completedSteps.length === 0) {
+  // Skip for non-root group members (their header is handled by the root).
+  if (isDone && completedSteps.length === 0 && showHeader) {
     return (
       <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
         {headerLabel ? `${headerLabel}, without tools.` : "No tools used."}
@@ -185,22 +212,163 @@ export function InlineActivitySteps({
     );
   };
 
+  const timelineContent = (
+    <>
+      {completedSteps.map((step, index) => {
+        const isLast =
+          index === completedSteps.length - 1 &&
+          !showActiveThinking &&
+          !showActiveWriting &&
+          !activeAction &&
+          !isDone;
+
+        switch (step.type) {
+          case "thinking":
+            return (
+              <ThinkingStep
+                key={step.id}
+                content={step.content}
+                isStreaming={false}
+                isMessageDone={isDone}
+                isLast={isLast}
+              />
+            );
+          case "content":
+            if (
+              !isString(step.content) ||
+              step.content.trim().length === 0
+            ) {
+              return null;
+            }
+            return (
+              <div key={step.id}>
+                <AgentMessageMarkdown
+                  content={step.content}
+                  owner={owner}
+                  isStreaming={false}
+                  isLastMessage={false}
+                />
+              </div>
+            );
+          case "action": {
+            const actionIcon = step.internalMCPServerName
+              ? InternalActionIcons[
+                  getInternalMCPServerIconByName(step.internalMCPServerName)
+                ]
+              : ToolsIcon;
+
+            return (
+              <div
+                key={step.id}
+                className="cursor-pointer"
+                onClick={() => openBreakdownPanel(step.actionId)}
+              >
+                <TimelineRow icon={actionIcon} isLast={isLast}>
+                  <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
+                    {step.label}
+                    <Icon
+                      size="xs"
+                      visual={ChevronRightIcon}
+                      className="shrink-0 opacity-50"
+                    />
+                  </span>
+                </TimelineRow>
+              </div>
+            );
+          }
+          default:
+            assertNever(step);
+        }
+      })}
+
+      {/* Active thinking (streaming CoT) */}
+      {showActiveThinking && chainOfThought && (
+        <ThinkingStep
+          content={chainOfThought}
+          isStreaming
+          isMessageDone={false}
+          isLast={
+            !activeAction &&
+            !latestPendingToolCall &&
+            !showTrailingLoader &&
+            !isDone
+          }
+        />
+      )}
+
+      {/* Active action (tool in progress) */}
+      {isActing &&
+        activeAction &&
+        renderRunningToolRow({
+          isLast: false,
+          label: getActionOneLineLabel(activeAction, "running"),
+          onClick: () => openBreakdownPanel(activeAction.sId),
+        })}
+
+      {latestPendingToolCall &&
+        renderRunningToolRow({
+          isLast: !isDone && !showTrailingLoader,
+          label: getToolCallDisplayLabel(
+            latestPendingToolCall.toolName,
+            "running"
+          ),
+        })}
+
+      {showTrailingLoader && <TimelineRow spinner isLast={!isDone} />}
+
+      {/* Pending spinner — shown when between transitions (not done, nothing active) */}
+      {!isDone &&
+        !showActiveThinking &&
+        !showActiveWriting &&
+        !activeAction &&
+        !latestPendingToolCall && <TimelineRow spinner isLast />}
+      {isDone &&
+        completedSteps.length > 0 &&
+        agentMessage.status !== "gracefully_stopped" && (
+          <TimelineRow icon={CheckIcon} isLast>
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              Done
+            </span>
+          </TimelineRow>
+        )}
+    </>
+  );
+
+  // Non-root group members: use the same CSS grid animation as the root,
+  // just without the header toggle button.
+  if (isInGroup && !isGroupRoot) {
+    return (
+      <div
+        className="grid ease-out text-sm"
+        style={getCollapseAnimationStyle(isCollapsed)}
+      >
+        <div className="overflow-hidden">
+          <div className="mt-3 flex flex-col gap-3">
+            {timelineContent}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col text-sm">
-      <button
-        className="self-start text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors duration-200 flex gap-1 items-center"
-        onClick={toggleCollapse}
-      >
-        {headerLabel ?? <AnimatedText>Thinking…</AnimatedText>}
-        <span
-          className={cn(
-            "transition-transform duration-200 ease-out",
-            isCollapsed ? "rotate-0" : "rotate-90"
-          )}
+      {showHeader && (
+        <button
+          className="self-start text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors duration-200 flex gap-1 items-center"
+          onClick={toggleCollapse}
         >
-          <Icon size="xs" visual={ChevronRightIcon} />
-        </span>
-      </button>
+          {headerLabel ?? <AnimatedText>Thinking…</AnimatedText>}
+          <span
+            className={cn(
+              "transition-transform duration-200 ease-out",
+              isCollapsed ? "rotate-0" : "rotate-90"
+            )}
+          >
+            <Icon size="xs" visual={ChevronRightIcon} />
+          </span>
+        </button>
+      )}
 
       <div
         className="grid ease-out"
@@ -208,141 +376,24 @@ export function InlineActivitySteps({
       >
         <div className="overflow-hidden">
           <div className="mt-3 flex flex-col gap-3">
-            {completedSteps.map((step, index) => {
-              const isLast =
-                index === completedSteps.length - 1 &&
-                !showActiveThinking &&
-                !showActiveWriting &&
-                !activeAction &&
-                !isDone;
-
-              switch (step.type) {
-                case "thinking":
-                  return (
-                    <ThinkingStep
-                      key={step.id}
-                      content={step.content}
-                      isStreaming={false}
-                      isMessageDone={isDone}
-                      isLast={isLast}
-                    />
-                  );
-                case "content":
-                  if (
-                    !isString(step.content) ||
-                    step.content.trim().length === 0
-                  ) {
-                    return null;
-                  }
-                  return (
-                    <div key={step.id}>
-                      <AgentMessageMarkdown
-                        content={step.content}
-                        owner={owner}
-                        isStreaming={false}
-                        isLastMessage={false}
-                      />
-                    </div>
-                  );
-                case "action": {
-                  const actionIcon = step.internalMCPServerName
-                    ? InternalActionIcons[
-                        getInternalMCPServerIconByName(
-                          step.internalMCPServerName
-                        )
-                      ]
-                    : ToolsIcon;
-
-                  return (
-                    <div
-                      key={step.id}
-                      className="cursor-pointer"
-                      onClick={() => openBreakdownPanel(step.actionId)}
-                    >
-                      <TimelineRow icon={actionIcon} isLast={isLast}>
-                        <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
-                          {step.label}
-                          <Icon
-                            size="xs"
-                            visual={ChevronRightIcon}
-                            className="shrink-0 opacity-50"
-                          />
-                        </span>
-                      </TimelineRow>
-                    </div>
-                  );
-                }
-                default:
-                  assertNever(step);
-              }
-            })}
-
-            {/* Active thinking (streaming CoT) */}
-            {showActiveThinking && chainOfThought && (
-              <ThinkingStep
-                content={chainOfThought}
-                isStreaming
-                isMessageDone={false}
-                isLast={
-                  !activeAction &&
-                  !latestPendingToolCall &&
-                  !showTrailingLoader &&
-                  !isDone
-                }
-              />
-            )}
-
-            {/* Active writing (streaming content tokens) */}
-            {showActiveWriting && agentMessage.content ? (
-              <div>
-                <AgentMessageMarkdown
-                  content={agentMessage.content}
-                  owner={owner}
-                  isStreaming={false}
-                  streamingState="streaming"
-                  isLastMessage={false}
-                />
-              </div>
-            ) : null}
-
-            {/* Active action (tool in progress) */}
-            {isActing &&
-              activeAction &&
-              renderRunningToolRow({
-                isLast: false,
-                label: getActionOneLineLabel(activeAction, "running"),
-                onClick: () => openBreakdownPanel(activeAction.sId),
-              })}
-
-            {latestPendingToolCall &&
-              renderRunningToolRow({
-                isLast: !isDone && !showTrailingLoader,
-                label: getToolCallDisplayLabel(
-                  latestPendingToolCall.toolName,
-                  "running"
-                ),
-              })}
-
-            {showTrailingLoader && <TimelineRow spinner isLast={!isDone} />}
-
-            {/* Pending spinner — shown when between transitions (not done, nothing active) */}
-            {!isDone &&
-              !showActiveThinking &&
-              !showActiveWriting &&
-              !activeAction &&
-              !latestPendingToolCall && <TimelineRow spinner isLast />}
-            {isDone &&
-              completedSteps.length > 0 &&
-              agentMessage.status !== "gracefully_stopped" && (
-                <TimelineRow icon={CheckIcon} isLast>
-                  <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Done
-                  </span>
-                </TimelineRow>
-              )}
+            {timelineContent}
           </div>
         </div>
       </div>
+
+      {/* Active writing (streaming content tokens) — outside collapsible area
+          so it stays visible when the activity timeline is collapsed. */}
+      {showActiveWriting && agentMessage.content ? (
+        <div>
+          <AgentMessageMarkdown
+            content={agentMessage.content}
+            owner={owner}
+            isStreaming={false}
+            streamingState="streaming"
+            isLastMessage={false}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

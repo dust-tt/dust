@@ -182,6 +182,9 @@ interface AgentMessageProps {
   ) => Promise<Result<undefined, DustError>>;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
+  steerGroupId?: string | null;
+  groupDurationMs?: number | null;
+  isGroupComplete?: boolean;
 }
 
 export function AgentMessage({
@@ -198,6 +201,9 @@ export function AgentMessage({
   handleSubmit,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
+  steerGroupId,
+  groupDurationMs,
+  isGroupComplete,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
   const [streamId, setStreamId] = useState<string>(`message-${sId}`);
@@ -922,6 +928,9 @@ export function AgentMessage({
           references={references}
           streaming={shouldStream}
           streamError={streamError}
+          steerGroupId={steerGroupId ?? null}
+          groupDurationMs={groupDurationMs ?? null}
+          isGroupComplete={isGroupComplete ?? false}
           lastTokenClassification={
             isInlineActivityEnabled
               ? null
@@ -1036,6 +1045,9 @@ function AgentMessageContent({
   reloadMessage,
   isRetryHandlerProcessing,
   onQuickReplySend,
+  steerGroupId,
+  groupDurationMs,
+  isGroupComplete,
   additionalMarkdownComponents: propsAdditionalMarkdownComponents,
   additionalMarkdownPlugins,
 }: {
@@ -1044,6 +1056,9 @@ function AgentMessageContent({
   isLastMessage: boolean;
   owner: LightWorkspaceType;
   conversationId: string;
+  steerGroupId: string | null;
+  groupDurationMs: number | null;
+  isGroupComplete: boolean;
   retryHandler: (params: {
     conversationId: string;
     messageId: string;
@@ -1329,6 +1344,9 @@ function AgentMessageContent({
             pendingToolCalls={agentMessage.streaming.pendingToolCalls}
             onOpenDetails={onOpenDetails}
             owner={owner}
+            steerGroupId={steerGroupId}
+            groupDurationMs={groupDurationMs}
+            isGroupComplete={isGroupComplete}
           />
         ) : (
           <AgentMessageActions

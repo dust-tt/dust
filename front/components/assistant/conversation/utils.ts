@@ -10,6 +10,7 @@ import type {
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import moment from "moment";
 
+import { isAgentMessageWithStreaming } from "./types";
 import type { VirtuosoMessage } from "./types";
 
 type GroupLabel =
@@ -164,4 +165,134 @@ export function isMessageUnread(
     return true;
   }
   return false;
+}
+
+interface SteerGroupInfo {
+  isSteeredAgentMessage: boolean;
+  steerGroupId: string | null;
+  /** Total duration from the root's creation to the last message's completion. Null if group is still running. */
+  groupDurationMs: number | null;
+  /** True when every agent message in the steered chain has finished. */
+  isGroupComplete: boolean;
+}
+
+/**
+ * Determine whether an agent message belongs to a steered chain and compute
+ * the shared group ID (the sId of the first agent message in the chain).
+ *
+ * A steered chain is a sequence of agent messages from the same configuration
+ * where intermediate ones have status "gracefully_stopped" or "created".
+ */
+export function getSteerGroupInfo({
+  messages,
+  messageSId,
+  configurationId,
+  agentStatus,
+}: {
+  messages: VirtuosoMessage[];
+  messageSId: string;
+  configurationId: string;
+  agentStatus: string;
+}): SteerGroupInfo {
+  const currentIndex = messages.findIndex((m) => m.sId === messageSId);
+
+  let isSteered = false;
+  let groupRoot: string | null = null;
+
+  // Walk backwards to find if this message is steered and find the group root.
+  for (let i = currentIndex - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (isAgentMessageWithStreaming(m)) {
+      if (
+        (m.status === "gracefully_stopped" || m.status === "created") &&
+        m.configuration.sId === configurationId
+      ) {
+        isSteered = true;
+        groupRoot = m.sId;
+        // Keep walking to find the true root of the chain.
+        for (let j = i - 1; j >= 0; j--) {
+          const prev = messages[j];
+          if (isAgentMessageWithStreaming(prev)) {
+            if (
+              (prev.status === "gracefully_stopped" ||
+                prev.status === "created") &&
+              prev.configuration.sId === configurationId
+            ) {
+              groupRoot = prev.sId;
+            } else {
+              break;
+            }
+          }
+        }
+      }
+      break;
+    }
+  }
+
+  // If this message is not steered itself, check if there's a steered message
+  // after it to determine if it's the root of a group.
+  if (!isSteered) {
+    for (let i = currentIndex + 1; i < messages.length; i++) {
+      const m = messages[i];
+      if (isAgentMessageWithStreaming(m)) {
+        if (
+          m.configuration.sId === configurationId &&
+          (agentStatus === "gracefully_stopped" || agentStatus === "created")
+        ) {
+          groupRoot = messageSId;
+        }
+        break;
+      }
+    }
+  }
+
+  // Compute total duration and completion status across the steered chain.
+  let groupDurationMs: number | null = null;
+  let isGroupComplete = false;
+  if (groupRoot) {
+    const rootMsg = messages.find((m) => m.sId === groupRoot);
+    // Collect all agent messages in the chain from root forward.
+    const rootIndex = messages.findIndex((m) => m.sId === groupRoot);
+    let lastMsg = rootIndex >= 0 ? messages[rootIndex] : null;
+    let allDone = lastMsg
+      ? isAgentMessageWithStreaming(lastMsg) && lastMsg.status !== "created"
+      : false;
+
+    for (
+      let i = (rootIndex >= 0 ? rootIndex : currentIndex) + 1;
+      i < messages.length;
+      i++
+    ) {
+      const m = messages[i];
+      if (isAgentMessageWithStreaming(m)) {
+        if (m.configuration.sId === configurationId) {
+          lastMsg = m;
+          if (m.status === "created") {
+            allDone = false;
+          }
+        }
+        // Stop at first agent message not in this chain.
+        if (m.configuration.sId !== configurationId) {
+          break;
+        }
+      }
+    }
+
+    isGroupComplete = allDone;
+    if (
+      rootMsg &&
+      lastMsg &&
+      isAgentMessageWithStreaming(lastMsg) &&
+      lastMsg.completedTs !== null
+    ) {
+      groupDurationMs = lastMsg.completedTs - rootMsg.created;
+    }
+  }
+
+  return {
+    isSteeredAgentMessage: isSteered,
+    steerGroupId: groupRoot,
+    groupDurationMs,
+    isGroupComplete,
+  };
 }

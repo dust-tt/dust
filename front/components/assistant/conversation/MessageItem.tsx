@@ -16,6 +16,7 @@ import {
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
+import { getSteerGroupInfo } from "@app/components/assistant/conversation/utils";
 import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
 import { useReaction } from "@app/hooks/useReaction";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -187,26 +188,29 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
     const isAgentMessage = isAgentMessageWithStreaming(data);
     const configurationId = isAgentMessage ? data.configuration.sId : undefined;
+    const agentStatus = isAgentMessage ? data.status : undefined;
 
-    const isSteeredAgentMessage = useMemo((): boolean => {
-      if (!isAgentMessage || !configurationId) {
-        return false;
+    const {
+      isSteeredAgentMessage,
+      steerGroupId,
+      groupDurationMs,
+      isGroupComplete,
+    } = useMemo(() => {
+      if (!isAgentMessage || !configurationId || !agentStatus) {
+        return {
+          isSteeredAgentMessage: false,
+          steerGroupId: null,
+          groupDurationMs: null,
+          isGroupComplete: false,
+        };
       }
-      const messages = methods.data.get();
-      const currentIndex = messages.findIndex((m) => m.sId === sId);
-      for (let i = currentIndex - 1; i >= 0; i--) {
-        const m = messages[i];
-        if (isAgentMessageWithStreaming(m)) {
-          // An agent message is considered steered if the previous agent message (skipping user
-          // messages) is in gracefully_stopped or created state and from the same agent.
-          return (
-            (m.status === "gracefully_stopped" || m.status === "created") &&
-            m.configuration.sId === configurationId
-          );
-        }
-      }
-      return false;
-    }, [isAgentMessage, configurationId, sId, methods.data]);
+      return getSteerGroupInfo({
+        messages: methods.data.get(),
+        messageSId: sId,
+        configurationId,
+        agentStatus,
+      });
+    }, [isAgentMessage, configurationId, sId, agentStatus, methods.data]);
 
     const parentMessageId = isAgentMessage ? data.parentMessageId : undefined;
     const messageUser = isUserMessage(data) ? data.user : null;
@@ -297,6 +301,9 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 context.additionalMarkdownComponents
               }
               additionalMarkdownPlugins={context.additionalMarkdownPlugins}
+              steerGroupId={steerGroupId}
+              groupDurationMs={groupDurationMs}
+              isGroupComplete={isGroupComplete}
             />
           )}
           {data.visibility !== "deleted" &&
