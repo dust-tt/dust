@@ -1,5 +1,4 @@
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { AgentMessageSkillModel } from "@app/lib/models/skill/conversation_skill";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -153,15 +152,11 @@ async function discoverConversations(
   // Get unique conversation IDs and fetch qualifying conversations.
   const allConvIds = [...new Set(filteredRecords.map((r) => r.conversationId))];
 
-  const conversations = await ConversationModel.findAll({
-    attributes: ["id", "sId"],
-    where: {
-      workspaceId: workspace.id,
-      id: { [Op.in]: allConvIds },
-      visibility: { [Op.ne]: "test" },
-      createdAt: { [Op.gte]: cutoffDate },
-    },
-  });
+  const conversations = await ConversationResource.fetchByModelIds(
+    auth,
+    allConvIds,
+    { excludeTest: true, updatedAfter: cutoffDate }
+  );
 
   const convModelIdToId = new Map<ModelId, string>(
     conversations.map((c) => [c.id, c.sId])

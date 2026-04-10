@@ -89,7 +89,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static async fetchByModelIds(
     auth: Authenticator,
     ids: ModelId[],
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      transaction,
+      excludeTest,
+      updatedAfter,
+    }: {
+      transaction?: Transaction;
+      excludeTest?: boolean;
+      updatedAfter?: Date;
+    } = {}
   ): Promise<ConversationResource[]> {
     if (ids.length === 0) {
       return [];
@@ -101,6 +109,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where: {
         workspaceId: workspace.id,
         id: ids,
+        ...(excludeTest ? { visibility: { [Op.ne]: "test" } } : {}),
+        ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
       } as WhereOptions<ConversationModel>,
       transaction,
     });
