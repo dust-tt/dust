@@ -31,15 +31,11 @@ import type {
 import snowflake from "snowflake-sdk";
 
 /**
- * Escape a Snowflake identifier for use in double-quoted SQL.
- * Doubles any internal double-quote characters to prevent SQL injection.
+ * Quote a Snowflake identifier for safe use in SQL.
+ * Wraps in double quotes and doubles any internal double-quote characters.
  */
-function escapeSnowflakeIdentifier(identifier: string): string {
-  return identifier.replace(/"/g, '""');
-}
-
 function quoteIdentifier(identifier: string): string {
-  return `"${escapeSnowflakeIdentifier(identifier)}"`;
+  return `"${identifier.replace(/"/g, '""')}"`;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
