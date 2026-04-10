@@ -283,14 +283,14 @@ export const AgentInputBar = ({
 
   if (
     context.isProjectMember === false &&
-    context.projectSpaceId &&
+    context.projectId &&
     context.projectSpaceName
   ) {
     return (
       <div className="relative z-20 mx-auto flex max-h-dvh w-full flex-col py-4 sm:w-full sm:max-w-conversation">
         <ProjectJoinCTA
           owner={context.owner}
-          spaceId={context.projectSpaceId}
+          spaceId={context.projectId}
           spaceName={context.projectSpaceName}
           isRestricted={context.isProjectRestricted ?? false}
           userName={context.user.fullName}

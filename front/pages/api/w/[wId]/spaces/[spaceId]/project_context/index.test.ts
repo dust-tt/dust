@@ -17,11 +17,20 @@ const addContentNodeToProjectSpy = vi.spyOn(
   projectsApi,
   "addContentNodeToProject"
 );
+let listProjectContextAttachmentsSpy = vi.spyOn(
+  projectsApi,
+  "listProjectContextAttachments"
+);
 
 describe("/api/w/[wId]/spaces/[spaceId]/project_context", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     addContentNodeToProjectSpy.mockClear();
+    listProjectContextAttachmentsSpy.mockRestore();
+    listProjectContextAttachmentsSpy = vi.spyOn(
+      projectsApi,
+      "listProjectContextAttachments"
+    );
     addContentNodeToProjectSpy.mockImplementation(async (...args) =>
       (
         await vi.importActual<typeof projectsApi>("@app/lib/api/projects")
@@ -78,6 +87,97 @@ describe("/api/w/[wId]/spaces/[spaceId]/project_context", () => {
         expect(withCreator.creator?.type).toBe("user");
         expect(withCreator.creator?.name).toBeDefined();
       }
+    });
+
+    it("filters attachments by query (case-insensitive)", async () => {
+      const { auth, req, res, user, globalSpace } =
+        await createPrivateApiMockRequest({
+          method: "GET",
+          role: "user",
+        });
+
+      const space = globalSpace;
+
+      await ProjectFileFactory.create(auth, user, space, {
+        contentType: "text/plain",
+        fileName: "Budget 2026.txt",
+        fileSize: 100,
+        status: "ready",
+      });
+
+      await ProjectFileFactory.create(auth, user, space, {
+        contentType: "text/plain",
+        fileName: "Roadmap.txt",
+        fileSize: 100,
+        status: "ready",
+      });
+
+      req.query.spaceId = space.sId;
+      req.query.query = "budget";
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      const responseData = res._getJSONData();
+      const titles = responseData.attachments.map(
+        (a: { title: string }) => a.title
+      );
+      expect(titles).toEqual(["Budget 2026.txt"]);
+    });
+
+    it("filters attachments by type=content-node", async () => {
+      const { req, res, globalSpace } = await createPrivateApiMockRequest({
+        method: "GET",
+        role: "user",
+      });
+
+      // Mock the list function so we can focus on filtering behavior.
+      listProjectContextAttachmentsSpy.mockResolvedValue([
+        {
+          title: "notes.txt",
+          contentType: "text/plain",
+          contentFragmentVersion: "latest",
+          snippet: null,
+          generatedTables: [],
+          isIncludable: true,
+          isSearchable: false,
+          isQueryable: false,
+          isInProjectContext: true,
+          creator: null,
+          hidden: false,
+          fileId: "file_1",
+          source: "user",
+          createdAt: Date.now(),
+        } as any,
+        {
+          title: "Spec doc",
+          contentType: "text/plain",
+          contentFragmentVersion: "latest",
+          snippet: null,
+          generatedTables: [],
+          isIncludable: true,
+          isSearchable: false,
+          isQueryable: false,
+          isInProjectContext: true,
+          creator: null,
+          hidden: false,
+          contentFragmentId: "cf_1",
+          nodeId: "core-node",
+          nodeDataSourceViewId: "dsv_1",
+          nodeType: "document",
+          sourceUrl: null,
+        } as any,
+      ]);
+
+      req.query.spaceId = globalSpace.sId;
+      req.query.type = "content-node";
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      const responseData = res._getJSONData();
+      expect(responseData.attachments).toHaveLength(1);
+      expect(responseData.attachments[0].title).toBe("Spec doc");
     });
 
     it("should return empty array when space has no files", async () => {

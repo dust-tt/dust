@@ -32,17 +32,36 @@ import type { Fetcher } from "swr";
 export function useProjectContextAttachments({
   owner,
   spaceId,
+  query,
+  type,
   disabled,
 }: {
   owner: LightWorkspaceType;
   spaceId: string;
+  query?: string;
+  type?: "file" | "content-node";
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const projectContextFetcher: Fetcher<GetProjectContextResponseBody> = fetcher;
 
+  const key = useMemo(() => {
+    if (disabled) {
+      return null;
+    }
+    const params = new URLSearchParams();
+    if (query && query.trim().length > 0) {
+      params.set("query", query);
+    }
+    if (type) {
+      params.set("type", type);
+    }
+    const qs = params.toString();
+    return `/api/w/${owner.sId}/spaces/${spaceId}/project_context${qs ? `?${qs}` : ""}`;
+  }, [disabled, owner.sId, spaceId, query, type]);
+
   const { data, error, mutate } = useSWRWithDefaults(
-    disabled ? null : `/api/w/${owner.sId}/spaces/${spaceId}/project_context`,
+    key,
     projectContextFetcher
   );
 

@@ -127,7 +127,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     sId: string;
     fileName: string;
     contentType: string;
-    projectSpaceId?: string | null;
+    projectId?: string | null;
   } | null>(null);
   const [showPreviewSheet, setShowPreviewSheet] = useState(false);
   const confirm = useContext(ConfirmContext);
@@ -247,7 +247,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
           sId: item.fileId,
           fileName: item.title,
           contentType: item.contentType,
-          projectSpaceId: space.sId,
+          projectId: space.sId,
         });
         setShowPreviewSheet(true);
         return;
