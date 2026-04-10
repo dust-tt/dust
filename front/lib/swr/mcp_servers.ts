@@ -369,6 +369,20 @@ export function useDiscoverOAuthMetadata(owner: LightWorkspaceType) {
   return { discoverOAuthMetadata };
 }
 
+export class MCPCreateServerError extends Error {
+  readonly isRemoteServerError: boolean;
+  constructor(message: string, isRemoteServerError: boolean) {
+    super(message);
+    this.isRemoteServerError = isRemoteServerError;
+  }
+}
+
+export function isMCPCreateServerError(
+  error: Error
+): error is MCPCreateServerError {
+  return error instanceof MCPCreateServerError;
+}
+
 /**
  * Hook to create a new MCP server from a URL
  */
@@ -421,8 +435,11 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       if (!response.ok) {
         const body = await response.json();
         return new Err(
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          new Error(body.error?.message || "Failed to create server")
+          new MCPCreateServerError(
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            body.error?.message || "Failed to create server",
+            body.isRemoteServerError === true
+          )
         );
       }
       await mutate();
