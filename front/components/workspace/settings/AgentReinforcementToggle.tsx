@@ -62,7 +62,7 @@ function ReinforcementBatchModeToggle({ owner }: ReinforcementSectionProps) {
         />
       }
     >
-      <ContextItem.Description description="Conversations are sent in batches to reduce costs. Data may remain on LLM provider servers for several hours while waiting for processing, which is incompatible with strict Zero Data Retention policies. Dust guarantees that data is immediately deleted afterward. Disabling batch mode significantly increases the cost of reinforcement." />
+      <ContextItem.Description description="Conversations are sent in batches to reduce costs. Data may remain on LLM provider servers for up to several hours before processing. Disable to ensure immediate data deletion (ZDR-compatible). This will increase your plan's pricing." />
     </ContextItem>
   );
 }
