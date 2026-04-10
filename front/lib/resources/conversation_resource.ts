@@ -1247,7 +1247,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const orderDirection = pagination.orderDirection ?? "desc";
 
+    const { where: filterWhere } = this.getOptions(options);
     const whereClause: WhereOptions<InferAttributes<ConversationModel>> = {
+      ...filterWhere,
       spaceId: spaceModelId,
     };
 
@@ -1255,9 +1257,20 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       const timestampMs = parseInt(pagination.lastValue, 10);
       if (!Number.isNaN(timestampMs)) {
         const operator = orderDirection === "desc" ? Op.lt : Op.gt;
-        whereClause.updatedAt = {
-          [operator]: new Date(timestampMs),
-        };
+        const cursorConstraint = { [operator]: new Date(timestampMs) };
+        const existingUpdatedAt = whereClause.updatedAt;
+        if (
+          existingUpdatedAt &&
+          typeof existingUpdatedAt === "object" &&
+          !Array.isArray(existingUpdatedAt)
+        ) {
+          whereClause.updatedAt = {
+            ...existingUpdatedAt,
+            ...cursorConstraint,
+          };
+        } else {
+          whereClause.updatedAt = cursorConstraint;
+        }
       }
     }
 

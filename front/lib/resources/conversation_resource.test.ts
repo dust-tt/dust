@@ -5340,6 +5340,40 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
     expect(page1Sids.some((sId) => page2Sids.includes(sId))).toBe(false);
   });
 
+  it("should apply updatedSince on every page when using lastValue cursor", async () => {
+    const outsideWindow = await createConvoWithUpdatedAt(20);
+    const insideA = await createConvoWithUpdatedAt(5);
+    const insideB = await createConvoWithUpdatedAt(3);
+
+    const daysBack = 10;
+    const cutoffMs = Date.now() - daysBack * 24 * 60 * 60 * 1000;
+
+    const seen = new Set<string>();
+    let lastValue: string | undefined;
+    for (let i = 0; i < 10; i++) {
+      const page = await ConversationResource.listConversationsInSpacePaginated(
+        adminAuth,
+        {
+          spaceId: space.sId,
+          options: { updatedSince: cutoffMs, excludeTest: true },
+          pagination: { limit: 1, lastValue },
+        }
+      );
+
+      for (const c of page.conversations) {
+        seen.add(c.sId);
+      }
+      if (!page.hasMore) {
+        break;
+      }
+      lastValue = page.lastValue ?? undefined;
+    }
+
+    expect(seen.has(insideA.sId)).toBe(true);
+    expect(seen.has(insideB.sId)).toBe(true);
+    expect(seen.has(outsideWindow.sId)).toBe(false);
+  });
+
   it("should iterate through all pages and return all conversations", async () => {
     const convos = [];
     for (let i = 0; i < 5; i++) {

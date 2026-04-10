@@ -99,7 +99,7 @@ export function formatConversationForDisplay(
  * Formats multiple conversations for display.
  */
 export function formatConversationsForDisplay(
-  conversations: ConversationType[],
+  conversations: (ConversationType | LightConversationType)[],
   workspaceId: string
 ) {
   return conversations.map((conv) =>
