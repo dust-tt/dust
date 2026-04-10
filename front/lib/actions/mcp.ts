@@ -2,7 +2,11 @@ import type {
   MCPToolStakeLevelType,
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
-import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
+import type {
+  InternalMCPServerNameType,
+  InternalMCPToolNameType,
+  MCPServerAvailability,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   MCPApproveExecutionEvent,
   ToolAskUserQuestionEvent,
@@ -78,13 +82,45 @@ export type ClientSideMCPToolType = Omit<
   displayLabels?: ToolDisplayLabels;
 };
 
-type WithToolNameMetadata<T> = T & {
-  originalName: string;
-  mcpServerName: string;
+type WithToolNameMetadata<
+  T,
+  TOriginalName extends string = string,
+  TMCPServerName extends string = string,
+> = T & {
+  originalName: TOriginalName;
+  mcpServerName: TMCPServerName;
 };
 
-export type ServerSideMCPToolConfigurationType =
-  WithToolNameMetadata<ServerSideMCPToolType>;
+type InternalServerSideMCPToolType<N extends InternalMCPServerNameType> = Omit<
+  ServerSideMCPToolType,
+  "internalMCPServerId" | "name"
+> & {
+  internalMCPServerId: string;
+  name: InternalMCPToolNameType<N>;
+};
+
+type ExternalServerSideMCPToolType = Omit<
+  ServerSideMCPToolType,
+  "internalMCPServerId"
+> & {
+  internalMCPServerId: null;
+};
+
+export type InternalServerSideMCPToolConfigurationType<
+  N extends InternalMCPServerNameType = InternalMCPServerNameType,
+> = WithToolNameMetadata<
+  InternalServerSideMCPToolType<N>,
+  InternalMCPToolNameType<N>
+>;
+
+export type ExternalServerSideMCPToolConfigurationType =
+  WithToolNameMetadata<ExternalServerSideMCPToolType>;
+
+export type ServerSideMCPToolConfigurationType<
+  N extends InternalMCPServerNameType | null = InternalMCPServerNameType | null,
+> = N extends InternalMCPServerNameType
+  ? InternalServerSideMCPToolConfigurationType<N>
+  : ExternalServerSideMCPToolConfigurationType;
 
 export type ClientSideMCPToolConfigurationType =
   WithToolNameMetadata<ClientSideMCPToolType>;
@@ -103,8 +139,9 @@ type LightMCPToolType<T> = Omit<
   (typeof MCP_TOOL_CONFIGURATION_FIELDS_TO_OMIT)[number]
 >;
 
-export type LightServerSideMCPToolConfigurationType =
-  LightMCPToolType<ServerSideMCPToolConfigurationType>;
+export type LightServerSideMCPToolConfigurationType<
+  N extends InternalMCPServerNameType | null = InternalMCPServerNameType | null,
+> = LightMCPToolType<ServerSideMCPToolConfigurationType<N>>;
 
 export type LightClientSideMCPToolConfigurationType =
   LightMCPToolType<ClientSideMCPToolConfigurationType>;
