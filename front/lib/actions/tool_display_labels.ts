@@ -86,7 +86,7 @@ function getDynamicToolDisplayLabels({
         const q = truncateQuery(inputs.query);
         return {
           running: `Searching “${q}”`,
-          done: `Searched “${q}”`,
+          done: `Search “${q}”`,
         };
       }
       if (toolName === "webbrowser" && isWebbrowseInputType(inputs)) {
@@ -94,12 +94,12 @@ function getDynamicToolDisplayLabels({
           const url = shortenUrl(inputs.urls[0]);
           return {
             running: `Browsing “${url}”`,
-            done: `Browsed “${url}”`,
+            done: `Browse “${url}”`,
           };
         }
         return {
           running: `Browsing ${inputs.urls.length} web pages`,
-          done: `Browsed ${inputs.urls.length} web pages`,
+          done: `Browse ${inputs.urls.length} web pages`,
         };
       }
       return null;
@@ -109,7 +109,7 @@ function getDynamicToolDisplayLabels({
         const q = truncateQuery(inputs.query);
         return {
           running: `Searching “${q}”`,
-          done: `Searched “${q}”`,
+          done: `Search “${q}”`,
         };
       }
       return null;
@@ -123,14 +123,14 @@ function getDynamicToolDisplayLabels({
         const q = truncateQuery(inputs.query);
         return {
           running: `Finding “${q}”`,
-          done: `Found “${q}”`,
+          done: `Find “${q}”`,
         };
       }
       if (toolName === "semantic_search" && isSearchInputType(inputs)) {
         const q = truncateQuery(inputs.query);
         return {
           running: `Searching “${q}”`,
-          done: `Searched “${q}”`,
+          done: `Search “${q}”`,
         };
       }
       if (toolName === "cat") {
@@ -138,7 +138,7 @@ function getDynamicToolDisplayLabels({
           const g = truncateQuery(inputs.grep);
           return {
             running: `Searching for “${g}” in file`,
-            done: `Searched for “${g}” in file`,
+            done: `Search for “${g}” in file`,
           };
         }
         const offset = isNumber(inputs.offset)
@@ -176,7 +176,7 @@ function getDynamicToolDisplayLabels({
         const name = truncateQuery(inputs.outputName);
         return {
           running: `Generating “${name}”`,
-          done: `Generated “${name}”`,
+          done: `Generate “${name}”`,
         };
       }
       return null;
@@ -186,14 +186,14 @@ function getDynamicToolDisplayLabels({
         const s = truncateQuery(inputs.subject);
         return {
           running: `Drafting “${s}”`,
-          done: `Drafted “${s}”`,
+          done: `Draft “${s}”`,
         };
       }
       if (toolName === "send_mail" && isString(inputs.subject)) {
         const s = truncateQuery(inputs.subject);
         return {
           running: `Sending “${s}”`,
-          done: `Sent “${s}”`,
+          done: `Send “${s}”`,
         };
       }
       return null;
@@ -204,7 +204,7 @@ function getDynamicToolDisplayLabels({
         const to = truncateQuery(inputs.to);
         return {
           running: `Posting to channel ${to}`,
-          done: `Posted to channel ${to}`,
+          done: `Post to channel ${to}`,
         };
       }
       return null;
@@ -214,7 +214,7 @@ function getDynamicToolDisplayLabels({
         const q = truncateQuery(inputs.query);
         return {
           running: `Searching Notion “${q}”`,
-          done: `Searched Notion “${q}”`,
+          done: `Search Notion “${q}”`,
         };
       }
       return null;
@@ -227,7 +227,7 @@ function getDynamicToolDisplayLabels({
         const o = truncateQuery(inputs.objective);
         return {
           running: `Extracting “${o}”`,
-          done: `Extracted “${o}”`,
+          done: `Extract “${o}”`,
         };
       }
       return null;
@@ -237,7 +237,7 @@ function getDynamicToolDisplayLabels({
         const q = truncateQuery(inputs.query);
         return {
           running: `Searching files “${q}”`,
-          done: `Searched files “${q}”`,
+          done: `Search files “${q}”`,
         };
       }
       if (toolName === "cat") {
@@ -245,7 +245,7 @@ function getDynamicToolDisplayLabels({
           const g = truncateQuery(inputs.grep);
           return {
             running: `Searching for “${g}” in file`,
-            done: `Searched for “${g}” in file`,
+            done: `Search for “${g}” in file`,
           };
         }
         const offset = isNumber(inputs.offset)
