@@ -19,6 +19,7 @@ enum ConversationEventData: Decodable {
     case agentMessageNew(AgentMessageNewEvent)
     case agentMessageDone(AgentMessageDoneEventData)
     case userMessageNew(UserMessageNewEvent)
+    case userMessagePromoted(UserMessagePromotedEvent)
     case conversationTitle(ConversationTitleEvent)
     case unknown(String)
 
@@ -37,6 +38,8 @@ enum ConversationEventData: Decodable {
             self = try .agentMessageDone(AgentMessageDoneEventData(from: decoder))
         case "user_message_new":
             self = try .userMessageNew(UserMessageNewEvent(from: decoder))
+        case "user_message_promoted":
+            self = try .userMessagePromoted(UserMessagePromotedEvent(from: decoder))
         case "conversation_title":
             self = try .conversationTitle(ConversationTitleEvent(from: decoder))
         default:
@@ -65,6 +68,11 @@ struct UserMessageNewEvent: Decodable {
     let message: UserMessage
 }
 
+struct UserMessagePromotedEvent: Decodable {
+    let created: Double
+    let messageId: String
+}
+
 struct ConversationTitleEvent: Decodable {
     let created: Double
     let title: String
@@ -81,6 +89,7 @@ enum StreamingEventData: Decodable {
     case agentError(AgentErrorEvent)
     case toolError(ToolErrorEvent)
     case agentGenerationCancelled(AgentGenerationCancelledEvent)
+    case agentMessageGracefullyStopped(AgentMessageGracefullyStoppedEvent)
     case toolPersonalAuthRequired(ToolPersonalAuthRequiredEvent)
     case toolFileAuthRequired(ToolFileAuthRequiredEvent)
     case toolApproveExecution(ToolApproveExecutionEvent)
@@ -114,6 +123,8 @@ enum StreamingEventData: Decodable {
             self = try .toolError(ToolErrorEvent(from: decoder))
         case "agent_generation_cancelled":
             self = try .agentGenerationCancelled(AgentGenerationCancelledEvent(from: decoder))
+        case "agent_message_gracefully_stopped":
+            self = try .agentMessageGracefullyStopped(AgentMessageGracefullyStoppedEvent(from: decoder))
         case "tool_personal_auth_required":
             self = try .toolPersonalAuthRequired(ToolPersonalAuthRequiredEvent(from: decoder))
         case "tool_file_auth_required":
@@ -195,6 +206,13 @@ struct AgentGenerationCancelledEvent: Decodable {
     let created: Double
     let configurationId: String
     let messageId: String
+}
+
+struct AgentMessageGracefullyStoppedEvent: Decodable {
+    let created: Double
+    let configurationId: String
+    let messageId: String
+    let message: AgentMessage
 }
 
 struct ToolNotificationEvent: Decodable {
