@@ -71,10 +71,9 @@ async function handler(
         });
       }
 
-      // Take the max promptTokens across usages of the last run — in a
-      // multi-step agent loop, each step sees all previous steps' outputs, so
-      // the last step's promptTokens is the full context size as seen by the
-      // model.
+      // Take the max promptTokens across usages of the last run — in a multi-step agent loop,
+      // each step sees all previous steps' outputs, so the last step's promptTokens is the full
+      // context size as seen by the model.
       const lastUsage = usages[usages.length - 1];
       const contextUsage = Math.max(...usages.map((u) => u.promptTokens));
       const modelConfig = getModelConfigByModelId(lastUsage.modelId);
