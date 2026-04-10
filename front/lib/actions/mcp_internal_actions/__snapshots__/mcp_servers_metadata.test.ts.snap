@@ -479,9 +479,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "project_manager": {
     "add_file": "low",
+    "attach_to_conversation": "low",
     "edit_description": "low",
     "get_information": "never_ask",
-    "list_unread": "never_ask",
     "update_file": "medium",
   },
   "query_tables_v2": {
