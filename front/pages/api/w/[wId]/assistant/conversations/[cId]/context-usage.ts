@@ -6,6 +6,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetConversationContextUsageResponse = {
@@ -21,7 +22,8 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  if (!(typeof req.query.cId === "string")) {
+  const { cId } = req.query;
+  if (!isString(cId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -33,10 +35,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const conversation = await ConversationResource.fetchById(
-        auth,
-        req.query.cId
-      );
+      const conversation = await ConversationResource.fetchById(auth, cId);
 
       if (!conversation) {
         return apiError(req, res, {
