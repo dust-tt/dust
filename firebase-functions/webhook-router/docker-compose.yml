@@ -15,6 +15,15 @@ services:
       - "9199:9199" # storage
       - "4000:4000" # emulator UI
     command: ./docker-entrypoint.sh
+    environment:
+      # Fall back to host.docker.internal for local dev if not set in shell.
+      - US_CONNECTOR_URL=${US_CONNECTOR_URL:-http://host.docker.internal:3002}
+      - EU_CONNECTOR_URL=${EU_CONNECTOR_URL:-http://host.docker.internal:3002}
+      # Pass through secrets from shell environment (loaded via rc file).
+      - DUST_CONNECTORS_WEBHOOKS_SECRET
+      - SLACK_SIGNING_SECRET
+      - MICROSOFT_BOT_ID_SECRET
+      - NOTION_SIGNING_SECRET
 
 volumes:
   node_modules:

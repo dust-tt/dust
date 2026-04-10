@@ -1,7 +1,8 @@
+import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { throttleWithRedis } from "@connectors/lib/throttle";
+import logger from "@connectors/logger/logger";
 import type { ChatStreamer, WebClient } from "@slack/web-api";
-import type { ChatAppendStreamArguments } from "@slack/web-api/dist/types/request/chat";
 
 export class SlackStreamHandler {
   private streamer: ChatStreamer;
@@ -53,28 +54,48 @@ export class SlackStreamHandler {
     });
   }
 
-  private async append(
-    payload: Omit<ChatAppendStreamArguments, "channel" | "ts">
-  ) {
-    const res = await throttleWithRedis(
-      RATE_LIMITS["chat.appendStream"],
-      `${this.connectorId}-chat-appendStream`,
-      { canBeIgnored: false },
-      () => this.streamer.append(payload),
-      {}
-    );
-    if (!this.messageTs && res?.ts) {
-      this.messageTs = res.ts;
+  async appendText(text: string) {
+    if (this.stopped) {
+      return;
+    }
+
+    try {
+      const res = await throttleWithRedis(
+        RATE_LIMITS["chat.appendStream"],
+        `${this.connectorId}-chat-appendStream`,
+        { canBeIgnored: false },
+        () => this.streamer.append({ markdown_text: text }),
+        {}
+      );
+
+      if (!this.messageTs && res?.ts) {
+        this.messageTs = res.ts;
+      }
+    } catch (e) {
+      if (
+        isSlackWebAPIPlatformError(e) &&
+        e.data?.error === "message_not_in_streaming_state"
+      ) {
+        this.stopped = true;
+        logger.warn(
+          { connectorId: this.connectorId },
+          "Slack stream expired mid-answer, falling back to chat.update on agent_message_success"
+        );
+        return;
+      }
+
+      throw e;
     }
   }
 
-  async appendText(text: string) {
-    await this.append({ markdown_text: text });
-  }
-
   async stop() {
+    if (this.stopped) {
+      return;
+    }
+
     this.stopped = true;
     const res = await this.streamer.stop();
+
     if (!this.messageTs && res?.ts) {
       this.messageTs = res.ts;
     }
