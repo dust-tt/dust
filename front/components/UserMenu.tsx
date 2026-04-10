@@ -1,6 +1,7 @@
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useDevMode } from "@app/hooks/useDevMode";
 import { usePrivacyMask } from "@app/hooks/usePrivacyMask";
 import config from "@app/lib/api/config";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -21,6 +22,7 @@ import {
   ChevronDownIcon,
   ChromeLogo,
   cn,
+  CommandLineIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -53,6 +55,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
   const { featureFlags } = useFeatureFlags();
 
   const sendNotification = useSendNotification();
+  const devMode = useDevMode();
   const privacyMask = usePrivacyMask();
   const { clearAllDraftsFromUser } = useConversationDrafts({
     workspaceId: owner.sId,
@@ -262,6 +265,11 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
                     label={`${privacyMask.isEnabled ? "Disable" : "Enable"} Privacy Mask`}
                     onClick={privacyMask.toggle}
                     icon={privacyMask.isEnabled ? EyeSlashIcon : EyeIcon}
+                  />
+                  <DropdownMenuItem
+                    label={`${devMode.isEnabled ? "Disable" : "Enable"} Dev Console`}
+                    onClick={devMode.toggle}
+                    icon={CommandLineIcon}
                   />
                   {owner.role === "admin" && (
                     <DropdownMenuItem
