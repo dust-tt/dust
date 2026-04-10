@@ -20,7 +20,7 @@ interface AgentPickerProps {
   owner: WorkspaceType;
   agents: LightAgentConfigurationType[];
   onItemClick: (agent: LightAgentConfigurationType) => void;
-  onAgentDetailsClick?: (agentSId: string) => void;
+  onAgentDetailsClick?: (agentId: string) => void;
   pickerButton?: React.ReactNode;
   showDropdownArrow?: boolean;
   showFooterButtons?: boolean;
