@@ -1,7 +1,7 @@
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
-import { useSendNotification } from "@app/hooks/useNotification";
 import { useDevMode } from "@app/hooks/useDevMode";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { usePrivacyMask } from "@app/hooks/usePrivacyMask";
 import config from "@app/lib/api/config";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -21,8 +21,8 @@ import {
   ChatBubbleBottomCenterPlusIcon,
   ChevronDownIcon,
   ChromeLogo,
-  cn,
   CommandLineIcon,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,

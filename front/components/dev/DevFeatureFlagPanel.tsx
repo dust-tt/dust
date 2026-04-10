@@ -4,13 +4,6 @@ import {
   WHITELISTABLE_FEATURES_CONFIG,
   type WhitelistableFeature,
 } from "@app/types/shared/feature_flags";
-
-import {
-  getFeatureFlagOverrides,
-  writeFeatureFlagOverrides,
-} from "./devFeatureFlagOverrides";
-import { DEV_MODE_STORAGE_KEY } from "./devModeConstants";
-import { useDevPerf, type PerfMetrics } from "./useDevPerf";
 import {
   useCallback,
   useEffect,
@@ -20,7 +13,12 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-
+import {
+  getFeatureFlagOverrides,
+  writeFeatureFlagOverrides,
+} from "./devFeatureFlagOverrides";
+import { DEV_MODE_STORAGE_KEY } from "./devModeConstants";
+import { type PerfMetrics, useDevPerf } from "./useDevPerf";
 
 const COLOR_OVERRIDES_KEY = "dust_color_overrides";
 const COLOR_STYLE_ID = "dust-dev-color-overrides";
@@ -381,8 +379,8 @@ function ColorOverridePanel({ onClose }: ColorOverridePanelProps) {
 
   // Restore injected styles on mount (in case of re-render).
   useEffect(() => {
-    injectColorStyles(overrides);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    injectColorStyles(readColorOverrides());
+  }, []);
 
   const setColor = useCallback(
     (token: ColorTokenName, color: string) => {
