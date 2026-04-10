@@ -16,7 +16,10 @@ import {
   type ReinforcedToolActionInfo,
   storeTerminalToolCallResults,
 } from "@app/lib/reinforced_agent/tool_execution";
-import { hasReinforcementEnabled } from "@app/lib/reinforced_agent/workspace_check";
+import {
+  hasReinforcementEnabled,
+  isReinforcementBatchModeAllowed,
+} from "@app/lib/reinforced_agent/workspace_check";
 import {
   buildSkillAggregationBatchMap,
   buildSkillAggregationSystemPrompt,
@@ -228,15 +231,20 @@ async function runReinforcedSkillsStep({
 // ---------------------------------------------------------------------------
 
 /**
- * Checks if skill reinforcement is allowed for this workspace.
+ * Checks reinforcement settings for this workspace:
+ * - whether reinforcement is enabled at all
+ * - whether batch mode is allowed
  */
-export async function isSkillReinforcementAllowedActivity({
+export async function getReinforcementSettingsActivity({
   workspaceId,
 }: {
   workspaceId: string;
-}): Promise<boolean> {
+}): Promise<{ reinforcementEnabled: boolean; batchModeAllowed: boolean }> {
   const auth = await getAuthForWorkspace(workspaceId);
-  return hasReinforcementEnabled(auth);
+  return {
+    reinforcementEnabled: await hasReinforcementEnabled(auth),
+    batchModeAllowed: isReinforcementBatchModeAllowed(auth),
+  };
 }
 
 /**

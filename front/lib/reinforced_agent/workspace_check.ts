@@ -16,3 +16,12 @@ export async function hasReinforcementEnabled(
   const workspace = auth.getNonNullableWorkspace();
   return workspace.metadata?.allowReinforcement !== false;
 }
+
+/**
+ * Check whether batch mode is allowed for reinforcement in this workspace.
+ * Defaults to true when not explicitly set.
+ */
+export function isReinforcementBatchModeAllowed(auth: Authenticator): boolean {
+  const workspace = auth.getNonNullableWorkspace();
+  return workspace.metadata?.allowReinforcementBatchMode !== false;
+}

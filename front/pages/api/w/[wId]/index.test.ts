@@ -285,6 +285,52 @@ describe("POST /api/w/[wId]", () => {
     });
   });
 
+  it("enables reinforcement batch mode", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    req.body = {
+      allowReinforcementBatchMode: true,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      workspace: expect.objectContaining({
+        id: workspace.id,
+        metadata: expect.objectContaining({
+          allowReinforcementBatchMode: true,
+        }),
+      }),
+    });
+  });
+
+  it("disables reinforcement batch mode", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    req.body = {
+      allowReinforcementBatchMode: false,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      workspace: expect.objectContaining({
+        id: workspace.id,
+        metadata: expect.objectContaining({
+          allowReinforcementBatchMode: false,
+        }),
+      }),
+    });
+  });
+
   it("returns 405 for non-POST methods", async () => {
     for (const method of ["PUT", "DELETE"] as const) {
       const { req, res } = await createPrivateApiMockRequest({
