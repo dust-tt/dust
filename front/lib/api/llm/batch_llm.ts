@@ -409,6 +409,20 @@ export async function downloadBatchResultFromLlm(
     storedResultInfo.set(conversationId, info);
   }
 
+  const deleted = await llm.deleteBatch(batchId);
+  if (!deleted) {
+    const metadata = llm.getMetadata();
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        providerId: metadata.clientId,
+        modelId: metadata.modelId,
+        batchId,
+      },
+      "Failed to delete batch after downloading results"
+    );
+  }
+
   return { events, storedResultInfo };
 }
 

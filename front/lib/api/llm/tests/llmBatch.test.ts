@@ -1,7 +1,6 @@
 import { isDeepStrictEqual } from "node:util";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { getLLM } from "@app/lib/api/llm";
-import { createMockAuthenticator } from "@app/lib/api/llm/tests/conversations";
 import { MODELS } from "@app/lib/api/llm/tests/models";
 import type { ResponseChecker } from "@app/lib/api/llm/tests/types";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
@@ -9,13 +8,22 @@ import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { isModelProviderId } from "@app/types/assistant/models/providers";
 import type { ModelIdType } from "@app/types/assistant/models/types";
+import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { describe, expect, it, vi } from "vitest";
 
 const POLL_INTERVAL_MS = 5000;
 const TEST_TIMEOUT_MS = 60 * 60 * 1000; // 1-hour timeout — batches can take a while
+
+// Mock the tokenizer to avoid CoreAPI dependency in tests.
+vi.mock("@app/lib/tokenization", () => ({
+  tokenCountForTexts: vi.fn(async (texts: string[]) => {
+    return new Ok(texts.map((t) => t.length));
+  }),
+}));
 
 // Mock the openai module to inject dangerouslyAllowBrowser: true
 vi.mock("openai", async (importOriginal) => {
@@ -252,21 +260,24 @@ const BATCH_TESTS: BatchTest[] = [
 describe.skipIf(!RUN_LLM_BATCH_TEST || modelsWithBatchSupport.length === 0)(
   "Batch Processing Integration Tests",
   () => {
-    describe.concurrent.each(
-      modelsWithBatchSupport
-    )("$providerId / $modelId", ({ modelId, providerId }) => {
+    describe.each(modelsWithBatchSupport)("$providerId / $modelId", ({
+      modelId,
+      providerId,
+    }) => {
       if (!isModelProviderId(providerId)) {
         throw new Error(`Invalid providerId: ${providerId}`);
       }
 
-      it.concurrent.each(BATCH_TESTS)(
+      it.each(BATCH_TESTS)(
         "$name",
         async ({ conversations }) => {
-          const mockedAuth = createMockAuthenticator();
-          const credentials = await getLlmCredentials(mockedAuth, {
+          const { authenticator } = await createResourceTest({
+            role: "admin",
+          });
+          const credentials = await getLlmCredentials(authenticator, {
             skipEmbeddingApiKeyRequirement: true,
           });
-          const llm = await getLLM(mockedAuth, {
+          const llm = await getLLM(authenticator, {
             modelId: modelId as ModelIdType,
             bypassFeatureFlag: true,
             credentials,
@@ -309,6 +320,9 @@ describe.skipIf(!RUN_LLM_BATCH_TEST || modelsWithBatchSupport.length === 0)(
               checkResponse(id, entry.events, expectedInResponse);
             }
           }
+
+          const deleted = await llm.deleteBatch(batchId);
+          expect(deleted).toBe(true);
         },
         TEST_TIMEOUT_MS
       );

@@ -446,6 +446,14 @@ export abstract class LLM<TPayload = unknown> {
   }
 
   /**
+   * Delete a batch. Returns true if the batch was successfully deleted.
+   * By default returns false (deletion not supported).
+   */
+  async deleteBatch(_batchId: string): Promise<boolean> {
+    return false;
+  }
+
+  /**
    * Poll the status of a previously submitted batch.
    */
   async getBatchStatus(_batchId: string): Promise<BatchStatus> {

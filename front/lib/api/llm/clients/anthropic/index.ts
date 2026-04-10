@@ -228,6 +228,11 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     return batch.id;
   }
 
+  override async deleteBatch(batchId: string): Promise<boolean> {
+    await this.client.messages.batches.delete(batchId);
+    return true;
+  }
+
   override async getBatchStatus(batchId: string): Promise<BatchStatus> {
     const batch = await this.client.messages.batches.retrieve(batchId);
     return batch.processing_status === "ended" ? "ready" : "computing";
