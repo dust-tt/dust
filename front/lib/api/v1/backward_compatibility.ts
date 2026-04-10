@@ -123,7 +123,7 @@ export function addBackwardCompatibleConversationFields(
       ) {
         return filterOutInteractiveContentFileContentTypes(c);
       } else if (isCompactionMessageType(c[0])) {
-        // Compaction messages are not exposed in the public API.
+        // TODO(compaction): expose compaction messages in the public API.
         return [];
       }
       assertNever(c[0]);
