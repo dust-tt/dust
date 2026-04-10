@@ -1,4 +1,8 @@
-import { streamLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/anthropic_to_events";
+import type { MessageBatchResult } from "@anthropic-ai/sdk/resources/messages/batches.mjs";
+import {
+  batchResultToLLMEvents,
+  streamLLMEvents,
+} from "@app/lib/api/llm/clients/anthropic/utils/anthropic_to_events";
 import { emptyToolCallLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/llm_events/empty_tool_call";
 import { reasoningLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/llm_events/reasoning";
 import { toolUseLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/llm_events/tool_use";
@@ -54,5 +58,65 @@ describe("streamLLMEvents", () => {
     expect(result).toEqual(
       emptyToolCallLLMEvents.map((e) => ({ ...e, metadata }))
     );
+  });
+});
+
+describe("batchResultToLLMEvents", () => {
+  it("should emit tool_call_started before tool_call for tool use blocks", async () => {
+    const batchResult = {
+      type: "succeeded",
+      message: {
+        id: "msg_batch_123",
+        type: "message",
+        role: "assistant",
+        model: CLAUDE_4_SONNET_20250514_MODEL_ID,
+        content: [
+          { type: "text", text: "Hello, how are you ?" },
+          {
+            type: "tool_use",
+            id: "DdHr7L197",
+            name: "web_search_browse__websearch",
+            input: { query: "Paris France weather forecast October 23 2025" },
+          },
+        ],
+        stop_reason: "tool_use",
+        stop_sequence: null,
+        usage: {
+          input_tokens: 1766,
+          output_tokens: 128,
+          cache_read_input_tokens: 0,
+          cache_creation_input_tokens: 0,
+        },
+      },
+    } as MessageBatchResult;
+
+    const result = await batchResultToLLMEvents(batchResult, metadata);
+
+    expect(result.map((event) => event.type)).toEqual([
+      "interaction_id",
+      "text_generated",
+      "tool_call_started",
+      "tool_call",
+      "token_usage",
+      "success",
+    ]);
+    expect(result[2]).toEqual({
+      type: "tool_call_started",
+      content: {
+        id: "DdHr7L197",
+        index: 1,
+        name: "web_search_browse__websearch",
+      },
+      metadata,
+    });
+    expect(result[3]).toEqual({
+      type: "tool_call",
+      content: {
+        id: "DdHr7L197",
+        name: "web_search_browse__websearch",
+        arguments: { query: "Paris France weather forecast October 23 2025" },
+      },
+      metadata,
+    });
   });
 });
