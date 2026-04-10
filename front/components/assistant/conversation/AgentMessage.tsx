@@ -1113,12 +1113,14 @@ function AgentMessageContent({
   streamError: Error | null;
   lastTokenClassification: null | "tokens" | "chain_of_thought";
   activeReferences: { index: number; document: MCPReferenceCitation }[];
-  setActiveReferences: (
-    references: {
-      index: number;
-      document: MCPReferenceCitation;
-    }[]
-  ) => void;
+  setActiveReferences: React.Dispatch<
+    React.SetStateAction<
+      {
+        index: number;
+        document: MCPReferenceCitation;
+      }[]
+    >
+  >;
   onQuickReplySend: (message: string) => Promise<void>;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
@@ -1185,12 +1187,14 @@ function AgentMessageContent({
   // References logic.
   const updateActiveReferences = useCallback(
     (document: MCPReferenceCitation, index: number) => {
-      const existingIndex = activeReferences.find((r) => r.index === index);
-      if (!existingIndex) {
-        setActiveReferences([...activeReferences, { index, document }]);
-      }
+      setActiveReferences((prev) => {
+        if (prev.some((r) => r.index === index)) {
+          return prev;
+        }
+        return [...prev, { index, document }];
+      });
     },
-    [activeReferences, setActiveReferences]
+    [setActiveReferences]
   );
 
   const citationsContextValue = useMemo(
