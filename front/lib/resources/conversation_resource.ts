@@ -1841,32 +1841,31 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   ): Promise<RunResource | null> {
     const owner = auth.getNonNullableWorkspace();
 
-    const agentMessage = await AgentMessageModel.findOne({
+    const message = await MessageModel.findOne({
       where: {
+        conversationId: this.id,
         workspaceId: owner.id,
-        status: ["succeeded", "gracefully_stopped"],
       },
       include: [
         {
-          model: MessageModel,
-          as: "message",
+          model: AgentMessageModel,
+          as: "agentMessage",
           required: true,
           where: {
-            conversationId: this.id,
-            workspaceId: owner.id,
+            status: ["succeeded", "gracefully_stopped"],
           },
         },
       ],
-      order: [["createdAt", "DESC"]],
+      order: [["rank", "DESC"]],
     });
 
-    if (!agentMessage?.runIds?.length) {
+    if (!message?.agentMessage?.runIds?.length) {
       return null;
     }
 
     // runIds is ordered chronologically (appended step by step in the agent loop), so the last
     // element is the most recent run.
-    const lastRunId = agentMessage.runIds[agentMessage.runIds.length - 1];
+    const lastRunId = message.agentMessage.runIds[message.agentMessage.runIds.length - 1];
 
     return RunResource.fetchByDustRunId(auth, { dustRunId: lastRunId });
   }
