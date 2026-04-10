@@ -15,6 +15,8 @@ const GLOBAL_BLOCKED_DOMAINS: &[&str] = &[
 ];
 
 pub fn is_globally_blocked_domain(domain: &str) -> bool {
+    // TODO(sandbox-egress): Nice-to-have policy decision before GCS policies ship: decide
+    // whether global blocklist entries need suffix matching for provider-controlled subdomains.
     GLOBAL_BLOCKED_DOMAINS.contains(&domain)
 }
 

@@ -7,10 +7,17 @@ use crate::policy::TemporaryAllowlist;
 use std::fmt;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::io::{copy_bidirectional, AsyncWriteExt};
 use tokio::net::TcpStream;
+use tokio::time::timeout;
 use tokio_rustls::server::TlsStream;
 use tracing::{info, warn};
+
+const HANDSHAKE_TIMEOUT_SECONDS: u64 = 5;
+const DNS_TIMEOUT_SECONDS: u64 = 5;
+const UPSTREAM_CONNECT_TIMEOUT_SECONDS: u64 = 5;
+const CONNECTION_MAX_LIFETIME_SECONDS: u64 = 60 * 60;
 
 #[derive(Clone)]
 pub struct ConnectionState {
@@ -96,20 +103,30 @@ async fn handle_connection_inner(
     stream: &mut TlsStream<TcpStream>,
     state: Arc<ConnectionState>,
 ) -> Result<(), DenyReason> {
-    // TODO(sandbox-egress): Nice-to-have before broad rollout: add explicit TLS accept,
-    // handshake, DNS, and upstream-connect timeouts. The long-lived tunnel timeout policy is
-    // intentionally deferred until Kubernetes termination and expected connection lifetimes are
-    // finalized.
-    let handshake = match read_handshake(stream).await {
-        Ok(handshake) => handshake,
-        Err(HandshakeError::UnsupportedProtocolVersion) => {
+    let handshake = match timeout(
+        Duration::from_secs(HANDSHAKE_TIMEOUT_SECONDS),
+        read_handshake(stream),
+    )
+    .await
+    {
+        Err(_) => {
+            warn!(
+                deny_reason = %DenyReason::MalformedHandshake,
+                handshake_timeout_seconds = HANDSHAKE_TIMEOUT_SECONDS,
+                "connection denied after handshake timeout"
+            );
+            return Err(DenyReason::MalformedHandshake);
+        }
+        Ok(Ok(handshake)) => handshake,
+        Ok(Err(HandshakeError::UnsupportedProtocolVersion)) => {
             deny(stream, DenyReason::UnsupportedProtocolVersion, None, None).await;
             return Err(DenyReason::UnsupportedProtocolVersion);
         }
-        Err(HandshakeError::MalformedHandshake) => {
-            // TODO(sandbox-egress): Nice-to-have protocol polish: distinguish truncated frames
-            // from complete-but-invalid frames so complete malformed handshakes can receive the
-            // stable 0x01 deny response while partial frames still close silently.
+        Ok(Err(HandshakeError::MalformedHandshake)) => {
+            deny(stream, DenyReason::MalformedHandshake, None, None).await;
+            return Err(DenyReason::MalformedHandshake);
+        }
+        Ok(Err(HandshakeError::TruncatedHandshake)) => {
             warn!(
                 deny_reason = %DenyReason::MalformedHandshake,
                 "connection denied"
@@ -168,13 +185,33 @@ async fn handle_connection_inner(
         return Err(DenyReason::NotInTemporaryAllowlist);
     }
 
-    let upstream_addresses = match state
-        .dns_resolver
-        .resolve(&request.domain, request.original_dest_port)
-        .await
+    let upstream_addresses = match timeout(
+        Duration::from_secs(DNS_TIMEOUT_SECONDS),
+        state
+            .dns_resolver
+            .resolve(&request.domain, request.original_dest_port),
+    )
+    .await
     {
-        Ok(addresses) => addresses,
-        Err(error) => {
+        Ok(Ok(addresses)) => addresses,
+        Err(_) => {
+            warn!(
+                sb_id = %token.sb_id,
+                domain = %request.domain,
+                original_dest_port = request.original_dest_port,
+                dns_timeout_seconds = DNS_TIMEOUT_SECONDS,
+                "dns resolution timed out"
+            );
+            deny(
+                stream,
+                DenyReason::DnsResolutionFailed,
+                Some(&token),
+                Some(&request),
+            )
+            .await;
+            return Err(DenyReason::DnsResolutionFailed);
+        }
+        Ok(Err(error)) => {
             warn!(
                 error = %error,
                 sb_id = %token.sb_id,
@@ -222,9 +259,32 @@ async fn handle_connection_inner(
         }
     };
 
-    let mut upstream = match TcpStream::connect(upstream_addr).await {
-        Ok(upstream) => upstream,
-        Err(error) => {
+    let mut upstream = match timeout(
+        Duration::from_secs(UPSTREAM_CONNECT_TIMEOUT_SECONDS),
+        TcpStream::connect(upstream_addr),
+    )
+    .await
+    {
+        Ok(Ok(upstream)) => upstream,
+        Err(_) => {
+            warn!(
+                sb_id = %token.sb_id,
+                domain = %request.domain,
+                original_dest_port = request.original_dest_port,
+                upstream_addr = %upstream_addr,
+                upstream_connect_timeout_seconds = UPSTREAM_CONNECT_TIMEOUT_SECONDS,
+                "upstream connect timed out"
+            );
+            deny(
+                stream,
+                DenyReason::UpstreamConnectFailed,
+                Some(&token),
+                Some(&request),
+            )
+            .await;
+            return Err(DenyReason::UpstreamConnectFailed);
+        }
+        Ok(Err(error)) => {
             warn!(
                 error = %error,
                 sb_id = %token.sb_id,
@@ -260,9 +320,14 @@ async fn handle_connection_inner(
     );
 
     // TODO(sandbox-egress): Nice-to-have once product traffic patterns are known: enforce a
-    // configurable max lifetime and idle timeout for long-lived sandbox connections.
-    match copy_bidirectional(stream, &mut upstream).await {
-        Ok((from_client_bytes, from_upstream_bytes)) => {
+    // configurable idle timeout for long-lived sandbox connections.
+    match timeout(
+        Duration::from_secs(CONNECTION_MAX_LIFETIME_SECONDS),
+        copy_bidirectional(stream, &mut upstream),
+    )
+    .await
+    {
+        Ok(Ok((from_client_bytes, from_upstream_bytes))) => {
             info!(
                 sb_id = %token.sb_id,
                 domain = %request.domain,
@@ -274,7 +339,7 @@ async fn handle_connection_inner(
             );
             Ok(())
         }
-        Err(error) => {
+        Ok(Err(error)) => {
             warn!(
                 error = %error,
                 sb_id = %token.sb_id,
@@ -282,6 +347,17 @@ async fn handle_connection_inner(
                 original_dest_port = request.original_dest_port,
                 upstream_addr = %upstream_addr,
                 "connection copy failed"
+            );
+            Err(DenyReason::IoError)
+        }
+        Err(_) => {
+            warn!(
+                sb_id = %token.sb_id,
+                domain = %request.domain,
+                original_dest_port = request.original_dest_port,
+                upstream_addr = %upstream_addr,
+                connection_max_lifetime_seconds = CONNECTION_MAX_LIFETIME_SECONDS,
+                "connection lifetime exceeded"
             );
             Err(DenyReason::IoError)
         }

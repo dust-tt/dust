@@ -1,8 +1,6 @@
 use anyhow::{anyhow, Result};
-use rustls::pki_types::{CertificateDer, PrivateKeyDer};
+use rustls::pki_types::{pem::PemObject, CertificateDer, PrivateKeyDer};
 use rustls::ServerConfig;
-use std::fs::File;
-use std::io::BufReader;
 use std::path::Path;
 use std::sync::Arc;
 use tokio_rustls::TlsAcceptor;
@@ -20,9 +18,7 @@ pub fn load_tls_acceptor(cert_path: &Path, key_path: &Path) -> Result<TlsAccepto
 }
 
 fn load_cert_chain(path: &Path) -> Result<Vec<CertificateDer<'static>>> {
-    let file = File::open(path)?;
-    let mut reader = BufReader::new(file);
-    let certs = rustls_pemfile::certs(&mut reader).collect::<Result<Vec<_>, _>>()?;
+    let certs = CertificateDer::pem_file_iter(path)?.collect::<Result<Vec<_>, _>>()?;
 
     if certs.is_empty() {
         return Err(anyhow!(
@@ -34,10 +30,6 @@ fn load_cert_chain(path: &Path) -> Result<Vec<CertificateDer<'static>>> {
 }
 
 fn load_private_key(path: &Path) -> Result<PrivateKeyDer<'static>> {
-    let file = File::open(path)?;
-    let mut reader = BufReader::new(file);
-    let private_key = rustls_pemfile::private_key(&mut reader)?
-        .ok_or_else(|| anyhow!("TLS private key file does not contain a private key"))?;
-
-    Ok(private_key)
+    PrivateKeyDer::from_pem_file(path)
+        .map_err(|error| anyhow!("TLS private key file does not contain a private key: {error}"))
 }

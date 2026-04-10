@@ -1,11 +1,9 @@
 use anyhow::{anyhow, Result};
 use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
-use rustls::pki_types::{CertificateDer, ServerName};
+use rustls::pki_types::{pem::PemObject, CertificateDer, ServerName};
 use rustls::RootCertStore;
 use serde::Serialize;
 use std::fs::write;
-use std::fs::File;
-use std::io::BufReader;
 use std::net::{Ipv6Addr, SocketAddr, TcpListener as StdTcpListener};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
@@ -165,6 +163,25 @@ async fn truncated_handshake_closes_without_response() -> Result<()> {
         Ok(Ok(read_bytes)) => return Err(anyhow!("expected close, read {read_bytes} byte(s)")),
         Err(error) => return Err(error.into()),
     }
+    Ok(())
+}
+
+#[tokio::test]
+async fn complete_malformed_handshakes_return_deny() -> Result<()> {
+    let proxy = start_proxy("example.com", false, "production").await?;
+    let token = make_token(SECRET, 60);
+
+    for frame in [
+        build_frame("", "example.com", 443)?,
+        build_frame(&token, "example..com", 443)?,
+        build_frame(&token, "host:443", 443)?,
+        build_frame(&token, "example.com", 0)?,
+        build_oversized_domain_frame(&token),
+    ] {
+        let response = send_raw_frame(&proxy, &frame).await?;
+        assert_eq!(response, Some(DENY_RESPONSE));
+    }
+
     Ok(())
 }
 
@@ -350,10 +367,7 @@ async fn connect_forwarder(
 }
 
 fn load_certs(path: &Path) -> Result<Vec<CertificateDer<'static>>> {
-    let file = File::open(path)?;
-    let mut reader = BufReader::new(file);
-    let certs = rustls_pemfile::certs(&mut reader).collect::<Result<Vec<_>, _>>()?;
-    Ok(certs)
+    Ok(CertificateDer::pem_file_iter(path)?.collect::<Result<Vec<_>, _>>()?)
 }
 
 fn build_frame(token: &str, domain: &str, original_dest_port: u16) -> Result<Vec<u8>> {
@@ -371,6 +385,19 @@ fn build_frame(token: &str, domain: &str, original_dest_port: u16) -> Result<Vec
     frame.extend_from_slice(&original_dest_port.to_be_bytes());
 
     Ok(frame)
+}
+
+fn build_oversized_domain_frame(token: &str) -> Vec<u8> {
+    let token_bytes = token.as_bytes();
+    let token_len = u16::try_from(token_bytes.len()).unwrap();
+    let mut frame = Vec::with_capacity(1 + 2 + token_bytes.len() + 2);
+
+    frame.push(0x01);
+    frame.extend_from_slice(&token_len.to_be_bytes());
+    frame.extend_from_slice(token_bytes);
+    frame.extend_from_slice(&254_u16.to_be_bytes());
+
+    frame
 }
 
 fn make_token(secret: &str, exp_offset_seconds: i64) -> String {

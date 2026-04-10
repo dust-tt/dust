@@ -7,11 +7,14 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::signal;
-use tokio::sync::watch;
+use tokio::sync::{watch, Semaphore};
 use tokio::task::{JoinError, JoinSet};
+use tokio::time::timeout;
 use tracing::{error, info, warn};
 
 const CONNECTION_DRAIN_TIMEOUT_SECONDS: u64 = 5;
+const TLS_ACCEPT_TIMEOUT_SECONDS: u64 = 5;
+const MAX_CONCURRENT_CONNECTIONS: usize = 1024;
 
 pub async fn run(config: Config) -> Result<()> {
     let tls_acceptor = load_tls_acceptor(&config.tls_cert_path, &config.tls_key_path)?;
@@ -30,6 +33,7 @@ pub async fn run(config: Config) -> Result<()> {
         listener,
         tls_acceptor,
         state,
+        Arc::new(Semaphore::new(MAX_CONCURRENT_CONNECTIONS)),
         shutdown_rx.clone(),
     ));
 
@@ -70,6 +74,7 @@ async fn run_proxy_listener(
     listener: TcpListener,
     tls_acceptor: tokio_rustls::TlsAcceptor,
     state: Arc<ConnectionState>,
+    connection_slots: Arc<Semaphore>,
     mut shutdown: watch::Receiver<bool>,
 ) -> Result<()> {
     let mut connection_tasks = JoinSet::new();
@@ -78,17 +83,42 @@ async fn run_proxy_listener(
         tokio::select! {
             accept_result = listener.accept() => {
                 let (stream, peer_addr) = accept_result?;
+                let permit = match connection_slots.clone().try_acquire_owned() {
+                    Ok(permit) => permit,
+                    Err(_) => {
+                        warn!(
+                            peer_addr = %peer_addr,
+                            max_concurrent_connections = MAX_CONCURRENT_CONNECTIONS,
+                            "connection rejected because concurrency limit is reached"
+                        );
+                        drop(stream);
+                        continue;
+                    }
+                };
                 let tls_acceptor = tls_acceptor.clone();
                 let state = state.clone();
 
                 connection_tasks.spawn(async move {
-                    match tls_acceptor.accept(stream).await {
-                        Ok(tls_stream) => handle_connection(tls_stream, state).await,
-                        Err(error) => {
+                    let _permit = permit;
+                    match timeout(
+                        Duration::from_secs(TLS_ACCEPT_TIMEOUT_SECONDS),
+                        tls_acceptor.accept(stream),
+                    )
+                    .await
+                    {
+                        Ok(Ok(tls_stream)) => handle_connection(tls_stream, state).await,
+                        Ok(Err(error)) => {
                             warn!(
                                 error = %error,
                                 peer_addr = %peer_addr,
                                 "tls handshake failed"
+                            );
+                        }
+                        Err(_) => {
+                            warn!(
+                                peer_addr = %peer_addr,
+                                tls_accept_timeout_seconds = TLS_ACCEPT_TIMEOUT_SECONDS,
+                                "tls handshake timed out"
                             );
                         }
                     }

@@ -1,3 +1,4 @@
+use crate::domain::{normalize_dns_name, normalize_domain_or_ip};
 use anyhow::{anyhow, Result};
 
 #[derive(Debug, Clone)]
@@ -48,14 +49,18 @@ impl DomainPattern {
     fn parse(value: &str) -> Result<Self> {
         // TODO(sandbox-egress): Replace the minimal domain allowlist with the full policy schema
         // (defaultAction + rules) once front starts writing policy files.
-        let value = normalize_policy_domain(value)?;
+        let value = value.trim().to_ascii_lowercase();
         if let Some(suffix) = value.strip_prefix("*.") {
-            if suffix.is_empty() {
+            let suffix = normalize_dns_name(suffix)
+                .map_err(|_| anyhow!("invalid wildcard domain entry: {value}"))?;
+            if suffix.split('.').count() < 2 {
                 return Err(anyhow!("invalid wildcard domain entry: {value}"));
             }
-            return Ok(Self::WildcardSuffix(suffix.to_string()));
+            return Ok(Self::WildcardSuffix(suffix));
         }
 
+        let value =
+            normalize_domain_or_ip(&value).map_err(|_| anyhow!("invalid domain entry: {value}"))?;
         Ok(Self::Exact(value))
     }
 
@@ -69,24 +74,6 @@ impl DomainPattern {
             }
         }
     }
-}
-
-fn normalize_policy_domain(value: &str) -> Result<String> {
-    let value = value.trim().to_lowercase();
-    let value = value.strip_suffix('.').unwrap_or(&value).to_string();
-
-    if value.is_empty() {
-        return Err(anyhow!("domain entry must not be empty"));
-    }
-
-    if value
-        .bytes()
-        .any(|byte| byte.is_ascii_control() || byte == b'\0' || byte == b' ' || byte == b'/')
-    {
-        return Err(anyhow!("invalid domain entry: {value}"));
-    }
-
-    Ok(value)
 }
 
 // TODO(sandbox-egress): Add a bounded TTL cache for GCS policies to avoid reading on
@@ -105,6 +92,14 @@ mod tests {
     }
 
     #[test]
+    fn exact_ip_literals_are_valid_entries() {
+        let allowlist = TemporaryAllowlist::parse("127.0.0.1,::ffff:127.0.0.1").unwrap();
+
+        assert!(allowlist.allows("127.0.0.1", "sbx"));
+        assert!(allowlist.allows("::ffff:127.0.0.1", "sbx"));
+    }
+
+    #[test]
     fn wildcard_matches_subdomains_only() {
         let allowlist = TemporaryAllowlist::parse("*.example.com").unwrap();
 
@@ -117,5 +112,12 @@ mod tests {
     fn invalid_entries_fail_startup() {
         assert!(TemporaryAllowlist::parse("example.com, bad domain").is_err());
         assert!(TemporaryAllowlist::parse(" , ").is_err());
+        assert!(TemporaryAllowlist::parse("*").is_err());
+        assert!(TemporaryAllowlist::parse("*.*.com").is_err());
+        assert!(TemporaryAllowlist::parse("*example.com").is_err());
+        assert!(TemporaryAllowlist::parse(".example.com").is_err());
+        assert!(TemporaryAllowlist::parse("example..com").is_err());
+        assert!(TemporaryAllowlist::parse("host:443").is_err());
+        assert!(TemporaryAllowlist::parse("*.com").is_err());
     }
 }

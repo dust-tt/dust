@@ -2,6 +2,7 @@ mod blocklist;
 mod config;
 mod connection;
 mod dns;
+mod domain;
 mod handshake;
 mod health;
 mod jwt;

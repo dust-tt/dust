@@ -1,3 +1,4 @@
+use crate::domain::{normalize_domain_or_ip, DomainValidationError};
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncReadExt};
 
@@ -19,6 +20,8 @@ pub struct Handshake {
 pub enum HandshakeError {
     #[error("malformed handshake")]
     MalformedHandshake,
+    #[error("truncated handshake")]
+    TruncatedHandshake,
     #[error("unsupported protocol version")]
     UnsupportedProtocolVersion,
 }
@@ -83,17 +86,15 @@ pub fn build_frame(token: &str, domain: &str, original_dest_port: u16) -> Vec<u8
 }
 
 fn normalize_domain(domain: &str) -> Result<String, HandshakeError> {
-    let domain = domain.to_lowercase();
-    let domain = domain.strip_suffix('.').unwrap_or(&domain).to_string();
-
-    if domain
-        .bytes()
-        .any(|byte| byte.is_ascii_control() || byte == b'\0' || byte == b' ' || byte == b'/')
-    {
-        return Err(HandshakeError::MalformedHandshake);
+    if domain.is_empty() {
+        return Ok(String::new());
     }
 
-    Ok(domain)
+    match normalize_domain_or_ip(domain) {
+        Ok(domain) => Ok(domain),
+        Err(DomainValidationError::Empty) => Err(HandshakeError::MalformedHandshake),
+        Err(DomainValidationError::Invalid) => Err(HandshakeError::MalformedHandshake),
+    }
 }
 
 async fn read_u8<R>(reader: &mut R) -> Result<u8, HandshakeError>
@@ -104,7 +105,7 @@ where
     reader
         .read_exact(&mut buffer)
         .await
-        .map_err(|_| HandshakeError::MalformedHandshake)?;
+        .map_err(|_| HandshakeError::TruncatedHandshake)?;
     Ok(buffer[0])
 }
 
@@ -116,7 +117,7 @@ where
     reader
         .read_exact(&mut buffer)
         .await
-        .map_err(|_| HandshakeError::MalformedHandshake)?;
+        .map_err(|_| HandshakeError::TruncatedHandshake)?;
     Ok(u16::from_be_bytes(buffer))
 }
 
@@ -128,7 +129,7 @@ where
     reader
         .read_exact(&mut buffer)
         .await
-        .map_err(|_| HandshakeError::MalformedHandshake)?;
+        .map_err(|_| HandshakeError::TruncatedHandshake)?;
     Ok(buffer)
 }
 
@@ -175,18 +176,26 @@ mod tests {
 
         assert_eq!(
             read_handshake(&mut reader).await.unwrap_err(),
-            HandshakeError::MalformedHandshake
+            HandshakeError::TruncatedHandshake
         );
     }
 
     #[tokio::test]
-    async fn rejects_domains_with_spaces() {
-        let frame = build_frame("token", " example.com", 443);
-        let mut reader = frame.as_slice();
+    async fn rejects_complete_malformed_handshakes() {
+        for frame in [
+            build_frame("", "example.com", 443),
+            build_frame("token", " example.com", 443),
+            build_frame("token", "example..com", 443),
+            build_frame("token", "host:443", 443),
+            build_frame("token", ".", 443),
+            build_frame("token", "example.com", 0),
+        ] {
+            let mut reader = frame.as_slice();
 
-        assert_eq!(
-            read_handshake(&mut reader).await.unwrap_err(),
-            HandshakeError::MalformedHandshake
-        );
+            assert_eq!(
+                read_handshake(&mut reader).await.unwrap_err(),
+                HandshakeError::MalformedHandshake
+            );
+        }
     }
 }
