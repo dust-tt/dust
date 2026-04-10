@@ -242,9 +242,8 @@ export async function createMetronomeContract({
 }
 
 /**
- * Get the active contract and subscription IDs for a Metronome customer.
- * Returns the contract ID and a map of product_id -> subscription_id
- * for seat-based subscriptions.
+ * Get the active contract for a Metronome customer.
+ * Returns the contract ID if found.
  */
 export async function getMetronomeActiveContract(
   metronomeCustomerId: string
@@ -252,7 +251,6 @@ export async function getMetronomeActiveContract(
   Result<
     {
       contractId: string;
-      seatSubscriptions: Record<string, string>;
     } | null,
     Error
   >
@@ -268,17 +266,9 @@ export async function getMetronomeActiveContract(
 
     // Take the most recent contract.
     const contract = response.data[0];
-    const subscriptions = contract.subscriptions ?? [];
-    const seatSubscriptions: Record<string, string> = {};
-    for (const sub of subscriptions) {
-      if (sub.quantity_management_mode === "SEAT_BASED" && sub.id) {
-        seatSubscriptions[sub.subscription_rate.product.id] = sub.id;
-      }
-    }
 
     return new Ok({
       contractId: contract.id,
-      seatSubscriptions,
     });
   } catch (err) {
     const error = normalizeError(err);
@@ -370,74 +360,66 @@ export async function getMetronomeContractPackageAliases({
 // Seat management
 // ---------------------------------------------------------------------------
 
-interface SeatSubscriptionEdit {
-  subscriptionId: string;
-  addSeatIds?: string[];
-  removeSeatIds?: string[];
-  addUnassignedSeats?: number;
-}
-
 /**
- * Add or remove seat IDs on a Metronome contract subscription.
- * Used when members join/leave or change seat type.
+ * Update the quantity on a MANUAL subscription (delta or absolute).
+ * Used for seat count changes when members join/leave.
  */
-export async function editMetronomeContractSeats({
+export async function updateSubscriptionQuantity({
   metronomeCustomerId,
   contractId,
-  edits,
+  subscriptionId,
+  quantityDelta,
+  quantity,
   startingAt,
 }: {
   metronomeCustomerId: string;
   contractId: string;
-  edits: SeatSubscriptionEdit[];
+  subscriptionId: string;
+  /** Relative change (+1 for add, -1 for remove). Mutually exclusive with quantity. */
+  quantityDelta?: number;
+  /** Absolute quantity. Mutually exclusive with quantityDelta. */
+  quantity?: number;
   startingAt?: string;
 }): Promise<Result<void, Error>> {
-  // Metronome requires starting_at on an hour boundary — round down to current hour.
+  if (quantity !== undefined && quantityDelta !== undefined) {
+    return new Err(
+      new Error("quantity and quantityDelta are mutually exclusive")
+    );
+  }
+  if (quantity === undefined && quantityDelta === undefined) {
+    return new Err(
+      new Error("one of quantity or quantityDelta must be provided")
+    );
+  }
+
   const now = startingAt ?? floorToHourISO(new Date());
 
   try {
     await getMetronomeClient().v2.contracts.edit({
       customer_id: metronomeCustomerId,
       contract_id: contractId,
-      update_subscriptions: edits.map((edit) => ({
-        subscription_id: edit.subscriptionId,
-        seat_updates: {
-          ...(edit.addSeatIds
-            ? {
-                add_seat_ids: edit.addSeatIds.map((id) => ({
-                  seat_ids: [id],
-                  starting_at: now,
-                })),
-              }
-            : {}),
-          ...(edit.removeSeatIds
-            ? {
-                remove_seat_ids: edit.removeSeatIds.map((id) => ({
-                  seat_ids: [id],
-                  starting_at: now,
-                })),
-              }
-            : {}),
-          ...(edit.addUnassignedSeats !== undefined
-            ? {
-                add_unassigned_seats: [
-                  {
-                    quantity: edit.addUnassignedSeats,
-                    starting_at: now,
-                  },
-                ],
-              }
-            : {}),
+      update_subscriptions: [
+        {
+          subscription_id: subscriptionId,
+          quantity_updates: [
+            {
+              starting_at: now,
+              ...(quantity !== undefined ? { quantity } : {}),
+              ...(quantityDelta !== undefined
+                ? { quantity_delta: quantityDelta }
+                : {}),
+            },
+          ],
         },
-      })),
+      ],
     });
 
     return new Ok(undefined);
   } catch (err) {
     const error = normalizeError(err);
     logger.error(
-      { error, metronomeCustomerId, contractId },
-      "[Metronome] Failed to edit contract seats"
+      { error, metronomeCustomerId, contractId, subscriptionId },
+      "[Metronome] Failed to update subscription quantity"
     );
     return new Err(error);
   }
