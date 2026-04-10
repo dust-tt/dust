@@ -16,3 +16,19 @@ export const CONVERSATION_ANALYSIS_CONCURRENCY = 4;
 
 // Maximum concurrent per-skill aggregations.
 export const SKILL_AGGREGATION_CONCURRENCY = 8;
+
+// --- Conversation scoring constants ---
+
+// Skills not modified within this window are excluded from reinforcement.
+export const SKILL_STALENESS_THRESHOLD_DAYS = 14;
+
+// Skills with pending reinforcement suggestions younger than this are excluded.
+export const PENDING_SUGGESTION_MAX_AGE_DAYS = 30;
+
+// Max conversations analyzed per skill in a single run.
+export const PER_SKILL_CONVERSATION_CAP = 20;
+
+// Scoring weights for conversation selection.
+export const WEIGHT_FEEDBACK = 0.45;
+export const WEIGHT_TOOL_ERRORS = 0.3;
+export const WEIGHT_USER_ENGAGEMENT = 0.25;
