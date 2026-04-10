@@ -46,6 +46,8 @@ impl JwtValidator {
         // TODO(sandbox-egress): Front will mint these JWTs during sandbox setup and write the
         // per-sandbox policy before user code can execute.
         let mut validation = Validation::new(Algorithm::HS256);
+        // TODO(sandbox-egress): Nice-to-have once front token minting is wired: make the
+        // front/proxy clock-skew tolerance explicit and cover it with a unit test.
         validation.validate_exp = false;
         validation.set_issuer(&[EXPECTED_ISSUER]);
         validation.set_audience(&[EXPECTED_AUDIENCE]);

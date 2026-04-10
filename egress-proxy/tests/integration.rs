@@ -6,7 +6,7 @@ use serde::Serialize;
 use std::fs::write;
 use std::fs::File;
 use std::io::BufReader;
-use std::net::{SocketAddr, TcpListener as StdTcpListener};
+use std::net::{Ipv6Addr, SocketAddr, TcpListener as StdTcpListener};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
@@ -14,6 +14,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tempfile::TempDir;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
+use tokio::task::JoinSet;
 use tokio_rustls::TlsConnector;
 use uuid::Uuid;
 
@@ -58,13 +59,13 @@ async fn healthz_returns_ok() -> Result<()> {
 
 #[tokio::test]
 async fn allowed_domain_forwards_bytes() -> Result<()> {
-    let (upstream_addr, upstream_handle) = start_echo_server().await?;
-    let proxy = start_proxy("127.0.0.1", true, "test").await?;
+    let (upstream_port, mut upstream_handles) = start_localhost_echo_servers().await?;
+    let proxy = start_proxy("localhost", true, "test").await?;
     let token = make_token(SECRET, 60);
     let mut stream = connect_forwarder(&proxy).await?;
 
     stream
-        .write_all(&build_frame(&token, "127.0.0.1", upstream_addr.port())?)
+        .write_all(&build_frame(&token, "localhost", upstream_port)?)
         .await?;
 
     let mut response = [0; 1];
@@ -77,7 +78,7 @@ async fn allowed_domain_forwards_bytes() -> Result<()> {
     assert_eq!(&echoed, b"ping");
 
     drop(stream);
-    upstream_handle.await??;
+    wait_for_echo(&mut upstream_handles).await?;
     Ok(())
 }
 
@@ -116,10 +117,10 @@ async fn expired_jwt_returns_deny() -> Result<()> {
 
 #[tokio::test]
 async fn allowed_loopback_without_ssrf_bypass_returns_deny() -> Result<()> {
-    let proxy = start_proxy("127.0.0.1", false, "production").await?;
+    let proxy = start_proxy("localhost", false, "production").await?;
     let token = make_token(SECRET, 60);
 
-    let response = send_handshake(&proxy, &token, "127.0.0.1", 443).await?;
+    let response = send_handshake(&proxy, &token, "localhost", 443).await?;
 
     assert_eq!(response, Some(DENY_RESPONSE));
     Ok(())
@@ -200,17 +201,30 @@ async fn unsafe_ssrf_bypass_fails_startup_outside_test_env() -> Result<()> {
         .stderr(Stdio::null())
         .spawn()?;
 
-    for _ in 0..50 {
-        if let Some(status) = child.try_wait()? {
-            assert!(!status.success());
-            return Ok(());
-        }
-        tokio::time::sleep(Duration::from_millis(50)).await;
-    }
+    wait_for_startup_failure(&mut child).await
+}
 
-    let _ = child.kill();
-    let _ = child.wait();
-    Err(anyhow!("proxy did not fail startup"))
+#[tokio::test]
+async fn health_bind_failure_fails_startup() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+    let certs = generate_test_certs(temp_dir.path())?;
+    let proxy_addr = free_addr()?;
+    let occupied_health_listener = StdTcpListener::bind("127.0.0.1:0")?;
+    let health_addr = occupied_health_listener.local_addr()?;
+
+    let mut child = Command::new(env!("CARGO_BIN_EXE_egress-proxy"))
+        .env("EGRESS_PROXY_LISTEN_ADDR", proxy_addr.to_string())
+        .env("EGRESS_PROXY_HEALTH_ADDR", health_addr.to_string())
+        .env("EGRESS_PROXY_TLS_CERT", certs.server_cert_path)
+        .env("EGRESS_PROXY_TLS_KEY", certs.server_key_path)
+        .env("EGRESS_PROXY_JWT_SECRET", SECRET)
+        .env("EGRESS_PROXY_ALLOWED_DOMAINS", "localhost")
+        .env("EGRESS_PROXY_ENV", "production")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?;
+
+    wait_for_startup_failure(&mut child).await
 }
 
 async fn start_proxy(
@@ -268,6 +282,20 @@ async fn wait_for_health(child: &mut Child, health_addr: SocketAddr) -> Result<(
     }
 
     Err(anyhow!("proxy did not become healthy"))
+}
+
+async fn wait_for_startup_failure(child: &mut Child) -> Result<()> {
+    for _ in 0..50 {
+        if let Some(status) = child.try_wait()? {
+            assert!(!status.success());
+            return Ok(());
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+
+    let _ = child.kill();
+    let _ = child.wait();
+    Err(anyhow!("proxy did not fail startup"))
 }
 
 async fn http_get(addr: SocketAddr, path: &str) -> Result<String> {
@@ -377,6 +405,8 @@ struct TestCerts {
 }
 
 fn generate_test_certs(temp_dir: &Path) -> Result<TestCerts> {
+    // TODO(sandbox-egress): Nice-to-have cleanup: generate these certificates with rcgen instead
+    // of shelling out to openssl, so tests do not need a system openssl binary.
     let ca_cert_path = temp_dir.join("ca.crt");
     let ca_key_path = temp_dir.join("ca.key");
     let server_cert_path = temp_dir.join("tls.crt");
@@ -466,18 +496,38 @@ fn generate_test_certs(temp_dir: &Path) -> Result<TestCerts> {
     })
 }
 
-async fn start_echo_server() -> Result<(SocketAddr, tokio::task::JoinHandle<Result<()>>)> {
-    let listener = TcpListener::bind("127.0.0.1:0").await?;
-    let addr = listener.local_addr()?;
-    let handle = tokio::spawn(async move {
+async fn start_localhost_echo_servers() -> Result<(u16, JoinSet<Result<()>>)> {
+    let ipv4_listener = TcpListener::bind("127.0.0.1:0").await?;
+    let port = ipv4_listener.local_addr()?.port();
+    let mut handles = JoinSet::new();
+    spawn_echo_server(&mut handles, ipv4_listener);
+
+    let ipv6_addr = SocketAddr::new(Ipv6Addr::LOCALHOST.into(), port);
+    if let Ok(ipv6_listener) = TcpListener::bind(ipv6_addr).await {
+        spawn_echo_server(&mut handles, ipv6_listener);
+    }
+
+    Ok((port, handles))
+}
+
+fn spawn_echo_server(handles: &mut JoinSet<Result<()>>, listener: TcpListener) {
+    handles.spawn(async move {
         let (mut stream, _) = listener.accept().await?;
         let mut buffer = [0; 4];
         stream.read_exact(&mut buffer).await?;
         stream.write_all(&buffer).await?;
         Ok(())
     });
+}
 
-    Ok((addr, handle))
+async fn wait_for_echo(handles: &mut JoinSet<Result<()>>) -> Result<()> {
+    let join_result = tokio::time::timeout(Duration::from_secs(2), handles.join_next()).await?;
+    handles.abort_all();
+
+    match join_result {
+        Some(result) => result?,
+        None => Err(anyhow!("no echo server handled the connection")),
+    }
 }
 
 fn free_addr() -> Result<SocketAddr> {

@@ -1,12 +1,10 @@
 use anyhow::Result;
 use axum::{routing::get, Router};
-use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tokio::sync::watch;
 use tracing::info;
 
-pub async fn serve(addr: SocketAddr, mut shutdown: watch::Receiver<bool>) -> Result<()> {
-    let listener = TcpListener::bind(addr).await?;
+pub async fn serve(listener: TcpListener, mut shutdown: watch::Receiver<bool>) -> Result<()> {
     let local_addr = listener.local_addr()?;
     let app = Router::new().route("/healthz", get(healthz));
 

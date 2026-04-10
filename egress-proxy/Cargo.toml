@@ -9,6 +9,8 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0"
+# TODO(sandbox-egress): Nice-to-have cleanup after PR1 stabilizes: relax exact pins where safe
+# and remove transitional dependencies that are no longer needed.
 axum = "=0.8.4"
 clap = { version = "=4.5.40", features = ["derive", "env"] }
 futures = "0.3"
