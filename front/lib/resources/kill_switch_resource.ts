@@ -28,6 +28,17 @@ export class KillSwitchResource extends BaseResource<KillSwitchModel> {
     super(KillSwitchModel, blob);
   }
 
+  private static listEnabledKillSwitchesCached = cacheWithRedis(
+    KillSwitchResource._listEnabledKillSwitchesUncached,
+    () => KILL_SWITCH_ENABLED_CACHE_KEY,
+    { ttlMs: KILL_SWITCH_ENABLED_CACHE_TTL_MS }
+  );
+
+  private static invalidateKillSwitchCache = invalidateCacheWithRedis(
+    KillSwitchResource._listEnabledKillSwitchesUncached,
+    () => KILL_SWITCH_ENABLED_CACHE_KEY
+  );
+
   static async enableKillSwitch(
     type: KillSwitchType
   ): Promise<KillSwitchResource> {
@@ -38,10 +49,7 @@ export class KillSwitchResource extends BaseResource<KillSwitchModel> {
         },
       })) ?? (await KillSwitchModel.create({ type }));
 
-    await invalidateCacheWithRedis(
-      KillSwitchResource.listEnabledKillSwitches,
-      () => KILL_SWITCH_ENABLED_CACHE_KEY
-    );
+    await KillSwitchResource.invalidateKillSwitchCache();
 
     return new KillSwitchResource(KillSwitchModel, ks.get());
   }
@@ -53,32 +61,25 @@ export class KillSwitchResource extends BaseResource<KillSwitchModel> {
       },
     });
 
-    await invalidateCacheWithRedis(
-      KillSwitchResource.listEnabledKillSwitches,
-      () => KILL_SWITCH_ENABLED_CACHE_KEY
-    );
+    await KillSwitchResource.invalidateKillSwitchCache();
   }
 
-  static async listEnabledKillSwitches(): Promise<KillSwitchType[]> {
+  private static async _listEnabledKillSwitchesUncached(): Promise<
+    KillSwitchType[]
+  > {
     const killSwitches = await KillSwitchModel.findAll();
     return killSwitches.map((ks) => ks.type);
   }
 
-  static async listEnabledKillSwitchesCached(): Promise<KillSwitchType[]> {
-    return cacheWithRedis(
-      KillSwitchResource.listEnabledKillSwitches,
-      () => KILL_SWITCH_ENABLED_CACHE_KEY,
-      {
-        ttlMs: KILL_SWITCH_ENABLED_CACHE_TTL_MS,
-      }
-    )();
+  static async listEnabledKillSwitches(): Promise<KillSwitchType[]> {
+    return KillSwitchResource.listEnabledKillSwitchesCached();
   }
 
-  static async isKillSwitchEnabledCached(
+  static async isKillSwitchEnabled(
     type: KillSwitchType
   ): Promise<boolean> {
     const enabledKillSwitches =
-      await KillSwitchResource.listEnabledKillSwitchesCached();
+      await KillSwitchResource.listEnabledKillSwitches();
     return enabledKillSwitches.includes(type);
   }
 
