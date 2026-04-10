@@ -5,11 +5,14 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import {
+  getResourceNameAndIdFromSId,
+  makeSId,
+} from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -164,6 +167,37 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
     return forks.map((f) => this.fromModel(f));
   }
 
+  private static async filterByReadableConversations(
+    auth: Authenticator,
+    forks: ConversationForkResource[]
+  ): Promise<ConversationForkResource[]> {
+    if (forks.length === 0) {
+      return [];
+    }
+
+    const conversationSIds = [
+      ...new Set(
+        forks.flatMap((fork) => [
+          fork.parentConversationSId,
+          fork.childConversationSId,
+        ])
+      ),
+    ];
+    const readableConversations = await ConversationResource.fetchByIds(
+      auth,
+      conversationSIds
+    );
+    const readableConversationIds = new Set(
+      readableConversations.map((conversation) => conversation.id)
+    );
+
+    return forks.filter(
+      (fork) =>
+        readableConversationIds.has(fork.parentConversationId) &&
+        readableConversationIds.has(fork.childConversationId)
+    );
+  }
+
   static async makeNew(
     auth: Authenticator,
     blob: Pick<CreationAttributes<ConversationForkModel>, "branchedAt"> & {
@@ -241,13 +275,21 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
     auth: Authenticator,
     conversationForkId: string
   ): Promise<ConversationForkResource | null> {
-    const modelId = getResourceIdFromSId(conversationForkId);
-    if (modelId === null) {
+    const ids = getResourceNameAndIdFromSId(conversationForkId);
+    if (
+      ids === null ||
+      ids.resourceName !== "conversation_fork" ||
+      ids.workspaceModelId !== auth.getNonNullableWorkspace().id
+    ) {
       return null;
     }
 
-    const [fork] = await this.fetchByModelIds(auth, [modelId]);
-    return fork ?? null;
+    const [fork] = await this.fetchByModelIds(auth, [ids.resourceModelId]);
+    const [readableFork] = await this.filterByReadableConversations(
+      auth,
+      fork ? [fork] : []
+    );
+    return readableFork ?? null;
   }
 
   static async fetchByChildConversationModelIds(
@@ -273,25 +315,24 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
       return [];
     }
 
-    const childConversations = await ConversationModel.findAll({
-      attributes: ["id"],
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        sId: childConversationIds,
-      },
-    });
+    const childConversations = await ConversationResource.fetchByIds(
+      auth,
+      childConversationIds
+    );
 
-    return this.fetchByChildConversationModelIds(
+    const forks = await this.fetchByChildConversationModelIds(
       auth,
       childConversations.map((c) => c.id)
     );
+
+    return this.filterByReadableConversations(auth, forks);
   }
 
   static async listByParentConversationModelId(
     auth: Authenticator,
     parentConversationModelId: ModelId
   ): Promise<ConversationForkResource[]> {
-    return this.baseFetch(auth, {
+    const forks = await this.baseFetch(auth, {
       where: {
         parentConversationId: parentConversationModelId,
       } as WhereOptions<ConversationForkModel>,
@@ -300,6 +341,8 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
         ["id", "DESC"],
       ],
     });
+
+    return this.filterByReadableConversations(auth, forks);
   }
 
   static async deleteBySourceMessageModelIds(
