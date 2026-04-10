@@ -26,6 +26,7 @@ import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
+import { isDevelopment } from "@app/types/shared/env";
 import { Err, Ok } from "@app/types/shared/result";
 
 const DEFAULT_WORKING_DIRECTORY = "/home/agent";
@@ -153,11 +154,16 @@ export function createSandboxTools(
         timeoutSec,
       });
 
+      const sandboxAPIBase =
+        isDevelopment() && config.getSandboxDevFrontHostName()
+          ? `https://${config.getSandboxDevFrontHostName()}`
+          : config.getClientFacingUrl();
+
       const execResult = await sandbox.exec(auth, wrappedCommand, {
         workingDirectory: workingDirectory ?? DEFAULT_WORKING_DIRECTORY,
         envVars: {
           DUST_SANDBOX_TOKEN: sandboxToken,
-          DUST_API_URL: `${config.getClientFacingUrl()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
+          DUST_API_URL: `${sandboxAPIBase}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
         },
       });
 
