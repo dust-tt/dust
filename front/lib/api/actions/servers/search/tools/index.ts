@@ -4,7 +4,10 @@ import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_act
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
-import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import {
+  applyNodeIdsFilterToCoreSearchArgs,
+  getCoreSearchArgs,
+} from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   SEARCH_TOOL_METADATA_WITH_TAGS,
@@ -37,6 +40,7 @@ export async function searchFunction(
     query,
     relativeTimeFrame,
     dataSources,
+    nodeIds,
     tagsIn,
     tagsNot,
     agentLoopContext,
@@ -44,6 +48,8 @@ export async function searchFunction(
     query: string;
     relativeTimeFrame: string;
     dataSources: DataSourcesToolConfigurationType;
+    /** When set, same semantics as data_sources_file_system search (subtrees + datasource root ids). */
+    nodeIds?: string[];
     tagsIn?: string[];
     tagsNot?: string[];
     agentLoopContext?: AgentLoopContextType;
@@ -76,7 +82,10 @@ export async function searchFunction(
     );
   }
 
-  const coreSearchArgs = coreSearchArgsResults.value;
+  const coreSearchArgs = applyNodeIdsFilterToCoreSearchArgs(
+    coreSearchArgsResults.value,
+    nodeIds
+  );
 
   if (coreSearchArgs.length === 0) {
     return new Err(
@@ -188,6 +197,7 @@ const handlers: ToolHandlers<typeof SEARCH_TOOLS_METADATA> = {
   [SEARCH_TOOL_NAME]: (params, { auth, agentLoopContext }) =>
     searchFunction(auth, {
       ...params,
+      relativeTimeFrame: params.relativeTimeFrame ?? "all",
       agentLoopContext,
     }),
 };

@@ -9,10 +9,10 @@ import type {
   DataSourceFilesystemFindInputType,
   TagsInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
-import { extractDataSourceIdFromNodeId } from "@app/lib/api/actions/servers/data_sources_file_system/tools/utils";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import { extractDataSourceIdFromNodeId } from "@app/types/core/content_node";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

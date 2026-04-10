@@ -3,6 +3,7 @@ import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_act
 import { renderSearchResults } from "@app/lib/actions/mcp_internal_actions/rendering";
 import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import {
+  applyNodeIdsFilterToCoreSearchArgs,
   getAgentDataSourceConfigurations,
   makeCoreSearchNodesFilters,
   toCoreSearchArgs,
@@ -12,10 +13,6 @@ import type {
   TagsInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import {
-  extractDataSourceIdFromNodeId,
-  isDataSourceNodeId,
-} from "@app/lib/api/actions/servers/data_sources_file_system/tools/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
@@ -25,7 +22,6 @@ import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { removeNulls } from "@app/types/shared/utils/general";
 import { stripNullBytes } from "@app/types/shared/utils/string_utils";
 import {
   parseTimeFrame,
@@ -51,7 +47,7 @@ export async function search(
 ): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const credentials = await getLlmCredentials(auth);
-  const timeFrame = parseTimeFrame(relativeTimeFrame);
+  const timeFrame = parseTimeFrame(relativeTimeFrame ?? "all");
 
   if (!agentLoopContext?.runContext) {
     throw new Error(
@@ -71,40 +67,9 @@ export async function search(
   const agentDataSourceConfigurations =
     agentDataSourceConfigurationsResult.value;
 
-  // Set to avoid O(n^2) complexity below.
-  const dataSourceIds = new Set<string>(
-    removeNulls(
-      nodeIds?.map((nodeId: string) => extractDataSourceIdFromNodeId(nodeId)) ??
-        []
-    )
-  );
-
-  const regularNodeIds =
-    nodeIds?.filter((nodeId: string) => !isDataSourceNodeId(nodeId)) ?? [];
-
-  const coreSearchArgs = removeNulls(
-    toCoreSearchArgs(agentDataSourceConfigurations).map((coreSearchArgs) => {
-      if (!nodeIds || dataSourceIds.has(coreSearchArgs.dataSourceId)) {
-        // If the agent doesn't provide nodeIds, or if it provides the node id
-        // of this data source, we keep the default filter.
-        return coreSearchArgs;
-      }
-
-      // If there are no regular nodes, then we searched for data sources other than the
-      // current one; so we don't search this data source.
-      if (regularNodeIds.length === 0) {
-        return null;
-      }
-
-      // If there are regular nodes, we filter to search within these nodes.
-      return {
-        ...coreSearchArgs,
-        filter: {
-          ...coreSearchArgs.filter,
-          parents: { in: regularNodeIds, not: [] },
-        },
-      };
-    })
+  const coreSearchArgs = applyNodeIdsFilterToCoreSearchArgs(
+    toCoreSearchArgs(agentDataSourceConfigurations),
+    nodeIds
   );
 
   if (coreSearchArgs.length === 0) {

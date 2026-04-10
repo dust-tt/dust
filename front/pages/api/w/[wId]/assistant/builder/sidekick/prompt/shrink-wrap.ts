@@ -58,7 +58,7 @@ Example:
 
 <identifying_knowledge_sources>
 Step 1 — Scan \`inspect_conversation\` for knowledge-access actions. Look for tool names:
-- \`semantic_search\`, \`retrieve_recent_documents\` → data source search (server: \`search\`)
+- \`semantic_search\` (server: \`search\` or \`project_manager\`), \`retrieve_recent_documents\` (server: \`project_manager\`) → semantic / recent retrieval
 - \`cat\`, \`find\`, \`list\`, \`locate_in_tree\` → filesystem browsing (server: \`data_sources_file_system\`)
 - \`query_tables\`, \`get_database_schema\` → table/SQL access
 - \`run_agent\` → sub-agent (inspect child conversation separately)

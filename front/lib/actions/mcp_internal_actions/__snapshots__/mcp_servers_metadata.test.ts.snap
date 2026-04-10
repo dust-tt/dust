@@ -483,6 +483,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "edit_description": "low",
     "get_information": "never_ask",
     "retrieve_recent_documents": "never_ask",
+    "semantic_search": "never_ask",
     "update_file": "medium",
   },
   "query_tables_v2": {

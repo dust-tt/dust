@@ -64,7 +64,7 @@ import {
   isDataSourceFilesystemFindInputType,
   isDataSourceFilesystemListInputType,
   isIncludeInputType,
-  isSearchInputType,
+  isSearchInputTypeWithTags,
   isWebsearchInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils_ui";
@@ -188,7 +188,9 @@ export function MCPActionDetails({
 
   if (
     internalMCPServerName === "search" ||
-    internalMCPServerName === "data_sources_file_system"
+    internalMCPServerName === "data_sources_file_system" ||
+    (internalMCPServerName === "project_manager" &&
+      toolName === "semantic_search")
   ) {
     switch (toolName) {
       case SEARCH_TOOL_NAME:
@@ -204,7 +206,7 @@ export function MCPActionDetails({
             actionOutput={output}
             visual={MagnifyingGlassIcon}
             query={
-              isSearchInputType(params)
+              isSearchInputTypeWithTags(params)
                 ? makeQueryTextForDataSourceSearch(params)
                 : null
             }

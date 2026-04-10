@@ -1,7 +1,10 @@
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { IncludeInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
+import {
+  IncludeInputSchema,
+  SearchWithNodesInputSchema,
+} from "@app/lib/actions/mcp_internal_actions/types";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
@@ -158,6 +161,40 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
       done: "Retrieve recent project documents",
     },
   },
+  semantic_search: {
+    description:
+      "Semantic search over this project using the same retrieval pipeline as company data search. Scope selects the project dust_project data source slice (knowledge vs conversation transcripts vs both) plus searchable context nodes for knowledge/all. Optionally restrict to subtrees using nodeIds (same as company data_sources_file_system search).",
+    schema: {
+      query: z
+        .string()
+        .describe(
+          "Natural-language query; include enough context from the conversation for good retrieval."
+        ),
+      searchScope: z
+        .enum(["knowledge", "conversations", "all"])
+        .optional()
+        .describe(
+          "knowledge: project files, metadata, and linked searchable nodes (excludes conversation transcripts in the project data source); conversations: only those transcripts; all: entire project data source plus linked nodes (default when omitted)."
+        ),
+      relativeTimeFrame: z
+        .string()
+        .regex(/^(all|\d+[hdwmy])$/)
+        .optional()
+        .describe(
+          "Restrict matches by document time (same as company search): `all`, or `{k}h|d|w|m|y`. Omit for all time."
+        ),
+      nodeIds: SearchWithNodesInputSchema.shape.nodeIds,
+      dustProject:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        ].optional(),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Searching project",
+      done: "Search project",
+    },
+  },
 });
 
 const PROJECT_MANAGER_INSTRUCTIONS =
@@ -165,6 +202,7 @@ const PROJECT_MANAGER_INSTRUCTIONS =
   "Only text-based files are supported for adding/updating. " +
   "You can add/update files by providing text content directly, or by copying from existing files (like those you've generated). " +
   "You can also attach an existing project context file to the current conversation without recreating it. " +
+  "Use semantic_search to find relevant chunks in project knowledge and/or conversations (scope: knowledge, conversations, or all). " +
   "Use retrieve_recent_documents to load recent content from the project data source and from knowledge nodes in the project context. " +
   "Requires write permissions on the project space. " +
   "After adding or updating files, always list the file names you changed in your response so the user knows exactly what was modified.";

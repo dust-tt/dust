@@ -2,6 +2,22 @@ import type { ProviderVisibility } from "../connectors/connectors_api";
 
 export const DATA_SOURCE_NODE_ID = "datasource_node_id";
 
+/**
+ * Content node IDs for the root of a data source use the format:
+ * `datasource_node_id-{data_source_id}` (see data_sources_file_system search).
+ */
+export function isDataSourceNodeId(nodeId: string): boolean {
+  return nodeId.startsWith(`${DATA_SOURCE_NODE_ID}-`);
+}
+
+export function extractDataSourceIdFromNodeId(nodeId: string): string | null {
+  if (!isDataSourceNodeId(nodeId)) {
+    return null;
+  }
+
+  return nodeId.substring(`${DATA_SOURCE_NODE_ID}-`.length);
+}
+
 export type ContentNodeType = "document" | "table" | "folder";
 
 export type CoreAPIContentNode = {

@@ -5,14 +5,14 @@ import {
   getAgentDataSourceConfigurations,
   makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import {
-  extractDataSourceIdFromNodeId,
-  isDataSourceNodeId,
-} from "@app/lib/api/actions/servers/data_sources_file_system/tools/utils";
 import config from "@app/lib/api/config";
 import { ROOT_PARENT_ID } from "@app/lib/api/data_source_view";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import {
+  extractDataSourceIdFromNodeId,
+  isDataSourceNodeId,
+} from "@app/types/core/content_node";
 import type {
   CoreAPIError,
   CoreAPISearchNodesResponse,
