@@ -13,34 +13,76 @@ type GeneratingMessage = {
   agentId?: string;
 };
 
-type GenerationContextType = {
-  generatingMessages: GeneratingMessage[];
+type GenerationDispatchContextType = {
   addGeneratingMessage: (params: {
     messageId: string;
     conversationId: string;
     agentId?: string;
   }) => void;
   removeGeneratingMessage: (params: { messageId: string }) => void;
+};
+
+type GenerationStateContextType = {
+  generatingMessages: GeneratingMessage[];
   getConversationGeneratingMessages: (
     conversationId: string
   ) => GeneratingMessage[];
 };
 
-const GenerationContext = createContext<GenerationContextType | undefined>(
-  undefined
-);
+// Split into two contexts so components that only dispatch (add/remove)
+// don't re-render when the generating messages list changes.
+const GenerationDispatchContext =
+  createContext<GenerationDispatchContextType | undefined>(undefined);
 
-export function useGenerationContext(): GenerationContextType {
-  const context = useContext(GenerationContext);
+const GenerationStateContext =
+  createContext<GenerationStateContextType | undefined>(undefined);
+
+export function useGenerationDispatch(): GenerationDispatchContextType {
+  const context = useContext(GenerationDispatchContext);
 
   if (!context) {
     throw new Error(
-      "useGenerationContext must be used within a GenerationContextProvider"
+      "useGenerationDispatch must be used within a GenerationContextProvider"
     );
   }
 
   return context;
 }
+
+export function useGenerationContext(): GenerationDispatchContextType &
+  GenerationStateContextType {
+  const dispatch = useContext(GenerationDispatchContext);
+  const state = useContext(GenerationStateContext);
+
+  if (!dispatch || !state) {
+    throw new Error(
+      "useGenerationContext must be used within a GenerationContextProvider"
+    );
+  }
+
+  return useMemo(() => ({ ...dispatch, ...state }), [dispatch, state]);
+}
+
+/**
+ * Returns whether multiple agents are currently generating in the given conversation.
+ * Uses the state context, so only call this from components that need it (e.g. streaming messages).
+ */
+export function useHasMultipleGeneratingAgents(
+  conversationId: string
+): boolean {
+  const state = useContext(GenerationStateContext);
+
+  if (!state) {
+    throw new Error(
+      "useHasMultipleGeneratingAgents must be used within a GenerationContextProvider"
+    );
+  }
+
+  return (
+    state.getConversationGeneratingMessages(conversationId).length > 1
+  );
+}
+
 
 export const GenerationContextProvider = ({
   children,
@@ -97,24 +139,27 @@ export const GenerationContextProvider = ({
     [generatingMessages, getFirstBlockedActionForMessage]
   );
 
-  const value = useMemo(
+  const dispatchValue = useMemo(
+    () => ({
+      addGeneratingMessage,
+      removeGeneratingMessage,
+    }),
+    [addGeneratingMessage, removeGeneratingMessage]
+  );
+
+  const stateValue = useMemo(
     () => ({
       generatingMessages,
-      addGeneratingMessage,
-      removeGeneratingMessage,
       getConversationGeneratingMessages,
     }),
-    [
-      generatingMessages,
-      addGeneratingMessage,
-      removeGeneratingMessage,
-      getConversationGeneratingMessages,
-    ]
+    [generatingMessages, getConversationGeneratingMessages]
   );
 
   return (
-    <GenerationContext.Provider value={value}>
-      {children}
-    </GenerationContext.Provider>
+    <GenerationDispatchContext.Provider value={dispatchValue}>
+      <GenerationStateContext.Provider value={stateValue}>
+        {children}
+      </GenerationStateContext.Provider>
+    </GenerationDispatchContext.Provider>
   );
 };

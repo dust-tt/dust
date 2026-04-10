@@ -25,7 +25,7 @@ import { isSupportedImageContentType } from "@app/types/files";
 import type { UserType } from "@app/types/user";
 import { cn } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 
 // Inter-message spacing lives here (not in Sparkle) because it depends on
 // conversation-level context (who sent the message, steering flow, grouping).
@@ -101,7 +101,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       conversationId: context.conversation?.sId,
     });
 
-    const { submit: onSubmitThumb, isSubmitting: isSubmittingThumb } =
+    const { submit: onSubmitThumbRaw, isSubmitting: isSubmittingThumb } =
       useSubmitFunction(
         async ({
           thumb,
@@ -124,29 +124,53 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         }
       );
 
+    // Stabilize via ref so React.memo children don't re-render on every parent call.
+    const onSubmitThumbRef = useRef(onSubmitThumbRaw);
+    onSubmitThumbRef.current = onSubmitThumbRaw;
+    const onSubmitThumb = useCallback(
+      (
+        args: Parameters<typeof onSubmitThumbRaw>[0]
+      ): ReturnType<typeof onSubmitThumbRaw> => onSubmitThumbRef.current(args),
+      []
+    );
+
     const { onReactionToggle } = useReaction({
       owner: context.owner,
       conversationId: context.conversation?.sId,
       message: data,
     });
 
+    // Stabilize via ref so React.memo children don't re-render on every parent call.
+    const onReactionToggleRef = useRef(onReactionToggle);
+    onReactionToggleRef.current = onReactionToggle;
+    const handleReactionToggle = useCallback(
+      (emoji: string) => onReactionToggleRef.current({ emoji }),
+      []
+    );
+
     const messageFeedback = context.feedbacksByMessageId[sId];
 
-    const messageFeedbackWithSubmit: FeedbackSelectorBaseProps = {
-      feedback: messageFeedback
-        ? {
-            thumb: messageFeedback.thumbDirection,
-            feedbackContent: messageFeedback.content,
-            isConversationShared: messageFeedback.isConversationShared,
-          }
-        : null,
-      onSubmitThumb,
-      isSubmittingThumb,
-    };
+    const messageFeedbackWithSubmit: FeedbackSelectorBaseProps = useMemo(
+      () => ({
+        feedback: messageFeedback
+          ? {
+              thumb: messageFeedback.thumbDirection,
+              feedbackContent: messageFeedback.content,
+              isConversationShared: messageFeedback.isConversationShared,
+            }
+          : null,
+        onSubmitThumb,
+        isSubmittingThumb,
+      }),
+      [messageFeedback, onSubmitThumb, isSubmittingThumb]
+    );
 
-    const hasImageCitation =
-      isUserMessage(data) &&
-      data.contentFragments.some((fragment) => {
+    const citations = useMemo(() => {
+      if (!isUserMessage(data) || data.contentFragments.length === 0) {
+        return undefined;
+      }
+
+      const hasImageCitation = data.contentFragments.some((fragment) => {
         const attachmentCitation =
           contentFragmentToAttachmentCitation(fragment);
         return (
@@ -155,23 +179,21 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         );
       });
 
-    const citations =
-      isUserMessage(data) && data.contentFragments.length > 0
-        ? data.contentFragments.map((contentFragment, index) => {
-            const attachmentCitation =
-              contentFragmentToAttachmentCitation(contentFragment);
+      return data.contentFragments.map((contentFragment, index) => {
+        const attachmentCitation =
+          contentFragmentToAttachmentCitation(contentFragment);
 
-            return (
-              <AttachmentCitation
-                owner={context.owner}
-                key={index}
-                attachmentCitation={attachmentCitation}
-                conversationId={context.conversation?.sId}
-                compact={!hasImageCitation}
-              />
-            );
-          })
-        : undefined;
+        return (
+          <AttachmentCitation
+            owner={context.owner}
+            key={index}
+            attachmentCitation={attachmentCitation}
+            conversationId={context.conversation?.sId}
+            compact={!hasImageCitation}
+          />
+        );
+      });
+    }, [data, context.owner, context.conversation?.sId]);
 
     const areSameDate =
       prevData &&
@@ -289,7 +311,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               isLastMessage={!nextData}
               message={data}
               owner={context.owner}
-              onReactionToggle={(emoji: string) => onReactionToggle({ emoji })}
+              onReactionToggle={handleReactionToggle}
             />
           )}
           {isAgentMessageWithStreaming(data) && (
@@ -309,6 +331,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 context.additionalMarkdownComponents
               }
               additionalMarkdownPlugins={context.additionalMarkdownPlugins}
+              virtuosoMethods={methods}
               steerGroupId={steerGroupId}
               groupDurationMs={groupDurationMs}
               isGroupComplete={isGroupComplete}

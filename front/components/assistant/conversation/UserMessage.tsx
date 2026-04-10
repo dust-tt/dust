@@ -57,7 +57,7 @@ import { EditorContent } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { cva } from "class-variance-authority";
-import type React from "react";
+import React from "react";
 import { useCallback, useContext, useMemo, useState } from "react";
 
 interface UserMessageEditorProps {
@@ -135,7 +135,7 @@ interface UserMessageProps {
   onReactionToggle: (emoji: string) => void;
 }
 
-export function UserMessage({
+export const UserMessage = React.memo(function UserMessage({
   citations,
   conversationId,
   currentUserId,
@@ -438,7 +438,7 @@ export function UserMessage({
       )}
     </>
   );
-}
+});
 
 function getChipDateFormat(date: Date) {
   return date.toLocaleDateString("en-EN", {

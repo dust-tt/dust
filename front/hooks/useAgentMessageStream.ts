@@ -22,7 +22,6 @@ import type {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { VirtuosoMessageListMethods } from "@virtuoso.dev/message-list";
-import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 // biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
 import { useCallback, useMemo, useRef } from "react";
@@ -282,6 +281,10 @@ interface UseAgentMessageStreamParams {
   }) => void;
   streamId: string;
   useFullChainOfThought: boolean;
+  virtuosoMethods: VirtuosoMessageListMethods<
+    VirtuosoMessage,
+    VirtuosoMessageListContext
+  >;
 }
 
 export function useAgentMessageStream({
@@ -291,12 +294,10 @@ export function useAgentMessageStream({
   owner,
   onEventCallback: customOnEventCallback,
   streamId,
+  virtuosoMethods,
 }: UseAgentMessageStreamParams) {
   const sId = agentMessage.sId;
-  const methods = useVirtuosoMethods<
-    VirtuosoMessage,
-    VirtuosoMessageListContext
-  >();
+  const methods = virtuosoMethods;
 
   const shouldStream = useMemo(
     () =>

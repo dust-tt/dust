@@ -11,7 +11,10 @@ import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMe
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
-import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import {
+  useGenerationDispatch,
+  useHasMultipleGeneratingAgents,
+} from "@app/components/assistant/conversation/GenerationContextProvider";
 import { GoogleDriveFileAuthorizationRequired } from "@app/components/assistant/conversation/GoogleDriveFileAuthorizationRequired";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
@@ -106,9 +109,9 @@ import {
   TruncatedContent,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
-import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
+import type { VirtuosoMessageListMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
-import {
+import React, {
   type ReactElement,
   useCallback,
   useContext,
@@ -164,6 +167,40 @@ function PrunedContextChip() {
   );
 }
 
+/**
+ * Only rendered when an agent message is streaming. Subscribes to the generation
+ * state context to check if multiple agents are running — this avoids making
+ * every completed AgentMessage re-render when the generating-messages list changes.
+ */
+function StopAgentButton({
+  conversationId,
+  sId,
+  cancelMessage,
+}: {
+  conversationId: string;
+  sId: string;
+  cancelMessage: (messageIds: string[]) => Promise<void>;
+}) {
+  const hasMultiAgents = useHasMultipleGeneratingAgents(conversationId);
+
+  if (!hasMultiAgents) {
+    return null;
+  }
+
+  return (
+    <Button
+      label="Stop agent"
+      variant="ghost-secondary"
+      size="xs"
+      onClick={async () => {
+        await cancelMessage([sId]);
+      }}
+      icon={StopIcon}
+      className="text-muted-foreground"
+    />
+  );
+}
+
 interface AgentMessageProps {
   conversationId: string;
   hideHeader: boolean;
@@ -182,12 +219,16 @@ interface AgentMessageProps {
   ) => Promise<Result<undefined, DustError>>;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
+  virtuosoMethods: VirtuosoMessageListMethods<
+    VirtuosoMessage,
+    VirtuosoMessageListContext
+  >;
   steerGroupId?: string | null;
   groupDurationMs?: number | null;
   isGroupComplete?: boolean;
 }
 
-export function AgentMessage({
+export const AgentMessage = React.memo(function AgentMessage({
   conversationId,
   hideHeader,
   isLastMessage,
@@ -201,6 +242,7 @@ export function AgentMessage({
   handleSubmit,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
+  virtuosoMethods,
   steerGroupId,
   groupDurationMs,
   isGroupComplete,
@@ -241,10 +283,10 @@ export function AgentMessage({
     options: { disabled: true },
   });
 
-  const methods = useVirtuosoMethods<
-    VirtuosoMessage,
-    VirtuosoMessageListContext
-  >();
+  // Use methods from props (passed from MessageItem) to avoid subscribing
+  // to Virtuoso's internal context, which changes on every data update
+  // and would cause all AgentMessage instances to re-render.
+  const methods = virtuosoMethods;
 
   const isTriggeredByCurrentUser = useMemo(
     () => triggeringUser?.sId === user.sId,
@@ -398,6 +440,7 @@ export function AgentMessage({
     ),
     streamId,
     useFullChainOfThought: false,
+    virtuosoMethods: methods,
   });
 
   const isDeleted = agentMessage.visibility === "deleted";
@@ -430,21 +473,21 @@ export function AgentMessage({
   );
 
   // GenerationContext: to know if we are generating or not.
-  const generationContext = useGenerationContext();
+  const generationDispatch = useGenerationDispatch();
 
   useEffect(() => {
     if (shouldStream) {
-      generationContext.addGeneratingMessage({
+      generationDispatch.addGeneratingMessage({
         messageId: sId,
         conversationId,
         agentId: agentMessage.configuration.sId,
       });
     } else {
-      generationContext.removeGeneratingMessage({ messageId: sId });
+      generationDispatch.removeGeneratingMessage({ messageId: sId });
     }
   }, [
     shouldStream,
-    generationContext,
+    generationDispatch,
     sId,
     conversationId,
     agentMessage.configuration.sId,
@@ -538,23 +581,16 @@ export function AgentMessage({
   const alwaysVisibleButtons: ReactElement[] = [];
   const hoverButtons: ReactElement[] = [];
 
-  const hasMultiAgents =
-    generationContext.getConversationGeneratingMessages(conversationId).length >
-    1;
-
-  // Show stop agent button only when streaming with multiple agents
-  if (hasMultiAgents && shouldStream) {
+  // Show stop agent button only when streaming with multiple agents.
+  // Rendered via a sub-component so only streaming messages subscribe
+  // to the generation state context (avoids re-rendering completed messages).
+  if (shouldStream) {
     alwaysVisibleButtons.push(
-      <Button
+      <StopAgentButton
         key="stop-msg-button"
-        label="Stop agent"
-        variant="ghost-secondary"
-        size="xs"
-        onClick={async () => {
-          await cancelMessage([sId]);
-        }}
-        icon={StopIcon}
-        className="text-muted-foreground"
+        conversationId={conversationId}
+        sId={sId}
+        cancelMessage={cancelMessage}
       />
     );
   }
@@ -943,6 +979,7 @@ export function AgentMessage({
           triggeringUser={triggeringUser}
           additionalMarkdownComponents={additionalMarkdownComponents}
           additionalMarkdownPlugins={additionalMarkdownPlugins}
+          virtuosoMethods={methods}
         />
       )}
     </ConversationMessageContent>
@@ -1026,7 +1063,7 @@ export function AgentMessage({
       </div>
     </ConversationMessageContainer>
   );
-}
+});
 
 function AgentMessageContent({
   onOpenDetails,
@@ -1050,6 +1087,7 @@ function AgentMessageContent({
   isGroupComplete,
   additionalMarkdownComponents: propsAdditionalMarkdownComponents,
   additionalMarkdownPlugins,
+  virtuosoMethods,
 }: {
   onOpenDetails?: (messageId: string, actionId?: string) => void;
   triggeringUser: UserType | null;
@@ -1084,11 +1122,12 @@ function AgentMessageContent({
   onQuickReplySend: (message: string) => Promise<void>;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
-}) {
-  const methods = useVirtuosoMethods<
+  virtuosoMethods: VirtuosoMessageListMethods<
     VirtuosoMessage,
     VirtuosoMessageListContext
-  >();
+  >;
+}) {
+  const methods = virtuosoMethods;
 
   const { vizUrl } = useAuth();
   const { hasFeature } = useFeatureFlags();
