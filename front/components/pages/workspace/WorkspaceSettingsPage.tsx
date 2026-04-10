@@ -1,3 +1,4 @@
+import { ReinforcementSection } from "@app/components/workspace/settings/AgentReinforcementToggle";
 import { CapabilitiesSection } from "@app/components/workspace/settings/CapabilitiesSection";
 import { IntegrationsSection } from "@app/components/workspace/settings/IntegrationsSection";
 import { WorkspaceNameEditor } from "@app/components/workspace/settings/WorkspaceNameEditor";
@@ -52,6 +53,9 @@ export function WorkspaceSettingsPage() {
         discordBotDataSource={discordBotDataSource}
         isDiscordBotAvailable={isDiscordBotAvailable}
       />
+      {featureFlags.includes("reinforced_agents") && (
+        <ReinforcementSection owner={owner} />
+      )}
     </Page.Vertical>
   );
 }

@@ -1,28 +1,68 @@
-import { useReinforcementToggle } from "@app/lib/swr/useReinforcementToggle";
+import {
+  useReinforcementBatchModeToggle,
+  useReinforcementToggle,
+} from "@app/lib/swr/useReinforcementToggle";
 import type { WorkspaceType } from "@app/types/user";
-import { ContextItem, SliderToggle, SparklesIcon } from "@dust-tt/sparkle";
+import {
+  ContextItem,
+  Page,
+  SliderToggle,
+  SparklesIcon,
+  Square3Stack3DIcon,
+} from "@dust-tt/sparkle";
 
-interface ReinforcementToggleProps {
+interface ReinforcementSectionProps {
   owner: WorkspaceType;
 }
 
-export function ReinforcementToggle({ owner }: ReinforcementToggleProps) {
+export function ReinforcementSection({ owner }: ReinforcementSectionProps) {
   const { isEnabled, isChanging, doToggleReinforcement } =
     useReinforcementToggle({ owner });
 
+  // TODO(reinforcement): Add link to doc
+  return (
+    <Page.Vertical align="stretch" gap="md">
+      <Page.H variant="h4">Reinforcement</Page.H>
+      <ContextItem.List>
+        <div className="h-full border-b border-border dark:border-border-night" />
+        <ContextItem
+          title="Allow reinforcement"
+          visual={<SparklesIcon className="h-6 w-6 shrink-0" />}
+          hasSeparatorIfLast={true}
+          action={
+            <SliderToggle
+              selected={isEnabled}
+              disabled={isChanging}
+              onClick={doToggleReinforcement}
+            />
+          }
+        >
+          <ContextItem.Description description="Allow Dust to analyze conversations to improve your workspace's skills. Dust does not use conversations to train models." />
+        </ContextItem>
+        {isEnabled && <ReinforcementBatchModeToggle owner={owner} />}
+      </ContextItem.List>
+    </Page.Vertical>
+  );
+}
+
+function ReinforcementBatchModeToggle({ owner }: ReinforcementSectionProps) {
+  const { isEnabled, isChanging, doToggleBatchMode } =
+    useReinforcementBatchModeToggle({ owner });
+
   return (
     <ContextItem
-      title="Allow reinforcement"
-      subElement="Allow Dust to analyse conversations to suggest improvements."
-      visual={<SparklesIcon className="h-6 w-6" />}
+      title="Allow batch mode for reinforcement"
+      visual={<Square3Stack3DIcon className="h-6 w-6 shrink-0" />}
       hasSeparatorIfLast={true}
       action={
         <SliderToggle
           selected={isEnabled}
           disabled={isChanging}
-          onClick={doToggleReinforcement}
+          onClick={doToggleBatchMode}
         />
       }
-    />
+    >
+      <ContextItem.Description description="Conversations are sent in batches to reduce costs. Data may remain on LLM provider servers for several hours while waiting for processing, which is incompatible with strict Zero Data Retention policies. Dust guarantees that data is immediately deleted afterward. Disabling batch mode significantly increases the cost of reinforcement." />
+    </ContextItem>
   );
 }
