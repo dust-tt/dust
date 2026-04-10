@@ -42,6 +42,14 @@ export type ConversationForkType = {
   branchedAt: number;
 };
 
+type ConversationForkResourceIds = Pick<
+  ConversationForkType,
+  | "parentConversationId"
+  | "childConversationId"
+  | "createdByUserId"
+  | "sourceMessageId"
+>;
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ConversationForkResource
   extends ReadonlyAttributesType<ConversationForkModel> {}
@@ -51,32 +59,16 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
   static model: ModelStaticWorkspaceAware<ConversationForkModel> =
     ConversationForkModel;
 
-  readonly parentConversationSId: string;
-  readonly childConversationSId: string;
-  readonly createdByUserSId: string;
-  readonly sourceMessageSId: string;
+  private readonly resourceIds: ConversationForkResourceIds;
 
   constructor(
     model: ModelStaticWorkspaceAware<ConversationForkModel>,
     blob: Attributes<ConversationForkModel>,
-    {
-      parentConversationSId,
-      childConversationSId,
-      createdByUserSId,
-      sourceMessageSId,
-    }: {
-      parentConversationSId: string;
-      childConversationSId: string;
-      createdByUserSId: string;
-      sourceMessageSId: string;
-    }
+    resourceIds: ConversationForkResourceIds
   ) {
     super(model, blob);
 
-    this.parentConversationSId = parentConversationSId;
-    this.childConversationSId = childConversationSId;
-    this.createdByUserSId = createdByUserSId;
-    this.sourceMessageSId = sourceMessageSId;
+    this.resourceIds = resourceIds;
   }
 
   get sId(): string {
@@ -114,10 +106,10 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
     );
 
     return new this(this.model, fork.get(), {
-      parentConversationSId: fork.parentConversation.sId,
-      childConversationSId: fork.childConversation.sId,
-      createdByUserSId: fork.createdByUser.sId,
-      sourceMessageSId: fork.sourceMessage.sId,
+      parentConversationId: fork.parentConversation.sId,
+      childConversationId: fork.childConversation.sId,
+      createdByUserId: fork.createdByUser.sId,
+      sourceMessageId: fork.sourceMessage.sId,
     });
   }
 
@@ -167,7 +159,7 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
     return forks.map((f) => this.fromModel(f));
   }
 
-  private static async filterByReadableConversations(
+  private static async filterByReadableChildConversations(
     auth: Authenticator,
     forks: ConversationForkResource[]
   ): Promise<ConversationForkResource[]> {
@@ -175,26 +167,16 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
       return [];
     }
 
-    const conversationSIds = [
-      ...new Set(
-        forks.flatMap((fork) => [
-          fork.parentConversationSId,
-          fork.childConversationSId,
-        ])
-      ),
-    ];
-    const readableConversations = await ConversationResource.fetchByIds(
+    const readableChildConversations = await ConversationResource.fetchByIds(
       auth,
-      conversationSIds
+      [...new Set(forks.map((fork) => fork.resourceIds.childConversationId))]
     );
-    const readableConversationIds = new Set(
-      readableConversations.map((conversation) => conversation.id)
+    const readableChildConversationIds = new Set(
+      readableChildConversations.map((conversation) => conversation.id)
     );
 
-    return forks.filter(
-      (fork) =>
-        readableConversationIds.has(fork.parentConversationId) &&
-        readableConversationIds.has(fork.childConversationId)
+    return forks.filter((fork) =>
+      readableChildConversationIds.has(fork.childConversationId)
     );
   }
 
@@ -285,7 +267,7 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
     }
 
     const [fork] = await this.fetchByModelIds(auth, [ids.resourceModelId]);
-    const [readableFork] = await this.filterByReadableConversations(
+    const [readableFork] = await this.filterByReadableChildConversations(
       auth,
       fork ? [fork] : []
     );
@@ -320,12 +302,10 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
       childConversationIds
     );
 
-    const forks = await this.fetchByChildConversationModelIds(
+    return this.fetchByChildConversationModelIds(
       auth,
       childConversations.map((c) => c.id)
     );
-
-    return this.filterByReadableConversations(auth, forks);
   }
 
   static async listByParentConversationModelId(
@@ -342,7 +322,7 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
       ],
     });
 
-    return this.filterByReadableConversations(auth, forks);
+    return this.filterByReadableChildConversations(auth, forks);
   }
 
   static async deleteBySourceMessageModelIds(
@@ -411,13 +391,13 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
       sId: this.sId,
       created: this.createdAt.getTime(),
       updated: this.updatedAt.getTime(),
-      parentConversationId: this.parentConversationSId,
+      parentConversationId: this.resourceIds.parentConversationId,
       parentConversationModelId: this.parentConversationId,
-      childConversationId: this.childConversationSId,
+      childConversationId: this.resourceIds.childConversationId,
       childConversationModelId: this.childConversationId,
-      createdByUserId: this.createdByUserSId,
+      createdByUserId: this.resourceIds.createdByUserId,
       createdByUserModelId: this.createdByUserId,
-      sourceMessageId: this.sourceMessageSId,
+      sourceMessageId: this.resourceIds.sourceMessageId,
       sourceMessageModelId: this.sourceMessageId,
       branchedAt: this.branchedAt.getTime(),
     };

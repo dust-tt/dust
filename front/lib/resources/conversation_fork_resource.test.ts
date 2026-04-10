@@ -202,7 +202,7 @@ describe("ConversationForkResource", () => {
     expect(fetched[0].id).toBe(fork.id);
   });
 
-  it("filters sId fetches by parent and child conversation permissions", async () => {
+  it("filters fork reads only by child conversation permissions", async () => {
     const adminUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, adminUser, { role: "admin" });
     let adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -227,6 +227,10 @@ describe("ConversationForkResource", () => {
         spaceId: restrictedSpace.id,
       }
     );
+    const readableChildConversation = await makeConversation(
+      workspace,
+      "Readable child"
+    );
     const restrictedChildConversation = await makeConversation(
       workspace,
       "Restricted child",
@@ -240,32 +244,54 @@ describe("ConversationForkResource", () => {
       conversationModelId: restrictedParentConversation.id,
     });
 
-    const fork = await ConversationForkResource.makeNew(adminAuth, {
-      parentConversation: restrictedParentConversation,
-      childConversation: restrictedChildConversation,
-      sourceMessageModelId: restrictedSourceMessage.id,
-      branchedAt: new Date("2026-04-10T10:00:00.000Z"),
-    });
+    const readableChildFork = await ConversationForkResource.makeNew(
+      adminAuth,
+      {
+        parentConversation: restrictedParentConversation,
+        childConversation: readableChildConversation,
+        sourceMessageModelId: restrictedSourceMessage.id,
+        branchedAt: new Date("2026-04-10T10:00:00.000Z"),
+      }
+    );
+    const restrictedChildFork = await ConversationForkResource.makeNew(
+      adminAuth,
+      {
+        parentConversation: restrictedParentConversation,
+        childConversation: restrictedChildConversation,
+        sourceMessageModelId: restrictedSourceMessage.id,
+        branchedAt: new Date("2026-04-10T11:00:00.000Z"),
+      }
+    );
 
     const adminFetchedByChild =
       await ConversationForkResource.fetchByChildConversationIds(adminAuth, [
+        readableChildConversation.sId,
         restrictedChildConversation.sId,
       ]);
-    expect(adminFetchedByChild.map((f) => f.id)).toEqual([fork.id]);
-    await expect(
-      ConversationForkResource.fetchById(auth, fork.sId)
-    ).resolves.toBeNull();
-    await expect(
-      ConversationForkResource.fetchByChildConversationIds(auth, [
+    expect(adminFetchedByChild.map((f) => f.id).sort((a, b) => a - b)).toEqual(
+      [readableChildFork.id, restrictedChildFork.id].sort((a, b) => a - b)
+    );
+
+    const userFetchedByChild =
+      await ConversationForkResource.fetchByChildConversationIds(auth, [
+        readableChildConversation.sId,
         restrictedChildConversation.sId,
-      ])
-    ).resolves.toEqual([]);
+      ]);
+    expect(userFetchedByChild.map((f) => f.id)).toEqual([readableChildFork.id]);
+    await expect(
+      ConversationForkResource.fetchById(auth, readableChildFork.sId)
+    ).resolves.toMatchObject({
+      id: readableChildFork.id,
+    });
+    await expect(
+      ConversationForkResource.fetchById(auth, restrictedChildFork.sId)
+    ).resolves.toBeNull();
     await expect(
       ConversationForkResource.listByParentConversationModelId(
         auth,
         restrictedParentConversation.id
       )
-    ).resolves.toEqual([]);
+    ).resolves.toMatchObject([{ id: readableChildFork.id }]);
   });
 
   it("lists forks from a parent conversation from newest to oldest", async () => {

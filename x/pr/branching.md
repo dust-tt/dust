@@ -205,6 +205,12 @@ The user who forked becomes the initial participant of the child.
 Private conversation payloads expose fork lineage so the UI can render a
 small "Branched from ..." surface in the child conversation.
 
+Fork lineage readability follows the child conversation. A user who can read
+the child can read its fork metadata even if they cannot read the parent. The
+parent conversation and source message references remain lineage pointers:
+callers must still perform normal parent conversation access checks before
+dereferencing them or showing parent content.
+
 #### Files and Filesystem Isolation
 
 This is the critical behavior boundary of the feature.
