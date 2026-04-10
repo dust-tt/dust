@@ -27,8 +27,8 @@ function isVisibleMessage(
   return (
     m.visibility !== "deleted" &&
     !(isUserMessageTypeWithContentFragments(m) && isHiddenMessage(m)) &&
-    // Compaction messages are not "visible" in the sense of how it is used here (can never be the
-    // first message of a conversation).
+    // Compaction message will possibly be first messages of a conversation (forking) but they are
+    // not "visible" per se. `firstVisibleMessage` should null until a first user message is posted.
     !isCompactionMessageType(m)
   );
 }
