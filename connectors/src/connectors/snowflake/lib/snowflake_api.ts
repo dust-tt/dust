@@ -30,14 +30,6 @@ import type {
 } from "snowflake-sdk";
 import snowflake from "snowflake-sdk";
 
-/**
- * Quote a Snowflake identifier for safe use in SQL.
- * Wraps in double quotes and doubles any internal double-quote characters.
- */
-function quoteIdentifier(identifier: string): string {
-  return `"${identifier.replace(/"/g, '""')}"`;
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SnowflakeRow = Record<string, any>;
 type SnowflakeRows = Array<SnowflakeRow>;
@@ -379,7 +371,7 @@ export const fetchSchemas = async ({
   fromDatabase: string;
   connection?: Connection;
 }): Promise<Result<Array<RemoteDBSchema>, Error>> => {
-  const query = `SHOW SCHEMAS IN DATABASE ${quoteIdentifier(fromDatabase)}`;
+  const query = `SHOW SCHEMAS IN DATABASE ${fromDatabase}`;
   return _fetchRows<RemoteDBSchema>({
     credentials,
     query,
@@ -405,9 +397,9 @@ export const fetchTables = async ({
   // We fetch the tables in the schema provided if defined, otherwise in the database provided if
   // defined, otherwise globally.
   const query = fromSchema
-    ? `SHOW TABLES IN SCHEMA ${quoteIdentifier(fromSchema)}`
+    ? `SHOW TABLES IN SCHEMA ${fromSchema}`
     : fromDatabase
-      ? `SHOW TABLES IN DATABASE ${quoteIdentifier(fromDatabase)}`
+      ? `SHOW TABLES IN DATABASE ${fromDatabase}`
       : "SHOW TABLES";
 
   return _fetchRows<RemoteDBTable>({
@@ -534,10 +526,7 @@ export const useWarehouse = async ({
   connection: Connection;
 }): Promise<Result<void, Error>> => {
   const warehouse = credentials.warehouse;
-  const res = await _executeQuery(
-    connection,
-    `USE WAREHOUSE ${quoteIdentifier(warehouse)}`
-  );
+  const res = await _executeQuery(connection, `USE WAREHOUSE ${warehouse}`);
   if (res.isErr()) {
     const e = normalizeError(res.error);
 
@@ -584,7 +573,7 @@ async function _checkRoleGrants(
   // Check current grants
   const currentGrantsRes = await _fetchRows<SnowflakeGrant>({
     credentials,
-    query: `SHOW GRANTS TO ${isDbRole ? "DATABASE ROLE" : "ROLE"} ${quoteIdentifier(roleName)}`,
+    query: `SHOW GRANTS TO ${isDbRole ? "DATABASE ROLE" : "ROLE"} ${roleName}`,
     codec: snowflakeGrantCodec,
     connection,
   });
@@ -599,7 +588,7 @@ async function _checkRoleGrants(
     // Check future grants
     futureGrantsRes = await _fetchRows<SnowflakeFutureGrant>({
       credentials,
-      query: `SHOW FUTURE GRANTS TO ROLE ${quoteIdentifier(roleName)}`,
+      query: `SHOW FUTURE GRANTS TO ROLE ${roleName}`,
       codec: snowflakeFutureGrantCodec,
       connection,
     });
