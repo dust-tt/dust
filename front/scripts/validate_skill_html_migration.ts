@@ -17,7 +17,7 @@ import { SkillConfigurationModel } from "@app/lib/models/skill";
 import {
   convertBlockHtmlToMarkdown,
   convertMarkdownToBlockHtml,
-} from "@app/lib/skill_instructions_html";
+} from "@app/lib/editor/skill_instructions_html";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
