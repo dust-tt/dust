@@ -6,9 +6,9 @@ Five phases of bitesize PRs. Each PR should be small, reviewable, and independen
 
 Foundational type and model changes. No runtime behavior changes — new type is inert everywhere.
 
-### - [ ] PR 1.1 — Add `CompactionMessageType` + type guard
+### - [x] PR 1.1 — Add `CompactionMessageType` + type guard
 
-Type-only change, no DB or runtime impact.
+Type-only change, no DB or runtime impact. Combined with PR 1.3 into a single PR (#24048).
 
 - Add `CompactionMessageStatus = "created" | "succeeded" | "failed"` to
   `front/types/assistant/conversation.ts`.
@@ -33,26 +33,22 @@ DB schema change, no runtime behavior.
 - Add association: `CompactionMessageModel.hasOne(MessageModel)` /
   `MessageModel.belongsTo(CompactionMessageModel)`.
 
-### - [ ] PR 1.3 — Handle `"compaction_message"` in all exhaustive switches
+### - [x] PR 1.3 — Handle `"compaction_message"` in all exhaustive switches
 
-Make the codebase compile and pass with the new type. Compaction messages are filtered out / no-op
-everywhere.
+Combined with PR 1.1 into a single PR (#24048). All exhaustive switches handled. Compaction
+messages are filtered out / no-op everywhere.
 
-- `front/lib/api/assistant/conversation/fetch.ts` (`_getConversation`, line ~250): add
-  `CompactionMessageModel` to the `MessageModel` eager include, render compaction messages into the
-  conversation content array.
-- `front/lib/api/assistant/messages.ts` (`batchRenderMessages`): add rendering path for compaction
-  messages (trivial — just map model fields to type).
-- `front/lib/api/assistant/conversation_rendering/message_rendering.ts` (`renderAllMessages`,
-  line ~157): add `isCompactionMessageType` branch — skip for now (no rendering to model yet).
-- `front/lib/api/assistant/conversation/interactions.ts` (`groupMessagesIntoInteractions`): treat
-  compaction messages as interaction boundaries (or skip).
-- `front/components/poke/pages/ConversationPage.tsx` (line ~612): add case for
-  `"compaction_message"`.
-- `front/lib/client/conversation/event_handlers.ts` (line ~21): add `isCompactionMessageType`
-  branch (no-op).
-- All other if/else chains on `isUserMessageType` / `isAgentMessageType` /
-  `isContentFragmentType` — audit and add compaction handling (filter out or no-op).
+Remaining `TODO(compaction)` markers left for future PRs:
+- `front/components/assistant/conversation/types.ts` — render compaction messages in UI instead of
+  filtering (→ PR 5.2).
+- `front/lib/api/assistant/messages.ts` — implement `batchRenderCompactionMessages` (→ PR 1.2,
+  once the DB model exists).
+- `front/lib/api/assistant/conversation_rendering/message_rendering.ts` — render compaction as
+  history boundary (→ PR 4.1).
+- `front/lib/api/actions/servers/project_manager/tools/conversation_formatting.ts` — stop at
+  compaction boundary (→ PR 4.1).
+- `front/lib/api/v1/backward_compatibility.ts` — expose compaction messages in the public API
+  (→ future, post-Phase 5).
 
 ---
 
