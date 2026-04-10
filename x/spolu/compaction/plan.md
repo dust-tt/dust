@@ -58,34 +58,26 @@ Remaining `TODO(compaction)` markers left for future PRs:
 ## Phase 2: Token Consumption Evaluation
 
 Surface the model's reported `promptTokens` so we can determine when to trigger compaction.
+No new DB columns — token counts are resolved on-the-fly from existing run usage data.
 
-### - [ ] PR 2.1 — Read `promptTokens` in finalization and store on `AgentMessageModel`
+### - [x] PR 2.1 — Add conversation context usage endpoint
 
-- Add `promptTokens` column (INTEGER, nullable) to `AgentMessageModel`. Migration.
-- In `finalizeSuccessfulAgentLoopActivity` and `finalizeGracefullyStoppedAgentLoopActivity`
-  (`front/temporal/agent_loop/activities/finalize.ts`): after existing side-effects, resolve the
-  last run's prompt tokens:
-  - Use `agentLoopArgs.dustRunIds` (or fall back to `agentMessage.runIds`).
-  - Call `RunResource.listByDustRunIds()` → take the last run (ordered by `createdAt`) →
-    `listRunUsages()` → sum `promptTokens`.
-  - Update `AgentMessageModel.promptTokens` with the value.
-- This is read-only side-effect work — no behavior change.
+PR #24086.
 
-### - [ ] PR 2.2 — Surface `promptTokens` on `AgentMessageType` and events
-
-- Add `promptTokens: number | null` to `AgentMessageType` and `LightAgentMessageType` in
-  `front/types/assistant/conversation.ts`.
-- Include `promptTokens` in `batchRenderAgentMessages()` output
-  (`front/lib/api/assistant/messages.ts`).
-- Include `promptTokens` in `AgentMessageSuccessEvent` and
-  `AgentMessageGracefullyStoppedEvent` payloads (`front/types/assistant/agent.ts`).
-- Frontend can now read `agentMessage.promptTokens` for display (Phase 5).
+- Add `GET /api/w/[wId]/assistant/conversations/[cId]/context-usage` endpoint.
+- `ConversationResource.getLatestCompletedAgentMessageRun()` — instance method that finds the last
+  succeeded/gracefully-stopped agent message, takes its last `runId`, and returns a `RunResource`.
+- `RunResource.fetchByDustRunId()` — fetch a run resource by its dustRunId.
+- Endpoint calls `run.listRunUsages()`, takes max `promptTokens` across usages, resolves model
+  config for `contextSize`.
+- Returns `{ model: SupportedModel, contextUsage: number, contextSize: number }`.
+- Frontend uses this for the context usage indicator (Phase 5).
 
 ---
 
 ## Phase 3: Compaction Method & Temporal Workflow
 
-Build the compaction pipeline end-to-end, gated behind a feature flag.
+Build the compaction pipeline end-to-end. No feature flag needed — inert until Phase 5 provides a trigger.
 
 ### - [ ] PR 3.1 — Add compaction Temporal workflow skeleton
 
@@ -175,8 +167,8 @@ Make compaction actually affect what the model sees.
 
 ### - [ ] PR 5.1 — Context usage indicator in conversation UI
 
-- Use `agentMessage.promptTokens` (from PR 2.2) and the model's context window size to compute
-  usage percentage on the client.
+- Use the context-usage endpoint (from PR 2.2) to get `promptTokens` and `modelContextWindow`,
+  compute usage percentage on the client.
 - Display a progress bar or indicator showing context fullness.
 - Show a warning when approaching the compaction threshold.
 

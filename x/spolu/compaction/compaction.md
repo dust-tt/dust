@@ -195,32 +195,35 @@ When the threshold is crossed, trigger compaction:
 
 ### Where to Get the Token Count
 
-The token count is already available in the finalization path of the agent loop:
+The token count is not stored as a dedicated column — it's resolved on-the-fly from the existing
+run usage data:
 
-- `finalizeSuccessfulAgentLoopActivity` and `finalizeGracefullyStoppedAgentLoopActivity` both have
-  access to the `agentLoopArgs` which contains `runIds`.
-- Query `RunResource.listByDustRunIds()` → take the last run → `listRunUsages()` → read
-  `promptTokens`. Note: ensure results are returned ordered (e.g., by `createdAt`) so that "last
-  run" is deterministic.
-- Alternatively, surface the token count earlier in the agent loop (it's available from the
-  `TokenUsageEvent` during streaming) and pass it through to finalization.
+- `AgentMessageModel.runIds` contains the dustRunIds for each agent message.
+- Query `RunResource.listByDustRunIds()` → take the last run (ordered by `createdAt`) →
+  `listRunUsages()` → read `promptTokens`.
+- This is a read-only lookup, no new columns needed.
 
 ### Client-Side Context Usage Reporting
 
 The last `runId` of the most recent `AgentMessage` gives us the best estimate of the current
-conversation's token footprint. We surface this to the client so the UI can display context usage
-(e.g. a progress bar showing how full the context window is).
-
-On `agent_message_success` (and `agent_message_gracefully_stopped`), the finalization path
-resolves the last run's `promptTokens` and includes it in the event payload (or on the
-`AgentMessageType` itself). The client can then compute:
+conversation's token footprint. We expose this through a dedicated endpoint that resolves the
+token count on-the-fly:
 
 ```
-contextUsagePercent = lastPromptTokens / modelContextWindow
+GET /api/w/[wId]/assistant/conversations/[cId]/context-usage
+→ { promptTokens: number | null, modelContextWindow: number }
+```
+
+The endpoint finds the last succeeded/gracefully-stopped `AgentMessage`, resolves its last run's
+`promptTokens` from `RunResource`, and returns it alongside the model's context window. The client
+can then compute:
+
+```
+contextUsagePercent = promptTokens / modelContextWindow
 ```
 
 This avoids any client-side token estimation — the number comes directly from the provider's
-usage report.
+usage report, resolved on-the-fly from the existing run data.
 
 ---
 

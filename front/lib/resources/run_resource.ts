@@ -169,6 +169,24 @@ export class RunResource extends BaseResource<RunModel> {
     return runs.map((r) => new this(this.model, r.get()));
   }
 
+  static async fetchByDustRunId(
+    auth: Authenticator,
+    { dustRunId }: { dustRunId: string }
+  ): Promise<RunResource | null> {
+    const run = await this.model.findOne({
+      where: {
+        dustRunId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+
+    if (!run) {
+      return null;
+    }
+
+    return new this(this.model, run.get());
+  }
+
   static async countByAppAndRunType(
     workspace: LightWorkspaceType,
     { appId, runType }: { appId: ModelId; runType: string | string[] }
