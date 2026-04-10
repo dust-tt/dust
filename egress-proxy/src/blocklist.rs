@@ -15,9 +15,7 @@ const GLOBAL_BLOCKED_DOMAINS: &[&str] = &[
 ];
 
 pub fn is_globally_blocked_domain(domain: &str) -> bool {
-    GLOBAL_BLOCKED_DOMAINS
-        .iter()
-        .any(|blocked_domain| domain == *blocked_domain)
+    GLOBAL_BLOCKED_DOMAINS.contains(&domain)
 }
 
 pub fn is_unsafe_ip(ip: IpAddr) -> bool {
