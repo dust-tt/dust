@@ -545,7 +545,7 @@ When creating or updating pages, follow these formatting rules:
       ],
       workspaceContext: WORKSPACE_CONTEXT,
       expectedToolCalls: [editSkillWithInstructions("skill_github_reporter")],
-      judgeCriteria: `The analyst MUST call edit_skill with instructionEdits ONLY for skill "skill_github_reporter".
+      judgeCriteria: `The analyst MUST call edit_skill with instructionEdits for skill "skill_github_reporter" ONLY.
 The suggestion should:
 - Add "DevCode" to the list of known GitHub projects in the skill instructions
 - Reference that the current project list is incomplete and caused missing data in the report
