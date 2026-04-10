@@ -248,7 +248,7 @@ async function fetchConversationSignals(
  * engagement. Conversations are then selected in score order, respecting
  * per-skill caps.
  */
-function scoreAndSelectConversations(
+export function scoreAndSelectConversations(
   conversationSkillMap: Map<ModelId, Set<string>>,
   convModelIdToId: Map<ModelId, string>,
   signals: ConversationSignals,
