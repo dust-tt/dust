@@ -19,19 +19,22 @@ Type-only change, no DB or runtime impact. Combined with PR 1.3 into a single PR
   union (line 43), and the `LightMessageType` union (line 49).
 - Update `ConversationType.content` type (line 372) to include `CompactionMessageType[]`.
 
-### - [ ] PR 1.2 — Add `CompactionMessageModel` + migration
+### - [x] PR 1.2 — Add `CompactionMessageModel` + migration
 
-DB schema change, no runtime behavior.
+DB schema change, no runtime behavior. PR #24065.
 
 - Add `CompactionMessageModel` in `front/lib/models/agent/conversation.ts` with fields: `status`,
-  `content` (TEXT, nullable).
-- Migration: create `compaction_message` table, add `compactionMessageId` FK on `message` table.
-- Update `MessageModel` (line 662): add `compactionMessageId` FK declaration.
-- Update `MessageModel` validation hook (line 809): extend the exactly-one-FK-non-null check to
-  include `compactionMessageId`.
-- Add `compactionMessageId` index on `message` table (following [BACK13]).
-- Add association: `CompactionMessageModel.hasOne(MessageModel)` /
+  `content` (TEXT, nullable). Defined above `MessageModel` so the FK type is available.
+- Migration 576: create `compaction_messages` table (with `workspaceId` index), add
+  `compactionMessageId` FK + index on `messages` table.
+- Update `MessageModel`: add `compactionMessageId` FK declaration.
+- Update `MessageModel` validation hook: extend the exactly-one-FK-non-null check to include
+  `compactionMessageId`.
+- Add `compactionMessageId` index on `messages` table (following [BACK13]).
+- Add associations: `CompactionMessageModel.hasOne(MessageModel)` /
   `MessageModel.belongsTo(CompactionMessageModel)`.
+- Register in `admin/db.ts`.
+- Handle `CompactionMessageModel` cleanup in `destroyConversation`.
 
 ### - [x] PR 1.3 — Handle `"compaction_message"` in all exhaustive switches
 
