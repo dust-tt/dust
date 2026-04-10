@@ -42,7 +42,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 const DEFAULT_WORKING_DIRECTORY = "/home/agent";
-const GRACE_PERIOD_MS = 2 * 60 * 1000; // 2 minutes before pausing sandbox
+const GRACE_PERIOD_MS = 45 * 1000; // 45 seconds before pausing sandbox
 const BLOCKED_ACTION_POLL_INTERVAL_MS = 2_000;
 const MAX_OUTPUT_LINES = 2_000;
 const MAX_OUTPUT_BYTES = 50_000;
@@ -387,6 +387,27 @@ export function createSandboxTools(
       // Grace period expired with a blocked action still pending.
       // Pause the sandbox and signal the agent loop to stop.
       monitor.cleanup();
+
+      // Mark the blocked child action as sandboxPaused so that
+      // validateAction knows to relaunch the agent loop on approval
+      // (instead of taking the fast path for still-running sandboxes).
+      try {
+        const blockedAction = await AgentMCPActionResource.fetchById(
+          auth,
+          raceResult.actionId
+        );
+        if (blockedAction) {
+          await blockedAction.updateStepContext({
+            ...blockedAction.stepContext,
+            sandboxPaused: true,
+          });
+        }
+      } catch (err) {
+        logger.error(
+          { error: normalizeError(err).message },
+          "Failed to mark blocked action as sandboxPaused"
+        );
+      }
 
       try {
         const pauseResult = await SandboxResource.pauseForApproval(
