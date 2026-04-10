@@ -3,32 +3,36 @@ import { Counter } from "@sparkle/components/Counter";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
-export type QuestionOptionSelectionStyle = "single" | "multi";
+export type OptionCardSelectionStyle = "single" | "multi";
 
-export interface QuestionOptionProps {
+export interface OptionCardProps {
   label: string;
   description?: string | null;
   counterValue?: number;
   selected?: boolean;
-  selectionStyle?: QuestionOptionSelectionStyle;
+  selectionStyle?: OptionCardSelectionStyle;
+  disabled?: boolean;
   className?: string;
   onClick?: () => void;
 }
 
-export function QuestionOption({
+export function OptionCard({
   label,
   description,
   counterValue,
   selected = false,
   selectionStyle = "single",
+  disabled = false,
   className,
   onClick,
-}: QuestionOptionProps) {
+}: OptionCardProps) {
   return (
     <Card
       variant="tertiary"
       className={cn(
-        "s-flex s-w-full s-cursor-pointer s-items-center s-gap-2 s-rounded-2xl s-p-3 s-text-left s-transition-colors",
+        "s-flex s-w-full s-items-center s-gap-2 s-rounded-2xl s-p-3 s-text-left s-transition-colors",
+        !disabled && "s-cursor-pointer",
+        disabled && "s-pointer-events-none s-opacity-60",
         selected
           ? [
               "s-bg-muted-background dark:s-bg-muted-background-night",
@@ -44,7 +48,7 @@ export function QuestionOption({
             ],
         className
       )}
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
     >
       {counterValue && (
         <Counter

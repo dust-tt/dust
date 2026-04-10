@@ -191,10 +191,10 @@ export {
 } from "./Popover";
 export { PriceTable } from "./PriceTable";
 export type {
-  QuestionOptionProps,
-  QuestionOptionSelectionStyle,
-} from "./QuestionOption";
-export { QuestionOption } from "./QuestionOption";
+  OptionCardProps,
+  OptionCardSelectionStyle,
+} from "./OptionCard";
+export { OptionCard } from "./OptionCard";
 export { RadioGroup, RadioGroupCustomItem, RadioGroupItem } from "./RadioGroup";
 export { RainbowEffect } from "./RainbowEffect";
 export {

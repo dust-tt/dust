@@ -11,7 +11,7 @@ import {
   Counter,
   cn,
   Input,
-  QuestionOption,
+  OptionCard,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -142,7 +142,7 @@ export function UserQuestionRequired({
       ) : (
         <div className="flex flex-col gap-2">
           {question.options.map((option, index) => (
-            <QuestionOption
+            <OptionCard
               key={index}
               label={option.label}
               description={option.description}
