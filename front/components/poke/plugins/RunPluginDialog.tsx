@@ -15,7 +15,6 @@ import {
   Button,
   cn,
   Dialog,
-  DialogContainer,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -86,7 +85,7 @@ export function RunPluginDialog({
     <Dialog open={true} onOpenChange={handleClose}>
       <DialogContent
         className={cn(
-          "w-auto overflow-visible",
+          "w-auto",
           "bg-muted-background dark:bg-muted-background-night",
           "sm:min-w-[600px] sm:max-w-[1000px]"
         )}
@@ -95,7 +94,7 @@ export function RunPluginDialog({
           <DialogTitle>Run {plugin.name} plugin</DialogTitle>
           <DialogDescription>{plugin.description}</DialogDescription>
         </DialogHeader>
-        <DialogContainer>
+        <div className="flex flex-col gap-2 px-5 py-4 text-foreground dark:text-foreground-night">
           {isLoading || (hasAsyncArgs && isLoadingAsyncArgs) ? (
             <Spinner />
           ) : !manifest ? (
@@ -175,7 +174,7 @@ export function RunPluginDialog({
               )}
             </>
           )}
-        </DialogContainer>
+        </div>
       </DialogContent>
     </Dialog>
   );

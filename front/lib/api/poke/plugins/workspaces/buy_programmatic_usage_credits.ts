@@ -1,12 +1,15 @@
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { createEnterpriseCreditPurchase } from "@app/lib/credits/committed";
+import { createMetronomeCredit } from "@app/lib/metronome/client";
+import { getProductFreeMonthlyCreditId } from "@app/lib/metronome/constants";
 import {
   getStripeSubscription,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
+import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import { addYears, format } from "date-fns";
 import { z } from "zod";
@@ -186,6 +189,37 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
       });
       if (startResult.isErr()) {
         return new Err(startResult.error);
+      }
+
+      // Mirror the free credit in Metronome if the workspace is provisioned.
+      const metronomeCustomerId = workspace.metronomeCustomerId;
+
+      if (metronomeCustomerId) {
+        const amountCents = Math.ceil(amountMicroUsd / 10_000);
+        const metronomeResult = await createMetronomeCredit({
+          metronomeCustomerId,
+          productId: getProductFreeMonthlyCreditId(),
+          amountCents,
+          startingAt: startDate.toISOString(),
+          endingBefore: expirationDate.toISOString(),
+          name: `Free poke credit ($${originalAmount.toFixed(2)})`,
+          idempotencyKey,
+        });
+
+        if (metronomeResult.isErr()) {
+          logger.error(
+            {
+              workspaceId: workspace.sId,
+              error: metronomeResult.error.message,
+            },
+            "[Poke Plugin] Failed to create free credit in Metronome"
+          );
+          return new Err(
+            new Error(
+              `Credit created locally but failed to mirror in Metronome: ${metronomeResult.error.message}`
+            )
+          );
+        }
       }
 
       return new Ok({
