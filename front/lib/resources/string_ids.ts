@@ -84,6 +84,7 @@ export const RESOURCES_PREFIX = {
 
   // Conversation branches.
   conversation_branch: "cbr",
+  conversation_fork: "cfk",
 
   // Provider credentials (BYOK).
   provider_credential: "pcr",
