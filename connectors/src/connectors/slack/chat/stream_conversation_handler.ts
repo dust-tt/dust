@@ -144,8 +144,15 @@ export async function streamConversationToSlack(
   dustAPI: DustAPI,
   conversationData: StreamConversationToSlackParams
 ): Promise<Result<undefined, Error>> {
-  const { assistantName, agentConfigurations, streamHandler } =
-    conversationData;
+  const {
+    assistantName,
+    agentConfigurations,
+    streamHandler,
+    connector,
+    conversation,
+  } = conversationData;
+  const { slackChannelId, slackClient, slackMessageTs } =
+    conversationData.slack;
 
   if (!streamHandler) {
     // Old path: update placeholder with thinking state.
@@ -160,7 +167,36 @@ export async function streamConversationToSlack(
       extraLogs: { source: "streamConversationToSlack" },
     });
   }
-  return streamAgentAnswerToSlack(dustAPI, conversationData);
+
+  const conversationUrl = makeConversationUrl(
+    connector.workspaceId,
+    conversation.sId
+  );
+
+  const planHandler = streamHandler
+    ? new PlanMessageHandler({
+        dustAPI,
+        slackClient,
+        slackChannelId,
+        slackMessageTs,
+        conversationUrl,
+        assistantName,
+        workspaceId: connector.workspaceId,
+      })
+    : null;
+
+  try {
+    return await streamAgentAnswerToSlack(
+      dustAPI,
+      conversationData,
+      planHandler
+    );
+  } finally {
+    // Cleanup streams and plan message on unexpected error
+    planHandler?.abortAllChildStreams();
+    await planHandler?.deletePlanMessage();
+    await streamHandler?.stop();
+  }
 }
 
 class SlackAnswerRetryableError extends Error {
@@ -171,7 +207,8 @@ class SlackAnswerRetryableError extends Error {
 
 async function streamAgentAnswerToSlack(
   dustAPI: DustAPI,
-  conversationData: StreamConversationToSlackParams
+  conversationData: StreamConversationToSlackParams,
+  planHandler: PlanMessageHandler | null
 ) {
   const {
     assistantName,
@@ -210,26 +247,6 @@ async function streamAgentAnswerToSlack(
   } | null = null;
 
   const { streamHandler } = conversationData;
-
-  const conversationUrl = makeConversationUrl(
-    connector.workspaceId,
-    conversation.sId
-  );
-
-  // -- Plan message + child stream tracking --
-  // Only used when native streaming (streamHandler) is enabled.
-
-  const planHandler = streamHandler
-    ? new PlanMessageHandler({
-        dustAPI,
-        slackClient,
-        slackChannelId,
-        slackMessageTs,
-        conversationUrl,
-        assistantName,
-        workspaceId: connector.workspaceId,
-      })
-    : null;
 
   let currentThrottleDelay = SLACK_MESSAGE_UPDATE_THROTTLE_MS;
   let throttledPostSlackMessageUpdate = throttle(
@@ -586,9 +603,7 @@ async function streamAgentAnswerToSlack(
           ? formattedContent
           : slackifyMarkdown(normalizeContentForSlack(formattedContent));
 
-        if (streamHandler && !streamHandler.isStopped) {
-          await streamHandler.stop();
-        }
+        await streamHandler?.stop();
 
         {
           const messageUpdate: SlackMessageUpdate = {
@@ -711,9 +726,7 @@ async function streamAgentAnswerToSlack(
       case "agent_generation_cancelled": {
         planHandler?.abortAllChildStreams();
         await planHandler?.deletePlanMessage();
-        if (streamHandler && !streamHandler.isStopped) {
-          await streamHandler.stop();
-        }
+        await streamHandler?.stop();
 
         const cancelledMessage = "_Message generation was cancelled._";
         const {
@@ -780,9 +793,7 @@ async function streamAgentAnswerToSlack(
   // Clean up if the event stream ended without a terminal event.
   planHandler?.abortAllChildStreams();
   await planHandler?.deletePlanMessage();
-  if (streamHandler && !streamHandler.isStopped) {
-    await streamHandler.stop();
-  }
+  await streamHandler?.stop();
 
   return new Err(
     new SlackAnswerRetryableError("Failed to get the final answer from Dust")
