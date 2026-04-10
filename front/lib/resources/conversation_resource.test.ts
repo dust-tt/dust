@@ -5529,6 +5529,7 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   "agent_message_feedback",
   "agent_suggestion",
   "conversation_branch",
+  "conversation_fork",
   "conversation_mcp_server_view",
   "conversation_participant",
   "conversation_skills",
@@ -5544,10 +5545,11 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
 
 const KNOWN_MESSAGE_RELATED_MODELS = [
   // Tables that have a foreign key to the `message` table.
+  "conversation_branch",
+  "conversation_fork",
   "message",
   "message_reaction",
   "mention",
-  "conversation_branch",
 ];
 
 describe("ConversationResource cleanup on delete", () => {
