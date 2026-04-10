@@ -232,12 +232,14 @@ const getConversationDetails = async ({
     mentionedUserIds = message.richMentions
       .filter((m) => isRichUserMention(m) && m.status === "approved")
       .map((m) => m.id);
-  } else {
+  } else if (message.type === "agent_message") {
     author = message.configuration.name
       ? `@${message.configuration.name}`
       : "An agent";
     avatarUrl = message.configuration.pictureUrl ?? undefined;
     authorIsAgent = true;
+  } else {
+    assertNever(message);
   }
 
   const unreadMessages = conversation.content
