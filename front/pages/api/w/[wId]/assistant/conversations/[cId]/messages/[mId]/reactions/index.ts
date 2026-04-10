@@ -111,7 +111,7 @@ async function handler(
   }
 
   const message = conversation.content.flat().find((m) => m.sId === messageId);
-  if (!message || isCompactionMessageType(message)) {
+  if (!message) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -120,6 +120,16 @@ async function handler(
       },
     });
   }
+  if(isCompactionMessageType(message)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Reactions are not allowed on compaction messages.",
+      },
+    });
+  }
+
 
   switch (req.method) {
     case "POST":
