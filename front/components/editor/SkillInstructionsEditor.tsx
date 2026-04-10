@@ -5,7 +5,7 @@ import { SlashCommandExtension } from "@app/components/editor/extensions/skill_b
 import {
   buildSkillInstructionsExtensions,
   INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
-} from "@app/lib/build_skill_instructions_extensions";
+} from "@app/lib/editor/build_skill_instructions_extensions";
 import { cn } from "@dust-tt/sparkle";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import type { Transaction } from "@tiptap/pm/state";

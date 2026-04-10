@@ -3,17 +3,19 @@ import {
   BLOCK_ID_UNIQUE_ID_NODE_TYPES,
 } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
-import { buildSkillInstructionsExtensions } from "@app/lib/build_skill_instructions_extensions";
+import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
 import { generateShortBlockId } from "@app/lib/generate_short_block_id";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { JSONContent } from "@tiptap/core";
 import { generateJSON } from "@tiptap/html/server";
+import { MarkdownManager } from "@tiptap/markdown";
 import { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string";
 import * as cheerio from "cheerio";
-import { marked } from "marked";
 
-const EMPTY_SKILL_INNER_HTML = "<p></p>";
 const SKILL_EDITOR_EXTENSIONS = buildSkillInstructionsExtensions(true);
+const MARKDOWN_MANAGER = new MarkdownManager({
+  extensions: SKILL_EDITOR_EXTENSIONS,
+});
 const ZWS = "\u200B";
 
 const NODE_TYPES_WITH_BLOCK_ID = new Set<string>([
@@ -66,17 +68,21 @@ function preprocessMarkdownForConversion(markdown: string): string {
  * Uses the same extension schema as the browser editor, then strips CSS class attrs.
  */
 export function convertMarkdownToBlockHtml(markdown: string): string {
-  const processed = markdown.trim()
+  const preprocessed = markdown.trim()
     ? preprocessMarkdownForConversion(markdown)
-    : "";
-  const innerHtml =
-    processed === ""
-      ? EMPTY_SKILL_INNER_HTML
-      : marked(processed, { async: false });
+    : null;
+  const parsedDoc = preprocessed ? MARKDOWN_MANAGER.parse(preprocessed) : null;
 
-  const wrapped = `<div data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}">${innerHtml}</div>`;
+  const json: JSONContent = {
+    type: "doc",
+    content: [
+      {
+        type: INSTRUCTIONS_ROOT_NODE_NAME,
+        content: parsedDoc?.content ?? [{ type: "paragraph" }],
+      },
+    ],
+  };
 
-  const json = generateJSON(wrapped, SKILL_EDITOR_EXTENSIONS);
   addBlockIds(json);
 
   const rendered = renderToHTMLString({
@@ -85,4 +91,13 @@ export function convertMarkdownToBlockHtml(markdown: string): string {
   });
 
   return stripPresentationAttributes(rendered);
+}
+
+/**
+ * Convert stored skill instructionsHtml back to Markdown.
+ * Used by migration validation to round-trip against original instructions.
+ */
+export function convertBlockHtmlToMarkdown(html: string): string {
+  const json = generateJSON(html, SKILL_EDITOR_EXTENSIONS);
+  return MARKDOWN_MANAGER.serialize(json);
 }
