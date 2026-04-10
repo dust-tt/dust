@@ -34,6 +34,7 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
+import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TriggerSubscriberModel } from "@app/lib/models/agent/triggers/trigger_subscriber";
@@ -228,6 +229,7 @@ export function loadAllModels() {
     AcademyChapterVisitModel,
     SandboxModel,
     ConversationBranchModel,
+    ConversationForkModel,
     ProjectTodoModel,
     ProjectTodoConversationModel,
     ProjectTodoSourceModel,
