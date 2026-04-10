@@ -19,7 +19,6 @@ import type {
 } from "@app/types/assistant/conversation";
 import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isString } from "@app/types/shared/utils/general";
 import type { WorkspaceType } from "@app/types/user";
 import {
   AnimatedText,
@@ -29,7 +28,7 @@ import {
   Icon,
   ToolsIcon,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 interface InlineActivityStepsProps {
   agentMessage: LightAgentMessageType | LightAgentMessageWithActionsType;
@@ -67,6 +66,49 @@ function getCollapseAnimationStyle(isCollapsed: boolean): React.CSSProperties {
   };
 }
 
+type StepSegment =
+  | { type: "activity"; steps: InlineActivityStep[] }
+  | { type: "content"; id: string; content: string };
+
+/**
+ * Group completed steps into alternating segments of activity (thinking/action)
+ * and content. Content steps are rendered outside collapsible sections so they
+ * remain visible when the activity timeline is collapsed.
+ */
+function groupStepsIntoSegments(steps: InlineActivityStep[]): StepSegment[] {
+  const segments: StepSegment[] = [];
+  for (const step of steps) {
+    if (step.type === "content") {
+      segments.push({ type: "content", id: step.id, content: step.content });
+    } else {
+      const lastSegment = segments[segments.length - 1];
+      if (lastSegment && lastSegment.type === "activity") {
+        lastSegment.steps.push(step);
+      } else {
+        segments.push({ type: "activity", steps: [step] });
+      }
+    }
+  }
+  return segments;
+}
+
+function CollapsibleSection({
+  isCollapsed,
+  children,
+}: {
+  isCollapsed: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className="grid ease-out"
+      style={getCollapseAnimationStyle(isCollapsed)}
+    >
+      <div className="overflow-hidden">{children}</div>
+    </div>
+  );
+}
+
 /**
  * Inline activity steps component.
  * Everything is wrapped in a single collapsible "Work" section
@@ -100,6 +142,12 @@ export function InlineActivitySteps({
   // conversation), expand if actively streaming.
   const groupCollapse = useSteerGroupCollapse(steerGroupId ?? null);
   const [localCollapsed, setLocalCollapsed] = useState(isDone);
+
+  const segments = useMemo(
+    () => groupStepsIntoSegments(completedSteps),
+    [completedSteps]
+  );
+
   const isCollapsed = groupCollapse
     ? groupCollapse.isCollapsed
     : localCollapsed;
@@ -212,75 +260,66 @@ export function InlineActivitySteps({
     );
   };
 
-  const timelineContent = (
-    <>
-      {completedSteps.map((step, index) => {
-        const isLast =
-          index === completedSteps.length - 1 &&
-          !showActiveThinking &&
-          !showActiveWriting &&
-          !activeAction &&
-          !isDone;
+  const renderActivityStep = (
+    step: InlineActivityStep,
+    isLast: boolean
+  ): React.ReactNode => {
+    switch (step.type) {
+      case "thinking":
+        return (
+          <ThinkingStep
+            key={step.id}
+            content={step.content}
+            isStreaming={false}
+            isMessageDone={isDone}
+            isLast={isLast}
+          />
+        );
+      case "action": {
+        const actionIcon = step.internalMCPServerName
+          ? InternalActionIcons[
+              getInternalMCPServerIconByName(step.internalMCPServerName)
+            ]
+          : ToolsIcon;
 
-        switch (step.type) {
-          case "thinking":
-            return (
-              <ThinkingStep
-                key={step.id}
-                content={step.content}
-                isStreaming={false}
-                isMessageDone={isDone}
-                isLast={isLast}
-              />
-            );
-          case "content":
-            if (
-              !isString(step.content) ||
-              step.content.trim().length === 0
-            ) {
-              return null;
-            }
-            return (
-              <div key={step.id}>
-                <AgentMessageMarkdown
-                  content={step.content}
-                  owner={owner}
-                  isStreaming={false}
-                  isLastMessage={false}
+        return (
+          <div
+            key={step.id}
+            className="cursor-pointer"
+            onClick={() => openBreakdownPanel(step.actionId)}
+          >
+            <TimelineRow icon={actionIcon} isLast={isLast}>
+              <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
+                {step.label}
+                <Icon
+                  size="xs"
+                  visual={ChevronRightIcon}
+                  className="shrink-0 opacity-50"
                 />
-              </div>
-            );
-          case "action": {
-            const actionIcon = step.internalMCPServerName
-              ? InternalActionIcons[
-                  getInternalMCPServerIconByName(step.internalMCPServerName)
-                ]
-              : ToolsIcon;
+              </span>
+            </TimelineRow>
+          </div>
+        );
+      }
+      case "content":
+        // Content steps are rendered outside collapsible sections.
+        return null;
+      default:
+        return assertNever(step);
+    }
+  };
 
-            return (
-              <div
-                key={step.id}
-                className="cursor-pointer"
-                onClick={() => openBreakdownPanel(step.actionId)}
-              >
-                <TimelineRow icon={actionIcon} isLast={isLast}>
-                  <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
-                    {step.label}
-                    <Icon
-                      size="xs"
-                      visual={ChevronRightIcon}
-                      className="shrink-0 opacity-50"
-                    />
-                  </span>
-                </TimelineRow>
-              </div>
-            );
-          }
-          default:
-            assertNever(step);
-        }
-      })}
+  // Whether the last completed step is followed by more activity.
+  const hasActivityAfterCompletedSteps =
+    showActiveThinking ||
+    showActiveWriting ||
+    !!activeAction ||
+    !!latestPendingToolCall ||
+    isDone;
 
+  // Trailing active states (streaming thinking, running tools, done marker).
+  const trailingActivityContent = (
+    <div className="flex flex-col gap-3">
       {/* Active thinking (streaming CoT) */}
       {showActiveThinking && chainOfThought && (
         <ThinkingStep
@@ -331,28 +370,83 @@ export function InlineActivitySteps({
             </span>
           </TimelineRow>
         )}
+    </div>
+  );
+
+  const hasTrailingActivity =
+    showActiveThinking ||
+    showActiveWriting ||
+    activeAction ||
+    !!latestPendingToolCall ||
+    showTrailingLoader ||
+    (!isDone &&
+      !showActiveThinking &&
+      !showActiveWriting &&
+      !activeAction &&
+      !latestPendingToolCall) ||
+    (isDone &&
+      completedSteps.length > 0 &&
+      agentMessage.status !== "gracefully_stopped");
+
+  // Renders segments with content steps always visible and activity steps collapsible.
+  const renderSegmentedContent = (
+    <>
+      {segments.map((segment, segmentIndex) => {
+        if (segment.type === "content") {
+          if (segment.content.trim().length === 0) {
+            return null;
+          }
+          return (
+            <div key={segment.id}>
+              <AgentMessageMarkdown
+                content={segment.content}
+                owner={owner}
+                isStreaming={false}
+                isLastMessage={false}
+              />
+            </div>
+          );
+        }
+
+        // Activity segment: collapsible group of thinking/action steps.
+        const isLastSegment = segmentIndex === segments.length - 1;
+        return (
+          <CollapsibleSection
+            key={segment.steps[0].id}
+            isCollapsed={isCollapsed}
+          >
+            <div className="flex flex-col gap-3">
+              {segment.steps.map((step, stepIndex) => {
+                const isLastStep =
+                  isLastSegment &&
+                  stepIndex === segment.steps.length - 1 &&
+                  !hasActivityAfterCompletedSteps;
+                return renderActivityStep(step, isLastStep);
+              })}
+            </div>
+          </CollapsibleSection>
+        );
+      })}
+
+      {hasTrailingActivity && (
+        <CollapsibleSection isCollapsed={isCollapsed}>
+          {trailingActivityContent}
+        </CollapsibleSection>
+      )}
     </>
   );
 
-  // Non-root group members: use the same CSS grid animation as the root,
-  // just without the header toggle button.
+  // Non-root group members: show segmented content without the header toggle.
   if (isInGroup && !isGroupRoot) {
     return (
-      <div
-        className="grid ease-out text-sm"
-        style={getCollapseAnimationStyle(isCollapsed)}
-      >
-        <div className="overflow-hidden">
-          <div className="mt-3 flex flex-col gap-3">
-            {timelineContent}
-          </div>
-        </div>
+      <div className="mt-3 flex flex-col gap-3 text-sm">
+        {renderSegmentedContent}
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col text-sm">
+    <div className="flex flex-col gap-3 text-sm">
       {showHeader && (
         <button
           className="self-start text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors duration-200 flex gap-1 items-center"
@@ -370,16 +464,7 @@ export function InlineActivitySteps({
         </button>
       )}
 
-      <div
-        className="grid ease-out"
-        style={getCollapseAnimationStyle(isCollapsed)}
-      >
-        <div className="overflow-hidden">
-          <div className="mt-3 flex flex-col gap-3">
-            {timelineContent}
-          </div>
-        </div>
-      </div>
+      {renderSegmentedContent}
 
       {/* Active writing (streaming content tokens) — outside collapsible area
           so it stays visible when the activity timeline is collapsed. */}
