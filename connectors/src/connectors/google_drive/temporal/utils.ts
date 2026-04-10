@@ -251,11 +251,14 @@ export async function getAuthObject(
     connectionId,
   });
 
+  // Do not set expiry_date: without it, googleapis will not attempt to
+  // auto-refresh the token (which fails because we don't set a refresh_token,
+  // by design). If a token expires mid-activity, the API returns a 401 and
+  // Temporal retries the activity with a fresh token.
   oauth2Client.setCredentials({
     access_token: token.access_token,
     scope: (token.scrubbed_raw_json as { scope: string }).scope,
     token_type: (token.scrubbed_raw_json as { token_type: string }).token_type,
-    expiry_date: token.access_token_expiry,
   });
 
   return oauth2Client;
