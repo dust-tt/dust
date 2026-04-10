@@ -660,6 +660,42 @@ AgentMessageFeedbackModel.belongsTo(AgentMessageModel, {
   as: "agentMessage",
 });
 
+export class CompactionMessageModel extends WorkspaceAwareModel<CompactionMessageModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare status: CompactionMessageStatus;
+  declare content: string | null;
+}
+
+CompactionMessageModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "created",
+    },
+    content: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+  },
+  {
+    modelName: "compaction_message",
+    sequelize: frontSequelize,
+  }
+);
+
 export class MessageModel extends WorkspaceAwareModel<MessageModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -868,42 +904,6 @@ MessageModel.belongsTo(ContentFragmentModel, {
   as: "contentFragment",
   foreignKey: { name: "contentFragmentId", allowNull: true },
 });
-
-export class CompactionMessageModel extends WorkspaceAwareModel<CompactionMessageModel> {
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-
-  declare status: CompactionMessageStatus;
-  declare content: string | null;
-}
-
-CompactionMessageModel.init(
-  {
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    status: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "created",
-    },
-    content: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-  },
-  {
-    modelName: "compaction_message",
-    sequelize: frontSequelize,
-  }
-);
 
 CompactionMessageModel.hasOne(MessageModel, {
   as: "message",
