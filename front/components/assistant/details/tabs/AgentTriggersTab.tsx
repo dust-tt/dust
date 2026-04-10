@@ -6,7 +6,7 @@ import {
 import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ActionCard,
@@ -39,7 +39,7 @@ function getTriggerDescription(trigger: TriggerType): string {
         ? `Triggered by ${trigger.configuration.event} events.`
         : "Triggered by webhook events.";
     default:
-      assertNever(trigger);
+      assertNeverAndIgnore(trigger);
   }
 }
 
@@ -50,7 +50,7 @@ function getTriggerIcon(trigger: TriggerType) {
     case "webhook":
       return BellIcon;
     default:
-      assertNever(trigger);
+      assertNeverAndIgnore(trigger);
   }
 }
 

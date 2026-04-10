@@ -8,7 +8,7 @@ import {
   SIDE_PANEL_HASH_PARAM,
   SIDE_PANEL_TYPE_HASH_PARAM,
 } from "@app/types/conversation_side_panel";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import React, { useCallback, useEffect, useMemo } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 
@@ -153,7 +153,7 @@ export function ConversationSidePanelProvider({
           break;
 
         default:
-          assertNever(params);
+          assertNeverAndIgnore(params);
       }
     },
     [setCurrentPanel, setData, data, closePanel, currentPanel]

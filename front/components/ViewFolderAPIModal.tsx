@@ -4,7 +4,7 @@ import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import config from "@app/lib/api/config";
 import type { DataSourceType } from "@app/types/data_source";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -49,7 +49,7 @@ export function ViewFolderAPIModal({
         return `curl "${config.getApiBaseUrl()}/api/v1/w/${owner.sId}/spaces/${space.sId}/data_sources/${dataSource.sId}/search?query=foo+bar&top_k=16&full_text=false" \\
     -H "Authorization: Bearer YOUR_API_KEY"`;
       default:
-        assertNever(type);
+        assertNeverAndIgnore(type);
     }
   };
 
@@ -74,7 +74,7 @@ export function ViewFolderAPIModal({
         }, 1500);
         break;
       default:
-        assertNever(type);
+        assertNeverAndIgnore(type);
     }
   };
 

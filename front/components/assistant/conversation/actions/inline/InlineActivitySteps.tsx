@@ -17,7 +17,7 @@ import type {
   LightAgentMessageWithActionsType,
 } from "@app/types/assistant/conversation";
 import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -273,7 +273,7 @@ export function InlineActivitySteps({
                   );
                 }
                 default:
-                  assertNever(step);
+                  assertNeverAndIgnore(step);
               }
             })}
 

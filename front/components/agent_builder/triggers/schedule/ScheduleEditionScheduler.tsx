@@ -5,7 +5,7 @@ import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import { getNextOccurrences } from "@app/lib/utils/schedule_next_occurrences";
 import type { ScheduleConfig } from "@app/types/assistant/triggers";
 import { isCronScheduleConfig } from "@app/types/assistant/triggers";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   AnimatedText,
@@ -176,7 +176,7 @@ export function ScheduleEditionScheduler({
         return desc;
       }
       default:
-        assertNever(generationStatus);
+        assertNeverAndIgnore(generationStatus);
     }
   }, [generationStatus, resolvedConfig, generatedTimezone, cronErrorMessage]);
 

@@ -4,7 +4,7 @@ import { getIcon } from "@app/components/resources/resources_icons";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import { ActionCard, TimeIcon } from "@dust-tt/sparkle";
@@ -21,7 +21,7 @@ function getTriggerIconComponent(trigger: AgentBuilderTriggerType) {
         )
       );
     default:
-      assertNever(trigger);
+      assertNeverAndIgnore(trigger);
   }
 }
 

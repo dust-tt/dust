@@ -5,7 +5,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import config from "@app/lib/api/config";
 import type { AppType } from "@app/types/app";
 import type { RunConfig, RunType } from "@app/types/run";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -66,7 +66,7 @@ export function ViewAppAPIModal({
       "inputs": ${JSON.stringify(inputs)}
     }'`;
       default:
-        assertNever(type);
+        assertNeverAndIgnore(type);
     }
   };
 
@@ -84,7 +84,7 @@ export function ViewAppAPIModal({
         }, 1500);
         break;
       default:
-        assertNever(type);
+        assertNeverAndIgnore(type);
     }
   };
 

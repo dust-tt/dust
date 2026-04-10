@@ -52,7 +52,7 @@ import type {
   TagsFilter,
   TagsFilterMode,
 } from "@app/types/data_source_view";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import {
   createContext,
@@ -224,7 +224,7 @@ function dataSourceBuilderReducer(
       };
     }
     default:
-      assertNever(type);
+      assertNeverAndIgnore(type);
   }
 }
 

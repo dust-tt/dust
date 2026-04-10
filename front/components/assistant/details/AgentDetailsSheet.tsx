@@ -20,7 +20,7 @@ import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { TriggerType } from "@app/types/assistant/triggers";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
@@ -81,7 +81,7 @@ function triggerTypeToBuilderType(
         executionMode: trigger.executionMode,
       };
     default:
-      assertNever(trigger);
+      assertNeverAndIgnore(trigger);
   }
 }
 

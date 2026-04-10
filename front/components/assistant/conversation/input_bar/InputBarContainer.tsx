@@ -37,7 +37,7 @@ import {
 } from "@app/types/assistant/mentions";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -444,7 +444,7 @@ const InputBarContainer = ({
               "You can’t mention both users and agents in the same message.";
             break;
           default:
-            assertNever(payload);
+            assertNeverAndIgnore(payload);
         }
         sendNotification({
           type: "info",
@@ -560,7 +560,7 @@ const InputBarContainer = ({
             break;
           }
           default:
-            assertNever(message);
+            assertNeverAndIgnore(message);
         }
       }
     },

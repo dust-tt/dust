@@ -28,7 +28,7 @@ import {
 } from "@app/types/content_fragment";
 import type { ContentNodeType } from "@app/types/core/content_node";
 import type { ConnectorProvider } from "@app/types/data_source";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   ActionVolumeUpIcon,
   DocumentIcon,
@@ -229,7 +229,7 @@ export function contentFragmentToAttachmentCitation(
     };
   }
 
-  assertNever(contentFragment);
+  assertNeverAndIgnore(contentFragment);
 }
 
 export function attachmentToAttachmentCitation(

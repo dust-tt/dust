@@ -1,5 +1,5 @@
 import type { ConfigurationPagePageId } from "@app/components/agent_builder/types";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { createContext, useContext, useMemo, useReducer } from "react";
 
 type PageState = {
@@ -34,7 +34,7 @@ function pageReducer(
       };
     }
     default:
-      assertNever(type);
+      assertNeverAndIgnore(type);
   }
 }
 

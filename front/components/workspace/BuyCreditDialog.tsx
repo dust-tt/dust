@@ -2,7 +2,7 @@ import { getPriceAsString } from "@app/lib/client/subscription";
 import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
 import { usePurchaseCredits } from "@app/lib/swr/credits";
 import { CURRENCY_SYMBOLS, isSupportedCurrency } from "@app/types/currency";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { StripePricingData } from "@app/types/stripe/pricing";
 import {
   Button,
@@ -133,7 +133,7 @@ export function BuyCreditDialog({
         setPurchaseState("error");
         break;
       default:
-        assertNever(result);
+        assertNeverAndIgnore(result);
     }
   };
 

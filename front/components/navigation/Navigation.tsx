@@ -7,7 +7,7 @@ import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 import type { SubscriptionType } from "@app/types/plan";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -62,7 +62,7 @@ export function Navigation({
       case "2xl":
         return false;
       default:
-        assertNever(windowSizeState.activeBreakpoint);
+        assertNeverAndIgnore(windowSizeState.activeBreakpoint);
     }
   }, [windowSizeState.activeBreakpoint]);
 

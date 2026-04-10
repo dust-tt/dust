@@ -4,7 +4,7 @@ import {
   isMaxMessagesTimeframeType,
   MAX_MESSAGE_TIMEFRAMES,
 } from "@app/types/plan";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   Checkbox,
   ConfluenceLogo,
@@ -422,7 +422,7 @@ export const Field: React.FC<FieldProps> = ({
           />
         );
       default:
-        assertNever(field);
+        assertNeverAndIgnore(field);
     }
   })();
 
@@ -435,7 +435,7 @@ export const Field: React.FC<FieldProps> = ({
       case "tiny":
         return "min-w-[1rem]";
       default:
-        assertNever(field);
+        assertNeverAndIgnore(field);
     }
   })();
 

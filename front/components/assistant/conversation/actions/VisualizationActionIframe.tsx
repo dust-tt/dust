@@ -8,7 +8,7 @@ import type {
   VisualizationRPCRequest,
 } from "@app/types/assistant/visualization";
 import { isVisualizationRPCRequest } from "@app/types/assistant/visualization";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   Button,
   CodeBlock,
@@ -183,7 +183,7 @@ function useVisualizationDataHandler({
           break;
 
         default:
-          assertNever(data);
+          assertNeverAndIgnore(data);
       }
     };
 

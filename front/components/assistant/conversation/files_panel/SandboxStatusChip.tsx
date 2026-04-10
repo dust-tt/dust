@@ -1,5 +1,5 @@
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Chip } from "@dust-tt/sparkle";
 
 interface SandboxStatusChipProps {
@@ -15,6 +15,6 @@ export function SandboxStatusChip({ status }: SandboxStatusChipProps) {
     case "deleted":
       return <Chip size="mini" color="primary" label="Sandbox expired" />;
     default:
-      assertNever(status);
+      assertNeverAndIgnore(status);
   }
 }
