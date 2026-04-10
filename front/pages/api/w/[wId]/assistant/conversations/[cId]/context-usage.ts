@@ -67,11 +67,23 @@ async function handler(
       const lastRunId =
         lastAgentMessage.runIds[lastAgentMessage.runIds.length - 1];
 
-      const usages = await RunResource.fetchRunUsagesByDustRunId(auth, {
+      const run = await RunResource.fetchByDustRunId(auth, {
         dustRunId: lastRunId,
       });
 
-      if (!usages || usages.length === 0) {
+      if (!run) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "conversation_not_found",
+            message: "No run found for the last agent message.",
+          },
+        });
+      }
+
+      const usages = await run.listRunUsages(auth);
+
+      if (usages.length === 0) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {

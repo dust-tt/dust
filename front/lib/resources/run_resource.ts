@@ -169,10 +169,10 @@ export class RunResource extends BaseResource<RunModel> {
     return runs.map((r) => new this(this.model, r.get()));
   }
 
-  static async fetchRunUsagesByDustRunId(
+  static async fetchByDustRunId(
     auth: Authenticator,
     { dustRunId }: { dustRunId: string }
-  ): Promise<RunUsageType[] | null> {
+  ): Promise<RunResource | null> {
     const run = await this.model.findOne({
       where: {
         dustRunId,
@@ -184,8 +184,7 @@ export class RunResource extends BaseResource<RunModel> {
       return null;
     }
 
-    const resource = new this(this.model, run.get());
-    return resource.listRunUsages(auth);
+    return new this(this.model, run.get());
   }
 
   static async countByAppAndRunType(
