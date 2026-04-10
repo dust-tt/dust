@@ -63,7 +63,7 @@ function getMessageTopMargin({
     return "mt-2";
   }
 
-  return "mt-4";
+  return "mt-8";
 }
 
 interface MessageItemProps {
