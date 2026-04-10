@@ -255,7 +255,7 @@ const MAX_DESCRIPTION_LENGTH = 1024;
 export function buildToolSpecification(
   actionConfiguration: MCPToolConfigurationType
 ): AgentActionSpecification {
-  // Filter out properties from the inputSchema that have a mimeType matching any value in INTERNAL_MIME_TYPES.TOOL_INPUT
+  // Hide required tool-input configuration from the model; optional internal props stay visible.
   const filteredInputSchema = hideInternalConfiguration(
     actionConfiguration.inputSchema
   );
