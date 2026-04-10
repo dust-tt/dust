@@ -54,8 +54,8 @@ describe("getStaticToolDisplayLabelsFromFunctionCallName", () => {
         "interactive_content__create_interactive_content_file"
       )
     ).toEqual({
-      running: "Creating new Interactive Content file",
-      done: "Create new Interactive Content file",
+      running: "Creating new Frame file",
+      done: "Create new Frame file",
     });
   });
 
