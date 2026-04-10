@@ -1,4 +1,8 @@
 /** @ignoreswagger */
+import {
+  buildAuditLogTarget,
+  emitAuditLogEventDirect,
+} from "@app/lib/api/audit/workos_audit";
 import apiConfig from "@app/lib/api/config";
 import { calculateFreeCreditAmountMicroUsd } from "@app/lib/credits/free";
 import {
@@ -15,6 +19,7 @@ import { PRO_OR_BUSINESS_PACKAGE_ALIASES } from "@app/lib/metronome/types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
@@ -113,6 +118,19 @@ async function grantMetronomeFreeCredits({
         },
         "[Metronome Webhook] Metronome free credits granted"
       );
+      void emitAuditLogEventDirect({
+        workspace: renderLightWorkspaceType({ workspace }),
+        action: "credit.granted",
+        actor: { type: "system", id: "metronome-webhook" },
+        targets: [buildAuditLogTarget("workspace", workspace)],
+        context: { location: "internal" },
+        metadata: {
+          amountCents: String(amountCents),
+          memberCount: String(memberCount),
+          monthKey,
+          source: "metronome-commit-segment",
+        },
+      });
     }
   } catch (err) {
     logger.error(
