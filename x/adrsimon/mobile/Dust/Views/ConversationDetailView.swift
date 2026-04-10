@@ -109,6 +109,21 @@ struct ConversationDetailView: View {
         }
     }
 
+    // MARK: - Steering Detection
+
+    /// Returns true if the agent message at the given index is a steered follow-up
+    /// (i.e., the previous agent message with the same configuration was gracefully stopped).
+    private func isSteeredAgentMessage(at index: Int) -> Bool {
+        guard case let .agent(agentMsg) = viewModel.messages[index] else { return false }
+        for i in stride(from: index - 1, through: 0, by: -1) {
+            if case let .agent(prevAgent) = viewModel.messages[i] {
+                return prevAgent.status == .gracefullyStopped
+                    && prevAgent.configuration.sId == agentMsg.configuration.sId
+            }
+        }
+        return false
+    }
+
     // MARK: - Message List
 
     private var messageList: some View {
@@ -151,16 +166,19 @@ struct ConversationDetailView: View {
                                 }
                             }
 
-                            ForEach(viewModel.messages) { message in
+                            ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, message in
                                 let isStreaming = message.id == viewModel.streamingMessageId
+                                let hideAgentHeader = isSteeredAgentMessage(at: index)
                                 MessageBubbleView(
                                     message: message,
                                     currentUserEmail: currentUserEmail,
                                     streamingPhase: isStreaming ? viewModel.streamingPhase : .idle,
                                     activeActions: isStreaming ? viewModel.activeActions : [],
+                                    completedSteps: isStreaming ? viewModel.completedSteps : [],
                                     lastError: viewModel.lastError?.messageId == message.id
                                         ? viewModel.lastError : nil,
                                     isValidatingAction: viewModel.isValidatingAction,
+                                    hideAgentHeader: hideAgentHeader,
                                     onFragmentTap: { fragment in
                                         guard fragment.fileId != nil else { return }
                                         selectedFragment = fragment

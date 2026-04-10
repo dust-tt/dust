@@ -10,6 +10,7 @@ enum AgentMessageStatus: String, Codable {
     case succeeded
     case failed
     case cancelled
+    case gracefullyStopped = "gracefully_stopped"
 }
 
 struct UserMessage: Codable, Identifiable {
@@ -17,12 +18,16 @@ struct UserMessage: Codable, Identifiable {
     let sId: String
     let type: MessageType
     let created: Double
-    let visibility: String
+    var visibility: String
     let version: Int
     let rank: Int
     let content: String
     let context: UserMessageContext?
     let contentFragments: [ContentFragment]?
+
+    var isPending: Bool {
+        visibility == "pending"
+    }
 
     var createdDate: Date {
         created.dateFromEpochMs
@@ -108,6 +113,20 @@ struct AgentMessage: Codable, Identifiable {
 
     var isStreaming: Bool {
         status == .created
+    }
+}
+
+// MARK: - Activity timeline steps
+
+enum ActivityStep: Identifiable, Equatable {
+    case thinking(id: String, content: String)
+    case action(id: String, label: String, serverName: String?)
+
+    var id: String {
+        switch self {
+        case let .thinking(id, _): id
+        case let .action(id, _, _): id
+        }
     }
 }
 

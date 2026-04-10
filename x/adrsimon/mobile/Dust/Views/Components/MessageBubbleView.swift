@@ -8,8 +8,10 @@ struct MessageBubbleView: View {
     let currentUserEmail: String
     var streamingPhase: AgentStreamingPhase = .idle
     var activeActions: [ActiveAction] = []
+    var completedSteps: [ActivityStep] = []
     var lastError: ErrorInfo?
     var isValidatingAction: Bool = false
+    var hideAgentHeader: Bool = false
     var onFragmentTap: ((ContentFragment) -> Void)?
     var onGeneratedFileTap: ((GeneratedFile) -> Void)?
     var onCitationTap: ((CitationReference) -> Void)?
@@ -30,8 +32,10 @@ struct MessageBubbleView: View {
                 message: msg,
                 streamingPhase: streamingPhase,
                 activeActions: activeActions,
+                completedSteps: completedSteps,
                 lastError: lastError,
                 isValidatingAction: isValidatingAction,
+                hideHeader: hideAgentHeader,
                 onGeneratedFileTap: onGeneratedFileTap,
                 onCitationTap: onCitationTap,
                 onValidateAction: onValidateAction,
@@ -64,6 +68,7 @@ struct UserMessageBubble: View {
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
         .padding(.top, 12)
+        .opacity(message.isPending ? 0.5 : 1.0)
     }
 }
 
@@ -94,6 +99,7 @@ struct OtherUserMessageBubble: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 16)
+        .opacity(message.isPending ? 0.5 : 1.0)
     }
 }
 
@@ -101,8 +107,10 @@ struct AgentMessageBubble: View {
     let message: AgentMessage
     var streamingPhase: AgentStreamingPhase = .idle
     var activeActions: [ActiveAction] = []
+    var completedSteps: [ActivityStep] = []
     var lastError: ErrorInfo?
     var isValidatingAction: Bool = false
+    var hideHeader: Bool = false
     var onGeneratedFileTap: ((GeneratedFile) -> Void)?
     var onCitationTap: ((CitationReference) -> Void)?
     var onValidateAction: ((ActionApproval) -> Void)?
@@ -111,19 +119,23 @@ struct AgentMessageBubble: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Avatar(url: message.configuration.pictureUrl)
+            if !hideHeader {
+                HStack(spacing: 8) {
+                    Avatar(url: message.configuration.pictureUrl)
 
-                Text("@\(message.configuration.name)")
-                    .sparkleLabelXs()
-                    .foregroundStyle(Color.dustForeground)
+                    Text("@\(message.configuration.name)")
+                        .sparkleLabelXs()
+                        .foregroundStyle(Color.dustForeground)
+                }
             }
 
-            if message.isStreaming {
-                StreamingStatusView(
+            if message.isStreaming || !completedSteps.isEmpty {
+                ActivityTimelineView(
                     phase: streamingPhase,
+                    completedSteps: completedSteps,
                     activeActions: activeActions,
-                    chainOfThought: message.chainOfThought
+                    chainOfThought: message.chainOfThought,
+                    isStreaming: message.isStreaming
                 )
             }
 
@@ -421,50 +433,252 @@ private struct FlowLayout: Layout {
 
 // swiftlint:enable identifier_name
 
-// MARK: - Streaming Status (thinking / acting / generating)
+// MARK: - Activity Timeline
 
-struct StreamingStatusView: View {
+private let maxThinkingDisplayLength = 250
+
+struct ActivityTimelineView: View {
     let phase: AgentStreamingPhase
+    let completedSteps: [ActivityStep]
     let activeActions: [ActiveAction]
     let chainOfThought: String?
+    let isStreaming: Bool
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if let text = chainOfThought, !text.isEmpty {
-                Text(text)
-                    .sparkleCopyXs()
-                    .foregroundStyle(Color.dustFaint)
-                    .lineSpacing(3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            if !activeActions.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(activeActions) { action in
-                        ActionRow(action: action)
-                    }
-                }
-                .padding(.top, chainOfThought?.isEmpty == false ? 6 : 0)
-            } else if !isBlockingPhase {
-                HStack(spacing: 6) {
-                    PulsingDot()
-                        .frame(width: 14, height: 14)
-
-                    Text(phase == .generating ? "Writing…" : "Thinking…")
-                        .sparkleCopyXs()
-                        .foregroundStyle(Color.dustFaint)
-                        .lineLimit(1)
-                }
-                .padding(.top, chainOfThought?.isEmpty == false ? 6 : 0)
-            }
-        }
-        .padding(.vertical, 4)
-    }
+    @State private var isCollapsed = false
 
     private var isBlockingPhase: Bool {
         switch phase {
         case .personalAuthRequired, .fileAuthRequired, .approvalRequired: true
         default: false
+        }
+    }
+
+    private var isDone: Bool { !isStreaming }
+
+    private var hasContent: Bool {
+        !completedSteps.isEmpty
+            || (isStreaming && chainOfThought?.isEmpty == false)
+            || !activeActions.isEmpty
+    }
+
+    var body: some View {
+        if !hasContent, isStreaming, !isBlockingPhase {
+            // No steps yet, still streaming — show a simple spinner
+            TimelineRowView(icon: .spinner, isLast: true) {
+                Text(phase == .generating ? "Writing…" : "Thinking…")
+                    .sparkleCopyXs()
+                    .foregroundStyle(Color.dustFaint)
+            }
+            .padding(.vertical, 4)
+        } else if hasContent {
+            VStack(alignment: .leading, spacing: 0) {
+                // Collapsible header
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { isCollapsed.toggle() }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(isDone ? "Done" : "Thinking…")
+                            .sparkleCopyXs()
+                            .foregroundStyle(Color.dustFaint)
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 8, weight: .semibold))
+                            .foregroundStyle(Color.dustFaint)
+                            .rotationEffect(.degrees(isCollapsed ? 0 : 90))
+                    }
+                }
+                .buttonStyle(.plain)
+
+                // Collapsible body
+                if !isCollapsed {
+                    VStack(alignment: .leading, spacing: 8) {
+                        // Completed steps
+                        ForEach(Array(completedSteps.enumerated()), id: \.element.id) { index, step in
+                            let isLast = index == completedSteps.count - 1
+                                && !isStreaming
+
+                            switch step {
+                            case let .thinking(_, content):
+                                ThinkingStepView(
+                                    content: content,
+                                    isLast: isLast && activeActions.isEmpty,
+                                    isDone: isDone
+                                )
+
+                            case let .action(_, label, serverName):
+                                TimelineRowView(icon: .server(serverName), isLast: isLast && activeActions.isEmpty) {
+                                    Text(label)
+                                        .sparkleCopyXs()
+                                        .foregroundStyle(Color.dustFaint)
+                                        .lineLimit(1)
+                                }
+                            }
+                        }
+
+                        // Active thinking (streaming CoT not yet flushed)
+                        if isStreaming, let cot = chainOfThought, !cot.isEmpty {
+                            TimelineRowView(icon: .circle, isLast: activeActions.isEmpty && !isDone) {
+                                Text(cot)
+                                    .sparkleCopyXs()
+                                    .foregroundStyle(Color.dustFaint)
+                                    .lineSpacing(3)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+
+                        // Active actions (tools currently running)
+                        ForEach(activeActions) { action in
+                            TimelineRowView(icon: .spinner, isLast: false) {
+                                HStack(spacing: 6) {
+                                    if let serverIcon = action.serverName.flatMap(MCPServerIcon.icon(for:)) {
+                                        serverIcon.image
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(width: 14, height: 14)
+                                    }
+                                    Text(action.label)
+                                        .sparkleCopyXs()
+                                        .foregroundStyle(Color.dustFaint)
+                                        .lineLimit(1)
+                                }
+                            }
+                        }
+
+                        // Idle spinner (streaming but nothing specific active)
+                        if isStreaming, !isBlockingPhase,
+                           chainOfThought?.isEmpty != false, activeActions.isEmpty
+                        {
+                            TimelineRowView(icon: .spinner, isLast: false) {
+                                EmptyView()
+                            }
+                        }
+
+                        // Done marker
+                        if isDone, !completedSteps.isEmpty {
+                            TimelineRowView(icon: .check, isLast: true) {
+                                Text("Done")
+                                    .sparkleCopyXs()
+                                    .foregroundStyle(Color.dustFaint)
+                            }
+                        }
+                    }
+                    .padding(.top, 8)
+                    .transition(.opacity)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+}
+
+// MARK: - Timeline Row
+
+struct TimelineRowView<Content: View>: View {
+    enum Icon {
+        case circle
+        case spinner
+        case check
+        case server(String?)
+    }
+
+    let icon: Icon
+    let isLast: Bool
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            // Icon column with connecting line
+            VStack(spacing: 0) {
+                iconView
+                    .frame(width: 16, height: 16)
+
+                if !isLast {
+                    Rectangle()
+                        .fill(Color.dustBorder)
+                        .frame(width: 1)
+                        .frame(minHeight: 8)
+                }
+            }
+
+            // Content
+            content()
+                .frame(minHeight: 16, alignment: .leading)
+        }
+    }
+
+    @ViewBuilder
+    private var iconView: some View {
+        switch icon {
+        case .circle:
+            Circle()
+                .strokeBorder(Color.dustBorder, lineWidth: 1.5)
+                .frame(width: 8, height: 8)
+
+        case .spinner:
+            ProgressView()
+                .scaleEffect(0.6)
+
+        case .check:
+            Image(systemName: "checkmark")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(Color.dustFaint)
+
+        case let .server(name):
+            if let serverIcon = name.flatMap(MCPServerIcon.icon(for:)) {
+                serverIcon.image
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 14, height: 14)
+            } else {
+                Image(systemName: "wrench")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Color.dustFaint)
+            }
+        }
+    }
+}
+
+// MARK: - Thinking Step (truncatable)
+
+struct ThinkingStepView: View {
+    let content: String
+    let isLast: Bool
+    let isDone: Bool
+
+    @State private var isExpanded = false
+
+    private var needsTruncation: Bool {
+        isDone && content.count > maxThinkingDisplayLength
+    }
+
+    private var displayContent: String {
+        if needsTruncation, !isExpanded {
+            return String(content.prefix(maxThinkingDisplayLength)) + "…"
+        }
+        return content
+    }
+
+    var body: some View {
+        TimelineRowView(icon: .circle, isLast: isLast) {
+            HStack(spacing: 4) {
+                Text(displayContent)
+                    .sparkleCopyXs()
+                    .foregroundStyle(Color.dustFaint)
+                    .lineSpacing(3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                if needsTruncation {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 8, weight: .semibold))
+                        .foregroundStyle(Color.dustFaint.opacity(0.5))
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                guard needsTruncation else { return }
+                withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
+            }
         }
     }
 }
@@ -692,35 +906,6 @@ struct ErrorCardView: View {
         }
         .padding(12)
         .liquidGlassRoundedRect()
-    }
-}
-
-// MARK: - Action Row
-
-struct ActionRow: View {
-    let action: ActiveAction
-
-    var body: some View {
-        HStack(spacing: 6) {
-            icon
-                .frame(width: 14, height: 14)
-
-            Text(action.label)
-                .sparkleCopyXs()
-                .foregroundStyle(Color.dustFaint)
-                .lineLimit(1)
-        }
-    }
-
-    @ViewBuilder
-    private var icon: some View {
-        if let serverIcon = action.serverName.flatMap(MCPServerIcon.icon(for:)) {
-            serverIcon.image
-                .resizable()
-                .scaledToFit()
-        } else {
-            PulsingDot()
-        }
     }
 }
 
