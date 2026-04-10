@@ -1865,7 +1865,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     // runIds is ordered chronologically (appended step by step in the agent loop), so the last
     // element is the most recent run.
-    const lastRunId = message.agentMessage.runIds[message.agentMessage.runIds.length - 1];
+    const lastRunId =
+      message.agentMessage.runIds[message.agentMessage.runIds.length - 1];
 
     return RunResource.fetchByDustRunId(auth, { dustRunId: lastRunId });
   }
