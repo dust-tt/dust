@@ -178,6 +178,10 @@ jobs:
             --release-version=${{ github.sha }} \
             --service=${{ inputs.app }}-spa-browser
 
+      - name: Remove sourcemaps
+        working-directory: front-spa
+        run: find dist -name "*.map" -delete
+
       - name: Upload version
         id: upload_version
         uses: cloudflare/wrangler-action@v3
