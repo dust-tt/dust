@@ -42,7 +42,7 @@ interface ConversationSignals {
 
 interface ScoredConversation {
   conversationModelId: ModelId;
-  conversationSId: string;
+  conversationId: string;
   skillIds: string[];
   score: number;
 }
@@ -135,12 +135,12 @@ async function discoverConversations(
   }
 ): Promise<{
   conversationSkillMap: Map<ModelId, Set<string>>;
-  convIdToSId: Map<ModelId, string>;
+  convModelIdToId: Map<ModelId, string>;
 }> {
   const workspace = auth.getNonNullableWorkspace();
 
   if (eligibleSkillIds.size === 0) {
-    return { conversationSkillMap: new Map(), convIdToSId: new Map() };
+    return { conversationSkillMap: new Map(), convModelIdToId: new Map() };
   }
 
   // Query AgentMessageSkillModel for eligible custom skills.
@@ -153,7 +153,7 @@ async function discoverConversations(
   });
 
   if (skillRecords.length === 0) {
-    return { conversationSkillMap: new Map(), convIdToSId: new Map() };
+    return { conversationSkillMap: new Map(), convModelIdToId: new Map() };
   }
 
   // Post-filter: discard records where the skill was invoked by a custom agent.
@@ -167,7 +167,7 @@ async function discoverConversations(
       { workspaceId: workspace.sId },
       "ReinforcedSkills: all skill records were from custom agents, none eligible"
     );
-    return { conversationSkillMap: new Map(), convIdToSId: new Map() };
+    return { conversationSkillMap: new Map(), convModelIdToId: new Map() };
   }
 
   // Get unique conversation IDs and fetch qualifying conversations.
@@ -183,16 +183,16 @@ async function discoverConversations(
     },
   });
 
-  const convIdToSId = new Map<ModelId, string>(
+  const convModelIdToId = new Map<ModelId, string>(
     conversations.map((c) => [c.id, c.sId])
   );
 
-  // Build conversationId -> Set<skillSId> map.
+  // Build conversationId -> Set<skillId> map.
   const conversationSkillMap = new Map<ModelId, Set<string>>();
 
   for (const record of filteredRecords) {
-    const convSId = convIdToSId.get(record.conversationId);
-    if (!convSId) {
+    const convId = convModelIdToId.get(record.conversationId);
+    if (!convId) {
       continue;
     }
 
@@ -227,7 +227,7 @@ async function discoverConversations(
     "ReinforcedSkills: conversation discovery"
   );
 
-  return { conversationSkillMap, convIdToSId };
+  return { conversationSkillMap, convModelIdToId: convModelIdToId };
 }
 
 /**
@@ -341,7 +341,7 @@ async function fetchConversationSignals(
  */
 function scoreAndSelectConversations(
   conversationSkillMap: Map<ModelId, Set<string>>,
-  convIdToSId: Map<ModelId, string>,
+  convModelIdToId: Map<ModelId, string>,
   signals: ConversationSignals,
   maxConversations: number
 ): ConversationWithSkills[] {
@@ -399,7 +399,7 @@ function scoreAndSelectConversations(
 
     return {
       conversationModelId: c.conversationModelId,
-      conversationSId: convIdToSId.get(c.conversationModelId)!,
+      conversationId: convModelIdToId.get(c.conversationModelId)!,
       skillIds: c.skillIds,
       score,
     };
@@ -429,7 +429,7 @@ function scoreAndSelectConversations(
 
     // Include this conversation for the skills that still have room.
     results.push({
-      conversationId: conv.conversationSId,
+      conversationId: conv.conversationId,
       skillIds: eligibleSkillIds,
     });
 
@@ -480,9 +480,13 @@ export async function findConversationsWithSkills(
   }
 
   // Stage 2: Discover conversations.
-  const { conversationSkillMap, convIdToSId } = await discoverConversations(
+  const { conversationSkillMap, convModelIdToId } = await discoverConversations(
     auth,
-    { eligibleSkillIds, cutoffDate, skillId }
+    {
+      eligibleSkillIds,
+      cutoffDate,
+      skillId,
+    }
   );
   if (conversationSkillMap.size === 0) {
     logger.info(
@@ -499,7 +503,7 @@ export async function findConversationsWithSkills(
   // Stage 4: Score and select.
   const results = scoreAndSelectConversations(
     conversationSkillMap,
-    convIdToSId,
+    convModelIdToId,
     signals,
     maxConversations
   );
