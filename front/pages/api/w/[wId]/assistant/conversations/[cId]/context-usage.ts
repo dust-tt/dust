@@ -5,12 +5,12 @@ import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetConversationContextUsageResponse = {
-  providerId: string;
-  modelId: string;
+  model: SupportedModel;
   promptTokens: number;
   contextSize: number;
 };
@@ -90,17 +90,18 @@ async function handler(
         });
       }
 
-      // Take the max promptTokens across usages of the last run — in a
-      // multi-step agent loop, each step sees all previous steps' outputs, so
-      // the last step's promptTokens is the full context size as seen by the
-      // model.
+      // Take the max promptTokens across usages of the last run — in a multi-step agent loop, each
+      // step sees all previous steps' outputs, so the last step's promptTokens is the full context
+      // size as seen by the model.
       const lastUsage = usages[usages.length - 1];
       const promptTokens = Math.max(...usages.map((u) => u.promptTokens));
       const modelConfig = getModelConfigByModelId(lastUsage.modelId);
 
       return res.status(200).json({
-        providerId: lastUsage.providerId,
-        modelId: lastUsage.modelId,
+        model: {
+          providerId: lastUsage.providerId,
+          modelId: lastUsage.modelId,
+        },
         promptTokens,
         contextSize: modelConfig?.contextSize ?? 0,
       });
