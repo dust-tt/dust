@@ -308,7 +308,7 @@ export async function destroyConversation(
     where: { workspaceId: owner.id, conversationId: conversation.id },
   });
   await ProjectTodoSourceModel.destroy({
-    where: { workspaceId: owner.id, sourceConversationId: conversation.id },
+    where: { workspaceId: owner.id, sourceId: conversation.sId },
   });
 
   await SandboxResource.deleteByConversationId(auth, conversation.sId);
