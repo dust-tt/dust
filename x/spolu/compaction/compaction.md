@@ -70,7 +70,7 @@ type CompactionMessageType = {
 
   // Compaction payload.
   status: CompactionMessageStatus;  // Lifecycle: created → succeeded | failed.
-  summary: string | null;           // null while status is "created".
+  content: string | null;           // null while status is "created".
 };
 ```
 
@@ -83,9 +83,9 @@ MessageType = AgentMessageType | UserMessageType | ContentFragmentType | Compact
 
 ### Status Lifecycle
 
-- `"created"` — compaction is in progress (LLM is generating the summary). The `summary` field
+- `"created"` — compaction is in progress (LLM is generating the summary). The `content` field
   is `null`. The UI shows a loading indicator. `postUserMessage` is blocked.
-- `"succeeded"` — summary generation completed. `summary` is populated. The compaction message
+- `"succeeded"` — summary generation completed. `content` is populated. The compaction message
   acts as a history boundary for model rendering.
 - `"failed"` — summary generation failed. The compaction message is inert (not a history
   boundary). The conversation continues normally with full history.
@@ -100,7 +100,7 @@ the async work completes.
 
 export class CompactionMessageModel extends WorkspaceAwareModel<CompactionMessageModel> {
   declare status: CompactionMessageStatus;
-  declare summary: string | null;
+  declare content: string | null;
 }
 ```
 
@@ -115,7 +115,7 @@ Message (sId, rank, version, branchId, visibility)
   ├─ 0:1 ── UserMessage
   ├─ 0:1 ── AgentMessage
   ├─ 0:1 ── ContentFragment
-  └─ 0:1 ── CompactionMessage (status, summary)
+  └─ 0:1 ── CompactionMessage (status, content)
 ```
 
 ### Rendering for the Model
@@ -246,13 +246,13 @@ export async function compactConversation(
 **Flow:**
 
 1. Acquire the conversation advisory lock (`getConversationRankVersionLock`).
-2. Create a `CompactionMessage` with `status: "created"` and `summary: null`. This immediately
+2. Create a `CompactionMessage` with `status: "created"` and `content: null`. This immediately
    signals to the rest of the system that compaction is in progress.
 3. Launch a Temporal workflow (`compactConversationWorkflow`) that:
    a. Reads all messages before the compaction message (or since the last succeeded compaction).
    b. Renders them into a compaction prompt.
    c. Calls an LLM to generate the summary.
-   d. Updates the `CompactionMessage` with `status: "succeeded"` and the generated `summary`.
+   d. Updates the `CompactionMessage` with `status: "succeeded"` and the generated `content`.
    e. On failure, updates to `status: "failed"`.
 4. Publish a `CompactionMessageNewEvent` on the conversation SSE channel (mirrors
    `AgentMessageNewEvent` pattern).
@@ -362,7 +362,7 @@ arriving _after_ the context window has been exceeded.
 | # | Work | Notes |
 |---|------|-------|
 | 1 | Add `CompactionMessageType` to `front/types/assistant/conversation.ts` | New type in `MessageType` union, type guard `isCompactionMessageType()` |
-| 2 | Add `CompactionMessageModel` in `front/lib/models/agent/conversation.ts` | New Sequelize model with `status`, `summary` |
+| 2 | Add `CompactionMessageModel` in `front/lib/models/agent/conversation.ts` | New Sequelize model with `status`, `content` |
 | 3 | Migration: add `compaction_message` table + `compactionMessageId` FK on `message` table | Update CHECK constraint on MessageModel validation hook |
 | 4 | Handle `"compaction_message"` in all exhaustive switches on `MessageType` | Audit all switch/if-else on message type discrimination |
 
@@ -373,7 +373,7 @@ arriving _after_ the context window has been exceeded.
 | 5 | Add `compactConversation` in `conversation.ts` | Advisory lock, create `CompactionMessage` with `status: "created"`, launch Temporal workflow |
 | 6 | Block `postUserMessage` when a `CompactionMessage` with `status: "created"` exists | Return 409, following steering pattern |
 | 7 | Add `CompactionMessageNewEvent` / `CompactionMessageDoneEvent` SSE events | Mirrors `AgentMessageNewEvent` / `AgentMessageDoneEvent` pattern |
-| 8 | Implement `compactConversationWorkflow` Temporal workflow | Read messages, call LLM, update `CompactionMessage` with summary + `status: "succeeded"` |
+| 8 | Implement `compactConversationWorkflow` Temporal workflow | Read messages, call LLM, update `CompactionMessage` with content + `status: "succeeded"` |
 | 9 | Implement compaction summary generation prompt | LLM call with compaction prompt (adapt from Claude Code's approach) |
 
 ### Phase 3: Rendering, API & Pruning

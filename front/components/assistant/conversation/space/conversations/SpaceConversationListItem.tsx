@@ -1,7 +1,10 @@
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { LightConversationType } from "@app/types/assistant/conversation";
-import { isUserMessageTypeWithContentFragments } from "@app/types/assistant/conversation";
+import {
+  isCompactionMessageType,
+  isUserMessageTypeWithContentFragments,
+} from "@app/types/assistant/conversation";
 import { stripMarkdown } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import type { Avatar } from "@dust-tt/sparkle";
@@ -23,7 +26,10 @@ function isVisibleMessage(
 ): boolean {
   return (
     m.visibility !== "deleted" &&
-    !(isUserMessageTypeWithContentFragments(m) && isHiddenMessage(m))
+    !(isUserMessageTypeWithContentFragments(m) && isHiddenMessage(m)) &&
+    // Compaction messages are not "visible" in the sense of how it is used here (can never be the
+    // first message of a conversation).
+    !isCompactionMessageType(m)
   );
 }
 
@@ -34,6 +40,9 @@ export function SpaceConversationListItem({
   const router = useAppRouter();
 
   const validMessages = conversation.content.filter((message) => {
+    if (isCompactionMessageType(message)) {
+      return false;
+    }
     return (
       (isUserMessageTypeWithContentFragments(message) &&
         message.visibility === "visible" &&
@@ -58,6 +67,8 @@ export function SpaceConversationListItem({
           visual:
             message.user?.image ?? message.context?.profilePictureUrl ?? "",
         });
+      } else if (isCompactionMessageType(message)) {
+        // Nothing to do unless we want to show that the conversation was compacted.
       } else {
         avatars.push({
           isRounded: false,
@@ -75,7 +86,7 @@ export function SpaceConversationListItem({
     }).length;
   }, [validMessages, conversation.lastReadMs]);
 
-  if (!firstVisibleMessage) {
+  if (!firstVisibleMessage || isCompactionMessageType(firstVisibleMessage)) {
     return null;
   }
 

@@ -50,6 +50,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import {
   isAgentMessageType,
+  isCompactionMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import { isAgentMention } from "@app/types/assistant/mentions";
@@ -1562,6 +1563,9 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
         continue;
       }
       const lastVersion = messageVersions[messageVersions.length - 1];
+      if (isCompactionMessageType(lastVersion)) {
+        continue;
+      }
       flatMessages.push(lastVersion);
     }
 
