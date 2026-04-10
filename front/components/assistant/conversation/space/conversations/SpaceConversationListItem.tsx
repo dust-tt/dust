@@ -6,7 +6,7 @@ import {
   isLightAgentMessageType,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { stripMarkdown } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import type { Avatar } from "@dust-tt/sparkle";
@@ -77,7 +77,7 @@ export function SpaceConversationListItem({
           visual: message.configuration.pictureUrl ?? "",
         });
       } else {
-        assertNever(message);
+        assertNeverAndIgnore(message);
       }
     }
     return uniqBy(avatars.reverse(), "visual");
@@ -119,7 +119,7 @@ export function SpaceConversationListItem({
     creatorName = `@${firstVisibleMessage.configuration.name}`;
     creatorVisual = firstVisibleMessage.configuration.pictureUrl || undefined;
   } else {
-    assertNever(firstVisibleMessage);
+    assertNeverAndIgnore(firstVisibleMessage);
   }
 
   return (
