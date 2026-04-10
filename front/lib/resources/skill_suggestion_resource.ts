@@ -239,6 +239,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       sources?: SkillSuggestionSource[];
       kind?: SkillSuggestionKind;
       limit?: number;
+      createdAfter?: Date;
     }
   ): Promise<SkillSuggestionResource[]> {
     const sourceFilter =
@@ -251,6 +252,9 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
         filters.states.length > 0 && { state: filters.states }),
       ...sourceFilter,
       ...(filters?.kind && { kind: filters.kind }),
+      ...(filters?.createdAfter && {
+        createdAt: { [Op.gte]: filters.createdAfter },
+      }),
     };
 
     return this.baseFetch(auth, {

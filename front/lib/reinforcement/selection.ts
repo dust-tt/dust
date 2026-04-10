@@ -1,92 +1,172 @@
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { AgentMessageSkillModel } from "@app/lib/models/skill/conversation_skill";
+import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
+import { daysAgo } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Op } from "sequelize";
+
+import {
+  DEFAULT_MAX_CONVERSATIONS_PER_RUN,
+  PENDING_SUGGESTION_MAX_AGE_DAYS,
+  PER_SKILL_CONVERSATION_CAP,
+  SKILL_STALENESS_THRESHOLD_DAYS,
+  WEIGHT_FEEDBACK,
+  WEIGHT_TOOL_ERRORS,
+  WEIGHT_USER_ENGAGEMENT,
+} from "./constants";
 
 export interface ConversationWithSkills {
   conversationId: string;
   skillIds: string[];
 }
 
+// Minimum user messages required for a conversation to be eligible
+// (when it has no feedback).
+const MIN_USER_MESSAGES = 2;
+
+interface ConversationSignals {
+  userMessageCount: Map<ModelId, number>;
+  feedbackCount: Map<ModelId, number>;
+  toolErrorCount: Map<ModelId, number>;
+}
+
+interface ScoredConversation {
+  conversationModelId: ModelId;
+  conversationId: string;
+  skillIds: string[];
+  score: number;
+}
+
 /**
- * Discover recent conversations that used custom skills.
+ * Stage 1: Determine which custom skills are eligible for reinforcement.
  *
- * Queries AgentMessageSkillModel joined with ConversationModel to find
- * conversations in the workspace that used custom skills within the given
- * date range. Excludes test conversations and optionally filters by skill.
+ * A skill is excluded if:
+ * - It has not been modified in the last SKILL_STALENESS_THRESHOLD_DAYS days.
+ * - It has pending suggestions with source=reinforcement younger than
+ *   PENDING_SUGGESTION_MAX_AGE_DAYS days.
  */
-export async function findConversationsWithSkills(
+async function fetchEligibleSkillIds(
+  auth: Authenticator
+): Promise<Set<ModelId>> {
+  const workspace = auth.getNonNullableWorkspace();
+  const stalenessThreshold = daysAgo(SKILL_STALENESS_THRESHOLD_DAYS);
+  const pendingSuggestionCutoff = daysAgo(PENDING_SUGGESTION_MAX_AGE_DAYS);
+
+  // Parallel queries: recently modified active skills and pending reinforcement suggestions.
+  const [recentSkills, pendingSuggestions] = await Promise.all([
+    SkillResource.listByWorkspace(auth, {
+      status: "active",
+      updatedAfter: stalenessThreshold,
+    }),
+    SkillSuggestionResource.listByWorkspace(auth, {
+      states: ["pending"],
+      sources: ["reinforcement"],
+      createdAfter: pendingSuggestionCutoff,
+    }),
+  ]);
+
+  const skillsWithPendingSuggestions = new Set(
+    pendingSuggestions.map((s) => s.skillConfigurationId)
+  );
+
+  const eligibleIds = new Set<ModelId>();
+  for (const skill of recentSkills) {
+    if (!skillsWithPendingSuggestions.has(skill.id)) {
+      eligibleIds.add(skill.id);
+    }
+  }
+
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      recentSkillCount: recentSkills.length,
+      pendingSuggestionSkillCount: skillsWithPendingSuggestions.size,
+      eligibleSkillCount: eligibleIds.size,
+    },
+    "ReinforcedSkills: eligible skill determination"
+  );
+
+  return eligibleIds;
+}
+
+/**
+ * Stage 2: Discover conversations that used eligible custom skills,
+ * filtering out conversations where skills were invoked by custom agents.
+ */
+async function discoverConversations(
   auth: Authenticator,
   {
+    eligibleSkillIds,
     cutoffDate,
-    maxConversations,
     skillId,
   }: {
+    eligibleSkillIds: Set<ModelId>;
     cutoffDate: Date;
-    maxConversations: number;
     skillId?: string;
   }
-): Promise<ConversationWithSkills[]> {
+): Promise<{
+  conversationSkillMap: Map<ModelId, Set<string>>;
+  convModelIdToId: Map<ModelId, string>;
+}> {
   const workspace = auth.getNonNullableWorkspace();
 
-  // Step 1: Find all agent_message_skills records with custom skills.
+  if (eligibleSkillIds.size === 0) {
+    return { conversationSkillMap: new Map(), convModelIdToId: new Map() };
+  }
+
+  // Query AgentMessageSkillModel for eligible custom skills.
   const skillRecords = await AgentMessageSkillModel.findAll({
-    attributes: ["conversationId", "customSkillId"],
+    attributes: ["conversationId", "customSkillId", "agentConfigurationId"],
     where: {
       workspaceId: workspace.id,
-      customSkillId: { [Op.ne]: null },
+      customSkillId: { [Op.in]: [...eligibleSkillIds] },
     },
   });
 
   if (skillRecords.length === 0) {
-    logger.info(
-      {
-        workspaceId: workspace.sId,
-        cutoffDate: cutoffDate.toISOString(),
-      },
-      "ReinforcedSkills: no agent message skill records with custom skills found"
-    );
-    return [];
+    return { conversationSkillMap: new Map(), convModelIdToId: new Map() };
   }
 
-  // Step 2: Get the unique conversation IDs and fetch qualifying conversations.
-  const allConvIds: ModelId[] = [
-    ...new Set(skillRecords.map((r) => r.conversationId)),
-  ];
+  // Post-filter: discard records where the skill was invoked by a custom agent.
+  // A null agentConfigurationId means the skill was added to the conversation
+  // directly (not via an agent config), which is eligible.
+  const filteredRecords = skillRecords.filter(
+    (r) =>
+      r.agentConfigurationId === null || isGlobalAgentId(r.agentConfigurationId)
+  );
 
-  const conversations = await ConversationModel.findAll({
-    attributes: ["id", "sId"],
-    where: {
-      workspaceId: workspace.id,
-      id: { [Op.in]: allConvIds },
-      visibility: { [Op.ne]: "test" },
-      createdAt: { [Op.gte]: cutoffDate },
-    },
-  });
-
-  if (conversations.length === 0) {
+  if (filteredRecords.length === 0) {
     logger.info(
-      {
-        workspaceId: workspace.sId,
-        cutoffDate: cutoffDate.toISOString(),
-      },
-      "ReinforcedSkills: no qualifying conversations found"
+      { workspaceId: workspace.sId },
+      "ReinforcedSkills: all skill records were from custom agents, none eligible"
     );
-    return [];
+    return { conversationSkillMap: new Map(), convModelIdToId: new Map() };
   }
 
-  const convIdById = new Map<ModelId, string>(
+  // Get unique conversation IDs and fetch qualifying conversations.
+  const allConvIds = [...new Set(filteredRecords.map((r) => r.conversationId))];
+
+  const conversations = await ConversationResource.fetchByModelIds(
+    auth,
+    allConvIds,
+    { excludeTest: true, updatedAfter: cutoffDate }
+  );
+
+  const convModelIdToId = new Map<ModelId, string>(
     conversations.map((c) => [c.id, c.sId])
   );
 
-  // Step 3: Build a map of conversationId -> Set<skillId>.
-  const conversationSkillMap = new Map<string, Set<string>>();
+  // Build conversationId -> Set<skillId> map.
+  const conversationSkillMap = new Map<ModelId, Set<string>>();
 
-  for (const record of skillRecords) {
-    const convId = convIdById.get(record.conversationId);
+  for (const record of filteredRecords) {
+    const convId = convModelIdToId.get(record.conversationId);
     if (!convId) {
       continue;
     }
@@ -101,28 +181,253 @@ export async function findConversationsWithSkills(
       workspaceId: workspace.id,
     });
 
-    // If filtering by skillId, only include matching skills.
+    // If filtering by a specific skill, only include matching skills.
     if (skillId && localSkillId !== skillId) {
       continue;
     }
 
-    if (!conversationSkillMap.has(convId)) {
-      conversationSkillMap.set(convId, new Set());
+    if (!conversationSkillMap.has(record.conversationId)) {
+      conversationSkillMap.set(record.conversationId, new Set());
     }
-    conversationSkillMap.get(convId)!.add(localSkillId);
+    conversationSkillMap.get(record.conversationId)!.add(localSkillId);
   }
 
-  // Step 4: Convert to array and cap at maxConversations.
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      skillRecordsCount: skillRecords.length,
+      filteredRecordsCount: filteredRecords.length,
+      candidateConversationCount: conversationSkillMap.size,
+    },
+    "ReinforcedSkills: conversation discovery"
+  );
+
+  return { conversationSkillMap, convModelIdToId: convModelIdToId };
+}
+
+/**
+ * Stage 3: Batch-fetch scoring signals for candidate conversations.
+ *
+ * Runs three parallel queries for user message counts, feedback counts,
+ * and tool error counts.
+ */
+async function fetchConversationSignals(
+  auth: Authenticator,
+  conversationIds: ModelId[]
+): Promise<ConversationSignals> {
+  if (conversationIds.length === 0) {
+    return {
+      userMessageCount: new Map(),
+      feedbackCount: new Map(),
+      toolErrorCount: new Map(),
+    };
+  }
+
+  const [userMessageCount, feedbackCount, toolErrorCount] = await Promise.all([
+    ConversationResource.getUserMessageCountsByConversationIds(
+      auth,
+      conversationIds
+    ),
+    AgentMessageFeedbackResource.getFeedbackCountsByConversationIds(
+      auth,
+      conversationIds
+    ),
+    ConversationResource.getFailedAgentMessageCountsByConversationIds(
+      auth,
+      conversationIds
+    ),
+  ]);
+
+  return { userMessageCount, feedbackCount, toolErrorCount };
+}
+
+/**
+ * Stage 4: Score conversations and apply per-skill capping.
+ *
+ * Each conversation is scored based on feedback, tool errors, and user
+ * engagement. Conversations are then selected in score order, respecting
+ * per-skill caps.
+ */
+export function scoreAndSelectConversations(
+  conversationSkillMap: Map<ModelId, Set<string>>,
+  convModelIdToId: Map<ModelId, string>,
+  signals: ConversationSignals,
+  maxConversations: number
+): ConversationWithSkills[] {
+  // Filter conversations by eligibility: must have feedback OR >= MIN_USER_MESSAGES.
+  const eligible: {
+    conversationModelId: ModelId;
+    skillIds: string[];
+    feedback: number;
+    userMessages: number;
+    toolErrors: number;
+  }[] = [];
+
+  for (const [convModelId, skillIds] of conversationSkillMap) {
+    const feedback = signals.feedbackCount.get(convModelId) ?? 0;
+    const userMessages = signals.userMessageCount.get(convModelId) ?? 0;
+
+    if (feedback === 0 && userMessages < MIN_USER_MESSAGES) {
+      continue;
+    }
+
+    eligible.push({
+      conversationModelId: convModelId,
+      skillIds: [...skillIds],
+      feedback,
+      userMessages,
+      toolErrors: signals.toolErrorCount.get(convModelId) ?? 0,
+    });
+  }
+
+  if (eligible.length === 0) {
+    return [];
+  }
+
+  // Normalize signals by dividing by max across all eligible conversations.
+  const maxFeedback = Math.max(0, ...eligible.map((c) => c.feedback));
+  const maxToolErrors = Math.max(0, ...eligible.map((c) => c.toolErrors));
+  // For engagement, use messages beyond the minimum.
+  const maxEngagement = Math.max(
+    0,
+    ...eligible.map((c) => Math.max(0, c.userMessages - MIN_USER_MESSAGES))
+  );
+
+  const scored: ScoredConversation[] = eligible.map((c) => {
+    const normalizedFeedback = maxFeedback > 0 ? c.feedback / maxFeedback : 0;
+    const normalizedToolErrors =
+      maxToolErrors > 0 ? c.toolErrors / maxToolErrors : 0;
+    const engagement = Math.max(0, c.userMessages - MIN_USER_MESSAGES);
+    const normalizedEngagement =
+      maxEngagement > 0 ? engagement / maxEngagement : 0;
+
+    const score =
+      WEIGHT_FEEDBACK * normalizedFeedback +
+      WEIGHT_TOOL_ERRORS * normalizedToolErrors +
+      WEIGHT_USER_ENGAGEMENT * normalizedEngagement;
+
+    return {
+      conversationModelId: c.conversationModelId,
+      conversationId: convModelIdToId.get(c.conversationModelId)!,
+      skillIds: c.skillIds,
+      score,
+    };
+  });
+
+  // Sort by score descending.
+  scored.sort((a, b) => b.score - a.score);
+
+  // Score-then-cap pass: walk sorted list, enforce per-skill caps.
+  const skillConversationCount = new Map<string, number>();
   const results: ConversationWithSkills[] = [];
-  for (const [conversationId, skillIds] of conversationSkillMap) {
+
+  for (const conv of scored) {
     if (results.length >= maxConversations) {
       break;
     }
-    results.push({
-      conversationId,
-      skillIds: [...skillIds],
+
+    // Determine which skills still have room under the per-skill cap.
+    const eligibleSkillIds = conv.skillIds.filter((sid) => {
+      const count = skillConversationCount.get(sid) ?? 0;
+      return count < PER_SKILL_CONVERSATION_CAP;
     });
+
+    if (eligibleSkillIds.length === 0) {
+      continue;
+    }
+
+    // Include this conversation for the skills that still have room.
+    results.push({
+      conversationId: conv.conversationId,
+      skillIds: eligibleSkillIds,
+    });
+
+    // Increment counters for the selected skills.
+    for (const sid of eligibleSkillIds) {
+      skillConversationCount.set(
+        sid,
+        (skillConversationCount.get(sid) ?? 0) + 1
+      );
+    }
   }
+
+  return results;
+}
+
+/**
+ * Discover and select recent conversations that used custom skills,
+ * applying a scoring-based selection pipeline.
+ *
+ * Pipeline stages:
+ * 1. Determine eligible skills (not stale, no pending suggestions).
+ * 2. Discover conversations using those skills (global agents only).
+ * 3. Batch-fetch scoring signals (feedback, user messages, tool errors).
+ * 4. Filter, score, and cap conversations per skill.
+ */
+export async function findConversationsWithSkills(
+  auth: Authenticator,
+  {
+    cutoffDate,
+    maxConversations = DEFAULT_MAX_CONVERSATIONS_PER_RUN,
+    skillId,
+  }: {
+    cutoffDate: Date;
+    maxConversations?: number;
+    skillId?: string;
+  }
+): Promise<ConversationWithSkills[]> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  // Stage 1: Eligible skills.
+  const eligibleSkillIds = await fetchEligibleSkillIds(auth);
+  if (eligibleSkillIds.size === 0) {
+    logger.info(
+      { workspaceId: workspace.sId },
+      "ReinforcedSkills: no eligible skills found, skipping"
+    );
+    return [];
+  }
+
+  // Stage 2: Discover conversations.
+  const { conversationSkillMap, convModelIdToId } = await discoverConversations(
+    auth,
+    {
+      eligibleSkillIds,
+      cutoffDate,
+      skillId,
+    }
+  );
+  if (conversationSkillMap.size === 0) {
+    logger.info(
+      { workspaceId: workspace.sId },
+      "ReinforcedSkills: no qualifying conversations found"
+    );
+    return [];
+  }
+
+  // Stage 3: Fetch signals.
+  const candidateConversationIds = [...conversationSkillMap.keys()];
+  const signals = await fetchConversationSignals(
+    auth,
+    candidateConversationIds
+  );
+
+  // Stage 4: Score and select.
+  const results = scoreAndSelectConversations(
+    conversationSkillMap,
+    convModelIdToId,
+    signals,
+    maxConversations
+  );
+
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      candidateConversations: conversationSkillMap.size,
+      selectedConversations: results.length,
+    },
+    "ReinforcedSkills: conversation selection complete"
+  );
 
   return results;
 }

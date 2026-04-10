@@ -1001,16 +1001,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       globalSpaceOnly,
       onlyCustom,
       isDefault,
+      updatedAfter,
     }: {
       status?: SkillStatus | SkillStatus[];
       limit?: number;
       globalSpaceOnly?: boolean;
       onlyCustom?: boolean;
       isDefault?: boolean;
+      updatedAfter?: Date;
     } = {}
   ): Promise<SkillResource[]> {
     const skills = await this.baseFetch(auth, {
-      where: { status, ...(isDefault !== undefined ? { isDefault } : {}) },
+      where: {
+        status,
+        ...(isDefault !== undefined ? { isDefault } : {}),
+        ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
+      },
       ...(limit ? { limit } : {}),
       onlyCustom,
     });

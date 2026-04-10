@@ -1,5 +1,14 @@
 import { format, isToday, isTomorrow, isYesterday } from "date-fns";
 
+/**
+ * Returns a Date that is `days` days before the given reference date (defaults to now).
+ */
+export function daysAgo(days: number, from: Date = new Date()): Date {
+  const result = new Date(from);
+  result.setDate(result.getDate() - days);
+  return result;
+}
+
 export const cleanTimestamp = (
   timestamp: number | string | null | undefined
 ) => {

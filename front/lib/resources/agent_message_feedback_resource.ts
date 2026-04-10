@@ -354,6 +354,41 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     }[];
   }
 
+  /**
+   * Returns feedback counts grouped by conversationId for the given
+   * conversation model IDs.
+   */
+  static async getFeedbackCountsByConversationIds(
+    auth: Authenticator,
+    conversationIds: ModelId[]
+  ): Promise<Map<ModelId, number>> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const rows = await this.model.findAll({
+      attributes: [
+        "conversationId",
+        [
+          AgentMessageFeedbackModel.sequelize!.fn(
+            "COUNT",
+            AgentMessageFeedbackModel.sequelize!.col("id")
+          ),
+          "count",
+        ],
+      ],
+      where: {
+        workspaceId: workspace.id,
+        conversationId: { [Op.in]: conversationIds },
+      },
+      group: ["conversationId"],
+    });
+
+    const result = new Map<ModelId, number>();
+    for (const row of rows) {
+      result.set(row.conversationId, parseInt(row.get("count") as string, 10));
+    }
+    return result;
+  }
+
   static async getConversationFeedbacksForUser(
     auth: Authenticator,
     conversation: ConversationWithoutContentType
