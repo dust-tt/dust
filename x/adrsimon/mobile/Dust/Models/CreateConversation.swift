@@ -35,16 +35,20 @@ struct MentionPayload: Encodable {
 struct MessageContext: Encodable {
     let timezone: String
     let profilePictureUrl: String?
+    var selectedMCPServerViewIds: [String]?
+    var selectedSkillIds: [String]?
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(timezone, forKey: .timezone)
         // Explicitly encode nil as JSON null
         try container.encode(profilePictureUrl, forKey: .profilePictureUrl)
+        try container.encodeIfPresent(selectedMCPServerViewIds, forKey: .selectedMCPServerViewIds)
+        try container.encodeIfPresent(selectedSkillIds, forKey: .selectedSkillIds)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case timezone, profilePictureUrl
+        case timezone, profilePictureUrl, selectedMCPServerViewIds, selectedSkillIds
     }
 }
 
@@ -66,20 +70,34 @@ struct PostMessageResponse: Decodable {
 
 struct ContentFragmentPayload: Encodable {
     let title: String
-    let fileId: String
+    let fileId: String?
+    let nodeId: String?
+    let nodeDataSourceViewId: String?
     let url: String? = nil
     let context: ContentFragmentContext
+
+    /// Creates a file-based content fragment.
+    static func file(title: String, fileId: String, context: ContentFragmentContext) -> ContentFragmentPayload {
+        ContentFragmentPayload(title: title, fileId: fileId, nodeId: nil, nodeDataSourceViewId: nil, context: context)
+    }
+
+    /// Creates a knowledge node content fragment.
+    static func node(title: String, nodeId: String, nodeDataSourceViewId: String, context: ContentFragmentContext) -> ContentFragmentPayload {
+        ContentFragmentPayload(title: title, fileId: nil, nodeId: nodeId, nodeDataSourceViewId: nodeDataSourceViewId, context: context)
+    }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(title, forKey: .title)
-        try container.encode(fileId, forKey: .fileId)
-        try container.encode(url, forKey: .url)
+        try container.encodeIfPresent(fileId, forKey: .fileId)
+        try container.encodeIfPresent(nodeId, forKey: .nodeId)
+        try container.encodeIfPresent(nodeDataSourceViewId, forKey: .nodeDataSourceViewId)
+        try container.encodeIfPresent(url, forKey: .url)
         try container.encode(context, forKey: .context)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case title, fileId, url, context
+        case title, fileId, nodeId, nodeDataSourceViewId, url, context
     }
 }
 
