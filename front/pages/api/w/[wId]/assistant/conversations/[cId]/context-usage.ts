@@ -47,8 +47,7 @@ async function handler(
         });
       }
 
-      const run =
-        await conversation.getLatestCompletedAgentMessageRun(auth);
+      const run = await conversation.getLatestCompletedAgentMessageRun(auth);
       if (!run) {
         return apiError(req, res, {
           status_code: 404,
