@@ -4,7 +4,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import Metronome, { ConflictError } from "@metronome/sdk";
-
+import type { ContractV2 } from "@metronome/sdk/resources";
 import type {
   MetronomeBalance,
   MetronomeEvent,
@@ -365,12 +365,14 @@ export async function getMetronomeContractPackageAliases({
   metronomeContractId: string;
 }): Promise<Result<string[], Error>> {
   try {
-    const contractResponse = await getMetronomeClient().v1.contracts.retrieve({
+    const contractResponse = await getMetronomeClient().v2.contracts.retrieve({
       customer_id: metronomeCustomerId,
       contract_id: metronomeContractId,
     });
 
-    const packageId = contractResponse.data.package_id;
+    const packageId = (
+      contractResponse.data as ContractV2 & { package_id: string } // package_id is missing in ContractV2 but is actually returned
+    ).package_id;
     if (!packageId) {
       return new Ok([]);
     }

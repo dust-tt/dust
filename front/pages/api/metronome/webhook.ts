@@ -1,6 +1,18 @@
 /** @ignoreswagger */
 import apiConfig from "@app/lib/api/config";
-import { getMetronomeClient } from "@app/lib/metronome/client";
+import { calculateFreeCreditAmountMicroUsd } from "@app/lib/credits/free";
+import {
+  createMetronomeCredit,
+  getMetronomeActiveContract,
+  getMetronomeClient,
+  getMetronomeContractPackageAliases,
+} from "@app/lib/metronome/client";
+import {
+  getCreditTypeProgrammaticUsdId,
+  getProductFreeMonthlyCreditId,
+} from "@app/lib/metronome/constants";
+import { PRO_OR_BUSINESS_PACKAGE_ALIASES } from "@app/lib/metronome/types";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -19,11 +31,96 @@ type ResponseBody = {
   message?: string;
 };
 
+const CommitSegmentStartEventSchema = z.object({
+  type: z.literal("commit.segment.start"),
+  customer_id: z.string(),
+  contract_id: z.string(),
+  commit_id: z.string(),
+  segment_id: z.string(),
+});
+
 const ContractEndEventSchema = z.object({
   type: z.literal("contract.end"),
   contract_id: z.string(),
   customer_id: z.string(),
 });
+
+/**
+ * Grant monthly free programmatic credits to a Metronome-billed workspace.
+ * Uses the same bracket formula as the Stripe credit system.
+ * Idempotent via uniqueness_key: free-legacy-{workspaceSId}-{YYYY-MM}.
+ */
+async function grantMetronomeFreeCredits({
+  workspace,
+  startDate,
+  endDate,
+}: {
+  workspace: WorkspaceResource;
+  startDate: Date;
+  endDate: Date;
+}): Promise<void> {
+  if (!workspace.metronomeCustomerId) {
+    return;
+  }
+
+  try {
+    // Resolve the active contract.
+    const contractResult = await getMetronomeActiveContract(
+      workspace.metronomeCustomerId
+    );
+    if (contractResult.isErr() || !contractResult.value) {
+      logger.error(
+        { workspaceId: workspace.sId },
+        "[Metronome Webhook] No active Metronome contract found for free credit grant"
+      );
+      return;
+    }
+
+    const productId = getProductFreeMonthlyCreditId();
+
+    // Count active members and compute bracket amount.
+    const memberCount = await MembershipResource.countActiveSeatsInWorkspace(
+      workspace.sId
+    );
+    const amountMicroUsd = calculateFreeCreditAmountMicroUsd(memberCount);
+    if (amountMicroUsd <= 0) {
+      return;
+    }
+
+    // Convert micro-USD to cents (Metronome credits are in cents).
+    const amount = Math.ceil(amountMicroUsd / 10_000_000);
+
+    const monthKey = `${startDate.getUTCFullYear()}-${String(startDate.getUTCMonth() + 1).padStart(2, "0")}`;
+
+    const result = await createMetronomeCredit({
+      metronomeCustomerId: workspace.metronomeCustomerId,
+      productId,
+      creditTypeId: getCreditTypeProgrammaticUsdId(),
+      amount,
+      startingAt: startDate.toISOString(),
+      endingBefore: endDate.toISOString(),
+      name: `Free Monthly Credits (${memberCount} users, ${monthKey})`,
+      idempotencyKey: `free-legacy-${workspace.sId}-${monthKey}`,
+    });
+
+    if (result.isOk()) {
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          memberCount,
+          amount,
+          monthKey,
+        },
+        "[Metronome Webhook] Metronome free credits granted"
+      );
+    }
+  } catch (err) {
+    logger.error(
+      { workspaceId: workspace.sId, error: normalizeError(err) },
+      "[Metronome Webhook] Failed to grant Metronome free credits"
+    );
+  }
+}
 
 // Disable Next.js body parsing so we can read the raw body for signature verification.
 export const config = {
@@ -106,12 +203,104 @@ async function handler(
           logger.info({ event }, "[Metronome Webhook] Approaching spend limit");
           break;
 
-        case "commit.segment.start":
+        case "commit.segment.start": {
           logger.info(
             { event },
             "[Metronome Webhook] New commit segment started (credits available)"
           );
+
+          const segmentParsed = CommitSegmentStartEventSchema.safeParse(event);
+          if (!segmentParsed.success) {
+            logger.error(
+              { event, error: segmentParsed.error.message },
+              "[Metronome Webhook] Invalid commit.segment.start event"
+            );
+            break;
+          }
+
+          const {
+            customer_id: segmentCustomerId,
+            commit_id: commitId,
+            segment_id: segmentId,
+          } = segmentParsed.data;
+
+          const segmentWorkspace =
+            await WorkspaceResource.fetchByMetronomeCustomerId(
+              segmentCustomerId
+            );
+          if (!segmentWorkspace) {
+            logger.warn(
+              { customerId: segmentCustomerId },
+              "[Metronome Webhook] commit.segment.start: workspace not found"
+            );
+            break;
+          }
+
+          const subscription =
+            await SubscriptionResource.fetchActiveByWorkspaceModelId(
+              segmentWorkspace.id
+            );
+          if (!subscription?.metronomeContractId) {
+            break;
+          }
+
+          // Only grant free credits for legacy contracts.
+          const aliasesResult = await getMetronomeContractPackageAliases({
+            metronomeCustomerId: segmentCustomerId,
+            metronomeContractId: subscription.metronomeContractId,
+          });
+          if (aliasesResult.isErr()) {
+            logger.error(
+              {
+                workspaceId: segmentWorkspace.sId,
+                error: aliasesResult.error,
+              },
+              "[Metronome Webhook] commit.segment.start: failed to get package aliases"
+            );
+            break;
+          }
+          const isLegacy = aliasesResult.value.some((alias) =>
+            PRO_OR_BUSINESS_PACKAGE_ALIASES.has(alias)
+          );
+          if (!isLegacy) {
+            break;
+          }
+
+          // Retrieve the commit's access schedule to find the segment's billing period.
+          const commits = await getMetronomeClient().v1.customers.commits.list({
+            customer_id: segmentCustomerId,
+            commit_id: commitId,
+            include_contract_commits: true,
+          });
+
+          const commit = commits.data?.[0];
+          const scheduleItem = commit?.access_schedule?.schedule_items?.find(
+            (item) => item.id === segmentId
+          );
+          if (!scheduleItem) {
+            logger.error(
+              {
+                workspaceId: segmentWorkspace.sId,
+                commitId,
+                segmentId,
+              },
+              "[Metronome Webhook] commit.segment.start: no matching schedule item found for segment"
+            );
+            break;
+          }
+
+          const billingStart = new Date(scheduleItem.starting_at);
+          const billingEnd = new Date(scheduleItem.ending_before);
+
+          // Fire-and-forget: failure should not block the webhook.
+          void grantMetronomeFreeCredits({
+            workspace: segmentWorkspace,
+            startDate: billingStart,
+            endDate: billingEnd,
+          });
+
           break;
+        }
 
         case "credit.create":
           logger.info(

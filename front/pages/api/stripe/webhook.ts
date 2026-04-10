@@ -14,7 +14,6 @@ import {
   voidFailedProCreditPurchaseInvoice,
 } from "@app/lib/credits/committed";
 import {
-  calculateFreeCreditAmountMicroUsd,
   grantFreeCreditFromSubscriptionStateChangeYearly,
   grantFreeCreditsFromSubscriptionStateChange,
 } from "@app/lib/credits/free";
@@ -25,14 +24,9 @@ import {
 } from "@app/lib/credits/payg";
 import { handleMetronomeSetupCheckout } from "@app/lib/metronome/checkout";
 import {
-  createMetronomeCredit,
   reactivateMetronomeContract,
   scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
-import {
-  getCreditTypeProgrammaticUsdId,
-  getProductFreeMonthlyCreditId,
-} from "@app/lib/metronome/constants";
 import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
 import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
@@ -169,73 +163,6 @@ async function shadowProvisionMetronome({
     logger.error(
       { workspaceId: workspace.sId, error: normalizeError(err) },
       "[Stripe Webhook] Failed to shadow-provision Metronome"
-    );
-  }
-}
-
-/**
- * Grant monthly free programmatic credits to a Metronome-billed workspace.
- * Uses the same bracket formula as the Stripe credit system.
- * Idempotent via uniqueness_key: free-legacy-{workspaceId}-{YYYY-MM}.
- */
-async function grantMetronomeFreeCredits({
-  workspace,
-  stripeSubscription,
-}: {
-  workspace: WorkspaceResource;
-  stripeSubscription: Stripe.Subscription;
-}): Promise<void> {
-  if (!workspace.metronomeCustomerId) {
-    return;
-  }
-
-  try {
-    const productId = getProductFreeMonthlyCreditId();
-
-    // Count active members and compute bracket amount.
-    const memberCount = await MembershipResource.countActiveSeatsInWorkspace(
-      workspace.sId
-    );
-    const amountMicroUsd = calculateFreeCreditAmountMicroUsd(memberCount);
-    if (amountMicroUsd <= 0) {
-      return;
-    }
-
-    // Convert micro-USD to custom credit units (1 unit ≈ $0.01, so divide by 1M).
-    const amount = Math.ceil(amountMicroUsd / 1_000_000);
-
-    const periodStart = new Date(
-      stripeSubscription.current_period_start * 1000
-    );
-    const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
-    const monthKey = `${periodStart.getUTCFullYear()}-${String(periodStart.getUTCMonth() + 1).padStart(2, "0")}`;
-
-    const result = await createMetronomeCredit({
-      metronomeCustomerId: workspace.metronomeCustomerId,
-      productId,
-      creditTypeId: getCreditTypeProgrammaticUsdId(),
-      amount,
-      startingAt: periodStart.toISOString(),
-      endingBefore: periodEnd.toISOString(),
-      name: `Free Monthly Credits (${memberCount} users, ${monthKey})`,
-      idempotencyKey: `free-legacy-${workspace.sId}-${monthKey}`,
-    });
-
-    if (result.isOk()) {
-      logger.info(
-        {
-          workspaceId: workspace.sId,
-          memberCount,
-          amount,
-          monthKey,
-        },
-        "[Stripe Webhook] Metronome free credits granted"
-      );
-    }
-  } catch (err) {
-    logger.error(
-      { workspaceId: workspace.sId, error: normalizeError(err) },
-      "[Stripe Webhook] Failed to grant Metronome free credits"
     );
   }
 }
@@ -1163,13 +1090,6 @@ async function handler(
                 "[Stripe Webhook] Error granting free credits"
               );
             }
-
-            // Grant free credits in Metronome for legacy workspaces.
-            // Fire-and-forget: Metronome failure should not block the webhook.
-            void grantMetronomeFreeCredits({
-              workspace,
-              stripeSubscription,
-            });
 
             if (subscriptionCycleChanged) {
               const paygEnabled = await isPAYGEnabled(auth);
