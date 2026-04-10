@@ -333,10 +333,9 @@ export class ProjectTodoSourceModel extends WorkspaceAwareModel<ProjectTodoSourc
 
   declare projectTodoId: ForeignKey<ProjectTodoModel["id"]>;
   declare sourceType: ProjectTodoSourceType;
-  declare sourceConversationId: ForeignKey<ConversationModel["id"]> | null;
+  declare sourceId: string;
 
   declare projectTodo: NonAttribute<ProjectTodoModel>;
-  declare sourceConversation: NonAttribute<ConversationModel | null>;
 }
 
 ProjectTodoSourceModel.init(
@@ -355,10 +354,11 @@ ProjectTodoSourceModel.init(
       allowNull: false,
       comment: "Type of content node that led to creating this todo.",
     },
-    sourceConversationId: {
-      type: DataTypes.BIGINT,
-      allowNull: true,
-      comment: "Set when sourceType is conversation.",
+    sourceId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      comment:
+        "String identifier of the source (internal sId or external URL/ID) that led to creating this todo.",
     },
   },
   {
@@ -376,8 +376,8 @@ ProjectTodoSourceModel.init(
         concurrently: true,
       },
       {
-        name: "project_todo_sources_sourceConversationId_idx",
-        fields: ["sourceConversationId"],
+        name: "project_todo_sources_sourceId_idx",
+        fields: ["sourceId"],
         concurrently: true,
       },
     ],
@@ -393,10 +393,4 @@ ProjectTodoSourceModel.belongsTo(ProjectTodoModel, {
 ProjectTodoModel.hasMany(ProjectTodoSourceModel, {
   foreignKey: { name: "projectTodoId", allowNull: false },
   as: "sources",
-});
-
-ProjectTodoSourceModel.belongsTo(ConversationModel, {
-  foreignKey: { name: "sourceConversationId", allowNull: true },
-  onDelete: "RESTRICT",
-  as: "sourceConversation",
 });

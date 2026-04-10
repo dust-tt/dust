@@ -15,11 +15,12 @@ import type {
 } from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Ok, type Result } from "@app/types/shared/result";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
+import {
+  type Attributes,
+  type CreationAttributes,
+  type ModelStatic,
+  Op,
+  type Transaction,
 } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -189,6 +190,51 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     });
   }
 
+  // Returns the latest version of an agent-created todo linked to the given
+  // source item for a specific user, or null if none exists.
+  // Used by the merge workflow to decide whether to create or update a todo.
+  static async fetchBySourceId(
+    auth: Authenticator,
+    {
+      sourceId,
+      userId,
+    }: {
+      sourceId: string;
+      userId: ModelId;
+    }
+  ): Promise<ProjectTodoResource | null> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Find source rows for this specific source item.
+    const sources = await ProjectTodoSourceModel.findAll({
+      where: {
+        workspaceId,
+        sourceId,
+      },
+    });
+
+    if (sources.length === 0) {
+      return null;
+    }
+
+    const projectTodoModelIds = sources.map((s) => s.projectTodoId);
+
+    // Among the matched todos, find the one owned by the target user. There
+    // should be at most one such row, but we pick the first for safety.
+    const matched = await this.baseFetch(auth, {
+      where: { id: { [Op.in]: projectTodoModelIds }, userId },
+      limit: 1,
+    });
+
+    if (matched.length === 0) {
+      return null;
+    }
+
+    // Return the latest version of the todo using its stable sId.
+    return this.fetchBySId(auth, matched[0].sId);
+  }
+
+
   // ── Output conversation links (todo => conversation) ────────────────────
 
   async addOutputConversation(
@@ -227,10 +273,10 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     auth: Authenticator,
     {
       sourceType,
-      sourceConversationId,
+      sourceId,
     }: {
       sourceType: ProjectTodoSourceType;
-      sourceConversationId: ModelId | null;
+      sourceId: string;
     },
     transaction?: Transaction
   ): Promise<void> {
@@ -239,7 +285,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
         projectTodoId: this.id,
         sourceType,
-        sourceConversationId: sourceConversationId ?? null,
+        sourceId,
       },
       { transaction }
     );
@@ -249,10 +295,10 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     auth: Authenticator,
     {
       sourceType,
-      sourceConversationId,
+      sourceId,
     }: {
       sourceType: ProjectTodoSourceType;
-      sourceConversationId: ModelId | null;
+      sourceId: string;
     },
     transaction?: Transaction
   ): Promise<void> {
@@ -261,7 +307,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
         projectTodoId: this.id,
         sourceType,
-        sourceConversationId: sourceConversationId ?? null,
+        sourceId,
       },
       transaction,
     });

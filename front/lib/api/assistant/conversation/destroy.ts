@@ -21,10 +21,7 @@ import { ContentFragmentResource } from "@app/lib/resources/content_fragment_res
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import {
-  ProjectTodoConversationModel,
-  ProjectTodoSourceModel,
-} from "@app/lib/resources/storage/models/project_todo";
+import { ProjectTodoConversationModel } from "@app/lib/resources/storage/models/project_todo";
 
 import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_project_digest";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -288,9 +285,6 @@ export async function destroyConversation(
 
   await ProjectTodoConversationModel.destroy({
     where: { workspaceId: owner.id, conversationId: conversation.id },
-  });
-  await ProjectTodoSourceModel.destroy({
-    where: { workspaceId: owner.id, sourceConversationId: conversation.id },
   });
 
   await SandboxResource.deleteByConversationId(auth, conversation.sId);
