@@ -1105,7 +1105,7 @@ export async function getGlobalAgents(
     mcpServerViews,
   ] = await Promise.all([
     isDeepDiveDisabledByAdmin(auth),
-    KillSwitchResource.isKillSwitchEnabledCached("global_dust_agents_fallback"),
+    KillSwitchResource.isKillSwitchEnabled("global_dust_agents_fallback"),
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
       : null,
