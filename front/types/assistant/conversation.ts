@@ -318,6 +318,14 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
   return arg.type === "agent_message";
 }
 
+// This guard is used to distinguish (light) agent message from the messages on the content of a
+// LightConversationType.
+export function isLightAgentMessageType(
+  message: LightMessageType
+): message is LightAgentMessageType {
+  return message.type === "agent_message";
+}
+
 /**
  * Compaction messages
  */

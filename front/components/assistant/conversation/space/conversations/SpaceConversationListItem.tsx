@@ -3,6 +3,7 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { LightConversationType } from "@app/types/assistant/conversation";
 import {
   isCompactionMessageType,
+  isLightAgentMessageType,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -69,7 +70,7 @@ export function SpaceConversationListItem({
         });
       } else if (isCompactionMessageType(message)) {
         // Nothing to do unless we want to show that the conversation was compacted.
-      } else if (message.type === "agent_message") {
+      } else if (isLightAgentMessageType(message)) {
         avatars.push({
           isRounded: false,
           name: "@" + (message.configuration.name ?? ""),
@@ -114,7 +115,7 @@ export function SpaceConversationListItem({
       firstVisibleMessage.user?.image ??
       firstVisibleMessage.context?.profilePictureUrl ??
       undefined;
-  } else if (firstVisibleMessage.type === "agent_message") {
+  } else if (isLightAgentMessageType(firstVisibleMessage)) {
     creatorName = `@${firstVisibleMessage.configuration.name}`;
     creatorVisual = firstVisibleMessage.configuration.pictureUrl || undefined;
   } else {

@@ -66,6 +66,7 @@ import {
   isGlobalAgentId,
   isGlobalAgentWithFeedback,
 } from "@app/types/assistant/assistant";
+import { isLightAgentMessageType } from "@app/types/assistant/conversation";
 import type {
   RichAgentMention,
   RichMention,
@@ -677,8 +678,8 @@ export function AgentMessage({
         // Update the message state from the backend
         methods.data.map((m) => {
           if (
-            m.sId === msg.message.sId &&
-            msg.message.type === "agent_message"
+            isLightAgentMessageType(msg.message) &&
+            m.sId === msg.message.sId
           ) {
             return makeInitialMessageStreamState(msg.message);
           }
