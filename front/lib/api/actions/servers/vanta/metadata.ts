@@ -4,8 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const VANTA_TOOL_NAME = "vanta" as const;
-
 const PaginationSchema = {
   pageSize: z
     .number()

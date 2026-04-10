@@ -9,8 +9,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const STATUSPAGE_TOOL_NAME = "statuspage" as const;
-
 export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
   list_pages: {
     description:

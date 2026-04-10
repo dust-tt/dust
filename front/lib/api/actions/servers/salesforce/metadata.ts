@@ -5,8 +5,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const SALESFORCE_TOOL_NAME = "salesforce" as const;
-
 export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
   execute_read_query: {
     description: "Execute a read query on Salesforce",

@@ -16,7 +16,6 @@ import {
   prepareParamsWithHistory,
   processDustFileOutput,
 } from "@app/lib/api/actions/servers/run_dust_app/helpers";
-import { RUN_DUST_APP_TOOL_NAME } from "@app/lib/api/actions/servers/run_dust_app/metadata";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -92,7 +91,7 @@ export default async function createServer(
     };
 
     registerTool(auth, agentLoopContext, server, toolDefinition, {
-      monitoringName: RUN_DUST_APP_TOOL_NAME,
+      monitoringName: "run_dust_app",
     });
   } else if (agentLoopContext?.runContext) {
     // Context: Running the Dust app
@@ -219,7 +218,7 @@ export default async function createServer(
     };
 
     registerTool(auth, agentLoopContext, server, toolDefinition, {
-      monitoringName: RUN_DUST_APP_TOOL_NAME,
+      monitoringName: "run_dust_app",
     });
   } else {
     // Context: Configuration - selecting which Dust app to use
@@ -247,7 +246,7 @@ export default async function createServer(
     };
 
     registerTool(auth, agentLoopContext, server, toolDefinition, {
-      monitoringName: RUN_DUST_APP_TOOL_NAME,
+      monitoringName: "run_dust_app",
     });
   }
 

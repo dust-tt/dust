@@ -9,8 +9,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const LUMA_TOOL_NAME = "luma" as const;
-
 export const LUMA_TOOLS_METADATA = createToolsRecord({
   get_authenticated_user: {
     description:

@@ -4,8 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const GITHUB_TOOL_NAME = "github" as const;
-
 export const GITHUB_TOOLS_METADATA = createToolsRecord({
   create_issue: {
     description: "Create a new issue on a specified GitHub repository.",

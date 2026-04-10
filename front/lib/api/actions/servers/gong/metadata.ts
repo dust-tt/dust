@@ -4,8 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const GONG_TOOL_NAME = "gong" as const;
-
 export const GONG_TOOLS_METADATA = createToolsRecord({
   list_calls: {
     description:
