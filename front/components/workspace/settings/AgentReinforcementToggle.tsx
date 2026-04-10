@@ -51,7 +51,7 @@ function ReinforcementBatchModeToggle({ owner }: ReinforcementSectionProps) {
 
   return (
     <ContextItem
-      title="Allow batch mode for reinforcement"
+      title="Enable batch processing"
       visual={<Square3Stack3DIcon className="h-6 w-6 shrink-0" />}
       hasSeparatorIfLast={true}
       action={
