@@ -466,11 +466,10 @@ export async function updateSubscriptionQuantity({
 // ---------------------------------------------------------------------------
 
 /**
- * Add paid credits (=commits) to a Metronome contract via a contract edit.
+ * Add paid credits (=commits) to a Metronome customer.
  */
 export async function createMetronomeCommit({
   metronomeCustomerId,
-  contractId,
   productId,
   amountCents,
   startingAt,
@@ -480,7 +479,6 @@ export async function createMetronomeCommit({
   priority,
 }: {
   metronomeCustomerId: string;
-  contractId: string;
   productId: string;
   amountCents: number;
   startingAt: Date;
@@ -496,51 +494,42 @@ export async function createMetronomeCommit({
     logger.info(
       {
         metronomeCustomerId,
-        contractId,
         productId,
         amountCents,
         roundedStartingAt,
         roundedEndingBefore,
       },
-      "[Metronome] Adding commits to contract"
+      "[Metronome] Adding commits to customer"
     );
 
-    await getMetronomeClient().v2.contracts.edit(
-      {
-        customer_id: metronomeCustomerId,
-        contract_id: contractId,
-        add_commits: [
+    await getMetronomeClient().v1.customers.commits.create({
+      customer_id: metronomeCustomerId,
+      type: "PREPAID",
+      product_id: productId,
+      name: name ?? "Commit purchase",
+      applicable_product_tags: ["usage"],
+      priority: priority ?? 2, // Apply after any free credits
+      access_schedule: {
+        schedule_items: [
           {
-            type: "PREPAID",
-            product_id: productId,
-            name: name ?? "Commit purchase",
-            applicable_product_tags: ["usage"],
-            priority,
-            access_schedule: {
-              schedule_items: [
-                {
-                  amount: amountCents,
-                  starting_at: roundedStartingAt,
-                  ending_before: roundedEndingBefore,
-                },
-              ],
-            },
+            amount: amountCents,
+            starting_at: roundedStartingAt,
+            ending_before: roundedEndingBefore,
           },
         ],
       },
-      { idempotencyKey }
-    );
+      uniqueness_key: idempotencyKey,
+    });
 
     logger.info(
       {
         metronomeCustomerId,
-        contractId,
         productId,
         amountCents,
         roundedStartingAt,
         roundedEndingBefore,
       },
-      "[Metronome] Commits added to contract"
+      "[Metronome] Commits added to customer"
     );
     return new Ok(undefined);
   } catch (err) {
@@ -549,13 +538,12 @@ export async function createMetronomeCommit({
       {
         error,
         metronomeCustomerId,
-        contractId,
         productId,
         amountCents,
         roundedStartingAt,
         roundedEndingBefore,
       },
-      "[Metronome] Failed to add commits to contract"
+      "[Metronome] Failed to add commits to customer"
     );
     return new Err(error);
   }
@@ -725,7 +713,6 @@ export async function listMetronomeUsageWithGroups({
  */
 export async function createMetronomeCredit({
   metronomeCustomerId,
-  contractId,
   productId,
   amountCents,
   startingAt,
@@ -734,7 +721,6 @@ export async function createMetronomeCredit({
   idempotencyKey,
 }: {
   metronomeCustomerId: string;
-  contractId: string;
   productId: string;
   amountCents: number;
   startingAt: string;
@@ -747,30 +733,23 @@ export async function createMetronomeCredit({
   const roundedEndingBefore = ceilToHourISO(new Date(endingBefore));
 
   try {
-    const response = await getMetronomeClient().v2.contracts.edit(
-      {
-        customer_id: metronomeCustomerId,
-        contract_id: contractId,
-        add_credits: [
+    const response = await getMetronomeClient().v1.customers.credits.create({
+      customer_id: metronomeCustomerId,
+      product_id: productId,
+      name,
+      priority: 1, // Apply credits before any prepaid commits
+      applicable_product_tags: ["usage"],
+      access_schedule: {
+        schedule_items: [
           {
-            product_id: productId,
-            name,
-            priority: 1, // Apply credits before any prepaid commits
-            applicable_product_tags: ["usage"],
-            access_schedule: {
-              schedule_items: [
-                {
-                  amount: amountCents,
-                  starting_at: roundedStartingAt,
-                  ending_before: roundedEndingBefore,
-                },
-              ],
-            },
+            amount: amountCents,
+            starting_at: roundedStartingAt,
+            ending_before: roundedEndingBefore,
           },
         ],
       },
-      { idempotencyKey }
-    );
+      uniqueness_key: idempotencyKey,
+    });
 
     return new Ok({ creditId: response.data.id });
   } catch (err) {

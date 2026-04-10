@@ -496,18 +496,11 @@ async function addMetronomeCommitsForWorkspace({
   expirationDate?: Date;
 }): Promise<Result<void, Error>> {
   const workspace = auth.getNonNullableWorkspace();
-  const subscription = auth.subscription();
-
   const metronomeCustomerId = workspace.metronomeCustomerId;
-  const metronomeContractId = subscription?.metronomeContractId;
 
-  if (!metronomeCustomerId || !metronomeContractId) {
+  if (!metronomeCustomerId) {
     logger.info(
-      { subscription },
-      "[Commit Purchase] Subscription missing Metronome contract ID, skipping credit addition"
-    );
-    logger.info(
-      { workspaceId: workspace.sId, metronomeCustomerId, metronomeContractId },
+      { workspaceId: workspace.sId },
       "[Commit Purchase] Workspace not provisioned in Metronome, skipping credit addition"
     );
     return new Ok(undefined);
@@ -525,7 +518,6 @@ async function addMetronomeCommitsForWorkspace({
 
   const result = await createMetronomeCommit({
     metronomeCustomerId,
-    contractId: metronomeContractId,
     productId,
     amountCents,
     startingAt: effectiveStartDate,
@@ -540,7 +532,6 @@ async function addMetronomeCommitsForWorkspace({
       {
         workspaceId: workspace.sId,
         metronomeCustomerId,
-        metronomeContractId,
         amountCents,
         error: result.error.message,
       },
