@@ -1,4 +1,5 @@
 import {
+  ceilToHourISO,
   createMetronomeContract,
   createMetronomeCustomer,
   findMetronomeCustomerByAlias,
@@ -24,9 +25,15 @@ export async function switchMetronomeContractPackage({
   workspace: LightWorkspaceType;
   packageAlias: string;
 }): Promise<Result<{ metronomeContractId: string }, Error>> {
+  // Pre-round to the next hour boundary so both functions (which apply ceil
+  // and floor respectively) resolve to the same timestamp, ensuring the new
+  // contract starts exactly when the old one ends.
+  const switchAt = new Date(ceilToHourISO(new Date()));
+
   const endResult = await scheduleMetronomeContractEnd({
     metronomeCustomerId,
     contractId: oldContractId,
+    endingBefore: switchAt,
   });
   if (endResult.isErr()) {
     return new Err(endResult.error);
@@ -35,6 +42,7 @@ export async function switchMetronomeContractPackage({
   const contractResult = await createMetronomeContract({
     metronomeCustomerId,
     packageAlias,
+    startingAt: switchAt,
   });
   if (contractResult.isErr()) {
     return new Err(contractResult.error);

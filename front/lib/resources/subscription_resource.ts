@@ -841,10 +841,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         new Error("Workspace is not whitelisted for Business plan")
       );
     }
-    if (!this.stripeSubscriptionId) {
-      return new Err(new Error("No active Stripe subscription to upgrade"));
-    }
-
     const isOnProPlan = await this.isSubscriptionOnProOrBusinessPlan(owner);
     if (!isOnProPlan) {
       return new Err(new Error("Workspace is not on a Pro plan"));
@@ -854,13 +850,15 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       PRO_PLAN_SEAT_39_CODE
     );
 
-    const stripeResult = await upgradeProSubscriptionToBusiness({
-      stripeSubscriptionId: this.stripeSubscriptionId,
-      owner,
-      planCode: PRO_PLAN_SEAT_39_CODE,
-    });
-    if (stripeResult.isErr()) {
-      return new Err(stripeResult.error);
+    if (this.stripeSubscriptionId) {
+      const stripeResult = await upgradeProSubscriptionToBusiness({
+        stripeSubscriptionId: this.stripeSubscriptionId,
+        owner,
+        planCode: PRO_PLAN_SEAT_39_CODE,
+      });
+      if (stripeResult.isErr()) {
+        return new Err(stripeResult.error);
+      }
     }
 
     // Switch Metronome contract to Business package.

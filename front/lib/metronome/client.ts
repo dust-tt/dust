@@ -195,13 +195,16 @@ export async function createMetronomeContract({
   metronomeCustomerId,
   packageAlias,
   uniquenessKey,
+  startingAt: startingAtOverride,
 }: {
   metronomeCustomerId: string;
   packageAlias: string;
   uniquenessKey?: string;
+  startingAt?: Date;
 }): Promise<Result<{ contractId: string; startingAt: string }, Error>> {
   // Metronome requires starting_at on an hour boundary — round down to current hour.
-  const startingAt = floorToHourISO(new Date());
+  // Callers may pass an explicit startingAt (e.g. to align with a contract end time).
+  const startingAt = floorToHourISO(startingAtOverride ?? new Date());
 
   try {
     const response = await getMetronomeClient().v1.contracts.create({
