@@ -454,3 +454,41 @@ is used as a hook dependency. Do not add `useMemo` preemptively.
 
 Reviewer: If you see an inline object or array literal passed directly as a Context provider
 value, require the author to memoize it.
+
+### [REACT5] Use `assertNeverAndIgnore` (not `assertNever`) in frontend components
+
+Frontend components must use `assertNeverAndIgnore` instead of `assertNever` in exhaustive switch
+statements. The server may introduce new enum values (e.g., new action types, connector types,
+event types) before the client is redeployed. Using `assertNever` would throw at runtime and crash
+the app for all users. `assertNeverAndIgnore` provides the same compile-time exhaustiveness
+checking but silently ignores unknown values at runtime.
+
+This applies to all React components, hooks, and any client-side code that processes data from the
+API (event streams, conversation messages, agent configurations, connector types, etc.).
+
+Example:
+
+```
+// BAD — crashes the app when the server adds a new event type
+switch (event.type) {
+  case "generation_tokens":
+    return handleTokens(event);
+  case "agent_error":
+    return handleError(event);
+  default:
+    assertNever(event.type);
+}
+
+// GOOD — gracefully ignores unknown event types
+switch (event.type) {
+  case "generation_tokens":
+    return handleTokens(event);
+  case "agent_error":
+    return handleError(event);
+  default:
+    assertNeverAndIgnore(event.type);
+}
+```
+
+Reviewer: If you see `assertNever` used in frontend component or hook code, require the author to
+switch to `assertNeverAndIgnore`.
