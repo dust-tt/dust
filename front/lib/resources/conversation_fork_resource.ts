@@ -32,13 +32,9 @@ export type ConversationForkType = {
   created: number;
   updated: number;
   parentConversationId: string;
-  parentConversationModelId: ModelId;
   childConversationId: string;
-  childConversationModelId: ModelId;
   createdByUserId: string;
-  createdByUserModelId: ModelId;
   sourceMessageId: string;
-  sourceMessageModelId: ModelId;
   branchedAt: number;
 };
 
@@ -392,13 +388,9 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
       created: this.createdAt.getTime(),
       updated: this.updatedAt.getTime(),
       parentConversationId: this.resourceIds.parentConversationId,
-      parentConversationModelId: this.parentConversationId,
       childConversationId: this.resourceIds.childConversationId,
-      childConversationModelId: this.childConversationId,
       createdByUserId: this.resourceIds.createdByUserId,
-      createdByUserModelId: this.createdByUserId,
       sourceMessageId: this.resourceIds.sourceMessageId,
-      sourceMessageModelId: this.sourceMessageId,
       branchedAt: this.branchedAt.getTime(),
     };
   }

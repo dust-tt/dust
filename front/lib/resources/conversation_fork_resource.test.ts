@@ -151,13 +151,9 @@ describe("ConversationForkResource", () => {
       id: fork.id,
       sId: fork.sId,
       parentConversationId: parentConversation.sId,
-      parentConversationModelId: parentConversation.id,
       childConversationId: childConversation.sId,
-      childConversationModelId: childConversation.id,
       createdByUserId: user.sId,
-      createdByUserModelId: user.id,
       sourceMessageId: sourceMessage.sId,
-      sourceMessageModelId: sourceMessage.id,
       branchedAt: branchedAt.getTime(),
     });
   });
