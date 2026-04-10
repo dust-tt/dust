@@ -187,13 +187,6 @@ export function UserMessage({
             originalAgentIds.has(agentId) ? _match : ""
           )
           .trim();
-
-        sendNotification({
-          type: "info",
-          title: "Agent mentions removed",
-          description:
-            "Tagging an agent in a sent message won't prompt re-evaluation.",
-        });
       }
     }
 
@@ -211,6 +204,8 @@ export function UserMessage({
     conversationId,
     onEnterKeyDown: handleSave,
     disableAutoFocus: false,
+    // This editor is only mounted in edit mode, so singleAgentInput
+    // alone is sufficient to disable agent mentions (edit mode is implied).
     disableAgentMentions: singleAgentInput,
   });
 
