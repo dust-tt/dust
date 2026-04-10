@@ -1,6 +1,7 @@
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { IncludeInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
@@ -141,6 +142,22 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
       done: "Get project information",
     },
   },
+  retrieve_recent_documents: {
+    description:
+      "Fetch the most recent documents from this project's knowledge data source (full project scope) and from any content nodes linked in the project context, in reverse chronological order up to the retrieval limit. Respects optional time window. Does not use tag filters.",
+    schema: {
+      timeFrame: IncludeInputSchema.shape.timeFrame,
+      dustProject:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        ].optional(),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving recent project documents",
+      done: "Retrieve recent project documents",
+    },
+  },
 });
 
 const PROJECT_MANAGER_INSTRUCTIONS =
@@ -148,6 +165,7 @@ const PROJECT_MANAGER_INSTRUCTIONS =
   "Only text-based files are supported for adding/updating. " +
   "You can add/update files by providing text content directly, or by copying from existing files (like those you've generated). " +
   "You can also attach an existing project context file to the current conversation without recreating it. " +
+  "Use retrieve_recent_documents to load recent content from the project data source and from knowledge nodes in the project context. " +
   "Requires write permissions on the project space. " +
   "After adding or updating files, always list the file names you changed in your response so the user knows exactly what was modified.";
 
