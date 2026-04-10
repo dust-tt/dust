@@ -15,6 +15,7 @@ import {
   isHiddenMessage,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
+import { useSteerGroupCollapse } from "@app/components/assistant/conversation/SteerGroupCollapseContext";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import { getSteerGroupInfo } from "@app/components/assistant/conversation/utils";
 import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
@@ -235,6 +236,9 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return messageUser;
     }, [isAgentMessage, parentMessageId, messageUser, methods.data]);
 
+    // Must be called before any early returns to satisfy React hook rules.
+    const groupCollapseState = useSteerGroupCollapse(steerGroupId);
+
     if (!allowBranchMessages && data.branchId) {
       return null;
     }
@@ -249,14 +253,18 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     if (!context.conversation) {
       return null;
     }
+    const isNonRootCollapsed =
+      isSteeredAgentMessage && (groupCollapseState?.isCollapsed ?? false);
 
-    const topMargin = getMessageTopMargin({
-      data,
-      prevData,
-      isPreviousMessageSameSender,
-      isSteeredAgentMessage,
-      isPreviousAgentMessageSteered,
-    });
+    const topMargin = isNonRootCollapsed
+      ? "mt-0"
+      : getMessageTopMargin({
+          data,
+          prevData,
+          isPreviousMessageSameSender,
+          isSteeredAgentMessage,
+          isPreviousAgentMessageSteered,
+        });
 
     return (
       <>
