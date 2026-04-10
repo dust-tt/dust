@@ -19,11 +19,52 @@ import { UserMessage } from "@app/components/assistant/conversation/UserMessage"
 import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
 import { useReaction } from "@app/hooks/useReaction";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { classNames } from "@app/lib/utils";
 import { isSupportedImageContentType } from "@app/types/files";
 import type { UserType } from "@app/types/user";
+import { cn } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import React, { useMemo } from "react";
+
+// Inter-message spacing lives here (not in Sparkle) because it depends on
+// conversation-level context (who sent the message, steering flow, grouping).
+// Sparkle message components only handle padding inside the bubble.
+// The last message also gets a margin-bottom for breathing space (see MessageItem).
+//
+// - No margin: consecutive messages from the same user
+// - mt-2: steered flow (steering user message or steered agent response)
+// - mt-4: default gap between messages
+// - mt-8: previous message has reactions (extra space to clear them)
+function getMessageTopMargin({
+  data,
+  prevData,
+  isPreviousMessageSameSender,
+  isSteeredAgentMessage,
+  isPreviousAgentMessageSteered,
+}: {
+  data: VirtuosoMessage;
+  prevData: VirtuosoMessage | null;
+  isPreviousMessageSameSender: boolean | null;
+  isSteeredAgentMessage: boolean;
+  isPreviousAgentMessageSteered: boolean;
+}): string | undefined {
+  // Previous message has reactions — add extra space to clear them.
+  if (prevData && prevData.reactions.length > 0) {
+    return "mt-8";
+  }
+
+  // Smaller margin when visually grouped (consecutive messages from the same user).
+  if (isPreviousMessageSameSender) {
+    return "mt-1";
+  }
+
+  // Steered flow: reduced margin to keep the steering user message and
+  // steered agent response visually connected.
+  if (isPreviousAgentMessageSteered || isSteeredAgentMessage) {
+    return "mt-2";
+  }
+
+  return "mt-8";
+}
 
 interface MessageItemProps {
   allowBranchMessages?: boolean;
@@ -135,13 +176,6 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       getMessageDate(prevData).toDateString() ===
         getMessageDate(data).toDateString();
 
-    const isNextMessageSameSender =
-      nextData &&
-      isUserMessage(data) &&
-      isUserMessage(nextData) &&
-      data.user?.sId !== undefined &&
-      data.user.sId === nextData.user?.sId;
-
     const isPreviousMessageSameSender =
       prevData &&
       isUserMessage(data) &&
@@ -212,15 +246,24 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return null;
     }
 
+    const topMargin = getMessageTopMargin({
+      data,
+      prevData,
+      isPreviousMessageSameSender,
+      isSteeredAgentMessage,
+      isPreviousAgentMessageSteered,
+    });
+
     return (
       <>
         {!areSameDate && <MessageDateIndicator message={data} />}
         <div
           key={`message-id-${sId}`}
           ref={ref}
-          className={classNames(
+          className={cn(
             "mx-auto max-w-conversation",
-            !isNextMessageSameSender && "mb-4"
+            topMargin,
+            !nextData && "mb-8"
           )}
         >
           {isUserMessage(data) && (

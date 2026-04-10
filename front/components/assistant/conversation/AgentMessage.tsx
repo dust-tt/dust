@@ -1355,6 +1355,7 @@ function AgentMessageContent({
         )}
 
         {agentMessage.content !== null &&
+          agentMessage.content !== "" &&
           !(
             isInlineActivityEnabled &&
             agentMessage.streaming.agentState !== "done"

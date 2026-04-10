@@ -18,6 +18,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
 import type { WorkspaceType } from "@app/types/user";
 import {
   AnimatedText,
@@ -206,7 +207,7 @@ export function InlineActivitySteps({
         style={getCollapseAnimationStyle(isCollapsed)}
       >
         <div className="overflow-hidden">
-          <div className="mt-4 flex flex-col gap-3">
+          <div className="mt-3 flex flex-col gap-3">
             {completedSteps.map((step, index) => {
               const isLast =
                 index === completedSteps.length - 1 &&
@@ -227,6 +228,12 @@ export function InlineActivitySteps({
                     />
                   );
                 case "content":
+                  if (
+                    !isString(step.content) ||
+                    step.content.trim().length === 0
+                  ) {
+                    return null;
+                  }
                   return (
                     <div key={step.id}>
                       <AgentMessageMarkdown

@@ -23,7 +23,7 @@ const messageVariants = cva("s-flex s-rounded-2xl s-max-w-full", {
   variants: {
     type: {
       user: "s-gap-2 s-w-fit",
-      agent: "s-w-full s-gap-3 s-py-4 s-flex-col",
+      agent: "s-w-full s-gap-3 s-flex-col",
     },
   },
   defaultVariants: {
@@ -37,6 +37,8 @@ interface ConversationMessageContainerProps
   type: ConversationMessageType;
 }
 
+// This component should only contain padding (inside the bubble).
+// Any margin (inter-message spacing) should live outside of Sparkle.
 export const ConversationMessageContainer = React.forwardRef<
   HTMLDivElement,
   ConversationMessageContainerProps
