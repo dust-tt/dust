@@ -50,7 +50,7 @@ async function handler(
       }
 
       const lastAgentMessage =
-        await conversation.getMostRecentCompletedAgentMessage(auth);
+        await conversation.getLatestCompletedAgentMessage(auth);
 
       if (!lastAgentMessage || !lastAgentMessage.runIds?.length) {
         return apiError(req, res, {
