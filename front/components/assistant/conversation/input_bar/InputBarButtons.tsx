@@ -5,6 +5,8 @@ import type { InputBarAction } from "@app/components/assistant/conversation/inpu
 import type useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useAppRouter } from "@app/lib/platform";
+import { setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
@@ -71,14 +73,20 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   space,
   user,
 }: InputBarButtonsProps) {
+  const router = useAppRouter();
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
+
+  const handleAgentDetailsClick = (agentId: string) => {
+    setQueryParam(router, "agentDetails", agentId);
+  };
 
   const agentButton = (actions.includes("agents-list") ||
     actions.includes("agents-list-with-actions")) && (
     <AgentPicker
       owner={owner}
       size={buttonSize}
+      onAgentDetailsClick={handleAgentDetailsClick}
       onItemClick={(c) => {
         if (singleAgentInput) {
           handleSingleAgentSelect(toRichAgentMentionType(c));
