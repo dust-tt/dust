@@ -1,0 +1,39 @@
+connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+  833a10e1d8bc700a 43,114,162-170,180-182,195,245,253-254,277-279,331-332,360,380-381,402,419,422,427-433,435-448,454-455,475,479,488,495,550-552,592-594,604,656-658,683,692,704,759,763,873,880
+connectors/src/connectors/slack/bot.ts
+  833a10e1d8bc700a 684,700,1134,1139,1146,1177
+  068bbc100a060eab 76,663,1135-1137,1141-1145,1147-1152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "5a3a4c92dbf9f510910bc7fe40c69dea494bc4ae",
+  "prompts": {
+    "068bbc100a060eab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ca0ebdb-9a62-4038-94b7-8a530c09bf58",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Alexandre Pinon",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 16,
+      "overriden_lines": 0
+    },
+    "833a10e1d8bc700a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca0ecb4b-da89-4c83-933d-4a9722e91595",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 2749,
+      "total_deletions": 2926,
+      "accepted_lines": 79,
+      "overriden_lines": 0
+    }
+  }
+}
