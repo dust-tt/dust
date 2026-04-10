@@ -2,7 +2,7 @@ name: Deploy SPA to production
 
 on:
   repository_dispatch:
-    types: [deploy-spa-production]
+    types: [ deploy-spa-production ]
   workflow_dispatch:
     inputs:
       app:
@@ -28,8 +28,8 @@ jobs:
       matrix:
         app: ${{ fromJson(
           (github.event.client_payload.app || inputs.app) == 'all'
-            && '["app","poke"]'
-            || format('["{0}"]', github.event.client_payload.app || inputs.app)
+          && '["app","poke"]'
+          || format('["{0}"]', github.event.client_payload.app || inputs.app)
           ) }}
     steps:
       - uses: actions/checkout@v4
@@ -59,6 +59,7 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: front-spa
           command: versions deploy ${{ steps.version.outputs.id }}@100% --config wrangler-${{ matrix.app }}.toml -y
+          wranglerVersion: "4.80.0"
 
       - name: Create deploy tag
         if: ${{ github.event.client_payload.sha && github.event.client_payload.image_tag }}
