@@ -26,13 +26,13 @@ import type {
 } from "@app/types/assistant/agent_message_content";
 import type {
   AgentMessageType,
+  CompactionMessageType,
   LegacyLightMessageType,
   LightAgentMessageType,
   LightMessageType,
   MessageType,
   RichMentionWithStatus,
   UserMessageType,
-  UserMessageTypeWithContentFragments,
   UserMessageTypeWithoutMentions,
 } from "@app/types/assistant/conversation";
 import {
@@ -50,6 +50,7 @@ import { isContentFragmentType } from "@app/types/content_fragment";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
@@ -748,6 +749,14 @@ async function batchRenderContentFragment(
   });
 }
 
+async function batchRenderCompactionMessages(
+  _auth: Authenticator,
+  _messages: MessageModel[]
+): Promise<CompactionMessageType[]> {
+  // TODO(compaction): implement batch rendering of compaction messages.
+  return [];
+}
+
 type RenderMessageVariant = "legacy-light" | "full" | "light";
 
 export async function batchRenderMessages<V extends RenderMessageVariant>(
@@ -768,16 +777,18 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
     ConversationError
   >
 > {
-  const [userMessages, agentMessagesRes, contentFragments] = await Promise.all([
-    batchRenderUserMessages(auth, messages),
-    batchRenderAgentMessages(
-      auth,
-      messages,
-      viewType,
-      messagesWithToolOutputContent
-    ),
-    batchRenderContentFragment(auth, conversation.sId, messages),
-  ]);
+  const [userMessages, agentMessagesRes, contentFragments, compactionMessages] =
+    await Promise.all([
+      batchRenderUserMessages(auth, messages),
+      batchRenderAgentMessages(
+        auth,
+        messages,
+        viewType,
+        messagesWithToolOutputContent
+      ),
+      batchRenderContentFragment(auth, conversation.sId, messages),
+      batchRenderCompactionMessages(auth, messages),
+    ]);
 
   if (agentMessagesRes.isErr()) {
     return agentMessagesRes;
@@ -789,6 +800,7 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
     ...userMessages,
     ...agentMessages,
     ...contentFragments,
+    ...compactionMessages,
   ].sort((a, b) => a.rank - b.rank || a.version - b.version);
 
   if (viewType === "light") {
@@ -797,15 +809,13 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
     let tempContentFragments: ContentFragmentType[] = [];
 
     renderedMessages.forEach((message) => {
-      if (isCompactionMessageType(message)) {
-        return;
-      } else if (isContentFragmentType(message)) {
+      if (isContentFragmentType(message)) {
         tempContentFragments.push(message); // Collect content fragments.
       } else {
-        let messageWithContentFragments: UserMessageTypeWithContentFragments;
+        // let messageWithContentFragments: UserMessageTypeWithContentFragments;
         if (isUserMessageType(message)) {
           // Attach collected content fragments to the user message.
-          messageWithContentFragments = {
+          const messageWithContentFragments = {
             ...message,
             contentFragments: tempContentFragments,
           };
@@ -813,9 +823,13 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
 
           // Start a new group for user messages.
           output.push(messageWithContentFragments);
-        } else {
+        } else if (message.type === "agent_message") {
           // I know this is safe because we are in the light view.
           output.push(message as LightAgentMessageType);
+        } else if (isCompactionMessageType(message)) {
+          output.push(message);
+        } else {
+          assertNever(message);
         }
       }
     });
