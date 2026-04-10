@@ -29,17 +29,20 @@ import React, { useMemo } from "react";
 // conversation-level context (who sent the message, steering flow, grouping).
 // Sparkle message components only handle padding inside the bubble.
 // The last message also gets a margin-bottom for breathing space (see MessageItem).
+//
+// - No margin: consecutive messages from the same user
+// - mt-2: steered flow (steering user message or steered agent response)
+// - mt-4: default gap between messages
+// - mt-8: previous message has reactions (extra space to clear them)
 function getMessageTopMargin({
   data,
   prevData,
-  currentUserId,
   isPreviousMessageSameSender,
   isSteeredAgentMessage,
   isPreviousAgentMessageSteered,
 }: {
   data: VirtuosoMessage;
   prevData: VirtuosoMessage | null;
-  currentUserId: string;
   isPreviousMessageSameSender: boolean | null;
   isSteeredAgentMessage: boolean;
   isPreviousAgentMessageSteered: boolean;
@@ -49,27 +52,18 @@ function getMessageTopMargin({
     return "mt-8";
   }
 
-  // No margin when visually grouped with the previous message.
-  if (
-    isPreviousMessageSameSender ||
-    isSteeredAgentMessage ||
-    isPreviousAgentMessageSteered
-  ) {
-    return undefined;
+  // Smaller margin when visually grouped (consecutive messages from the same user).
+  if (isPreviousMessageSameSender) {
+    return "mt-1";
   }
 
-  // Other users' messages get extra spacing.
-  if (isUserMessage(data) && data.user?.sId !== currentUserId) {
-    return "mt-3";
+  // Steered flow: reduced margin to keep the steering user message and
+  // steered agent response visually connected.
+  if (isPreviousAgentMessageSteered || isSteeredAgentMessage) {
+    return "mt-2";
   }
 
-  // Agent messages have no visible bubble background, so they need
-  // more top margin to compensate for the lack of internal padding.
-  if (isAgentMessageWithStreaming(data)) {
-    return "mt-4";
-  }
-
-  return "mt-1";
+  return "mt-4";
 }
 
 interface MessageItemProps {
@@ -255,7 +249,6 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     const topMargin = getMessageTopMargin({
       data,
       prevData,
-      currentUserId: context.user.sId,
       isPreviousMessageSameSender,
       isSteeredAgentMessage,
       isPreviousAgentMessageSteered,

@@ -18,7 +18,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { WorkspaceType } from "@app/types/user";
+import { isString } from "@app/types/shared/utils/general";
 import {
   AnimatedText,
   CheckIcon,
@@ -227,7 +227,10 @@ export function InlineActivitySteps({
                     />
                   );
                 case "content":
-                  if (!step.content.trim()) {
+                  if (
+                    !isString(step.content) ||
+                    step.content.trim().length === 0
+                  ) {
                     return null;
                   }
                   return (
