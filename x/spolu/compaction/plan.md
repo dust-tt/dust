@@ -60,20 +60,24 @@ Remaining `TODO(compaction)` markers left for future PRs:
 Surface the model's reported `promptTokens` so we can determine when to trigger compaction.
 No new DB columns — token counts are resolved on-the-fly from existing run usage data.
 
-### - [ ] PR 2.1 — Add conversation context usage endpoint
+### - [x] PR 2.1 — Add conversation context usage endpoint
+
+PR #24086.
 
 - Add `GET /api/w/[wId]/assistant/conversations/[cId]/context-usage` endpoint.
-- Finds the last succeeded/gracefully-stopped `AgentMessage` in the conversation.
-- Resolves its last run's `promptTokens` via `RunResource.listByDustRunIds()` → last run
-  (ordered by `createdAt`) → `listRunUsages()` → sum `promptTokens`.
-- Returns `{ promptTokens: number | null, modelContextWindow: number }`.
+- `ConversationResource.getLatestCompletedAgentMessageRun()` — instance method that finds the last
+  succeeded/gracefully-stopped agent message, takes its last `runId`, and returns a `RunResource`.
+- `RunResource.fetchByDustRunId()` — fetch a run resource by its dustRunId.
+- Endpoint calls `run.listRunUsages()`, takes max `promptTokens` across usages, resolves model
+  config for `contextSize`.
+- Returns `{ model: SupportedModel, contextUsage: number, contextSize: number }`.
 - Frontend uses this for the context usage indicator (Phase 5).
 
 ---
 
 ## Phase 3: Compaction Method & Temporal Workflow
 
-Build the compaction pipeline end-to-end, gated behind a feature flag.
+Build the compaction pipeline end-to-end. No feature flag needed — inert until Phase 5 provides a trigger.
 
 ### - [ ] PR 3.1 — Add compaction Temporal workflow skeleton
 
