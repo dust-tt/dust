@@ -39,7 +39,7 @@ const killSwitchMap: Record<
   global_dust_agents_fallback: {
     title: "Dust Agents Fallback Provider",
     description:
-      "Force dust and deep-dive agents to use non-Anthropic models (OpenAI > Gemini > others)",
+      "Force dust and deep-dive agents to use non-Anthropic models (OpenAI > Gemini > others). ONLY USE when either latest Sonnet or Opus models are down.",
   },
 };
 
