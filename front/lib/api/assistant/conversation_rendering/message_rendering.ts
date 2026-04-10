@@ -204,7 +204,7 @@ export async function renderAllMessages(
         }
       }
     } else if (isCompactionMessageType(m)) {
-      // Compaction messages are not rendered for now.
+      // TODO(compaction): rendering
       continue;
     } else {
       assertNever(m);

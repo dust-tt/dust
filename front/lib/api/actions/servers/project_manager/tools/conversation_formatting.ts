@@ -1,8 +1,8 @@
 import { isMessageUnread } from "@app/components/assistant/conversation/utils";
 import {
   type AgentMessageType,
+  type CompactionMessageType,
   type ConversationType,
-  isCompactionMessageType,
   isLightConversationType,
   type LightAgentMessageType,
   type LightConversationType,
@@ -20,6 +20,7 @@ function formatMessage(
     | AgentMessageType
     | ContentFragmentType
     | LightAgentMessageType
+    | CompactionMessageType
     | UserMessageTypeWithContentFragments,
   lastReadMs: number | null
 ) {
@@ -34,13 +35,18 @@ function formatMessage(
   }
 
   if (msg.type === "agent_message") {
-    const agentName = msg.configuration?.name ?? "Assistant";
+    const agentName = msg.configuration?.name ?? "Agent";
     const content = msg.content ?? "";
-    return `>> Assistant (${agentName}) [${dateStr}]${unreadFormatted}:\n${msg.visibility === "deleted" ? "Deleted message" : content}\n`;
+    return `>> Agent (${agentName}) [${dateStr}]${unreadFormatted}:\n${msg.visibility === "deleted" ? "Deleted message" : content}\n`;
   }
 
   if (msg.type === "content_fragment") {
     return `>> Content Fragment [${dateStr}]${unreadFormatted}:\nID: ${msg.contentFragmentId}\nContent-Type: ${msg.contentType}\nTitle: ${msg.title}\nVersion: ${msg.version}\nSource URL: ${msg.sourceUrl}\n`;
+  }
+
+  if (msg.type === "compaction_message") {
+    const content = msg.content ?? "";
+    return `>> Compaction [${dateStr}]:\n ${content}\n`;
   }
 
   return "";
@@ -57,11 +63,9 @@ export function formatConversationForDisplay(
   // Convert conversation content to formatted messages
   const messages: string[] = [];
 
+  // TODO(compaction): stop at compaction boundary
   if (isLightConversationType(conversation)) {
     for (const msg of conversation.content) {
-      if (isCompactionMessageType(msg)) {
-        continue;
-      }
       const formattedMessage = formatMessage(msg, conversation.lastReadMs);
       if (formattedMessage) {
         messages.push(formattedMessage);
@@ -71,7 +75,7 @@ export function formatConversationForDisplay(
     for (const versions of conversation.content) {
       // Only take the last version of each rank
       const msg = versions[versions.length - 1];
-      if (!msg || isCompactionMessageType(msg)) {
+      if (!msg) {
         continue;
       }
 
