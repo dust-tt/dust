@@ -541,11 +541,6 @@ When creating or updating pages, follow these formatting rules:
           role: "agent",
           content:
             "I've updated the Notion report with the DevCode data. Here's what was added:\n\n**DevCode:**\n- 2 open issues (Implement caching layer, Fix race condition in worker), 1 closed issue (Add retry logic for webhooks)\n- 1 open PR (Add caching middleware), 1 merged PR (Fix worker pool exhaustion)\n\nThe report at https://notion.so/report-abc123 now includes all five repositories.",
-          feedback: {
-            direction: "down",
-            comment:
-              "GitHub skill is missing the DevCode project. The report was incomplete because it doesn't know about all our repositories.",
-          },
         },
       ],
       workspaceContext: WORKSPACE_CONTEXT,
