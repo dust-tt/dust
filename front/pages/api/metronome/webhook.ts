@@ -1,25 +1,13 @@
 /** @ignoreswagger */
-import {
-  buildAuditLogTarget,
-  emitAuditLogEventDirect,
-} from "@app/lib/api/audit/workos_audit";
 import apiConfig from "@app/lib/api/config";
-import { calculateFreeCreditAmountMicroUsd } from "@app/lib/credits/free";
 import {
-  createMetronomeCredit,
-  getMetronomeActiveContract,
   getMetronomeClient,
   getMetronomeContractPackageAliases,
 } from "@app/lib/metronome/client";
-import {
-  getCreditTypeProgrammaticUsdId,
-  getProductFreeMonthlyCreditId,
-} from "@app/lib/metronome/constants";
+import { grantMetronomeFreeCredits } from "@app/lib/metronome/credits";
 import { PRO_OR_BUSINESS_PACKAGE_ALIASES } from "@app/lib/metronome/types";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
@@ -49,96 +37,6 @@ const ContractEndEventSchema = z.object({
   contract_id: z.string(),
   customer_id: z.string(),
 });
-
-/**
- * Grant monthly free programmatic credits to a Metronome-billed workspace.
- * Uses the same bracket formula as the Stripe credit system.
- * Idempotent via uniqueness_key: free-legacy-{workspaceSId}-{YYYY-MM}.
- */
-async function grantMetronomeFreeCredits({
-  workspace,
-  startDate,
-  endDate,
-}: {
-  workspace: WorkspaceResource;
-  startDate: Date;
-  endDate: Date;
-}): Promise<void> {
-  if (!workspace.metronomeCustomerId) {
-    return;
-  }
-
-  try {
-    // Resolve the active contract.
-    const contractResult = await getMetronomeActiveContract(
-      workspace.metronomeCustomerId
-    );
-    if (contractResult.isErr() || !contractResult.value) {
-      logger.error(
-        { workspaceId: workspace.sId },
-        "[Metronome Webhook] No active Metronome contract found for free credit grant"
-      );
-      return;
-    }
-
-    const productId = getProductFreeMonthlyCreditId();
-
-    // Count active members and compute bracket amount.
-    const memberCount = await MembershipResource.countActiveSeatsInWorkspace(
-      workspace.sId
-    );
-    const amountMicroUsd = calculateFreeCreditAmountMicroUsd(memberCount);
-    if (amountMicroUsd <= 0) {
-      return;
-    }
-
-    // Convert micro-USD to cents (Metronome credits are in cents).
-    const amount = Math.ceil(amountMicroUsd / 10_000_000);
-
-    const monthKey = `${startDate.getUTCFullYear()}-${String(startDate.getUTCMonth() + 1).padStart(2, "0")}`;
-
-    const result = await createMetronomeCredit({
-      metronomeCustomerId: workspace.metronomeCustomerId,
-      productId,
-      creditTypeId: getCreditTypeProgrammaticUsdId(),
-      amount,
-      startingAt: startDate.toISOString(),
-      endingBefore: endDate.toISOString(),
-      name: `Free Monthly Credits (${memberCount} users, ${monthKey})`,
-      idempotencyKey: `free-legacy-${workspace.sId}-${monthKey}`,
-    });
-
-    if (result.isOk()) {
-      logger.info(
-        {
-          workspaceId: workspace.sId,
-          memberCount,
-          amount,
-          monthKey,
-        },
-        "[Metronome Webhook] Metronome free credits granted"
-      );
-      void emitAuditLogEventDirect({
-        workspace: renderLightWorkspaceType({ workspace }),
-        action: "credit.granted",
-        actor: { type: "system", id: "metronome-webhook" },
-        targets: [buildAuditLogTarget("workspace", workspace)],
-        context: { location: "internal" },
-        metadata: {
-          amountCents: String(amountCents),
-          memberCount: String(memberCount),
-          monthKey,
-          source: "metronome-commit-segment",
-        },
-      });
-    }
-  } catch (err) {
-    logger.error(
-      { workspaceId: workspace.sId, error: normalizeError(err) },
-      "[Metronome Webhook] Failed to grant Metronome free credits"
-    );
-  }
-}
 
 // Disable Next.js body parsing so we can read the raw body for signature verification.
 export const config = {
@@ -238,6 +136,7 @@ async function handler(
 
           const {
             customer_id: segmentCustomerId,
+            contract_id: segmentContractId,
             commit_id: commitId,
             segment_id: segmentId,
           } = segmentParsed.data;
@@ -254,18 +153,10 @@ async function handler(
             break;
           }
 
-          const subscription =
-            await SubscriptionResource.fetchActiveByWorkspaceModelId(
-              segmentWorkspace.id
-            );
-          if (!subscription?.metronomeContractId) {
-            break;
-          }
-
           // Only grant free credits for legacy contracts.
           const aliasesResult = await getMetronomeContractPackageAliases({
             metronomeCustomerId: segmentCustomerId,
-            metronomeContractId: subscription.metronomeContractId,
+            metronomeContractId: segmentContractId,
           });
           if (aliasesResult.isErr()) {
             logger.error(
