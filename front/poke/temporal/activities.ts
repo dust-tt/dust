@@ -66,6 +66,7 @@ import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_p
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
+import { TakeawaysResource } from "@app/lib/resources/takeaways_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
@@ -174,6 +175,11 @@ export async function scrubSpaceActivity({
       workspaceId,
     });
   }
+
+  // Delete all takeaways for this space. This must run before project todos because
+  // ProjectTodoTakeawaySourcesModel holds RESTRICT FKs on both ProjectTodoModel and
+  // TakeawaySourcesModel, so the join-table rows must be removed first.
+  await TakeawaysResource.deleteAllForSpace(auth, { spaceModelId: space.id });
 
   // Delete all project todos for this space, before the conversations as it's linked to convo
   const projectTodos = await ProjectTodoResource.fetchBySpace(auth, {

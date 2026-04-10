@@ -30,7 +30,7 @@
 
 import type { Authenticator } from "@app/lib/auth";
 
-export async function mergeConversationTodosIntoProject(
+export async function mergeTakeawaysIntoProject(
   _auth: Authenticator,
   { spaceId }: { spaceId: string }
 ): Promise<void> {

@@ -8,9 +8,10 @@ import {
 } from "@app/lib/resources/storage/models/takeaways";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-
+import type { ModelId } from "@app/types/shared/model_id";
 import { Ok, type Result } from "@app/types/shared/result";
 import { md5 } from "@app/types/shared/utils/encryption";
 import type {
@@ -24,7 +25,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
-import { col, fn } from "sequelize";
+import { col, fn, Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -161,6 +162,50 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
     return row ? new this(TakeawaysModel, row.get()) : null;
   }
 
+  // Deletes all takeaway rows for a specific space, along with their source
+  // entries and the join-table rows that reference those sources.
+  // Must be called before deleting project todos for the same space because
+  // ProjectTodoTakeawaySourcesModel holds RESTRICT FKs on both sides.
+  static async deleteAllForSpace(
+    auth: Authenticator,
+    { spaceModelId }: { spaceModelId: ModelId }
+  ): Promise<void> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const takeaways = await TakeawaysModel.findAll({
+      attributes: ["sId"],
+      where: { workspaceId, spaceId: spaceModelId },
+      raw: true,
+    });
+    const takeawaySIds = [...new Set(takeaways.map((r) => r.sId))];
+
+    if (takeawaySIds.length > 0) {
+      const takeawaySourceIds = (
+        await TakeawaySourcesModel.findAll({
+          attributes: ["id"],
+          where: { workspaceId, takeawaySId: { [Op.in]: takeawaySIds } },
+        })
+      ).map((r) => r.id);
+
+      if (takeawaySourceIds.length > 0) {
+        await ProjectTodoTakeawaySourcesModel.destroy({
+          where: {
+            workspaceId,
+            takeawaySourceId: { [Op.in]: takeawaySourceIds },
+          },
+        });
+      }
+
+      await TakeawaySourcesModel.destroy({
+        where: { workspaceId, takeawaySId: { [Op.in]: takeawaySIds } },
+      });
+    }
+
+    await TakeawaysModel.destroy({
+      where: { workspaceId, spaceId: spaceModelId },
+    });
+  }
+
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
@@ -227,11 +272,13 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
     auth: Authenticator,
     {
       conversationId,
+      spaceId,
       actionItems,
       notableFacts,
       keyDecisions,
     }: {
       conversationId: string;
+      spaceId: string;
       actionItems: TodoVersionedActionItem[];
       notableFacts: TodoVersionedNotableFact[];
       keyDecisions: TodoVersionedKeyDecision[];
@@ -239,6 +286,10 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
     transaction?: Transaction
   ): Promise<TakeawaysResource> {
     const workspaceId = auth.getNonNullableWorkspace().id;
+    const spaceModelId = getResourceIdFromSId(spaceId);
+    if (!spaceModelId) {
+      throw new Error(`Invalid spaceId: ${spaceId}`);
+    }
 
     return withTransaction(async (t) => {
       let source = await TakeawaySourcesModel.findOne({
@@ -264,7 +315,7 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
 
       return TakeawaysResource.makeNew(
         auth,
-        { actionItems, notableFacts, keyDecisions },
+        { spaceId: spaceModelId, actionItems, notableFacts, keyDecisions },
         t
       );
     }, transaction);
