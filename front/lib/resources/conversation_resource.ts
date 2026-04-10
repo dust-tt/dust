@@ -1835,6 +1835,32 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return pendingMessages;
   }
 
+  static async getMostRecentAgentMessageInConversation(
+    auth: Authenticator,
+    { conversation }: { conversation: ConversationResource }
+  ): Promise<AgentMessageModel | null> {
+    const owner = auth.getNonNullableWorkspace();
+
+    return AgentMessageModel.findOne({
+      where: {
+        workspaceId: owner.id,
+        status: ["succeeded", "gracefully_stopped"],
+      },
+      include: [
+        {
+          model: MessageModel,
+          as: "message",
+          required: true,
+          where: {
+            conversationId: conversation.id,
+            workspaceId: owner.id,
+          },
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+  }
+
   static async getMessageByIdInConversation(
     auth: Authenticator,
     conversation: ConversationWithoutContentType,
