@@ -1,0 +1,36 @@
+front/lib/plans/stripe.ts
+  068bbc100a060eab 576-582,585-586,591-596,666-673
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "41e9f1bcc7a7ec1da9d7b4ec379fe9f7dbb54675",
+  "prompts": {
+    "068bbc100a060eab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ca0ebdb-9a62-4038-94b7-8a530c09bf58",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Alexandre Pinon",
+      "messages": [],
+      "total_additions": 1208,
+      "total_deletions": 9,
+      "accepted_lines": 27,
+      "overriden_lines": 0
+    },
+    "dabf01f6e23c32ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5b4d58e7-92bf-4456-8ceb-30af827067fd",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Alexandre Pinon",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 4,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  }
+}
