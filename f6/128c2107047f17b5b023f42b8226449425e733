@@ -1,0 +1,23 @@
+connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+  833a10e1d8bc700a 147-155,170-194,196-199,210-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.6",
+  "base_commit_sha": "f6128c2107047f17b5b023f42b8226449425e733",
+  "prompts": {
+    "833a10e1d8bc700a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca0ecb4b-da89-4c83-933d-4a9722e91595",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alexandre Pinon",
+      "messages": [],
+      "total_additions": 33,
+      "total_deletions": 27,
+      "accepted_lines": 60,
+      "overriden_lines": 4
+    }
+  }
+}
