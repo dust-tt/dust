@@ -1,5 +1,7 @@
+import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { throttleWithRedis } from "@connectors/lib/throttle";
+import logger from "@connectors/logger/logger";
 import type { ChatStreamer, WebClient } from "@slack/web-api";
 import type { ChatAppendStreamArguments } from "@slack/web-api/dist/types/request/chat";
 
@@ -69,10 +71,31 @@ export class SlackStreamHandler {
   }
 
   async appendText(text: string) {
-    await this.append({ markdown_text: text });
+    if (this.stopped) {
+      return;
+    }
+    try {
+      await this.append({ markdown_text: text });
+    } catch (e) {
+      if (
+        isSlackWebAPIPlatformError(e) &&
+        e.data?.error === "message_not_in_streaming_state"
+      ) {
+        this.stopped = true;
+        logger.warn(
+          { connectorId: this.connectorId },
+          "Slack stream expired mid-answer, falling back to chat.update on agent_message_success"
+        );
+        return;
+      }
+      throw e;
+    }
   }
 
   async stop() {
+    if (this.stopped) {
+      return;
+    }
     this.stopped = true;
     const res = await this.streamer.stop();
     if (!this.messageTs && res?.ts) {
