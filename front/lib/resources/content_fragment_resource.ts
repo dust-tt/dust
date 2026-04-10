@@ -707,7 +707,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
             visibility: source.message.visibility,
             version: source.message.version,
             rank: source.message.rank,
-            branchId: source.message.branchSId,
+            branchId: source.message.getBranchId(),
             sourceUrl: fr.sourceUrl,
             title: fr.title,
             contentType: fr.contentType,

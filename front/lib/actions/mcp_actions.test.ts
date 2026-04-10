@@ -565,7 +565,7 @@ describe("tryCallMCPTool", () => {
       modelInteractionDurationMs: null,
       completionDurationMs: null,
       rank: messageRow.rank,
-      branchId: messageRow.branchSId,
+      branchId: messageRow.getBranchId(),
       richMentions: [],
     };
 

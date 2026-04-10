@@ -1866,10 +1866,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Err(new Error("Message not found"));
     }
 
-    if (message.branchSId) {
+    if (message.getBranchId()) {
       const branch = await ConversationBranchResource.fetchById(
         auth,
-        message.branchSId
+        message.getBranchId()!
       );
       if (!branch || !branch.canRead(auth)) {
         return new Err(new Error("Message not found"));

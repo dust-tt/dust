@@ -175,7 +175,7 @@ async function handler(
 
   const message = messageRes.value;
 
-  const branchId = message.branchSId ?? null;
+  const branchId = message.getBranchId() ?? null;
 
   switch (req.method) {
     case "GET": {
