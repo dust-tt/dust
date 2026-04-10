@@ -172,6 +172,79 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
   }
 
+  /**
+   * Returns user message counts grouped by conversationId for the given
+   * conversation model IDs.
+   */
+  static async getUserMessageCountsByConversationIds(
+    auth: Authenticator,
+    conversationIds: ModelId[]
+  ): Promise<Map<ModelId, number>> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const rows = await MessageModel.findAll({
+      attributes: [
+        "conversationId",
+        [frontSequelize.fn("COUNT", frontSequelize.col("id")), "count"],
+      ],
+      where: {
+        workspaceId: workspace.id,
+        conversationId: { [Op.in]: conversationIds },
+        userMessageId: { [Op.ne]: null },
+      },
+      group: ["conversationId"],
+      raw: true,
+    });
+
+    const result = new Map<ModelId, number>();
+    for (const row of rows) {
+      const r = row as unknown as { conversationId: ModelId; count: string };
+      result.set(r.conversationId, parseInt(r.count, 10));
+    }
+    return result;
+  }
+
+  /**
+   * Returns counts of failed agent messages grouped by conversationId for the
+   * given conversation model IDs.
+   */
+  static async getFailedAgentMessageCountsByConversationIds(
+    auth: Authenticator,
+    conversationIds: ModelId[]
+  ): Promise<Map<ModelId, number>> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const rows = await MessageModel.findAll({
+      attributes: [
+        "conversationId",
+        [frontSequelize.fn("COUNT", frontSequelize.col("message.id")), "count"],
+      ],
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          attributes: [],
+          required: true,
+          where: { status: "failed" },
+        },
+      ],
+      where: {
+        workspaceId: workspace.id,
+        conversationId: { [Op.in]: conversationIds },
+        agentMessageId: { [Op.ne]: null },
+      },
+      group: ["message.conversationId"],
+      raw: true,
+    });
+
+    const result = new Map<ModelId, number>();
+    for (const row of rows) {
+      const r = row as unknown as { conversationId: ModelId; count: string };
+      result.set(r.conversationId, parseInt(r.count, 10));
+    }
+    return result;
+  }
+
   private static getOptions(
     options?: FetchConversationOptions
   ): ResourceFindOptions<ConversationModel> {

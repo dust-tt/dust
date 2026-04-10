@@ -1,14 +1,10 @@
 import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentMessageFeedbackModel,
-  AgentMessageModel,
-  ConversationModel,
-  MessageModel,
-} from "@app/lib/models/agent/conversation";
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { AgentMessageSkillModel } from "@app/lib/models/skill/conversation_skill";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
-import { frontSequelize } from "@app/lib/resources/storage";
+import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { daysAgo } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
@@ -231,7 +227,7 @@ async function discoverConversations(
  * and tool error counts.
  */
 async function fetchConversationSignals(
-  workspaceId: ModelId,
+  auth: Authenticator,
   conversationIds: ModelId[]
 ): Promise<ConversationSignals> {
   if (conversationIds.length === 0) {
@@ -242,78 +238,20 @@ async function fetchConversationSignals(
     };
   }
 
-  const [userMessageRows, feedbackRows, toolErrorRows] = await Promise.all([
-    // User message counts per conversation.
-    MessageModel.findAll({
-      attributes: [
-        "conversationId",
-        [frontSequelize.fn("COUNT", frontSequelize.col("message.id")), "count"],
-      ],
-      where: {
-        workspaceId,
-        conversationId: { [Op.in]: conversationIds },
-        userMessageId: { [Op.ne]: null },
-      },
-      group: ["conversationId"],
-      raw: true,
-    }),
-
-    // Feedback counts per conversation.
-    AgentMessageFeedbackModel.findAll({
-      attributes: [
-        "conversationId",
-        [frontSequelize.fn("COUNT", frontSequelize.col("id")), "count"],
-      ],
-      where: {
-        workspaceId,
-        conversationId: { [Op.in]: conversationIds },
-      },
-      group: ["conversationId"],
-      raw: true,
-    }),
-
-    // Tool error counts: agent messages with failed status, joined through MessageModel.
-    MessageModel.findAll({
-      attributes: [
-        "conversationId",
-        [frontSequelize.fn("COUNT", frontSequelize.col("message.id")), "count"],
-      ],
-      include: [
-        {
-          model: AgentMessageModel,
-          as: "agentMessage",
-          attributes: [],
-          required: true,
-          where: { status: "failed" },
-        },
-      ],
-      where: {
-        workspaceId,
-        conversationId: { [Op.in]: conversationIds },
-        agentMessageId: { [Op.ne]: null },
-      },
-      group: ["message.conversationId"],
-      raw: true,
-    }),
+  const [userMessageCount, feedbackCount, toolErrorCount] = await Promise.all([
+    ConversationResource.getUserMessageCountsByConversationIds(
+      auth,
+      conversationIds
+    ),
+    AgentMessageFeedbackResource.getFeedbackCountsByConversationIds(
+      auth,
+      conversationIds
+    ),
+    ConversationResource.getFailedAgentMessageCountsByConversationIds(
+      auth,
+      conversationIds
+    ),
   ]);
-
-  const userMessageCount = new Map<ModelId, number>();
-  for (const row of userMessageRows) {
-    const r = row as unknown as { conversationId: ModelId; count: string };
-    userMessageCount.set(r.conversationId, parseInt(r.count, 10));
-  }
-
-  const feedbackCount = new Map<ModelId, number>();
-  for (const row of feedbackRows) {
-    const r = row as unknown as { conversationId: ModelId; count: string };
-    feedbackCount.set(r.conversationId, parseInt(r.count, 10));
-  }
-
-  const toolErrorCount = new Map<ModelId, number>();
-  for (const row of toolErrorRows) {
-    const r = row as unknown as { conversationId: ModelId; count: string };
-    toolErrorCount.set(r.conversationId, parseInt(r.count, 10));
-  }
 
   return { userMessageCount, feedbackCount, toolErrorCount };
 }
@@ -485,7 +423,7 @@ export async function findConversationsWithSkills(
   // Stage 3: Fetch signals.
   const candidateConversationIds = [...conversationSkillMap.keys()];
   const signals = await fetchConversationSignals(
-    workspace.id,
+    auth,
     candidateConversationIds
   );
 
