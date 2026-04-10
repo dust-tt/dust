@@ -356,7 +356,7 @@ export function SpaceAboutTab({
               value={searchSelectedMembers}
               onChange={setSearchSelectedMembers}
             />
-            <ScrollArea className="h-full">
+            <ScrollArea className="h-full" orientation="horizontal">
               <MembersTable
                 owner={owner}
                 space={space}
