@@ -1,8 +1,8 @@
-import type {ServerSideMCPServerConfigurationType} from "@app/lib/actions/mcp";
-import {MCPError} from "@app/lib/actions/mcp_errors";
-import {isToolWithKnowledge} from "@app/lib/actions/mcp_helper";
-import type {ToolHandlers} from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import {buildTools} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import { MCPError } from "@app/lib/actions/mcp_errors";
+import { isToolWithKnowledge } from "@app/lib/actions/mcp_helper";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   MAX_PENDING_INSTRUCTIONS_SUGGESTIONS,
   MAX_PENDING_KNOWLEDGE_SUGGESTIONS,
@@ -16,34 +16,34 @@ import {
   type SkillsSuggestionSchema,
   type ToolsSuggestionSchema,
 } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
-import {getAgentConfigurationIdFromContext} from "@app/lib/api/actions/servers/agent_sidekick_helpers";
-import {pruneConflictingInstructionSuggestions} from "@app/lib/api/assistant/agent_suggestion_pruning";
-import {getAgentConfiguration} from "@app/lib/api/assistant/configuration/agent";
-import {getAgentConfigurationsForView} from "@app/lib/api/assistant/configuration/views";
-import {getConversation} from "@app/lib/api/assistant/conversation/fetch";
-import {getShrinkWrappedConversation} from "@app/lib/api/assistant/conversation/shrink_wrap";
-import type {AgentMessageFeedbackWithMetadataType} from "@app/lib/api/assistant/feedback";
-import {getAgentFeedbacks} from "@app/lib/api/assistant/feedback";
-import {fetchAgentOverview} from "@app/lib/api/assistant/observability/overview";
-import {buildAgentAnalyticsBaseQuery} from "@app/lib/api/assistant/observability/utils";
+import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_sidekick_helpers";
+import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
+import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
+import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
+import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
+import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import {
   formatTemplatesAsText,
   getTemplatesForSidekick,
 } from "@app/lib/api/assistant/sidekick_templates";
 import config from "@app/lib/api/config";
-import {getLlmCredentials} from "@app/lib/api/provider_credentials";
-import type {Authenticator} from "@app/lib/auth";
-import {getDisplayNameForDataSource} from "@app/lib/data_sources";
-import {AgentSuggestionResource} from "@app/lib/resources/agent_suggestion_resource";
-import type {ConversationResource} from "@app/lib/resources/conversation_resource";
-import {DataSourceViewResource} from "@app/lib/resources/data_source_view_resource";
-import {MCPServerViewResource} from "@app/lib/resources/mcp_server_view_resource";
-import {SkillResource} from "@app/lib/resources/skill/skill_resource";
-import {SpaceResource} from "@app/lib/resources/space_resource";
-import {TemplateResource} from "@app/lib/resources/template_resource";
-import {concurrentExecutor} from "@app/lib/utils/async_utils";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import type { Authenticator } from "@app/lib/auth";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { TemplateResource } from "@app/lib/resources/template_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type {DataSourceViewCategory} from "@app/types/api/public/spaces";
+import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type {
   AgentMessageType,
   CompactionMessageType,
@@ -54,18 +54,18 @@ import {
   isCompactionMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
-import {isAgentMention} from "@app/types/assistant/mentions";
-import {isModelProviderId} from "@app/types/assistant/models/providers";
-import type {ContentFragmentType} from "@app/types/content_fragment";
-import {isContentFragmentType} from "@app/types/content_fragment";
-import {DATA_SOURCE_NODE_ID} from "@app/types/core/content_node";
-import {CoreAPI} from "@app/types/core/core_api";
-import {isJobType} from "@app/types/job_type";
-import type {Result} from "@app/types/shared/result";
-import {Err, Ok} from "@app/types/shared/result";
-import {normalizeError} from "@app/types/shared/utils/error_utils";
-import {isString, removeNulls} from "@app/types/shared/utils/general";
-import type {SpaceType} from "@app/types/space";
+import { isAgentMention } from "@app/types/assistant/mentions";
+import { isModelProviderId } from "@app/types/assistant/models/providers";
+import type { ContentFragmentType } from "@app/types/content_fragment";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
+import { CoreAPI } from "@app/types/core/core_api";
+import { isJobType } from "@app/types/job_type";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
 import type {
   AgentSuggestionSource,
   AgentSuggestionState,
@@ -80,7 +80,7 @@ import {
   isSubAgentSuggestion,
   isToolsSuggestion,
 } from "@app/types/suggestions/agent_suggestion";
-import {JSDOM} from "jsdom";
+import { JSDOM } from "jsdom";
 
 const SIDEKICK_KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
   "managed",
@@ -141,7 +141,7 @@ function canAddPendingSuggestions({
   kind: LimitedSuggestionKind;
   newPendingCount: number;
   currentPendingCount: number;
-}): {allowed: true} | {allowed: false; errorMessage: string} {
+}): { allowed: true } | { allowed: false; errorMessage: string } {
   const maxAllowed = getMaxPendingSuggestions(kind);
 
   const totalAfterAddition = currentPendingCount + newPendingCount;
@@ -159,7 +159,7 @@ function canAddPendingSuggestions({
     };
   }
 
-  return {allowed: true};
+  return { allowed: true };
 }
 
 /**
@@ -216,7 +216,7 @@ export async function createInstructionSuggestions({
   source: AgentSuggestionSource;
   conversation?: ConversationResource;
 }): Promise<
-  Result<{sId: string; kind: string; targetBlockId: string}[], string>
+  Result<{ sId: string; kind: string; targetBlockId: string }[], string>
 > {
   // Reject batches where multiple suggestions target the same block.
   const targetBlockIds = suggestions.map((s) => s.targetBlockId);
@@ -224,7 +224,7 @@ export async function createInstructionSuggestions({
   if (uniqueTargetBlockIds.size !== targetBlockIds.length) {
     return new Err(
       "Multiple suggestions target the same block ID. Use a single suggestion per block." +
-      `For full rewrites, target '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}' instead.`
+        `For full rewrites, target '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}' instead.`
     );
   }
 
@@ -233,7 +233,7 @@ export async function createInstructionSuggestions({
     await AgentSuggestionResource.listByAgentConfigurationId(
       auth,
       agentConfigurationId,
-      {states: ["pending"], kind: "instructions"}
+      { states: ["pending"], kind: "instructions" }
     );
 
   const limitCheck = canAddPendingSuggestions({
@@ -263,7 +263,7 @@ export async function createInstructionSuggestions({
       if (blockCount > 1) {
         return new Err(
           `Suggestion for block "${suggestion.targetBlockId}" contains ${blockCount} top-level elements but replace only supports 1. ` +
-          `Keep it within a single tag, or use targetBlockId '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}' if the change requires multiple blocks.`
+            `Keep it within a single tag, or use targetBlockId '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}' if the change requires multiple blocks.`
         );
       }
     }
@@ -276,7 +276,7 @@ export async function createInstructionSuggestions({
   }[] = [];
 
   for (const suggestion of suggestions) {
-    const {analysis, ...suggestionData} = suggestion;
+    const { analysis, ...suggestionData } = suggestion;
     const created = await AgentSuggestionResource.createSuggestionForAgent(
       auth,
       agentConfiguration,
@@ -326,7 +326,7 @@ export async function createToolsSuggestions({
   suggestions: ToolsSuggestionInput[];
   source: AgentSuggestionSource;
   conversation?: ConversationResource;
-}): Promise<Result<{sId: string; kind: string}[], string>> {
+}): Promise<Result<{ sId: string; kind: string }[], string>> {
   // Reject batches where multiple suggestions target the same tool.
   const suggestionToolIds = suggestions.map((s) => s.toolId);
   const uniqueToolIds = new Set(suggestionToolIds);
@@ -350,7 +350,7 @@ export async function createToolsSuggestions({
   if (missingToolIds.length > 0) {
     return new Err(
       `The following tool ID(s) are invalid or not accessible: ${missingToolIds.join(", ")}. ` +
-      `Check <workspace_context> for valid tool IDs.`
+        `Check <workspace_context> for valid tool IDs.`
     );
   }
 
@@ -365,7 +365,7 @@ export async function createToolsSuggestions({
       .join(", ");
     return new Err(
       `The following ID(s) are knowledge tools, not regular tools: ${knowledgeToolNames}. ` +
-      `Use \`suggest_knowledge\` instead of \`suggest_tools\` for data source, table, or data warehouse tools.`
+        `Use \`suggest_knowledge\` instead of \`suggest_tools\` for data source, table, or data warehouse tools.`
     );
   }
 
@@ -374,7 +374,7 @@ export async function createToolsSuggestions({
     await AgentSuggestionResource.listByAgentConfigurationId(
       auth,
       agentConfigurationId,
-      {states: ["pending"], kind: "tools"}
+      { states: ["pending"], kind: "tools" }
     );
 
   const remainingPending = await markDuplicateSuggestionsAsOutdated(
@@ -402,10 +402,10 @@ export async function createToolsSuggestions({
     return new Err(`Agent configuration not found: ${agentConfigurationId}`);
   }
 
-  const createdSuggestions: {sId: string; kind: string}[] = [];
+  const createdSuggestions: { sId: string; kind: string }[] = [];
 
-  for (const {action, toolId, analysis} of suggestions) {
-    const suggestion: ToolsSuggestionType = {action, toolId};
+  for (const { action, toolId, analysis } of suggestions) {
+    const suggestion: ToolsSuggestionType = { action, toolId };
     const created = await AgentSuggestionResource.createSuggestionForAgent(
       auth,
       agentConfiguration,
@@ -419,7 +419,7 @@ export async function createToolsSuggestions({
       }
     );
 
-    createdSuggestions.push({sId: created.sId, kind: created.kind});
+    createdSuggestions.push({ sId: created.sId, kind: created.kind });
   }
 
   return new Ok(createdSuggestions);
@@ -445,7 +445,7 @@ export async function createSkillsSuggestions({
   suggestions: SkillsSuggestionInput[];
   source: AgentSuggestionSource;
   conversation?: ConversationResource;
-}): Promise<Result<{sId: string; kind: string}[], string>> {
+}): Promise<Result<{ sId: string; kind: string }[], string>> {
   // Reject batches where multiple suggestions target the same skill.
   const suggestionSkillIds = suggestions.map((s) => s.skillId);
   const uniqueSkillIds = new Set(suggestionSkillIds);
@@ -471,7 +471,7 @@ export async function createSkillsSuggestions({
   if (missingSkillIds.length > 0) {
     return new Err(
       `The following skill ID(s) are invalid or not accessible: ${missingSkillIds.join(", ")}. ` +
-      `Check <workspace_context> for valid skill IDs.`
+        `Check <workspace_context> for valid skill IDs.`
     );
   }
 
@@ -480,7 +480,7 @@ export async function createSkillsSuggestions({
     await AgentSuggestionResource.listByAgentConfigurationId(
       auth,
       agentConfigurationId,
-      {states: ["pending"], kind: "skills"}
+      { states: ["pending"], kind: "skills" }
     );
 
   const remainingPending = await markDuplicateSuggestionsAsOutdated(
@@ -509,15 +509,15 @@ export async function createSkillsSuggestions({
     return new Err(`Agent configuration not found: ${agentConfigurationId}`);
   }
 
-  const createdSuggestions: {sId: string; kind: string}[] = [];
+  const createdSuggestions: { sId: string; kind: string }[] = [];
 
-  for (const {action, skillId, analysis} of suggestions) {
+  for (const { action, skillId, analysis } of suggestions) {
     const created = await AgentSuggestionResource.createSuggestionForAgent(
       auth,
       agentConfiguration,
       {
         kind: "skills",
-        suggestion: {action, skillId},
+        suggestion: { action, skillId },
         analysis: analysis ?? null,
         state: "pending",
         source,
@@ -525,7 +525,7 @@ export async function createSkillsSuggestions({
       }
     );
 
-    createdSuggestions.push({sId: created.sId, kind: created.kind});
+    createdSuggestions.push({ sId: created.sId, kind: created.kind });
   }
 
   return new Ok(createdSuggestions);
@@ -541,7 +541,7 @@ import {
   listAvailableSkills,
   listAvailableTools,
 } from "@app/lib/api/assistant/workspace_capabilities";
-import type {z} from "zod";
+import type { z } from "zod";
 
 /**
  * Lists all knowledge data source views across all spaces the user has access to.
@@ -559,7 +559,7 @@ async function listAllKnowledgeDataSourceViews(
 }
 
 const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
-  get_available_knowledge: async ({spaceId, category}, {auth}) => {
+  get_available_knowledge: async ({ spaceId, category }, { auth }) => {
     // Get all spaces the user is a member of.
     let spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
 
@@ -627,7 +627,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
           categories: categoriesData,
         } satisfies KnowledgeSpace;
       },
-      {concurrency: 8}
+      { concurrency: 8 }
     );
 
     // Filter out null results (spaces with no data sources).
@@ -659,7 +659,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_available_models: async ({providerId}, {auth}) => {
+  get_available_models: async ({ providerId }, { auth }) => {
     let models = await getAvailableModelsForWorkspace(auth);
 
     if (providerId) {
@@ -681,7 +681,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_available_skills: async (_, {auth}) => {
+  get_available_skills: async (_, { auth }) => {
     const [skillList, toolList] = await Promise.all([
       listAvailableSkills(auth),
       listAvailableTools(auth),
@@ -695,7 +695,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_available_tools: async (_, {auth}) => {
+  get_available_tools: async (_, { auth }) => {
     const toolList = await listAvailableTools(auth);
 
     return new Ok([
@@ -706,7 +706,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_available_agents: async ({limit, agentPrefix}, {auth}) => {
+  get_available_agents: async ({ limit, agentPrefix }, { auth }) => {
     const agents = await getAgentConfigurationsForView({
       auth,
       agentsGetView: "list",
@@ -737,7 +737,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  inspect_available_agent: async ({agentId}, {auth}) => {
+  inspect_available_agent: async ({ agentId }, { auth }) => {
     const agentConfiguration = await getAgentConfiguration(auth, {
       agentId,
       variant: "full",
@@ -782,8 +782,8 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   },
 
   get_agent_feedback: async (
-    {limit, filter, latestVersionOnly},
-    {auth, agentLoopContext}
+    { limit, filter, latestVersionOnly },
+    { auth, agentLoopContext }
   ) => {
     const agentConfigurationId =
       getAgentConfigurationIdFromContext(agentLoopContext);
@@ -792,7 +792,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
@@ -825,7 +825,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
         orderDirection: "desc",
       },
       filter: filter ?? "active",
-      ...(latestVersionOnlyWithDefault ? {version: currentVersion} : {}),
+      ...(latestVersionOnlyWithDefault ? { version: currentVersion } : {}),
     });
 
     if (feedbacksRes.isErr()) {
@@ -876,7 +876,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
             current_version_feedback: currentVersionFeedbackList,
             ...(latestVersionOnlyWithDefault
               ? {}
-              : {previous_versions_feedback: previousVersionsFeedbackList}),
+              : { previous_versions_feedback: previousVersionsFeedbackList }),
           },
           null,
           2
@@ -885,7 +885,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_agent_insights: async ({days}, {auth, agentLoopContext}) => {
+  get_agent_insights: async ({ days }, { auth, agentLoopContext }) => {
     const agentConfigurationId =
       getAgentConfigurationIdFromContext(agentLoopContext);
 
@@ -893,7 +893,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
@@ -927,7 +927,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           `Failed to fetch agent insights: ${overviewResult.error.message}`,
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
@@ -961,7 +961,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   },
 
   // Suggestion handlers
-  suggest_prompt_edits: async (params, {auth, agentLoopContext}) => {
+  suggest_prompt_edits: async (params, { auth, agentLoopContext }) => {
     const agentConfigurationId =
       getAgentConfigurationIdFromContext(agentLoopContext);
 
@@ -969,7 +969,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
@@ -983,7 +983,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       });
 
       if (result.isErr()) {
-        return new Err(new MCPError(result.error, {tracked: false}));
+        return new Err(new MCPError(result.error, { tracked: false }));
       }
 
       const directives = result.value.map(
@@ -1000,13 +1000,13 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           `Failed to create suggestion: ${normalizeError(error).message}`,
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
   },
 
-  suggest_tools: async (params, {auth, agentLoopContext}) => {
+  suggest_tools: async (params, { auth, agentLoopContext }) => {
     const agentConfigurationId =
       getAgentConfigurationIdFromContext(agentLoopContext);
 
@@ -1014,7 +1014,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
@@ -1028,7 +1028,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       });
 
       if (result.isErr()) {
-        return new Err(new MCPError(result.error, {tracked: false}));
+        return new Err(new MCPError(result.error, { tracked: false }));
       }
 
       const directives = result.value.map(
@@ -1045,13 +1045,13 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           `Failed to create suggestion: ${normalizeError(error).message}`,
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
   },
 
-  suggest_sub_agent: async (params, {auth, agentLoopContext}) => {
+  suggest_sub_agent: async (params, { auth, agentLoopContext }) => {
     const agentConfigurationId =
       getAgentConfigurationIdFromContext(agentLoopContext);
 
@@ -1059,13 +1059,13 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
 
     // Validate that the sub-agent exists and is accessible.
-    const {action, subAgentId} = params;
+    const { action, subAgentId } = params;
     const subAgentConfiguration = await getAgentConfiguration(auth, {
       agentId: subAgentId,
       variant: "light",
@@ -1075,7 +1075,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           `The sub-agent ID "${subAgentId}" is invalid or not accessible.`,
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
@@ -1091,7 +1091,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           "The run_agent server is not available in this workspace.",
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
@@ -1101,7 +1101,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       await AgentSuggestionResource.listByAgentConfigurationId(
         auth,
         agentConfigurationId,
-        {states: ["pending"], kind: "sub_agent"}
+        { states: ["pending"], kind: "sub_agent" }
       );
 
     const remainingPending = await markDuplicateSuggestionsAsOutdated(
@@ -1119,7 +1119,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       currentPendingCount: remainingPending.length,
     });
     if (!limitCheck.allowed) {
-      return new Err(new MCPError(limitCheck.errorMessage, {tracked: false}));
+      return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
     }
 
     // Fetch the latest version of the agent configuration.
@@ -1167,13 +1167,13 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           `Failed to create suggestion: ${normalizeError(error).message}`,
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
   },
 
-  suggest_skills: async (params, {auth, agentLoopContext}) => {
+  suggest_skills: async (params, { auth, agentLoopContext }) => {
     const agentConfigurationId =
       getAgentConfigurationIdFromContext(agentLoopContext);
 
@@ -1181,7 +1181,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
@@ -1195,7 +1195,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       });
 
       if (result.isErr()) {
-        return new Err(new MCPError(result.error, {tracked: false}));
+        return new Err(new MCPError(result.error, { tracked: false }));
       }
 
       const directives = result.value.map(
@@ -1212,22 +1212,22 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           `Failed to create suggestion: ${normalizeError(error).message}`,
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
   },
 
-  suggest_model: async (params, {auth, agentLoopContext}) => {
+  suggest_model: async (params, { auth, agentLoopContext }) => {
     const availableModels = await getAvailableModelsForWorkspace(auth);
     const availableModelIds = availableModels.map((m) => m.modelId);
 
-    const {modelId} = params.suggestion;
+    const { modelId } = params.suggestion;
     if (!availableModelIds.includes(modelId)) {
       return new Err(
         new MCPError(
           `Invalid model ID: ${modelId}. Check <workspace_context> for valid model IDs.`,
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
@@ -1239,7 +1239,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
@@ -1281,13 +1281,13 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           `Failed to create suggestion: ${normalizeError(error).message}`,
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
   },
 
-  search_knowledge: async ({query, topK}, {auth}) => {
+  search_knowledge: async ({ query, topK }, { auth }) => {
     const dataSourceViews = await listAllKnowledgeDataSourceViews(auth);
 
     if (dataSourceViews.length === 0) {
@@ -1359,12 +1359,12 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     return new Ok([
       {
         type: "text" as const,
-        text: JSON.stringify({matches}, null, 2),
+        text: JSON.stringify({ matches }, null, 2),
       },
     ]);
   },
 
-  suggest_knowledge: async (params, {auth, agentLoopContext}) => {
+  suggest_knowledge: async (params, { auth, agentLoopContext }) => {
     const agentConfigurationId =
       getAgentConfigurationIdFromContext(agentLoopContext);
 
@@ -1372,21 +1372,21 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
 
     // Validate that the data source view exists and is accessible.
-    const {action, method, dataSourceViewId, description} = params.suggestion;
+    const { action, method, dataSourceViewId, description } = params.suggestion;
     const view = await DataSourceViewResource.fetchById(auth, dataSourceViewId);
 
     if (!view) {
       return new Err(
         new MCPError(
           `The data source view ID "${dataSourceViewId}" is invalid or not accessible. ` +
-          `Use get_available_knowledge or search_knowledge to find valid data source views.`,
-          {tracked: false}
+            `Use get_available_knowledge or search_knowledge to find valid data source views.`,
+          { tracked: false }
         )
       );
     }
@@ -1396,7 +1396,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       await AgentSuggestionResource.listByAgentConfigurationId(
         auth,
         agentConfigurationId,
-        {states: ["pending"], kind: "knowledge"}
+        { states: ["pending"], kind: "knowledge" }
       );
 
     const remainingPending = await markDuplicateSuggestionsAsOutdated(
@@ -1414,7 +1414,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       currentPendingCount: remainingPending.length,
     });
     if (!limitCheck.allowed) {
-      return new Err(new MCPError(limitCheck.errorMessage, {tracked: false}));
+      return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
     }
 
     // Fetch the latest version of the agent configuration.
@@ -1462,13 +1462,13 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           `Failed to create suggestion: ${normalizeError(error).message}`,
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
   },
 
-  list_suggestions: async (params, {auth, agentLoopContext}) => {
+  list_suggestions: async (params, { auth, agentLoopContext }) => {
     const agentConfigurationId =
       getAgentConfigurationIdFromContext(agentLoopContext);
 
@@ -1476,7 +1476,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
@@ -1511,8 +1511,8 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   },
 
   inspect_conversation: async (
-    {conversationId, fromMessageIndex, toMessageIndex},
-    {auth}
+    { conversationId, fromMessageIndex, toMessageIndex },
+    { auth }
   ) => {
     const conversationRes = await getShrinkWrappedConversation(auth, {
       conversationId,
@@ -1524,7 +1524,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           `Conversation not found or not accessible: ${conversationId}`,
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
@@ -1532,7 +1532,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     return new Ok([conversationRes.value]);
   },
 
-  inspect_message: async ({conversationId, messageId}, extra) => {
+  inspect_message: async ({ conversationId, messageId }, extra) => {
     const auth = extra.auth;
     if (!auth) {
       return new Err(new MCPError("Authentication required"));
@@ -1543,7 +1543,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           `Conversation not found or not accessible: ${conversationId}`,
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
@@ -1551,7 +1551,11 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     const conversation = conversationRes.value;
 
     // Flatten to last version of each message, find the target by sId.
-    let foundMessage: UserMessageType | AgentMessageType | CompactionMessageType | null = null;
+    let foundMessage:
+      | UserMessageType
+      | AgentMessageType
+      | CompactionMessageType
+      | null = null;
     let foundIndex = -1;
     const flatMessages: (
       | UserMessageType
@@ -1571,7 +1575,9 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     for (let i = 0; i < flatMessages.length; i++) {
       const msg = flatMessages[i];
       if (
-        (isUserMessageType(msg) || isAgentMessageType(msg) || isCompactionMessageType(msg)) &&
+        (isUserMessageType(msg) ||
+          isAgentMessageType(msg) ||
+          isCompactionMessageType(msg)) &&
         msg.sId === messageId
       ) {
         foundMessage = msg;
@@ -1606,7 +1612,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           `Message not found: ${messageId} in conversation ${conversationId}`,
-          {tracked: false}
+          { tracked: false }
         )
       );
     }
@@ -1724,7 +1730,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
 
     // Find agents that this message handed off to.
-    const handoffTargets: {agentId: string; agentName: string}[] = [];
+    const handoffTargets: { agentId: string; agentName: string }[] = [];
     for (const msg of flatMessages) {
       if (
         isAgentMessageType(msg) &&
@@ -1761,8 +1767,8 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  update_suggestions_state: async (params, {auth}) => {
-    const {suggestions: suggestionUpdates} = params;
+  update_suggestions_state: async (params, { auth }) => {
+    const { suggestions: suggestionUpdates } = params;
 
     const suggestionIds = suggestionUpdates.map((s) => s.suggestionId);
     const suggestions = await AgentSuggestionResource.fetchByIds(
@@ -1783,7 +1789,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       AgentSuggestionResource[]
     >();
 
-    for (const {suggestionId, state} of suggestionUpdates) {
+    for (const { suggestionId, state } of suggestionUpdates) {
       const suggestion = suggestionsById.get(suggestionId);
       if (!suggestion) {
         results.push({
@@ -1804,7 +1810,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       try {
         await AgentSuggestionResource.bulkUpdateState(auth, group, state);
         results.push(
-          ...group.map((s) => ({success: true, suggestionId: s.sId}))
+          ...group.map((s) => ({ success: true, suggestionId: s.sId }))
         );
       } catch (error) {
         const msg = normalizeError(error).message;
@@ -1821,12 +1827,12 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     return new Ok([
       {
         type: "text" as const,
-        text: JSON.stringify({results}, null, 2),
+        text: JSON.stringify({ results }, null, 2),
       },
     ]);
   },
 
-  search_agent_templates: async ({jobType, query}, {auth}) => {
+  search_agent_templates: async ({ jobType, query }, { auth }) => {
     const res = await getTemplatesForSidekick({
       auth,
       jobType: jobType && isJobType(jobType) ? jobType : undefined,
@@ -1834,7 +1840,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       limit: 10,
     });
     if (res.isErr()) {
-      return new Err(new MCPError(res.error.message, {tracked: false}));
+      return new Err(new MCPError(res.error.message, { tracked: false }));
     }
     return new Ok([
       {
@@ -1844,7 +1850,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_agent_template: async ({templateId}, _extra) => {
+  get_agent_template: async ({ templateId }, _extra) => {
     const template = await TemplateResource.fetchByExternalId(templateId);
 
     if (!template) {

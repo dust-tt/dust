@@ -120,7 +120,7 @@ async function handler(
       },
     });
   }
-  if(isCompactionMessageType(message)) {
+  if (isCompactionMessageType(message)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -129,7 +129,6 @@ async function handler(
       },
     });
   }
-
 
   switch (req.method) {
     case "POST":
