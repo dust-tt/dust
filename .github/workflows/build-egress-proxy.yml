@@ -1,4 +1,4 @@
-name: Build & Test (egress-proxy)
+name: Lint & Build & Test (egress-proxy)
 
 on:
   push:
@@ -53,16 +53,23 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
-          components: cargo, rustfmt, rust-std, rustc
+          components: cargo, clippy, rustfmt, rust-std, rustc
+
+      - name: Install test dependencies
+        run: sudo apt-get update && sudo apt-get install -y openssl
 
       - name: Setup Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: egress-proxy
 
-      - name: Lint
+      - name: Format
         working-directory: egress-proxy
         run: cargo fmt --all -- --check
+
+      - name: Lint
+        working-directory: egress-proxy
+        run: cargo clippy --all-targets --all-features -- -D warnings
 
       - name: Build
         working-directory: egress-proxy
@@ -71,3 +78,6 @@ jobs:
       - name: Test
         working-directory: egress-proxy
         run: cargo test --all
+
+      - name: Build Docker image
+        run: docker build -f dockerfiles/egress-proxy.Dockerfile -t dust-egress-proxy-ci .
