@@ -75,6 +75,30 @@ enum AppConfig {
             "/api/v1/w/\(workspaceId)/assistant/conversations/\(conversationId)/messages/\(messageId)/retry"
         }
 
+        static func mcpServerViews(workspaceId: String) -> String {
+            "/api/w/\(workspaceId)/mcp/views"
+        }
+
+        static func skills(workspaceId: String) -> String {
+            "/api/w/\(workspaceId)/skills"
+        }
+
+        static func conversationTools(workspaceId: String, conversationId: String) -> String {
+            "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/tools"
+        }
+
+        static func conversationSkills(workspaceId: String, conversationId: String) -> String {
+            "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/skills"
+        }
+
+        static func search(workspaceId: String) -> String {
+            "/api/w/\(workspaceId)/search"
+        }
+
+        static func spaces(workspaceId: String) -> String {
+            "/api/w/\(workspaceId)/spaces"
+        }
+
         static func spacesSummary(workspaceId: String) -> String {
             "/api/w/\(workspaceId)/assistant/conversations/spaces"
         }

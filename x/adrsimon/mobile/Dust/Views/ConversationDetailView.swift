@@ -72,7 +72,9 @@ struct ConversationDetailView: View {
             await viewModel.loadMessages()
         }
         .task {
-            await inputBarViewModel.loadAgents()
+            async let agents: () = inputBarViewModel.loadAgents()
+            async let caps: () = inputBarViewModel.loadCapabilities()
+            _ = await (agents, caps)
         }
         .onDisappear {
             inputBarViewModel.cancelUploads()
