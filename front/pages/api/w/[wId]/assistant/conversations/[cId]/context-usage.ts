@@ -50,32 +50,29 @@ async function handler(
       }
 
       const lastAgentMessage =
-        await conversation.getMostRecentAgentMessage(auth);
+        await conversation.getMostRecentCompletedAgentMessage(auth);
 
       if (!lastAgentMessage || !lastAgentMessage.runIds?.length) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
-            type: "conversation_not_found",
+            type: "conversation_context_usage_not_found",
             message: "No completed agent message found in this conversation.",
           },
         });
       }
 
-      // runIds is ordered chronologically (appended step by step in the agent
-      // loop), so the last element is the most recent run.
-      const lastRunId =
-        lastAgentMessage.runIds[lastAgentMessage.runIds.length - 1];
-
+      // runIds is ordered chronologically (appended step by step in the agent loop), so the last
+      // element is the most recent run.
       const run = await RunResource.fetchByDustRunId(auth, {
-        dustRunId: lastRunId,
+        dustRunId: lastAgentMessage.runIds[lastAgentMessage.runIds.length - 1],
       });
 
       if (!run) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
-            type: "conversation_not_found",
+            type: "conversation_context_usage_not_found",
             message: "No run found for the last agent message.",
           },
         });
@@ -87,7 +84,7 @@ async function handler(
         return apiError(req, res, {
           status_code: 404,
           api_error: {
-            type: "conversation_not_found",
+            type: "conversation_context_usage_not_found",
             message: "No run usage found for the last agent message.",
           },
         });

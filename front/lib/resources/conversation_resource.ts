@@ -1835,7 +1835,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return pendingMessages;
   }
 
-  async getMostRecentAgentMessage(
+  async getMostRecentCompletedAgentMessage(
     auth: Authenticator
   ): Promise<AgentMessageModel | null> {
     const owner = auth.getNonNullableWorkspace();

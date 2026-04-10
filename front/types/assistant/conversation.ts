@@ -474,6 +474,7 @@ export const CONVERSATION_ERROR_TYPES = [
   "message_not_found",
   "message_deletion_not_authorized",
   "branch_not_found",
+  "conversation_context_usage_not_found",
 ] as const;
 
 export type ConversationErrorType = (typeof CONVERSATION_ERROR_TYPES)[number];
