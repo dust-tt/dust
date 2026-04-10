@@ -242,6 +242,70 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
     return new Ok(undefined);
   }
 
+  // Returns the latest takeaway snapshot for every conversation that has
+  // produced a takeaway in the given space. Each entry pairs the most-recent
+  // TakeawaysResource version with the conversation sId that produced it.
+  // Used by the merge workflow to iterate over all conversations to process.
+  static async fetchLatestBySpaceId(
+    auth: Authenticator,
+    { spaceModelId }: { spaceModelId: ModelId }
+  ): Promise<{ takeaway: TakeawaysResource; conversationSId: string }[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Fetch all rows for this space ordered so the highest version per sId
+    // comes first — the first occurrence is the latest version.
+    const rows = await TakeawaysModel.findAll({
+      where: { workspaceId, spaceId: spaceModelId },
+      order: [
+        ["sId", "ASC"],
+        ["version", "DESC"],
+      ],
+    });
+
+    // O(n) dedup — keep only the latest version per sId.
+    const latestBySId = new Map<string, TakeawaysModel>();
+    for (const row of rows) {
+      if (!latestBySId.has(row.sId)) {
+        latestBySId.set(row.sId, row);
+      }
+    }
+
+    if (latestBySId.size === 0) {
+      return [];
+    }
+
+    // Batch-fetch source rows to resolve each takeaway sId → conversation sId.
+    const sIds = [...latestBySId.keys()];
+    const sources = await TakeawaySourcesModel.findAll({
+      where: {
+        workspaceId,
+        takeawaySId: { [Op.in]: sIds },
+        sourceType: "conversation",
+      },
+    });
+
+    // One source per takeaway sId (a takeaway is produced by one conversation).
+    const conversationSIdBySId = new Map<string, string>(
+      sources.map((s) => [s.takeawaySId, s.sourceId])
+    );
+
+    const result: { takeaway: TakeawaysResource; conversationSId: string }[] =
+      [];
+    for (const [sId, row] of latestBySId) {
+      const conversationSId = conversationSIdBySId.get(sId);
+      if (!conversationSId) {
+        // Takeaway exists for this space but has no conversation source — skip.
+        continue;
+      }
+      result.push({
+        takeaway: new this(TakeawaysModel, row.get()),
+        conversationSId,
+      });
+    }
+
+    return result;
+  }
+
   // Returns the most recent snapshot for a conversation, or null if none exists.
   // Looks up the conversation's stable sId through TakeawaySourcesModel.
   static async fetchLatestByConversationId(
