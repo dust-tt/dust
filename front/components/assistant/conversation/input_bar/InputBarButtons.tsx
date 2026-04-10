@@ -78,7 +78,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
   const handleAgentDetailsClick = (agentId: string) => {
-    setQueryParam(router, "agentDetails", agentSId);
+    setQueryParam(router, "agentDetails", agentId);
   };
 
   const agentButton = (actions.includes("agents-list") ||
