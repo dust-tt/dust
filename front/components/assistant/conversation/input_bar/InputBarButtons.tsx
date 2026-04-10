@@ -20,7 +20,7 @@ import { getSupportedFileExtensions } from "@app/types/files";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { Avatar, Button, cn, RobotIcon } from "@dust-tt/sparkle";
-import React, { useCallback } from "react";
+import React from "react";
 
 interface InputBarButtonsProps {
   actions: InputBarAction[];
@@ -77,12 +77,9 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
-  const handleAgentDetailsClick = useCallback(
-    (agentSId: string) => {
-      setQueryParam(router, "agentDetails", agentSId);
-    },
-    [router]
-  );
+  const handleAgentDetailsClick = (agentSId: string) => {
+    setQueryParam(router, "agentDetails", agentSId);
+  };
 
   const agentButton = (actions.includes("agents-list") ||
     actions.includes("agents-list-with-actions")) && (
