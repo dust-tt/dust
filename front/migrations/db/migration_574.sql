@@ -12,8 +12,8 @@ CREATE TABLE IF NOT EXISTS "conversation_forks" (
   "branchedAt" TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
-CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "conversation_forks_workspace_id_child_conversation_id"
-  ON "conversation_forks" ("workspaceId", "childConversationId");
+CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "conversation_forks_child_conversation_id"
+  ON "conversation_forks" ("childConversationId");
 
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "conversation_forks_workspace_id_parent_conversation_id"
   ON "conversation_forks" ("workspaceId", "parentConversationId");
@@ -23,9 +23,6 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS "conversation_forks_workspace_id_source_
 
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "conversation_forks_parent_conversation_id"
   ON "conversation_forks" ("parentConversationId");
-
-CREATE INDEX CONCURRENTLY IF NOT EXISTS "conversation_forks_child_conversation_id"
-  ON "conversation_forks" ("childConversationId");
 
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "conversation_forks_created_by_user_id"
   ON "conversation_forks" ("createdByUserId");

@@ -46,7 +46,7 @@ ConversationForkModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        fields: ["workspaceId", "childConversationId"],
+        fields: ["childConversationId"],
         unique: true,
       },
       {
@@ -57,10 +57,6 @@ ConversationForkModel.init(
       },
       {
         fields: ["parentConversationId"],
-        concurrently: true,
-      },
-      {
-        fields: ["childConversationId"],
         concurrently: true,
       },
       {

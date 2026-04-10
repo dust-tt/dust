@@ -10,6 +10,7 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
+import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import {
   AgentMessageSkillModel,
   ConversationSkillModel,
@@ -33,7 +34,7 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import chunk from "lodash/chunk";
-import type { WhereOptions } from "sequelize";
+import { Op, type WhereOptions } from "sequelize";
 
 const DESTROY_MESSAGE_BATCH = 50;
 
@@ -64,6 +65,13 @@ async function destroyMessageRelatedResources(
   messageIds: ModelId[]
 ) {
   const owner = auth.getNonNullableWorkspace();
+
+  await ConversationForkModel.destroy({
+    where: {
+      workspaceId: owner.id,
+      sourceMessageId: messageIds,
+    },
+  });
 
   await ConversationBranchModel.destroy({
     where: {
@@ -171,6 +179,16 @@ export async function destroyConversation(
   }
 ): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
+
+  await ConversationForkModel.destroy({
+    where: {
+      workspaceId: owner.id,
+      [Op.or]: [
+        { parentConversationId: conversation.id },
+        { childConversationId: conversation.id },
+      ],
+    },
+  });
 
   // Clean up all branches attached to this conversation before deleting messages.
   await ConversationBranchModel.destroy({
