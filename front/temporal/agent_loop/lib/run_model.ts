@@ -2,7 +2,7 @@ import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
@@ -375,7 +375,7 @@ export async function runModel(
     const filteredToolsets = allToolsets.filter((toolset) => {
       const mcpServerView = toolset.toJSON();
       return (
-        getMCPServerRequirements(mcpServerView).noRequirement &&
+        isJITMCPServerView(mcpServerView) &&
         mcpServerView.server.availability !== "auto_hidden_builder"
       );
     });
