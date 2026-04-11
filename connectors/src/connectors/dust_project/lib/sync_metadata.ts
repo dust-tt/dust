@@ -65,7 +65,7 @@ export async function syncProjectMetadata({
     documentId,
     documentContent,
     documentUrl: undefined,
-    timestampMs: Date.now(),
+    timestampMs: metadata.updatedAt,
     tags: [`project:${projectId}`],
     parents: [documentId],
     parentId: null,

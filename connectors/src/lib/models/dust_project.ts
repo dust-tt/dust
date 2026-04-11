@@ -27,6 +27,7 @@ DustProjectConfigurationModel.init(
       allowNull: false,
       unique: true,
     },
+    // Last successful dust_project Temporal workflow (conversations + metadata); not conversation-only.
     lastSyncedAt: {
       type: DataTypes.DATE,
       allowNull: true,
