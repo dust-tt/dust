@@ -1,10 +1,13 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { getDataSourceURI } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   ToolDefinition,
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { runIncludeDataRetrieval } from "@app/lib/api/actions/servers/include_data/include_function";
 import {
   getProjectSpace,
   getWritableProjectContext,
@@ -13,16 +16,21 @@ import {
   withErrorHandling,
 } from "@app/lib/api/actions/servers/project_manager/helpers";
 import { PROJECT_MANAGER_TOOLS_METADATA } from "@app/lib/api/actions/servers/project_manager/metadata";
-import { renderAttachmentXml } from "@app/lib/api/assistant/conversation/attachments";
+import {
+  isContentNodeAttachmentType,
+  renderAttachmentXml,
+} from "@app/lib/api/assistant/conversation/attachments";
 import config from "@app/lib/api/config";
 import {
   addFileToProject,
   fetchLatestProjectContextFileContentFragment,
+  fetchProjectDataSourceView,
   listProjectContextAttachments,
 } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { getProjectRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import {
@@ -31,6 +39,52 @@ import {
 } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+
+async function buildProjectRetrieveDataSources(
+  auth: Authenticator,
+  space: SpaceResource
+): Promise<DataSourcesToolConfigurationType> {
+  const owner = auth.getNonNullableWorkspace();
+  const dataSources: DataSourcesToolConfigurationType = [];
+
+  const projectDsViewRes = await fetchProjectDataSourceView(auth, space);
+  if (projectDsViewRes.isOk()) {
+    dataSources.push({
+      uri: getDataSourceURI({
+        workspaceId: owner.sId,
+        dataSourceViewId: projectDsViewRes.value.sId,
+        filter: { parents: null, tags: null },
+      }),
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+    });
+  }
+
+  const attachments = await listProjectContextAttachments(auth, space);
+  const seenContentNodeKeys = new Set<string>();
+  for (const attachment of attachments) {
+    if (!isContentNodeAttachmentType(attachment)) {
+      continue;
+    }
+    const key = `${attachment.nodeDataSourceViewId}:${attachment.nodeId}`;
+    if (seenContentNodeKeys.has(key)) {
+      continue;
+    }
+    seenContentNodeKeys.add(key);
+    dataSources.push({
+      uri: getDataSourceURI({
+        workspaceId: owner.sId,
+        dataSourceViewId: attachment.nodeDataSourceViewId,
+        filter: {
+          parents: { in: [attachment.nodeId], not: [] },
+          tags: null,
+        },
+      }),
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+    });
+  }
+
+  return dataSources;
+}
 
 /**
  * Reads content from a source file.
@@ -451,6 +505,43 @@ export function createProjectManagerTools(
           })
         );
       }, "Failed to get project information");
+    },
+
+    retrieve_recent_documents: async (params) => {
+      return withErrorHandling(async () => {
+        if (!agentLoopContext) {
+          return new Err(
+            new MCPError("No conversation context available", {
+              tracked: false,
+            })
+          );
+        }
+
+        const contextRes = await getProjectSpace(auth, {
+          agentLoopContext,
+          dustProject: params.dustProject,
+        });
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { space } = contextRes.value;
+        const dataSources = await buildProjectRetrieveDataSources(auth, space);
+
+        if (dataSources.length === 0) {
+          return new Err(
+            new MCPError(
+              "No project data source or project context nodes available to retrieve from.",
+              { tracked: false }
+            )
+          );
+        }
+
+        return runIncludeDataRetrieval(auth, agentLoopContext, {
+          timeFrame: params.timeFrame,
+          dataSources,
+        });
+      }, "Failed to retrieve recent project documents");
     },
   };
 
