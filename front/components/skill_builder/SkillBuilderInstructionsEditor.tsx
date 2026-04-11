@@ -8,10 +8,6 @@ import {
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
-import {
-  postProcessMarkdown,
-  preprocessMarkdown,
-} from "@app/lib/editor/skill_instructions_preprocessing";
 import { cn } from "@dust-tt/sparkle";
 import type { Transaction } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
@@ -75,13 +71,9 @@ export function SkillBuilderInstructionsEditor({
     () =>
       debounce((editor: Editor) => {
         if (!isDiffMode && !editor.isDestroyed) {
-          setValue(
-            INSTRUCTIONS_FIELD_NAME,
-            postProcessMarkdown(editor.getMarkdown().trim()),
-            {
-              shouldDirty: true,
-            }
-          );
+          setValue(INSTRUCTIONS_FIELD_NAME, editor.getMarkdown().trim(), {
+            shouldDirty: true,
+          });
           setValue(
             ATTACHED_KNOWLEDGE_FIELD_NAME,
             toAttachedKnowledge(collectKnowledgeItems(editor)),
@@ -203,16 +195,13 @@ export function SkillBuilderInstructionsEditor({
     ) {
       return;
     }
-    const currentContent = postProcessMarkdown(editor.getMarkdown());
+    const currentContent = editor.getMarkdown();
     if (currentContent !== instructionsField.value) {
       setTimeout(() => {
-        editor.commands.setContent(
-          preprocessMarkdown(instructionsField.value),
-          {
-            emitUpdate: false,
-            contentType: "markdown",
-          }
-        );
+        editor.commands.setContent(instructionsField.value, {
+          emitUpdate: false,
+          contentType: "markdown",
+        });
       }, 0);
     }
   }, [editor, instructionsField.value]);
@@ -228,9 +217,9 @@ export function SkillBuilderInstructionsEditor({
       }
 
       const compareText = compareVersion.instructions ?? "";
-      const currentText = postProcessMarkdown(instructionsField.value ?? "");
+      const currentText = instructionsField.value ?? "";
 
-      editor.commands.setContent(preprocessMarkdown(currentText), {
+      editor.commands.setContent(currentText, {
         emitUpdate: false,
         contentType: "markdown",
       });
