@@ -5,22 +5,18 @@ import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types";
 import type { ConversationPublicType } from "@dust-tt/client";
 
+/** Max messages (user / agent / content_fragment) per Core document to avoid upsert size limits. */
+export const CONVERSATION_MESSAGES_PER_DOCUMENT = 256;
+
 /**
- * Formats raw conversation content into a plain text document section for data source upsert.
- * This creates a simple text representation suitable for indexing.
+ * Builds one document section per message (last version per rank) for indexing.
  */
-export async function formatConversationForUpsert({
-  dataSourceConfig,
-  conversation,
-}: {
-  dataSourceConfig: DataSourceConfig;
-  conversation: ConversationPublicType;
-}): Promise<CoreAPIDataSourceDocumentSection> {
-  // Convert conversation content to document sections
+export function buildConversationMessageSections(
+  conversation: ConversationPublicType
+): CoreAPIDataSourceDocumentSection[] {
   const messageSections: CoreAPIDataSourceDocumentSection[] = [];
 
   for (const versions of conversation.content) {
-    // Only take the last version of each rank
     const msg = versions[versions.length - 1];
 
     if (!msg) {
@@ -65,21 +61,97 @@ export async function formatConversationForUpsert({
     }
   }
 
+  return messageSections;
+}
+
+/**
+ * Splits message sections into chunks of at most {@link CONVERSATION_MESSAGES_PER_DOCUMENT} messages each.
+ * Empty conversations yield a single empty chunk so we still emit one document.
+ */
+export function chunkMessageSectionsForDocuments(
+  sections: CoreAPIDataSourceDocumentSection[]
+): CoreAPIDataSourceDocumentSection[][] {
+  const size = CONVERSATION_MESSAGES_PER_DOCUMENT;
+  if (sections.length === 0) {
+    return [[]];
+  }
+  const chunks: CoreAPIDataSourceDocumentSection[][] = [];
+  for (let i = 0; i < sections.length; i += size) {
+    chunks.push(sections.slice(i, i + size));
+  }
+  return chunks;
+}
+
+/**
+ * Title for a Core document: base conversation title, with ` (part i of n)` when split across multiple documents.
+ */
+export function getConversationDocumentUpsertTitle(
+  conversation: ConversationPublicType,
+  partIndex: number,
+  totalParts: number
+): string {
+  const base = conversation.title || `Conversation ${conversation.sId}`;
+  if (totalParts <= 1) {
+    return base;
+  }
+  return `${base} (part ${partIndex} of ${totalParts})`;
+}
+
+/**
+ * Formats a slice of message sections into the Core document payload (title + metadata + sections).
+ */
+export async function formatConversationSectionsForUpsert({
+  dataSourceConfig,
+  conversation,
+  sections,
+  partIndex,
+  totalParts,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  conversation: ConversationPublicType;
+  sections: CoreAPIDataSourceDocumentSection[];
+  partIndex: number;
+  totalParts: number;
+}): Promise<CoreAPIDataSourceDocumentSection> {
   const contentSection: CoreAPIDataSourceDocumentSection = {
-    // Create the main content section with all messages
     prefix: null,
     content: null,
-    sections: messageSections,
+    sections,
   };
 
-  // Use renderDocumentTitleAndContent to add metadata
+  const title = getConversationDocumentUpsertTitle(
+    conversation,
+    partIndex,
+    totalParts
+  );
+
   return renderDocumentTitleAndContent({
     dataSourceConfig,
-    title: conversation.title || `Conversation ${conversation.id}`,
+    title,
     createdAt: new Date(conversation.created),
     updatedAt: new Date(conversation.updated ?? conversation.created),
 
     content: contentSection,
+  });
+}
+
+/**
+ * Formats full conversation into a single document (used when chunking is not required by caller).
+ */
+export async function formatConversationForUpsert({
+  dataSourceConfig,
+  conversation,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  conversation: ConversationPublicType;
+}): Promise<CoreAPIDataSourceDocumentSection> {
+  const sections = buildConversationMessageSections(conversation);
+  return formatConversationSectionsForUpsert({
+    dataSourceConfig,
+    conversation,
+    sections,
+    partIndex: 1,
+    totalParts: 1,
   });
 }
 
@@ -100,4 +172,14 @@ export function getConversationMessageInternalId(
   conversationId: string
 ): string {
   return `dust-project-${connectorId}-project-${projectId}-conversation-${conversationId}`;
+}
+
+/**
+ * Document id for a split conversation (part 1..N). Not used when the conversation fits in one document.
+ */
+export function getConversationPartDocumentInternalId(
+  baseConversationDocumentId: string,
+  partNumber: number
+): string {
+  return `${baseConversationDocumentId}-part-${partNumber}`;
 }
