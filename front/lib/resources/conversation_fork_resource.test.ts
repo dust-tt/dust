@@ -343,9 +343,7 @@ describe("ConversationForkResource", () => {
         readableChildConversation.sId,
         restrictedChildConversation.sId,
       ]);
-    expect(fetchedByChild.map((f) => f.id).sort((a, b) => a - b)).toEqual(
-      [readableChildFork.id, restrictedChildFork.id].sort((a, b) => a - b)
-    );
+    expect(fetchedByChild.map((f) => f.id)).toEqual([readableChildFork.id]);
 
     await expect(
       ConversationForkResource.fetchById(auth, restrictedChildFork.sId)

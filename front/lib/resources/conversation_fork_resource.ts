@@ -266,13 +266,10 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
       return [];
     }
 
-    const childConversations = await ConversationModel.findAll({
-      attributes: ["id"],
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        sId: childConversationIds,
-      },
-    });
+    const childConversations = await ConversationResource.fetchByIds(
+      auth,
+      childConversationIds
+    );
 
     return this.fetchByChildConversationModelIds(
       auth,
