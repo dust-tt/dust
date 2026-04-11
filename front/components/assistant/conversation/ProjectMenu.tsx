@@ -200,7 +200,8 @@ export function ProjectMenu({
     ((isMember && !isProjectEditor) || // regular members can leave the project
       (isProjectEditor && projectEditors.length > 1)) && // editors can leave if there's at least another editor
     isProject;
-  const canRename = spaceInfo?.canWrite ?? false; // Only admins can rename
+  // Must match PATCH /spaces/[spaceId] (canAdministrate). canWrite is true for project members too.
+  const canRename = spaceInfo?.isEditor ?? false;
 
   return (
     <div
