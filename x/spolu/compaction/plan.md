@@ -81,18 +81,17 @@ Build the compaction pipeline end-to-end. No feature flag needed — inert until
 
 ### - [ ] PR 3.1 — Add compaction Temporal workflow skeleton
 
-Infrastructure only — workflow, worker, client, config. No trigger yet.
+Infrastructure only — workflow, activity, client. No trigger yet. Collocated with the agent loop.
 
-- Create `front/temporal/compaction/` with:
-  - `config.ts` — queue name (`compaction-queue`).
-  - `workflows.ts` — `compactConversationWorkflow` that calls a single activity.
-  - `activities.ts` — `compactConversationActivity` stub (reads messages, returns placeholder
-    summary for now).
-  - `client.ts` — `launchCompactConversationWorkflow()` following the mentions/credit_alerts
-    pattern (deterministic workflow ID from conversationId, fire-and-forget, handle
-    `WorkflowExecutionAlreadyStartedError`).
-  - `worker.ts` — register on the `front` Temporal namespace.
-- Add to `worker_registry.ts`.
+- Add `compactConversationWorkflow` in `front/temporal/agent_loop/workflows.ts` (alongside
+  `agentLoopConversationTitleWorkflow`). Calls a single activity.
+- Add `compactConversationActivity` stub in a new file under
+  `front/temporal/agent_loop/activities/` (reads messages, returns placeholder content for now).
+- Add `launchCompactConversationWorkflow()` client in `front/temporal/agent_loop/client.ts`
+  (deterministic workflow ID from conversationId, fire-and-forget, handle
+  `WorkflowExecutionAlreadyStartedError`).
+- Runs on the existing agent loop queue (`agent-loop-queue-v2`, `agent` namespace). No new worker
+  or queue needed. Register the activity in the existing agent loop worker.
 
 ### - [ ] PR 3.2 — Add SSE events for compaction lifecycle
 
@@ -127,7 +126,7 @@ Core orchestration. No feature flag needed — compaction is inert until Phase 5
 
 The LLM call that produces the summary.
 
-- In `compactConversationActivity` (`front/temporal/compaction/activities.ts`):
+- In `compactConversationActivity` (`front/temporal/agent_loop/activities/`):
   - Fetch all messages since the last succeeded `CompactionMessage` (or all messages if none).
   - Render them into a compaction prompt (adapt from Claude Code's approach — system prompt +
     conversation + "summarize" instruction, see `x/spolu/compaction/claude_compaction.md` for
@@ -135,7 +134,7 @@ The LLM call that produces the summary.
   - Call the LLM via `callModel` / `queryModelWithStreaming` to generate the summary.
   - Store the content on the `CompactionMessage`.
 - Add the compaction prompt template (can live in the activity file or a dedicated prompt file
-  under `front/temporal/compaction/`).
+  under `front/temporal/agent_loop/`).
 
 ---
 

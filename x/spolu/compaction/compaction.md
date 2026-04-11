@@ -262,15 +262,21 @@ export async function compactConversation(
 
 ### Temporal Workflow
 
-The compaction runs as a separate Temporal workflow (not inline in the agent loop finalization)
-because:
+The compaction runs as a separate Temporal workflow on the **agent loop queue**
+(`agent-loop-queue-v2` in the `agent` namespace), collocated with the agent loop code under
+`front/temporal/agent_loop/`. This is similar to how `agentLoopConversationTitleWorkflow` lives
+alongside the main agent loop.
+
+Reasons for a separate workflow (vs inline in finalization):
 
 - Summary generation is an LLM call that can take 10-30s — too long to block finalization.
 - It's independently retryable if the LLM call fails.
 - It cleanly separates the agent loop lifecycle from compaction lifecycle.
 
-The workflow is triggered from the agent loop finalization path when the threshold is crossed, or
-could be triggered manually via an API endpoint.
+The workflow is initially triggered from `compactConversation()` in `conversation.ts` (called by
+the API endpoint). In the future it could also be triggered directly from the agent loop
+finalization path when context usage exceeds the compaction threshold, similar to how the title
+workflow is spawned as a child workflow after the first step.
 
 ---
 
