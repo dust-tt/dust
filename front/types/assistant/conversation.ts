@@ -541,7 +541,6 @@ export type AgentMessageNewEvent = {
 export type CompactionMessageNewEvent = {
   type: "compaction_message_new";
   created: number;
-  conversationId: string;
   messageId: string;
   message: CompactionMessageType;
 };
@@ -550,7 +549,6 @@ export type CompactionMessageNewEvent = {
 export type CompactionMessageDoneEvent = {
   type: "compaction_message_done";
   created: number;
-  conversationId: string;
   messageId: string;
   message: CompactionMessageType;
 };
