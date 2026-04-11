@@ -561,6 +561,10 @@ export const ConversationViewer = ({
             window.dispatchEvent(new AgentMessageCompletedEvent());
             void mutateConversationAttachments();
             break;
+          case "compaction_message_new":
+          case "compaction_message_done":
+            // TODO(compaction): handle compaction events in the UI.
+            break;
           default:
             ((t: never) => {
               logger.error({ event: t }, "Unknown event type");
