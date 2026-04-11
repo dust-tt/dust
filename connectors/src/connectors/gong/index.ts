@@ -1,3 +1,4 @@
+import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
 import { makeGongTranscriptFolderInternalId } from "@connectors/connectors/gong/lib/internal_ids";
 import { baseUrlFromConnectionId } from "@connectors/connectors/gong/lib/oauth";
 import { fetchPermissionProfileViews } from "@connectors/connectors/gong/lib/permission_profiles";
@@ -5,6 +6,7 @@ import {
   fetchGongConfiguration,
   fetchGongConnector,
 } from "@connectors/connectors/gong/lib/utils";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { launchGongKeywordUpdateWorkflow } from "@connectors/connectors/gong/temporal/client";
 import {
   QUEUE_NAME,
@@ -353,11 +355,26 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       case PERMISSION_PROFILE_ID_CONFIG_KEY:
         return new Ok(configuration.permissionProfileId ?? null);
       case PERMISSION_PROFILES_CONFIG_KEY: {
-        const viewsRes = await fetchPermissionProfileViews(connector);
-        if (viewsRes.isErr()) {
-          return viewsRes;
+        try {
+          const views = await fetchPermissionProfileViews(connector);
+          return new Ok(JSON.stringify(views));
+        } catch (err) {
+          if (err instanceof ExternalOAuthTokenError) {
+            return new Err(
+              new Error(
+                "Gong authorization error. Please re-authorize the connection."
+              )
+            );
+          }
+          if (err instanceof GongAPIError) {
+            return new Err(
+              new Error(
+                `Gong API error fetching permission profiles: ${err.message}`
+              )
+            );
+          }
+          throw err;
         }
-        return new Ok(JSON.stringify(viewsRes.value));
       }
       case EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY: {
         const keywords = configuration.excludeTitleKeywords;

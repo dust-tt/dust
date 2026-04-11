@@ -256,15 +256,10 @@ export class GongClient {
       if (response.status === 403 && response.statusText === "Forbidden") {
         throw new ExternalOAuthTokenError();
       }
-      if (
-        response.status === 401 &&
-        (response.statusText.includes(
-          "Validate credentials failed. Please check your credentials and try again."
-        ) ||
-          response.statusText.includes(
-            "Your access token has been revoked. Please generate a new access token."
-          ))
-      ) {
+      // Any 401 from Gong indicates an invalid or expired token. Previous code
+      // only matched specific statusText strings, but Gong can return different
+      // messages (e.g. plain "Unauthorized") depending on the failure mode.
+      if (response.status === 401) {
         throw new ExternalOAuthTokenError();
       }
 
