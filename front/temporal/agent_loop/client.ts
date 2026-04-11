@@ -123,7 +123,7 @@ export async function launchCompactionWorkflow({
   conversationId: string;
   compactionMessageId: string;
   compactionMessageVersion: number;
-}): Promise<Result<undefined, Error>> {
+}): Promise<Result<undefined, Error | DustError<"compaction_already_running">>> {
   const authType = auth.toJSON();
   const client = await getTemporalClientForAgentNamespace();
 
@@ -164,7 +164,12 @@ export async function launchCompactionWorkflow({
       "Compaction workflow already running for this conversation."
     );
 
-    return new Err(new Error("Compaction workflow already running."));
+    return new Err(
+      new DustError(
+        "compaction_already_running",
+        "Compaction workflow already running for this conversation."
+      )
+    );
   }
 
   return new Ok(undefined);
