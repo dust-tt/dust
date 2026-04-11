@@ -61,6 +61,7 @@ import {
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageModel,
+  CompactionMessageModel,
   ConversationModel,
   MentionModel,
   MessageModel,
@@ -89,7 +90,10 @@ import {
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger, { auditLog } from "@app/logger/logger";
-import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import {
+  launchAgentLoopWorkflow,
+  launchCompactionWorkflow,
+} from "@app/temporal/agent_loop/client";
 import {
   launchOrSignalProjectTodoWorkflow,
   signalProjectTodoComplete,
@@ -123,6 +127,7 @@ import type {
 import {
   ConversationError,
   isAgentMessageType,
+  isCompactionMessageType,
   isProjectConversation,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
@@ -603,6 +608,23 @@ export async function postUserMessage(
   const limitResult = await checkMessagesLimit(auth, { mentions, context });
   if (limitResult.isErr()) {
     return limitResult;
+  }
+
+  // Block posting while compaction is in progress.
+  const hasActiveCompaction = conversation.content
+    .flat()
+    .some(
+      (m): m is CompactionMessageType =>
+        isCompactionMessageType(m) && m.status === "created"
+    );
+  if (hasActiveCompaction) {
+    return new Err({
+      status_code: 409,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Conversation is being compacted, please wait.",
+      },
+    });
   }
 
   const agentMentions = mentions.filter(isAgentMention);
@@ -2581,6 +2603,127 @@ export async function isConversationEventAllowedForAuth(
   }
 }
 
+/**
+ * Create a CompactionMessage in the conversation and launch the compaction workflow.
+ *
+ * The CompactionMessage is created with status "created" inside the conversation advisory lock,
+ * ensuring it's serialized with other conversation operations. The workflow is launched
+ * fire-and-forget after the transaction commits.
+ */
+export async function compactConversation(
+  auth: Authenticator,
+  { conversation }: { conversation: ConversationType }
+): Promise<Result<CompactionMessageType, APIErrorWithStatusCode>> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const compactionMessage = await withTransaction(async (t) => {
+    await getConversationRankVersionLock(auth, conversation, t);
+
+    // Check for an in-progress compaction.
+    const pendingCompaction = await MessageModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: owner.id,
+      },
+      include: [
+        {
+          model: CompactionMessageModel,
+          as: "compactionMessage",
+          required: true,
+          where: { status: "created" },
+        },
+      ],
+      transaction: t,
+    });
+
+    if (pendingCompaction) {
+      return null;
+    }
+
+    const nextMessageRank =
+      ((await MessageModel.max<number | null, MessageModel>("rank", {
+        where: {
+          workspaceId: owner.id,
+          conversationId: conversation.id,
+          branchId: conversation.branchId
+            ? getResourceIdFromSId(conversation.branchId)
+            : null,
+        },
+        transaction: t,
+      })) ?? -1) + 1;
+
+    const compactionMessageRow = await CompactionMessageModel.create(
+      {
+        status: "created",
+        content: null,
+        workspaceId: owner.id,
+      },
+      { transaction: t }
+    );
+
+    const messageRow = await MessageModel.create(
+      {
+        sId: generateRandomModelSId(),
+        rank: nextMessageRank,
+        conversationId: conversation.id,
+        branchId: conversation.branchId
+          ? getResourceIdFromSId(conversation.branchId)
+          : null,
+        version: 0,
+        compactionMessageId: compactionMessageRow.id,
+        workspaceId: owner.id,
+      },
+      { transaction: t }
+    );
+
+    const compactionMessage: CompactionMessageType = {
+      type: "compaction_message",
+      id: messageRow.id,
+      sId: messageRow.sId,
+      created: messageRow.createdAt.getTime(),
+      visibility: messageRow.visibility,
+      version: messageRow.version,
+      rank: messageRow.rank,
+      branchId: conversation.branchId,
+      status: "created",
+      content: null,
+    };
+
+    return compactionMessage;
+  });
+
+  if (!compactionMessage) {
+    return new Err({
+      status_code: 409,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Conversation is being compacted, please wait.",
+      },
+    });
+  }
+
+  // Publish the compaction_message_new event outside the transaction.
+  await publishConversationEvent(
+    {
+      type: "compaction_message_new",
+      created: Date.now(),
+      messageId: compactionMessage.sId,
+      message: compactionMessage,
+    },
+    { conversationId: conversation.sId }
+  );
+
+  // Launch the compaction workflow fire-and-forget.
+  void launchCompactionWorkflow({
+    auth,
+    conversationId: conversation.sId,
+    compactionMessageId: compactionMessage.sId,
+    compactionMessageVersion: compactionMessage.version,
+  });
+
+  return new Ok(compactionMessage);
+}
+
 export async function updateCompactionMessageWithContentAndFinalStatus(
   auth: Authenticator,
   {
@@ -2599,12 +2742,43 @@ export async function updateCompactionMessageWithContentAndFinalStatus(
   status: "succeeded" | "failed";
 }> {
   const completedAt = new Date();
+  const owner = auth.getNonNullableWorkspace();
 
-  // TODO(compaction): implement update to CompactionMessage (with proper locking)
+  await withTransaction(async (t) => {
+    await getConversationRankVersionLock(auth, conversation, t);
+
+    // Look up the CompactionMessageModel via the MessageModel join.
+    const message = await MessageModel.findOne({
+      where: {
+        sId: compactionMessage.sId,
+        version: compactionMessage.version,
+        workspaceId: owner.id,
+      },
+      include: [
+        {
+          model: CompactionMessageModel,
+          as: "compactionMessage",
+          required: true,
+        },
+      ],
+      transaction: t,
+    });
+
+    if (!message?.compactionMessage) {
+      throw new Error(
+        `Compaction message not found: sId=${compactionMessage.sId}, version=${compactionMessage.version}`
+      );
+    }
+
+    await message.compactionMessage.update(
+      { status, content },
+      { transaction: t }
+    );
+  });
 
   return {
     completedTs: completedAt.getTime(),
-    status: "succeeded",
+    status,
   };
 }
 
