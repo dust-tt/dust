@@ -537,6 +537,24 @@ export type AgentMessageNewEvent = {
   message: AgentMessageType;
 };
 
+// Event sent when a new compaction message is created (compaction is starting).
+export type CompactionMessageNewEvent = {
+  type: "compaction_message_new";
+  created: number;
+  conversationId: string;
+  messageId: string;
+  message: CompactionMessageType;
+};
+
+// Event sent when compaction completes or fails.
+export type CompactionMessageDoneEvent = {
+  type: "compaction_message_done";
+  created: number;
+  conversationId: string;
+  messageId: string;
+  message: CompactionMessageType;
+};
+
 // Event sent when the conversation title is updated.
 export type ConversationTitleEvent = {
   type: "conversation_title";

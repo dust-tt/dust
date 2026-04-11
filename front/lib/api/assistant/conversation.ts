@@ -2571,6 +2571,8 @@ export async function isConversationEventAllowedForAuth(
       }
       return true;
     case "agent_message_done":
+    case "compaction_message_new":
+    case "compaction_message_done":
     case "conversation_title":
     case "user_message_promoted":
       return true;
