@@ -11,7 +11,6 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
-import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import {
   AgentMessageSkillModel,
   ConversationSkillModel,
@@ -20,6 +19,7 @@ import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -35,7 +35,7 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import chunk from "lodash/chunk";
-import { Op, type WhereOptions } from "sequelize";
+import type { WhereOptions } from "sequelize";
 
 const DESTROY_MESSAGE_BATCH = 50;
 
@@ -67,11 +67,8 @@ async function destroyMessageRelatedResources(
 ) {
   const owner = auth.getNonNullableWorkspace();
 
-  await ConversationForkModel.destroy({
-    where: {
-      workspaceId: owner.id,
-      sourceMessageId: messageIds,
-    },
+  await ConversationForkResource.deleteBySourceMessageModelIds(auth, {
+    sourceMessageModelIds: messageIds,
   });
 
   await ConversationBranchModel.destroy({
@@ -181,14 +178,8 @@ export async function destroyConversation(
 ): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  await ConversationForkModel.destroy({
-    where: {
-      workspaceId: owner.id,
-      [Op.or]: [
-        { parentConversationId: conversation.id },
-        { childConversationId: conversation.id },
-      ],
-    },
+  await ConversationForkResource.deleteForConversationModelId(auth, {
+    conversationModelId: conversation.id,
   });
 
   // Clean up all branches attached to this conversation before deleting messages.
