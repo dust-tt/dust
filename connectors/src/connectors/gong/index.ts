@@ -353,8 +353,11 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       case PERMISSION_PROFILE_ID_CONFIG_KEY:
         return new Ok(configuration.permissionProfileId ?? null);
       case PERMISSION_PROFILES_CONFIG_KEY: {
-        const views = await fetchPermissionProfileViews(connector);
-        return new Ok(JSON.stringify(views));
+        const viewsResult = await fetchPermissionProfileViews(connector);
+        if (viewsResult.isErr()) {
+          return viewsResult;
+        }
+        return new Ok(JSON.stringify(viewsResult.value));
       }
       case EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY: {
         const keywords = configuration.excludeTitleKeywords;

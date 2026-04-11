@@ -1,6 +1,9 @@
 import type { GongPermissionProfile } from "@connectors/connectors/gong/lib/gong_api";
 import { getGongClient } from "@connectors/connectors/gong/lib/utils";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import { normalizeError } from "@connectors/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 type PermissionLevel = GongPermissionProfile["callsAccess"]["permissionLevel"];
 
@@ -40,15 +43,19 @@ export function renderPermissionProfiles(
 
 export async function fetchPermissionProfileViews(
   connector: ConnectorResource
-): Promise<GongPermissionProfileView[]> {
-  const gongClient = await getGongClient(connector);
-  const workspaces = await gongClient.getWorkspaces();
-  const firstWorkspace = workspaces[0];
-  if (!firstWorkspace) {
-    return [];
+): Promise<Result<GongPermissionProfileView[], Error>> {
+  try {
+    const gongClient = await getGongClient(connector);
+    const workspaces = await gongClient.getWorkspaces();
+    const firstWorkspace = workspaces[0];
+    if (!firstWorkspace) {
+      return new Ok([]);
+    }
+    const profiles = await gongClient.getPermissionProfiles({
+      workspaceId: firstWorkspace.id,
+    });
+    return new Ok(renderPermissionProfiles(profiles));
+  } catch (err) {
+    return new Err(normalizeError(err));
   }
-  const profiles = await gongClient.getPermissionProfiles({
-    workspaceId: firstWorkspace.id,
-  });
-  return renderPermissionProfiles(profiles);
 }
