@@ -17,6 +17,7 @@ import {
   CREDIT_TYPE_EUR_ID,
   CREDIT_TYPE_USD_ID,
   getCreditTypeAwuId,
+  getCreditTypeProgrammaticUsdId,
 } from "@app/lib/metronome/constants";
 
 if (!process.env.METRONOME_API_KEY) {
@@ -323,6 +324,12 @@ function getRateCards(): RateCardDef[] {
         "Grandfathered Pro plan. $29/seat via seat subscription. AI usage 30% markup.",
       aliases: [{ name: "legacy-pro-monthly" }],
       fiat_credit_type_id: CREDIT_TYPE_USD_ID,
+      credit_type_conversions: [
+        {
+          custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
+          fiat_per_custom_credit: 0.01,
+        },
+      ],
       rates: [
         {
           product_name: "Workspace Seat",
@@ -337,7 +344,8 @@ function getRateCards(): RateCardDef[] {
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
-          price: 100,
+          price: 1,
+          credit_type_id: getCreditTypeProgrammaticUsdId(),
         },
       ],
     },
@@ -347,6 +355,12 @@ function getRateCards(): RateCardDef[] {
         "Grandfathered Business plan. $45/seat via seat subscription. AI usage 30% markup.",
       aliases: [{ name: "legacy-business" }],
       fiat_credit_type_id: CREDIT_TYPE_USD_ID,
+      credit_type_conversions: [
+        {
+          custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
+          fiat_per_custom_credit: 0.01,
+        },
+      ],
       rates: [
         {
           product_name: "Workspace Seat",
@@ -361,7 +375,8 @@ function getRateCards(): RateCardDef[] {
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
-          price: 100,
+          price: 1,
+          credit_type_id: getCreditTypeProgrammaticUsdId(),
         },
       ],
     },
@@ -371,6 +386,12 @@ function getRateCards(): RateCardDef[] {
         "Grandfathered Pro plan (annual). $27/seat/month billed monthly. AI usage 30% markup.",
       aliases: [{ name: "legacy-pro-annual" }],
       fiat_credit_type_id: CREDIT_TYPE_USD_ID,
+      credit_type_conversions: [
+        {
+          custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
+          fiat_per_custom_credit: 0.01,
+        },
+      ],
       rates: [
         {
           product_name: "Workspace Seat",
@@ -385,7 +406,8 @@ function getRateCards(): RateCardDef[] {
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
-          price: 100,
+          price: 1,
+          credit_type_id: getCreditTypeProgrammaticUsdId(),
         },
       ],
     },
@@ -399,6 +421,12 @@ function getRateCards(): RateCardDef[] {
         "Enterprise plan. Per-MAU billing + programmatic usage at cost with 30% markup.",
       aliases: [{ name: "legacy-enterprise" }],
       fiat_credit_type_id: CREDIT_TYPE_USD_ID,
+      credit_type_conversions: [
+        {
+          custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
+          fiat_per_custom_credit: 0.01,
+        },
+      ],
       rates: [
         {
           product_name: "MAU Billing (1+)",
@@ -427,7 +455,8 @@ function getRateCards(): RateCardDef[] {
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
-          price: 100,
+          price: 1,
+          credit_type_id: getCreditTypeProgrammaticUsdId(),
         },
       ],
     },
@@ -442,6 +471,12 @@ function getRateCards(): RateCardDef[] {
         "Grandfathered Pro plan (EUR). 29€/seat via seat subscription. AI usage 30% markup.",
       aliases: [{ name: "legacy-pro-monthly-eur" }],
       fiat_credit_type_id: CREDIT_TYPE_EUR_ID,
+      credit_type_conversions: [
+        {
+          custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
+          fiat_per_custom_credit: 0.87,
+        },
+      ],
       rates: [
         {
           product_name: "Workspace Seat",
@@ -457,8 +492,8 @@ function getRateCards(): RateCardDef[] {
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
-          price: 0.87,
-          credit_type_id: CREDIT_TYPE_EUR_ID,
+          price: 1,
+          credit_type_id: getCreditTypeProgrammaticUsdId(),
         },
       ],
     },
@@ -468,6 +503,12 @@ function getRateCards(): RateCardDef[] {
         "Grandfathered Business plan (EUR). 45€/seat via seat subscription. AI usage 30% markup.",
       aliases: [{ name: "legacy-business-eur" }],
       fiat_credit_type_id: CREDIT_TYPE_EUR_ID,
+      credit_type_conversions: [
+        {
+          custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
+          fiat_per_custom_credit: 0.87,
+        },
+      ],
       rates: [
         {
           product_name: "Workspace Seat",
@@ -483,8 +524,8 @@ function getRateCards(): RateCardDef[] {
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
-          price: 0.87,
-          credit_type_id: CREDIT_TYPE_EUR_ID,
+          price: 1,
+          credit_type_id: getCreditTypeProgrammaticUsdId(),
         },
       ],
     },
@@ -494,6 +535,12 @@ function getRateCards(): RateCardDef[] {
         "Grandfathered Pro plan (EUR, annual). 27€/seat/month billed monthly. AI usage 30% markup.",
       aliases: [{ name: "legacy-pro-annual-eur" }],
       fiat_credit_type_id: CREDIT_TYPE_EUR_ID,
+      credit_type_conversions: [
+        {
+          custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
+          fiat_per_custom_credit: 0.87,
+        },
+      ],
       rates: [
         {
           product_name: "Workspace Seat",
@@ -509,8 +556,8 @@ function getRateCards(): RateCardDef[] {
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
-          price: 0.87,
-          credit_type_id: CREDIT_TYPE_EUR_ID,
+          price: 1,
+          credit_type_id: getCreditTypeProgrammaticUsdId(),
         },
       ],
     },
@@ -520,6 +567,12 @@ function getRateCards(): RateCardDef[] {
         "Enterprise plan (EUR). Per-MAU billing + programmatic usage at cost with 30% markup.",
       aliases: [{ name: "legacy-enterprise-eur" }],
       fiat_credit_type_id: CREDIT_TYPE_EUR_ID,
+      credit_type_conversions: [
+        {
+          custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
+          fiat_per_custom_credit: 0.87,
+        },
+      ],
       rates: [
         {
           product_name: "MAU Billing (1+)",
@@ -550,8 +603,8 @@ function getRateCards(): RateCardDef[] {
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
-          price: 0.87,
-          credit_type_id: CREDIT_TYPE_EUR_ID,
+          price: 1,
+          credit_type_id: getCreditTypeProgrammaticUsdId(),
         },
       ],
     },

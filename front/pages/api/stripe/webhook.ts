@@ -29,7 +29,10 @@ import {
   reactivateMetronomeContract,
   scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
-import { getProductFreeMonthlyCreditId } from "@app/lib/metronome/constants";
+import {
+  getCreditTypeProgrammaticUsdId,
+  getProductFreeMonthlyCreditId,
+} from "@app/lib/metronome/constants";
 import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
 import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
@@ -198,8 +201,8 @@ async function grantMetronomeFreeCredits({
       return;
     }
 
-    // Convert micro-USD to cents (Metronome credits are in cents).
-    const amountCents = Math.ceil(amountMicroUsd / 10_000);
+    // Convert micro-USD to custom credit units (1 unit ≈ $0.01, so divide by 1M).
+    const amount = Math.ceil(amountMicroUsd / 1_000_000);
 
     const periodStart = new Date(
       stripeSubscription.current_period_start * 1000
@@ -210,7 +213,8 @@ async function grantMetronomeFreeCredits({
     const result = await createMetronomeCredit({
       metronomeCustomerId: workspace.metronomeCustomerId,
       productId,
-      amountCents,
+      creditTypeId: getCreditTypeProgrammaticUsdId(),
+      amount,
       startingAt: periodStart.toISOString(),
       endingBefore: periodEnd.toISOString(),
       name: `Free Monthly Credits (${memberCount} users, ${monthKey})`,
@@ -222,7 +226,7 @@ async function grantMetronomeFreeCredits({
         {
           workspaceId: workspace.sId,
           memberCount,
-          amountCents,
+          amount,
           monthKey,
         },
         "[Stripe Webhook] Metronome free credits granted"

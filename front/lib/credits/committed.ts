@@ -1,7 +1,10 @@
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
 import { createMetronomeCommit } from "@app/lib/metronome/client";
-import { getProductPrepaidCommitId } from "@app/lib/metronome/constants";
+import {
+  getCreditTypeProgrammaticUsdId,
+  getProductPrepaidCommitId,
+} from "@app/lib/metronome/constants";
 import type { CustomerFacingInvoiceInfo } from "@app/lib/plans/stripe";
 import {
   ENTERPRISE_N30_PAYMENTS_DAYS,
@@ -114,7 +117,7 @@ export async function startCreditFromProOneOffInvoice({
   if (creditAmountCents) {
     const metronomeResult = await addMetronomeCommitsForWorkspace({
       auth,
-      amountCents: creditAmountCents,
+      amountCredits: creditAmountCents / 100,
     });
     if (metronomeResult.isErr()) {
       return new Err(metronomeResult.error);
@@ -311,7 +314,7 @@ export async function createEnterpriseCreditPurchase({
 
   const metronomeResult = await addMetronomeCommitsForWorkspace({
     auth,
-    amountCents: amountMicroUsd / 10_000,
+    amountCredits: amountMicroUsd / 1_000_000,
     startDate,
     expirationDate,
   });
@@ -486,12 +489,13 @@ export async function deleteCreditFromVoidedInvoice({
 
 async function addMetronomeCommitsForWorkspace({
   auth,
-  amountCents,
+  amountCredits,
   startDate,
   expirationDate,
 }: {
   auth: Authenticator;
-  amountCents: number;
+  /** Amount in custom credit units (not cents). */
+  amountCredits: number;
   startDate?: Date;
   expirationDate?: Date;
 }): Promise<Result<void, Error>> {
@@ -519,11 +523,12 @@ async function addMetronomeCommitsForWorkspace({
   const result = await createMetronomeCommit({
     metronomeCustomerId,
     productId,
-    amountCents,
+    creditTypeId: getCreditTypeProgrammaticUsdId(),
+    amount: amountCredits,
     startingAt: effectiveStartDate,
     endingBefore: effectiveExpirationDate,
     name: `Prepaid commit (${effectiveStartDate.toISOString()})`,
-    idempotencyKey: `commit-${workspace.sId}-${effectiveStartDate.getTime()}-${amountCents}`,
+    idempotencyKey: `commit-${workspace.sId}-${effectiveStartDate.getTime()}-${amountCredits}`,
     priority: 2, // Committed credits should be applied after any free credits (priority 1) but before any PAYG commits (priority 3)
   });
 
@@ -532,7 +537,7 @@ async function addMetronomeCommitsForWorkspace({
       {
         workspaceId: workspace.sId,
         metronomeCustomerId,
-        amountCents,
+        amountCredits,
         error: result.error.message,
       },
       "[Commit Purchase] Failed to add commits to Metronome"

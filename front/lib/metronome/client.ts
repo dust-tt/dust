@@ -471,7 +471,8 @@ export async function updateSubscriptionQuantity({
 export async function createMetronomeCommit({
   metronomeCustomerId,
   productId,
-  amountCents,
+  creditTypeId,
+  amount,
   startingAt,
   endingBefore,
   name,
@@ -480,7 +481,8 @@ export async function createMetronomeCommit({
 }: {
   metronomeCustomerId: string;
   productId: string;
-  amountCents: number;
+  creditTypeId: string;
+  amount: number;
   startingAt: Date;
   endingBefore: Date;
   idempotencyKey: string;
@@ -495,7 +497,8 @@ export async function createMetronomeCommit({
       {
         metronomeCustomerId,
         productId,
-        amountCents,
+        creditTypeId,
+        amount,
         roundedStartingAt,
         roundedEndingBefore,
       },
@@ -510,9 +513,10 @@ export async function createMetronomeCommit({
       applicable_product_tags: ["usage"],
       priority: priority ?? 2, // Apply after any free credits
       access_schedule: {
+        credit_type_id: creditTypeId,
         schedule_items: [
           {
-            amount: amountCents,
+            amount,
             starting_at: roundedStartingAt,
             ending_before: roundedEndingBefore,
           },
@@ -525,7 +529,7 @@ export async function createMetronomeCommit({
       {
         metronomeCustomerId,
         productId,
-        amountCents,
+        amount,
         roundedStartingAt,
         roundedEndingBefore,
       },
@@ -539,7 +543,7 @@ export async function createMetronomeCommit({
         error,
         metronomeCustomerId,
         productId,
-        amountCents,
+        amount,
         roundedStartingAt,
         roundedEndingBefore,
       },
@@ -714,7 +718,8 @@ export async function listMetronomeUsageWithGroups({
 export async function createMetronomeCredit({
   metronomeCustomerId,
   productId,
-  amountCents,
+  creditTypeId,
+  amount,
   startingAt,
   endingBefore,
   name,
@@ -722,7 +727,8 @@ export async function createMetronomeCredit({
 }: {
   metronomeCustomerId: string;
   productId: string;
-  amountCents: number;
+  creditTypeId: string;
+  amount: number;
   startingAt: string;
   endingBefore: string;
   name: string;
@@ -740,9 +746,10 @@ export async function createMetronomeCredit({
       priority: 1, // Apply credits before any prepaid commits
       applicable_product_tags: ["usage"],
       access_schedule: {
+        credit_type_id: creditTypeId,
         schedule_items: [
           {
-            amount: amountCents,
+            amount,
             starting_at: roundedStartingAt,
             ending_before: roundedEndingBefore,
           },
