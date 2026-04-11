@@ -29,8 +29,6 @@ import { Op } from "sequelize";
 export type ConversationForkType = {
   id: ModelId;
   sId: string;
-  created: number;
-  updated: number;
   parentConversationId: string;
   childConversationId: string;
   createdByUserId: string;
@@ -155,27 +153,6 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
     return forks.map((f) => this.fromModel(f));
   }
 
-  private static async filterByReadableChildConversations(
-    auth: Authenticator,
-    forks: ConversationForkResource[]
-  ): Promise<ConversationForkResource[]> {
-    if (forks.length === 0) {
-      return [];
-    }
-
-    const readableChildConversations = await ConversationResource.fetchByIds(
-      auth,
-      [...new Set(forks.map((fork) => fork.resourceIds.childConversationId))]
-    );
-    const readableChildConversationIds = new Set(
-      readableChildConversations.map((conversation) => conversation.id)
-    );
-
-    return forks.filter((fork) =>
-      readableChildConversationIds.has(fork.childConversationId)
-    );
-  }
-
   static async makeNew(
     auth: Authenticator,
     blob: Pick<CreationAttributes<ConversationForkModel>, "branchedAt"> & {
@@ -263,11 +240,7 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
     }
 
     const [fork] = await this.fetchByModelIds(auth, [ids.resourceModelId]);
-    const [readableFork] = await this.filterByReadableChildConversations(
-      auth,
-      fork ? [fork] : []
-    );
-    return readableFork ?? null;
+    return fork ?? null;
   }
 
   static async fetchByChildConversationModelIds(
@@ -293,10 +266,13 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
       return [];
     }
 
-    const childConversations = await ConversationResource.fetchByIds(
-      auth,
-      childConversationIds
-    );
+    const childConversations = await ConversationModel.findAll({
+      attributes: ["id"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sId: childConversationIds,
+      },
+    });
 
     return this.fetchByChildConversationModelIds(
       auth,
@@ -308,7 +284,7 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
     auth: Authenticator,
     parentConversationModelId: ModelId
   ): Promise<ConversationForkResource[]> {
-    const forks = await this.baseFetch(auth, {
+    return this.baseFetch(auth, {
       where: {
         parentConversationId: parentConversationModelId,
       } as WhereOptions<ConversationForkModel>,
@@ -317,8 +293,6 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
         ["id", "DESC"],
       ],
     });
-
-    return this.filterByReadableChildConversations(auth, forks);
   }
 
   static async deleteBySourceMessageModelIds(
@@ -381,12 +355,23 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
     return new Ok(undefined);
   }
 
+  async canReadFork(auth: Authenticator): Promise<boolean> {
+    if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
+      return false;
+    }
+
+    const childConversation = await ConversationResource.fetchById(
+      auth,
+      this.resourceIds.childConversationId
+    );
+
+    return childConversation !== null;
+  }
+
   toJSON(): ConversationForkType {
     return {
       id: this.id,
       sId: this.sId,
-      created: this.createdAt.getTime(),
-      updated: this.updatedAt.getTime(),
       parentConversationId: this.resourceIds.parentConversationId,
       childConversationId: this.resourceIds.childConversationId,
       createdByUserId: this.resourceIds.createdByUserId,
