@@ -114,7 +114,6 @@ export const EditProjectTitleDialog = ({
               if (e.key === "Enter") {
                 e.preventDefault();
                 void editTitle();
-                onClose();
               }
             }}
           />
