@@ -2,6 +2,7 @@ import type { ServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import {
   augmentInputsWithConfiguration,
   findPathsToConfiguration,
+  hideInternalConfiguration,
 } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import {
   ConfigurableToolInputJSONSchemas,
@@ -9,6 +10,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { isJSONSchemaObject } from "@app/lib/utils/json_schemas";
 import type { WorkspaceType } from "@app/types/user";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -64,6 +66,453 @@ function createBasicMCPConfiguration(
     ...overrides,
   };
 }
+
+describe("hideInternalConfiguration", () => {
+  it("removes required internal tool-input properties and drops them from required; keeps optional internal props", () => {
+    const timeFrame =
+      ConfigurableToolInputJSONSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+      ];
+    const inputSchema = {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Search query" },
+        dataSources:
+          ConfigurableToolInputJSONSchemas[
+            INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+          ],
+        timeFrame,
+      },
+      required: ["query", "dataSources"],
+    } as JSONSchema;
+
+    const result = hideInternalConfiguration(inputSchema);
+
+    expect(result.properties?.query).toEqual({
+      type: "string",
+      description: "Search query",
+    });
+    expect(result.properties?.timeFrame).toEqual(timeFrame);
+    expect(result.properties).not.toHaveProperty("dataSources");
+    expect(result.required).toEqual(["query"]);
+  });
+
+  it("keeps optional internal properties so the model can see inferable configuration fields", () => {
+    const dustProject =
+      ConfigurableToolInputJSONSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+      ];
+    const inputSchema = {
+      type: "object",
+      properties: {
+        fileName: { type: "string" },
+        dustProject,
+      },
+      required: ["fileName"],
+    } as JSONSchema;
+
+    const result = hideInternalConfiguration(inputSchema);
+
+    expect(result.properties?.fileName).toEqual({ type: "string" });
+    expect(result.properties?.dustProject).toEqual(dustProject);
+    expect(result.required).toEqual(["fileName"]);
+  });
+
+  it("recursively strips required internal properties inside nested objects but keeps optional ones", () => {
+    const agentSchema =
+      ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT];
+    const inputSchema = {
+      type: "object",
+      properties: {
+        wrapper: {
+          type: "object",
+          properties: {
+            title: { type: "string" },
+            agent: agentSchema,
+            optionalAgent: agentSchema,
+          },
+          required: ["title", "agent"],
+        },
+      },
+      required: ["wrapper"],
+    } as JSONSchema;
+
+    const result = hideInternalConfiguration(inputSchema);
+
+    expect(result.properties?.wrapper).toMatchObject({
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        optionalAgent: agentSchema,
+      },
+      required: ["title"],
+    });
+  });
+
+  it("processes array items schema and removes internal fields from item objects", () => {
+    const inputSchema = {
+      type: "object",
+      properties: {
+        entries: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              label: { type: "string" },
+              table:
+                ConfigurableToolInputJSONSchemas[
+                  INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE
+                ],
+            },
+            required: ["label", "table"],
+          },
+        },
+      },
+    } as JSONSchema;
+
+    const result = hideInternalConfiguration(inputSchema);
+
+    const items = result.properties?.entries;
+    expect(items).toBeDefined();
+    expect(items).toMatchObject({ type: "array" });
+    expect(
+      isJSONSchemaObject((items as JSONSchema).items)
+        ? (items as JSONSchema).items
+        : null
+    ).toMatchObject({
+      type: "object",
+      properties: { label: { type: "string" } },
+      required: ["label"],
+    });
+  });
+
+  it("keeps optional internal fields on array item objects", () => {
+    const tableSchema =
+      ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE];
+    const inputSchema = {
+      type: "object",
+      properties: {
+        entries: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              label: { type: "string" },
+              requiredTable: tableSchema,
+              optionalTable: tableSchema,
+            },
+            required: ["label", "requiredTable"],
+          },
+        },
+      },
+    } as JSONSchema;
+
+    const result = hideInternalConfiguration(inputSchema);
+    const itemSchema = result.properties?.entries;
+    expect(itemSchema).toBeDefined();
+    expect(
+      isJSONSchemaObject((itemSchema as JSONSchema).items)
+        ? (itemSchema as JSONSchema).items
+        : null
+    ).toMatchObject({
+      type: "object",
+      properties: {
+        label: { type: "string" },
+        optionalTable: tableSchema,
+      },
+      required: ["label"],
+    });
+  });
+
+  it("processes tuple-style array items (distinct schema per index)", () => {
+    const inputSchema = {
+      type: "array",
+      items: [
+        { type: "string", const: "fixed" },
+        {
+          type: "object",
+          properties: {
+            configuredString:
+              ConfigurableToolInputJSONSchemas[
+                INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+              ],
+          },
+          required: ["configuredString"],
+        },
+        { type: "number" },
+      ],
+    } as JSONSchema;
+
+    const result = hideInternalConfiguration(inputSchema);
+
+    expect(Array.isArray(result.items)).toBe(true);
+    expect(result.items).toHaveLength(3);
+    expect((result.items as JSONSchema[])[0]).toMatchObject({
+      type: "string",
+      const: "fixed",
+    });
+    expect((result.items as JSONSchema[])[1]).toMatchObject({
+      type: "object",
+      properties: {},
+    });
+    expect((result.items as JSONSchema[])[2]).toMatchObject({ type: "number" });
+  });
+
+  it("detects internal configuration behind $ref and removes the property when required", () => {
+    const dsSchema =
+      ConfigurableToolInputJSONSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+      ];
+    const inputSchema = {
+      type: "object",
+      definitions: {
+        ConfiguredDataSources: dsSchema,
+      },
+      properties: {
+        q: { type: "string" },
+        sources: { $ref: "#/definitions/ConfiguredDataSources" },
+      },
+      required: ["q", "sources"],
+    } as JSONSchema;
+
+    const result = hideInternalConfiguration(inputSchema);
+
+    expect(result.properties).toEqual({
+      q: { type: "string" },
+    });
+    expect(result.required).toEqual(["q"]);
+    expect(result.definitions).toEqual(inputSchema.definitions);
+  });
+
+  it("keeps internal configuration behind $ref when the property is optional", () => {
+    const dsSchema =
+      ConfigurableToolInputJSONSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+      ];
+    const inputSchema = {
+      type: "object",
+      definitions: {
+        ConfiguredDataSources: dsSchema,
+      },
+      properties: {
+        q: { type: "string" },
+        sources: { $ref: "#/definitions/ConfiguredDataSources" },
+      },
+      required: ["q"],
+    } as JSONSchema;
+
+    const result = hideInternalConfiguration(inputSchema);
+
+    expect(result.properties).toEqual({
+      q: { type: "string" },
+      sources: { $ref: "#/definitions/ConfiguredDataSources" },
+    });
+    expect(result.required).toEqual(["q"]);
+    expect(result.definitions).toEqual(inputSchema.definitions);
+  });
+
+  it("returns non-object schemas unchanged", () => {
+    expect(hideInternalConfiguration({ type: "string" } as JSONSchema)).toEqual(
+      {
+        type: "string",
+      }
+    );
+  });
+
+  it("passes through non-object property values without recursing", () => {
+    const inputSchema = {
+      type: "object",
+      properties: {
+        legacyFlag: true,
+      },
+    } as JSONSchema;
+
+    const result = hideInternalConfiguration(inputSchema);
+
+    expect(result.properties).toEqual({ legacyFlag: true });
+  });
+});
+
+describe("augmentInputsWithConfiguration after hideInternalConfiguration", () => {
+  it("fills required and optional internal fields from action configuration when raw inputs omit them", () => {
+    const timeFrameSchema =
+      ConfigurableToolInputJSONSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+      ];
+    const dustProjectSchema =
+      ConfigurableToolInputJSONSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+      ];
+    const dataSourcesSchema =
+      ConfigurableToolInputJSONSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+      ];
+    const inputSchema = {
+      type: "object",
+      properties: {
+        query: { type: "string" },
+        dataSources: dataSourcesSchema,
+        timeFrame: timeFrameSchema,
+        dustProject: dustProjectSchema,
+      },
+      required: ["query", "dataSources"],
+    } as JSONSchema;
+
+    const hiddenForModel = hideInternalConfiguration(inputSchema);
+    expect(hiddenForModel.properties).not.toHaveProperty("dataSources");
+    expect(hiddenForModel.properties).toHaveProperty("timeFrame");
+    expect(hiddenForModel.properties).toHaveProperty("dustProject");
+
+    const config = createBasicMCPConfiguration({
+      dataSources: [
+        {
+          workspaceId: mockWorkspace.sId,
+          sId: "dsc_augment_optional",
+          dataSourceViewId: "view_augment",
+          filter: {
+            tags: { in: [], not: [], mode: "custom" },
+            parents: { in: [], not: [] },
+          },
+        },
+      ],
+      timeFrame: { duration: 14, unit: "day" },
+      dustProject: {
+        workspaceId: mockWorkspace.sId,
+        projectId: "project-sid-xyz",
+      },
+      inputSchema,
+    });
+
+    const augmented = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs: { query: "find docs" },
+      actionConfiguration: config,
+    });
+
+    expect(augmented.query).toBe("find docs");
+    expect(augmented.dataSources).toEqual([
+      {
+        uri: `data_source_configuration://dust/w/${mockWorkspace.sId}/data_source_configurations/dsc_augment_optional`,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+      },
+    ]);
+    expect(augmented.timeFrame).toEqual({
+      duration: 14,
+      unit: "day",
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
+    });
+    expect(augmented.dustProject).toEqual({
+      uri: `project://dust/w/${mockWorkspace.sId}/projects/project-sid-xyz`,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT,
+    });
+  });
+
+  it("augments optional internal fields inside nested objects when missing", () => {
+    const agentSchema =
+      ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT];
+    const inputSchema = {
+      type: "object",
+      properties: {
+        query: { type: "string" },
+        wrapper: {
+          type: "object",
+          properties: {
+            optionalAgent: agentSchema,
+          },
+        },
+      },
+      required: ["query"],
+    } as JSONSchema;
+
+    const hiddenForModel = hideInternalConfiguration(inputSchema);
+    expect(hiddenForModel.properties?.wrapper).toMatchObject({
+      type: "object",
+      properties: { optionalAgent: agentSchema },
+    });
+
+    const config = createBasicMCPConfiguration({
+      childAgentId: "child-agent-sid",
+      inputSchema,
+    });
+
+    const augmented = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs: { query: "q" },
+      actionConfiguration: config,
+    });
+
+    expect(augmented.wrapper).toEqual({
+      optionalAgent: {
+        uri: `agent://dust/w/${mockWorkspace.sId}/agents/child-agent-sid`,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT,
+      },
+    });
+  });
+
+  it("does not overwrite optional internal fields when the model already provided them", () => {
+    const timeFrameSchema =
+      ConfigurableToolInputJSONSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+      ];
+    const dataSourcesSchema =
+      ConfigurableToolInputJSONSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+      ];
+    const inputSchema = {
+      type: "object",
+      properties: {
+        query: { type: "string" },
+        dataSources: dataSourcesSchema,
+        timeFrame: timeFrameSchema,
+      },
+      required: ["query", "dataSources"],
+    } as JSONSchema;
+
+    const hiddenForModel = hideInternalConfiguration(inputSchema);
+    expect(hiddenForModel.properties).toHaveProperty("timeFrame");
+
+    const config = createBasicMCPConfiguration({
+      dataSources: [
+        {
+          workspaceId: mockWorkspace.sId,
+          sId: "dsc_cfg",
+          dataSourceViewId: "view_cfg",
+          filter: {
+            tags: { in: [], not: [], mode: "custom" },
+            parents: { in: [], not: [] },
+          },
+        },
+      ],
+      timeFrame: { duration: 99, unit: "year" },
+      inputSchema,
+    });
+
+    const userTimeFrame = {
+      duration: 3,
+      unit: "hour" as const,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
+    };
+
+    const augmented = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs: {
+        query: "x",
+        timeFrame: userTimeFrame,
+      },
+      actionConfiguration: config,
+    });
+
+    expect(augmented.timeFrame).toEqual(userTimeFrame);
+    const augmentedDataSources = augmented.dataSources;
+    expect(Array.isArray(augmentedDataSources)).toBe(true);
+    if (Array.isArray(augmentedDataSources)) {
+      expect(augmentedDataSources).toHaveLength(1);
+      expect(augmentedDataSources[0]).toMatchObject({
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+      });
+    }
+  });
+});
 
 describe("augmentInputsWithConfiguration", () => {
   describe("basic functionality", () => {

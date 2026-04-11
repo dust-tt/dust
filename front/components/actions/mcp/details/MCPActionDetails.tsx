@@ -239,8 +239,10 @@ export function MCPActionDetails({
   }
 
   if (
-    internalMCPServerName === "include_data" &&
-    toolName === INCLUDE_TOOL_NAME
+    (internalMCPServerName === "include_data" &&
+      toolName === INCLUDE_TOOL_NAME) ||
+    (internalMCPServerName === "project_manager" &&
+      toolName === "retrieve_recent_documents")
   ) {
     return (
       <SearchResultDetails

@@ -33,10 +33,13 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
         .describe(
           "MIME type (default: inferred from file extension, e.g. text/markdown for .md files, or text/plain if unknown. Inherited from sourceFileId if provided)"
         ),
-      dustProject:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-        ].optional(),
+      dustProject: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+      ]
+        .optional()
+        .describe(
+          "Optional project to add the file to, will fallback to the conversation's project."
+        ),
     },
     stake: "low",
     displayLabels: {
@@ -62,10 +65,13 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
         .describe(
           "ID of an existing file to copy content from (provide either this or content)"
         ),
-      dustProject:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-        ].optional(),
+      dustProject: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+      ]
+        .optional()
+        .describe(
+          "Optional project to update the file in, will fallback to the conversation's project."
+        ),
     },
     stake: "medium",
     displayLabels: {
@@ -80,10 +86,13 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
       fileId: z
         .string()
         .describe("ID of an existing file in the project context to attach"),
-      dustProject:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-        ].optional(),
+      dustProject: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+      ]
+        .optional()
+        .describe(
+          "Optional project to attach the file to, will fallback to the conversation's project."
+        ),
     },
     stake: "low",
     displayLabels: {
@@ -100,10 +109,13 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
         .describe(
           "New project description. Must be plain text only (no markdown, HTML, or other formatting). Keep it brief and concise: 1-2 short sentences max."
         ),
-      dustProject:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-        ].optional(),
+      dustProject: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+      ]
+        .optional()
+        .describe(
+          "Optional project to edit the description of, will fallback to the conversation's project."
+        ),
     },
     stake: "low",
     displayLabels: {
@@ -115,10 +127,13 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
     description:
       "Get comprehensive information about the project context, including project URL, description, file count, and file list.",
     schema: {
-      dustProject:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-        ].optional(),
+      dustProject: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+      ]
+        .optional()
+        .describe(
+          "Optional project to get information from, will fallback to the conversation's project."
+        ),
     },
     stake: "never_ask",
     displayLabels: {
