@@ -1,4 +1,4 @@
-import { Authenticator, type AuthenticatorType } from "@app/lib/auth";
+import {Authenticator, type AuthenticatorType} from "@app/lib/auth";
 import {
   CompactionMessageModel,
   MessageModel,
@@ -6,7 +6,7 @@ import {
 import logger from "@app/logger/logger";
 
 export async function runCompaction(
-  authType: AuthenticatorType,
+  auth: Authenticator,
   {
     conversationId,
     compactionMessageId,
@@ -17,21 +17,13 @@ export async function runCompaction(
     compactionMessageVersion: number;
   }
 ): Promise<void> {
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    throw new Error(
-      `Failed to deserialize authenticator: ${authResult.error.code}`
-    );
-  }
-
-  const auth = authResult.value;
-  const workspaceId = auth.getNonNullableWorkspace().id;
+  const owner = auth.getNonNullableWorkspace();
 
   const message = await MessageModel.findOne({
     where: {
       sId: compactionMessageId,
       version: compactionMessageVersion,
-      workspaceId,
+      workspaceId: owner.id,
     },
     include: [
       {
@@ -44,7 +36,7 @@ export async function runCompaction(
 
   if (!message?.compactionMessage) {
     throw new Error(
-      `Compaction message not found for message ${compactionMessageId} (workspace=${workspaceId}, conversation=${conversationId})`
+      `Compaction message not found for message ${compactionMessageId} (workspace=${owner.sId}, conversation=${conversationId})`
     );
   }
 
@@ -58,14 +50,14 @@ export async function runCompaction(
     });
 
     logger.info(
-      { workspaceId, conversationId, compactionMessageId },
+      {workspaceId: owner.sId, conversationId, compactionMessageId},
       "Compaction completed"
     );
   } catch (error) {
-    await compactionMessage.update({ status: "failed" });
+    await compactionMessage.update({status: "failed"});
 
     logger.error(
-      { workspaceId, conversationId, compactionMessageId, error },
+      {workspaceId: owner.sId, conversationId, compactionMessageId, error},
       "Compaction failed"
     );
 
