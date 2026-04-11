@@ -79,19 +79,19 @@ PR #24086.
 
 Build the compaction pipeline end-to-end. No feature flag needed — inert until Phase 5 provides a trigger.
 
-### - [ ] PR 3.1 — Add compaction Temporal workflow skeleton
+### - [x] PR 3.1 — Add compaction Temporal workflow skeleton
 
-Infrastructure only — workflow, activity, client. No trigger yet. Collocated with the agent loop.
+PR #24104. Collocated with the agent loop on `agent-loop-queue-v2`.
 
-- Add `compactionWorkflow` in `front/temporal/agent_loop/workflows.ts` (alongside
-  `agentLoopConversationTitleWorkflow`). Calls a single activity.
-- Add `compactionActivity` stub in a new file under
-  `front/temporal/agent_loop/activities/` (reads messages, returns placeholder content for now).
-- Add `launchCompactConversationWorkflow()` client in `front/temporal/agent_loop/client.ts`
-  (deterministic workflow ID from conversationId, fire-and-forget, handle
-  `WorkflowExecutionAlreadyStartedError`).
-- Runs on the existing agent loop queue (`agent-loop-queue-v2`, `agent` namespace). No new worker
-  or queue needed. Register the activity in the existing agent loop worker.
+- `compactionWorkflow` in `workflows.ts` — single-activity workflow.
+- `compactionActivity` in `activities/compaction.ts` — thin wrapper, delegates to `runCompaction`.
+- `runCompaction` in `temporal/agent_loop/lib/compaction.ts` — fetches conversation, finds the
+  `CompactionMessageType` by sId+version, calls `updateCompactionMessageWithContentAndFinalStatus`
+  (stub sets content to `[COMPACTION]`).
+- `launchCompactionWorkflow` in `client.ts` — fire-and-forget, `DustError` on already-running.
+- `updateCompactionMessageWithContentAndFinalStatus` in `conversation.ts` — TODO: implement with
+  proper locking.
+- Activity registered in `worker.ts`.
 
 ### - [ ] PR 3.2 — Add SSE events for compaction lifecycle
 
@@ -114,13 +114,12 @@ Core orchestration. No feature flag needed — compaction is inert until Phase 5
   - Create `CompactionMessage` with `status: "created"`, `content: null`.
   - Publish `CompactionMessageNewEvent`.
   - Launch `compactionWorkflow` (fire-and-forget).
+- Implement `updateCompactionMessageWithContentAndFinalStatus` in `conversation.ts` (currently a
+  stub from PR 3.1): acquire advisory lock, update `CompactionMessageModel` status + content,
+  publish `CompactionMessageDoneEvent`.
 - In `postUserMessage` (line ~528): check for `CompactionMessageModel` with
   `status: "created"` in the conversation — return 409 if found (same pattern as steering's
   pending message check).
-- In `compactionActivity`:
-  - On success: update `CompactionMessage` to `status: "succeeded"` + `content`.
-  - On failure: update to `status: "failed"`.
-  - Publish `CompactionMessageDoneEvent`.
 
 ### - [ ] PR 3.4 — Implement compaction summary generation
 
