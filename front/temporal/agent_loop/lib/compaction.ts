@@ -1,9 +1,14 @@
-import {Authenticator, type AuthenticatorType} from "@app/lib/auth";
-import {
-  CompactionMessageModel,
-  MessageModel,
-} from "@app/lib/models/agent/conversation";
+import { updateCompactionMessageWithFinalStatus } from "@app/lib/api/assistant/conversation";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
+import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import {
+  type CompactionMessageType,
+  isCompactionMessageType,
+} from "@app/types/assistant/conversation";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export async function runCompaction(
   auth: Authenticator,
@@ -16,51 +21,59 @@ export async function runCompaction(
     compactionMessageId: string;
     compactionMessageVersion: number;
   }
-): Promise<void> {
+): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const message = await MessageModel.findOne({
-    where: {
-      sId: compactionMessageId,
-      version: compactionMessageVersion,
-      workspaceId: owner.id,
-    },
-    include: [
-      {
-        model: CompactionMessageModel,
-        as: "compactionMessage",
-        required: true,
-      },
-    ],
+  const conversationRes = await getConversation(
+    auth,
+    conversationId,
+    false,
+    null,
+    PREVIOUS_INTERACTIONS_TO_PRESERVE + 1 // X previous + the last one
+  );
+  if (conversationRes.isErr()) {
+    return conversationRes;
+  }
+  const conversation = conversationRes.value;
+
+  let compactionMessage: CompactionMessageType | undefined;
+
+  for (
+    let i = conversation.content.length - 1;
+    i >= 0 && !compactionMessage;
+    i--
+  ) {
+    const messageGroup = conversation.content[i];
+    for (const msg of messageGroup) {
+      if (
+        isCompactionMessageType(msg) &&
+        msg.sId === compactionMessageId &&
+        msg.version === compactionMessageVersion
+      ) {
+        compactionMessage = msg;
+        break;
+      }
+    }
+  }
+
+  if (!compactionMessage) {
+    return new Err(new Error("Compaction message not found"));
+  }
+
+  // TODO(compaction): implement actual compaction
+
+  const result = await updateCompactionMessageWithFinalStatus(auth, {
+    conversation,
+    compactionMessage,
+    status: "succeeded",
   });
 
-  if (!message?.compactionMessage) {
-    throw new Error(
-      `Compaction message not found for message ${compactionMessageId} (workspace=${owner.sId}, conversation=${conversationId})`
-    );
-  }
+  compactionMessage.status = result.status;
 
-  const compactionMessage = message.compactionMessage;
+  logger.info(
+    { workspaceId: owner.sId, conversationId, compactionMessageId },
+    "Compaction completed"
+  );
 
-  try {
-    // TODO(compaction): implement actual compaction (fetch messages, call LLM, generate summary).
-    await compactionMessage.update({
-      status: "succeeded",
-      content: "[COMPACTION]",
-    });
-
-    logger.info(
-      {workspaceId: owner.sId, conversationId, compactionMessageId},
-      "Compaction completed"
-    );
-  } catch (error) {
-    await compactionMessage.update({status: "failed"});
-
-    logger.error(
-      {workspaceId: owner.sId, conversationId, compactionMessageId, error},
-      "Compaction failed"
-    );
-
-    throw error;
-  }
+  return new Ok(undefined);
 }
