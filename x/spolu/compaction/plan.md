@@ -104,21 +104,18 @@ PR #24106. Type-only + event plumbing.
 - `ConversationViewer`: no-op cases (TODO for UI in Phase 5).
 - Public API v1: filtered out (not exposed).
 
-### - [ ] PR 3.3 — Implement `compaction` + block `postUserMessage`
+### - [x] PR 3.3 — Implement `compaction` + block `postUserMessage`
 
-Core orchestration. No feature flag needed — compaction is inert until Phase 5 provides a trigger.
+PR #24107.
 
-- Add `compaction()` in `front/lib/api/assistant/conversation.ts`:
-  - Acquire `getConversationRankVersionLock`.
-  - Create `CompactionMessage` with `status: "created"`, `content: null`.
-  - Publish `CompactionMessageNewEvent`.
-  - Launch `compactionWorkflow` (fire-and-forget).
-- Implement `updateCompactionMessageWithContentAndFinalStatus` in `conversation.ts` (currently a
-  stub from PR 3.1): acquire advisory lock, update `CompactionMessageModel` status + content,
-  publish `CompactionMessageDoneEvent`.
-- In `postUserMessage` (line ~528): check for `CompactionMessageModel` with
-  `status: "created"` in the conversation — return 409 if found (same pattern as steering's
-  pending message check).
+- `compactConversation()` in `conversation.ts`: acquires advisory lock, creates
+  `CompactionMessageModel` + `MessageModel`, publishes `compaction_message_new`, launches
+  `compactionWorkflow` fire-and-forget. Returns 409 if compaction already in progress.
+- `updateCompactionMessageWithContentAndFinalStatus`: acquires advisory lock, looks up
+  `CompactionMessageModel` via `MessageModel` join, updates status + content. The
+  `compaction_message_done` event is emitted from `runCompaction` (PR 3.1).
+- `postUserMessage` blocking: checks for active compaction (`status: "created"`) in conversation
+  content, returns 409 if found.
 
 ### - [ ] PR 3.4 — Implement compaction summary generation
 
