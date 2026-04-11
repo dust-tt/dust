@@ -4,6 +4,7 @@ import {
   RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
 import type { AuthenticatorType } from "@app/lib/auth";
+import type * as compactionActivities from "@app/temporal/agent_loop/activities/compaction";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
@@ -106,6 +107,13 @@ const { ensureConversationTitleActivity } = proxyActivities<
   },
 });
 
+const { compactionActivity } = proxyActivities<typeof compactionActivities>({
+  startToCloseTimeout: "5 minutes",
+  retry: {
+    maximumAttempts: 3,
+  },
+});
+
 const {
   finalizeSuccessfulAgentLoopActivity,
   finalizeGracefullyStoppedAgentLoopActivity,
@@ -123,6 +131,24 @@ export async function agentLoopConversationTitleWorkflow({
   agentLoopArgs: AgentLoopArgs;
 }) {
   await ensureConversationTitleActivity(authType, agentLoopArgs);
+}
+
+export async function compactionWorkflow({
+  authType,
+  conversationId,
+  compactionMessageId,
+  compactionMessageVersion,
+}: {
+  authType: AuthenticatorType;
+  conversationId: string;
+  compactionMessageId: string;
+  compactionMessageVersion: number;
+}) {
+  await compactionActivity(authType, {
+    conversationId,
+    compactionMessageId,
+    compactionMessageVersion,
+  });
 }
 
 export async function agentLoopWorkflow({

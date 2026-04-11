@@ -83,9 +83,9 @@ Build the compaction pipeline end-to-end. No feature flag needed — inert until
 
 Infrastructure only — workflow, activity, client. No trigger yet. Collocated with the agent loop.
 
-- Add `compactConversationWorkflow` in `front/temporal/agent_loop/workflows.ts` (alongside
+- Add `compactionWorkflow` in `front/temporal/agent_loop/workflows.ts` (alongside
   `agentLoopConversationTitleWorkflow`). Calls a single activity.
-- Add `compactConversationActivity` stub in a new file under
+- Add `compactionActivity` stub in a new file under
   `front/temporal/agent_loop/activities/` (reads messages, returns placeholder content for now).
 - Add `launchCompactConversationWorkflow()` client in `front/temporal/agent_loop/client.ts`
   (deterministic workflow ID from conversationId, fire-and-forget, handle
@@ -105,19 +105,19 @@ Type-only + event plumbing.
 - Add cases in `isMessageEventParams()` switch
   (`front/lib/api/assistant/streaming/events.ts`, line ~106).
 
-### - [ ] PR 3.3 — Implement `compactConversation` + block `postUserMessage`
+### - [ ] PR 3.3 — Implement `compaction` + block `postUserMessage`
 
 Core orchestration. No feature flag needed — compaction is inert until Phase 5 provides a trigger.
 
-- Add `compactConversation()` in `front/lib/api/assistant/conversation.ts`:
+- Add `compaction()` in `front/lib/api/assistant/conversation.ts`:
   - Acquire `getConversationRankVersionLock`.
   - Create `CompactionMessage` with `status: "created"`, `content: null`.
   - Publish `CompactionMessageNewEvent`.
-  - Launch `compactConversationWorkflow` (fire-and-forget).
+  - Launch `compactionWorkflow` (fire-and-forget).
 - In `postUserMessage` (line ~528): check for `CompactionMessageModel` with
   `status: "created"` in the conversation — return 409 if found (same pattern as steering's
   pending message check).
-- In `compactConversationActivity`:
+- In `compactionActivity`:
   - On success: update `CompactionMessage` to `status: "succeeded"` + `content`.
   - On failure: update to `status: "failed"`.
   - Publish `CompactionMessageDoneEvent`.
@@ -126,7 +126,7 @@ Core orchestration. No feature flag needed — compaction is inert until Phase 5
 
 The LLM call that produces the summary.
 
-- In `compactConversationActivity` (`front/temporal/agent_loop/activities/`):
+- In `compactionActivity` (`front/temporal/agent_loop/activities/`):
   - Fetch all messages since the last succeeded `CompactionMessage` (or all messages if none).
   - Render them into a compaction prompt (adapt from Claude Code's approach — system prompt +
     conversation + "summarize" instruction, see `x/spolu/compaction/claude_compaction.md` for
@@ -181,7 +181,7 @@ Make compaction actually affect what the model sees.
 ### - [ ] PR 5.3 — Manual compaction trigger
 
 - Add a UI affordance (button in the context usage indicator, or a `/compact` command) that calls
-  `compactConversation`.
+  `compaction`.
 - Initially, compaction is user-triggered only — block the input bar once context usage reaches a
   high threshold, prompting the user to compact.
 - API endpoint: `POST /api/w/[wId]/assistant/conversations/[cId]/compact`.
