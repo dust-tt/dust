@@ -21,6 +21,10 @@ import {
   getResourceNameAndIdFromSId,
   makeSId,
 } from "@app/lib/resources/string_ids";
+import {
+  extractDataSourceIdFromNodeId,
+  isDataSourceNodeId,
+} from "@app/types/core/content_node";
 import type {
   CoreAPIDatasourceViewFilter,
   CoreAPISearchFilter,
@@ -479,6 +483,48 @@ export async function getAgentDataSourceConfigurations(
   }
 
   return new Ok(configs);
+}
+
+/**
+ * Narrows semantic search to subtrees rooted at the given content node IDs (same rules as
+ * data_sources_file_system search). Preserves existing `parents.not` filters (e.g. project
+ * knowledge scope excluding the conversation folder) when adding `parents.in`.
+ */
+export function applyNodeIdsFilterToCoreSearchArgs(
+  coreSearchArgs: CoreSearchArgs[],
+  nodeIds: string[] | undefined
+): CoreSearchArgs[] {
+  if (!nodeIds || nodeIds.length === 0) {
+    return coreSearchArgs;
+  }
+
+  const dataSourceIds = new Set(
+    removeNulls(nodeIds.map((nodeId) => extractDataSourceIdFromNodeId(nodeId)))
+  );
+  const regularNodeIds = nodeIds.filter(
+    (nodeId) => !isDataSourceNodeId(nodeId)
+  );
+
+  return removeNulls(
+    coreSearchArgs.map((args) => {
+      if (dataSourceIds.has(args.dataSourceId)) {
+        return args;
+      }
+      if (regularNodeIds.length === 0) {
+        return null;
+      }
+      return {
+        ...args,
+        filter: {
+          ...args.filter,
+          parents: {
+            in: regularNodeIds,
+            not: args.filter.parents.not,
+          },
+        },
+      };
+    })
+  );
 }
 
 export function toCoreSearchArgs(

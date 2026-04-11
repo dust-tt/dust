@@ -35,7 +35,8 @@ export function getRetrievalTopK({
   const searchActions = stepActions.filter(
     (tool) =>
       isServerSideMCPToolConfigurationWithName(tool, "search") ||
-      isServerSideMCPToolConfigurationWithName(tool, "conversation_files")
+      isServerSideMCPToolConfigurationWithName(tool, "conversation_files") ||
+      isServerSideMCPToolConfigurationWithName(tool, "project_manager")
   );
 
   const includeActions = stepActions.filter(

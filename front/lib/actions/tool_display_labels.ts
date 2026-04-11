@@ -8,7 +8,7 @@ import { DEFAULT_REMOTE_MCP_SERVERS } from "@app/lib/actions/mcp_internal_action
 import {
   isDataSourceFilesystemFindInputType,
   isGenerateImageInputType,
-  isSearchInputType,
+  isSearchInputTypeWithTags,
   isWebbrowseInputType,
   isWebsearchInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
@@ -104,8 +104,18 @@ function getDynamicToolDisplayLabels({
       }
       return null;
 
+    case "project_manager":
+      if (toolName === "semantic_search" && isSearchInputTypeWithTags(inputs)) {
+        const q = truncateQuery(inputs.query);
+        return {
+          running: `Searching “${q}” in project`,
+          done: `Search “${q}” in project`,
+        };
+      }
+      return null;
+
     case "search":
-      if (toolName === "semantic_search" && isSearchInputType(inputs)) {
+      if (toolName === "semantic_search" && isSearchInputTypeWithTags(inputs)) {
         const q = truncateQuery(inputs.query);
         return {
           running: `Searching “${q}”`,
@@ -126,7 +136,7 @@ function getDynamicToolDisplayLabels({
           done: `Find “${q}”`,
         };
       }
-      if (toolName === "semantic_search" && isSearchInputType(inputs)) {
+      if (toolName === "semantic_search" && isSearchInputTypeWithTags(inputs)) {
         const q = truncateQuery(inputs.query);
         return {
           running: `Searching “${q}”`,
@@ -549,7 +559,6 @@ function getDynamicToolDisplayLabels({
     case "front":
     case "zendesk":
     case "schedules_management":
-    case "project_manager":
     case "poke":
     case "project_conversation":
     default:

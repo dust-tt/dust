@@ -8,6 +8,7 @@ import type {
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { runIncludeDataRetrieval } from "@app/lib/api/actions/servers/include_data/include_function";
+import { buildProjectSearchDataSources } from "@app/lib/api/actions/servers/project_manager/build_project_search_data_sources";
 import {
   getProjectSpace,
   getWritableProjectContext,
@@ -16,6 +17,7 @@ import {
   withErrorHandling,
 } from "@app/lib/api/actions/servers/project_manager/helpers";
 import { PROJECT_MANAGER_TOOLS_METADATA } from "@app/lib/api/actions/servers/project_manager/metadata";
+import { searchFunction } from "@app/lib/api/actions/servers/search/tools";
 import {
   isContentNodeAttachmentType,
   renderAttachmentXml,
@@ -542,6 +544,53 @@ export function createProjectManagerTools(
           dataSources,
         });
       }, "Failed to retrieve recent project documents");
+    },
+
+    semantic_search: async (params) => {
+      return withErrorHandling(async () => {
+        if (!agentLoopContext?.runContext) {
+          return new Err(
+            new MCPError("No conversation context available", {
+              tracked: false,
+            })
+          );
+        }
+
+        const scope = params.searchScope ?? "all";
+        const contextRes = await getProjectSpace(auth, {
+          agentLoopContext,
+          dustProject: params.dustProject,
+        });
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { space } = contextRes.value;
+        const dataSources = await buildProjectSearchDataSources(
+          auth,
+          space,
+          scope
+        );
+
+        if (dataSources.length === 0) {
+          return new Err(
+            new MCPError(
+              scope === "conversations"
+                ? "No project data source available to search conversations, or the project connector is not linked (required to scope transcript documents)."
+                : "No project data sources available to search for this scope.",
+              { tracked: false }
+            )
+          );
+        }
+
+        return searchFunction(auth, {
+          query: params.query,
+          relativeTimeFrame: params.relativeTimeFrame ?? "all",
+          dataSources,
+          nodeIds: params.nodeIds,
+          agentLoopContext,
+        });
+      }, "Failed to search project");
     },
   };
 

@@ -4,7 +4,7 @@ import { z } from "zod";
 
 export const MAX_BROWSE_URLS = 16;
 
-export const SearchInputSchema = z.object({
+const SearchInputSchema = z.object({
   query: z
     .string()
     .describe(
@@ -21,21 +21,28 @@ export const SearchInputSchema = z.object({
         " on the user request and past conversation context." +
         " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
         " where {k} is a number. Be strict, do not invent invalid values."
-    ),
+    )
+    .optional(),
+});
+
+export type SearchInputType = z.infer<typeof SearchInputSchema>;
+
+export const SearchWithDataSourcesInputSchema = SearchInputSchema.extend({
   dataSources:
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
 });
 
-export const SearchWithNodesInputSchema = SearchInputSchema.extend({
-  nodeIds: z
-    .array(z.string())
-    .describe(
-      "Array of exact content node IDs to search within. These are the 'nodeId' values from " +
-        "previous search results. All children of the designated nodes will be searched. " +
-        "If not provided, all available nodes will be searched."
-    )
-    .optional(),
-});
+export const SearchWithNodesInputSchema =
+  SearchWithDataSourcesInputSchema.extend({
+    nodeIds: z
+      .array(z.string())
+      .describe(
+        "Array of exact content node IDs to search within. These are the 'nodeId' values from " +
+          "previous search results. All children of the designated nodes will be searched. " +
+          "If not provided, all available nodes will be searched."
+      )
+      .optional(),
+  });
 
 export type SearchWithNodesInputType = z.infer<
   typeof SearchWithNodesInputSchema
@@ -62,13 +69,13 @@ export const TagsInputSchema = z.object({
 
 export type TagsInputType = z.infer<typeof TagsInputSchema>;
 
-export type SearchInputTypeWithTags = SearchWithNodesInputType & TagsInputType;
+export type SearchInputTypeWithTags = SearchInputType & TagsInputType;
 
-export function isSearchInputType(
+export function isSearchInputTypeWithTags(
   input: Record<string, unknown>
 ): input is SearchInputTypeWithTags {
   return (
-    SearchWithNodesInputSchema.safeParse(input).success ||
+    SearchInputSchema.safeParse(input).success ||
     SearchWithNodesInputSchema.extend(TagsInputSchema.shape).safeParse(input)
       .success
   );
