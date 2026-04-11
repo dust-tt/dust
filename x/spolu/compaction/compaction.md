@@ -29,7 +29,7 @@ Four parts:
    conversation when compaction is completed.
 2. **Token consumption evaluation** — using the LLM's reported token usage from the last agent
    message to determine when compaction should trigger, and surfacing it client-side.
-3. **Compaction method** — a new `compactConversation` method in `conversation.ts` that triggers
+3. **Compaction method** — a new `compaction` method in `conversation.ts` that triggers
    compaction through Temporal.
 4. **Blocking during compaction** — preventing `postUserMessage` while compaction is in progress,
    similar to steering's pending message mechanism.
@@ -229,14 +229,14 @@ usage report, resolved on-the-fly from the existing run data.
 
 ## Part 3: Compaction Method
 
-### `compactConversation` in `conversation.ts`
+### `compaction` in `conversation.ts`
 
 A new method in `front/lib/api/assistant/conversation.ts` that orchestrates compaction through
 Temporal, following the same patterns as `postUserMessage` and
 `updateAgentMessageWithFinalStatus`:
 
 ```typescript
-export async function compactConversation(
+export async function compaction(
   auth: Authenticator,
   {
     conversation,
@@ -251,7 +251,7 @@ export async function compactConversation(
 1. Acquire the conversation advisory lock (`getConversationRankVersionLock`).
 2. Create a `CompactionMessage` with `status: "created"` and `content: null`. This immediately
    signals to the rest of the system that compaction is in progress.
-3. Launch a Temporal workflow (`compactConversationWorkflow`) that:
+3. Launch a Temporal workflow (`compactionWorkflow`) that:
    a. Reads all messages before the compaction message (or since the last succeeded compaction).
    b. Renders them into a compaction prompt.
    c. Calls an LLM to generate the summary.
@@ -262,15 +262,21 @@ export async function compactConversation(
 
 ### Temporal Workflow
 
-The compaction runs as a separate Temporal workflow (not inline in the agent loop finalization)
-because:
+The compaction runs as a separate Temporal workflow on the **agent loop queue**
+(`agent-loop-queue-v2` in the `agent` namespace), collocated with the agent loop code under
+`front/temporal/agent_loop/`. This is similar to how `agentLoopConversationTitleWorkflow` lives
+alongside the main agent loop.
+
+Reasons for a separate workflow (vs inline in finalization):
 
 - Summary generation is an LLM call that can take 10-30s — too long to block finalization.
 - It's independently retryable if the LLM call fails.
 - It cleanly separates the agent loop lifecycle from compaction lifecycle.
 
-The workflow is triggered from the agent loop finalization path when the threshold is crossed, or
-could be triggered manually via an API endpoint.
+The workflow is initially triggered from `compaction()` in `conversation.ts` (called by
+the API endpoint). In the future it could also be triggered directly from the agent loop
+finalization path when context usage exceeds the compaction threshold, similar to how the title
+workflow is spawned as a child workflow after the first step.
 
 ---
 
@@ -373,10 +379,10 @@ arriving _after_ the context window has been exceeded.
 
 | # | Work | Notes |
 |---|------|-------|
-| 5 | Add `compactConversation` in `conversation.ts` | Advisory lock, create `CompactionMessage` with `status: "created"`, launch Temporal workflow |
+| 5 | Add `compaction` in `conversation.ts` | Advisory lock, create `CompactionMessage` with `status: "created"`, launch Temporal workflow |
 | 6 | Block `postUserMessage` when a `CompactionMessage` with `status: "created"` exists | Return 409, following steering pattern |
 | 7 | Add `CompactionMessageNewEvent` / `CompactionMessageDoneEvent` SSE events | Mirrors `AgentMessageNewEvent` / `AgentMessageDoneEvent` pattern |
-| 8 | Implement `compactConversationWorkflow` Temporal workflow | Read messages, call LLM, update `CompactionMessage` with content + `status: "succeeded"` |
+| 8 | Implement `compactionWorkflow` Temporal workflow | Read messages, call LLM, update `CompactionMessage` with content + `status: "succeeded"` |
 | 9 | Implement compaction summary generation prompt | LLM call with compaction prompt (adapt from Claude Code's approach) |
 
 ### Phase 3: Rendering, API & Pruning

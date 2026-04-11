@@ -4,7 +4,10 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { logAgentLoopStart } from "@app/temporal/agent_loop/activities/instrumentation";
-import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
+import {
+  makeAgentLoopWorkflowId,
+  makeCompactionWorkflowId,
+} from "@app/temporal/agent_loop/lib/workflow_ids";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -12,7 +15,7 @@ import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 import assert from "assert";
 
 import { QUEUE_NAME } from "./config";
-import { agentLoopWorkflow } from "./workflows";
+import { agentLoopWorkflow, compactionWorkflow } from "./workflows";
 
 export async function launchAgentLoopWorkflow({
   auth,
@@ -103,6 +106,70 @@ export async function launchAgentLoopWorkflow({
       new DustError(
         "agent_loop_already_running",
         "Agent loop already running for this message."
+      )
+    );
+  }
+
+  return new Ok(undefined);
+}
+
+export async function launchCompactionWorkflow({
+  auth,
+  conversationId,
+  compactionMessageId,
+  compactionMessageVersion,
+}: {
+  auth: Authenticator;
+  conversationId: string;
+  compactionMessageId: string;
+  compactionMessageVersion: number;
+}): Promise<
+  Result<undefined, Error | DustError<"compaction_already_running">>
+> {
+  const authType = auth.toJSON();
+  const client = await getTemporalClientForAgentNamespace();
+
+  assert(authType.workspaceId, "Workspace ID is required");
+  const workflowId = makeCompactionWorkflowId({
+    workspaceId: authType.workspaceId,
+    conversationId,
+  });
+
+  try {
+    await client.workflow.start(compactionWorkflow, {
+      args: [
+        {
+          authType,
+          conversationId,
+          compactionMessageId,
+          compactionMessageVersion,
+        },
+      ],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      searchAttributes: {
+        conversationId: [conversationId],
+        workspaceId: authType.workspaceId ? [authType.workspaceId] : undefined,
+      },
+      memo: {
+        conversationId,
+        workspaceId: authType.workspaceId,
+      },
+    });
+  } catch (error) {
+    if (!(error instanceof WorkflowExecutionAlreadyStartedError)) {
+      throw error;
+    }
+
+    logger.warn(
+      { workflowId, workspaceId: authType.workspaceId },
+      "Compaction workflow already running for this conversation."
+    );
+
+    return new Err(
+      new DustError(
+        "compaction_already_running",
+        "Compaction workflow already running for this conversation."
       )
     );
   }

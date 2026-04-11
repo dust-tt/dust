@@ -109,6 +109,7 @@ import type {
   AgentMessageType,
   AgentMessageTypeWithoutMentions,
   CitationType,
+  CompactionMessageType,
   ConversationMetadata,
   ConversationType,
   ConversationVisibility,
@@ -2576,6 +2577,33 @@ export async function isConversationEventAllowedForAuth(
     default:
       assertNever(type);
   }
+}
+
+export async function updateCompactionMessageWithContentAndFinalStatus(
+  auth: Authenticator,
+  {
+    conversation,
+    compactionMessage,
+    status,
+    content,
+  }: {
+    conversation: ConversationWithoutContentType;
+    compactionMessage: CompactionMessageType;
+    status: "succeeded" | "failed";
+    content: string;
+  }
+): Promise<{
+  completedTs: number;
+  status: "succeeded" | "failed";
+}> {
+  const completedAt = new Date();
+
+  // TODO(compaction): implement update to CompactionMessage (with proper locking)
+
+  return {
+    completedTs: completedAt.getTime(),
+    status: "succeeded",
+  };
 }
 
 /**
