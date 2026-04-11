@@ -6,6 +6,7 @@ const {
   dustProjectConversationsFullSyncActivity,
   dustProjectConversationsIncrementalSyncActivity,
   dustProjectSyncMetadataActivity,
+  dustProjectMarkSyncedActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "60 minutes",
 });
@@ -34,6 +35,7 @@ export async function dustProjectFullSyncWorkflow({
 }): Promise<void> {
   await dustProjectConversationsFullSyncActivity({ connectorId });
   await dustProjectSyncMetadataActivity({ connectorId });
+  await dustProjectMarkSyncedActivity({ connectorId });
 }
 
 /**
@@ -47,4 +49,5 @@ export async function dustProjectIncrementalSyncWorkflow({
 }): Promise<void> {
   await dustProjectConversationsIncrementalSyncActivity({ connectorId });
   await dustProjectSyncMetadataActivity({ connectorId });
+  await dustProjectMarkSyncedActivity({ connectorId });
 }
