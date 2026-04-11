@@ -1,4 +1,4 @@
-import { updateCompactionMessageWithFinalStatus } from "@app/lib/api/assistant/conversation";
+import { updateCompactionMessageWithContentAndFinalStatus } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
 import type { Authenticator } from "@app/lib/auth";
@@ -61,14 +61,17 @@ export async function runCompaction(
   }
 
   // TODO(compaction): implement actual compaction
+  const content = "[COMPACTION]";
 
-  const result = await updateCompactionMessageWithFinalStatus(auth, {
+  const result = await updateCompactionMessageWithContentAndFinalStatus(auth, {
     conversation,
     compactionMessage,
     status: "succeeded",
+    content,
   });
 
   compactionMessage.status = result.status;
+  compactionMessage.content = content;
 
   logger.info(
     { workspaceId: owner.sId, conversationId, compactionMessageId },

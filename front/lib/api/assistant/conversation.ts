@@ -2579,16 +2579,18 @@ export async function isConversationEventAllowedForAuth(
   }
 }
 
-export async function updateCompactionMessageWithFinalStatus(
+export async function updateCompactionMessageWithContentAndFinalStatus(
   auth: Authenticator,
   {
     conversation,
     compactionMessage,
     status,
+    content,
   }: {
     conversation: ConversationWithoutContentType;
     compactionMessage: CompactionMessageType;
     status: "succeeded" | "failed";
+    content: string;
   }
 ): Promise<{
   completedTs: number;
@@ -2596,7 +2598,7 @@ export async function updateCompactionMessageWithFinalStatus(
 }> {
   const completedAt = new Date();
 
-  // TODO(compaction): implement (with proper locking)
+  // TODO(compaction): implement update to CompactionMessage (with proper locking)
 
   return {
     completedTs: completedAt.getTime(),

@@ -1,5 +1,5 @@
-import { runCompaction } from "@app/temporal/agent_loop/lib/compaction";
 import { Authenticator, type AuthenticatorType } from "@app/lib/auth";
+import { runCompaction } from "@app/temporal/agent_loop/lib/compaction";
 
 export async function compactionActivity(
   authType: AuthenticatorType,
@@ -21,9 +21,13 @@ export async function compactionActivity(
   }
   const auth = authResult.value;
 
-  await runCompaction(auth, {
+  const compactionRes = await runCompaction(auth, {
     conversationId,
     compactionMessageId,
     compactionMessageVersion,
   });
+
+  if (compactionRes.isErr()) {
+    throw new Error(`Compaction failed: ${compactionRes.error}`);
+  }
 }

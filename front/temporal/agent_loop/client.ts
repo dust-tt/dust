@@ -123,7 +123,9 @@ export async function launchCompactionWorkflow({
   conversationId: string;
   compactionMessageId: string;
   compactionMessageVersion: number;
-}): Promise<Result<undefined, Error | DustError<"compaction_already_running">>> {
+}): Promise<
+  Result<undefined, Error | DustError<"compaction_already_running">>
+> {
   const authType = auth.toJSON();
   const client = await getTemporalClientForAgentNamespace();
 
