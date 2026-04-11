@@ -93,17 +93,18 @@ PR #24104. Collocated with the agent loop on `agent-loop-queue-v2`.
   proper locking.
 - Activity registered in `worker.ts`.
 
-### - [ ] PR 3.2 — Add SSE events for compaction lifecycle
+### - [x] PR 3.2 — Add SSE events for compaction lifecycle
 
-Type-only + event plumbing.
+PR #24106. Type-only + event plumbing.
 
-- Add `CompactionMessageNewEvent` and `CompactionMessageDoneEvent` types in
-  `front/types/assistant/conversation.ts` (mirror `AgentMessageNewEvent` / `AgentMessageDoneEvent`
-  shape).
-- Add both to `ConversationEvents` union in
-  `front/lib/api/assistant/streaming/types.ts`.
-- Add cases in `isMessageEventParams()` switch
-  (`front/lib/api/assistant/streaming/events.ts`, line ~106).
+- `CompactionMessageNewEvent` and `CompactionMessageDoneEvent` in
+  `front/types/assistant/conversation.ts` (conversation-level events, alongside
+  `AgentMessageNewEvent`). Uses `_done` (not `_success`) to mirror `AgentMessageDoneEvent` —
+  signals finalization regardless of outcome.
+- Added to `ConversationEvents` union, `isMessageEventParams()` switch, and
+  `isConversationEventAllowedForAuth`.
+- `ConversationViewer`: no-op cases (TODO for UI in Phase 5).
+- Public API v1: filtered out (not exposed).
 
 ### - [ ] PR 3.3 — Implement `compaction` + block `postUserMessage`
 
