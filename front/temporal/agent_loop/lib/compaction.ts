@@ -1,6 +1,7 @@
 import { updateCompactionMessageWithContentAndFinalStatus } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
+import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import {
@@ -72,6 +73,16 @@ export async function runCompaction(
 
   compactionMessage.status = result.status;
   compactionMessage.content = content;
+
+  await publishConversationEvent(
+    {
+      type: "compaction_message_done",
+      created: Date.now(),
+      messageId: compactionMessage.sId,
+      message: compactionMessage,
+    },
+    { conversationId }
+  );
 
   logger.info(
     { workspaceId: owner.sId, conversationId, compactionMessageId },
