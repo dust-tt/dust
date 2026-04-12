@@ -133,6 +133,7 @@ import {
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
+import type { SupportedModel } from "@app/types/assistant/models/types";
 import {
   isAgentMention,
   isUserMention,
@@ -2618,7 +2619,13 @@ export async function isConversationEventAllowedForAuth(
  */
 export async function compactConversation(
   auth: Authenticator,
-  { conversation }: { conversation: ConversationType }
+  {
+    conversation,
+    model,
+  }: {
+    conversation: ConversationType;
+    model: SupportedModel;
+  }
 ): Promise<
   Result<{ compactionMessage: CompactionMessageType }, APIErrorWithStatusCode>
 > {
@@ -2738,6 +2745,7 @@ export async function compactConversation(
     conversationId: conversation.sId,
     compactionMessageId: compactionMessage.sId,
     compactionMessageVersion: compactionMessage.version,
+    model,
   });
 
   return new Ok({ compactionMessage });

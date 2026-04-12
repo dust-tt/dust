@@ -2540,7 +2540,10 @@ describe("compactConversation", () => {
   });
 
   it("should create a compaction message on an idle conversation", async () => {
-    const result = await compactConversation(auth, { conversation });
+    const result = await compactConversation(auth, {
+      conversation,
+      model: { providerId: "anthropic", modelId: "claude-haiku-4-5-20251001" },
+    });
 
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
@@ -2586,6 +2589,7 @@ describe("compactConversation", () => {
 
     const result = await compactConversation(auth, {
       conversation: fetched.value,
+      model: { providerId: "anthropic", modelId: "claude-haiku-4-5-20251001" },
     });
 
     expect(result.isErr()).toBe(true);

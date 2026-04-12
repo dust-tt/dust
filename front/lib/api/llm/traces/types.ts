@@ -19,6 +19,7 @@ interface LLMTraceContextBase {
     | "agent_builder_name_suggestion"
     | "agent_builder_tags_suggestion"
     | "agent_conversation"
+    | "compaction"
     | "agent_observability_summary"
     | "agent_suggestion"
     | "conversation_title_suggestion"

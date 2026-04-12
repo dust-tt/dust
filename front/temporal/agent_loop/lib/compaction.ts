@@ -1,15 +1,172 @@
+import type { LLMConfig } from "@app/lib/api/assistant/call_llm";
+import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { updateCompactionMessageWithContentAndFinalStatus } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import {
-  type CompactionMessageType,
-  isCompactionMessageType,
+import type {
+  AgentMessageType,
+  CompactionMessageType,
+  ConversationType,
+  MessageType,
+  UserMessageType,
 } from "@app/types/assistant/conversation";
+import { isCompactionMessageType } from "@app/types/assistant/conversation";
+import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
+import type { SupportedModel } from "@app/types/assistant/models/types";
+import type { ContentFragmentType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+
+const COMPACTION_PROMPT = `Your task is to create a detailed summary of the conversation so far, \
+paying close attention to the user's explicit requests and the agents' previous actions and \
+responses. This summary should be thorough enough that the conversation can continue without \
+losing important context.
+
+Before providing your final summary, wrap your analysis in <analysis> tags to organize your \
+thoughts and ensure you've covered all necessary points. In your analysis:
+
+1. Chronologically analyze each message in the conversation. For each section identify:
+   - The user's explicit requests and intents
+   - The agents' approaches to addressing those requests
+   - Key decisions and information exchanged
+   - Specific details: data, names, references, or artifacts mentioned
+   - Any errors or issues encountered and how they were resolved
+   - Pay special attention to user feedback and corrections
+
+2. Double-check for accuracy and completeness.
+
+After your analysis, provide your summary in <summary> tags with these sections:
+
+1. **Primary Request and Intent** — All explicit user requests and intents.
+2. **Key Topics and Concepts** — Main subjects, domains, or frameworks discussed.
+3. **Information Exchanged** — Important data, references, or artifacts shared during the conversation.
+4. **Issues and Resolutions** — Problems encountered, how they were resolved, and user feedback.
+5. **Pending Tasks** — Explicitly requested work that is still pending.
+6. **Current State** — What was being discussed or worked on immediately before this summary.
+
+IMPORTANT: Respond with TEXT ONLY. Do NOT attempt to use any tools. Your entire response must be \
+plain text: an <analysis> block followed by a <summary> block.`;
+
+/**
+ * Render the messages that need to be compacted into a text representation suitable for the
+ * compaction LLM prompt. Only messages after the last succeeded compaction are included.
+ */
+function renderMessagesForCompaction(conversation: ConversationType): string {
+  const messages: string[] = [];
+  let pastCompactionBoundary = false;
+
+  // Find the last succeeded compaction message to use as boundary.
+  let lastSucceededCompactionIdx = -1;
+  for (let i = conversation.content.length - 1; i >= 0; i--) {
+    const group = conversation.content[i];
+    const msg = group[group.length - 1];
+    if (
+      msg &&
+      isCompactionMessageType(msg) &&
+      msg.status === "succeeded" &&
+      msg.content
+    ) {
+      lastSucceededCompactionIdx = i;
+      break;
+    }
+  }
+
+  for (let i = 0; i < conversation.content.length; i++) {
+    const group = conversation.content[i];
+    const msg = group[group.length - 1];
+    if (!msg) {
+      continue;
+    }
+
+    // Skip everything up to and including the last succeeded compaction.
+    if (lastSucceededCompactionIdx >= 0 && i <= lastSucceededCompactionIdx) {
+      if (i === lastSucceededCompactionIdx) {
+        pastCompactionBoundary = true;
+      }
+      continue;
+    }
+
+    // Skip compaction messages with status "created" (the one being generated).
+    if (isCompactionMessageType(msg) && msg.status === "created") {
+      continue;
+    }
+
+    const formatted = formatMessageForCompaction(msg);
+    if (formatted) {
+      messages.push(formatted);
+    }
+  }
+
+  // If there was a previous compaction, prepend its summary as context.
+  if (pastCompactionBoundary) {
+    const compactionGroup = conversation.content[lastSucceededCompactionIdx];
+    const compactionMsg = compactionGroup[compactionGroup.length - 1];
+    if (compactionMsg && isCompactionMessageType(compactionMsg)) {
+      messages.unshift(
+        `[Previous compaction summary]\n${compactionMsg.content}\n`
+      );
+    }
+  }
+
+  return messages.join("\n");
+}
+
+function formatMessageForCompaction(msg: MessageType): string | null {
+  switch (msg.type) {
+    case "user_message":
+      return formatUserMessage(msg);
+    case "agent_message":
+      return formatAgentMessage(msg);
+    case "content_fragment":
+      return formatContentFragment(msg);
+    case "compaction_message":
+      // Succeeded compaction messages in the middle of the range are included as-is.
+      if (msg.status === "succeeded" && msg.content) {
+        return `[Compaction summary]\n${msg.content}\n`;
+      }
+      return null;
+    default:
+      assertNever(msg);
+  }
+}
+
+function formatUserMessage(msg: UserMessageType): string {
+  const userName = msg.user?.fullName ?? msg.user?.username ?? "User";
+  const content = msg.content ?? "";
+  if (msg.visibility === "deleted") {
+    return `>> User (${userName}):\n[Deleted message]\n`;
+  }
+  return `>> User (${userName}):\n${content}\n`;
+}
+
+function formatAgentMessage(msg: AgentMessageType): string {
+  const agentName = msg.configuration?.name ?? "Agent";
+  const content = msg.content ?? "";
+  if (msg.visibility === "deleted") {
+    return `>> Agent (${agentName}):\n[Deleted message]\n`;
+  }
+  return `>> Agent (${agentName}):\n${content}\n`;
+}
+
+function formatContentFragment(msg: ContentFragmentType): string {
+  return `>> Content Fragment:\nTitle: ${msg.title}\nContent-Type: ${msg.contentType}\n`;
+}
+
+/**
+ * Extract the <summary> block from the LLM response, stripping the <analysis> scratchpad.
+ */
+function extractSummary(generation: string): string {
+  const summaryMatch = generation.match(/<summary>([\s\S]*?)<\/summary>/);
+  if (summaryMatch) {
+    return summaryMatch[1].trim();
+  }
+  // Fallback: if no <summary> tags, return the full generation stripped of <analysis>.
+  return generation.replace(/<analysis>[\s\S]*?<\/analysis>/g, "").trim();
+}
 
 export async function runCompaction(
   auth: Authenticator,
@@ -17,10 +174,12 @@ export async function runCompaction(
     conversationId,
     compactionMessageId,
     compactionMessageVersion,
+    model,
   }: {
     conversationId: string;
     compactionMessageId: string;
     compactionMessageVersion: number;
+    model: SupportedModel;
   }
 ): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
@@ -61,13 +220,30 @@ export async function runCompaction(
     return new Err(new Error("Compaction message not found"));
   }
 
-  // TODO(compaction): implement actual compaction
-  const content = "[COMPACTION]";
+  let content: string;
+  let status: "succeeded" | "failed";
+
+  try {
+    content = await generateCompactionSummary(auth, { conversation, model });
+    status = "succeeded";
+  } catch (err) {
+    logger.error(
+      {
+        workspaceId: owner.sId,
+        conversationId,
+        compactionMessageId,
+        error: err,
+      },
+      "Compaction summary generation failed"
+    );
+    content = "";
+    status = "failed";
+  }
 
   const result = await updateCompactionMessageWithContentAndFinalStatus(auth, {
     conversation,
     compactionMessage,
-    status: "succeeded",
+    status,
     content,
   });
 
@@ -85,9 +261,71 @@ export async function runCompaction(
   );
 
   logger.info(
-    { workspaceId: owner.sId, conversationId, compactionMessageId },
+    { workspaceId: owner.sId, conversationId, compactionMessageId, status },
     "Compaction completed"
   );
 
   return new Ok(undefined);
+}
+
+async function generateCompactionSummary(
+  auth: Authenticator,
+  {
+    conversation,
+    model,
+  }: { conversation: ConversationType; model: SupportedModel }
+): Promise<string> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const renderedMessages = renderMessagesForCompaction(conversation);
+
+  const conv: ModelConversationTypeMultiActions = {
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `Here is the conversation to summarize:\n\n${renderedMessages}`,
+          },
+        ],
+        name: "",
+      },
+    ],
+  };
+
+  const config: LLMConfig = {
+    providerId: model.providerId,
+    modelId: model.modelId,
+    temperature: 0,
+  };
+
+  const res = await runMultiActionsAgent(
+    auth,
+    config,
+    {
+      conversation: conv,
+      prompt: COMPACTION_PROMPT,
+      specifications: [],
+    },
+    {
+      context: {
+        operationType: "compaction",
+        conversationId: conversation.sId,
+        userId: auth.user()?.sId,
+        workspaceId: owner.sId,
+      },
+    }
+  );
+
+  if (res.isErr()) {
+    throw res.error;
+  }
+
+  const generation = res.value.generation;
+  if (!generation) {
+    throw new Error("Compaction LLM returned empty generation");
+  }
+
+  return extractSummary(generation);
 }

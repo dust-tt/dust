@@ -4,6 +4,7 @@ import {
   RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
 import type { AuthenticatorType } from "@app/lib/auth";
+import type { SupportedModel } from "@app/types/assistant/models/types";
 import type * as compactionActivities from "@app/temporal/agent_loop/activities/compaction";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
@@ -138,16 +139,19 @@ export async function compactionWorkflow({
   conversationId,
   compactionMessageId,
   compactionMessageVersion,
+  model,
 }: {
   authType: AuthenticatorType;
   conversationId: string;
   compactionMessageId: string;
   compactionMessageVersion: number;
+  model: SupportedModel;
 }) {
   await compactionActivity(authType, {
     conversationId,
     compactionMessageId,
     compactionMessageVersion,
+    model,
   });
 }
 

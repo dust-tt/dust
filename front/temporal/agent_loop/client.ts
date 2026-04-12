@@ -9,6 +9,7 @@ import {
   makeCompactionWorkflowId,
 } from "@app/temporal/agent_loop/lib/workflow_ids";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
@@ -118,11 +119,13 @@ export async function launchCompactionWorkflow({
   conversationId,
   compactionMessageId,
   compactionMessageVersion,
+  model,
 }: {
   auth: Authenticator;
   conversationId: string;
   compactionMessageId: string;
   compactionMessageVersion: number;
+  model: SupportedModel;
 }): Promise<
   Result<undefined, Error | DustError<"compaction_already_running">>
 > {
@@ -143,6 +146,7 @@ export async function launchCompactionWorkflow({
           conversationId,
           compactionMessageId,
           compactionMessageVersion,
+          model,
         },
       ],
       taskQueue: QUEUE_NAME,
