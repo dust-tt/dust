@@ -9,6 +9,7 @@ import {
   UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { REINFORCEMENT_METADATA_KEYS } from "@app/lib/reinforced_agent/types";
 import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -30,6 +31,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
+  ConversationForkedFromType,
   ConversationMCPServerViewType,
   ConversationVisibility,
   ConversationWithoutContentType,
@@ -78,6 +80,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   // User-specific fields (populated when conversations are listed for a user).
   private userParticipation?: UserParticipation;
   private userLastReadAt: Date | null = null;
+  private forkedFromData?: ConversationForkedFromType;
 
   constructor(
     model: ModelStaticWorkspaceAware<ConversationModel>,
@@ -117,7 +120,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
 
     // Note: no permission filtering here. Callers must ensure the auth is allowed.
-    return conversations.map((c) => new this(this.model, c.get(), null));
+    const resources = conversations.map(
+      (c) => new this(this.model, c.get(), null)
+    );
+    await this.enrichWithForkedFrom(auth, resources);
+
+    return resources;
+  }
+
+  get forkedFrom(): ConversationForkedFromType | undefined {
+    return this.forkedFromData;
   }
 
   get space(): SpaceResource | null {
@@ -356,6 +368,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       )
     );
 
+    await this.enrichWithForkedFrom(auth, spaceBasedAccessible);
+
     return spaceBasedAccessible;
   }
 
@@ -478,6 +492,58 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
 
     await this.enrichWithReadState(auth, conversations);
+  }
+
+  private static async enrichWithForkedFrom(
+    auth: Authenticator,
+    conversations: ConversationResource[]
+  ): Promise<void> {
+    if (conversations.length === 0) {
+      return;
+    }
+
+    const forks = await ConversationForkModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        childConversationId: conversations.map((c) => c.id),
+      },
+      include: [
+        {
+          model: ConversationModel,
+          as: "parentConversation",
+          required: true,
+          attributes: ["sId"],
+        },
+        {
+          model: MessageModel,
+          as: "sourceMessage",
+          required: true,
+          attributes: ["sId"],
+        },
+      ],
+    });
+    if (forks.length === 0) {
+      return;
+    }
+
+    const conversationsById = new Map(conversations.map((c) => [c.id, c]));
+
+    forks.forEach((fork) => {
+      if (!fork.parentConversation || !fork.sourceMessage) {
+        return;
+      }
+
+      const conversation = conversationsById.get(fork.childConversationId);
+      if (!conversation) {
+        return;
+      }
+
+      conversation.forkedFromData = {
+        parentConversationId: fork.parentConversation.sId,
+        sourceMessageId: fork.sourceMessage.sId,
+        branchedAt: fork.branchedAt.getTime(),
+      };
+    });
   }
 
   static async fetchByIds(
@@ -971,6 +1037,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       depth: conversation.depth,
       metadata: conversation.metadata,
       branchId: null,
+      ...(conversation.forkedFrom && { forkedFrom: conversation.forkedFrom }),
     });
   }
 
@@ -2684,6 +2751,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       depth: this.depth,
       metadata: this.metadata,
       branchId: null,
+      ...(this.forkedFrom && { forkedFrom: this.forkedFrom }),
     };
   }
 }

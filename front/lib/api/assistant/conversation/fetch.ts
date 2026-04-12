@@ -312,6 +312,7 @@ async function _getConversation<V extends "light" | "full">(
       spaceId: conversation.space?.sId ?? null,
       metadata: conversation.metadata,
       branchId,
+      ...(conversation.forkedFrom && { forkedFrom: conversation.forkedFrom }),
     };
 
     if (paginationHasMore !== undefined) {
@@ -381,6 +382,7 @@ async function _getConversation<V extends "light" | "full">(
       spaceId: conversation.space?.sId ?? null,
       metadata: conversation.metadata,
       branchId,
+      ...(conversation.forkedFrom && { forkedFrom: conversation.forkedFrom }),
     };
 
     if (paginationHasMore !== undefined) {

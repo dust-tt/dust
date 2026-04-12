@@ -13,6 +13,7 @@ import {
 } from "@app/lib/reinforced_agent/types";
 import { getReinforcedSkillsMetadata } from "@app/lib/reinforcement/types";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
+import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -132,6 +133,162 @@ describe("ConversationResource", () => {
         convoB.id,
       ]);
       expect(fetched.length).toBe(0);
+    });
+
+    it("should preload forkedFrom on forked child conversations", async () => {
+      const { workspace, authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Fork Source Agent",
+        description: "Fork source agent",
+      });
+
+      const parentConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [new Date("2026-01-01T00:00:00.000Z")],
+      });
+      const childConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+
+      const parentConversationResource = await ConversationResource.fetchById(
+        auth,
+        parentConversation.sId
+      );
+      const childConversationResource = await ConversationResource.fetchById(
+        auth,
+        childConversation.sId
+      );
+      assert(parentConversationResource, "Parent conversation not found");
+      assert(childConversationResource, "Child conversation not found");
+
+      const sourceMessage = await MessageModel.findOne({
+        where: {
+          conversationId: parentConversation.id,
+          workspaceId: workspace.id,
+          rank: 1,
+        },
+      });
+      assert(sourceMessage, "Source message not found");
+
+      const branchedAt = new Date("2026-01-02T00:00:00.000Z");
+      await ConversationForkResource.makeNew(auth, {
+        parentConversation: parentConversationResource,
+        childConversation: childConversationResource,
+        sourceMessageModelId: sourceMessage.id,
+        branchedAt,
+      });
+
+      const [fetchedChildConversation] =
+        await ConversationResource.fetchByModelIds(auth, [
+          childConversation.id,
+        ]);
+
+      expect(fetchedChildConversation.toJSON().forkedFrom).toEqual({
+        parentConversationId: parentConversation.sId,
+        sourceMessageId: sourceMessage.sId,
+        branchedAt: branchedAt.getTime(),
+      });
+
+      const childConversationWithoutContent =
+        await ConversationResource.fetchConversationWithoutContent(
+          auth,
+          childConversation.sId
+        );
+      expect(childConversationWithoutContent.isOk()).toBe(true);
+
+      if (childConversationWithoutContent.isOk()) {
+        expect(childConversationWithoutContent.value.forkedFrom).toEqual({
+          parentConversationId: parentConversation.sId,
+          sourceMessageId: sourceMessage.sId,
+          branchedAt: branchedAt.getTime(),
+        });
+      }
+    });
+
+    it("should expose forkedFrom even when the parent conversation is unreadable", async () => {
+      const {
+        workspace,
+        authenticator: adminAuth,
+        user: adminUser,
+      } = await createResourceTest({
+        role: "admin",
+      });
+      const regularUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, regularUser, {
+        role: "user",
+      });
+      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        regularUser.sId,
+        workspace.sId
+      );
+
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+      const addMembersRes = await restrictedSpace.addMembers(adminAuth, {
+        userIds: [adminUser.sId],
+      });
+      assert(addMembersRes.isOk(), "Failed to add admin to restricted space");
+
+      const agent = await AgentConfigurationFactory.createTestAgent(adminAuth, {
+        name: "Restricted Fork Source Agent",
+        description: "Restricted fork source agent",
+      });
+      const parentConversation = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [new Date("2026-01-03T00:00:00.000Z")],
+        requestedSpaceIds: [restrictedSpace.id],
+        spaceId: restrictedSpace.id,
+      });
+      const childConversation = await ConversationFactory.create(userAuth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+
+      const parentConversationResource = await ConversationResource.fetchById(
+        adminAuth,
+        parentConversation.sId
+      );
+      const childConversationResource = await ConversationResource.fetchById(
+        adminAuth,
+        childConversation.sId
+      );
+      assert(parentConversationResource, "Parent conversation not found");
+      assert(childConversationResource, "Child conversation not found");
+
+      const sourceMessage = await MessageModel.findOne({
+        where: {
+          conversationId: parentConversation.id,
+          workspaceId: workspace.id,
+          rank: 1,
+        },
+      });
+      assert(sourceMessage, "Source message not found");
+
+      const branchedAt = new Date("2026-01-04T00:00:00.000Z");
+      await ConversationForkResource.makeNew(adminAuth, {
+        parentConversation: parentConversationResource,
+        childConversation: childConversationResource,
+        sourceMessageModelId: sourceMessage.id,
+        branchedAt,
+      });
+
+      expect(
+        await ConversationResource.fetchById(userAuth, parentConversation.sId)
+      ).toBeNull();
+
+      const fetchedChildConversation = await ConversationResource.fetchById(
+        userAuth,
+        childConversation.sId
+      );
+      assert(fetchedChildConversation, "Child conversation not found");
+
+      expect(fetchedChildConversation.toJSON().forkedFrom).toEqual({
+        parentConversationId: parentConversation.sId,
+        sourceMessageId: sourceMessage.sId,
+        branchedAt: branchedAt.getTime(),
+      });
     });
   });
 
