@@ -673,6 +673,7 @@ export async function createCompactionMessage(
   return {
     type: "compaction_message",
     id: messageRow.id,
+    compactionMessageId: compactionMessageRow.id,
     sId: messageRow.sId,
     created: messageRow.createdAt.getTime(),
     visibility: messageRow.visibility,
