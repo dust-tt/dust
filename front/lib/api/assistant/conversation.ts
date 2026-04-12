@@ -610,19 +610,20 @@ export async function postUserMessage(
     return limitResult;
   }
 
-  // Block posting while compaction is in progress.
-  const hasActiveCompaction = conversation.content
+  // Block posting while compaction is in progress, for now. It's not too hard to add support for
+  // pending messages on top of compaction. We start without support for it.
+  const runningCompactionMessage = conversation.content
     .flat()
-    .some(
-      (m): m is CompactionMessageType =>
-        isCompactionMessageType(m) && m.status === "created"
+    .find(
+      (m): m is AgentMessageType =>
+        isAgentMessageType(m) && m.status === "created"
     );
-  if (hasActiveCompaction) {
+  if (runningCompactionMessage) {
     return new Err({
       status_code: 409,
       api_error: {
         type: "invalid_request_error",
-        message: "Conversation is being compacted, please wait.",
+        message: "User messages cannot be posted while conversation is being compacted.",
       },
     });
   }
