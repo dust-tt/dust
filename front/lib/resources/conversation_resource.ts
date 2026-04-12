@@ -90,6 +90,87 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     super(ConversationModel, blob);
   }
 
+  private static getForkedFromInclude() {
+    return [
+      {
+        model: ConversationForkModel,
+        as: "forkedFrom" as const,
+        required: false,
+        attributes: ["branchedAt", "childConversationId"],
+        include: [
+          {
+            model: ConversationModel,
+            as: "parentConversation" as const,
+            required: true,
+            attributes: ["sId"],
+          },
+          {
+            model: MessageModel,
+            as: "sourceMessage" as const,
+            required: true,
+            attributes: ["sId"],
+          },
+          {
+            model: UserResource.model,
+            as: "createdByUser" as const,
+            required: true,
+            attributes: [
+              "id",
+              "sId",
+              "createdAt",
+              "provider",
+              "username",
+              "email",
+              "firstName",
+              "lastName",
+              "imageUrl",
+              "lastLoginAt",
+            ],
+          },
+        ],
+      },
+    ];
+  }
+
+  private static getForkedFromData(
+    conversation: ConversationModel
+  ): ConversationForkedFromType | undefined {
+    const fork = conversation.forkedFrom;
+    if (!fork) {
+      return undefined;
+    }
+
+    assert(
+      fork.parentConversation,
+      "Forked conversation parent conversation must be loaded."
+    );
+    assert(
+      fork.sourceMessage,
+      "Forked conversation source message must be loaded."
+    );
+    assert(fork.createdByUser, "Forked conversation creator must be loaded.");
+
+    return {
+      parentConversationId: fork.parentConversation.sId,
+      sourceMessageId: fork.sourceMessage.sId,
+      branchedAt: fork.branchedAt.getTime(),
+      user: new UserResource(
+        UserResource.model,
+        fork.createdByUser.get()
+      ).toJSON(),
+    };
+  }
+
+  private static fromModel(
+    conversation: ConversationModel,
+    space: SpaceResource | null
+  ): ConversationResource {
+    const resource = new this(this.model, conversation.get(), space);
+    resource.forkedFromData = this.getForkedFromData(conversation);
+
+    return resource;
+  }
+
   static async fetchByModelIds(
     auth: Authenticator,
     ids: ModelId[],
@@ -116,19 +197,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         ...(excludeTest ? { visibility: { [Op.ne]: "test" } } : {}),
         ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
       } as WhereOptions<ConversationModel>,
+      include: this.getForkedFromInclude(),
       transaction,
     });
 
     // Note: no permission filtering here. Callers must ensure the auth is allowed.
-    const resources = conversations.map(
-      (c) => new this(this.model, c.get(), null)
-    );
-    await this.enrichWithForkedFrom(auth, resources);
-
-    return resources;
+    return conversations.map((c) => this.fromModel(c, null));
   }
 
-  get forkedFrom(): ConversationForkedFromType | undefined {
+  get forkedFromInfo(): ConversationForkedFromType | undefined {
     return this.forkedFromData;
   }
 
@@ -307,6 +384,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         ...options.where,
         workspaceId: workspace.id,
       },
+      include: this.getForkedFromInclude(),
       limit: options.limit,
       order: options.order,
     });
@@ -327,13 +405,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));
 
     if (fetchConversationOptions?.dangerouslySkipPermissionFiltering) {
-      return conversations.map(
-        (c) =>
-          new this(
-            this.model,
-            c.get(),
-            c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null
-          )
+      return conversations.map((c) =>
+        this.fromModel(
+          c,
+          c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null
+        )
       );
     }
 
@@ -347,13 +423,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const foundSpaceIds = new Set(spaces.map((s) => s.id));
     const validConversations = conversations
       .filter((c) => c.requestedSpaceIds.every((id) => foundSpaceIds.has(id)))
-      .map(
-        (c) =>
-          new this(
-            this.model,
-            c.get(),
-            c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null
-          )
+      .map((c) =>
+        this.fromModel(
+          c,
+          c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null
+        )
       );
 
     // Create space-to-groups mapping once for efficient permission checks.
@@ -367,8 +441,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         )
       )
     );
-
-    await this.enrichWithForkedFrom(auth, spaceBasedAccessible);
 
     return spaceBasedAccessible;
   }
@@ -492,58 +564,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
 
     await this.enrichWithReadState(auth, conversations);
-  }
-
-  private static async enrichWithForkedFrom(
-    auth: Authenticator,
-    conversations: ConversationResource[]
-  ): Promise<void> {
-    if (conversations.length === 0) {
-      return;
-    }
-
-    const forks = await ConversationForkModel.findAll({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        childConversationId: conversations.map((c) => c.id),
-      },
-      include: [
-        {
-          model: ConversationModel,
-          as: "parentConversation",
-          required: true,
-          attributes: ["sId"],
-        },
-        {
-          model: MessageModel,
-          as: "sourceMessage",
-          required: true,
-          attributes: ["sId"],
-        },
-      ],
-    });
-    if (forks.length === 0) {
-      return;
-    }
-
-    const conversationsById = new Map(conversations.map((c) => [c.id, c]));
-
-    forks.forEach((fork) => {
-      if (!fork.parentConversation || !fork.sourceMessage) {
-        return;
-      }
-
-      const conversation = conversationsById.get(fork.childConversationId);
-      if (!conversation) {
-        return;
-      }
-
-      conversation.forkedFromData = {
-        parentConversationId: fork.parentConversation.sId,
-        sourceMessageId: fork.sourceMessage.sId,
-        branchedAt: fork.branchedAt.getTime(),
-      };
-    });
   }
 
   static async fetchByIds(
@@ -1037,7 +1057,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       depth: conversation.depth,
       metadata: conversation.metadata,
       branchId: null,
-      ...(conversation.forkedFrom && { forkedFrom: conversation.forkedFrom }),
+      ...(conversation.forkedFromInfo && {
+        forkedFrom: conversation.forkedFromInfo,
+      }),
     });
   }
 
@@ -2751,7 +2773,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       depth: this.depth,
       metadata: this.metadata,
       branchId: null,
-      ...(this.forkedFrom && { forkedFrom: this.forkedFrom }),
+      ...(this.forkedFromInfo && { forkedFrom: this.forkedFromInfo }),
     };
   }
 }

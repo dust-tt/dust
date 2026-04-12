@@ -3508,6 +3508,7 @@ describe("conversation fetch forkedFrom", () => {
         parentConversationId: parentConversation.sId,
         sourceMessageId: sourceMessage.sId,
         branchedAt: branchedAt.getTime(),
+        user: auth.getNonNullableUser().toJSON(),
       });
     }
 
@@ -3522,6 +3523,7 @@ describe("conversation fetch forkedFrom", () => {
         parentConversationId: parentConversation.sId,
         sourceMessageId: sourceMessage.sId,
         branchedAt: branchedAt.getTime(),
+        user: auth.getNonNullableUser().toJSON(),
       });
     }
   });

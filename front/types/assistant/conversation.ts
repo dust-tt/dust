@@ -374,6 +374,7 @@ export type ConversationForkedFromType = {
   parentConversationId: string;
   sourceMessageId: string;
   branchedAt: number;
+  user: UserType;
 };
 
 /**

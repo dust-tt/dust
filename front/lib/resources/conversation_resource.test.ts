@@ -190,6 +190,7 @@ describe("ConversationResource", () => {
         parentConversationId: parentConversation.sId,
         sourceMessageId: sourceMessage.sId,
         branchedAt: branchedAt.getTime(),
+        user: auth.getNonNullableUser().toJSON(),
       });
 
       const childConversationWithoutContent =
@@ -204,6 +205,7 @@ describe("ConversationResource", () => {
           parentConversationId: parentConversation.sId,
           sourceMessageId: sourceMessage.sId,
           branchedAt: branchedAt.getTime(),
+          user: auth.getNonNullableUser().toJSON(),
         });
       }
     });
@@ -288,6 +290,7 @@ describe("ConversationResource", () => {
         parentConversationId: parentConversation.sId,
         sourceMessageId: sourceMessage.sId,
         branchedAt: branchedAt.getTime(),
+        user: adminAuth.getNonNullableUser().toJSON(),
       });
     });
   });
