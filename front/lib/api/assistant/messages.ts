@@ -8,7 +8,6 @@ import {
   getCoTDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
 import {
-  CompactionMessageModel,
   MentionModel,
   MessageModel,
   UserMessageModel,

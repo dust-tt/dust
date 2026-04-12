@@ -393,8 +393,9 @@ export const createAgentMessages = async (
               return;
             }
 
-            // In case of Project's conversation, we need to check if the agent configuration is using only the project spaces or public spaces/
-            // Otherwise we reject the mention and do not create the agent message.
+            // In case of Project's conversation, we need to check if the agent configuration is
+            // using only the project spaces or public spaces/ Otherwise we reject the mention and
+            // do not create the agent message.
             if (isProjectConversation(conversation)) {
               const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
                 auth,
@@ -405,8 +406,8 @@ export const createAgentMessages = async (
               );
 
               if (!canAgentBeUsed) {
-                // This create the mentions from the original user message.
-                // Not to be mixed with the mentions from the agent message (which will be filled later).
+                // This create the mentions from the original user message. Not to be mixed with
+                // the mentions from the agent message (which will be filled later).
                 const mentionRow = await MentionModel.create(
                   {
                     messageId: metadata.userMessage.id,
@@ -429,8 +430,8 @@ export const createAgentMessages = async (
               }
             }
 
-            // This create the mentions from the original user message.
-            // Not to be mixed with the mentions from the agent message (which will be filled later).
+            // This create the mentions from the original user message. Not to be mixed with the
+            // mentions from the agent message (which will be filled later).
             const mentionRow = await MentionModel.create(
               {
                 messageId: metadata.userMessage.id,
