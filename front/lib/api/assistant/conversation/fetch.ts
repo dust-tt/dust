@@ -270,6 +270,7 @@ async function _getConversation<V extends "light" | "full">(
     const typeCheckedContent: (
       | LightAgentMessageType
       | UserMessageTypeWithContentFragments
+      | CompactionMessageType
     )[] = removeNulls(
       (content as LightMessageType[][]).map((c) => {
         if (c.length === 0) {
