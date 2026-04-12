@@ -127,7 +127,6 @@ import type {
 import {
   ConversationError,
   isAgentMessageType,
-  isCompactionMessageType,
   isProjectConversation,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
@@ -623,7 +622,8 @@ export async function postUserMessage(
       status_code: 409,
       api_error: {
         type: "invalid_request_error",
-        message: "User messages cannot be posted while conversation is being compacted.",
+        message:
+          "User messages cannot be posted while conversation is being compacted.",
       },
     });
   }
@@ -2614,13 +2614,33 @@ export async function isConversationEventAllowedForAuth(
 export async function compactConversation(
   auth: Authenticator,
   { conversation }: { conversation: ConversationType }
-): Promise<Result<CompactionMessageType, APIErrorWithStatusCode>> {
+): Promise<
+  Result<{ compactionMessage: CompactionMessageType }, APIErrorWithStatusCode>
+> {
   const owner = auth.getNonNullableWorkspace();
 
-  const compactionMessage = await withTransaction(async (t) => {
+  // Block compaction while compaction is in progress.
+  let runningCompactionMessage = conversation.content
+    .flat()
+    .find(
+      (m): m is AgentMessageType =>
+        isAgentMessageType(m) && m.status === "created"
+    );
+  if (runningCompactionMessage) {
+    return new Err({
+      status_code: 409,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Conversation is already being compacted.",
+      },
+    });
+  }
+
+  const { compactionMessage } = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
-    // Check for an in-progress compaction.
+    // Re-check the existence of acompaction message inside the critical section of the advisory
+    // lock.
     const pendingCompaction = await MessageModel.findOne({
       where: {
         conversationId: conversation.id,
@@ -2638,7 +2658,8 @@ export async function compactConversation(
     });
 
     if (pendingCompaction) {
-      return null;
+      // If we already have a compaction running we exit early.
+      return { compactionMessage: null };
     }
 
     const nextMessageRank =
@@ -2690,7 +2711,7 @@ export async function compactConversation(
       content: null,
     };
 
-    return compactionMessage;
+    return { compactionMessage };
   });
 
   if (!compactionMessage) {
@@ -2698,7 +2719,7 @@ export async function compactConversation(
       status_code: 409,
       api_error: {
         type: "invalid_request_error",
-        message: "Conversation is being compacted, please wait.",
+        message: "Conversation is already being compacted.",
       },
     });
   }
@@ -2722,7 +2743,7 @@ export async function compactConversation(
     compactionMessageVersion: compactionMessage.version,
   });
 
-  return new Ok(compactionMessage);
+  return new Ok({ compactionMessage });
 }
 
 export async function updateCompactionMessageWithContentAndFinalStatus(
