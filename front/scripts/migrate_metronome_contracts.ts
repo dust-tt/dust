@@ -233,6 +233,46 @@ async function getSubscriptionInfo(
   };
 }
 
+/**
+ * Enable Stripe billing provider on a Metronome contract.
+ * This makes Metronome push invoices to Stripe for real payment collection.
+ * Without this, invoices stay in Metronome only (shadow mode).
+ */
+async function enableStripeBilling({
+  metronomeCustomerId,
+  contractId,
+  logger,
+  workspaceId,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  logger: Logger;
+  workspaceId: string;
+}): Promise<void> {
+  const client = getMetronomeClient();
+
+  logger.info(
+    { workspaceId, contractId },
+    "Enabling Stripe billing provider on contract"
+  );
+
+  await client.v2.contracts.edit({
+    customer_id: metronomeCustomerId,
+    contract_id: contractId,
+    add_billing_provider_configuration_update: {
+      billing_provider_configuration: {
+        billing_provider: "stripe",
+        delivery_method: "direct_to_billing_provider",
+      },
+      schedule: {
+        effective_at: "START_OF_CURRENT_PERIOD",
+      },
+    },
+  });
+
+  logger.info({ workspaceId, contractId }, "Stripe billing provider enabled");
+}
+
 async function migrateWorkspace(
   workspace: LightWorkspaceType,
   execute: boolean,
@@ -242,7 +282,8 @@ async function migrateWorkspace(
     aliasToPackageId: Record<string, string>;
     packageIdToAlias: Record<string, string>;
   },
-  packageAliasFilter?: string
+  packageAliasFilter?: string,
+  enableBilling?: boolean
 ): Promise<void> {
   const client = getMetronomeClient();
   const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
@@ -419,6 +460,16 @@ async function migrateWorkspace(
     "Updated metronomeContractId on subscription"
   );
 
+  // Enable Stripe billing if requested.
+  if (enableBilling) {
+    await enableStripeBilling({
+      metronomeCustomerId,
+      contractId: newContractId,
+      logger,
+      workspaceId: workspace.sId,
+    });
+  }
+
   // Sync subscriptions: seats for pro/business, MAU for enterprise.
   if (isEnterprise) {
     const mauResult = await syncMauCount({
@@ -478,14 +529,25 @@ makeScript(
       type: "boolean" as const,
       default: false,
     },
+    enableBilling: {
+      alias: "b",
+      describe:
+        "Enable Stripe billing provider on created contracts. Without this flag, contracts stay in shadow mode (invoices in Metronome only).",
+      type: "boolean" as const,
+      default: false,
+    },
   },
   async (args, logger) => {
     const packageAliasFilter = args.packageAlias;
+    const enableBilling = args.enableBilling;
     if (packageAliasFilter) {
       logger.info(
         { packageAlias: packageAliasFilter },
         "Filtering to contracts targeting this package alias"
       );
+    }
+    if (enableBilling) {
+      logger.info("Stripe billing will be enabled on created contracts");
     }
 
     logger.info("Fetching latest package versions from Metronome...");
@@ -507,7 +569,8 @@ makeScript(
         args.force,
         logger,
         packageInfo,
-        packageAliasFilter
+        packageAliasFilter,
+        enableBilling
       );
     } else {
       await runOnAllWorkspaces(
@@ -518,7 +581,8 @@ makeScript(
             args.force,
             logger,
             packageInfo,
-            packageAliasFilter
+            packageAliasFilter,
+            enableBilling
           ),
         { concurrency: 4 }
       );
