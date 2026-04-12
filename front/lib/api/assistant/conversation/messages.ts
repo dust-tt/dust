@@ -7,6 +7,7 @@ import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
+  CompactionMessageModel,
   MentionModel,
   MessageModel,
   UserMessageModel,
@@ -22,6 +23,7 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgenticMessageData,
   AgentMessageType,
+  CompactionMessageType,
   ConversationWithoutContentType,
   MessageVisibility,
   RichMentionWithStatus,
@@ -391,8 +393,9 @@ export const createAgentMessages = async (
               return;
             }
 
-            // In case of Project's conversation, we need to check if the agent configuration is using only the project spaces or public spaces/
-            // Otherwise we reject the mention and do not create the agent message.
+            // In case of Project's conversation, we need to check if the agent configuration is
+            // using only the project spaces or public spaces/ Otherwise we reject the mention and
+            // do not create the agent message.
             if (isProjectConversation(conversation)) {
               const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
                 auth,
@@ -403,8 +406,8 @@ export const createAgentMessages = async (
               );
 
               if (!canAgentBeUsed) {
-                // This create the mentions from the original user message.
-                // Not to be mixed with the mentions from the agent message (which will be filled later).
+                // This create the mentions from the original user message. Not to be mixed with
+                // the mentions from the agent message (which will be filled later).
                 const mentionRow = await MentionModel.create(
                   {
                     messageId: metadata.userMessage.id,
@@ -427,8 +430,8 @@ export const createAgentMessages = async (
               }
             }
 
-            // This create the mentions from the original user message.
-            // Not to be mixed with the mentions from the agent message (which will be filled later).
+            // This create the mentions from the original user message. Not to be mixed with the
+            // mentions from the agent message (which will be filled later).
             const mentionRow = await MentionModel.create(
               {
                 messageId: metadata.userMessage.id,
@@ -627,5 +630,58 @@ export async function getUserMessageIdFromMessageId(
     userMessageUserId: parentMessage.userMessage.userId,
     userMessageOrigin: parentMessage.userMessage.userContextOrigin,
     branchId: agentMessage.getBranchId(),
+  };
+}
+
+export async function createCompactionMessage(
+  auth: Authenticator,
+  {
+    conversation,
+    rank,
+    transaction,
+  }: {
+    conversation: ConversationWithoutContentType;
+    rank: number;
+    transaction: Transaction;
+  }
+): Promise<CompactionMessageType> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const compactionMessageRow = await CompactionMessageModel.create(
+    {
+      status: "created",
+      content: null,
+      workspaceId: workspace.id,
+    },
+    { transaction }
+  );
+
+  const messageRow = await MessageModel.create(
+    {
+      sId: generateRandomModelSId(),
+      rank,
+      conversationId: conversation.id,
+      branchId: conversation.branchId
+        ? getResourceIdFromSId(conversation.branchId)
+        : null,
+      version: 0,
+      compactionMessageId: compactionMessageRow.id,
+      workspaceId: workspace.id,
+    },
+    { transaction }
+  );
+
+  return {
+    type: "compaction_message",
+    id: messageRow.id,
+    compactionMessageId: compactionMessageRow.id,
+    sId: messageRow.sId,
+    created: messageRow.createdAt.getTime(),
+    visibility: messageRow.visibility,
+    version: messageRow.version,
+    rank: messageRow.rank,
+    branchId: conversation.branchId,
+    status: "created",
+    content: null,
   };
 }

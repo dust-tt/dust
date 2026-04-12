@@ -12,6 +12,7 @@ import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/cont
 import { createUserMentions } from "@app/lib/api/assistant/conversation/mentions";
 import {
   createAgentMessages,
+  createCompactionMessage,
   createUserMessage,
 } from "@app/lib/api/assistant/conversation/messages";
 import {
@@ -61,6 +62,7 @@ import {
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageModel,
+  CompactionMessageModel,
   ConversationModel,
   MentionModel,
   MessageModel,
@@ -89,7 +91,10 @@ import {
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger, { auditLog } from "@app/logger/logger";
-import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import {
+  launchAgentLoopWorkflow,
+  launchCompactionWorkflow,
+} from "@app/temporal/agent_loop/client";
 import {
   launchOrSignalProjectTodoWorkflow,
   signalProjectTodoComplete,
@@ -123,6 +128,7 @@ import type {
 import {
   ConversationError,
   isAgentMessageType,
+  isCompactionMessageType,
   isProjectConversation,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
@@ -603,6 +609,28 @@ export async function postUserMessage(
   const limitResult = await checkMessagesLimit(auth, { mentions, context });
   if (limitResult.isErr()) {
     return limitResult;
+  }
+
+  // Block posting while compaction is in progress, for now. It's not too hard to add support for
+  // pending messages on top of compaction. We start without support for it to simplify. Note that
+  // we don't currently re-check the existence of a compaction message inside the critical section
+  // below which means an agent loop could be triggered whle a compaction is running. This is not
+  // that problematic if it happens (agent message after the compaction message).
+  const runningCompactionMessage = conversation.content
+    .flat()
+    .find(
+      (m): m is CompactionMessageType =>
+        isCompactionMessageType(m) && m.status === "created"
+    );
+  if (runningCompactionMessage) {
+    return new Err({
+      status_code: 409,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "User messages cannot be posted while conversation is being compacted.",
+      },
+    });
   }
 
   const agentMentions = mentions.filter(isAgentMention);
@@ -2581,6 +2609,140 @@ export async function isConversationEventAllowedForAuth(
   }
 }
 
+/**
+ * Create a CompactionMessage in the conversation and launch the compaction workflow.
+ *
+ * The CompactionMessage is created with status "created" inside the conversation advisory lock,
+ * ensuring it's serialized with other conversation operations. The workflow is launched
+ * fire-and-forget after the transaction commits.
+ */
+export async function compactConversation(
+  auth: Authenticator,
+  { conversation }: { conversation: ConversationType }
+): Promise<
+  Result<{ compactionMessage: CompactionMessageType }, APIErrorWithStatusCode>
+> {
+  const owner = auth.getNonNullableWorkspace();
+
+  // Block compaction while an agent message is running or a compaction is running.
+  const runningAgentMessage = conversation.content
+    .flat()
+    .find(
+      (m): m is AgentMessageType =>
+        isAgentMessageType(m) && m.status === "created"
+    );
+  const runningCompaction = conversation.content
+    .flat()
+    .find(
+      (m): m is CompactionMessageType =>
+        isCompactionMessageType(m) && m.status === "created"
+    );
+  if (runningAgentMessage || runningCompaction) {
+    return new Err({
+      status_code: 409,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "Cannot compact while another compaction or an agent message is running.",
+      },
+    });
+  }
+
+  const { compactionMessage } = await withTransaction(async (t) => {
+    await getConversationRankVersionLock(auth, conversation, t);
+
+    // Re-check the existence of a compaction message or running agent message inside the critical
+    // section of the advisory lock to avoid stacking compaction with other compaction or running
+    // agent loop.
+    const [runningCompactionMessage, runningAgentMessage] = await Promise.all([
+      MessageModel.findOne({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: owner.id,
+        },
+        include: [
+          {
+            model: CompactionMessageModel,
+            as: "compactionMessage",
+            required: true,
+            where: { status: "created" },
+          },
+        ],
+        transaction: t,
+      }),
+      MessageModel.findOne({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: owner.id,
+        },
+        include: [
+          {
+            model: AgentMessageModel,
+            as: "agentMessage",
+            required: true,
+            where: { status: "created" },
+          },
+        ],
+        transaction: t,
+      }),
+    ]);
+
+    if (runningCompactionMessage || runningAgentMessage) {
+      return { compactionMessage: null };
+    }
+
+    const nextMessageRank =
+      ((await MessageModel.max<number | null, MessageModel>("rank", {
+        where: {
+          workspaceId: owner.id,
+          conversationId: conversation.id,
+          branchId: conversation.branchId
+            ? getResourceIdFromSId(conversation.branchId)
+            : null,
+        },
+        transaction: t,
+      })) ?? -1) + 1;
+
+    const compactionMessage = await createCompactionMessage(auth, {
+      conversation,
+      rank: nextMessageRank,
+      transaction: t,
+    });
+
+    return { compactionMessage };
+  });
+
+  if (!compactionMessage) {
+    return new Err({
+      status_code: 409,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "Cannot compact while another compaction or an agent message is running.",
+      },
+    });
+  }
+
+  await publishConversationEvent(
+    {
+      type: "compaction_message_new",
+      created: Date.now(),
+      messageId: compactionMessage.sId,
+      message: compactionMessage,
+    },
+    { conversationId: conversation.sId }
+  );
+
+  void launchCompactionWorkflow({
+    auth,
+    conversationId: conversation.sId,
+    compactionMessageId: compactionMessage.sId,
+    compactionMessageVersion: compactionMessage.version,
+  });
+
+  return new Ok({ compactionMessage });
+}
+
 export async function updateCompactionMessageWithContentAndFinalStatus(
   auth: Authenticator,
   {
@@ -2599,12 +2761,26 @@ export async function updateCompactionMessageWithContentAndFinalStatus(
   status: "succeeded" | "failed";
 }> {
   const completedAt = new Date();
+  const owner = auth.getNonNullableWorkspace();
 
-  // TODO(compaction): implement update to CompactionMessage (with proper locking)
+  await withTransaction(async (t) => {
+    await getConversationRankVersionLock(auth, conversation, t);
+
+    await CompactionMessageModel.update(
+      { status, content },
+      {
+        where: {
+          id: compactionMessage.compactionMessageId,
+          workspaceId: owner.id,
+        },
+        transaction: t,
+      }
+    );
+  });
 
   return {
     completedTs: completedAt.getTime(),
-    status: "succeeded",
+    status,
   };
 }
 
