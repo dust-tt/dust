@@ -108,6 +108,7 @@ const ConversationDetailsSchema = z.object({
   authorIsAgent: z.boolean(),
   avatarUrl: z.string().optional(),
   isFromTrigger: z.boolean(),
+  isFromEmailAgentConversation: z.boolean(),
   workspaceName: z.string(),
   mentionedUserIds: z.array(z.string()),
   hasUnreadMessages: z.boolean(),
@@ -154,6 +155,7 @@ const getConversationDetails = async ({
         author: "Deleted conversation",
         authorIsAgent: false,
         isFromTrigger: false,
+        isFromEmailAgentConversation: false,
         workspaceName: "Deleted conversation",
         mentionedUserIds: [],
         avatarUrl: undefined,
@@ -216,6 +218,16 @@ const getConversationDetails = async ({
     message.type === "agent_message" || message.type === "user_message"
       ? message.content
       : "";
+  const parentUserMessage = isLightAgentMessageType(message)
+    ? conversation.content
+        .flat()
+        .find((msg) => msg.sId === message.parentMessageId)
+    : undefined;
+  const isFromEmailAgentConversation =
+    (isUserMessageType(message) && message.context.origin === "email") ||
+    (parentUserMessage !== undefined &&
+      isUserMessageType(parentUserMessage) &&
+      parentUserMessage.context.origin === "email");
 
   if (isCompactionMessageType(message)) {
     // Compaction messages don't trigger notifications.
@@ -276,6 +288,7 @@ const getConversationDetails = async ({
     authorIsAgent,
     avatarUrl,
     isFromTrigger,
+    isFromEmailAgentConversation,
     workspaceName,
     mentionedUserIds,
     hasUnreadMessages,
@@ -962,6 +975,9 @@ export const triggerConversationUnreadNotifications = async (
   });
   if (detailsResult.isErr()) {
     // Conversation or message was deleted - no notification needed.
+    return new Ok(undefined);
+  }
+  if (detailsResult.value.isFromEmailAgentConversation) {
     return new Ok(undefined);
   }
 
