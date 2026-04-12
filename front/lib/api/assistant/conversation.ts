@@ -12,6 +12,7 @@ import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/cont
 import { createUserMentions } from "@app/lib/api/assistant/conversation/mentions";
 import {
   createAgentMessages,
+  createCompactionMessage,
   createUserMessage,
 } from "@app/lib/api/assistant/conversation/messages";
 import {
@@ -610,7 +611,11 @@ export async function postUserMessage(
   }
 
   // Block posting while compaction is in progress, for now. It's not too hard to add support for
-  // pending messages on top of compaction. We start without support for it.
+  // pending messages on top of compaction. We start without support for it to simplify. Note that
+  // we don't currently re-check the existence of a compaction message inside the critical section
+  // below which means compaction could be triggered along an agent loop. This is not that
+  // problematic if it happens.
+  // TODO(compaction): ensure in critical section that there is no compaction message.
   const runningCompactionMessage = conversation.content
     .flat()
     .find(
@@ -2674,42 +2679,11 @@ export async function compactConversation(
         transaction: t,
       })) ?? -1) + 1;
 
-    const compactionMessageRow = await CompactionMessageModel.create(
-      {
-        status: "created",
-        content: null,
-        workspaceId: owner.id,
-      },
-      { transaction: t }
-    );
-
-    const messageRow = await MessageModel.create(
-      {
-        sId: generateRandomModelSId(),
-        rank: nextMessageRank,
-        conversationId: conversation.id,
-        branchId: conversation.branchId
-          ? getResourceIdFromSId(conversation.branchId)
-          : null,
-        version: 0,
-        compactionMessageId: compactionMessageRow.id,
-        workspaceId: owner.id,
-      },
-      { transaction: t }
-    );
-
-    const compactionMessage: CompactionMessageType = {
-      type: "compaction_message",
-      id: messageRow.id,
-      sId: messageRow.sId,
-      created: messageRow.createdAt.getTime(),
-      visibility: messageRow.visibility,
-      version: messageRow.version,
-      rank: messageRow.rank,
-      branchId: conversation.branchId,
-      status: "created",
-      content: null,
-    };
+    const compactionMessage = await createCompactionMessage(auth, {
+      conversation,
+      rank: nextMessageRank,
+      transaction: t,
+    });
 
     return { compactionMessage };
   });

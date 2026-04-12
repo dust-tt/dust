@@ -7,6 +7,7 @@ import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
+  CompactionMessageModel,
   MentionModel,
   MessageModel,
   UserMessageModel,
@@ -22,6 +23,7 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgenticMessageData,
   AgentMessageType,
+  CompactionMessageType,
   ConversationWithoutContentType,
   MessageVisibility,
   RichMentionWithStatus,
@@ -627,5 +629,57 @@ export async function getUserMessageIdFromMessageId(
     userMessageUserId: parentMessage.userMessage.userId,
     userMessageOrigin: parentMessage.userMessage.userContextOrigin,
     branchId: agentMessage.getBranchId(),
+  };
+}
+
+export async function createCompactionMessage(
+  auth: Authenticator,
+  {
+    conversation,
+    rank,
+    transaction,
+  }: {
+    conversation: ConversationWithoutContentType;
+    rank: number;
+    transaction: Transaction;
+  }
+): Promise<CompactionMessageType> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const compactionMessageRow = await CompactionMessageModel.create(
+    {
+      status: "created",
+      content: null,
+      workspaceId: workspace.id,
+    },
+    { transaction }
+  );
+
+  const messageRow = await MessageModel.create(
+    {
+      sId: generateRandomModelSId(),
+      rank,
+      conversationId: conversation.id,
+      branchId: conversation.branchId
+        ? getResourceIdFromSId(conversation.branchId)
+        : null,
+      version: 0,
+      compactionMessageId: compactionMessageRow.id,
+      workspaceId: workspace.id,
+    },
+    { transaction }
+  );
+
+  return {
+    type: "compaction_message",
+    id: messageRow.id,
+    sId: messageRow.sId,
+    created: messageRow.createdAt.getTime(),
+    visibility: messageRow.visibility,
+    version: messageRow.version,
+    rank: messageRow.rank,
+    branchId: conversation.branchId,
+    status: "created",
+    content: null,
   };
 }
