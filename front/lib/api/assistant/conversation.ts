@@ -128,6 +128,7 @@ import type {
 import {
   ConversationError,
   isAgentMessageType,
+  isCompactionMessageType,
   isProjectConversation,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
@@ -613,9 +614,8 @@ export async function postUserMessage(
   // Block posting while compaction is in progress, for now. It's not too hard to add support for
   // pending messages on top of compaction. We start without support for it to simplify. Note that
   // we don't currently re-check the existence of a compaction message inside the critical section
-  // below which means compaction could be triggered along an agent loop. This is not that
-  // problematic if it happens.
-  // TODO(compaction): ensure in critical section that there is no compaction message.
+  // below which means an agent loop could be triggered whle a compaction is running. This is not
+  // that problematic if it happens (agent message after the compaction message).
   const runningCompactionMessage = conversation.content
     .flat()
     .find(
@@ -2624,19 +2624,26 @@ export async function compactConversation(
 > {
   const owner = auth.getNonNullableWorkspace();
 
-  // Block compaction while compaction is in progress.
-  let runningCompactionMessage = conversation.content
+  // Block compaction while an agent message is running or a compaction is running.
+  const runningAgentMessage = conversation.content
     .flat()
     .find(
       (m): m is AgentMessageType =>
         isAgentMessageType(m) && m.status === "created"
     );
-  if (runningCompactionMessage) {
+  const runningCompaction = conversation.content
+    .flat()
+    .find(
+      (m): m is CompactionMessageType =>
+        isCompactionMessageType(m) && m.status === "created"
+    );
+  if (runningAgentMessage || runningCompaction) {
     return new Err({
       status_code: 409,
       api_error: {
         type: "invalid_request_error",
-        message: "Conversation is already being compacted.",
+        message:
+          "Cannot compact while another compaction or an agent message is running.",
       },
     });
   }
@@ -2644,26 +2651,43 @@ export async function compactConversation(
   const { compactionMessage } = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
-    // Re-check the existence of acompaction message inside the critical section of the advisory
-    // lock.
-    const pendingCompaction = await MessageModel.findOne({
-      where: {
-        conversationId: conversation.id,
-        workspaceId: owner.id,
-      },
-      include: [
-        {
-          model: CompactionMessageModel,
-          as: "compactionMessage",
-          required: true,
-          where: { status: "created" },
+    // Re-check the existence of a compaction message or running agent message inside the critical
+    // section of the advisory lock to avoid stacking compaction with other compaction or running
+    // agent loop.
+    const [runningCompactionMessage, runningAgentMessage] = await Promise.all([
+      MessageModel.findOne({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: owner.id,
         },
-      ],
-      transaction: t,
-    });
+        include: [
+          {
+            model: CompactionMessageModel,
+            as: "compactionMessage",
+            required: true,
+            where: { status: "created" },
+          },
+        ],
+        transaction: t,
+      }),
+      MessageModel.findOne({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: owner.id,
+        },
+        include: [
+          {
+            model: AgentMessageModel,
+            as: "agentMessage",
+            required: true,
+            where: { status: "created" },
+          },
+        ],
+        transaction: t,
+      }),
+    ]);
 
-    if (pendingCompaction) {
-      // If we already have a compaction running we exit early.
+    if (runningCompactionMessage || runningAgentMessage) {
       return { compactionMessage: null };
     }
 
@@ -2693,12 +2717,12 @@ export async function compactConversation(
       status_code: 409,
       api_error: {
         type: "invalid_request_error",
-        message: "Conversation is already being compacted.",
+        message:
+          "Cannot compact while another compaction or an agent message is running.",
       },
     });
   }
 
-  // Publish the compaction_message_new event outside the transaction.
   await publishConversationEvent(
     {
       type: "compaction_message_new",
@@ -2709,7 +2733,6 @@ export async function compactConversation(
     { conversationId: conversation.sId }
   );
 
-  // Launch the compaction workflow fire-and-forget.
   void launchCompactionWorkflow({
     auth,
     conversationId: conversation.sId,
