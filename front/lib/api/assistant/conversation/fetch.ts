@@ -3,6 +3,7 @@ import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
+  CompactionMessageModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
@@ -11,6 +12,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type {
   AgentMessageType,
+  CompactionMessageType,
   ConversationType,
   LightAgentMessageType,
   LightConversationType,
@@ -22,6 +24,7 @@ import type {
 import {
   ConversationError,
   isAgentMessageType,
+  isCompactionMessageType,
   isUserMessageType,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
@@ -177,6 +180,11 @@ async function _getConversation<V extends "light" | "full">(
           as: "contentFragment",
           required: false,
         },
+        {
+          model: CompactionMessageModel,
+          as: "compactionMessage",
+          required: false,
+        },
       ],
     });
   }
@@ -282,6 +290,13 @@ async function _getConversation<V extends "light" | "full">(
           )
         ) {
           return c[c.length - 1];
+        } else if (
+          isArrayOf<LightMessageType, CompactionMessageType>(
+            c,
+            isCompactionMessageType
+          )
+        ) {
+          return c[c.length - 1];
         } else {
           throw new Error(
             "Unexpected content type as everything should be array of same type. This should never happen."
@@ -334,6 +349,7 @@ async function _getConversation<V extends "light" | "full">(
       | AgentMessageType[]
       | UserMessageType[]
       | ContentFragmentType[]
+      | CompactionMessageType[]
     )[] = removeNulls(
       (content as MessageType[][]).map((c) => {
         if (c.length === 0) {
@@ -348,6 +364,13 @@ async function _getConversation<V extends "light" | "full">(
           return c.map((m) => m);
         } else if (
           isArrayOf<MessageType, ContentFragmentType>(c, isContentFragmentType)
+        ) {
+          return c.map((m) => m);
+        } else if (
+          isArrayOf<MessageType, CompactionMessageType>(
+            c,
+            isCompactionMessageType
+          )
         ) {
           return c.map((m) => m);
         } else {

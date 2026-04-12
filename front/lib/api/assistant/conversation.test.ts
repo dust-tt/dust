@@ -1,5 +1,6 @@
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
+  compactConversation,
   editUserMessage,
   isConversationEventAllowedForAuth,
   postNewContentFragment,
@@ -16,6 +17,8 @@ import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import {
+  AgentMessageModel,
+  CompactionMessageModel,
   ConversationModel,
   MentionModel,
   MessageModel,
@@ -59,10 +62,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // Mock the dependencies
 vi.mock("@app/temporal/agent_loop/client", () => ({
   launchAgentLoopWorkflow: vi.fn(),
+  launchCompactionWorkflow: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/assistant/streaming/events", () => ({
   publishAgentMessagesEvents: vi.fn(),
+  publishConversationEvent: vi.fn(),
   publishMessageEventsOnMessagePostOrEdit: vi.fn(),
 }));
 
@@ -1454,6 +1459,105 @@ describe("postUserMessage", () => {
     }
   });
 
+  describe("compaction blocking", () => {
+    it("should reject posting when a compaction message is running", async () => {
+      const user = auth.getNonNullableUser();
+      const userJson = user.toJSON();
+
+      // Insert a compaction message with status "created" into the conversation.
+      const compactionMessageRow = await CompactionMessageModel.create({
+        status: "created",
+        content: null,
+        workspaceId: workspace.id,
+      });
+      await MessageModel.create({
+        sId: generateRandomModelSId(),
+        rank: 0,
+        conversationId: conversation.id,
+        compactionMessageId: compactionMessageRow.id,
+        workspaceId: workspace.id,
+      });
+
+      // Re-fetch the conversation so its content includes the compaction message.
+      const fetched = await getConversation(auth, conversation.sId);
+      expect(fetched.isOk()).toBe(true);
+      if (fetched.isErr()) {
+        return;
+      }
+
+      const result = await postUserMessage(auth, {
+        conversation: fetched.value,
+        content: "should be blocked",
+        mentions: [],
+        context: {
+          username: userJson.username,
+          timezone: "UTC",
+          fullName: userJson.fullName,
+          email: userJson.email,
+          profilePictureUrl: userJson.image,
+          origin: "web",
+        },
+        skipToolsValidation: false,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.status_code).toBe(409);
+        expect(result.error.api_error.message).toContain("compacted");
+      }
+    });
+
+    it("should allow posting when a compaction message has succeeded", async () => {
+      const user = auth.getNonNullableUser();
+      const userJson = user.toJSON();
+
+      const rateLimiterSpy = vi
+        .spyOn(rateLimiterModule, "rateLimiter")
+        .mockResolvedValue(100);
+
+      // Insert a completed compaction message into the conversation.
+      const compactionMessageRow = await CompactionMessageModel.create({
+        status: "succeeded",
+        content: "compacted summary",
+        workspaceId: workspace.id,
+      });
+      await MessageModel.create({
+        sId: generateRandomModelSId(),
+        rank: 0,
+        conversationId: conversation.id,
+        compactionMessageId: compactionMessageRow.id,
+        workspaceId: workspace.id,
+      });
+
+      // Re-fetch the conversation so its content includes the compaction message.
+      const fetched = await getConversation(auth, conversation.sId);
+      expect(fetched.isOk()).toBe(true);
+      if (fetched.isErr()) {
+        rateLimiterSpy.mockRestore();
+        return;
+      }
+
+      const result = await postUserMessage(auth, {
+        conversation: fetched.value,
+        content: "should be allowed",
+        mentions: [],
+        context: {
+          username: userJson.username,
+          timezone: "UTC",
+          fullName: userJson.fullName,
+          email: userJson.email,
+          profilePictureUrl: userJson.image,
+          origin: "web",
+        },
+        skipToolsValidation: false,
+      });
+
+      rateLimiterSpy.mockRestore();
+
+      expect(result.isOk()).toBe(true);
+    });
+  });
+
   describe("auto-mention global @dust when posting without mentions", () => {
     const expectedDustMentionPrefix = serializeMention({
       id: GLOBAL_AGENTS_SID.DUST,
@@ -2398,6 +2502,92 @@ describe("postUserMessage", () => {
         rateLimiterSpy.mockRestore();
       });
     });
+  });
+});
+
+describe("compactConversation", () => {
+  let auth: Authenticator;
+  let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
+  let conversation: ConversationType;
+  let agentConfig: LightAgentConfigurationType;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    auth = setup.authenticator;
+    workspace = setup.workspace;
+
+    agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent Description",
+    });
+
+    const conversationWithoutContent = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+
+    const fetched = await getConversation(auth, conversationWithoutContent.sId);
+    if (fetched.isErr()) {
+      throw new Error("Failed to fetch conversation");
+    }
+    conversation = fetched.value;
+
+    vi.clearAllMocks();
+  });
+
+  it("should create a compaction message on an idle conversation", async () => {
+    const result = await compactConversation(auth, { conversation });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+
+    const { compactionMessage } = result.value;
+    expect(compactionMessage.status).toBe("created");
+    expect(compactionMessage.content).toBeNull();
+  });
+
+  it("should reject compaction when an agent message is running", async () => {
+    // Insert a user message then an agent message with status "created" (running).
+    const { messageRow: userMessageRow } =
+      await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "hello",
+      });
+    const agentMessageRow = await AgentMessageModel.create({
+      status: "created",
+      agentConfigurationId: agentConfig.sId,
+      agentConfigurationVersion: 0,
+      workspaceId: workspace.id,
+      skipToolsValidation: false,
+    });
+    await MessageModel.create({
+      sId: generateRandomModelSId(),
+      rank: 1,
+      conversationId: conversation.id,
+      parentId: userMessageRow.id,
+      agentMessageId: agentMessageRow.id,
+      workspaceId: workspace.id,
+    });
+
+    // Re-fetch so the conversation content includes the running agent message.
+    const fetched = await getConversation(auth, conversation.sId);
+    expect(fetched.isOk()).toBe(true);
+    if (fetched.isErr()) {
+      return;
+    }
+
+    const result = await compactConversation(auth, {
+      conversation: fetched.value,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status_code).toBe(409);
+    }
   });
 });
 
