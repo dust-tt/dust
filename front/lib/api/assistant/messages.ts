@@ -756,19 +756,24 @@ async function batchRenderCompactionMessages(
   const compactionMessages = messages.filter((m) => !!m.compactionMessage);
 
   return compactionMessages.map((m) => {
-    const cm = m.compactionMessage!;
+    if (!m.compactionMessage) {
+      throw new Error(
+        "Unreachable: batchRenderCompactionMessages has been filtered on compaction message"
+      );
+    }
+    const compactionMessage = m.compactionMessage;
     return {
       type: "compaction_message" as const,
       id: m.id,
-      compactionMessageId: cm.id,
+      compactionMessageId: compactionMessage.id,
       sId: m.sId,
       created: m.createdAt.getTime(),
       visibility: m.visibility,
       version: m.version,
       rank: m.rank,
       branchId: m.getBranchId(),
-      status: cm.status,
-      content: cm.content,
+      status: compactionMessage.status,
+      content: compactionMessage.content,
     };
   });
 }
