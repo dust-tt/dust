@@ -2766,32 +2766,15 @@ export async function updateCompactionMessageWithContentAndFinalStatus(
   await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
-    // Look up the CompactionMessageModel via the MessageModel join.
-    const message = await MessageModel.findOne({
-      where: {
-        sId: compactionMessage.sId,
-        version: compactionMessage.version,
-        workspaceId: owner.id,
-      },
-      include: [
-        {
-          model: CompactionMessageModel,
-          as: "compactionMessage",
-          required: true,
-        },
-      ],
-      transaction: t,
-    });
-
-    if (!message?.compactionMessage) {
-      throw new Error(
-        `Compaction message not found: sId=${compactionMessage.sId}, version=${compactionMessage.version}`
-      );
-    }
-
-    await message.compactionMessage.update(
+    await CompactionMessageModel.update(
       { status, content },
-      { transaction: t }
+      {
+        where: {
+          id: compactionMessage.compactionMessageId,
+          workspaceId: owner.id,
+        },
+        transaction: t,
+      }
     );
   });
 
