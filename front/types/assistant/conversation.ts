@@ -331,6 +331,9 @@ export function isLightAgentMessageType(
  */
 export type CompactionMessageStatus = "created" | "succeeded" | "failed";
 
+/**
+ * @swaggerschema PrivateCompactionMessage (swagger_private_schemas.ts)
+ */
 export type CompactionMessageType = {
   type: "compaction_message";
   id: ModelId;
