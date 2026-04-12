@@ -410,9 +410,10 @@ export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
 
 /**
  * Augments the inputs with configuration data from actionConfiguration.
- * For each missing property that has a mimeType matching a value in INTERNAL_MIME_TYPES.TOOL_INPUT,
- * it adds the corresponding data from actionConfiguration.
- * This function uses Ajv validation errors to identify missing properties.
+ * For each property whose schema has a mimeType matching a value in INTERNAL_MIME_TYPES.TOOL_INPUT,
+ * it sets the corresponding data from actionConfiguration, overwriting model-provided values when
+ * the server has a value to inject. When the server has nothing for that field (`undefined` from
+ * generation) but the model already set the path, the model value is kept.
  */
 export function augmentInputsWithConfiguration({
   owner,
@@ -432,17 +433,19 @@ export function augmentInputsWithConfiguration({
   iterateOverSchemaPropertiesRecursive(inputSchema, (fullPath, propSchema) => {
     for (const mimeType of Object.values(INTERNAL_MIME_TYPES.TOOL_INPUT)) {
       if (isSchemaConfigurable(propSchema, mimeType)) {
-        const valueAtPath = getValueAtPath(inputs, fullPath);
-        if (valueAtPath) {
-          return false;
-        }
-
         const value = generateConfiguredInput({
           owner,
           actionConfiguration,
           mimeType,
           keyPath: fullPath.join("."),
         });
+
+        if (value === undefined) {
+          const existing = getValueAtPath(inputs, fullPath);
+          if (existing !== undefined) {
+            return false;
+          }
+        }
 
         // Ensure intermediate path exists
         ensurePathExists(inputs, fullPath);
