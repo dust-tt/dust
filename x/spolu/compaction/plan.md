@@ -44,8 +44,6 @@ messages are filtered out / no-op everywhere.
 Remaining `TODO(compaction)` markers left for future PRs:
 - `front/components/assistant/conversation/types.ts` — render compaction messages in UI instead of
   filtering (→ PR 5.2).
-- `front/lib/api/assistant/messages.ts` — implement `batchRenderCompactionMessages` (→ PR 1.2,
-  once the DB model exists).
 - `front/lib/api/assistant/conversation_rendering/message_rendering.ts` — render compaction as
   history boundary (→ PR 4.1).
 - `front/lib/api/actions/servers/project_manager/tools/conversation_formatting.ts` — stop at
