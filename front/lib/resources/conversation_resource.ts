@@ -2,6 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import {
   AgentMessageModel,
+  CompactionMessageModel,
   ConversationModel,
   ConversationParticipantModel,
   MentionModel,
@@ -2129,6 +2130,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         {
           model: ContentFragmentModel,
           as: "contentFragment",
+          required: false,
+        },
+        {
+          model: CompactionMessageModel,
+          as: "compactionMessage",
           required: false,
         },
       ],

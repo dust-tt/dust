@@ -751,10 +751,26 @@ async function batchRenderContentFragment(
 
 async function batchRenderCompactionMessages(
   _auth: Authenticator,
-  _messages: MessageModel[]
+  messages: MessageModel[]
 ): Promise<CompactionMessageType[]> {
-  // TODO(compaction): implement batch rendering of compaction messages.
-  return [];
+  const compactionMessages = messages.filter((m) => !!m.compactionMessage);
+
+  return compactionMessages.map((m) => {
+    const cm = m.compactionMessage!;
+    return {
+      type: "compaction_message" as const,
+      id: m.id,
+      compactionMessageId: cm.id,
+      sId: m.sId,
+      created: m.createdAt.getTime(),
+      visibility: m.visibility,
+      version: m.version,
+      rank: m.rank,
+      branchId: m.getBranchId(),
+      status: cm.status,
+      content: cm.content,
+    };
+  });
 }
 
 type RenderMessageVariant = "legacy-light" | "full" | "light";

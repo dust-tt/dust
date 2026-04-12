@@ -334,6 +334,7 @@ export type CompactionMessageStatus = "created" | "succeeded" | "failed";
 export type CompactionMessageType = {
   type: "compaction_message";
   id: ModelId;
+  compactionMessageId: ModelId;
   sId: string;
   created: number;
   visibility: MessageVisibility;
