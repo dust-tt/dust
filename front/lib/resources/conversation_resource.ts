@@ -9,7 +9,6 @@ import {
   UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { REINFORCEMENT_METADATA_KEYS } from "@app/lib/reinforced_agent/types";
 import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -93,26 +92,22 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   private static getForkedFromInclude() {
     return [
       {
-        model: ConversationForkModel,
-        as: "forkedFrom" as const,
+        association: "forkedFrom" as const,
         required: false,
         attributes: ["branchedAt", "childConversationId"],
         include: [
           {
-            model: ConversationModel,
-            as: "parentConversation" as const,
+            association: "parentConversation" as const,
             required: true,
             attributes: ["sId"],
           },
           {
-            model: MessageModel,
-            as: "sourceMessage" as const,
+            association: "sourceMessage" as const,
             required: true,
             attributes: ["sId"],
           },
           {
-            model: UserResource.model,
-            as: "createdByUser" as const,
+            association: "createdByUser" as const,
             required: true,
             attributes: [
               "id",
