@@ -619,8 +619,8 @@ export async function postUserMessage(
   const runningCompactionMessage = conversation.content
     .flat()
     .find(
-      (m): m is AgentMessageType =>
-        isAgentMessageType(m) && m.status === "created"
+      (m): m is CompactionMessageType =>
+        isCompactionMessageType(m) && m.status === "created"
     );
   if (runningCompactionMessage) {
     return new Err({
