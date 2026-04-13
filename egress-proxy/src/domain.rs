@@ -64,15 +64,23 @@ mod tests {
     #[test]
     fn normalizes_dns_names_and_ip_literals() {
         assert_eq!(
-            normalize_domain_or_ip("Example.COM.").unwrap(),
+            normalize_domain_or_ip("Example.COM.")
+                .expect("mixed-case DNS name should normalize successfully"),
             "example.com"
         );
-        assert_eq!(normalize_domain_or_ip("127.0.0.1").unwrap(), "127.0.0.1");
         assert_eq!(
-            normalize_domain_or_ip("::ffff:127.0.0.1").unwrap(),
+            normalize_domain_or_ip("127.0.0.1").expect("IPv4 literal should be accepted"),
+            "127.0.0.1"
+        );
+        assert_eq!(
+            normalize_domain_or_ip("::ffff:127.0.0.1").expect("IPv6 literal should be accepted"),
             "::ffff:127.0.0.1"
         );
-        assert_eq!(normalize_dns_name("LOCALHOST").unwrap(), "localhost");
+        assert_eq!(
+            normalize_dns_name("LOCALHOST")
+                .expect("DNS-only normalization should accept hostnames"),
+            "localhost"
+        );
     }
 
     #[test]

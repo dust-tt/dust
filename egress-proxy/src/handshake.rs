@@ -75,8 +75,10 @@ where
 pub fn build_frame(token: &str, domain: &str, original_dest_port: u16) -> Vec<u8> {
     let token_bytes = token.as_bytes();
     let domain_bytes = domain.as_bytes();
-    let token_length = u16::try_from(token_bytes.len()).unwrap();
-    let domain_length = u16::try_from(domain_bytes.len()).unwrap();
+    let token_length =
+        u16::try_from(token_bytes.len()).expect("test token length should fit in u16");
+    let domain_length =
+        u16::try_from(domain_bytes.len()).expect("test domain length should fit in u16");
     let mut frame = Vec::with_capacity(1 + 2 + token_bytes.len() + 2 + domain_bytes.len() + 2);
 
     frame.push(PROTOCOL_VERSION);
@@ -145,7 +147,9 @@ mod tests {
     async fn parses_valid_handshake() {
         let frame = build_frame("token", "Example.COM.", 443);
         let mut reader = frame.as_slice();
-        let handshake = read_handshake(&mut reader).await.unwrap();
+        let handshake = read_handshake(&mut reader)
+            .await
+            .expect("valid handshake frame should parse");
 
         assert_eq!(handshake.token, "token");
         assert_eq!(handshake.domain, "example.com");
@@ -156,7 +160,9 @@ mod tests {
     async fn accepts_empty_domain() {
         let frame = build_frame("token", "", 443);
         let mut reader = frame.as_slice();
-        let handshake = read_handshake(&mut reader).await.unwrap();
+        let handshake = read_handshake(&mut reader)
+            .await
+            .expect("empty domain is valid in the wire protocol");
 
         assert_eq!(handshake.domain, "");
     }

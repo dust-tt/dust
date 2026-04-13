@@ -128,7 +128,9 @@ mod tests {
         let validator = JwtValidator::new("secret");
         let token = token("secret", "sbx", EXPECTED_ISSUER, EXPECTED_AUDIENCE, 60);
 
-        let validated = validator.validate(&token).unwrap();
+        let validated = validator
+            .validate(&token)
+            .expect("token with valid claims should validate");
 
         assert_eq!(validated.sb_id, "sbx");
     }
@@ -159,12 +161,12 @@ mod tests {
         let now_seconds = i64::try_from(
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .expect("current time should be after the Unix epoch")
                 .as_secs(),
         )
-        .unwrap();
+        .expect("current Unix timestamp should fit in i64");
         let exp_seconds = now_seconds + exp_offset_seconds;
-        let exp = usize::try_from(exp_seconds).unwrap();
+        let exp = usize::try_from(exp_seconds).expect("expiration timestamp should fit in usize");
         let claims = TestClaims {
             sb_id,
             iss,
@@ -177,6 +179,6 @@ mod tests {
             &claims,
             &EncodingKey::from_secret(secret.as_bytes()),
         )
-        .unwrap()
+        .expect("test helper should encode JWT successfully")
     }
 }

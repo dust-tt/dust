@@ -99,14 +99,14 @@ mod tests {
 
     #[test]
     fn parses_bool_env() {
-        assert!(!parse_bool_env(None).unwrap());
-        assert!(!parse_bool_env(Some("")).unwrap());
-        assert!(parse_bool_env(Some("1")).unwrap());
-        assert!(!parse_bool_env(Some("0")).unwrap());
-        assert!(parse_bool_env(Some("true")).unwrap());
-        assert!(!parse_bool_env(Some("false")).unwrap());
-        assert!(parse_bool_env(Some("YES")).unwrap());
-        assert!(!parse_bool_env(Some("NO")).unwrap());
+        assert!(!parse_bool_env(None).expect("missing bool env should default to false"));
+        assert!(!parse_bool_env(Some("")).expect("empty bool env should default to false"));
+        assert!(parse_bool_env(Some("1")).expect("1 should parse as true"));
+        assert!(!parse_bool_env(Some("0")).expect("0 should parse as false"));
+        assert!(parse_bool_env(Some("true")).expect("true should parse as true"));
+        assert!(!parse_bool_env(Some("false")).expect("false should parse as false"));
+        assert!(parse_bool_env(Some("YES")).expect("YES should parse as true"));
+        assert!(!parse_bool_env(Some("NO")).expect("NO should parse as false"));
         assert!(parse_bool_env(Some("maybe")).is_err());
     }
 }

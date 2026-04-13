@@ -89,7 +89,8 @@ mod tests {
 
     #[test]
     fn exact_domains_match_case_insensitively_after_parse() {
-        let allowlist = TemporaryAllowlist::parse("Example.COM").unwrap();
+        let allowlist =
+            TemporaryAllowlist::parse("Example.COM").expect("valid domain entry should parse");
 
         assert!(allowlist.allows("example.com", "sbx"));
         assert!(!allowlist.allows("api.example.com", "sbx"));
@@ -97,7 +98,8 @@ mod tests {
 
     #[test]
     fn exact_ip_literals_are_valid_entries() {
-        let allowlist = TemporaryAllowlist::parse("127.0.0.1,::ffff:127.0.0.1").unwrap();
+        let allowlist = TemporaryAllowlist::parse("127.0.0.1,::ffff:127.0.0.1")
+            .expect("valid IP literal entries should parse");
 
         assert!(allowlist.allows("127.0.0.1", "sbx"));
         assert!(allowlist.allows("::ffff:127.0.0.1", "sbx"));
@@ -105,7 +107,8 @@ mod tests {
 
     #[test]
     fn wildcard_matches_subdomains_only() {
-        let allowlist = TemporaryAllowlist::parse("*.example.com").unwrap();
+        let allowlist =
+            TemporaryAllowlist::parse("*.example.com").expect("valid wildcard entry should parse");
 
         assert!(allowlist.allows("api.example.com", "sbx"));
         assert!(allowlist.allows("a.b.example.com", "sbx"));
