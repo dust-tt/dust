@@ -15,10 +15,10 @@ jobs:
       egress-proxy-changed: ${{ steps.changes.outputs.egress-proxy }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Check for relevant changes
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v3.0.3
         id: changes
         with:
           base: ${{ github.event.repository.default_branch }}
@@ -46,20 +46,18 @@ jobs:
     if: needs.check-changes.outputs.egress-proxy-changed == 'true'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Install minimal stable
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@1.85.0
         with:
-          profile: minimal
-          toolchain: stable
-          components: cargo, clippy, rustfmt, rust-std, rustc
+          components: clippy, rustfmt
 
       - name: Install test dependencies
         run: sudo apt-get update && sudo apt-get install -y openssl
 
       - name: Setup Rust Cache
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@v2.9.1
         with:
           workspaces: egress-proxy
 

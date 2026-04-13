@@ -36,7 +36,7 @@ jobs:
 
       # Setup Node.js for JS/TS projects
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v4.4.0
         with:
           node-version: 22.22.0
 
@@ -45,7 +45,7 @@ jobs:
 
       # Setup Rust for core project
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.85.0
         with:
           components: rustfmt
 

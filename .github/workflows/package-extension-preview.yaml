@@ -26,7 +26,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Comment artifact link on PR
-        uses: actions/github-script@v7
+        uses: actions/github-script@v7.1.0
         with:
           script: |
             const marker = '<!-- package-extension-preview-chrome -->';
@@ -71,7 +71,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Comment artifact link on PR
-        uses: actions/github-script@v7
+        uses: actions/github-script@v7.1.0
         with:
           script: |
             const marker = '<!-- package-extension-preview-firefox -->';
