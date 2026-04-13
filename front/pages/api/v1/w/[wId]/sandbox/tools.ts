@@ -1,8 +1,5 @@
-import {
-  isInternalMCPServerAvailableInDirectExecution,
-  isInternalMCPServerName,
-} from "@app/lib/actions/mcp_internal_actions/constants";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
@@ -117,14 +114,7 @@ async function handler(
 
       let serverViews = views
         .map((view) => view.toJSON())
-        // Filter out internal servers not available in direct execution.
-        .filter((sv) => {
-          const name = sv.server.name;
-          if (isInternalMCPServerName(name)) {
-            return isInternalMCPServerAvailableInDirectExecution(name);
-          }
-          return true;
-        });
+        .filter((sv) => sv.server.name !== SANDBOX_TOOL_NAME);
 
       // Filter by server name if requested.
       if (isString(server)) {
