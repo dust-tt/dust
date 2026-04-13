@@ -1,5 +1,8 @@
+import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { SkillSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
+import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import {
   usePatchSkillSuggestions,
   useSkillSuggestions,
@@ -7,9 +10,12 @@ import {
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { LightbulbIcon, ScrollArea, Spinner } from "@dust-tt/sparkle";
 import { useCallback } from "react";
+import { useFormContext } from "react-hook-form";
 
 export function SkillBuilderSuggestionsPanel() {
   const { owner, skillId } = useSkillBuilderContext();
+  const { getValues, setValue } = useFormContext<SkillBuilderFormData>();
+  const { mcpServerViews } = useMCPServerViewsContext();
 
   const { suggestions, isSuggestionsLoading, mutateSuggestions } =
     useSkillSuggestions({
@@ -24,14 +30,47 @@ export function SkillBuilderSuggestionsPanel() {
     workspaceId: owner.sId,
   });
 
+  const applyToolEdits = useCallback(
+    (suggestion: SkillSuggestionType) => {
+      const { toolEdits } = suggestion.suggestion;
+      if (!toolEdits || toolEdits.length === 0) {
+        return;
+      }
+
+      let currentTools = getValues("tools");
+
+      for (const edit of toolEdits) {
+        if (edit.action === "add") {
+          const alreadyAdded = currentTools.some(
+            (t) => t.configuration.mcpServerViewId === edit.toolId
+          );
+          if (!alreadyAdded) {
+            const view = mcpServerViews.find((v) => v.sId === edit.toolId);
+            if (view) {
+              currentTools = [...currentTools, getDefaultMCPAction(view)];
+            }
+          }
+        } else {
+          currentTools = currentTools.filter(
+            (t) => t.configuration.mcpServerViewId !== edit.toolId
+          );
+        }
+      }
+
+      setValue("tools", currentTools, { shouldDirty: true });
+    },
+    [getValues, setValue, mcpServerViews]
+  );
+
   const handleAccept = useCallback(
     async (suggestion: SkillSuggestionType) => {
       const result = await patchSuggestions([suggestion.sId], "approved");
       if (result) {
+        applyToolEdits(suggestion);
         await mutateSuggestions();
       }
     },
-    [patchSuggestions, mutateSuggestions]
+    [patchSuggestions, mutateSuggestions, applyToolEdits]
   );
 
   const handleDecline = useCallback(
