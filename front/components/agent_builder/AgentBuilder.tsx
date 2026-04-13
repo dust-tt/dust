@@ -144,7 +144,7 @@ export default function AgentBuilder({
     }
   );
 
-  const { editors } = useEditors({
+  const { editors, mutateEditors } = useEditors({
     owner,
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
@@ -444,7 +444,12 @@ export default function AgentBuilder({
       }
 
       // Mutate triggers and actions to refresh from backend
-      await Promise.all([mutateTriggers(), mutateActions(), mutateSkills()]);
+      await Promise.all([
+        mutateTriggers(),
+        mutateActions(),
+        mutateSkills(),
+        mutateEditors(),
+      ]);
       onSaved?.();
 
       if (isCreatingNew && createdAgent.sId) {
