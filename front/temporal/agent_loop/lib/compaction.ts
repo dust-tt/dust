@@ -228,5 +228,10 @@ async function generateCompactionSummary(
     return new Err(new Error("Compaction LLM returned empty generation"));
   }
 
-  return new Ok(extractSummary(generation));
+  const summary = extractSummary(generation);
+  if (!summary) {
+    return new Err(new Error("Compaction LLM returned empty summary"));
+  }
+
+  return new Ok(summary);
 }
