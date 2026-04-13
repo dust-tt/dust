@@ -42,8 +42,10 @@ export interface RenderConversationAsTextOptions {
 
 /**
  * Render a conversation's messages as a plain text string. Supports both full and light
- * conversation types. Takes the last version of each message group (for full conversations) and
- * iterates messages in order.
+ * conversation types. Takes the last version of each message group (for full conversations).
+ *
+ * Messages are iterated most-recent-first so that when truncateTotalChars is set, the most recent
+ * messages are preserved and older ones are dropped. The final output is in chronological order.
  *
  * The output format is:
  *   >> User (Name) [2024-01-01T00:00:00.000Z]:
@@ -74,7 +76,8 @@ export function renderConversationAsText(
   const to = options.toMessageIndex ?? allMessages.length;
   const slicedMessages = allMessages.slice(from, to);
 
-  for (const msg of slicedMessages) {
+  // Iterate most-recent-first so that truncateTotalChars keeps the latest messages.
+  for (let i = slicedMessages.length - 1; i >= 0; i--) {
     if (
       options.truncateTotalChars !== undefined &&
       totalChars >= options.truncateTotalChars
@@ -82,13 +85,17 @@ export function renderConversationAsText(
       break;
     }
 
-    const rendered = renderMessageAsText(msg, conversation.lastReadMs, options);
+    const rendered = renderMessageAsText(
+      slicedMessages[i],
+      conversation.lastReadMs,
+      options
+    );
     if (!rendered) {
       continue;
     }
 
     totalChars += rendered.contentLength;
-    parts.push(rendered.text);
+    parts.unshift(rendered.text);
   }
 
   return parts.join("\n");
