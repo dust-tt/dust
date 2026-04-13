@@ -1,17 +1,39 @@
 use anyhow::{anyhow, Result};
+use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+use rustls::pki_types::{pem::PemObject, CertificateDer, ServerName};
+use rustls::RootCertStore;
+use serde::Serialize;
 use std::fs::write;
-use std::net::{SocketAddr, TcpListener as StdTcpListener};
+use std::net::{Ipv6Addr, SocketAddr, TcpListener as StdTcpListener};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-use std::time::Duration;
+use std::sync::Arc;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use tempfile::TempDir;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpStream;
+use tokio::net::{TcpListener, TcpStream};
+use tokio::task::JoinSet;
+use tokio_rustls::TlsConnector;
 
 const SECRET: &str = "test-secret";
+const ALLOW_RESPONSE: u8 = 0x00;
+const DENY_RESPONSE: u8 = 0x01;
 
 struct ProxyProcess {
     child: Child,
+    _temp_dir: TempDir,
+    ca_cert_path: PathBuf,
+    proxy_addr: SocketAddr,
     health_addr: SocketAddr,
+}
+
+#[derive(Debug, Serialize)]
+struct TestClaims {
+    #[serde(rename = "sbId")]
+    sb_id: String,
+    iss: &'static str,
+    aud: &'static str,
+    exp: usize,
 }
 
 impl Drop for ProxyProcess {
@@ -23,7 +45,7 @@ impl Drop for ProxyProcess {
 
 #[tokio::test]
 async fn healthz_returns_ok() -> Result<()> {
-    let proxy = start_proxy().await?;
+    let proxy = start_proxy("example.com", false, "production").await?;
 
     let response = http_get(proxy.health_addr, "/healthz").await?;
 
@@ -34,13 +56,14 @@ async fn healthz_returns_ok() -> Result<()> {
 
 #[tokio::test]
 async fn invalid_tls_assets_fail_startup() -> Result<()> {
-    let temp_dir = tempfile::TempDir::new()?;
+    let temp_dir = TempDir::new()?;
     let tls_key_path = temp_dir.path().join("tls.key");
     write(&tls_key_path, "not a private key")?;
+    let proxy_addr = free_addr()?;
     let health_addr = free_addr()?;
 
     let mut child = Command::new(env!("CARGO_BIN_EXE_egress-proxy"))
-        .env("EGRESS_PROXY_LISTEN_ADDR", "127.0.0.1:4443")
+        .env("EGRESS_PROXY_LISTEN_ADDR", proxy_addr.to_string())
         .env("EGRESS_PROXY_HEALTH_ADDR", health_addr.to_string())
         .env("EGRESS_PROXY_TLS_CERT", temp_dir.path().join("missing.crt"))
         .env("EGRESS_PROXY_TLS_KEY", &tls_key_path)
@@ -56,12 +79,13 @@ async fn invalid_tls_assets_fail_startup() -> Result<()> {
 
 #[tokio::test]
 async fn invalid_allowed_domain_fails_startup() -> Result<()> {
-    let temp_dir = tempfile::TempDir::new()?;
+    let temp_dir = TempDir::new()?;
     let certs = generate_test_certs(temp_dir.path())?;
+    let proxy_addr = free_addr()?;
     let health_addr = free_addr()?;
 
     let mut child = Command::new(env!("CARGO_BIN_EXE_egress-proxy"))
-        .env("EGRESS_PROXY_LISTEN_ADDR", "127.0.0.1:4443")
+        .env("EGRESS_PROXY_LISTEN_ADDR", proxy_addr.to_string())
         .env("EGRESS_PROXY_HEALTH_ADDR", health_addr.to_string())
         .env("EGRESS_PROXY_TLS_CERT", &certs.server_cert_path)
         .env("EGRESS_PROXY_TLS_KEY", &certs.server_key_path)
@@ -75,23 +99,203 @@ async fn invalid_allowed_domain_fails_startup() -> Result<()> {
     wait_for_startup_failure(&mut child).await
 }
 
-async fn start_proxy() -> Result<ProxyProcess> {
-    let temp_dir = tempfile::TempDir::new()?;
+#[tokio::test]
+async fn allowed_domain_forwards_bytes() -> Result<()> {
+    let (upstream_port, mut upstream_handles) = start_localhost_echo_servers().await?;
+    let proxy = start_proxy("localhost", true, "test").await?;
+    let token = make_token(SECRET, 60);
+    let mut stream = connect_forwarder(&proxy).await?;
+
+    stream
+        .write_all(&build_frame(&token, "localhost", upstream_port)?)
+        .await?;
+
+    let mut response = [0; 1];
+    stream.read_exact(&mut response).await?;
+    assert_eq!(response[0], ALLOW_RESPONSE);
+
+    stream.write_all(b"ping").await?;
+    let mut echoed = [0; 4];
+    stream.read_exact(&mut echoed).await?;
+    assert_eq!(&echoed, b"ping");
+
+    drop(stream);
+    wait_for_echo(&mut upstream_handles).await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn denied_domain_returns_deny() -> Result<()> {
+    let proxy = start_proxy("example.com", false, "production").await?;
+    let token = make_token(SECRET, 60);
+
+    let response = send_handshake(&proxy, &token, "denied.example.com", 443).await?;
+
+    assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
+async fn invalid_jwt_returns_deny() -> Result<()> {
+    let proxy = start_proxy("example.com", false, "production").await?;
+    let token = make_token("wrong-secret", 60);
+
+    let response = send_handshake(&proxy, &token, "example.com", 443).await?;
+
+    assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
+async fn expired_jwt_returns_deny() -> Result<()> {
+    let proxy = start_proxy("example.com", false, "production").await?;
+    let token = make_token(SECRET, -60);
+
+    let response = send_handshake(&proxy, &token, "example.com", 443).await?;
+
+    assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
+async fn allowed_loopback_without_ssrf_bypass_returns_deny() -> Result<()> {
+    let proxy = start_proxy("localhost", false, "production").await?;
+    let token = make_token(SECRET, 60);
+
+    let response = send_handshake(&proxy, &token, "localhost", 443).await?;
+
+    assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
+async fn globally_blocklisted_domain_returns_deny() -> Result<()> {
+    let proxy = start_proxy("dns.google", false, "production").await?;
+    let token = make_token(SECRET, 60);
+
+    let response = send_handshake(&proxy, &token, "dns.google", 443).await?;
+
+    assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
+async fn empty_domain_returns_deny() -> Result<()> {
+    let proxy = start_proxy("example.com", false, "production").await?;
+    let token = make_token(SECRET, 60);
+
+    let response = send_handshake(&proxy, &token, "", 443).await?;
+
+    assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
+async fn truncated_handshake_closes_without_response() -> Result<()> {
+    let proxy = start_proxy("example.com", false, "production").await?;
+    let mut stream = connect_forwarder(&proxy).await?;
+
+    stream.write_all(&[0x01, 0x00]).await?;
+    stream.shutdown().await?;
+
+    let mut response = [0; 1];
+    let read_result =
+        tokio::time::timeout(Duration::from_secs(2), stream.read(&mut response)).await;
+    match read_result {
+        Ok(Ok(0)) => {}
+        Ok(Err(_)) => {}
+        Ok(Ok(read_bytes)) => return Err(anyhow!("expected close, read {read_bytes} byte(s)")),
+        Err(error) => return Err(error.into()),
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn complete_malformed_handshakes_return_deny() -> Result<()> {
+    let proxy = start_proxy("example.com", false, "production").await?;
+    let token = make_token(SECRET, 60);
+
+    for frame in [
+        build_frame("", "example.com", 443)?,
+        build_frame(&token, "example..com", 443)?,
+        build_frame(&token, "host:443", 443)?,
+        build_frame(&token, "example.com", 0)?,
+        build_oversized_domain_frame(&token),
+    ] {
+        let response = send_raw_frame(&proxy, &frame).await?;
+        assert_eq!(response, Some(DENY_RESPONSE));
+    }
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn unsupported_protocol_version_returns_deny() -> Result<()> {
+    let proxy = start_proxy("example.com", false, "production").await?;
+    let token = make_token(SECRET, 60);
+    let mut frame = build_frame(&token, "example.com", 443)?;
+    frame[0] = 0x02;
+
+    let response = send_raw_frame(&proxy, &frame).await?;
+
+    assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
+async fn unsafe_ssrf_bypass_fails_startup_outside_test_env() -> Result<()> {
+    let temp_dir = TempDir::new()?;
     let certs = generate_test_certs(temp_dir.path())?;
+    let proxy_addr = free_addr()?;
     let health_addr = free_addr()?;
 
+    let mut child = Command::new(env!("CARGO_BIN_EXE_egress-proxy"))
+        .env("EGRESS_PROXY_LISTEN_ADDR", proxy_addr.to_string())
+        .env("EGRESS_PROXY_HEALTH_ADDR", health_addr.to_string())
+        .env("EGRESS_PROXY_TLS_CERT", certs.server_cert_path)
+        .env("EGRESS_PROXY_TLS_KEY", certs.server_key_path)
+        .env("EGRESS_PROXY_JWT_SECRET", SECRET)
+        .env("EGRESS_PROXY_ALLOWED_DOMAINS", "127.0.0.1")
+        .env("EGRESS_PROXY_ENV", "production")
+        .env("EGRESS_PROXY_UNSAFE_SKIP_SSRF_CHECK", "1")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?;
+
+    wait_for_startup_failure(&mut child).await
+}
+
+async fn start_proxy(
+    allowed_domains: &str,
+    unsafe_skip_ssrf_check: bool,
+    environment: &str,
+) -> Result<ProxyProcess> {
+    let temp_dir = TempDir::new()?;
+    let certs = generate_test_certs(temp_dir.path())?;
+    let proxy_addr = free_addr()?;
+    let health_addr = free_addr()?;
+
+    let mut command = Command::new(env!("CARGO_BIN_EXE_egress-proxy"));
+    command
+        .env("EGRESS_PROXY_LISTEN_ADDR", proxy_addr.to_string())
+        .env("EGRESS_PROXY_HEALTH_ADDR", health_addr.to_string())
+        .env("EGRESS_PROXY_TLS_CERT", &certs.server_cert_path)
+        .env("EGRESS_PROXY_TLS_KEY", &certs.server_key_path)
+        .env("EGRESS_PROXY_JWT_SECRET", SECRET)
+        .env("EGRESS_PROXY_ALLOWED_DOMAINS", allowed_domains)
+        .env("EGRESS_PROXY_ENV", environment)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+
+    if unsafe_skip_ssrf_check {
+        command.env("EGRESS_PROXY_UNSAFE_SKIP_SSRF_CHECK", "1");
+    }
+
     let mut proxy = ProxyProcess {
-        child: Command::new(env!("CARGO_BIN_EXE_egress-proxy"))
-            .env("EGRESS_PROXY_LISTEN_ADDR", "127.0.0.1:4443")
-            .env("EGRESS_PROXY_HEALTH_ADDR", health_addr.to_string())
-            .env("EGRESS_PROXY_TLS_CERT", &certs.server_cert_path)
-            .env("EGRESS_PROXY_TLS_KEY", &certs.server_key_path)
-            .env("EGRESS_PROXY_JWT_SECRET", SECRET)
-            .env("EGRESS_PROXY_ALLOWED_DOMAINS", "example.com")
-            .env("EGRESS_PROXY_ENV", "production")
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()?,
+        child: command.spawn()?,
+        _temp_dir: temp_dir,
+        ca_cert_path: certs.ca_cert_path,
+        proxy_addr,
         health_addr,
     };
 
@@ -142,12 +346,108 @@ async fn http_get(addr: SocketAddr, path: &str) -> Result<String> {
     Ok(String::from_utf8(response)?)
 }
 
-fn free_addr() -> Result<SocketAddr> {
-    let listener = StdTcpListener::bind("127.0.0.1:0")?;
-    Ok(listener.local_addr()?)
+async fn send_handshake(
+    proxy: &ProxyProcess,
+    token: &str,
+    domain: &str,
+    original_dest_port: u16,
+) -> Result<Option<u8>> {
+    let frame = build_frame(token, domain, original_dest_port)?;
+    send_raw_frame(proxy, &frame).await
+}
+
+async fn send_raw_frame(proxy: &ProxyProcess, frame: &[u8]) -> Result<Option<u8>> {
+    let mut stream = connect_forwarder(proxy).await?;
+    stream.write_all(frame).await?;
+
+    let mut response = [0; 1];
+    let read_bytes = stream.read(&mut response).await?;
+    if read_bytes == 0 {
+        return Ok(None);
+    }
+
+    Ok(Some(response[0]))
+}
+
+async fn connect_forwarder(
+    proxy: &ProxyProcess,
+) -> Result<tokio_rustls::client::TlsStream<TcpStream>> {
+    let mut root_store = RootCertStore::empty();
+    for cert in load_certs(&proxy.ca_cert_path)? {
+        root_store.add(cert)?;
+    }
+
+    let tls_config = rustls::ClientConfig::builder()
+        .with_root_certificates(root_store)
+        .with_no_client_auth();
+    let connector = TlsConnector::from(Arc::new(tls_config));
+    let stream = TcpStream::connect(proxy.proxy_addr).await?;
+    let server_name = ServerName::try_from("localhost".to_string())?;
+
+    Ok(connector.connect(server_name, stream).await?)
+}
+
+fn load_certs(path: &Path) -> Result<Vec<CertificateDer<'static>>> {
+    Ok(CertificateDer::pem_file_iter(path)?.collect::<Result<Vec<_>, _>>()?)
+}
+
+fn build_frame(token: &str, domain: &str, original_dest_port: u16) -> Result<Vec<u8>> {
+    let token_bytes = token.as_bytes();
+    let domain_bytes = domain.as_bytes();
+    let token_len = u16::try_from(token_bytes.len())?;
+    let domain_len = u16::try_from(domain_bytes.len())?;
+    let mut frame = Vec::with_capacity(1 + 2 + token_bytes.len() + 2 + domain_bytes.len() + 2);
+
+    frame.push(0x01);
+    frame.extend_from_slice(&token_len.to_be_bytes());
+    frame.extend_from_slice(token_bytes);
+    frame.extend_from_slice(&domain_len.to_be_bytes());
+    frame.extend_from_slice(domain_bytes);
+    frame.extend_from_slice(&original_dest_port.to_be_bytes());
+
+    Ok(frame)
+}
+
+fn build_oversized_domain_frame(token: &str) -> Vec<u8> {
+    let token_bytes = token.as_bytes();
+    let token_len = u16::try_from(token_bytes.len()).expect("test token length should fit in u16");
+    let mut frame = Vec::with_capacity(1 + 2 + token_bytes.len() + 2);
+
+    frame.push(0x01);
+    frame.extend_from_slice(&token_len.to_be_bytes());
+    frame.extend_from_slice(token_bytes);
+    frame.extend_from_slice(&254_u16.to_be_bytes());
+
+    frame
+}
+
+fn make_token(secret: &str, exp_offset_seconds: i64) -> String {
+    let now_seconds = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("current time should be after the Unix epoch")
+        .as_secs();
+    let exp = if exp_offset_seconds.is_negative() {
+        now_seconds - exp_offset_seconds.unsigned_abs()
+    } else {
+        now_seconds + exp_offset_seconds.unsigned_abs()
+    };
+    let claims = TestClaims {
+        sb_id: "test-egress-proxy".to_string(),
+        iss: "dust-front",
+        aud: "dust-egress-proxy",
+        exp: usize::try_from(exp).expect("expiration timestamp should fit in usize"),
+    };
+
+    encode(
+        &Header::new(Algorithm::HS256),
+        &claims,
+        &EncodingKey::from_secret(secret.as_bytes()),
+    )
+    .expect("test helper should encode JWT successfully")
 }
 
 struct TestCerts {
+    ca_cert_path: PathBuf,
     server_cert_path: PathBuf,
     server_key_path: PathBuf,
 }
@@ -238,7 +538,47 @@ fn generate_test_certs(temp_dir: &Path) -> Result<TestCerts> {
     }
 
     Ok(TestCerts {
+        ca_cert_path,
         server_cert_path,
         server_key_path,
     })
+}
+
+async fn start_localhost_echo_servers() -> Result<(u16, JoinSet<Result<()>>)> {
+    let ipv4_listener = TcpListener::bind("127.0.0.1:0").await?;
+    let port = ipv4_listener.local_addr()?.port();
+    let mut handles = JoinSet::new();
+    spawn_echo_server(&mut handles, ipv4_listener);
+
+    let ipv6_addr = SocketAddr::new(Ipv6Addr::LOCALHOST.into(), port);
+    if let Ok(ipv6_listener) = TcpListener::bind(ipv6_addr).await {
+        spawn_echo_server(&mut handles, ipv6_listener);
+    }
+
+    Ok((port, handles))
+}
+
+fn spawn_echo_server(handles: &mut JoinSet<Result<()>>, listener: TcpListener) {
+    handles.spawn(async move {
+        let (mut stream, _) = listener.accept().await?;
+        let mut buffer = [0; 4];
+        stream.read_exact(&mut buffer).await?;
+        stream.write_all(&buffer).await?;
+        Ok(())
+    });
+}
+
+async fn wait_for_echo(handles: &mut JoinSet<Result<()>>) -> Result<()> {
+    let join_result = tokio::time::timeout(Duration::from_secs(2), handles.join_next()).await?;
+    handles.abort_all();
+
+    match join_result {
+        Some(result) => result?,
+        None => Err(anyhow!("no echo server handled the connection")),
+    }
+}
+
+fn free_addr() -> Result<SocketAddr> {
+    let listener = StdTcpListener::bind("127.0.0.1:0")?;
+    Ok(listener.local_addr()?)
 }

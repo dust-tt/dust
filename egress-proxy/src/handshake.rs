@@ -1,7 +1,3 @@
-// TODO(sandbox-egress): Remove this allowance in the next PR when the proxy listener starts
-// reading real sandbox handshakes.
-#![allow(dead_code)]
-
 use crate::domain::{normalize_domain_or_ip, DomainValidationError};
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncReadExt};

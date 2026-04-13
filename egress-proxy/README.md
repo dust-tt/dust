@@ -5,21 +5,20 @@
 Current functionality:
 
 - `/healthz` process health endpoint.
-- minimal process startup/shutdown wiring.
-- startup validation for proxy config, TLS assets, and the temporary allowlist.
 - TLS certificate and private-key loading.
-- foundational modules for handshake parsing and JWT validation, covered by unit tests.
+- startup validation for proxy config, TLS assets, JWT secret, and the temporary allowlist.
+- TLS-terminated proxy listener for sandbox forwarder connections.
+- handshake parsing, JWT validation, temporary allowlist enforcement, and global DoH blocklist
+  enforcement.
+- server-side DNS resolution, SSRF checks on resolved addresses, upstream TCP connection, and
+  bidirectional byte forwarding.
 - Docker build and GitHub workflow coverage.
 
 Not implemented yet:
 
-- proxy listener
-- DNS resolution
-- SSRF blocking
-- upstream connection
-- forwarding
 - GCS policy reads
-- production lifecycle hardening
+- production lifecycle hardening around listener supervision and graceful tunnel draining
+- configurable idle or max-lifetime policy for established tunnels
 
 ## Configuration
 
