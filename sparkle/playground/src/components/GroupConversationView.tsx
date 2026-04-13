@@ -27,8 +27,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
   EmptyCTA,
   EmptyCTAButton,
@@ -925,7 +923,7 @@ export function GroupConversationView({
   const [isProjectArchived, setIsProjectArchived] = useState(false);
   const [archivedAt, setArchivedAt] = useState<Date | null>(null);
   const [archivedByName, setArchivedByName] = useState<string | null>(null);
-  const [deleteConfirmMenuOpen, setDeleteConfirmMenuOpen] = useState(false);
+  const [showDeleteProjectDialog, setShowDeleteProjectDialog] = useState(false);
   const [deleteConfirmDraft, setDeleteConfirmDraft] = useState("");
 
   // Active tab (for switching from suggestion cards)
@@ -1387,7 +1385,7 @@ export function GroupConversationView({
     setIsProjectArchived(false);
     setArchivedAt(null);
     setArchivedByName(null);
-    setDeleteConfirmMenuOpen(false);
+    setShowDeleteProjectDialog(false);
     setDeleteConfirmDraft("");
   }, [space.id, space.name, spacePublicSettings, space.isPublic]);
 
@@ -2889,67 +2887,14 @@ export function GroupConversationView({
                   <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
                     {`This permanently removes all content—conversations, folders, websites, and data sources. Assistants using this project's tools will be impacted. This cannot be undone.`}
                   </p>
-                  <DropdownMenu
-                    open={deleteConfirmMenuOpen}
-                    onOpenChange={(open: boolean) => {
-                      setDeleteConfirmMenuOpen(open);
-                      if (!open) {
-                        setDeleteConfirmDraft("");
-                      }
-                    }}
-                  >
-                    <div className="s-flex s-w-full s-flex-col s-items-start">
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          icon={TrashIcon}
-                          variant="warning"
-                          label="Delete project"
-                        />
-                      </DropdownMenuTrigger>
-                    </div>
-                    <DropdownMenuContent align="start" className="s-w-[22rem]">
-                      <DropdownMenuLabel label="Confirm deletion" />
-                      <div className="s-px-3 s-pb-2 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                        Type{" "}
-                        <span className="s-font-semibold s-text-foreground dark:s-text-foreground-night">
-                          delete
-                        </span>{" "}
-                        below to enable permanently deleting this project.
-                      </div>
-                      <div className="s-px-3 s-pb-3">
-                        <Input
-                          name="delete-confirm"
-                          value={deleteConfirmDraft}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            setDeleteConfirmDraft(e.target.value)
-                          }
-                          placeholder="Type delete to confirm"
-                          containerClassName="s-w-full"
-                        />
-                      </div>
-                      <DropdownMenuSeparator />
-                      <div className="s-flex s-justify-end s-gap-2 s-p-2">
-                        <Button
-                          label="Cancel"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setDeleteConfirmMenuOpen(false)}
-                        />
-                        <Button
-                          label="Delete permanently"
-                          variant="warning"
-                          size="sm"
-                          disabled={
-                            deleteConfirmDraft.trim().toLowerCase() !== "delete"
-                          }
-                          onClick={() => {
-                            setDeleteConfirmMenuOpen(false);
-                            setDeleteConfirmDraft("");
-                          }}
-                        />
-                      </div>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <div className="s-flex s-w-full s-flex-col s-items-start">
+                    <Button
+                      icon={TrashIcon}
+                      variant="warning"
+                      label="Delete project"
+                      onClick={() => setShowDeleteProjectDialog(true)}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -2985,6 +2930,61 @@ export function GroupConversationView({
               label: "Rename",
               variant: "warning",
               onClick: handleNameSaveConfirm,
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete project (playground mockup) */}
+      <Dialog
+        open={showDeleteProjectDialog}
+        onOpenChange={(open: boolean) => {
+          setShowDeleteProjectDialog(open);
+          if (!open) {
+            setDeleteConfirmDraft("");
+          }
+        }}
+      >
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Delete {space.name}?</DialogTitle>
+          </DialogHeader>
+          <DialogContainer className="s-flex s-flex-col s-gap-4">
+            <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              Type{" "}
+              <span className="s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                delete
+              </span>{" "}
+              below to confirm. This permanently removes all project content and
+              cannot be undone.
+            </p>
+            <Input
+              name="delete-confirm"
+              value={deleteConfirmDraft}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setDeleteConfirmDraft(e.target.value)
+              }
+              placeholder="Type delete to confirm"
+              containerClassName="s-w-full"
+            />
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: () => {
+                setShowDeleteProjectDialog(false);
+                setDeleteConfirmDraft("");
+              },
+            }}
+            rightButtonProps={{
+              label: "Delete permanently",
+              variant: "warning",
+              disabled: deleteConfirmDraft.trim().toLowerCase() !== "delete",
+              onClick: () => {
+                setShowDeleteProjectDialog(false);
+                setDeleteConfirmDraft("");
+              },
             }}
           />
         </DialogContent>

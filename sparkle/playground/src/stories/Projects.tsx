@@ -1,4 +1,5 @@
 import {
+  ArchiveIcon,
   Avatar,
   BellIcon,
   BoltOffIcon,
@@ -49,7 +50,6 @@ import {
   SlackLogo,
   SpaceClosedIcon,
   SpaceOpenIcon,
-  StopSignIcon,
   Tabs,
   TabsContent,
   TabsList,
@@ -874,7 +874,7 @@ function DustMain() {
                               </DropdownMenuSub>
                               <DropdownMenuItem
                                 label="Archive"
-                                icon={StopSignIcon}
+                                icon={ArchiveIcon}
                                 variant="warning"
                                 onClick={(e) => {
                                   e.preventDefault();
