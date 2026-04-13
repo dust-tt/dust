@@ -37,6 +37,7 @@ interface InlineActivityStepsProps {
   pendingToolCalls: PendingToolCall[];
   onOpenDetails?: (messageId: string) => void;
   owner: WorkspaceType;
+  isLastMessage: boolean;
 }
 
 function getCompletionLabel(
@@ -77,6 +78,7 @@ export function InlineActivitySteps({
   pendingToolCalls,
   onOpenDetails,
   owner,
+  isLastMessage,
 }: InlineActivityStepsProps) {
   const isAgentMessageWithActions =
     isLightAgentMessageWithActionsType(agentMessage);
@@ -88,7 +90,7 @@ export function InlineActivitySteps({
   const isDone =
     lastAgentStateClassification === "done" || agentMessage.status === "failed";
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(isDone && !isLastMessage);
 
   const openBreakdownPanel = (actionId?: string) => {
     if (onOpenDetails) {

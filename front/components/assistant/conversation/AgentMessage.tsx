@@ -1329,6 +1329,7 @@ function AgentMessageContent({
             pendingToolCalls={agentMessage.streaming.pendingToolCalls}
             onOpenDetails={onOpenDetails}
             owner={owner}
+            isLastMessage={isLastMessage}
           />
         ) : (
           <AgentMessageActions
