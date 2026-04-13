@@ -10,10 +10,9 @@ import { useVisualizationRevert } from "@app/hooks/conversations";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
-import { isUsingConversationFiles } from "@app/lib/files";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
@@ -209,7 +208,6 @@ export function FrameRenderer({
   contentHash,
 }: FrameRendererProps) {
   const { vizUrl } = useAuth();
-  const { hasFeature } = useFeatureFlags();
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
   const [isLoading, setIsLoading] = useState(false);
@@ -269,11 +267,6 @@ export function FrameRenderer({
     workspaceId: owner.sId,
     conversationId: conversation?.sId,
   });
-
-  const isFileUsingConversationFiles = React.useMemo(
-    () => (fileContent ? isUsingConversationFiles(fileContent) : false),
-    [fileContent]
-  );
 
   const [showCode, setShowCode] = React.useState(false);
 
