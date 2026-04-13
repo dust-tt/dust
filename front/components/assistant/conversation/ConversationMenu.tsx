@@ -3,6 +3,7 @@ import { EditConversationTitleDialog } from "@app/components/assistant/conversat
 import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
+  useBranchConversation,
   useConversationParticipants,
   useConversationParticipationOptions,
   useJoinConversation,
@@ -14,11 +15,9 @@ import { useURLSheet } from "@app/hooks/useURLSheet";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import {
   getAgentBuilderRoute,
@@ -26,10 +25,7 @@ import {
   getProjectRoute,
   setQueryParam,
 } from "@app/lib/utils/router";
-import type {
-  ConversationType,
-  ConversationWithoutContentType,
-} from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isProjectConversation } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
@@ -58,7 +54,6 @@ import {
 import type React from "react";
 import type { ReactElement } from "react";
 import { useCallback, useContext, useEffect, useState } from "react";
-import { useSWRConfig } from "swr";
 
 /**
  * Hook for handling right-click context menu with timing protection
@@ -160,7 +155,6 @@ export function ConversationMenu({
   const clientType = useClientType();
 
   const router = useAppRouter();
-  const { mutate } = useSWRConfig();
 
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") &&
@@ -235,8 +229,10 @@ export function ConversationMenu({
   const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState<boolean>(false);
   const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
-  const [isBranchingConversation, setIsBranchingConversation] =
-    useState<boolean>(false);
+  const { branchConversation, isBranching } = useBranchConversation({
+    owner,
+    conversationId: activeConversationId,
+  });
 
   const conversationLink = getConversationRoute(
     owner.sId,
@@ -268,56 +264,6 @@ export function ConversationMenu({
   const openConversationInBrowser = () => {
     window.open(conversationLink, "_blank");
   };
-
-  const branchConversation = useCallback(async () => {
-    if (!activeConversationId) {
-      return;
-    }
-
-    setIsBranchingConversation(true);
-
-    try {
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/assistant/conversations/${activeConversationId}/forks`,
-        {
-          method: "POST",
-        }
-      );
-
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-
-        sendNotification({
-          type: "error",
-          title: "Failed to branch conversation",
-          description: errorData.message,
-        });
-        return;
-      }
-
-      const { conversation: forkedConversation } = (await res.json()) as {
-        conversation: ConversationType;
-      };
-
-      await router.push(
-        getConversationRoute(owner.sId, forkedConversation.sId),
-        undefined,
-        { shallow: true }
-      );
-      void mutate(
-        (key) =>
-          typeof key === "string" &&
-          key.startsWith(`/api/w/${owner.sId}/assistant/conversations?`)
-      );
-    } catch {
-      sendNotification({
-        type: "error",
-        title: "Failed to branch conversation",
-      });
-    } finally {
-      setIsBranchingConversation(false);
-    }
-  }, [activeConversationId, mutate, owner.sId, router, sendNotification]);
 
   if (!activeConversationId) {
     return null;
@@ -390,7 +336,7 @@ export function ConversationMenu({
                 label="Branch conversation"
                 onClick={branchConversation}
                 icon={ActionGitBranchIcon}
-                disabled={isBranchingConversation}
+                disabled={isBranching}
               />
               <DropdownMenuSeparator />
             </>
