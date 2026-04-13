@@ -30,7 +30,15 @@ function fixCorruptedUnicodeInJSON(jsonString: string): string {
   );
 
   // Strip remaining standalone \u0000 not followed by two hex digits (those are handled above).
-  return fixed.replace(/\\u0000(?![0-9a-fA-F]{2})/g, "");
+  const stripped = fixed.replace(/\\u0000(?![0-9a-fA-F]{2})/g, "");
+
+  // Strip JSON-escaped control characters (U+0000–U+001F, U+007F–U+009F) and any trailing
+  // orphan digits left by the corruption. This runs after the Latin-1 fix above, so recoverable
+  // characters (0x80–0xFF) have already been rescued — only true control chars remain.
+  return stripped.replace(
+    /\\u00(0[0-9a-fA-F]|1[0-9a-fA-F]|7[fF]|[89][0-9a-fA-F])[0-9]*/gi,
+    ""
+  );
 }
 
 export const parseToolArguments = (

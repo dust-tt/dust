@@ -136,9 +136,9 @@ describe("parseToolArguments", () => {
     });
 
     describe("range boundaries", () => {
-      it("should fix U+0080 (first character in Latin-1 Supplement)", () => {
+      it("should strip U+0080 (C1 control character, not a printable Latin-1 char)", () => {
         const result = parseToolArguments('{"text":"\\u000080"}', "test");
-        expect(result).toEqual({ text: "\u0080" });
+        expect(result).toEqual({ text: "" });
       });
 
       it("should fix ÿ (U+00FF) (last character in Latin-1 Supplement)", () => {
@@ -215,19 +215,18 @@ describe("parseToolArguments", () => {
   });
 
   describe("ASCII range protection", () => {
-    it("should NOT fix \\u0000 followed by ASCII range hex (0x00-0x7F)", () => {
-      // These should NOT be fixed because they're in ASCII range
+    it("should strip \\u0000 followed by ASCII range hex (control chars are stripped)", () => {
       const result = parseToolArguments(
         '{"a":"\\u000000","b":"\\u000020","c":"\\u000041","d":"\\u000061","e":"\\u00007f"}',
         "test"
       );
-      // These should remain as null bytes + hex in the parsed result
+      // Control characters and their trailing orphan digits are stripped
       expect(result).toEqual({
-        a: "\u000000",
-        b: "\u000020",
-        c: "\u000041",
-        d: "\u000061",
-        e: "\u00007f",
+        a: "",
+        b: "",
+        c: "",
+        d: "",
+        e: "f",
       });
     });
   });
@@ -283,6 +282,32 @@ describe("parseToolArguments", () => {
       expect(result).toEqual({
         text: "Léducation nationale française est très précise sur la qualité de léducation à fournir. Les élèves doivent être bien préparés.",
       });
+    });
+  });
+
+  describe("control character stripping (GPT-5 ETX corruption)", () => {
+    it("should strip \\u0003 + orphan digits from pré-autorisation", () => {
+      const result = parseToolArguments(
+        String.raw`{"query":"pr\u00033\u00033-autorisation"}`,
+        "test"
+      );
+      expect(result).toEqual({ query: "pr-autorisation" });
+    });
+
+    it("should strip mixed \\u0003 patterns from téléconsultation", () => {
+      const result = parseToolArguments(
+        String.raw`{"query":"t\u00033l\u0003\u00003consultation"}`,
+        "test"
+      );
+      expect(result).toEqual({ query: "tlconsultation" });
+    });
+
+    it("should strip \\u0003 before a regular character from honorée", () => {
+      const result = parseToolArguments(
+        String.raw`{"query":"honor\u0003e"}`,
+        "test"
+      );
+      expect(result).toEqual({ query: "honore" });
     });
   });
 
