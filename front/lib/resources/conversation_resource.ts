@@ -218,7 +218,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static async makeNew(
     auth: Authenticator,
     blob: Omit<CreationAttributes<ConversationModel>, "workspaceId">,
-    space: SpaceResource | null
+    space: SpaceResource | null,
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<ConversationResource> {
     const workspace = auth.getNonNullableWorkspace();
 
@@ -242,10 +243,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       blob.requestedSpaceIds.push(space.id);
     }
 
-    const conversation = await this.model.create({
-      ...blob,
-      workspaceId: workspace.id,
-    });
+    const conversation = await this.model.create(
+      {
+        ...blob,
+        workspaceId: workspace.id,
+      },
+      { transaction }
+    );
 
     return new ConversationResource(
       ConversationResource.model,
