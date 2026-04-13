@@ -330,7 +330,7 @@ function renderContentFragmentAsText(
     ":";
 
   return {
-    text: `${header}\nTitle: ${msg.title}\nContent-Type: ${msg.contentType}\n`,
+    text: `${header}\nID: ${msg.contentFragmentId}\nContent-Type: ${msg.contentType}\nTitle: ${msg.title}\nVersion: ${msg.version}\nSource URL: ${msg.sourceUrl}\n`,
     contentLength: 0,
   };
 }
