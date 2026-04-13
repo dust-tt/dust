@@ -726,7 +726,7 @@ const getEmailSubject = (
   if (conversations.length === 1) {
     return `[Dust] ${conversations[0]?.title ?? "New unread message(s) in conversation"}`;
   }
-  return `[Dust] New unread message(s) in ${conversations.length} conversations`;
+  return `[Dust] New unread messages in ${conversations.length} conversations`;
 };
 
 export const getMessagePreviewText = (

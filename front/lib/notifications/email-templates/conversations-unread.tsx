@@ -79,7 +79,7 @@ const ConversationsUnreadEmailTemplate = ({
           >
             {conversationsWithMention.map((conversation) => (
               <div key={conversation.id}>
-                <h3>
+                <h4>
                   <a
                     href={getConversationRoute(
                       workspace.id,
@@ -91,7 +91,7 @@ const ConversationsUnreadEmailTemplate = ({
                   >
                     {conversation.title}
                   </a>
-                </h3>
+                </h4>
                 {conversation.summary && <div>{conversation.summary}</div>}
               </div>
             ))}
@@ -109,10 +109,15 @@ const ConversationsUnreadEmailTemplate = ({
             📬 You have unread message(s) in the following conversation
             {pluralize(unreadConversationsWithoutMention.length)}:
           </p>
-          <div>
+          <div
+            style={{
+              paddingBottom: "12px",
+              borderBottom: "2px solid #F3F4F6",
+            }}
+          >
             {unreadConversationsWithoutMention.map((conversation) => (
               <div key={conversation.id}>
-                <h3>
+                <h4>
                   <a
                     href={getConversationRoute(
                       workspace.id,
@@ -124,7 +129,7 @@ const ConversationsUnreadEmailTemplate = ({
                   >
                     {conversation.title}
                   </a>
-                </h3>
+                </h4>
                 {conversation.summary && <div>{conversation.summary}</div>}
               </div>
             ))}
