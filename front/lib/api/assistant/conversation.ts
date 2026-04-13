@@ -1003,6 +1003,18 @@ export async function postUserMessage(
 
   // Emit agent.executed for each agent being invoked.
   for (const agentMessage of agentMessages) {
+    const metadata: Record<string, string> = {
+      conversationId: conversation.sId,
+      agentName: agentMessage.configuration.name,
+      origin: context.origin,
+    };
+
+    // Only add initiating_user fields when actor is non-human (API key context).
+    if (!auth.user()) {
+      metadata.initiating_user_id = "unknown";
+      metadata.initiating_user_email = "unknown";
+    }
+
     void emitAuditLogEvent({
       auth,
       action: "agent.executed",
@@ -1010,11 +1022,7 @@ export async function postUserMessage(
         buildAuditLogTarget("workspace", conversation.owner),
         buildAuditLogTarget("agent", agentMessage.configuration),
       ],
-      metadata: {
-        conversationId: conversation.sId,
-        agentName: agentMessage.configuration.name,
-        origin: context.origin,
-      },
+      metadata,
     });
   }
 
@@ -2956,6 +2964,18 @@ export async function updateAgentMessageWithFinalStatus(
   if (newAgentMessage) {
     await publishAgentMessagesEvents(conversation, [newAgentMessage]);
 
+    const steeringMetadata: Record<string, string> = {
+      conversationId: conversation.sId,
+      agentName: newAgentMessage.configuration.name,
+      origin: "steering",
+    };
+
+    // Only add initiating_user fields when actor is non-human (API key context).
+    if (!promotedAuth.user()) {
+      steeringMetadata.initiating_user_id = "unknown";
+      steeringMetadata.initiating_user_email = "unknown";
+    }
+
     void emitAuditLogEvent({
       auth: promotedAuth,
       action: "agent.executed",
@@ -2963,11 +2983,7 @@ export async function updateAgentMessageWithFinalStatus(
         buildAuditLogTarget("workspace", owner),
         buildAuditLogTarget("agent", newAgentMessage.configuration),
       ],
-      metadata: {
-        conversationId: conversation.sId,
-        agentName: newAgentMessage.configuration.name,
-        origin: "steering",
-      },
+      metadata: steeringMetadata,
     });
 
     await runAgentLoopWorkflow({
