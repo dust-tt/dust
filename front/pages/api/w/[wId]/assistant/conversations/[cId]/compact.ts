@@ -67,6 +67,15 @@ import { isSupportedModel } from "@app/types/assistant/assistant";
 import type { CompactionMessageType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
+
+const PostConversationCompactBodySchema = z.object({
+  model: z.object({
+    providerId: z.string(),
+    modelId: z.string(),
+  }),
+});
 
 export type PostConversationCompactResponseBody = {
   compactionMessage: CompactionMessageType;
@@ -79,16 +88,6 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  if (req.method !== "POST") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, POST is expected.",
-      },
-    });
-  }
-
   const { cId } = req.query;
   if (typeof cId !== "string") {
     return apiError(req, res, {
@@ -100,35 +99,62 @@ async function handler(
     });
   }
 
-  const conversationRes = await getConversation(auth, cId);
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
-  }
-  const conversation = conversationRes.value;
+  switch (req.method) {
+    case "POST": {
+      const bodyValidation = PostConversationCompactBodySchema.safeParse(
+        req.body
+      );
+      if (!bodyValidation.success) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${fromError(bodyValidation.error).message}`,
+          },
+        });
+      }
 
-  const { model } = req.body;
-  if (!isSupportedModel(model)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "Invalid model. Expected { providerId: string, modelId: string } with a supported model.",
-      },
-    });
-  }
+      const { model } = bodyValidation.data;
+      if (!isSupportedModel(model)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Unsupported model: ${model.providerId}/${model.modelId}.`,
+          },
+        });
+      }
 
-  const result = await compactConversation(auth, { conversation, model });
-  if (result.isErr()) {
-    return apiError(req, res, {
-      status_code: result.error.status_code,
-      api_error: result.error.api_error,
-    });
-  }
+      const conversationRes = await getConversation(auth, cId);
+      if (conversationRes.isErr()) {
+        return apiErrorForConversation(req, res, conversationRes.error);
+      }
 
-  return res.status(200).json({
-    compactionMessage: result.value.compactionMessage,
-  });
+      const result = await compactConversation(auth, {
+        conversation: conversationRes.value,
+        model,
+      });
+      if (result.isErr()) {
+        return apiError(req, res, {
+          status_code: result.error.status_code,
+          api_error: result.error.api_error,
+        });
+      }
+
+      return res.status(200).json({
+        compactionMessage: result.value.compactionMessage,
+      });
+    }
+
+    default:
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported, POST is expected.",
+        },
+      });
+  }
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
