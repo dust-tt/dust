@@ -108,8 +108,6 @@ import tracer from "dd-trace";
 import EventEmitter from "events";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
-const MAX_OUTPUT_ITEMS = 128;
-
 const MCP_NOTIFICATION_EVENT_NAME = "mcp-notification";
 const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
 const MCP_TOOL_ERROR_EVENT_NAME = "TOOL_ERROR" as const;
@@ -528,20 +526,6 @@ export async function* tryCallMCPTool(
     // Type inference is not working here because of them using passthrough in the zod schema.
     const content: CallToolResult["content"] = (toolCallResult.content ??
       []) as CallToolResult["content"];
-
-    if (content.length >= MAX_OUTPUT_ITEMS) {
-      return {
-        isError: true,
-        content: [
-          {
-            type: "text",
-            text:
-              "The tool execution failed because of too many output items: " +
-              `${content.length} (max is ${MAX_OUTPUT_ITEMS})`,
-          },
-        ],
-      };
-    }
 
     let serverType;
     if (isClientSideMCPToolConfiguration(toolConfiguration)) {
