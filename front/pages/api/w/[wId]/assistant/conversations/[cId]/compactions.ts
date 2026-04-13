@@ -1,6 +1,6 @@
 /**
  * @swagger
- * /api/w/{wId}/assistant/conversations/{cId}/compact:
+ * /api/w/{wId}/assistant/conversations/{cId}/compactions:
  *   post:
  *     summary: Compact a conversation
  *     description: Trigger compaction of a conversation, summarizing older messages into a compaction message. Requires a model to use for summary generation.
