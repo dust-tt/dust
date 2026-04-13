@@ -266,9 +266,6 @@ function renderAgentMessageAsText(
   };
 }
 
-/**
- * Serialize MCP tool output (array of content blocks) into a plain text string.
- */
 function serializeActionOutput(
   output: Array<{ type: string; text?: string }> | null
 ): string | null {
