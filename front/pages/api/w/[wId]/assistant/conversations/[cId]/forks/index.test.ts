@@ -5,6 +5,7 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { getConversationRoute } from "@app/lib/utils/router";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -143,6 +144,10 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
 
     await handler(req, res);
 
+    const expectedInitializationMessage =
+      "The conversation was forked from " +
+      `[Parent conversation](${getConversationRoute(auth.getNonNullableWorkspace().sId, parentConversation.sId)}).`;
+
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData().conversation.title).toBe(
       "Parent conversation (forked)"
@@ -155,7 +160,13 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
     });
     expect(res._getJSONData().conversation.depth).toBe(1);
     expect(res._getJSONData().conversation.spaceId).toBe(globalSpace.sId);
-    expect(res._getJSONData().conversation.content).toEqual([]);
+    expect(res._getJSONData().conversation.content).toHaveLength(1);
+    expect(res._getJSONData().conversation.content[0]).toHaveLength(1);
+    expect(res._getJSONData().conversation.content[0][0]).toMatchObject({
+      type: "user_message",
+      content: expectedInitializationMessage,
+      mentions: [],
+    });
   });
 
   it("returns 400 when the source message cannot be forked", async () => {
