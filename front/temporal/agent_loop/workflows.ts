@@ -30,6 +30,7 @@ import type {
 } from "@temporalio/workflow";
 import {
   CancellationScope,
+  patched,
   proxyActivities,
   proxySinks,
   setHandler,
@@ -369,11 +370,21 @@ async function executeStepIteration({
 
   const { runId, actionBlobs } = result;
 
-  // Generation completed (text response, no tool calls).
+  // Generation completed or the loop unpaused and no new tools were generated.
   if (actionBlobs.length === 0) {
     return {
       runId,
-      shouldContinue: false,
+      // Patch lifecycle for tool-denial continue loop:
+      // 1. Now: patched() makes new workflows continue the loop when runId is null (all actions
+      //    denied). Old workflows keep the previous behavior (shouldContinue: false).
+      // 2. + a few hours: Replace patched() with deprecatePatch(), remove conditional.
+      // 3. + a few hours: Remove deprecatePatch() entirely.
+
+      // if runId is null that means we unpaused the loop with no new tools (eg: they were all
+      // denied) and no LLM call, so we need to continue as the agent loop is not finished.
+      shouldContinue: patched("tool-denial-continue-loop")
+        ? runId === null
+        : false,
     };
   }
 
