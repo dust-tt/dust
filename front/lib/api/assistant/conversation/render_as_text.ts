@@ -158,7 +158,7 @@ function formatUnread(
   return createdMs > lastReadMs ? "(unread)" : null;
 }
 
-function truncateContent(
+function truncateMessageContent(
   content: string,
   options: RenderConversationAsTextOptions
 ): { text: string; truncated: boolean } {
@@ -200,7 +200,7 @@ function renderUserMessageAsText(
   }
 
   const rawContent = msg.content ?? "";
-  const { text: content, truncated } = truncateContent(rawContent, options);
+  const { text: content, truncated } = truncateMessageContent(rawContent, options);
   const truncatedSuffix = truncated ? " (truncated)" : "";
 
   return {
@@ -231,7 +231,7 @@ function renderAgentMessageAsText(
   }
 
   const rawContent = msg.content ?? "";
-  const { text: content, truncated } = truncateContent(rawContent, options);
+  const { text: content, truncated } = truncateMessageContent(rawContent, options);
   const truncatedSuffix = truncated ? " (truncated)" : "";
 
   const lines: string[] = [];
