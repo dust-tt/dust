@@ -1,5 +1,5 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { getProjectConversationsDatasourceName } from "@app/lib/api/projects";
+import { getProjectConversationsDatasourceName } from "@app/lib/api/projects/data_sources";
 import {
   createSpaceAndGroup,
   softDeleteSpaceAndLaunchScrubWorkflow,
@@ -146,7 +146,7 @@ describe("createSpaceAndGroup", () => {
       // Mock createDataSourceAndConnectorForProject
       const createConnectorSpy = vi
         .spyOn(
-          await import("@app/lib/api/projects"),
+          await import("@app/lib/api/projects/connector"),
           "createDataSourceAndConnectorForProject"
         )
         .mockResolvedValue(new Ok(undefined));
@@ -177,7 +177,7 @@ describe("createSpaceAndGroup", () => {
 
     it("should not create connector when creating a regular space", async () => {
       const createConnectorSpy = vi.spyOn(
-        await import("@app/lib/api/projects"),
+        await import("@app/lib/api/projects/connector"),
         "createDataSourceAndConnectorForProject"
       );
 
@@ -213,7 +213,7 @@ describe("createSpaceAndGroup", () => {
       const createConnectorError = new Error("Failed to create connector");
       const createConnectorSpy = vi
         .spyOn(
-          await import("@app/lib/api/projects"),
+          await import("@app/lib/api/projects/connector"),
           "createDataSourceAndConnectorForProject"
         )
         .mockResolvedValue(new Err(createConnectorError));
@@ -500,7 +500,7 @@ describe("createSpaceAndGroup", () => {
 
       const createConnectorSpy = vi
         .spyOn(
-          await import("@app/lib/api/projects"),
+          await import("@app/lib/api/projects/connector"),
           "createDataSourceAndConnectorForProject"
         )
         .mockResolvedValue(new Ok(undefined));
@@ -751,7 +751,7 @@ describe("createSpaceAndGroup", () => {
 
     it("should set global group kind to 'project_viewer' for unrestricted project spaces", async () => {
       vi.spyOn(
-        await import("@app/lib/api/projects"),
+        await import("@app/lib/api/projects/connector"),
         "createDataSourceAndConnectorForProject"
       ).mockResolvedValue(new Ok(undefined));
 
@@ -790,7 +790,7 @@ describe("createSpaceAndGroup", () => {
   describe("project metadata lifecycle", () => {
     it("creates metadata for project spaces, not for regular spaces", async () => {
       vi.spyOn(
-        await import("@app/lib/api/projects"),
+        await import("@app/lib/api/projects/connector"),
         "createDataSourceAndConnectorForProject"
       ).mockResolvedValue(new Ok(undefined));
 
@@ -978,7 +978,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
 
     it("should fail to delete a project space with active API keys in non-global groups", async () => {
       vi.spyOn(
-        await import("@app/lib/api/projects"),
+        await import("@app/lib/api/projects/connector"),
         "createDataSourceAndConnectorForProject"
       ).mockResolvedValue(new Ok(undefined));
 
@@ -1080,7 +1080,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
 
     it("should allow deleting a project space with active API keys in global group", async () => {
       vi.spyOn(
-        await import("@app/lib/api/projects"),
+        await import("@app/lib/api/projects/connector"),
         "createDataSourceAndConnectorForProject"
       ).mockResolvedValue(new Ok(undefined));
 

@@ -1,6 +1,6 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { removeFileFromProject } from "@app/lib/api/projects";
+import { removeFileFromProject } from "@app/lib/api/projects/context";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";

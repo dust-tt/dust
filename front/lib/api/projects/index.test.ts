@@ -8,10 +8,8 @@ vi.mock("@app/lib/lock", () => ({
   }),
 }));
 
-import {
-  createDataSourceAndConnectorForProject,
-  getProjectConversationsDatasourceName,
-} from "@app/lib/api/projects";
+import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects/connector";
+import { getProjectConversationsDatasourceName } from "@app/lib/api/projects/data_sources";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { Authenticator } from "@app/lib/auth";
 import { isConnectorProviderAssistantDefaultSelected } from "@app/lib/connector_providers";

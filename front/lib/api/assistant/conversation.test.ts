@@ -15,7 +15,7 @@ import {
 } from "@app/lib/api/assistant/conversation/fetch";
 import { publishAgentMessagesEvents } from "@app/lib/api/assistant/streaming/events";
 import * as attachmentsModule from "@app/lib/api/files/attachments";
-import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects";
+import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects/context";
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";

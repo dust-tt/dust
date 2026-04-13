@@ -4,6 +4,7 @@ import {
   ConfigurableToolInputJSONSchemas,
   validateConfiguredJsonSchema,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { makeProjectConfigurationURI } from "@app/lib/actions/mcp_internal_actions/project_configuration_uri";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type {
   DataSourceConfiguration,
@@ -275,7 +276,10 @@ function generateConfiguredInput({
       }
       const project = actionConfiguration.dustProject;
       return {
-        uri: `project://dust/w/${project.workspaceId}/projects/${project.projectId}`,
+        uri: makeProjectConfigurationURI(
+          project.workspaceId,
+          project.projectId
+        ),
         mimeType,
       };
     }

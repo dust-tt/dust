@@ -6,11 +6,11 @@ import {
   isContentFragmentDataSourceNode,
   isContentNodeAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
+import { listProjectContextAttachments } from "@app/lib/api/projects/context";
 import {
   fetchProjectDataSource,
   fetchProjectDataSourceView,
-  listProjectContextAttachments,
-} from "@app/lib/api/projects";
+} from "@app/lib/api/projects/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";

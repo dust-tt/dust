@@ -126,7 +126,7 @@ import {
   isFileTypeUpsertableForUseCase,
   processAndUpsertToDataSource,
 } from "@app/lib/api/files/upsert";
-import { addFileToProject } from "@app/lib/api/projects";
+import { addFileToProject } from "@app/lib/api/projects/context";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";

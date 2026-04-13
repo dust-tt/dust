@@ -25,7 +25,7 @@ import {
   getLightConversation,
 } from "@app/lib/api/assistant/conversation/fetch";
 import config from "@app/lib/api/config";
-import { searchProjectConversations } from "@app/lib/api/projects";
+import { searchProjectConversations } from "@app/lib/api/projects/search";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";

@@ -8,7 +8,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import {
   addContentNodeToProject,
   listProjectContextAttachments,
-} from "@app/lib/api/projects";
+} from "@app/lib/api/projects/context";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
