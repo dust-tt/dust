@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dust Homepage V2 — Series B Preview</title>
+  <link rel="stylesheet" href="https://use.typekit.net/lzv1deb.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['darkmode-off-cc', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            mono: ['darkmode-on-cc', 'ui-monospace', 'monospace'],
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    /* Smooth scroll */
+    html { scroll-behavior: smooth; }
+
+    /* Animated gradient for the Live Agent Activity card */
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+
+    /* Tab active state */
+    .tab-active {
+      border-bottom: 2px solid #059669;
+      color: #1c1917;
+      font-weight: 600;
+    }
+
+    /* === COLLABORATION SECTION ANIMATIONS === */
+
+    /* Cursor movement paths — each cursor traces a unique path across the canvas */
+    @keyframes cursor-sarah {
+      0%   { transform: translate(0, 0); }
+      15%  { transform: translate(40px, 20px); }
+      30%  { transform: translate(10px, 60px); }
+      50%  { transform: translate(60px, 30px); }
+      70%  { transform: translate(20px, -10px); }
+      85%  { transform: translate(50px, 50px); }
+      100% { transform: translate(0, 0); }
+    }
+    @keyframes cursor-marcus {
+      0%   { transform: translate(0, 0); }
+      20%  { transform: translate(-30px, 40px); }
+      40%  { transform: translate(20px, 80px); }
+      60%  { transform: translate(-10px, 20px); }
+      80%  { transform: translate(30px, 60px); }
+      100% { transform: translate(0, 0); }
+    }
+    @keyframes cursor-priya {
+      0%   { transform: translate(0, 0); }
+      25%  { transform: translate(-20px, -15px); }
+      50%  { transform: translate(15px, 25px); }
+      75%  { transform: translate(-30px, 10px); }
+      100% { transform: translate(0, 0); }
+    }
+    .cursor-sarah { animation: cursor-sarah 12s ease-in-out infinite; }
+    .cursor-marcus { animation: cursor-marcus 10s ease-in-out infinite; }
+    .cursor-priya { animation: cursor-priya 14s ease-in-out infinite; }
+
+    /* Messages fade in sequentially with staggered delays */
+    .collab-msg {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: msg-appear 0.6s ease-out forwards;
+    }
+    @keyframes msg-appear {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .collab-msg:nth-child(1) { animation-delay: 0.3s; }
+    .collab-msg:nth-child(2) { animation-delay: 1.8s; }
+    .collab-msg:nth-child(3) { animation-delay: 3.5s; }
+    .collab-msg:nth-child(4) { animation-delay: 5.5s; }
+
+    /* Typing indicator dots */
+    @keyframes typing-bounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-4px); opacity: 1; }
+    }
+    .typing-dot {
+      display: inline-block;
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: #94a3b8;
+      animation: typing-bounce 1.4s ease-in-out infinite;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.15s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+    /* Typing indicator container — appears between messages then fades */
+    .typing-indicator-1 {
+      animation: typing-show 1.5s ease-in-out 1.0s forwards;
+      opacity: 0;
+    }
+    .typing-indicator-2 {
+      animation: typing-show 2s ease-in-out 2.8s forwards;
+      opacity: 0;
+    }
+    .typing-indicator-3 {
+      animation: typing-show 2s ease-in-out 4.5s forwards;
+      opacity: 0;
+    }
+    @keyframes typing-show {
+      0%   { opacity: 0; }
+      15%  { opacity: 1; }
+      85%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* Agent work progress animation — checkmarks appear one by one */
+    .agent-line {
+      opacity: 0;
+      animation: line-appear 0.4s ease-out forwards;
+    }
+    .agent-line:nth-child(1) { animation-delay: 3.8s; }
+    .agent-line:nth-child(2) { animation-delay: 4.3s; }
+    .agent-line:nth-child(3) { animation-delay: 4.8s; }
+    .agent-line-2:nth-child(1) { animation-delay: 5.8s; }
+    .agent-line-2:nth-child(2) { animation-delay: 6.3s; }
+    .agent-line-2:nth-child(3) { animation-delay: 6.8s; }
+    @keyframes line-appear {
+      from { opacity: 0; transform: translateX(-8px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* Handoff arrow pulse between agents */
+    @keyframes handoff-pulse {
+      0%, 100% { opacity: 0.3; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.15); }
+    }
+    .handoff-pulse { animation: handoff-pulse 2s ease-in-out infinite 4.6s; }
+
+    /* Live dot pulse */
+    @keyframes live-ping {
+      0%   { transform: scale(1); opacity: 1; }
+      75%  { transform: scale(2.5); opacity: 0; }
+      100% { transform: scale(2.5); opacity: 0; }
+    }
+    .live-ping::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: #34d399;
+      animation: live-ping 2s ease-out infinite;
+    }
+
+    /* Replay loop — whole conversation fades out and restarts */
+    .collab-canvas-inner {
+      animation: canvas-loop 16s ease-in-out infinite;
+    }
+    @keyframes canvas-loop {
+      0%   { opacity: 0; }
+      4%   { opacity: 1; }
+      85%  { opacity: 1; }
+      95%  { opacity: 0; }
+      100% { opacity: 0; }
+    }
+  </style>
+</head>
+<body class="bg-[#FAFAF8] text-stone-900 font-sans antialiased">
+
+  <!-- ============================================ -->
+  <!-- HEADER / NAVIGATION                          -->
+  <!-- ============================================ -->
+  <header class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-lg border-b border-stone-200">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8 flex items-center justify-between h-16">
+      <!-- Logo -->
+      <div class="flex items-center gap-8">
+        <a href="#" class="flex items-center gap-2">
+          <svg width="80" height="24" viewBox="0 0 80 24" fill="none">
+            <text x="0" y="18" font-family="darkmode-on-cc, monospace" font-size="20" font-weight="700" fill="#1c1917">Dust</text>
+          </svg>
+        </a>
+        <nav class="hidden md:flex items-center gap-6 text-sm text-stone-600">
+          <a href="#" class="hover:text-stone-900 transition">Product</a>
+          <a href="#" class="hover:text-stone-900 transition">Solutions</a>
+          <a href="#" class="hover:text-stone-900 transition">Resources</a>
+          <a href="#" class="hover:text-stone-900 transition">Trust</a>
+          <a href="#" class="hover:text-stone-900 transition">Pricing</a>
+        </nav>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="#" class="hidden sm:inline text-sm text-stone-600 hover:text-stone-900 transition">Sign in</a>
+        <a href="#" class="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-full transition">
+          Get started
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-6 lg:px-8">
+
+    <!-- ============================================ -->
+    <!-- SECTION 1 — HERO                             -->
+    <!-- ============================================ -->
+    <section class="pt-32 pb-8 lg:pt-44 lg:pb-12">
+      <div class="max-w-4xl mx-auto text-center flex flex-col items-center gap-6">
+        <p class="text-xs font-semibold tracking-[0.2em] uppercase text-emerald-700">
+          The Platform for AI Operators
+        </p>
+        <h1 class="font-mono text-5xl md:text-6xl lg:text-7xl font-medium tracking-tight leading-[1.1]">
+          AI for the people<br>who run the&nbsp;work.
+        </h1>
+        <p class="text-lg md:text-xl text-stone-600 max-w-2xl leading-relaxed">
+          Turn scattered knowledge and tools into coordinated execution with AI agents that fast-moving teams build, own, and run themselves.
+        </p>
+        <div class="flex flex-col sm:flex-row items-center gap-4 mt-4">
+          <a href="#" class="inline-flex items-center px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-full transition text-base">
+            Try Dust
+            <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </a>
+          <a href="#" class="text-emerald-700 font-medium hover:underline underline-offset-4 transition">
+            See how it works &rarr;
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION 2 — SOCIAL PROOF BAR                 -->
+    <!-- ============================================ -->
+    <section class="py-12 lg:py-16">
+      <div class="text-center mb-8">
+        <p class="text-sm text-stone-500">
+          Trusted among AI operators at <span class="font-semibold text-stone-700">5,000+</span> global organizations
+        </p>
+      </div>
+
+      <!-- Logo row -->
+      <div class="flex flex-wrap justify-center items-center gap-x-8 gap-y-4 mb-10 opacity-60">
+        <img src="../public/static/landing/logos/gray/clay.svg" alt="Clay" class="h-6">
+        <img src="../public/static/landing/logos/gray/cursor.svg" alt="Cursor" class="h-6">
+        <img src="../public/static/landing/logos/gray/watershed.svg" alt="Watershed" class="h-5">
+        <img src="../public/static/landing/logos/gray/persona.svg" alt="Persona" class="h-5">
+        <img src="../public/static/landing/logos/gray/qonto.svg" alt="Qonto" class="h-6">
+        <img src="../public/static/landing/logos/gray/mirakl.svg" alt="Mirakl" class="h-5">
+        <img src="../public/static/landing/logos/gray/spendesk.svg" alt="Spendesk" class="h-5">
+        <img src="../public/static/landing/logos/gray/1password.svg" alt="1Password" class="h-6">
+        <!-- Datadog & Criteo — text placeholders since SVGs don't exist -->
+        <span class="text-stone-400 font-semibold text-sm tracking-wide">Datadog</span>
+        <span class="text-stone-400 font-semibold text-sm tracking-wide">Criteo</span>
+      </div>
+
+      <!-- Stats row -->
+      <div class="grid grid-cols-3 gap-8 max-w-2xl mx-auto text-center">
+        <div>
+          <p class="text-3xl md:text-4xl font-mono font-bold text-emerald-700">300,000+</p>
+          <p class="text-sm text-stone-500 mt-1">agents deployed</p>
+        </div>
+        <div>
+          <p class="text-3xl md:text-4xl font-mono font-bold text-emerald-700">12M</p>
+          <p class="text-sm text-stone-500 mt-1">conversations</p>
+        </div>
+        <div>
+          <p class="text-3xl md:text-4xl font-mono font-bold text-emerald-700">70%</p>
+          <p class="text-sm text-stone-500 mt-1">weekly active users</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION 3 — HOW DUST AGENTS WORK             -->
+    <!-- ============================================ -->
+    <section class="py-16 lg:py-24">
+      <div class="bg-[#FDF9F3] rounded-3xl p-8 md:p-12 lg:p-16">
+        <p class="text-xs font-semibold tracking-[0.15em] uppercase text-amber-700 mb-4">
+          &#10022; How Dust Agents Work
+        </p>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
+          <!-- Left: text + quote -->
+          <div class="flex flex-col gap-8">
+            <div>
+              <h2 class="font-mono text-3xl md:text-4xl lg:text-5xl font-medium tracking-tight leading-tight mb-6">
+                Turn scattered knowledge and tools into coordinated execution.
+              </h2>
+              <p class="text-stone-600 text-lg leading-relaxed">
+                Your team runs on dozens of tools and knowledge sources operating in isolation. Dust connects across all of them, pulling the right context from the right source and taking action in the right place, at the right time. Not a chatbot sitting on top of your stack &mdash; a coordination layer running through it.
+              </p>
+            </div>
+
+            <!-- Customer quote: Clay -->
+            <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+              <p class="text-stone-600 italic leading-relaxed mb-4">
+                &ldquo;Dust is the most impactful software we&rsquo;ve adopted since building Clay. It delivers immediate value while continuously getting smarter and more valuable over time.&rdquo;
+              </p>
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm">EB</div>
+                <div>
+                  <p class="font-semibold text-stone-900 text-sm">Everett Berry</p>
+                  <p class="text-stone-500 text-xs">Head of GTM Engineering at Clay</p>
+                </div>
+                <div class="ml-auto flex gap-2">
+                  <span class="bg-emerald-50 text-emerald-700 text-xs font-medium rounded-full px-3 py-1">100% adoption</span>
+                  <span class="bg-emerald-50 text-emerald-700 text-xs font-medium rounded-full px-3 py-1">58h saved/mo</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Live Agent Activity card -->
+          <div class="flex items-start justify-center">
+            <div class="bg-white rounded-2xl border border-stone-200 shadow-sm w-full max-w-md">
+              <div class="px-6 py-4 border-b border-stone-100">
+                <p class="text-xs font-semibold tracking-wide uppercase text-stone-400">Live Agent Activity</p>
+              </div>
+              <div class="p-6 flex flex-col gap-4">
+                <div class="flex items-start gap-3">
+                  <div class="w-2.5 h-2.5 rounded-full bg-blue-400 mt-1.5 shrink-0 pulse-dot"></div>
+                  <div>
+                    <p class="text-sm font-medium text-stone-900">Zendesk ticket received</p>
+                    <p class="text-xs text-stone-400 mt-0.5">Customer: Acme Corp &middot; Priority: High</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <div class="w-2.5 h-2.5 rounded-full bg-amber-400 mt-1.5 shrink-0 pulse-dot" style="animation-delay: 0.3s"></div>
+                  <div>
+                    <p class="text-sm font-medium text-stone-900">Agent classifies &amp; drafts response</p>
+                    <p class="text-xs text-stone-400 mt-0.5">Category: Billing &middot; Sentiment: Frustrated</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 mt-1.5 shrink-0 pulse-dot" style="animation-delay: 0.6s"></div>
+                  <div>
+                    <p class="text-sm font-medium text-stone-900">CRM updated automatically</p>
+                    <p class="text-xs text-stone-400 mt-0.5">Salesforce &middot; Contact record synced</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <div class="w-2.5 h-2.5 rounded-full bg-emerald-600 mt-1.5 shrink-0"></div>
+                  <div>
+                    <p class="text-sm font-medium text-stone-900">Reply sent to customer</p>
+                    <p class="text-xs text-stone-400 mt-0.5">Via Zendesk &middot; Resolution time: 2m 14s</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION 4 — HOW YOUR TEAM COLLABORATES       -->
+    <!-- ============================================ -->
+    <section class="py-16 lg:py-24">
+      <div class="bg-[#F5F7FA] rounded-3xl p-8 md:p-12 lg:p-16">
+        <p class="text-xs font-semibold tracking-[0.15em] uppercase text-blue-700 mb-4">
+          &#128101; How Your Team Collaborates with Dust
+        </p>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
+          <!-- Left: Collaboration visual — animated live workspace canvas -->
+          <div class="flex items-center justify-center">
+            <div class="bg-white rounded-2xl border border-stone-200 shadow-lg w-full max-w-lg relative overflow-hidden" style="min-height: 540px;">
+
+              <!-- Canvas header with live indicator -->
+              <div class="px-6 py-3 border-b border-stone-100 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                  <div class="relative w-2 h-2">
+                    <div class="w-2 h-2 rounded-full bg-emerald-400 relative live-ping"></div>
+                  </div>
+                  <p class="text-xs font-semibold tracking-wide uppercase text-stone-400">Live &mdash; Q2 Deal Pipeline</p>
+                </div>
+                <div class="flex -space-x-1.5">
+                  <div class="w-5 h-5 rounded-full bg-blue-500 border-2 border-white text-[8px] text-white flex items-center justify-center font-bold">M</div>
+                  <div class="w-5 h-5 rounded-full bg-rose-500 border-2 border-white text-[8px] text-white flex items-center justify-center font-bold">S</div>
+                  <div class="w-5 h-5 rounded-full bg-amber-500 border-2 border-white text-[8px] text-white flex items-center justify-center font-bold">P</div>
+                  <div class="w-5 h-5 rounded-full bg-emerald-600 border-2 border-white flex items-center justify-center">
+                    <div class="flex gap-0.5"><div class="w-1 h-1 rounded-full bg-white"></div><div class="w-1 h-1 rounded-full bg-white"></div></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Animated message feed -->
+              <div class="p-5 space-y-2.5 collab-canvas-inner relative">
+
+                <!-- MSG 1: HUMAN ↔ HUMAN — Sarah shares with Marcus -->
+                <div class="collab-msg relative bg-rose-50 rounded-xl p-3.5 border border-rose-100">
+                  <div class="flex items-start gap-3">
+                    <div class="w-7 h-7 rounded-full bg-rose-200 flex items-center justify-center text-rose-700 text-[10px] font-bold shrink-0">SA</div>
+                    <div>
+                      <p class="text-[10px] font-semibold text-rose-600 mb-0.5">Sarah &middot; Sales</p>
+                      <div class="text-xs text-stone-700 leading-relaxed">
+                        <span class="font-semibold text-blue-700">@Marcus</span> I built a Deal Prep agent that pulls from Salesforce + call transcripts. Try it on the Acme renewal &mdash; saved me 2h this week.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Typing indicator: Marcus is typing... -->
+                <div class="typing-indicator-1 flex items-center gap-2 px-4 py-2">
+                  <div class="w-5 h-5 rounded-full bg-blue-200 flex items-center justify-center text-blue-700 text-[8px] font-bold">MA</div>
+                  <div class="flex gap-1"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>
+                </div>
+
+                <!-- MSG 2: HUMAN ↔ AGENT — Marcus triggers agent -->
+                <div class="collab-msg relative bg-blue-50 rounded-xl p-3.5 border border-blue-100">
+                  <div class="flex items-start gap-3">
+                    <div class="w-7 h-7 rounded-full bg-blue-200 flex items-center justify-center text-blue-700 text-[10px] font-bold shrink-0">MA</div>
+                    <div>
+                      <p class="text-[10px] font-semibold text-blue-600 mb-0.5">Marcus &middot; RevOps</p>
+                      <div class="text-xs text-stone-700 leading-relaxed">
+                        <span class="font-semibold text-emerald-700">@Deal Prep Agent</span> Run full analysis on Acme Corp renewal &mdash; include competitor intel and expansion signals.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Typing indicator: Agent is working... -->
+                <div class="typing-indicator-2 flex items-center gap-2 px-4 py-2">
+                  <div class="w-5 h-5 rounded-lg bg-emerald-600 flex items-center justify-center"><div class="w-1.5 h-1.5 rounded-full bg-white"></div></div>
+                  <div class="flex gap-1"><span class="typing-dot" style="background:#059669"></span><span class="typing-dot" style="background:#059669"></span><span class="typing-dot" style="background:#059669"></span></div>
+                  <span class="text-[10px] text-stone-400">Querying 3 data sources&hellip;</span>
+                </div>
+
+                <!-- MSG 3: AGENT ↔ HUMAN — Deal Prep Agent responds -->
+                <div class="collab-msg relative bg-stone-50 rounded-xl p-3.5 border border-stone-200">
+                  <div class="flex items-start gap-3">
+                    <div class="w-7 h-7 rounded-lg bg-emerald-600 flex items-center justify-center text-white shrink-0"><div class="w-2 h-2 rounded-full bg-white"></div></div>
+                    <div class="flex-1">
+                      <p class="text-[10px] font-semibold text-emerald-700 mb-1.5">Deal Prep Agent</p>
+                      <div class="text-xs text-stone-700 leading-relaxed space-y-1.5">
+                        <p class="agent-line">&#10003; Pulled 14 Salesforce records + 3 Gong transcripts</p>
+                        <p class="agent-line">&#10003; Key risk: champion left in Q1. New contact identified.</p>
+                        <p class="agent-line handoff-pulse">&#9758; Handing off to <span class="font-semibold text-purple-700">@Competitive Intel Agent</span>&hellip;</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Typing indicator: Second agent activating... -->
+                <div class="typing-indicator-3 flex items-center gap-2 px-4 py-2">
+                  <div class="w-5 h-5 rounded-lg bg-purple-600 flex items-center justify-center"><div class="w-1.5 h-1.5 rounded-full bg-white"></div></div>
+                  <div class="flex gap-1"><span class="typing-dot" style="background:#7c3aed"></span><span class="typing-dot" style="background:#7c3aed"></span><span class="typing-dot" style="background:#7c3aed"></span></div>
+                  <span class="text-[10px] text-stone-400">Generating battlecard&hellip;</span>
+                </div>
+
+                <!-- MSG 4: AGENT ↔ AGENT — Competitive Intel Agent -->
+                <div class="collab-msg relative bg-purple-50 rounded-xl p-3.5 border border-purple-100">
+                  <div class="flex items-start gap-3">
+                    <div class="w-7 h-7 rounded-lg bg-purple-600 flex items-center justify-center text-white shrink-0"><div class="w-2 h-2 rounded-full bg-white"></div></div>
+                    <div class="flex-1">
+                      <p class="text-[10px] font-semibold text-purple-700 mb-1.5">Competitive Intel Agent</p>
+                      <div class="text-xs text-stone-700 leading-relaxed space-y-1.5">
+                        <p class="agent-line-2">&#10003; Battlecard generated: Acme vs. 3 competitors</p>
+                        <p class="agent-line-2">&#10003; Pricing intel updated from latest G2 reviews</p>
+                        <p class="agent-line-2">&#9758; Notifying <span class="font-semibold text-blue-700">@Marcus</span> and <span class="font-semibold text-rose-700">@Sarah</span> &mdash; ready for review</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Animated cursors moving across the canvas -->
+                <div class="absolute top-16 right-8 cursor-sarah pointer-events-none z-10">
+                  <div class="flex items-center gap-1 bg-rose-500 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded-full shadow-lg">
+                    <svg class="w-2.5 h-2.5" viewBox="0 0 10 10"><polygon points="0,0 10,4 2,6" fill="white"/></svg>
+                    Sarah
+                  </div>
+                </div>
+                <div class="absolute top-32 left-6 cursor-marcus pointer-events-none z-10">
+                  <div class="flex items-center gap-1 bg-blue-500 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded-full shadow-lg">
+                    <svg class="w-2.5 h-2.5" viewBox="0 0 10 10"><polygon points="0,0 10,4 2,6" fill="white"/></svg>
+                    Marcus
+                  </div>
+                </div>
+                <div class="absolute bottom-8 right-12 cursor-priya pointer-events-none z-10">
+                  <div class="flex items-center gap-1 bg-amber-500 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded-full shadow-lg">
+                    <svg class="w-2.5 h-2.5" viewBox="0 0 10 10"><polygon points="0,0 10,4 2,6" fill="white"/></svg>
+                    Priya
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Bottom bar: interaction legend -->
+              <div class="px-5 py-2.5 border-t border-stone-100 flex items-center gap-5 text-[10px] text-stone-400">
+                <div class="flex items-center gap-1.5">
+                  <div class="flex -space-x-1"><div class="w-3 h-3 rounded-full bg-rose-300 border border-white"></div><div class="w-3 h-3 rounded-full bg-blue-300 border border-white"></div></div>
+                  Human &harr; Human
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <div class="flex -space-x-1"><div class="w-3 h-3 rounded-full bg-blue-300 border border-white"></div><div class="w-3 h-3 rounded-lg bg-emerald-400 border border-white"></div></div>
+                  Human &harr; Agent
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <div class="flex -space-x-1"><div class="w-3 h-3 rounded-lg bg-emerald-400 border border-white"></div><div class="w-3 h-3 rounded-lg bg-purple-400 border border-white"></div></div>
+                  Agent &harr; Agent
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Right: text + quote -->
+          <div class="flex flex-col gap-8">
+            <div>
+              <h2 class="font-mono text-3xl md:text-4xl lg:text-5xl font-medium tracking-tight leading-tight mb-6">
+                Anyone can build sophisticated AI agents in minutes. The real power? Everyone else gets to use them.
+              </h2>
+              <p class="text-stone-600 text-lg leading-relaxed">
+                AI is a team sport. AI Operators build agents and skills that immediately benefit their entire team. Sales builds something useful, Support is already using it by Tuesday. With Projects, people, agents, and context come together in shared hubs where intelligence compounds. Not single-player productivity &mdash; multiplayer AI for the enterprise.
+              </p>
+            </div>
+
+            <!-- Customer quote: Assembled -->
+            <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+              <p class="text-stone-600 italic leading-relaxed mb-4">
+                &ldquo;We made a bet on Dust because we knew the team was exceptional. What we didn&rsquo;t expect was how quickly it would transform how we work. Dust became the connective tissue that amplifies what each team does best.&rdquo;
+              </p>
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">RW</div>
+                <div>
+                  <p class="font-semibold text-stone-900 text-sm">Ryan Wang</p>
+                  <p class="text-stone-500 text-xs">CEO at Assembled</p>
+                </div>
+                <div class="ml-auto flex gap-2">
+                  <span class="bg-blue-50 text-blue-700 text-xs font-medium rounded-full px-3 py-1">95% adoption</span>
+                  <span class="bg-blue-50 text-blue-700 text-xs font-medium rounded-full px-3 py-1">120+ employees</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION 5 — HOW DUST AGENTS IMPROVE          -->
+    <!-- ============================================ -->
+    <section class="py-16 lg:py-24">
+      <div class="bg-[#F3F7F4] rounded-3xl p-8 md:p-12 lg:p-16">
+        <p class="text-xs font-semibold tracking-[0.15em] uppercase text-emerald-700 mb-4">
+          &#128260; How Dust Agents Improve with You
+        </p>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
+          <!-- Left: text + quote -->
+          <div class="flex flex-col gap-8">
+            <div>
+              <h2 class="font-mono text-3xl md:text-4xl lg:text-5xl font-medium tracking-tight leading-tight mb-6">
+                Agents that understand how you work and get smarter over&nbsp;time.
+              </h2>
+              <p class="text-stone-600 text-lg leading-relaxed">
+                Dust agents don&rsquo;t just search your data; your teams encode how you work in agents. With Skills and reinforcement capabilities, agents learn and evolve through repeated use. Best practices consolidate into shared skills, improvements spread to every agent automatically, and your fiftieth workflow is easier to build than your fifth.
+              </p>
+            </div>
+
+            <!-- Customer quote: Vanta -->
+            <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+              <p class="text-stone-600 italic leading-relaxed mb-4">
+                &ldquo;We used to do the work. Now we build the agents that do it.&rdquo;
+              </p>
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-bold text-sm">SK</div>
+                <div>
+                  <p class="font-semibold text-stone-900 text-sm">Shashank Khanna</p>
+                  <p class="text-stone-500 text-xs">Founder in Residence, GTM Innovation at Vanta</p>
+                </div>
+                <span class="ml-auto bg-purple-50 text-purple-700 text-xs font-medium rounded-full px-3 py-1">~400h saved/week</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: 2x2 grid of capability cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Card 1 -->
+            <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+              <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-lg mb-4">&#128218;</div>
+              <h4 class="font-semibold text-stone-900 mb-2">Knows your company</h4>
+              <p class="text-sm text-stone-500 leading-relaxed">Connects to all your tools and data sources. Context flows automatically.</p>
+            </div>
+            <!-- Card 2 -->
+            <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+              <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-lg mb-4">&#129309;</div>
+              <h4 class="font-semibold text-stone-900 mb-2">AI is a team sport</h4>
+              <p class="text-sm text-stone-500 leading-relaxed">Built for collaboration across departments. One builds, everyone benefits.</p>
+            </div>
+            <!-- Card 3 -->
+            <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+              <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-lg mb-4">&#9889;</div>
+              <h4 class="font-semibold text-stone-900 mb-2">Always the best model</h4>
+              <p class="text-sm text-stone-500 leading-relaxed">Switch between OpenAI, Anthropic, Google, Mistral. Always use what&rsquo;s best.</p>
+            </div>
+            <!-- Card 4 -->
+            <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+              <div class="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-lg mb-4">&#128200;</div>
+              <h4 class="font-semibold text-stone-900 mb-2">Compounds across the org</h4>
+              <p class="text-sm text-stone-500 leading-relaxed">Value grows with every team that joins. Skills spread, intelligence compounds.</p>
+            </div>
+
+            <!-- Connected Sources mini-card -->
+            <div class="sm:col-span-2 bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+              <p class="text-xs font-semibold tracking-wide uppercase text-stone-400 mb-4">Connected Sources</p>
+              <div class="grid grid-cols-3 gap-3">
+                <div class="flex items-center gap-2 bg-stone-50 rounded-lg px-3 py-2">
+                  <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+                  <span class="text-xs font-medium text-stone-700">Slack</span>
+                </div>
+                <div class="flex items-center gap-2 bg-stone-50 rounded-lg px-3 py-2">
+                  <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+                  <span class="text-xs font-medium text-stone-700">Salesforce</span>
+                </div>
+                <div class="flex items-center gap-2 bg-stone-50 rounded-lg px-3 py-2">
+                  <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+                  <span class="text-xs font-medium text-stone-700">Notion</span>
+                </div>
+                <div class="flex items-center gap-2 bg-stone-50 rounded-lg px-3 py-2">
+                  <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+                  <span class="text-xs font-medium text-stone-700">GitHub</span>
+                </div>
+                <div class="flex items-center gap-2 bg-stone-50 rounded-lg px-3 py-2">
+                  <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+                  <span class="text-xs font-medium text-stone-700">Zendesk</span>
+                </div>
+                <div class="flex items-center gap-2 bg-stone-50 rounded-lg px-3 py-2">
+                  <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+                  <span class="text-xs font-medium text-stone-700">Linear</span>
+                </div>
+              </div>
+              <div class="mt-4 bg-stone-50 rounded-lg px-3 py-2">
+                <p class="text-xs text-stone-400 mb-1">Agent Memory</p>
+                <p class="text-sm text-stone-700">Remembers context from <span class="font-semibold">847</span> past conversations</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION 6 — ENTERPRISE READY                 -->
+    <!-- ============================================ -->
+    <section class="py-16 lg:py-24">
+      <div class="mb-12">
+        <p class="text-xs font-semibold tracking-[0.15em] uppercase text-stone-500 mb-4">
+          &#128274; Enterprise Ready, Obviously
+        </p>
+        <h2 class="font-mono text-3xl md:text-4xl lg:text-5xl font-medium tracking-tight leading-tight mb-6 max-w-3xl">
+          When AI has access to your company&rsquo;s knowledge, &ldquo;mostly secure&rdquo; doesn&rsquo;t cut&nbsp;it.
+        </h2>
+        <p class="text-stone-600 text-lg leading-relaxed max-w-3xl">
+          Your operators build fast. Your data stays locked down. Dust&rsquo;s dual-layer permission model separates what agents can access from who can use them, with SCIM-synced groups, admin-gated overrides, and zero privilege escalation.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Security & Compliance -->
+        <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+          <div class="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-lg mb-4">&#128737;</div>
+          <h3 class="font-semibold text-stone-900 text-lg mb-4">Security &amp; compliance</h3>
+          <ul class="space-y-2.5 text-sm text-stone-600">
+            <li class="flex items-start gap-2"><span class="text-emerald-500 mt-0.5">&#10003;</span> SOC 2 Type II certified</li>
+            <li class="flex items-start gap-2"><span class="text-emerald-500 mt-0.5">&#10003;</span> GDPR compliant (EU data residency)</li>
+            <li class="flex items-start gap-2"><span class="text-emerald-500 mt-0.5">&#10003;</span> HIPAA-ready deployment</li>
+            <li class="flex items-start gap-2"><span class="text-emerald-500 mt-0.5">&#10003;</span> SSO (SAML, OIDC) + SCIM</li>
+            <li class="flex items-start gap-2"><span class="text-emerald-500 mt-0.5">&#10003;</span> Audit logs (365-day retention)</li>
+            <li class="flex items-start gap-2"><span class="text-emerald-500 mt-0.5">&#10003;</span> RBAC + dual-layer permissions</li>
+            <li class="flex items-start gap-2"><span class="text-emerald-500 mt-0.5">&#10003;</span> AES-256 at rest, TLS 1.3 in transit</li>
+            <li class="flex items-start gap-2"><span class="text-emerald-500 mt-0.5">&#10003;</span> Zero model training on your data</li>
+          </ul>
+        </div>
+
+        <!-- Performance & Scale -->
+        <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+          <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-lg mb-4">&#9889;</div>
+          <h3 class="font-semibold text-stone-900 text-lg mb-4">Performance &amp; scale</h3>
+          <ul class="space-y-2.5 text-sm text-stone-600">
+            <li class="flex items-start gap-2"><span class="text-emerald-500 mt-0.5">&#10003;</span> 99.9% uptime SLA</li>
+            <li class="flex items-start gap-2"><span class="text-emerald-500 mt-0.5">&#10003;</span> Supports 10,000+ users per workspace</li>
+            <li class="flex items-start gap-2"><span class="text-emerald-500 mt-0.5">&#10003;</span> Concurrent agent execution</li>
+            <li class="flex items-start gap-2"><span class="text-emerald-500 mt-0.5">&#10003;</span> Sub-2s agent response time (p95)</li>
+            <li class="flex items-start gap-2"><span class="text-emerald-500 mt-0.5">&#10003;</span> CDN-backed global deployment</li>
+          </ul>
+        </div>
+
+        <!-- Integration Architecture -->
+        <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+          <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-lg mb-4">&#128279;</div>
+          <h3 class="font-semibold text-stone-900 text-lg mb-4">Integration architecture</h3>
+          <ul class="space-y-2.5 text-sm text-stone-600">
+            <li class="flex items-start gap-2"><span class="text-emerald-500 mt-0.5">&#10003;</span> RESTful API for custom integrations</li>
+            <li class="flex items-start gap-2"><span class="text-emerald-500 mt-0.5">&#10003;</span> MCP for proprietary systems</li>
+            <li class="flex items-start gap-2"><span class="text-emerald-500 mt-0.5">&#10003;</span> Webhook support for event-driven workflows</li>
+            <li class="flex items-start gap-2"><span class="text-emerald-500 mt-0.5">&#10003;</span> OAuth2 for third-party permissions</li>
+            <li class="flex items-start gap-2"><span class="text-emerald-500 mt-0.5">&#10003;</span> Bi-directional sync (read + write)</li>
+            <li class="flex items-start gap-2"><span class="text-emerald-500 mt-0.5">&#10003;</span> Incremental data refresh</li>
+            <li class="flex items-start gap-2"><span class="text-emerald-500 mt-0.5">&#10003;</span> 100+ production connectors</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION 7 — HOW EVERY TEAM USES DUST         -->
+    <!-- ============================================ -->
+    <section class="py-16 lg:py-24">
+      <p class="text-xs font-semibold tracking-[0.15em] uppercase text-emerald-700 mb-4">
+        &#128188; How Every Team Uses Dust
+      </p>
+      <h2 class="font-mono text-3xl md:text-4xl lg:text-5xl font-medium tracking-tight leading-tight mb-10">
+        One platform, every team, compounding&nbsp;value.
+      </h2>
+
+      <!-- Tab bar -->
+      <div class="flex gap-1 border-b border-stone-200 mb-8 overflow-x-auto">
+        <button onclick="switchTab('engineering')" id="tab-engineering" class="px-4 py-3 text-sm whitespace-nowrap tab-active transition">Engineering</button>
+        <button onclick="switchTab('support')" id="tab-support" class="px-4 py-3 text-sm whitespace-nowrap text-stone-500 hover:text-stone-700 transition">Customer Support</button>
+        <button onclick="switchTab('sales')" id="tab-sales" class="px-4 py-3 text-sm whitespace-nowrap text-stone-500 hover:text-stone-700 transition">Sales</button>
+        <button onclick="switchTab('marketing')" id="tab-marketing" class="px-4 py-3 text-sm whitespace-nowrap text-stone-500 hover:text-stone-700 transition">Marketing &amp; Content</button>
+        <button onclick="switchTab('data')" id="tab-data" class="px-4 py-3 text-sm whitespace-nowrap text-stone-500 hover:text-stone-700 transition">Data &amp; Analytics</button>
+      </div>
+
+      <!-- Tab content -->
+      <div id="content-engineering" class="tab-content">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h4 class="font-semibold text-stone-900 mb-3">Incident response</h4>
+            <p class="text-sm text-stone-600 leading-relaxed">Agents pull context from PagerDuty, Datadog, and Slack to auto-triage incidents, draft runbooks, and coordinate across teams.</p>
+          </div>
+          <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h4 class="font-semibold text-stone-900 mb-3">Code review &amp; debugging</h4>
+            <p class="text-sm text-stone-600 leading-relaxed">Agents review PRs against your team&rsquo;s standards, flag security issues, and suggest fixes grounded in your codebase context.</p>
+          </div>
+          <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h4 class="font-semibold text-stone-900 mb-3">Documentation</h4>
+            <p class="text-sm text-stone-600 leading-relaxed">Auto-generate and update technical docs, API references, and architecture decision records from code changes.</p>
+          </div>
+          <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h4 class="font-semibold text-stone-900 mb-3">Knowledge retrieval</h4>
+            <p class="text-sm text-stone-600 leading-relaxed">Search across Confluence, Notion, GitHub, and Slack to find answers instantly instead of interrupting senior engineers.</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="content-support" class="tab-content hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h4 class="font-semibold text-stone-900 mb-3">Ticket classification &amp; routing</h4>
+            <p class="text-sm text-stone-600 leading-relaxed">Automatically categorize, prioritize, and route support tickets to the right team with full context attached.</p>
+          </div>
+          <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h4 class="font-semibold text-stone-900 mb-3">Response drafting</h4>
+            <p class="text-sm text-stone-600 leading-relaxed">Generate accurate, on-brand responses grounded in your knowledge base. Agents learn your tone and escalation patterns.</p>
+          </div>
+          <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h4 class="font-semibold text-stone-900 mb-3">Trend analysis</h4>
+            <p class="text-sm text-stone-600 leading-relaxed">Identify recurring issues, extract actionable insights from ticket patterns, and flag product bugs automatically.</p>
+          </div>
+          <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h4 class="font-semibold text-stone-900 mb-3">Quality assurance</h4>
+            <p class="text-sm text-stone-600 leading-relaxed">Review agent-drafted responses for accuracy and compliance before they reach customers. Maintain consistency at scale.</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="content-sales" class="tab-content hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h4 class="font-semibold text-stone-900 mb-3">Prospect research</h4>
+            <p class="text-sm text-stone-600 leading-relaxed">Automatically compile company profiles, key contacts, and competitive intelligence before every meeting.</p>
+          </div>
+          <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h4 class="font-semibold text-stone-900 mb-3">RFP &amp; proposal generation</h4>
+            <p class="text-sm text-stone-600 leading-relaxed">Draft responses grounded in past wins, product docs, and pricing. Cut RFP turnaround from days to hours.</p>
+          </div>
+          <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h4 class="font-semibold text-stone-900 mb-3">Deal summaries</h4>
+            <p class="text-sm text-stone-600 leading-relaxed">Generate pipeline reviews, QBR prep, and deal updates automatically from CRM data and call transcripts.</p>
+          </div>
+          <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h4 class="font-semibold text-stone-900 mb-3">Competitive intelligence</h4>
+            <p class="text-sm text-stone-600 leading-relaxed">Track competitor moves, build battlecards, and surface relevant context during live sales conversations.</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="content-marketing" class="tab-content hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h4 class="font-semibold text-stone-900 mb-3">Brand content creation</h4>
+            <p class="text-sm text-stone-600 leading-relaxed">Generate on-brand copy, blog drafts, and social content grounded in your style guide and past campaigns.</p>
+          </div>
+          <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h4 class="font-semibold text-stone-900 mb-3">Localization &amp; translation</h4>
+            <p class="text-sm text-stone-600 leading-relaxed">Translate and adapt content across languages while maintaining brand voice, terminology, and regional nuance.</p>
+          </div>
+          <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h4 class="font-semibold text-stone-900 mb-3">Campaign analysis</h4>
+            <p class="text-sm text-stone-600 leading-relaxed">Pull data from HubSpot, Google Analytics, and LinkedIn to generate performance reports and optimization recommendations.</p>
+          </div>
+          <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h4 class="font-semibold text-stone-900 mb-3">Customer feedback synthesis</h4>
+            <p class="text-sm text-stone-600 leading-relaxed">Extract actionable insights from reviews, NPS surveys, and support conversations to inform messaging strategy.</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="content-data" class="tab-content hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h4 class="font-semibold text-stone-900 mb-3">Data querying &amp; exploration</h4>
+            <p class="text-sm text-stone-600 leading-relaxed">Ask questions in natural language and get SQL queries, visualizations, and insights from your data warehouse.</p>
+          </div>
+          <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h4 class="font-semibold text-stone-900 mb-3">Automated reporting</h4>
+            <p class="text-sm text-stone-600 leading-relaxed">Generate recurring reports, dashboards, and executive summaries from live data sources on schedule.</p>
+          </div>
+          <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h4 class="font-semibold text-stone-900 mb-3">Anomaly detection</h4>
+            <p class="text-sm text-stone-600 leading-relaxed">Monitor metrics across systems and alert teams when patterns deviate from expected behavior.</p>
+          </div>
+          <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h4 class="font-semibold text-stone-900 mb-3">Cross-system analysis</h4>
+            <p class="text-sm text-stone-600 leading-relaxed">Connect data from Salesforce, Stripe, Mixpanel, and more to answer questions that span multiple systems.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION 8 — DON'T TAKE OUR WORD FOR IT       -->
+    <!-- ============================================ -->
+    <section class="py-16 lg:py-24">
+      <p class="text-xs font-semibold tracking-[0.15em] uppercase text-stone-500 mb-4">
+        &#128202; Don&rsquo;t Take Our Word for It
+      </p>
+      <h2 class="font-mono text-3xl md:text-4xl lg:text-5xl font-medium tracking-tight leading-tight mb-10">
+        The numbers speak for themselves.
+      </h2>
+
+      <!-- Stats grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
+        <!-- Malt -->
+        <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+          <img src="../public/static/landing/logos/color/malt.png" alt="Malt" class="h-6 mb-4 opacity-70">
+          <p class="text-4xl font-mono font-bold text-emerald-700 mb-1">100%</p>
+          <p class="text-sm text-stone-500">of CX team uses Dust daily</p>
+        </div>
+
+        <!-- Doctolib -->
+        <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+          <img src="../public/static/landing/logos/color/doctolib.png" alt="Doctolib" class="h-6 mb-4 opacity-70">
+          <p class="text-4xl font-mono font-bold text-emerald-700 mb-1">95%</p>
+          <p class="text-sm text-stone-500">adoption across 3,000 employees</p>
+        </div>
+
+        <!-- Qonto -->
+        <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+          <img src="../public/static/landing/logos/color/qonto.png" alt="Qonto" class="h-6 mb-4 opacity-70">
+          <p class="text-4xl font-mono font-bold text-emerald-700 mb-1">x4</p>
+          <p class="text-sm text-stone-500">support tickets cut &middot; +50k hours saved/year</p>
+        </div>
+
+        <!-- Fleet -->
+        <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+          <img src="../public/static/landing/logos/color/fleet.png" alt="Fleet" class="h-6 mb-4 opacity-70">
+          <p class="text-4xl font-mono font-bold text-emerald-700 mb-1">70%</p>
+          <p class="text-sm text-stone-500">reduction in translation bottleneck</p>
+        </div>
+
+        <!-- Clay -->
+        <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm sm:col-span-2">
+          <img src="../public/static/landing/logos/color/clay.png" alt="Clay" class="h-6 mb-4 opacity-70">
+          <p class="text-stone-600 italic leading-relaxed">&ldquo;Dust is the most impactful software we&rsquo;ve adopted since building Clay.&rdquo;</p>
+        </div>
+
+        <!-- PayFit -->
+        <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+          <img src="../public/static/landing/logos/color/payfit.png" alt="PayFit" class="h-6 mb-4 opacity-70">
+          <p class="text-4xl font-mono font-bold text-emerald-700 mb-1">50%</p>
+          <p class="text-sm text-stone-500">faster legal task completion</p>
+        </div>
+
+        <!-- Alan -->
+        <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+          <img src="../public/static/landing/logos/color/alan.png" alt="Alan" class="h-6 mb-4 opacity-70">
+          <p class="text-4xl font-mono font-bold text-emerald-700 mb-1">84%</p>
+          <p class="text-sm text-stone-500">weekly active users</p>
+        </div>
+      </div>
+
+      <!-- Trust bar -->
+      <div class="text-center">
+        <p class="text-sm text-stone-500 mb-6">
+          Trusted by <span class="font-semibold text-stone-700">5,000+</span> organizations
+        </p>
+        <div class="flex flex-wrap justify-center items-center gap-x-6 gap-y-3 mb-8 opacity-50">
+          <img src="../public/static/landing/logos/gray/vanta.svg" alt="Vanta" class="h-5">
+          <img src="../public/static/landing/logos/gray/assembled.svg" alt="Assembled" class="h-5">
+          <img src="../public/static/landing/logos/gray/clay.svg" alt="Clay" class="h-5">
+          <img src="../public/static/landing/logos/gray/cursor.svg" alt="Cursor" class="h-5">
+          <img src="../public/static/landing/logos/gray/doctolib.svg" alt="Doctolib" class="h-5">
+          <img src="../public/static/landing/logos/gray/mirakl.svg" alt="Mirakl" class="h-5">
+          <img src="../public/static/landing/logos/gray/qonto.svg" alt="Qonto" class="h-5">
+          <img src="../public/static/landing/logos/gray/persona.svg" alt="Persona" class="h-5">
+          <img src="../public/static/landing/logos/gray/spendesk.svg" alt="Spendesk" class="h-5">
+          <img src="../public/static/landing/logos/gray/1password.svg" alt="1Password" class="h-5">
+          <img src="../public/static/landing/logos/gray/fleet.svg" alt="Fleet" class="h-5">
+          <img src="../public/static/landing/logos/gray/watershed.svg" alt="Watershed" class="h-5">
+        </div>
+        <a href="#" class="inline-flex items-center px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-full transition">
+          Join them
+          <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION 9 — CLOSING CTA                      -->
+    <!-- ============================================ -->
+    <section class="py-16 lg:py-24">
+      <div class="bg-emerald-950 rounded-3xl px-8 py-16 md:px-16 md:py-20 lg:px-24 lg:py-24 text-center">
+        <h2 class="font-mono text-3xl md:text-4xl lg:text-5xl font-medium tracking-tight leading-tight text-white mb-6 max-w-3xl mx-auto">
+          The best teams aren&rsquo;t just using&nbsp;AI &mdash; they&rsquo;re running&nbsp;it.
+        </h2>
+        <p class="text-emerald-200 text-lg leading-relaxed max-w-2xl mx-auto mb-8">
+          There&rsquo;s a new kind of person emerging in fast-moving companies &mdash; someone who doesn&rsquo;t wait for an AI tool to be handed to them. They build it, deploy it, and run it for their whole team. We call them AI operators.
+        </p>
+        <p class="text-emerald-300 text-base leading-relaxed max-w-2xl mx-auto mb-10">
+          At companies like Datadog, 1Password, Cursor, Vanta, Persona, Clay, and Qonto, thousands of AI operators have deployed over 300,000 agents. They&rsquo;ve rewired how their teams work, achieved 70% weekly active usage, and expanded every single renewal.
+        </p>
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <a href="#" class="inline-flex items-center px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-white font-semibold rounded-full transition text-lg">
+            Become an AI operator
+            <svg class="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+        <p class="mt-6 text-emerald-400 text-sm">
+          We&rsquo;re hiring across engineering, marketing, sales, and customer success.
+          <a href="#" class="underline underline-offset-4 hover:text-emerald-200 transition">&rarr; dust.tt/jobs</a>
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============================================ -->
+  <!-- FOOTER                                       -->
+  <!-- ============================================ -->
+  <footer class="bg-stone-100 border-t border-stone-200 mt-8">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8 py-12">
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-8 text-sm">
+        <div>
+          <p class="font-semibold text-stone-900 mb-3">Product</p>
+          <ul class="space-y-2 text-stone-500">
+            <li><a href="#" class="hover:text-stone-700 transition">Product</a></li>
+            <li><a href="#" class="hover:text-stone-700 transition">Pricing</a></li>
+            <li><a href="#" class="hover:text-stone-700 transition">Security</a></li>
+          </ul>
+        </div>
+        <div>
+          <p class="font-semibold text-stone-900 mb-3">Solutions</p>
+          <ul class="space-y-2 text-stone-500">
+            <li><a href="#" class="hover:text-stone-700 transition">Customer Support</a></li>
+            <li><a href="#" class="hover:text-stone-700 transition">Engineering</a></li>
+            <li><a href="#" class="hover:text-stone-700 transition">Sales</a></li>
+            <li><a href="#" class="hover:text-stone-700 transition">Marketing</a></li>
+          </ul>
+        </div>
+        <div>
+          <p class="font-semibold text-stone-900 mb-3">Developers</p>
+          <ul class="space-y-2 text-stone-500">
+            <li><a href="#" class="hover:text-stone-700 transition">Platform Documentation</a></li>
+            <li><a href="#" class="hover:text-stone-700 transition">GitHub Repo</a></li>
+          </ul>
+        </div>
+        <div>
+          <p class="font-semibold text-stone-900 mb-3">Company</p>
+          <ul class="space-y-2 text-stone-500">
+            <li><a href="#" class="hover:text-stone-700 transition">Blog</a></li>
+            <li><a href="#" class="hover:text-stone-700 transition">Jobs</a></li>
+          </ul>
+        </div>
+        <div>
+          <p class="font-semibold text-stone-900 mb-3">Legal</p>
+          <ul class="space-y-2 text-stone-500">
+            <li><a href="#" class="hover:text-stone-700 transition">Terms &amp; Policies</a></li>
+            <li><a href="#" class="hover:text-stone-700 transition">Privacy Policy</a></li>
+            <li><a href="#" class="hover:text-stone-700 transition">Trust Center</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="mt-8 pt-8 border-t border-stone-200 text-sm text-stone-400">
+        &copy; 2026 Dust. All rights reserved.
+      </div>
+    </div>
+  </footer>
+
+  <!-- Tab switching script -->
+  <script>
+    function switchTab(tabName) {
+      // Hide all content
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      // Show selected content
+      document.getElementById('content-' + tabName).classList.remove('hidden');
+      // Update tab styles
+      document.querySelectorAll('[id^="tab-"]').forEach(el => {
+        el.classList.remove('tab-active');
+        el.classList.add('text-stone-500');
+      });
+      document.getElementById('tab-' + tabName).classList.add('tab-active');
+      document.getElementById('tab-' + tabName).classList.remove('text-stone-500');
+    }
+  </script>
+
+</body>
+</html>
