@@ -67,7 +67,10 @@ import {
   updateResourceAndPublishEvent,
 } from "@app/temporal/agent_loop/activities/common";
 import { METRICS } from "@app/temporal/agent_loop/activities/instrumentation";
-import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
+import {
+  RUN_MODEL_ACTIVITY_TIMEOUT_SAFETY_MARGIN_MS,
+  RUN_MODEL_MAX_RETRIES,
+} from "@app/temporal/agent_loop/config";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { AgentActionsEvent } from "@app/types/assistant/agent";
@@ -101,6 +104,19 @@ function concatWithNewlineBoundary(
     return previous + "\n" + current;
   }
   return previous + current;
+}
+
+function getRunModelActivityTimeoutDeadlineMs(): number {
+  const { currentAttemptScheduledTimestampMs, startToCloseTimeoutMs } =
+    Context.current().info;
+
+  return (
+    currentAttemptScheduledTimestampMs +
+    Math.max(
+      0,
+      startToCloseTimeoutMs - RUN_MODEL_ACTIVITY_TIMEOUT_SAFETY_MARGIN_MS
+    )
+  );
 }
 
 // This method is used by the multi-actions execution loop to pick the next action to execute and
@@ -603,6 +619,8 @@ export async function runModel(
 
   durationRecorder.record(METRICS.TIME_TO_PROVIDER_CALL);
 
+  const activityTimeoutDeadlineMs = getRunModelActivityTimeoutDeadlineMs();
+
   const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
     modelConversationRes,
     conversation,
@@ -615,6 +633,7 @@ export async function runModel(
     step,
     agentConfiguration,
     model,
+    activityTimeoutDeadlineMs,
     publishAgentError,
     prompt,
     llm,

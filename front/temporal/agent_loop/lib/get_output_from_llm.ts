@@ -19,6 +19,7 @@ const HEARTBEAT_LOG_INTERVAL = 6; // Every minute (6 * 10s)
 // Timeout for waiting on a single LLM event (first or subsequent).
 const LLM_EVENT_TIMEOUT_MINUTES = 2;
 const LLM_EVENT_TIMEOUT_MS = LLM_EVENT_TIMEOUT_MINUTES * 60 * 1000;
+type LLMStreamTimeoutKind = "activity" | "event";
 
 export function resolveStableToolCallName(
   specifications: GetOutputRequestParams["specifications"],
@@ -57,20 +58,38 @@ export function getToolCallStartDeduplicationKeys({
 
 class LLMStreamTimeoutError extends Error {
   constructor(
+    public readonly kind: LLMStreamTimeoutKind,
     public readonly elapsedMs: number,
     public readonly context?: { conversationId: string; step: number }
   ) {
     super(
-      `LLM stream timeout after ${Math.round(elapsedMs / 1000)}s waiting for event`
+      kind === "activity"
+        ? `LLM stream exceeded the activity time budget after ${Math.round(elapsedMs / 1000)}s`
+        : `LLM stream timeout after ${Math.round(elapsedMs / 1000)}s waiting for event`
     );
     this.name = "LLMStreamTimeoutError";
   }
+}
+
+function makeLLMTimeoutResponse(kind: LLMStreamTimeoutKind): GetOutputResponse {
+  return new Err({
+    type: "shouldRetryMessage",
+    content: {
+      type: "llm_timeout_error",
+      message:
+        kind === "activity"
+          ? "LLM stream hit the activity time budget before the step completed"
+          : `LLM stream timeout after ${LLM_EVENT_TIMEOUT_MINUTES} minutes waiting for event`,
+      isRetryable: true,
+    },
+  });
 }
 
 // Wraps an async iterator and ensures heartbeat() is called at regular intervals
 // even when the source is slow to yield values.
 async function* withPeriodicHeartbeat<T>(
   stream: AsyncIterator<T>,
+  activityTimeoutDeadlineMs: number,
   logContext?: {
     workspaceId: string;
     conversationId: string;
@@ -81,12 +100,30 @@ async function* withPeriodicHeartbeat<T>(
   let nextPromise = stream.next();
   let streamExhausted = false;
   let heartbeatCount = 0;
+  const streamStartTimeMs = Date.now();
   let lastEventTimeMs = Date.now();
 
   let heartbeatTimer: NodeJS.Timeout | undefined;
 
   try {
     while (!streamExhausted) {
+      const remainingActivityTimeMs = activityTimeoutDeadlineMs - Date.now();
+
+      if (remainingActivityTimeMs <= 0) {
+        logger.error(
+          {
+            ...logContext,
+            totalElapsedMs: Date.now() - streamStartTimeMs,
+          },
+          "[LLM stream] timeout - activity time budget exceeded"
+        );
+        throw new LLMStreamTimeoutError(
+          "activity",
+          Date.now() - streamStartTimeMs,
+          logContext
+        );
+      }
+
       heartbeatTimer = undefined;
       const result = await Promise.race([
         nextPromise
@@ -98,7 +135,7 @@ async function* withPeriodicHeartbeat<T>(
         new Promise<{ type: "heartbeat" }>((resolve) => {
           heartbeatTimer = setTimeout(
             () => resolve({ type: "heartbeat" }),
-            LLM_HEARTBEAT_INTERVAL_MS
+            Math.min(LLM_HEARTBEAT_INTERVAL_MS, remainingActivityTimeMs)
           );
         }),
       ]);
@@ -110,7 +147,24 @@ async function* withPeriodicHeartbeat<T>(
 
       if (result.type === "heartbeat") {
         heartbeatCount++;
-        const elapsedMs = Date.now() - lastEventTimeMs;
+        const now = Date.now();
+        const elapsedMs = now - lastEventTimeMs;
+
+        if (now >= activityTimeoutDeadlineMs) {
+          logger.error(
+            {
+              ...logContext,
+              heartbeatCount,
+              totalElapsedMs: now - streamStartTimeMs,
+            },
+            "[LLM stream] timeout - activity time budget exceeded"
+          );
+          throw new LLMStreamTimeoutError(
+            "activity",
+            now - streamStartTimeMs,
+            logContext
+          );
+        }
 
         // Check for timeout waiting on event.
         if (elapsedMs >= LLM_EVENT_TIMEOUT_MS) {
@@ -123,7 +177,7 @@ async function* withPeriodicHeartbeat<T>(
             },
             "[LLM stream] timeout - no event received"
           );
-          throw new LLMStreamTimeoutError(elapsedMs, logContext);
+          throw new LLMStreamTimeoutError("event", elapsedMs, logContext);
         }
 
         // Log every minute to track long-waiting LLM calls.
@@ -187,6 +241,7 @@ export async function getOutputFromLLMStream(
     agentConfiguration,
     agentMessage,
     model,
+    activityTimeoutDeadlineMs,
     prompt,
     llm,
     updateResourceAndPublishEvent,
@@ -194,6 +249,21 @@ export async function getOutputFromLLMStream(
 ): Promise<GetOutputResponse> {
   const start = Date.now();
   let timeToFirstEvent: number | undefined = undefined;
+  const logContext = {
+    workspaceId: conversation.owner.sId,
+    conversationId: conversation.sId,
+    step,
+    modelId: model.modelId,
+  };
+
+  if (start >= activityTimeoutDeadlineMs) {
+    logger.error(
+      logContext,
+      "[LLM stream] skipped - activity time budget exhausted"
+    );
+    return makeLLMTimeoutResponse("activity");
+  }
+
   const events = llm.stream(
     {
       conversation: modelConversationRes.value.modelConversation,
@@ -212,15 +282,12 @@ export async function getOutputFromLLMStream(
   let nativeChainOfThought = "";
   const publishedToolCallStartKeys = new Set<string>();
 
-  const logContext = {
-    workspaceId: conversation.owner.sId,
-    conversationId: conversation.sId,
-    step,
-    modelId: model.modelId,
-  };
-
   try {
-    for await (const event of withPeriodicHeartbeat(events, logContext)) {
+    for await (const event of withPeriodicHeartbeat(
+      events,
+      activityTimeoutDeadlineMs,
+      logContext
+    )) {
       timeToFirstEvent = Date.now() - start;
       if (event.type === "error") {
         await flushParserTokens();
@@ -418,14 +485,7 @@ export async function getOutputFromLLMStream(
   } catch (err) {
     if (err instanceof LLMStreamTimeoutError) {
       await flushParserTokens();
-      return new Err({
-        type: "shouldRetryMessage",
-        content: {
-          type: "llm_timeout_error",
-          message: `LLM stream timeout after ${LLM_EVENT_TIMEOUT_MINUTES} minutes waiting for event`,
-          isRetryable: true,
-        },
-      });
+      return makeLLMTimeoutResponse(err.kind);
     }
     throw err;
   }
