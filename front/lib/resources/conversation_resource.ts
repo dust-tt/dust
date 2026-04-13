@@ -187,11 +187,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const workspace = auth.getNonNullableWorkspace();
 
+    const excludedVisibilities: ConversationVisibility[] = ["deleted"];
+    if (excludeTest) {
+      excludedVisibilities.push("test");
+    }
+
     const conversations = await this.model.findAll({
       where: {
         workspaceId: workspace.id,
         id: ids,
-        ...(excludeTest ? { visibility: { [Op.ne]: "test" } } : {}),
+        visibility: { [Op.notIn]: excludedVisibilities },
         ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
       } as WhereOptions<ConversationModel>,
       include: this.getForkedFromInclude(),
