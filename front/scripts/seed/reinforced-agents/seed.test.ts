@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { SeedContext } from "@app/scripts/seed/factories";
@@ -107,6 +108,37 @@ describe("reinforcement seed script integration test", () => {
 
     const feedbacksWithContent = allFeedbacks.filter((f) => f.content !== null);
     expect(feedbacksWithContent).toHaveLength(4);
+
+    // Verify skill suggestions: 2 suggestions for SearchInfoContactWithSuggestion
+    const skillSuggestions =
+      await SkillSuggestionResource.listByWorkspace(authenticator);
+    expect(skillSuggestions).toHaveLength(2);
+
+    const allPending = skillSuggestions.every((s) => s.state === "pending");
+    expect(allPending).toBe(true);
+
+    const allReinforcement = skillSuggestions.every(
+      (s) => s.source === "reinforcement"
+    );
+    expect(allReinforcement).toBe(true);
+
+    // First suggestion has both instruction edits and tool edits
+    const withToolEdits = skillSuggestions.find((s) => {
+      const json = s.toJSON();
+      return json.suggestion.toolEdits && json.suggestion.toolEdits.length > 0;
+    });
+    expect(withToolEdits).toBeDefined();
+
+    // Second suggestion has 2 instruction edits and no tool edits
+    const withOnlyInstructionEdits = skillSuggestions.find((s) => {
+      const json = s.toJSON();
+      return (
+        json.suggestion.instructionEdits &&
+        json.suggestion.instructionEdits.length === 2 &&
+        (!json.suggestion.toolEdits || json.suggestion.toolEdits.length === 0)
+      );
+    });
+    expect(withOnlyInstructionEdits).toBeDefined();
 
     // Verify idempotency
     await seedReinforcement(ctx, { skipAnalytics: true });
