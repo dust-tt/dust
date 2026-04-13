@@ -55,7 +55,7 @@ jobs:
         run: npx tsx src/admin/db.ts && npm run test:ci
       - name: Build Tests Report
         if: always()
-        uses: mikepenz/action-junit-report@v5
+        uses: mikepenz/action-junit-report@v5.6.2
         with:
           report_paths: "**/connectors/junit*.xml"
           detailed_summary: true
