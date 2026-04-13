@@ -87,7 +87,8 @@ export function RunPluginDialog({
         className={cn(
           "w-auto",
           "bg-muted-background dark:bg-muted-background-night",
-          "sm:min-w-[600px] sm:max-w-[1000px]"
+          "sm:min-w-[600px] sm:max-w-[1000px]",
+          "overflow-visible"
         )}
       >
         <DialogHeader className="bg-structure-100 dark:bg-structure-100-night rounded-t-2xl pb-4">
