@@ -1858,6 +1858,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await this.upsertCurrentUserAsEditor(auth);
   }
 
+  async recordReinforcementAnalysisCompletion(): Promise<void> {
+    await this.update({ lastReinforcementAnalysisAt: new Date() });
+  }
+
   /**
    * Efficiently updates MCP server view associations by computing the diff and only
    * deleting/creating what changed.

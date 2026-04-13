@@ -46,10 +46,7 @@ import {
 } from "@app/lib/reinforcement/run_reinforced_analysis";
 import { findConversationsWithSkills } from "@app/lib/reinforcement/selection";
 import type { ReinforcedSkillsOperationType } from "@app/lib/reinforcement/types";
-import {
-  getAuthForWorkspace,
-  recordSkillReinforcementAnalysisCompletion,
-} from "@app/lib/reinforcement/utils";
+import { getAuthForWorkspace } from "@app/lib/reinforcement/utils";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
@@ -1013,5 +1010,9 @@ export async function recordSkillReinforcementWorkflowCompletionActivity({
   skillId: string;
 }): Promise<void> {
   const auth = await getAuthForWorkspace(workspaceId);
-  await recordSkillReinforcementAnalysisCompletion(auth, skillId);
+  const skill = await SkillResource.fetchById(auth, skillId);
+  if (!skill) {
+    throw new Error(`Skill not found: ${skillId}`);
+  }
+  await skill.recordReinforcementAnalysisCompletion();
 }
