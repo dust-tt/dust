@@ -278,9 +278,11 @@ export function useRenameProjectFile({ owner }: { owner: LightWorkspaceType }) {
 export function useCheckProjectName({
   owner,
   initialName = "",
+  whitelistedName,
 }: {
   owner: LightWorkspaceType;
   initialName?: string;
+  whitelistedName?: string;
 }) {
   const { fetcher } = useFetcher();
   const {
@@ -292,9 +294,16 @@ export function useCheckProjectName({
     minLength: 1,
   });
 
+  // If the name matches the whitelisted name (case-insensitive), skip the API
+  // call entirely — the name is available by definition (e.g. when renaming a
+  // space to its current name).
+  const isWhitelisted =
+    !!whitelistedName &&
+    debouncedName.trim().toLowerCase() === whitelistedName.trim().toLowerCase();
+
   const shouldFetch = useMemo(() => {
-    return debouncedName.trim().length > 0;
-  }, [debouncedName]);
+    return debouncedName.trim().length > 0 && !isWhitelisted;
+  }, [debouncedName, isWhitelisted]);
 
   const checkKey = shouldFetch
     ? `/api/w/${owner.sId}/spaces/check-name?name=${encodeURIComponent(debouncedName)}`
@@ -305,8 +314,8 @@ export function useCheckProjectName({
   const { data, isLoading } = useSWRWithDefaults(checkKey, checkFetcher);
 
   return {
-    isNameAvailable: data?.available ?? true,
-    isChecking: isLoading || isDebouncing,
+    isNameAvailable: isWhitelisted || (data?.available ?? true),
+    isChecking: !isWhitelisted && (isLoading || isDebouncing),
     setValue,
   };
 }

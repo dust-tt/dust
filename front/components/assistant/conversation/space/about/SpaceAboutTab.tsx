@@ -3,6 +3,7 @@ import { MembersTable } from "@app/components/assistant/conversation/space/about
 import { ConfirmContext } from "@app/components/Confirm";
 import { useSpaceConversationsSummary } from "@app/hooks/conversations";
 import { useArchiveProject } from "@app/hooks/useArchiveProject";
+import { useCheckProjectName } from "@app/lib/swr/projects";
 import {
   useProjectMetadata,
   useSpaceInfo,
@@ -68,6 +69,16 @@ export function SpaceAboutTab({
 
   const [projectName, setProjectName] = useState(space.name);
   const [isEditingName, setIsEditingName] = useState(false);
+  const {
+    isNameAvailable,
+    isChecking: isCheckingName,
+    setValue: setNameToCheck,
+  } = useCheckProjectName({
+    owner,
+    whitelistedName: space.name,
+  });
+  const nameNotAvailable =
+    projectName.trim().length > 0 && !isCheckingName && !isNameAvailable;
   const [projectDescription, setProjectDescription] = useState(
     projectMetadata?.description ?? ""
   );
@@ -256,6 +267,7 @@ export function SpaceAboutTab({
               disabled={!isProjectEditor}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 setProjectName(e.target.value);
+                setNameToCheck(e.target.value);
                 setIsEditingName(e.target.value.trim() !== space.name.trim());
               }}
               placeholder="Enter project name"
@@ -263,18 +275,29 @@ export function SpaceAboutTab({
             />
             {isEditingName && (
               <>
-                <Button label="Save" variant="highlight" onClick={onSaveName} />
+                <Button
+                  label="Save"
+                  variant="highlight"
+                  onClick={onSaveName}
+                  disabled={nameNotAvailable || isCheckingName}
+                />
                 <Button
                   label="Cancel"
                   variant="outline"
                   onClick={() => {
                     setProjectName(space.name);
+                    setNameToCheck("");
                     setIsEditingName(false);
                   }}
                 />
               </>
             )}
           </div>
+          {isEditingName && nameNotAvailable && (
+            <div className="text-xs text-warning-500">
+              A project or space with this name already exists.
+            </div>
+          )}
         </div>
         <div className="flex w-full flex-col gap-2">
           <div className="heading-lg">Description</div>
