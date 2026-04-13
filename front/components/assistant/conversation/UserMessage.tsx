@@ -446,7 +446,7 @@ export function UserMessage({
           )}
         >
           <Icon visual={ActionTimeIcon} size="xs" />
-          Waiting for agent
+          Waiting for the current step to finish
         </div>
       )}
     </>
