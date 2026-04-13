@@ -197,6 +197,15 @@ export async function sendEmailReplyOnCompletion(
 
     const { auth, agentMessage, conversation } = dataRes.value;
 
+    if (agentMessage.status === "failed") {
+      await sendEmailReplyOnError(
+        authType,
+        agentLoopArgs,
+        agentMessage.error?.message ?? "Agent execution failed."
+      );
+      return;
+    }
+
     if (!(await isEmailAgentsEnabled(authType))) {
       await deleteEmailReplyContext(
         authType.workspaceId,
