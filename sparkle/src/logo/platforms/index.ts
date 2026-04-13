@@ -7,6 +7,7 @@ export { default as AttioLogo } from "./Attio";
 export { default as BigQueryLogo } from "./BigQuery";
 export { default as CanvaLogo } from "./Canva";
 export { default as ChromeLogo } from "./Chrome";
+export { default as ClariLogo } from "./Clari";
 export { default as ClaudeLogo } from "./Claude";
 export { default as CohereLogo } from "./Cohere";
 export { default as ConfluenceLogo } from "./Confluence";

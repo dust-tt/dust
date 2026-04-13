@@ -193,6 +193,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "BigQueryLogo",
   "ToolsIcon",
   "CanvaLogo",
+  "ClariLogo",
   "CommandLineIcon",
   "ConfluenceLogo",
   "DriveLogo",

@@ -3165,6 +3165,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "BigQueryLogo"
   | "ToolsIcon"
   | "CanvaLogo"
+  | "ClariLogo"
   | "CommandLineIcon"
   | "ConfluenceLogo"
   | "DriveLogo"

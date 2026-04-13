@@ -17,6 +17,13 @@ const SERVER_TOKEN_LABELS: Record<string, TokenFieldLabel> = {
     tooltip:
       "You can generate an API key from your Ashby Developer Settings under API Keys.",
   },
+  clari_copilot: {
+    label: "Clari Copilot API Credentials",
+    placeholder: "",
+    tooltip:
+      "Add two custom headers: X-Api-Key and X-Api-Password. " +
+      "You can find your credentials in Clari Copilot under Workspace Settings > Integrations > Clari Copilot API.",
+  },
   front: {
     label: "Front API Token",
     placeholder: "Paste your Front API token",

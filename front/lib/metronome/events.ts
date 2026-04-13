@@ -104,6 +104,7 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   gong: "connectors",
   zendesk: "connectors",
   ashby: "connectors",
+  clari_copilot: "connectors",
 
   // Generation — file/image/sound creation.
   file_generation: "generation",

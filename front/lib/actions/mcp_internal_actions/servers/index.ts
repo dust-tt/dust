@@ -12,6 +12,7 @@ import { default as agentSidekickAgentStateServer } from "@app/lib/api/actions/s
 import { default as agentSidekickContextServer } from "@app/lib/api/actions/servers/agent_sidekick_context";
 import { default as ashbyServer } from "@app/lib/api/actions/servers/ashby";
 import { default as askUserQuestionServer } from "@app/lib/api/actions/servers/ask_user_question";
+import { default as clariCopilotServer } from "@app/lib/api/actions/servers/clari_copilot";
 import { default as commonUtilitiesServer } from "@app/lib/api/actions/servers/common_utilities";
 import { default as confluenceServer } from "@app/lib/api/actions/servers/confluence";
 import { default as conversationFilesServer } from "@app/lib/api/actions/servers/conversation_files";
@@ -118,6 +119,8 @@ export async function getInternalMCPServer(
       return githubServer(auth, agentLoopContext);
     case "ashby":
       return ashbyServer(auth, agentLoopContext);
+    case "clari_copilot":
+      return clariCopilotServer(auth, agentLoopContext);
     case "hubspot":
       return hubspotServer(auth, agentLoopContext);
     case "image_generation":
