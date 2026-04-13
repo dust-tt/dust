@@ -160,49 +160,79 @@ interface PackageDef {
 const METRICS: MetricDef[] = [
   {
     name: "LLM Provider Cost (Programmatic)",
-    event_type_filter: { in_values: ["llm_usage_v2"] },
+    event_type_filter: { in_values: ["llm_usage_v3"] },
     property_filters: [
       { name: "cost_micro_usd", exists: true },
       { name: "is_programmatic_usage", in_values: ["true"] },
+      { name: "api_key_name", exists: true },
+      { name: "model_id", exists: true },
+      { name: "origin", exists: true },
+      { name: "agent_id", exists: true },
     ],
     aggregation_type: "SUM",
     aggregation_key: "cost_micro_usd",
+    group_keys: [["api_key_name"], ["model_id"], ["origin"], ["agent_id"]],
   },
   {
     name: "LLM Provider Cost (User)",
-    event_type_filter: { in_values: ["llm_usage_v2"] },
+    event_type_filter: { in_values: ["llm_usage_v3"] },
     property_filters: [
       { name: "cost_micro_usd", exists: true },
       { name: "is_programmatic_usage", in_values: ["false"] },
+      { name: "user_id", exists: true },
+      { name: "model_id", exists: true },
+      { name: "origin", exists: true },
+      { name: "agent_id", exists: true },
     ],
     aggregation_type: "SUM",
     aggregation_key: "cost_micro_usd",
+    group_keys: [["user_id"], ["model_id"], ["origin"], ["agent_id"]],
   },
   {
     name: "Tool Invocations (Programmatic)",
-    event_type_filter: { in_values: ["tool_use_v2"] },
+    event_type_filter: { in_values: ["tool_use_v3"] },
     property_filters: [
       { name: "count", exists: true },
       { name: "is_programmatic_usage", in_values: ["true"] },
       { name: "tool_category", exists: true },
       { name: "tool_group", exists: true },
+      { name: "api_key_name", exists: true },
+      { name: "origin", exists: true },
+      { name: "agent_id", exists: true },
+      { name: "mcp_server_id", exists: true },
     ],
     aggregation_type: "SUM",
     aggregation_key: "count",
-    group_keys: [["tool_category", "tool_group"]],
+    group_keys: [
+      ["tool_category", "tool_group"],
+      ["api_key_name"],
+      ["origin"],
+      ["agent_id"],
+      ["mcp_server_id"],
+    ],
   },
   {
     name: "Tool Invocations (User)",
-    event_type_filter: { in_values: ["tool_use_v2"] },
+    event_type_filter: { in_values: ["tool_use_v3"] },
     property_filters: [
       { name: "count", exists: true },
       { name: "is_programmatic_usage", in_values: ["false"] },
       { name: "tool_category", exists: true },
       { name: "tool_group", exists: true },
+      { name: "user_id", exists: true },
+      { name: "origin", exists: true },
+      { name: "agent_id", exists: true },
+      { name: "mcp_server_id", exists: true },
     ],
     aggregation_type: "SUM",
     aggregation_key: "count",
-    group_keys: [["tool_category", "tool_group"]],
+    group_keys: [
+      ["tool_category", "tool_group"],
+      ["user_id"],
+      ["origin"],
+      ["agent_id"],
+      ["mcp_server_id"],
+    ],
   },
   {
     name: "Registered Users",
@@ -832,9 +862,11 @@ async function syncMetrics(): Promise<void> {
 
   for (const desired of METRICS) {
     const ex = byName.get(desired.name);
+    const sortGroupKeys = (keys: string[][]) =>
+      [...keys].sort((a, b) => a.join(",").localeCompare(b.join(",")));
     const groupKeysMatch =
-      JSON.stringify(ex?.group_keys ?? []) ===
-      JSON.stringify(desired.group_keys ?? []);
+      JSON.stringify(sortGroupKeys(ex?.group_keys ?? [])) ===
+      JSON.stringify(sortGroupKeys(desired.group_keys ?? []));
     const eventTypeMatch =
       JSON.stringify(ex?.event_type_filter?.in_values?.sort() ?? []) ===
       JSON.stringify([...desired.event_type_filter.in_values].sort());
