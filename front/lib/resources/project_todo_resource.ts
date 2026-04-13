@@ -175,6 +175,33 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     return Array.from(latestBySId.values());
   }
 
+  // Returns the latest version of each logical todo for an explicit target userId
+  // in the given space. Mirrors fetchLatestBySpace but takes an explicit userId
+  // instead of using auth.user — needed by the merge workflow, which acts on
+  // behalf of specific target users rather than the authenticated principal.
+  static async fetchLatestBySpaceForUser(
+    auth: Authenticator,
+    { spaceId, userId }: { spaceId: ModelId; userId: ModelId }
+  ): Promise<ProjectTodoResource[]> {
+    const all = await this.baseFetch(auth, {
+      where: { spaceId, userId },
+      order: [
+        ["sId", "ASC"],
+        ["version", "DESC"],
+      ],
+    });
+
+    // O(n) deduplication — keep the first occurrence per sId (highest version).
+    const latestBySId = new Map<string, ProjectTodoResource>();
+    for (const todo of all) {
+      if (!latestBySId.has(todo.sId)) {
+        latestBySId.set(todo.sId, todo);
+      }
+    }
+
+    return Array.from(latestBySId.values());
+  }
+
   // Returns every version row for (spaceId, userId), across all sIds. Used by the
   // diff algorithm to reconstruct snapshots at arbitrary cutoff dates.
   static async fetchAllVersionsBySpace(
