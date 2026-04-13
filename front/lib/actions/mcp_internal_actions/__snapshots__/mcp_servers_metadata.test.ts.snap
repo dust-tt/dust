@@ -478,8 +478,8 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "search_conversations": "never_ask",
   },
   "project_manager": {
-    "add_file": "low",
-    "attach_to_conversation": "low",
+    "add_file": "never_ask",
+    "attach_to_conversation": "never_ask",
     "edit_description": "low",
     "get_information": "never_ask",
     "retrieve_recent_documents": "never_ask",

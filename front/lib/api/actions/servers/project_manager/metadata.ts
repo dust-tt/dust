@@ -45,7 +45,7 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
           "Optional project to add the file to, will fallback to the conversation's project."
         ),
     },
-    stake: "low",
+    stake: "never_ask",
     displayLabels: {
       running: "Adding file to project",
       done: "Add file to project",
@@ -98,7 +98,7 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
           "Optional project to attach the file to, will fallback to the conversation's project."
         ),
     },
-    stake: "low",
+    stake: "never_ask",
     displayLabels: {
       running: "Attaching project file to conversation",
       done: "Attach project file to conversation",
@@ -147,9 +147,10 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   retrieve_recent_documents: {
     description:
-      "Fetch the most recent documents from this project's knowledge data source (full project scope) and from any content nodes linked in the project context, in reverse chronological order up to the retrieval limit. Respects optional time window. Does not use tag filters.",
+      "Fetch the most recent documents from this project's knowledge data source and from any content nodes linked in the project context, in reverse chronological order up to the retrieval limit. Respects optional time window. Optionally restrict to subtrees using nodeIds.",
     schema: {
       timeFrame: IncludeInputSchema.shape.timeFrame,
+      nodeIds: SearchWithNodesInputSchema.shape.nodeIds,
       dustProject:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
