@@ -12,7 +12,9 @@ import { ConversationBranchResource } from "@app/lib/resources/conversation_bran
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -266,6 +268,86 @@ describe("createConversationFork", () => {
     expect(result.isErr() ? result.error.code : "").toBe(
       "invalid_request_error"
     );
+  });
+
+  it("copies enabled conversation MCP server views into the child conversation", async () => {
+    const { auth, globalSpace, workspace } =
+      await createPrivateApiMockRequest();
+
+    const parentConversation = await createConversation(auth, {
+      title: "Parent conversation",
+      visibility: "unlisted",
+      spaceId: globalSpace.id,
+    });
+
+    const enabledRemoteServer = await RemoteMCPServerFactory.create(workspace);
+    const enabledMCPServerView = await MCPServerViewFactory.create(
+      workspace,
+      enabledRemoteServer.sId,
+      globalSpace
+    );
+    const disabledRemoteServer = await RemoteMCPServerFactory.create(workspace);
+    const disabledMCPServerView = await MCPServerViewFactory.create(
+      workspace,
+      disabledRemoteServer.sId,
+      globalSpace
+    );
+
+    const enabledUpsertResult = await ConversationResource.upsertMCPServerViews(
+      auth,
+      {
+        conversation: parentConversation,
+        mcpServerViews: [enabledMCPServerView],
+        enabled: true,
+        source: "conversation",
+        agentConfigurationId: null,
+      }
+    );
+    expect(enabledUpsertResult.isOk()).toBe(true);
+
+    const disabledUpsertResult =
+      await ConversationResource.upsertMCPServerViews(auth, {
+        conversation: parentConversation,
+        mcpServerViews: [disabledMCPServerView],
+        enabled: false,
+        source: "conversation",
+        agentConfigurationId: null,
+      });
+    expect(disabledUpsertResult.isOk()).toBe(true);
+
+    const userMessage = await createUserMessage(auth, {
+      conversation: parentConversation,
+      rank: 0,
+      content: "Continue with the same tools.",
+    });
+    const sourceMessage = await createAgentMessage(auth, {
+      conversation: parentConversation,
+      rank: 1,
+      parentId: userMessage.id,
+      status: "succeeded",
+    });
+
+    const result = await createConversationFork(auth, {
+      conversationId: parentConversation.sId,
+      sourceMessageId: sourceMessage.sId,
+    });
+
+    expect(result.isErr()).toBe(false);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    const childMCPServerViews = await ConversationResource.fetchMCPServerViews(
+      auth,
+      result.value
+    );
+
+    expect(childMCPServerViews).toHaveLength(1);
+    expect(childMCPServerViews[0].mcpServerViewId).toBe(
+      enabledMCPServerView.id
+    );
+    expect(childMCPServerViews[0].enabled).toBe(true);
+    expect(childMCPServerViews[0].source).toBe("conversation");
   });
 
   it("inherits the parent's requested spaces so the fork does not broaden visibility", async () => {

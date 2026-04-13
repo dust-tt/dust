@@ -2410,10 +2410,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       enabled,
       source,
       agentConfigurationId,
+      transaction,
     }: {
       conversation: ConversationWithoutContentType;
       mcpServerViews: MCPServerViewResource[];
       enabled: boolean;
+      transaction?: Transaction;
     } & (
       | { source: "agent_enabled"; agentConfigurationId: string }
       | { source: "conversation"; agentConfigurationId: null }
@@ -2443,6 +2445,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           conversationId: conversation.id,
           agentConfigurationId: agentConfigurationId ?? null,
         },
+        transaction,
       });
 
     // Cycle through the mcpServerViewIds and create or update the conversationMCPServerView
@@ -2465,18 +2468,22 @@ export class ConversationResource extends BaseResource<ConversationModel> {
               workspaceId: auth.getNonNullableWorkspace().id,
               conversationId: conversation.id,
             },
+            transaction,
           }
         );
       } else {
-        await ConversationMCPServerViewModel.create({
-          conversationId: conversation.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          mcpServerViewId: mcpServerView.id,
-          userId: auth.getNonNullableUser().id,
-          enabled,
-          source,
-          agentConfigurationId,
-        });
+        await ConversationMCPServerViewModel.create(
+          {
+            conversationId: conversation.id,
+            workspaceId: auth.getNonNullableWorkspace().id,
+            mcpServerViewId: mcpServerView.id,
+            userId: auth.getNonNullableUser().id,
+            enabled,
+            source,
+            agentConfigurationId,
+          },
+          { transaction }
+        );
       }
     }
 
