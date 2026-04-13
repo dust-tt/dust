@@ -21,7 +21,7 @@ runs:
   steps:
     - name: Get channel info
       id: slack_channel_info
-      uses: slackapi/slack-github-action@v2.0.0
+      uses: slackapi/slack-github-action@v3.0.1
       with:
         method: conversations.info
         token: ${{ inputs.slack_token }}
