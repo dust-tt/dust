@@ -20,7 +20,7 @@ export const SKILL_AGGREGATION_CONCURRENCY = 8;
 // --- Conversation scoring constants ---
 
 // Skills not modified within this window are excluded from reinforcement.
-export const SKILL_STALENESS_THRESHOLD_DAYS = 14;
+export const SKILL_STALENESS_THRESHOLD_DAYS = 28;
 
 // Skills with pending reinforcement suggestions younger than this are excluded.
 export const PENDING_SUGGESTION_MAX_AGE_DAYS = 30;
