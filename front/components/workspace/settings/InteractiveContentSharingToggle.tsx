@@ -137,9 +137,9 @@ export function InteractiveContentSharingToggle({
             <DialogDescription>
               {isRestrictingToWorkspaceOnly ? (
                 <>
-                  Non-workspace members with email invites will lose
-                  access to all frames in this workspace. Their invites are
-                  preserved and will resume if you change this setting later.
+                  Non-workspace members with email invites will lose access to
+                  all frames in this workspace. Their invites are preserved and
+                  will resume if you change this setting later.
                   {isDowngradingFromAllScopes &&
                     " Public links will also stop working."}
                 </>
