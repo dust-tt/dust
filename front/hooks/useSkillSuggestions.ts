@@ -15,6 +15,15 @@ import type {
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
+interface UseSkillSuggestionsParams {
+  skillId: string | null;
+  disabled?: boolean;
+  kind?: GetSkillSuggestionsQuery["kind"];
+  states?: GetSkillSuggestionsQuery["states"];
+  limit?: number;
+  workspaceId: string;
+}
+
 export function useSkillSuggestions({
   skillId,
   disabled,
@@ -22,14 +31,7 @@ export function useSkillSuggestions({
   states,
   limit,
   workspaceId,
-}: {
-  skillId: string | null;
-  disabled?: boolean;
-  kind?: GetSkillSuggestionsQuery["kind"];
-  states?: GetSkillSuggestionsQuery["states"];
-  limit?: number;
-  workspaceId: string;
-}) {
+}: UseSkillSuggestionsParams) {
   const { fetcher } = useFetcher();
   const suggestionsFetcher: Fetcher<GetSkillSuggestionsResponseBody> = fetcher;
 
@@ -46,7 +48,7 @@ export function useSkillSuggestions({
 
   const queryString = urlParams.toString();
 
-  const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
+  const { data, error, mutate, isValidating } = useSWRWithDefaults(
     skillId
       ? `/api/w/${workspaceId}/assistant/skills/${skillId}/suggestions?${queryString}`
       : null,
@@ -56,20 +58,22 @@ export function useSkillSuggestions({
 
   return {
     suggestions: data?.suggestions ?? emptyArray(),
-    isSuggestionsLoading: isLoading,
+    isSuggestionsLoading: !error && !data && !disabled,
     isSuggestionsError: !!error,
     isSuggestionsValidating: isValidating,
     mutateSuggestions: mutate,
   };
 }
 
+interface UsePatchSkillSuggestionsParams {
+  skillId: string | null;
+  workspaceId: string;
+}
+
 export function usePatchSkillSuggestions({
   skillId,
   workspaceId,
-}: {
-  skillId: string | null;
-  workspaceId: string;
-}) {
+}: UsePatchSkillSuggestionsParams) {
   const sendNotification = useSendNotification();
 
   const patchSuggestions = useCallback(
