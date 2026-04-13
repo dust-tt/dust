@@ -373,7 +373,10 @@ async function executeStepIteration({
   if (actionBlobs.length === 0) {
     return {
       runId,
-      shouldContinue: false,
+      // If the step was already complete (e.g., all actions denied during tool validation), the
+      // loop must continue to the next step so the model sees the denied results and can generate a
+      // follow-up response or try alternatives.
+      shouldContinue: result.stepAlreadyComplete === true,
     };
   }
 

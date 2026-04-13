@@ -37,6 +37,10 @@ import assert from "assert";
 export type RunModelAndCreateActionsResult = {
   actionBlobs: ActionBlob[];
   runId: string | null;
+  // Set when resuming from tool validation and all actions at the step already reached a final
+  // state (e.g., all denied). The step is complete but the loop must continue so the model can see
+  // the results and generate a follow-up response or try alternatives.
+  stepAlreadyComplete?: boolean;
 };
 
 const AGENT_LOOP_COST_CAP_ERROR_CODE = "agent_loop_cost_cap_exceeded";
@@ -234,6 +238,10 @@ async function _runModelAndCreateActionsActivity({
       return {
         actionBlobs: existingData.actionBlobs,
         runId: null,
+        // When all actions already reached a final state (e.g., all denied by the user), the step
+        // is done but the loop must continue to the next step so the model sees the denied results
+        // and can generate a follow-up response or try alternatives.
+        stepAlreadyComplete: existingData.actionBlobs.length === 0,
       };
     }
   }
