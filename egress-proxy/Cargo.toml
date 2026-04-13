@@ -1,0 +1,18 @@
+[package]
+name = "egress-proxy"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "egress-proxy"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0"
+axum = "=0.8.4"
+tokio = { version = "1.38", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+[dev-dependencies]
+tempfile = "3.20.0"
