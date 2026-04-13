@@ -12,7 +12,6 @@ pub struct Config {
     pub tls_key_path: PathBuf,
     pub jwt_secret: String,
     pub temporary_allowlist: TemporaryAllowlist,
-    pub environment: String,
     pub unsafe_skip_ssrf_check: bool,
 }
 
@@ -78,7 +77,6 @@ impl TryFrom<RawConfig> for Config {
             tls_key_path: raw.tls_key,
             jwt_secret: raw.jwt_secret,
             temporary_allowlist,
-            environment: raw.environment,
             unsafe_skip_ssrf_check,
         })
     }

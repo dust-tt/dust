@@ -1,7 +1,3 @@
-// TODO(sandbox-egress): Remove this allowance in the next PR when the proxy runtime starts
-// enforcing allowlist decisions.
-#![allow(dead_code)]
-
 use crate::domain::{normalize_dns_name, normalize_domain_or_ip};
 use anyhow::{anyhow, Result};
 

@@ -1,7 +1,3 @@
-// TODO(sandbox-egress): Remove this allowance in the next PR when connection handling validates
-// forwarder JWTs.
-#![allow(dead_code)]
-
 use jsonwebtoken::{decode, Algorithm, DecodingKey, TokenData, Validation};
 use serde::Deserialize;
 use std::time::{SystemTime, UNIX_EPOCH};
