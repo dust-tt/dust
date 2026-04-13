@@ -46,6 +46,13 @@ type AuditAction =
   | "oauth.initiated"
   | "oauth.authorized"
   | "credentials.created"
+  | "credentials.updated"
+  | "credentials.revoked"
+  | "credentials.invalidated"
+  // MCP Connections.
+  | "mcp_connection.created"
+  | "mcp_connection.deleted"
+  | "oauth.revoked"
   // Projects.
   | "project.joined"
   | "project.left"
@@ -73,6 +80,7 @@ type AuditAction =
   | "space.created"
   | "space.deleted"
   | "space.permissions_updated"
+  | "space.accessed"
   // Conversations.
   | "conversation.accessed"
   // Data Sources.
@@ -80,6 +88,7 @@ type AuditAction =
   | "datasource.updated"
   | "datasource.deleted"
   | "datasource.deleted_admin"
+  | "datasource.reauthorized"
   // Audit Logs.
   | "audit_log.viewed"
   | "audit_log.export_configured";
@@ -267,7 +276,9 @@ type AuditTargetType =
   | "trigger"
   | "api_key"
   | "invitation"
-  | "group";
+  | "group"
+  | "credential"
+  | "mcp_connection";
 
 /**
  * Resource shape required for each audit target type.
