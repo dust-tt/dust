@@ -75,10 +75,10 @@ function makeLLMTimeoutResponse(kind: LLMStreamTimeoutKind): GetOutputResponse {
   return new Err({
     type: "shouldRetryMessage",
     content: {
-      type: "llm_timeout_error",
+      type: kind === "activity" ? "timeout_error" : "llm_timeout_error",
       message:
         kind === "activity"
-          ? "LLM stream hit the activity time budget before the step completed"
+          ? "The agent step hit its time budget before the model response completed"
           : `LLM stream timeout after ${LLM_EVENT_TIMEOUT_MINUTES} minutes waiting for event`,
       isRetryable: true,
     },

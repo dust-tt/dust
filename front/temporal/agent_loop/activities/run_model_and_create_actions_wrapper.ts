@@ -14,6 +14,7 @@ import {
   AGENT_LOOP_SUBAGENT_HARD_CAP,
   checkCostAndSubagentsThresholds,
 } from "@app/temporal/agent_loop/activities/cost_threshold_warnings";
+import { RUN_MODEL_ACTIVITY_TIMEOUT_SAFETY_MARGIN_MS } from "@app/temporal/agent_loop/config";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
@@ -30,6 +31,7 @@ import {
 } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
 import { startActiveObservation } from "@langfuse/tracing";
+import { Context } from "@temporalio/activity";
 import assert from "assert";
 
 export type RunModelAndCreateActionsResult = {
@@ -41,6 +43,18 @@ const AGENT_LOOP_COST_CAP_ERROR_CODE = "agent_loop_cost_cap_exceeded";
 const AGENT_LOOP_SUBAGENT_CAP_ERROR_CODE = "agent_loop_subagent_cap_exceeded";
 const AGENT_LOOP_RESOURCE_CAP_ERROR_MESSAGE =
   "This message used too many resources to continue. Start a new message with a narrower request.";
+
+function getActivityTimeoutDeadlineMs(): number {
+  const { startToCloseTimeoutMs } = Context.current().info;
+
+  return (
+    Date.now() +
+    Math.max(
+      0,
+      startToCloseTimeoutMs - RUN_MODEL_ACTIVITY_TIMEOUT_SAFETY_MARGIN_MS
+    )
+  );
+}
 
 /**
  * Wrapper around runModel and createToolActionsActivity that:
@@ -85,6 +99,8 @@ async function _runModelAndCreateActionsActivity({
   runIds: string[];
   step: number;
 }): Promise<RunModelAndCreateActionsResult | null> {
+  const activityTimeoutDeadlineMs = getActivityTimeoutDeadlineMs();
+
   const runAgentDataRes = await startActiveObservation(
     "get-agent-loop-data",
     () => getAgentLoopData(authType, runAgentArgs)
@@ -234,6 +250,7 @@ async function _runModelAndCreateActionsActivity({
     step,
     functionCallStepContentIds,
     durationRecorder,
+    activityTimeoutDeadlineMs,
   });
 
   if (!modelResult) {
