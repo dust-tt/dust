@@ -16,7 +16,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-interface UserQuestionRequiredProps {
+interface UserAnswerRequiredProps {
   blockedAction: BlockedToolExecution & {
     status: "blocked_user_answer_required";
   };
@@ -26,13 +26,13 @@ interface UserQuestionRequiredProps {
   messageId: string;
 }
 
-export function UserQuestionRequired({
+export function UserAnswerRequired({
   blockedAction,
   triggeringUser,
   owner,
   conversationId,
   messageId,
-}: UserQuestionRequiredProps) {
+}: UserAnswerRequiredProps) {
   const { user } = useAuth();
   const { removeCompletedAction } = useBlockedActionsContext();
   const { answerQuestion, isSubmitting, errorMessage } = useAnswerUserQuestion({
