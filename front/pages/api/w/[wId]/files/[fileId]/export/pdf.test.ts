@@ -212,13 +212,7 @@ describe("POST /api/w/[wId]/files/[fileId]/export/pdf", () => {
   });
 
   it("should export PDF successfully with landscape orientation", async () => {
-    const {
-      req,
-      res,
-
-      user,
-      auth,
-    } = await createPrivateApiMockRequest({
+    const { req, res, user, auth } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",
     });
@@ -258,13 +252,7 @@ describe("POST /api/w/[wId]/files/[fileId]/export/pdf", () => {
   });
 
   it("should sanitize non-ASCII characters in Content-Disposition filename", async () => {
-    const {
-      req,
-      res,
-
-      user,
-      auth,
-    } = await createPrivateApiMockRequest({
+    const { req, res, user, auth } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",
     });
@@ -302,14 +290,30 @@ describe("POST /api/w/[wId]/files/[fileId]/export/pdf", () => {
   });
 
   it("should return 405 for non-POST methods", async () => {
-    const { req, res } = await createPrivateApiMockRequest({
+    const { req, res, user, auth } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
     });
 
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [new Date()],
+    });
+
+    const file = await FileFactory.create(auth, user, {
+      contentType: frameContentType,
+      fileName: "test.frame",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: {
+        conversationId: conversation.sId,
+      },
+    });
+
     req.query = {
       ...req.query,
-      fileId: "some-file",
+      fileId: file.sId,
     };
 
     await handler(req, res);

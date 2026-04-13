@@ -1437,6 +1437,28 @@ export class FileResource extends BaseResource<FileModel> {
     };
   }
 
+  // Files are workspace-scoped (fetchById enforces workspace isolation). Any
+  // workspace member can read a file. More granular use-case checks (space
+  // membership, conversation access) are enforced by individual route handlers
+  // on top of these baseline guards.
+  canRead(auth: Authenticator): boolean {
+    return auth.isUser();
+  }
+
+  // A file can be written by a builder, or by the file's author
+  canWrite(auth: Authenticator, space?: SpaceResource): boolean {
+    const isFileAuthor = this.userId === auth.user()?.id;
+    return isFileAuthor || auth.isBuilder();
+  }
+
+  canAdministrate(auth: Authenticator): boolean {
+    return auth.isAdmin();
+  }
+
+  canReadOrAdministrate(auth: Authenticator): boolean {
+    return this.canRead(auth) || this.canAdministrate(auth);
+  }
+
   isSafeToDisplay(): boolean {
     return ALL_FILE_FORMATS[this.contentType].isSafeToDisplay;
   }
