@@ -1,7 +1,7 @@
 // All mime types are okay to use from the public API.
 
 import {
-  calculateContentSize,
+  computeContentSize,
   getRemoteContentMaxSize,
   isWithinRemoteContentLimit,
 } from "@app/lib/actions/action_output_limits";
@@ -266,7 +266,7 @@ function generateRemoteContentMetadata(content: CallToolResult["content"]): {
 }[] {
   const result = [];
   for (const item of content) {
-    const byteSize = calculateContentSize(item);
+    const byteSize = computeContentSize(item);
     const maxSize = getRemoteContentMaxSize(item);
 
     result.push({ type: item.type, byteSize, maxSize });
@@ -550,9 +550,7 @@ export async function* tryCallMCPTool(
           content: [
             {
               type: "text",
-              text:
-                "The tool execution failed because of a tool result content size exceeding " +
-                "the maximum limit.",
+              text: "The tool execution failed because the tool output exceeds the maximum size limit.",
             },
           ],
         };
