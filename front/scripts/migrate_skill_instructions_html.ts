@@ -164,7 +164,11 @@ async function processSkillsForWorkspace(
     const result = convertSkill(skill, workspace.sId);
     results.push(result);
 
-    if (execute && result.error?.kind !== "conversion-failed" && result.html !== null) {
+    if (
+      execute &&
+      result.error?.kind !== "conversion-failed" &&
+      result.html !== null
+    ) {
       await skill.update({ instructionsHtml: result.html });
     }
   }
