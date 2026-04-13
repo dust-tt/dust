@@ -219,9 +219,7 @@ function renderUserMessageAsText(
   options: RenderConversationAsTextOptions
 ): RenderedMessage {
   const userName = msg.user?.fullName ?? msg.user?.username ?? "User";
-  const email = options.includeEmail
-    ? `, ${msg.user?.email ?? "Unknown"}`
-    : "";
+  const email = options.includeEmail ? `, ${msg.user?.email ?? "Unknown"}` : "";
   const timestamp = formatTimestamp(msg.created, options);
   const unread = formatUnread(msg.created, lastReadMs, options);
   const header =
@@ -238,7 +236,10 @@ function renderUserMessageAsText(
   }
 
   const rawContent = msg.content ?? "";
-  const { text: content, truncated } = truncateMessageContent(rawContent, options);
+  const { text: content, truncated } = truncateMessageContent(
+    rawContent,
+    options
+  );
   const truncatedSuffix = truncated ? " (truncated)" : "";
 
   return {
@@ -269,7 +270,10 @@ function renderAgentMessageAsText(
   }
 
   const rawContent = msg.content ?? "";
-  const { text: content, truncated } = truncateMessageContent(rawContent, options);
+  const { text: content, truncated } = truncateMessageContent(
+    rawContent,
+    options
+  );
   const truncatedSuffix = truncated ? " (truncated)" : "";
 
   const lines: string[] = [];

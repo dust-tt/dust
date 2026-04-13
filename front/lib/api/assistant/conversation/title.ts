@@ -1,5 +1,6 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
+import { renderConversationAsText } from "@app/lib/api/assistant/conversation/render_as_text";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import {
   getSmallWhitelistedModel,
@@ -26,7 +27,6 @@ import { GPT_5_1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { renderConversationAsText } from "@app/lib/api/assistant/conversation/render_as_text";
 
 export async function updateConversationTitle(
   auth: Authenticator,
