@@ -628,7 +628,12 @@ export function useAgentMessageStream({
           // text segment (intermediate segments were flushed to content steps).
           // The server's full message includes ALL text, so we override with
           // the tracked final segment. In non-inline mode, we trust the server.
+          // Only override when tokens were actually streamed (lastClassification
+          // is non-null); otherwise the content was set server-side without
+          // streaming (e.g. prompt commands like /list) and the server's value
+          // should be used as-is.
           const finalSegment = content.current;
+          const hadStreamedTokens = lastClassification.current !== null;
           lastClassification.current = null;
           methods.data.map((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
@@ -644,7 +649,7 @@ export function useAgentMessageStream({
             return {
               ...m,
               ...getLightAgentMessageFromAgentMessage(messageSuccess.message),
-              ...(isInlineActivityEnabled
+              ...(isInlineActivityEnabled && hadStreamedTokens
                 ? { content: finalSegment || null }
                 : {}),
               streaming: {
