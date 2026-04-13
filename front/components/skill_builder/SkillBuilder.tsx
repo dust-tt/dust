@@ -9,6 +9,7 @@ import {
 import { SkillBuilderInstructionsSection } from "@app/components/skill_builder/SkillBuilderInstructionsSection";
 import { SkillBuilderRequestedSpacesSection } from "@app/components/skill_builder/SkillBuilderRequestedSpacesSection";
 import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
+import { SkillBuilderSuggestionsPanel } from "@app/components/skill_builder/SkillBuilderSuggestionsPanel";
 import { SkillBuilderToolsSection } from "@app/components/skill_builder/SkillBuilderToolsSection";
 import { SkillVersionHistoryPicker } from "@app/components/skill_builder/SkillBuilderVersionComparisonBanner";
 import { SkillBuilderVersionComparisonFooter } from "@app/components/skill_builder/SkillBuilderVersionComparisonFooter";
@@ -24,11 +25,13 @@ import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkil
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { getSkillIcon } from "@app/lib/skill";
 import { useSkillHistory } from "@app/lib/swr/skill_configurations";
 import { useSkillEditors } from "@app/lib/swr/skill_editors";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import {
@@ -38,6 +41,10 @@ import {
   ContentMessage,
   cn,
   InformationCircleIcon,
+  LightbulbIcon,
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
   ScrollArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -60,6 +67,7 @@ export default function SkillBuilder({
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
+  const isMobile = useIsMobile();
 
   const { editors } = useSkillEditors({
     owner,
@@ -72,6 +80,15 @@ export default function SkillBuilder({
     disabled: !skill,
     limit: 30,
   });
+
+  const { suggestions } = useSkillSuggestions({
+    skillId: skill?.sId ?? null,
+    states: ["pending"],
+    workspaceId: owner.sId,
+    disabled: !skill,
+  });
+
+  const hasPendingSuggestions = suggestions.length > 0;
 
   const defaultValues = useMemo(() => {
     if (skill) {
@@ -160,6 +177,108 @@ export default function SkillBuilder({
     void form.handleSubmit(handleSubmit)();
   };
 
+  const [isSuggestionsPanelOpen, setIsSuggestionsPanelOpen] = useState(false);
+
+  useEffect(() => {
+    if (hasPendingSuggestions) {
+      setIsSuggestionsPanelOpen(true);
+    }
+  }, [hasPendingSuggestions]);
+
+  const showSuggestionsPanel = skill && !isMobile;
+
+  const leftPanel = (
+    <div className="flex h-full w-full flex-col">
+      <BarHeader
+        variant="default"
+        className="mx-4"
+        title={skill ? `Edit skill ${skill.name}` : "Create new skill"}
+        centerActions={
+          skill && skillHistory ? (
+            <SkillVersionHistoryPicker
+              skill={skill}
+              skillHistory={skillHistory}
+            />
+          ) : undefined
+        }
+        rightActions={
+          <div className="flex items-center gap-2">
+            {showSuggestionsPanel && (
+              <Button
+                icon={LightbulbIcon}
+                size="sm"
+                variant={
+                  isSuggestionsPanelOpen ? "highlight" : "ghost-secondary"
+                }
+                tooltip={
+                  isSuggestionsPanelOpen
+                    ? "Hide suggestions"
+                    : "Show suggestions"
+                }
+                onClick={() => setIsSuggestionsPanelOpen((prev) => !prev)}
+              />
+            )}
+            <BarHeader.ButtonBar variant="close" onClose={handleCancel} />
+          </div>
+        }
+      />
+
+      <ScrollArea className="flex-1">
+        <div className="mx-auto space-y-10 p-8 2xl:max-w-5xl">
+          {extendedSkill && (
+            <ContentMessage
+              title={`Built on ${extendedSkill.name}`}
+              variant="highlight"
+              icon={getSkillIcon(extendedSkill.icon)}
+              size="lg"
+            >
+              A customized version of {extendedSkill.name} with your own
+              guidelines and tools.
+            </ContentMessage>
+          )}
+          {skill?.status === "suggested" && (
+            <ContentMessage
+              title="This is a generated skill suggestion"
+              variant="primary"
+              icon={InformationCircleIcon}
+              size="lg"
+            >
+              This skill was automatically generated based on your workspace's
+              configuration. We recommend reviewing and editing it to match your
+              specific needs before saving.
+            </ContentMessage>
+          )}
+          <SkillBuilderRequestedSpacesSection />
+          <SkillBuilderAgentFacingDescriptionSection />
+          <SkillBuilderInstructionsSection />
+          {hasFeature("sandbox_tools") && <SkillBuilderFilesSection />}
+          <SkillBuilderToolsSection extendedSkill={extendedSkill} />
+          <SkillBuilderSettingsOrComparisonFooter />
+        </div>
+      </ScrollArea>
+      <BarFooter
+        variant="default"
+        className="mx-4 justify-between"
+        leftActions={
+          <Button
+            variant="outline"
+            label="Cancel"
+            onClick={handleCancel}
+            type="button"
+          />
+        }
+        rightActions={
+          <Button
+            variant="highlight"
+            label={isSaving ? "Saving..." : "Save"}
+            onClick={handleSave}
+            disabled={isSaving}
+          />
+        }
+      />
+    </div>
+  );
+
   return (
     <SkillBuilderFormContext.Provider value={form}>
       <FormProvider form={form} asForm={false}>
@@ -171,78 +290,36 @@ export default function SkillBuilder({
               "dark:bg-background-night dark:text-foreground-night"
             )}
           >
-            <div className="flex h-full w-full flex-col">
-              <BarHeader
-                variant="default"
-                className="mx-4"
-                title={skill ? `Edit skill ${skill.name}` : "Create new skill"}
-                centerActions={
-                  skill && skillHistory ? (
-                    <SkillVersionHistoryPicker
-                      skill={skill}
-                      skillHistory={skillHistory}
-                    />
-                  ) : undefined
-                }
-                rightActions={
-                  <BarHeader.ButtonBar variant="close" onClose={handleCancel} />
-                }
-              />
+            {showSuggestionsPanel ? (
+              <ResizablePanelGroup
+                id="skill-builder-layout"
+                direction="horizontal"
+                className="h-full w-full"
+              >
+                <ResizablePanel defaultSize={65} minSize={40}>
+                  <div className="h-full w-full overflow-y-auto">
+                    {leftPanel}
+                  </div>
+                </ResizablePanel>
 
-              <ScrollArea className="flex-1">
-                <div className="mx-auto space-y-10 p-8 2xl:max-w-5xl">
-                  {extendedSkill && (
-                    <ContentMessage
-                      title={`Built on ${extendedSkill.name}`}
-                      variant="highlight"
-                      icon={getSkillIcon(extendedSkill.icon)}
-                      size="lg"
+                {isSuggestionsPanelOpen && (
+                  <>
+                    <ResizableHandle withHandle />
+                    <ResizablePanel
+                      defaultSize={35}
+                      minSize={20}
+                      maxSize={50}
                     >
-                      A customized version of {extendedSkill.name} with your own
-                      guidelines and tools.
-                    </ContentMessage>
-                  )}
-                  {skill?.status === "suggested" && (
-                    <ContentMessage
-                      title="This is a generated skill suggestion"
-                      variant="primary"
-                      icon={InformationCircleIcon}
-                      size="lg"
-                    >
-                      This skill was automatically generated based on your
-                      workspace's configuration. We recommend reviewing and
-                      editing it to match your specific needs before saving.
-                    </ContentMessage>
-                  )}
-                  <SkillBuilderRequestedSpacesSection />
-                  <SkillBuilderAgentFacingDescriptionSection />
-                  <SkillBuilderInstructionsSection />
-                  {hasFeature("sandbox_tools") && <SkillBuilderFilesSection />}
-                  <SkillBuilderToolsSection extendedSkill={extendedSkill} />
-                  <SkillBuilderSettingsOrComparisonFooter />
-                </div>
-              </ScrollArea>
-              <BarFooter
-                variant="default"
-                className="mx-4 justify-between"
-                leftActions={
-                  <Button
-                    variant="outline"
-                    label="Cancel"
-                    onClick={handleCancel}
-                    type="button"
-                  />
-                }
-                rightActions={
-                  <Button
-                    variant="highlight"
-                    label={isSaving ? "Saving..." : "Save"}
-                    onClick={handleSave}
-                    disabled={isSaving}
-                  />
-                }
-              />
-            </div>
+                      <div className="h-full w-full overflow-y-auto">
+                        <SkillBuilderSuggestionsPanel />
+                      </div>
+                    </ResizablePanel>
+                  </>
+                )}
+              </ResizablePanelGroup>
+            ) : (
+              leftPanel
+            )}
           </div>
         </SkillVersionComparisonProvider>
       </FormProvider>
