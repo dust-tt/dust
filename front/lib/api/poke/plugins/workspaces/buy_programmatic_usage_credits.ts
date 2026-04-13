@@ -2,7 +2,10 @@ import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { createEnterpriseCreditPurchase } from "@app/lib/credits/committed";
 import { createMetronomeCredit } from "@app/lib/metronome/client";
-import { getProductFreeMonthlyCreditId } from "@app/lib/metronome/constants";
+import {
+  getCreditTypeProgrammaticUsdId,
+  getProductFreeMonthlyCreditId,
+} from "@app/lib/metronome/constants";
 import {
   getStripeSubscription,
   isEnterpriseSubscription,
@@ -195,11 +198,12 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
       const metronomeCustomerId = workspace.metronomeCustomerId;
 
       if (metronomeCustomerId) {
-        const amountCents = Math.ceil(amountMicroUsd / 10_000);
+        const amount = Math.ceil(amountMicroUsd / 1_000_000);
         const metronomeResult = await createMetronomeCredit({
           metronomeCustomerId,
           productId: getProductFreeMonthlyCreditId(),
-          amountCents,
+          creditTypeId: getCreditTypeProgrammaticUsdId(),
+          amount,
           startingAt: startDate.toISOString(),
           endingBefore: expirationDate.toISOString(),
           name: `Free poke credit ($${originalAmount.toFixed(2)})`,
