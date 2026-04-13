@@ -1002,6 +1002,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       onlyCustom,
       isDefault,
       updatedAfter,
+      reinforcementNotOff,
     }: {
       status?: SkillStatus | SkillStatus[];
       limit?: number;
@@ -1009,6 +1010,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       onlyCustom?: boolean;
       isDefault?: boolean;
       updatedAfter?: Date;
+      reinforcementNotOff?: boolean;
     } = {}
   ): Promise<SkillResource[]> {
     const skills = await this.baseFetch(auth, {
@@ -1016,6 +1018,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         status,
         ...(isDefault !== undefined ? { isDefault } : {}),
         ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
+        ...(reinforcementNotOff ? { reinforcement: { [Op.ne]: "off" } } : {}),
       },
       ...(limit ? { limit } : {}),
       onlyCustom,

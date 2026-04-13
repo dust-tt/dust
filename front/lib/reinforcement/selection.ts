@@ -64,6 +64,7 @@ async function fetchEligibleSkillIds(
     SkillResource.listByWorkspace(auth, {
       status: "active",
       updatedAfter: stalenessThreshold,
+      reinforcementNotOff: true,
     }),
     SkillSuggestionResource.listByWorkspace(auth, {
       states: ["pending"],
@@ -78,10 +79,7 @@ async function fetchEligibleSkillIds(
 
   const eligibleIds = new Set<ModelId>();
   for (const skill of recentSkills) {
-    if (
-      skill.reinforcement !== "off" &&
-      !skillsWithPendingSuggestions.has(skill.id)
-    ) {
+    if (!skillsWithPendingSuggestions.has(skill.id)) {
       eligibleIds.add(skill.id);
     }
   }
