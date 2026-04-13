@@ -90,12 +90,35 @@ enum ConversationService {
         conversationId: String,
         tokenProvider: TokenProvider
     ) async throws {
+        try await setReadStatus(
+            workspaceId: workspaceId, conversationId: conversationId,
+            read: true, tokenProvider: tokenProvider
+        )
+    }
+
+    static func markAsUnread(
+        workspaceId: String,
+        conversationId: String,
+        tokenProvider: TokenProvider
+    ) async throws {
+        try await setReadStatus(
+            workspaceId: workspaceId, conversationId: conversationId,
+            read: false, tokenProvider: tokenProvider
+        )
+    }
+
+    private static func setReadStatus(
+        workspaceId: String,
+        conversationId: String,
+        read: Bool,
+        tokenProvider: TokenProvider
+    ) async throws {
         let endpoint = AppConfig.Endpoints.conversation(
             workspaceId: workspaceId,
             conversationId: conversationId
         )
         try await APIClient.authenticatedSend(
-            endpoint, method: "PATCH", body: MarkAsReadRequest(read: true), tokenProvider: tokenProvider
+            endpoint, method: "PATCH", body: MarkAsReadRequest(read: read), tokenProvider: tokenProvider
         )
     }
 
@@ -110,6 +133,21 @@ enum ConversationService {
             method: "POST",
             body: BulkMarkAsReadRequest(action: "mark_as_read", conversationIds: conversationIds),
             tokenProvider: tokenProvider
+        )
+    }
+
+    static func deleteConversation(
+        workspaceId: String,
+        conversationId: String,
+        tokenProvider: TokenProvider
+    ) async throws {
+        let endpoint = AppConfig.Endpoints.conversation(
+            workspaceId: workspaceId,
+            conversationId: conversationId
+        )
+        let query = buildQuery(endpoint: endpoint, params: ["forceDelete": "true"])
+        try await APIClient.authenticatedSend(
+            query, method: "DELETE", body: EmptyRequest(), tokenProvider: tokenProvider
         )
     }
 
@@ -186,6 +224,8 @@ enum ConversationService {
         let action: String
         let conversationIds: [String]
     }
+
+    private struct EmptyRequest: Encodable {}
 
     private static func buildQuery(endpoint: String, params: [String: String]) -> String {
         var components = URLComponents()
