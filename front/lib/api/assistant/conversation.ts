@@ -2250,9 +2250,6 @@ async function checkMessagesLimit(
         owner.metronomeCustomerId
       );
       if (!hasCreds) {
-        getStatsDClient().increment("assistant.credits_exhausted.blocked", 1, [
-          `workspace_id:${owner.sId}`,
-        ]);
         return new Err({
           status_code: 403,
           api_error: {
