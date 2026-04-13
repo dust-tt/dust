@@ -47,6 +47,7 @@ interface ScoredConversation {
  * Stage 1: Determine which custom skills are eligible for reinforcement.
  *
  * A skill is excluded if:
+ * - Its reinforcement mode is "off".
  * - It has not been modified in the last SKILL_STALENESS_THRESHOLD_DAYS days.
  * - It has pending suggestions with source=reinforcement younger than
  *   PENDING_SUGGESTION_MAX_AGE_DAYS days.
@@ -77,7 +78,10 @@ async function fetchEligibleSkillIds(
 
   const eligibleIds = new Set<ModelId>();
   for (const skill of recentSkills) {
-    if (!skillsWithPendingSuggestions.has(skill.id)) {
+    if (
+      skill.reinforcement !== "off" &&
+      !skillsWithPendingSuggestions.has(skill.id)
+    ) {
       eligibleIds.add(skill.id);
     }
   }
