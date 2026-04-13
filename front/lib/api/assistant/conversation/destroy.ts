@@ -27,8 +27,6 @@ import {
   ProjectTodoConversationModel,
   ProjectTodoSourceModel,
 } from "@app/lib/resources/storage/models/project_todo";
-
-import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_project_digest";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -277,13 +275,6 @@ export async function destroyConversation(
 
   await destroyConversationDataSource(auth, {
     conversation: conversation.toJSON(),
-  });
-
-  await UserProjectDigestModel.destroy({
-    where: {
-      workspaceId: owner.id,
-      sourceConversationId: conversation.id,
-    },
   });
 
   await AgentSuggestionModel.destroy({

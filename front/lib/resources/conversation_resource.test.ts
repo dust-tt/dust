@@ -5699,7 +5699,6 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   "sandbox",
   "skill_suggestion",
   "user_conversation_reads",
-  "user_project_digest",
 ];
 
 const KNOWN_MESSAGE_RELATED_MODELS = [

@@ -1594,7 +1594,6 @@ const KNOWN_SPACE_RELATED_MODELS = [
   "group_vaults",
   "mcp_server_view",
   "project_todo",
-  "user_project_digest",
   "project_metadata",
   "webhook_sources_view",
   "project_todo_state",

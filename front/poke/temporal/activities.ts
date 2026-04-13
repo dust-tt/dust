@@ -62,7 +62,6 @@ import {
   UserMetadataModel,
   UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
-import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_project_digest";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -199,14 +198,6 @@ export async function scrubSpaceActivity({
   // Delete all conversations in the space.
   // Won't scale if there's tons of conversations in spaces.
   await deleteSpaceConversations(auth, space);
-
-  // Delete all user project digests for this space.
-  await UserProjectDigestModel.destroy({
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      spaceId: space.id,
-    },
-  });
 
   // Delete project metadata for this space.
   if (space.isProject()) {
