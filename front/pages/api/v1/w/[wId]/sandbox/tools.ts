@@ -114,7 +114,7 @@ async function handler(
 
       let serverViews = views
         .map((view) => view.toJSON())
-        .filter((sv) => sv.server.name === SANDBOX_TOOL_NAME);
+        .filter((sv) => sv.server.name !== SANDBOX_TOOL_NAME);
 
       // Filter by server name if requested.
       if (isString(server)) {
