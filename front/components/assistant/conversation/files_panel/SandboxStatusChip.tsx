@@ -12,6 +12,8 @@ export function SandboxStatusChip({ status }: SandboxStatusChipProps) {
       return <Chip size="mini" color="success" label="Sandbox running" />;
     case "sleeping":
       return <Chip size="mini" color="warning" label="Sandbox sleeping" />;
+    case "pending_approval":
+      return <Chip size="mini" color="warning" label="Waiting for approval" />;
     case "deleted":
       return <Chip size="mini" color="primary" label="Sandbox expired" />;
     default:

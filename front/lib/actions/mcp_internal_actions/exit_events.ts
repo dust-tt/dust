@@ -70,9 +70,18 @@ export async function getExitOrPauseEvents(
         await action.updateStatus("blocked_child_action_input_required");
 
         // Update the step context to save the resume state.
+        // If the state contains sandboxPaused, propagate it to stepContext so
+        // that validateAction knows to relaunch the workflow on approval.
+        const isSandboxPause =
+          typeof state === "object" &&
+          state !== null &&
+          "execId" in state &&
+          action.stepContext.sandboxOrigin;
+
         await action.updateStepContext({
           ...action.stepContext,
           resumeState: state,
+          ...(isSandboxPause ? { sandboxPaused: true } : {}),
         });
 
         // Yield the blocking events.

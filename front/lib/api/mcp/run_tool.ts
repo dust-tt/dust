@@ -154,7 +154,18 @@ export async function* runToolWithStreaming(
       yield event;
     }
     return;
-  } else {
+  }
+
+  // If getExitOrPauseEvents updated the action status to blocked (e.g., sandbox
+  // pause with empty blockingEvents), stop here. The temporal activity detects
+  // blocked_child_action_input_required after the loop and sets
+  // shouldPauseAgentLoop without publishing any event to the frontend — the
+  // child action's approval dialog was already published by call_tool.
+  if (action.status === "blocked_child_action_input_required") {
+    return;
+  }
+
+  {
     getStatsDClient().increment("mcp_actions_success.count", 1, tags);
 
     const endDate = performance.now();

@@ -2,10 +2,15 @@ use anyhow::{bail, Context};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde::{de::DeserializeOwned, Serialize};
 
-use super::types::{CallToolRequest, CallToolResponse, MCPServerView, SandboxToolsResponse};
+use super::types::{
+    ApprovalStatus, ApprovalStatusResponse, CallToolPendingResponse, CallToolRequest,
+    CallToolResponse, MCPServerView, SandboxToolsResponse,
+};
 
 const SANDBOX_TOKEN_ENV: &str = "DUST_SANDBOX_TOKEN";
 const API_URL_ENV: &str = "DUST_API_URL";
+const APPROVAL_TIMEOUT_ENV: &str = "DUST_APPROVAL_TIMEOUT_SECONDS";
+const DEFAULT_APPROVAL_TIMEOUT_SECONDS: u64 = 600;
 
 pub struct DustApiClient {
     client: reqwest::Client,
@@ -66,31 +71,6 @@ impl DustApiClient {
             .context(format!("failed to parse response from GET {url}"))
     }
 
-    async fn post<B: Serialize, T: DeserializeOwned>(
-        &self,
-        path: &str,
-        body: &B,
-    ) -> anyhow::Result<T> {
-        let url = self.url(path);
-        let resp = self
-            .client
-            .post(&url)
-            .json(body)
-            .send()
-            .await
-            .context(format!("POST {url}"))?;
-
-        let status = resp.status();
-        if !status.is_success() {
-            let body = resp.text().await.unwrap_or_default();
-            bail!("POST {url} returned {status}: {body}");
-        }
-
-        resp.json::<T>()
-            .await
-            .context(format!("failed to parse response from POST {url}"))
-    }
-
     pub async fn list_tools(
         &self,
         server: Option<&str>,
@@ -107,6 +87,29 @@ impl DustApiClient {
         Ok(resp.server_views)
     }
 
+    async fn post_raw<B: Serialize>(
+        &self,
+        path: &str,
+        body: &B,
+    ) -> anyhow::Result<(reqwest::StatusCode, String)> {
+        let url = self.url(path);
+        let resp = self
+            .client
+            .post(&url)
+            .json(body)
+            .send()
+            .await
+            .context(format!("POST {url}"))?;
+
+        let status = resp.status();
+        let body = resp
+            .text()
+            .await
+            .context(format!("failed to read response from POST {url}"))?;
+
+        Ok((status, body))
+    }
+
     pub async fn call_tool(
         &self,
         space_id: &str,
@@ -114,14 +117,96 @@ impl DustApiClient {
         tool_name: &str,
         arguments: Option<serde_json::Value>,
     ) -> anyhow::Result<CallToolResponse> {
+        let call_tool_path = format!("spaces/{space_id}/mcp_server_views/{view_id}/call_tool");
+
         let body = CallToolRequest {
             tool_name: tool_name.to_string(),
-            arguments,
+            arguments: arguments.clone(),
         };
-        self.post(
-            &format!("spaces/{space_id}/mcp_server_views/{view_id}/call_tool"),
-            &body,
-        )
-        .await
+
+        let (status, body_text) = self.post_raw(&call_tool_path, &body).await?;
+
+        if status == reqwest::StatusCode::OK {
+            return serde_json::from_str::<CallToolResponse>(&body_text)
+                .context("failed to parse 200 response");
+        }
+
+        if status == reqwest::StatusCode::ACCEPTED {
+            let pending: CallToolPendingResponse =
+                serde_json::from_str(&body_text).context("failed to parse 202 response")?;
+
+            eprintln!("Waiting for tool approval...");
+
+            let timeout_seconds: u64 = std::env::var(APPROVAL_TIMEOUT_ENV)
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(DEFAULT_APPROVAL_TIMEOUT_SECONDS);
+
+            let start = std::time::Instant::now();
+            loop {
+                if start.elapsed().as_secs() >= timeout_seconds {
+                    bail!("Tool approval timed out after {timeout_seconds}s");
+                }
+
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+                // Poll the same call_tool endpoint via GET with ?actionId=...
+                // Retry on connection errors: the sandbox may have been paused
+                // (freezing this process and breaking the TCP connection). When
+                // it resumes we just retry the poll.
+                let poll_result = match self
+                    .get::<ApprovalStatusResponse>(
+                        &call_tool_path,
+                        &[("actionId", &pending.action_id)],
+                    )
+                    .await
+                {
+                    Ok(r) => r,
+                    Err(_) => {
+                        // Connection likely broken by sandbox pause/resume.
+                        // Sleep briefly and retry.
+                        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                        continue;
+                    }
+                };
+
+                match poll_result.status {
+                    ApprovalStatus::Approved => {
+                        // Re-POST with actionId to execute the approved tool.
+                        // Use post_raw (not post) so we can handle non-200
+                        // success codes explicitly — the generic post method
+                        // treats any 2xx as a valid CallToolResponse.
+                        let mut re_post_body = serde_json::json!({
+                            "toolName": tool_name,
+                            "actionId": pending.action_id,
+                        });
+                        if let Some(args) = &arguments {
+                            re_post_body["arguments"] = args.clone();
+                        }
+
+                        let (re_status, re_body) =
+                            self.post_raw(&call_tool_path, &re_post_body).await?;
+
+                        if re_status == reqwest::StatusCode::OK {
+                            return serde_json::from_str::<CallToolResponse>(&re_body)
+                                .context("failed to parse re-POST response");
+                        }
+
+                        bail!("re-POST call_tool returned {re_status}: {re_body}");
+                    }
+                    ApprovalStatus::Rejected => {
+                        bail!("Tool execution was rejected by the user");
+                    }
+                    ApprovalStatus::Error => {
+                        bail!("Tool approval encountered an error");
+                    }
+                    ApprovalStatus::Pending => {
+                        // Continue polling.
+                    }
+                }
+            }
+        }
+
+        bail!("POST call_tool returned {status}: {body_text}");
     }
 }

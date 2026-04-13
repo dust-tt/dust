@@ -1,3 +1,4 @@
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   autoInternalMCPServerNameToSId,
   getServerTypeAndIdFromSId,
@@ -1098,6 +1099,14 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       email: editedByUser.email,
       userId: editedByUser.sId,
     };
+  }
+
+  getToolPermission(toolName: string): MCPToolStakeLevelType | undefined {
+    const allMetadata = [
+      ...(this.internalToolsMetadata ?? []),
+      ...(this.remoteToolsMetadata ?? []),
+    ];
+    return allMetadata.find((m) => m.toolName === toolName)?.permission;
   }
 
   // Serialization.
