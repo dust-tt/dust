@@ -47,12 +47,28 @@ export interface RenderConversationAsTextOptions {
  * Messages are iterated most-recent-first so that when truncateTotalChars is set, the most recent
  * messages are preserved and older ones are dropped. The final output is in chronological order.
  *
- * The output format is:
- *   >> User (Name) [2024-01-01T00:00:00.000Z]:
+ * Each message is rendered as a header line followed by content. Optional parts (timestamps, email,
+ * unread markers, truncation indicators) appear only when their corresponding option is enabled.
+ *
+ *   >> User (Name, email) [timestamp] (unread): (truncated)
  *   message content
  *
- *   >> Agent (Name) [2024-01-01T00:00:00.000Z]:
+ *   >> Agent (Name) [timestamp] (unread): (truncated)
+ *   Actions:
+ *   - toolName (success)
  *   message content
+ *
+ *   >> Content Fragment [timestamp] (unread):
+ *   ID: ...
+ *   Content-Type: ...
+ *   Title: ...
+ *   Version: ...
+ *   Source URL: ...
+ *
+ *   >> Compaction [timestamp]:
+ *   compaction summary
+ *
+ * Deleted messages render as `[Deleted message]` in place of content.
  */
 export function renderConversationAsText(
   conversation: ConversationType | LightConversationType,
