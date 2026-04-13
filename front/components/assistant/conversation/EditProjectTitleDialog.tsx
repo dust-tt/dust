@@ -1,6 +1,7 @@
 import { useSpaceConversationsSummary } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { useCheckProjectName } from "@app/lib/swr/projects";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -32,6 +33,16 @@ export const EditProjectTitleDialog = ({
   currentTitle,
 }: EditProjectTitleDialogProps) => {
   const [title, setTitle] = useState<string>(currentTitle);
+  const {
+    isNameAvailable,
+    isChecking: isCheckingName,
+    setValue: setNameToCheck,
+  } = useCheckProjectName({
+    owner,
+    whitelistedName: currentTitle,
+  });
+  const nameNotAvailable =
+    title.trim().length > 0 && !isCheckingName && !isNameAvailable;
   const inputRef = useRef<HTMLInputElement>(null);
   const sendNotification = useSendNotification();
   const { mutateSpaceInfo } = useSpaceInfo({
@@ -109,7 +120,10 @@ export const EditProjectTitleDialog = ({
             ref={inputRef}
             placeholder="Enter new title..."
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setNameToCheck(e.target.value);
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -117,12 +131,18 @@ export const EditProjectTitleDialog = ({
               }
             }}
           />
+          {nameNotAvailable && (
+            <div className="text-xs text-warning-500">
+              A project or space with this name already exists.
+            </div>
+          )}
         </DialogContainer>
         <DialogFooter
           rightButtonProps={{
             label: "Save",
             variant: "primary",
             onClick: editTitle,
+            disabled: nameNotAvailable || isCheckingName,
           }}
           leftButtonProps={{
             label: "Cancel",
