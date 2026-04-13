@@ -24,12 +24,12 @@ type ResponseBody = {
   message?: string;
 };
 
-const CommitSegmentStartEventSchema = z.object({
-  type: z.literal("commit.segment.start"),
+const InvoiceFinalizedEventSchema = z.object({
+  type: z.literal("invoice.finalized"),
   customer_id: z.string(),
   contract_id: z.string(),
-  commit_id: z.string(),
-  segment_id: z.string(),
+  start_timestamp: z.string(),
+  end_timestamp: z.string(),
 });
 
 const ContractEndEventSchema = z.object({
@@ -119,97 +119,12 @@ async function handler(
           logger.info({ event }, "[Metronome Webhook] Approaching spend limit");
           break;
 
-        case "commit.segment.start": {
+        case "commit.segment.start":
           logger.info(
             { event },
             "[Metronome Webhook] New commit segment started (credits available)"
           );
-
-          const segmentParsed = CommitSegmentStartEventSchema.safeParse(event);
-          if (!segmentParsed.success) {
-            logger.error(
-              { event, error: segmentParsed.error.message },
-              "[Metronome Webhook] Invalid commit.segment.start event"
-            );
-            break;
-          }
-
-          const {
-            customer_id: segmentCustomerId,
-            contract_id: segmentContractId,
-            commit_id: commitId,
-            segment_id: segmentId,
-          } = segmentParsed.data;
-
-          const segmentWorkspace =
-            await WorkspaceResource.fetchByMetronomeCustomerId(
-              segmentCustomerId
-            );
-          if (!segmentWorkspace) {
-            logger.warn(
-              { customerId: segmentCustomerId },
-              "[Metronome Webhook] commit.segment.start: workspace not found"
-            );
-            break;
-          }
-
-          // Only grant free credits for legacy contracts.
-          const aliasesResult = await getMetronomeContractPackageAliases({
-            metronomeCustomerId: segmentCustomerId,
-            metronomeContractId: segmentContractId,
-          });
-          if (aliasesResult.isErr()) {
-            logger.error(
-              {
-                workspaceId: segmentWorkspace.sId,
-                error: aliasesResult.error,
-              },
-              "[Metronome Webhook] commit.segment.start: failed to get package aliases"
-            );
-            break;
-          }
-          const isLegacy = aliasesResult.value.some((alias) =>
-            PRO_OR_BUSINESS_PACKAGE_ALIASES.has(alias)
-          );
-          if (!isLegacy) {
-            break;
-          }
-
-          // Retrieve the commit's access schedule to find the segment's billing period.
-          const commits = await getMetronomeClient().v1.customers.commits.list({
-            customer_id: segmentCustomerId,
-            commit_id: commitId,
-            include_contract_commits: true,
-          });
-
-          const commit = commits.data?.[0];
-          const scheduleItem = commit?.access_schedule?.schedule_items?.find(
-            (item) => item.id === segmentId
-          );
-          if (!scheduleItem) {
-            logger.error(
-              {
-                workspaceId: segmentWorkspace.sId,
-                commitId,
-                segmentId,
-              },
-              "[Metronome Webhook] commit.segment.start: no matching schedule item found for segment"
-            );
-            break;
-          }
-
-          const billingStart = new Date(scheduleItem.starting_at);
-          const billingEnd = new Date(scheduleItem.ending_before);
-
-          // Fire-and-forget: failure should not block the webhook.
-          void grantMetronomeFreeCredits({
-            workspace: segmentWorkspace,
-            startDate: billingStart,
-            endDate: billingEnd,
-          });
-
           break;
-        }
 
         case "credit.create":
           logger.info(
@@ -316,9 +231,74 @@ async function handler(
           break;
         }
 
-        case "invoice.finalized":
+        case "invoice.finalized": {
           logger.info({ event }, "[Metronome Webhook] Invoice finalized");
+
+          const invoiceParsed = InvoiceFinalizedEventSchema.safeParse(event);
+          if (!invoiceParsed.success) {
+            // Not a contract invoice or missing billing period — skip.
+            break;
+          }
+
+          const {
+            customer_id: invoiceCustomerId,
+            contract_id: invoiceContractId,
+            start_timestamp: startTimestamp,
+            end_timestamp: endTimestamp,
+          } = invoiceParsed.data;
+
+          const invoiceWorkspace =
+            await WorkspaceResource.fetchByMetronomeCustomerId(
+              invoiceCustomerId
+            );
+          if (!invoiceWorkspace) {
+            logger.warn(
+              { customerId: invoiceCustomerId },
+              "[Metronome Webhook] invoice.finalized: workspace not found"
+            );
+            break;
+          }
+
+          // Only grant free credits for legacy contracts.
+          const invoiceAliasesResult = await getMetronomeContractPackageAliases(
+            {
+              metronomeCustomerId: invoiceCustomerId,
+              metronomeContractId: invoiceContractId,
+            }
+          );
+          if (invoiceAliasesResult.isErr()) {
+            logger.error(
+              {
+                workspaceId: invoiceWorkspace.sId,
+                error: invoiceAliasesResult.error,
+              },
+              "[Metronome Webhook] invoice.finalized: failed to get package aliases"
+            );
+            break;
+          }
+          const isLegacy = invoiceAliasesResult.value.some((alias) =>
+            PRO_OR_BUSINESS_PACKAGE_ALIASES.has(alias)
+          );
+          if (!isLegacy) {
+            break;
+          }
+
+          // The invoice covers the period that just ended.
+          // Grant free credits for the next billing period.
+          const invoiceStart = new Date(startTimestamp);
+          const invoiceEnd = new Date(endTimestamp);
+          const periodMs = invoiceEnd.getTime() - invoiceStart.getTime();
+          const nextPeriodEnd = new Date(invoiceEnd.getTime() + periodMs);
+
+          // Fire-and-forget: failure should not block the webhook.
+          void grantMetronomeFreeCredits({
+            workspace: invoiceWorkspace,
+            startDate: invoiceEnd,
+            endDate: nextPeriodEnd,
+          });
+
           break;
+        }
 
         case "invoice.billing_provider_error":
           logger.error(
