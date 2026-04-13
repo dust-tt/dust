@@ -42,7 +42,7 @@ const CASE_STUDIES: Record<string, string> = {
 const LOGO_SETS = {
   default: {
     us: [
-      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+      { name: "decagon", src: "/static/landing/logos/gray/decagon.svg" },
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
       //  { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
       { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
@@ -66,14 +66,14 @@ const LOGO_SETS = {
       { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
       { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
       { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
-      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+      { name: "decagon", src: "/static/landing/logos/gray/decagon.svg" },
       { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
       { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
     ],
   },
   landing: {
     us: [
-      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+      { name: "decagon", src: "/static/landing/logos/gray/decagon.svg" },
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
       // { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
       { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
@@ -97,7 +97,7 @@ const LOGO_SETS = {
       { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
       { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
       { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
-      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+      { name: "decagon", src: "/static/landing/logos/gray/decagon.svg" },
       { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
       { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
     ],
