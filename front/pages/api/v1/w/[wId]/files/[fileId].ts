@@ -147,6 +147,9 @@ async function handler(
           });
         });
         res.setHeader("Content-Type", file.contentType);
+        if (file.contentType === "image/svg+xml" && version === "original") {
+          res.setHeader("Content-Disposition", "attachment");
+        }
         readStream.pipe(res);
         return;
       }
