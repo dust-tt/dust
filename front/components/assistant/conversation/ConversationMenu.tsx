@@ -58,6 +58,7 @@ import {
 import type React from "react";
 import type { ReactElement } from "react";
 import { useCallback, useContext, useEffect, useState } from "react";
+import { useSWRConfig } from "swr";
 
 /**
  * Hook for handling right-click context menu with timing protection
@@ -159,6 +160,7 @@ export function ConversationMenu({
   const clientType = useClientType();
 
   const router = useAppRouter();
+  const { mutate } = useSWRConfig();
 
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") &&
@@ -298,7 +300,14 @@ export function ConversationMenu({
       };
 
       await router.push(
-        getConversationRoute(owner.sId, forkedConversation.sId)
+        getConversationRoute(owner.sId, forkedConversation.sId),
+        undefined,
+        { shallow: true }
+      );
+      void mutate(
+        (key) =>
+          typeof key === "string" &&
+          key.startsWith(`/api/w/${owner.sId}/assistant/conversations?`)
       );
     } catch {
       sendNotification({
@@ -308,7 +317,7 @@ export function ConversationMenu({
     } finally {
       setIsBranchingConversation(false);
     }
-  }, [activeConversationId, owner.sId, router, sendNotification]);
+  }, [activeConversationId, mutate, owner.sId, router, sendNotification]);
 
   if (!activeConversationId) {
     return null;
