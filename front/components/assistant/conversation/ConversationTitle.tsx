@@ -62,7 +62,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
 
   if (spaceId && spaceInfo) {
     breadcrumbItems.push({
-      icon: ArrowLeftIcon,
+      icon: isMobile ? undefined : ArrowLeftIcon,
       label: spaceInfo.name,
       onClick: () => {
         void router.push(getProjectRoute(owner.sId, spaceId), undefined, {
@@ -85,12 +85,14 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
         className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-3"
         onContextMenu={handleRightClick}
       >
-        <Breadcrumbs
-          items={breadcrumbItems}
-          className="dd-privacy-mask"
-          truncateLengthMiddle={isMobile ? undefined : 35}
-          truncateLengthEnd={isMobile ? undefined : 120}
-        />
+        <div className="min-w-0 overflow-scroll">
+          <Breadcrumbs
+            items={breadcrumbItems}
+            className="dd-privacy-mask"
+            truncateLengthMiddle={35}
+            truncateLengthEnd={120}
+          />
+        </div>
         <EditConversationTitleDialog
           isOpen={showRenameDialog}
           onClose={() => setShowRenameDialog(false)}
@@ -101,7 +103,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
         <div className="flex items-center gap-2">
           <Button
             size="sm"
-            label="Files"
+            label={isMobile ? undefined : "Files"}
             icon={AttachmentIcon}
             variant="ghost"
             onClick={() => openPanel({ type: "files" })}
