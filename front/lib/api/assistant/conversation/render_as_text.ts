@@ -66,7 +66,7 @@ export interface RenderConversationAsTextOptions {
  *   >> Compaction [timestamp]:
  *   compaction summary
  *
- * Deleted messages render as `[Deleted message]` in place of content.
+ * Deleted messages render as `Deleted message` in place of content.
  */
 export function renderConversationAsText(
   conversation: ConversationType | LightConversationType,
@@ -166,10 +166,14 @@ function formatUnread(
   lastReadMs: number | null,
   options: RenderConversationAsTextOptions
 ): string | null {
-  if (!options.includeUnread || lastReadMs === null) {
+  if (!options.includeUnread) {
     return null;
   }
-  return createdMs > lastReadMs ? "(unread)" : null;
+  // A message is unread if there is no last-read timestamp or the message was created after it.
+  if (lastReadMs === null || createdMs > lastReadMs) {
+    return "(unread)";
+  }
+  return null;
 }
 
 function truncateMessageContent(
@@ -194,10 +198,9 @@ function renderUserMessageAsText(
   options: RenderConversationAsTextOptions
 ): RenderedMessage {
   const userName = msg.user?.fullName ?? msg.user?.username ?? "User";
-  const email =
-    options.includeEmail && msg.user && "email" in msg.user
-      ? `, ${msg.user.email}`
-      : "";
+  const email = options.includeEmail
+    ? `, ${msg.user?.email ?? "Unknown"}`
+    : "";
   const timestamp = formatTimestamp(msg.created, options);
   const unread = formatUnread(msg.created, lastReadMs, options);
   const header =
@@ -208,7 +211,7 @@ function renderUserMessageAsText(
 
   if (msg.visibility === "deleted") {
     return {
-      text: `${header}\n[Deleted message]\n`,
+      text: `${header}\nDeleted message\n`,
       contentLength: 0,
     };
   }
@@ -239,7 +242,7 @@ function renderAgentMessageAsText(
 
   if (msg.visibility === "deleted") {
     return {
-      text: `${header}\n[Deleted message]\n`,
+      text: `${header}\nDeleted message\n`,
       contentLength: 0,
     };
   }
