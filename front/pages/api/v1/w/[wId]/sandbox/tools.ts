@@ -97,19 +97,16 @@ async function handler(
       }
 
       const conversation = conversationResult.value;
-      const [{ servers: jitServers }, skillServers] = await Promise.all([
-        listAttachments(auth, { conversation }).then((attachments) =>
-          getJITServers(auth, {
-            agentConfiguration: agentConfig,
-            conversation,
-            attachments,
-          })
-        ),
-        resolveSkillMCPServers(auth, {
-          agentConfiguration: agentConfig,
-          conversation,
-        }),
-      ]);
+      const attachments = await listAttachments(auth, { conversation });
+      const { servers: jitServers } = await getJITServers(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+        attachments,
+      });
+      const skillServers = await resolveSkillMCPServers(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+      });
       for (const srv of jitServers) {
         viewIds.add(srv.mcpServerViewId);
       }
