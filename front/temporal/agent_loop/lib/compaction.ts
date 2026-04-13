@@ -191,6 +191,8 @@ async function generateCompactionSummary(
 
   // TODO(compaction): Ensure we don't exceeds the model context size here, as we have no guarantee
   // that the current conversation is not exceeding it already.
+  // TODO(compaction): We may want to be more mechanical about files available to the model in
+  // conversation and projects by including a lsit as part of the summary.
 
   const conv: ModelConversationTypeMultiActions = {
     messages: [

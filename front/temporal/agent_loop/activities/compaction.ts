@@ -1,6 +1,6 @@
 import { Authenticator, type AuthenticatorType } from "@app/lib/auth";
-import type { SupportedModel } from "@app/types/assistant/models/types";
 import { runCompaction } from "@app/temporal/agent_loop/lib/compaction";
+import type { SupportedModel } from "@app/types/assistant/models/types";
 
 export async function compactionActivity(
   authType: AuthenticatorType,

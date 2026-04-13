@@ -133,12 +133,12 @@ import {
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
-import type { SupportedModel } from "@app/types/assistant/models/types";
 import {
   isAgentMention,
   isUserMention,
   toMentionType,
 } from "@app/types/assistant/mentions";
+import type { SupportedModel } from "@app/types/assistant/models/types";
 import type {
   ContentFragmentContextType,
   ContentFragmentType,
