@@ -1,15 +1,10 @@
 mod config;
-mod domain;
-mod handshake;
 mod health;
-mod jwt;
-mod policy;
 mod server;
-mod tls;
 
 use anyhow::Result;
 use config::Config;
-use tracing::{error, info};
+use tracing::error;
 
 #[tokio::main]
 async fn main() {
@@ -23,12 +18,6 @@ async fn run() -> Result<()> {
     init_tracing();
 
     let config = Config::from_env()?;
-    info!(
-        listen_addr = %config.listen_addr,
-        health_addr = %config.health_addr,
-        env = %config.environment,
-        "starting egress proxy"
-    );
 
     server::run(config).await
 }

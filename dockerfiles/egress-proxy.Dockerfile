@@ -1,7 +1,5 @@
 FROM rust:1.85.0 AS egress-proxy
 
-RUN apt-get update && apt-get install -y vim htop cmake
-
 WORKDIR /app
 
 COPY /egress-proxy/ .
@@ -10,7 +8,6 @@ COPY /egress-proxy/ .
 # is stable. Existing Rust service Dockerfiles currently run from the Rust image.
 RUN cargo build --release --bin egress-proxy
 
-EXPOSE 4443
 EXPOSE 8080
 
 # Set a default command, it will start the egress proxy service if no command is provided.

@@ -55,9 +55,6 @@ jobs:
           toolchain: stable
           components: cargo, clippy, rustfmt, rust-std, rustc
 
-      - name: Install test dependencies
-        run: sudo apt-get update && sudo apt-get install -y openssl
-
       - name: Setup Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
