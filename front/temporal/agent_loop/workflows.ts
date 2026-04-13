@@ -297,6 +297,9 @@ export async function agentLoopWorkflow({
     });
   } catch (err) {
     const workflowError = err instanceof Error ? err : new Error(String(err));
+    // This activity already turns terminal model/provider failures into a user-facing agent error
+    // when our code regains control. We swallow only the final Temporal StartToClose timeout so the
+    // workflow does not surface that infrastructure timeout as a separate workflow failure.
     const shouldSwallowWorkflowFailure =
       isTerminalRunModelAndCreateActionsTimeout(err);
 
