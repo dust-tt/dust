@@ -224,16 +224,10 @@ describe("sharing grants endpoint", () => {
       const { req, res, auth, user, workspace } =
         await createPrivateApiMockRequest({ method: "POST", role: "user" });
 
-      {
-        sharingPolicy: "workspace_only";
-      }
-      ,
-      {
-        where: {
-          sId: workspace.sId;
-        }
-      }
-      )
+      await WorkspaceModel.update(
+        { sharingPolicy: "workspace_only" },
+        { where: { sId: workspace.sId } }
+      );
 
       const file = await FileFactory.create(auth, user, {
         contentType: frameContentType,
@@ -254,16 +248,10 @@ describe("sharing grants endpoint", () => {
       const { req, res, auth, user, workspace } =
         await createPrivateApiMockRequest({ method: "POST", role: "user" });
 
-      {
-        sharingPolicy: "workspace_only";
-      }
-      ,
-      {
-        where: {
-          sId: workspace.sId;
-        }
-      }
-      )
+      await WorkspaceModel.update(
+        { sharingPolicy: "workspace_only" },
+        { where: { sId: workspace.sId } }
+      );
 
       // Create a second workspace member to invite.
       const member = await UserFactory.basic();
@@ -371,16 +359,10 @@ describe("sharing grants endpoint", () => {
       const { req, res, auth, user, workspace } =
         await createPrivateApiMockRequest({ method: "POST", role: "user" });
 
-      {
-        sharingPolicy: "workspace_only";
-      }
-      ,
-      {
-        where: {
-          sId: workspace.sId;
-        }
-      }
-      )
+      await WorkspaceModel.update(
+        { sharingPolicy: "workspace_only" },
+        { where: { sId: workspace.sId } }
+      );
 
       const member = await UserFactory.basic();
       await MembershipFactory.associate(workspace, member, { role: "user" });
