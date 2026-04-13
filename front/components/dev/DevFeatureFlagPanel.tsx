@@ -361,6 +361,298 @@ function readDockMode(): DockMode {
     : "docked";
 }
 
+// ── Typography override types & config ──
+
+const TYPO_OVERRIDES_KEY = "dust_typo_overrides";
+const TYPO_STYLE_ID = "dust-dev-typo-overrides";
+
+type TypoProp = "fontWeight" | "fontSize" | "lineHeight" | "letterSpacing";
+
+const TYPO_PROP_LABELS: Record<TypoProp, string> = {
+  fontWeight: "weight",
+  fontSize: "size",
+  lineHeight: "line-h",
+  letterSpacing: "spacing",
+};
+
+const TYPO_PROP_CSS: Record<TypoProp, string> = {
+  fontWeight: "font-weight",
+  fontSize: "font-size",
+  lineHeight: "line-height",
+  letterSpacing: "letter-spacing",
+};
+
+interface TypoTokenDefaults {
+  fontWeight: string;
+  fontSize: string;
+  lineHeight: string;
+  letterSpacing: string;
+}
+
+interface TypoToken {
+  label: string;
+  selector: string;
+  defaults: TypoTokenDefaults;
+}
+
+interface TypoGroup {
+  label: string;
+  tokens: TypoToken[];
+}
+
+function typo(
+  label: string,
+  selector: string,
+  fontSize: string,
+  lineHeight: string,
+  letterSpacing: string,
+  fontWeight: string
+): TypoToken {
+  return {
+    label,
+    selector,
+    defaults: { fontWeight, fontSize, lineHeight, letterSpacing },
+  };
+}
+
+const TYPO_GROUPS: TypoGroup[] = [
+  {
+    label: "Labels",
+    tokens: [
+      typo("label-xs", ".s-label-xs", "12px", "16px", "normal", "600"),
+      typo("label-sm", ".s-label-sm", "14px", "20px", "-0.28px", "600"),
+      typo("label-base", ".s-label-base", "16px", "24px", "-0.32px", "600"),
+    ],
+  },
+  {
+    label: "Headings",
+    tokens: [
+      typo("heading-xs", ".s-heading-xs", "12px", "16px", "normal", "600"),
+      typo("heading-sm", ".s-heading-sm", "14px", "20px", "-0.28px", "600"),
+      typo("heading-base", ".s-heading-base", "16px", "24px", "-0.32px", "600"),
+      typo("heading-lg", ".s-heading-lg", "18px", "26px", "-0.36px", "600"),
+      typo("heading-xl", ".s-heading-xl", "20px", "28px", "-0.4px", "600"),
+      typo("heading-2xl", ".s-heading-2xl", "24px", "30px", "-0.96px", "600"),
+      typo("heading-3xl", ".s-heading-3xl", "32px", "36px", "-1.28px", "600"),
+      typo("heading-4xl", ".s-heading-4xl", "40px", "42px", "-2.4px", "500"),
+      typo("heading-5xl", ".s-heading-5xl", "48px", "52px", "-2.88px", "500"),
+    ],
+  },
+  {
+    label: "Copy",
+    tokens: [
+      typo("copy-xs", ".s-copy-xs", "12px", "16px", "normal", "400"),
+      typo("copy-sm", ".s-copy-sm", "14px", "20px", "-0.28px", "400"),
+      typo("copy-base", ".s-copy-base", "16px", "24px", "-0.32px", "400"),
+      typo("copy-lg", ".s-copy-lg", "18px", "26px", "-0.36px", "400"),
+      typo("copy-xl", ".s-copy-xl", "20px", "28px", "-0.4px", "400"),
+    ],
+  },
+  {
+    label: "Mono Headings",
+    tokens: [
+      typo("heading-mono-lg", ".s-heading-mono-lg", "18px", "26px", "-0.36px", "400"),
+      typo("heading-mono-xl", ".s-heading-mono-xl", "20px", "28px", "-0.4px", "400"),
+      typo("heading-mono-2xl", ".s-heading-mono-2xl", "24px", "30px", "-0.96px", "400"),
+    ],
+  },
+];
+
+const ALL_TYPO_TOKENS: Record<string, TypoToken> = {};
+for (const group of TYPO_GROUPS) {
+  for (const token of group.tokens) {
+    ALL_TYPO_TOKENS[token.label] = token;
+  }
+}
+
+// Each token can have overrides for any subset of properties.
+type TypoTokenOverride = Partial<Record<TypoProp, string>>;
+type TypoOverrides = Record<string, TypoTokenOverride>;
+
+function readTypoOverrides(): TypoOverrides {
+  try {
+    return JSON.parse(sessionStorage.getItem(TYPO_OVERRIDES_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+
+function countTypoOverrides(overrides: TypoOverrides): number {
+  let count = 0;
+  for (const tokenOverride of Object.values(overrides)) {
+    count += Object.keys(tokenOverride).length;
+  }
+  return count;
+}
+
+function writeTypoOverrides(overrides: TypoOverrides): void {
+  // Clean up empty token entries.
+  const cleaned: TypoOverrides = {};
+  for (const [key, val] of Object.entries(overrides)) {
+    if (Object.keys(val).length > 0) {
+      cleaned[key] = val;
+    }
+  }
+  if (Object.keys(cleaned).length === 0) {
+    sessionStorage.removeItem(TYPO_OVERRIDES_KEY);
+  } else {
+    sessionStorage.setItem(TYPO_OVERRIDES_KEY, JSON.stringify(cleaned));
+  }
+  injectTypoStyles(cleaned);
+}
+
+function injectTypoStyles(overrides: TypoOverrides): void {
+  let styleEl = document.getElementById(TYPO_STYLE_ID) as HTMLStyleElement;
+
+  if (Object.keys(overrides).length === 0) {
+    styleEl?.remove();
+    return;
+  }
+
+  if (!styleEl) {
+    styleEl = document.createElement("style");
+    styleEl.id = TYPO_STYLE_ID;
+    document.head.appendChild(styleEl);
+  }
+
+  const rules: string[] = [];
+  for (const [tokenName, props] of Object.entries(overrides)) {
+    const token = ALL_TYPO_TOKENS[tokenName];
+    if (!token) {
+      continue;
+    }
+    const declarations = Object.entries(props)
+      .map(([prop, value]) => `${TYPO_PROP_CSS[prop as TypoProp]}: ${value} !important`)
+      .join("; ");
+    if (declarations) {
+      rules.push(`${token.selector} { ${declarations}; }`);
+    }
+  }
+
+  styleEl.textContent = rules.join("\n");
+}
+
+// ── Font family override ──
+
+const FONT_FAMILY_OVERRIDES_KEY = "dust_font_family_overrides";
+const FONT_FAMILY_STYLE_ID = "dust-dev-font-family-overrides";
+const FONT_FAMILY_LINK_ID = "dust-dev-google-font";
+
+interface FontFamilyOverrides {
+  sans?: string;
+  mono?: string;
+}
+
+const POPULAR_FONTS = [
+  "Inter",
+  "Roboto",
+  "Open Sans",
+  "Lato",
+  "Montserrat",
+  "Poppins",
+  "Nunito",
+  "Raleway",
+  "Source Sans 3",
+  "Work Sans",
+  "DM Sans",
+  "Plus Jakarta Sans",
+  "Outfit",
+  "Manrope",
+  "Sora",
+];
+
+const POPULAR_MONO_FONTS = [
+  "JetBrains Mono",
+  "Fira Code",
+  "Source Code Pro",
+  "IBM Plex Mono",
+  "Roboto Mono",
+  "Inconsolata",
+  "Space Mono",
+  "Ubuntu Mono",
+];
+
+function readFontFamilyOverrides(): FontFamilyOverrides {
+  try {
+    return JSON.parse(
+      sessionStorage.getItem(FONT_FAMILY_OVERRIDES_KEY) ?? "{}"
+    );
+  } catch {
+    return {};
+  }
+}
+
+function writeFontFamilyOverrides(overrides: FontFamilyOverrides): void {
+  if (!overrides.sans && !overrides.mono) {
+    sessionStorage.removeItem(FONT_FAMILY_OVERRIDES_KEY);
+  } else {
+    sessionStorage.setItem(
+      FONT_FAMILY_OVERRIDES_KEY,
+      JSON.stringify(overrides)
+    );
+  }
+  injectFontFamilyStyles(overrides);
+}
+
+function injectFontFamilyStyles(overrides: FontFamilyOverrides): void {
+  // Manage the Google Fonts link element.
+  let linkEl = document.getElementById(
+    FONT_FAMILY_LINK_ID
+  ) as HTMLLinkElement | null;
+  let styleEl = document.getElementById(
+    FONT_FAMILY_STYLE_ID
+  ) as HTMLStyleElement | null;
+
+  const fontsToLoad = [overrides.sans, overrides.mono].filter(Boolean);
+
+  if (fontsToLoad.length === 0) {
+    linkEl?.remove();
+    styleEl?.remove();
+    return;
+  }
+
+  // Build Google Fonts URL.
+  const families = fontsToLoad
+    .map((f) => `family=${encodeURIComponent(f!)}:wght@100;200;300;400;500;600;700;800;900`)
+    .join("&");
+  const href = `https://fonts.googleapis.com/css2?${families}&display=swap`;
+
+  if (!linkEl) {
+    linkEl = document.createElement("link");
+    linkEl.id = FONT_FAMILY_LINK_ID;
+    linkEl.rel = "stylesheet";
+    document.head.appendChild(linkEl);
+  }
+  linkEl.href = href;
+
+  // Inject font-family overrides.
+  if (!styleEl) {
+    styleEl = document.createElement("style");
+    styleEl.id = FONT_FAMILY_STYLE_ID;
+    document.head.appendChild(styleEl);
+  }
+
+  const rules: string[] = [];
+  if (overrides.sans) {
+    rules.push(
+      `* { font-family: "${overrides.sans}", sans-serif !important; }`
+    );
+    // Exclude mono elements from sans override.
+    if (!overrides.mono) {
+      rules.push(
+        `.s-font-mono, code, pre, kbd, samp, [class*="heading-mono"] { font-family: "Geist Mono", monospace !important; }`
+      );
+    }
+  }
+  if (overrides.mono) {
+    rules.push(
+      `.s-font-mono, code, pre, kbd, samp, [class*="heading-mono"] { font-family: "${overrides.mono}", monospace !important; }`
+    );
+  }
+
+  styleEl.textContent = rules.join("\n");
+}
+
 const ALL_FLAGS = Object.keys(
   WHITELISTABLE_FEATURES_CONFIG
 ).sort() as WhitelistableFeature[];
@@ -793,6 +1085,656 @@ function ColorOverridePanel({ onClose }: ColorOverridePanelProps) {
   );
 }
 
+// ── Typography override panel ──
+
+interface TypoOverridePanelProps {
+  onClose: () => void;
+}
+
+const TYPO_PROPS: TypoProp[] = [
+  "fontWeight",
+  "fontSize",
+  "lineHeight",
+  "letterSpacing",
+];
+
+function TypoPropInput({
+  prop,
+  value,
+  defaultValue,
+  onChange,
+  onClear,
+}: {
+  prop: TypoProp;
+  value: string | undefined;
+  defaultValue: string;
+  onChange: (value: string) => void;
+  onClear: () => void;
+}) {
+  const isOverridden = value !== undefined;
+  const display = value ?? defaultValue;
+  const [editing, setEditing] = useState<string | null>(null);
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 3,
+      }}
+    >
+      <span
+        style={{
+          fontSize: 10,
+          color: "#9ca3af",
+          width: 42,
+          textAlign: "right" as const,
+        }}
+      >
+        {TYPO_PROP_LABELS[prop]}
+      </span>
+      <input
+        type="text"
+        value={editing ?? display}
+        onChange={(e) => {
+          const v = e.target.value;
+          setEditing(v);
+          if (v.trim()) {
+            onChange(v.trim());
+          }
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        onFocus={(e) => {
+          setEditing(display);
+          e.currentTarget.style.borderColor = "#555";
+          e.currentTarget.style.background = "#0f0f23";
+        }}
+        onBlur={(e) => {
+          setEditing(null);
+          e.currentTarget.style.borderColor = isOverridden
+            ? "#7fdbca55"
+            : "transparent";
+          e.currentTarget.style.background = "transparent";
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.currentTarget.blur();
+          }
+        }}
+        style={{
+          fontSize: 11,
+          fontFamily: "monospace",
+          color: isOverridden ? "#7fdbca" : "#b0b0b8",
+          width: 56,
+          textAlign: "right" as const,
+          background: "transparent",
+          border: isOverridden
+            ? "1px solid #7fdbca55"
+            : "1px solid #333",
+          borderRadius: 3,
+          padding: "2px 4px",
+          outline: "none",
+        }}
+      />
+      {isOverridden && (
+        <button
+          style={{
+            background: "none",
+            border: "none",
+            color: "#666",
+            cursor: "pointer",
+            fontSize: 8,
+            padding: 0,
+            lineHeight: 1,
+          }}
+          onClick={onClear}
+          title="Reset"
+        >
+          {"✕"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function TypoTokenRow({
+  token,
+  override,
+  onSetProp,
+  onClearProp,
+  onClearAll,
+}: {
+  token: TypoToken;
+  override: TypoTokenOverride | undefined;
+  onSetProp: (tokenLabel: string, prop: TypoProp, value: string) => void;
+  onClearProp: (tokenLabel: string, prop: TypoProp) => void;
+  onClearAll: (tokenLabel: string) => void;
+}) {
+  const hasOverrides = override && Object.keys(override).length > 0;
+
+  return (
+    <div
+      style={{
+        padding: "5px 12px 5px 24px",
+        borderBottom: "1px solid #1a1a3a",
+      }}
+    >
+      {/* Token name row */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          marginBottom: 3,
+        }}
+      >
+        <span
+          style={{
+            flex: 1,
+            fontSize: 12,
+            fontFamily: "monospace",
+            color: hasOverrides ? "#e0e0e0" : "#9ca3af",
+          }}
+        >
+          {token.label}
+        </span>
+        {hasOverrides && (
+          <button
+            style={{
+              background: "none",
+              border: "none",
+              color: "#666",
+              cursor: "pointer",
+              fontSize: 9,
+              padding: "0 2px",
+            }}
+            onClick={() => onClearAll(token.label)}
+            title="Reset all properties"
+          >
+            {"reset"}
+          </button>
+        )}
+      </div>
+
+      {/* Property editors */}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 4,
+          paddingLeft: 36,
+        }}
+      >
+        {TYPO_PROPS.map((prop) => (
+          <TypoPropInput
+            key={prop}
+            prop={prop}
+            value={override?.[prop]}
+            defaultValue={token.defaults[prop]}
+            onChange={(v) => onSetProp(token.label, prop, v)}
+            onClear={() => onClearProp(token.label, prop)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FontFamilySection({
+  fontOverrides,
+  onUpdate,
+}: {
+  fontOverrides: FontFamilyOverrides;
+  onUpdate: (overrides: FontFamilyOverrides) => void;
+}) {
+  const [editingSans, setEditingSans] = useState<string | null>(null);
+  const [editingMono, setEditingMono] = useState<string | null>(null);
+  const sansTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const monoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const debouncedUpdateSans = useCallback(
+    (value: string | undefined) => {
+      if (sansTimerRef.current) {
+        clearTimeout(sansTimerRef.current);
+      }
+      sansTimerRef.current = setTimeout(() => {
+        onUpdate({ ...fontOverrides, sans: value });
+      }, 500);
+    },
+    [fontOverrides, onUpdate]
+  );
+
+  const debouncedUpdateMono = useCallback(
+    (value: string | undefined) => {
+      if (monoTimerRef.current) {
+        clearTimeout(monoTimerRef.current);
+      }
+      monoTimerRef.current = setTimeout(() => {
+        onUpdate({ ...fontOverrides, mono: value });
+      }, 500);
+    },
+    [fontOverrides, onUpdate]
+  );
+
+  return (
+    <div style={{ borderBottom: "1px solid #2a2a4a" }}>
+      {/* Sans font */}
+      <div style={{ padding: "6px 12px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            marginBottom: 4,
+          }}
+        >
+          <span style={{ fontSize: 11, color: "#b0b0b8", flex: 1 }}>
+            Sans font
+            <span style={{ color: "#666", marginLeft: 4 }}>
+              (default: Geist)
+            </span>
+          </span>
+          {fontOverrides.sans && (
+            <button
+              style={{
+                background: "none",
+                border: "none",
+                color: "#666",
+                cursor: "pointer",
+                fontSize: 9,
+              }}
+              onClick={() => onUpdate({ ...fontOverrides, sans: undefined })}
+            >
+              {"reset"}
+            </button>
+          )}
+        </div>
+        <input
+          type="text"
+          value={editingSans ?? fontOverrides.sans ?? ""}
+          placeholder="Type a Google Font name..."
+          onChange={(e) => {
+            setEditingSans(e.target.value);
+            debouncedUpdateSans(
+              e.target.value.trim() || undefined
+            );
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onFocus={() => setEditingSans(fontOverrides.sans ?? "")}
+          onBlur={() => setEditingSans(null)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.currentTarget.blur();
+            }
+          }}
+          style={{
+            width: "100%",
+            fontSize: 11,
+            fontFamily: fontOverrides.sans
+              ? `"${fontOverrides.sans}", sans-serif`
+              : "inherit",
+            color: fontOverrides.sans ? "#7fdbca" : "#888",
+            background: "#0f0f23",
+            border: fontOverrides.sans
+              ? "1px solid #7fdbca55"
+              : "1px solid #333",
+            borderRadius: 4,
+            padding: "4px 8px",
+            outline: "none",
+          }}
+        />
+        {/* Quick picks */}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 3,
+            marginTop: 4,
+          }}
+        >
+          {POPULAR_FONTS.map((f) => (
+            <button
+              key={f}
+              style={{
+                fontSize: 9,
+                padding: "1px 5px",
+                border:
+                  fontOverrides.sans === f
+                    ? "1px solid #7fdbca"
+                    : "1px solid #333",
+                borderRadius: 3,
+                background:
+                  fontOverrides.sans === f ? "#7fdbca22" : "transparent",
+                color: fontOverrides.sans === f ? "#7fdbca" : "#888",
+                cursor: "pointer",
+              }}
+              onClick={() => onUpdate({ ...fontOverrides, sans: f })}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Mono font */}
+      <div style={{ padding: "6px 12px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            marginBottom: 4,
+          }}
+        >
+          <span style={{ fontSize: 11, color: "#b0b0b8", flex: 1 }}>
+            Mono font
+            <span style={{ color: "#666", marginLeft: 4 }}>
+              (default: Geist Mono)
+            </span>
+          </span>
+          {fontOverrides.mono && (
+            <button
+              style={{
+                background: "none",
+                border: "none",
+                color: "#666",
+                cursor: "pointer",
+                fontSize: 9,
+              }}
+              onClick={() => onUpdate({ ...fontOverrides, mono: undefined })}
+            >
+              {"reset"}
+            </button>
+          )}
+        </div>
+        <input
+          type="text"
+          value={editingMono ?? fontOverrides.mono ?? ""}
+          placeholder="Type a Google Font name..."
+          onChange={(e) => {
+            setEditingMono(e.target.value);
+            debouncedUpdateMono(
+              e.target.value.trim() || undefined
+            );
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onFocus={() => setEditingMono(fontOverrides.mono ?? "")}
+          onBlur={() => setEditingMono(null)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.currentTarget.blur();
+            }
+          }}
+          style={{
+            width: "100%",
+            fontSize: 11,
+            fontFamily: fontOverrides.mono
+              ? `"${fontOverrides.mono}", monospace`
+              : "inherit",
+            color: fontOverrides.mono ? "#7fdbca" : "#888",
+            background: "#0f0f23",
+            border: fontOverrides.mono
+              ? "1px solid #7fdbca55"
+              : "1px solid #333",
+            borderRadius: 4,
+            padding: "4px 8px",
+            outline: "none",
+          }}
+        />
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 3,
+            marginTop: 4,
+          }}
+        >
+          {POPULAR_MONO_FONTS.map((f) => (
+            <button
+              key={f}
+              style={{
+                fontSize: 9,
+                padding: "1px 5px",
+                border:
+                  fontOverrides.mono === f
+                    ? "1px solid #7fdbca"
+                    : "1px solid #333",
+                borderRadius: 3,
+                background:
+                  fontOverrides.mono === f ? "#7fdbca22" : "transparent",
+                color: fontOverrides.mono === f ? "#7fdbca" : "#888",
+                cursor: "pointer",
+              }}
+              onClick={() => onUpdate({ ...fontOverrides, mono: f })}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TypoOverridePanel({ onClose }: TypoOverridePanelProps) {
+  const [overrides, setOverrides] =
+    useState<TypoOverrides>(readTypoOverrides);
+  const [fontOverrides, setFontOverrides] = useState<FontFamilyOverrides>(
+    readFontFamilyOverrides
+  );
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const overrideCount = countTypoOverrides(overrides);
+  const fontOverrideCount = (fontOverrides.sans ? 1 : 0) + (fontOverrides.mono ? 1 : 0);
+
+  useEffect(() => {
+    injectTypoStyles(readTypoOverrides());
+    injectFontFamilyStyles(readFontFamilyOverrides());
+  }, []);
+
+  const setTokenProp = useCallback(
+    (tokenLabel: string, prop: TypoProp, value: string) => {
+      const next = {
+        ...overrides,
+        [tokenLabel]: { ...overrides[tokenLabel], [prop]: value },
+      };
+      setOverrides(next);
+      writeTypoOverrides(next);
+    },
+    [overrides]
+  );
+
+  const clearTokenProp = useCallback(
+    (tokenLabel: string, prop: TypoProp) => {
+      const tokenOverride = { ...overrides[tokenLabel] };
+      delete tokenOverride[prop];
+      const next = { ...overrides, [tokenLabel]: tokenOverride };
+      setOverrides(next);
+      writeTypoOverrides(next);
+    },
+    [overrides]
+  );
+
+  const clearToken = useCallback(
+    (tokenLabel: string) => {
+      const next = { ...overrides };
+      delete next[tokenLabel];
+      setOverrides(next);
+      writeTypoOverrides(next);
+    },
+    [overrides]
+  );
+
+  const resetAll = useCallback(() => {
+    setOverrides({});
+    writeTypoOverrides({});
+    setFontOverrides({});
+    writeFontFamilyOverrides({});
+  }, []);
+
+  const updateFontOverrides = useCallback((next: FontFamilyOverrides) => {
+    setFontOverrides(next);
+    writeFontFamilyOverrides(next);
+  }, []);
+
+  const toggleGroup = useCallback((label: string) => {
+    setCollapsed((prev) => ({ ...prev, [label]: !prev[label] }));
+  }, []);
+
+  return (
+    <>
+      <div style={S.panelHeader}>
+        <span style={S.headerTitle}>Typography</span>
+        <button style={S.headerBtn} onClick={onClose} title="Close">
+          {"✕"}
+        </button>
+      </div>
+
+      <div style={{ ...S.list, padding: 0 }}>
+        {/* Font family section */}
+        <button
+          onClick={() => toggleGroup("__fonts")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            width: "100%",
+            padding: "8px 12px",
+            background: "none",
+            border: "none",
+            borderBottom: "1px solid #2a2a4a",
+            cursor: "pointer",
+            gap: 6,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 10,
+              color: "#666",
+              width: 12,
+              textAlign: "center" as const,
+            }}
+          >
+            {collapsed["__fonts"] ? "\u25B6" : "\u25BC"}
+          </span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#e0e0e0" }}>
+            Font Family
+          </span>
+          {fontOverrideCount > 0 && (
+            <span
+              style={{
+                fontSize: 9,
+                background: "#7fdbca33",
+                color: "#7fdbca",
+                borderRadius: 8,
+                padding: "1px 6px",
+                marginLeft: "auto",
+              }}
+            >
+              {fontOverrideCount} modified
+            </span>
+          )}
+        </button>
+        {!collapsed["__fonts"] && (
+          <FontFamilySection
+            fontOverrides={fontOverrides}
+            onUpdate={updateFontOverrides}
+          />
+        )}
+
+        {/* Token groups */}
+        {TYPO_GROUPS.map((group) => {
+          const groupOverrideCount = group.tokens.filter(
+            (t) =>
+              overrides[t.label] &&
+              Object.keys(overrides[t.label]).length > 0
+          ).length;
+          const isCollapsed = collapsed[group.label] ?? false;
+
+          return (
+            <div key={group.label}>
+              <button
+                onClick={() => toggleGroup(group.label)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  width: "100%",
+                  padding: "8px 12px",
+                  background: "none",
+                  border: "none",
+                  borderBottom: "1px solid #2a2a4a",
+                  cursor: "pointer",
+                  gap: 6,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: "#666",
+                    width: 12,
+                    textAlign: "center" as const,
+                  }}
+                >
+                  {isCollapsed ? "\u25B6" : "\u25BC"}
+                </span>
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#e0e0e0",
+                  }}
+                >
+                  {group.label}
+                </span>
+                <span style={{ fontSize: 11, color: "#666" }}>
+                  ({group.tokens.length})
+                </span>
+                {groupOverrideCount > 0 && (
+                  <span
+                    style={{
+                      fontSize: 9,
+                      background: "#7fdbca33",
+                      color: "#7fdbca",
+                      borderRadius: 8,
+                      padding: "1px 6px",
+                      marginLeft: "auto",
+                    }}
+                  >
+                    {groupOverrideCount} modified
+                  </span>
+                )}
+              </button>
+
+              {!isCollapsed && (
+                <div>
+                  {group.tokens.map((token) => (
+                    <TypoTokenRow
+                      key={token.label}
+                      token={token}
+                      override={overrides[token.label]}
+                      onSetProp={setTokenProp}
+                      onClearProp={clearTokenProp}
+                      onClearAll={clearToken}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={S.footer}>
+        <span>
+          {overrideCount + fontOverrideCount > 0 && (
+            <button style={S.resetBtn} onClick={resetAll}>
+              Reset all
+            </button>
+          )}
+        </span>
+      </div>
+    </>
+  );
+}
+
 // ── Expanded panel content (shared between docked and floating) ──
 
 interface PanelContentProps {
@@ -998,7 +1940,7 @@ interface DockedToolbarProps {
   onSwitchMode: () => void;
 }
 
-type ExpandedPanel = "flags" | "colors" | null;
+type ExpandedPanel = "flags" | "colors" | "typo" | null;
 
 const DOCKED_PANEL_POS_KEY = "dust_dev_docked_panel_pos";
 
@@ -1031,9 +1973,12 @@ function DockedToolbar({
   } | null>(null);
   const overrideCount = Object.keys(getFeatureFlagOverrides()).length;
   const colorOverrideCount = Object.keys(readColorOverrides()).length;
+  const typoOverrideCount = countTypoOverrides(readTypoOverrides()) +
+    (readFontFamilyOverrides().sans ? 1 : 0) +
+    (readFontFamilyOverrides().mono ? 1 : 0);
 
   const togglePanel = useCallback(
-    (panel: "flags" | "colors") => {
+    (panel: "flags" | "colors" | "typo") => {
       setExpanded(expanded === panel ? null : panel);
     },
     [expanded]
@@ -1116,6 +2061,15 @@ function DockedToolbar({
               <span style={S.dockedBadge}>{colorOverrideCount}</span>
             )}
           </button>
+          <button
+            style={S.dockedTextBtn(expanded === "typo")}
+            onClick={() => togglePanel("typo")}
+          >
+            Typo
+            {typoOverrideCount > 0 && (
+              <span style={S.dockedBadge}>{typoOverrideCount}</span>
+            )}
+          </button>
         </div>
 
         {/* Right: metrics + mode toggle */}
@@ -1174,6 +2128,20 @@ function DockedToolbar({
           <ColorOverridePanel onClose={() => setExpanded(null)} />
         </div>
       )}
+      {expanded === "typo" && (
+        <div
+          style={{
+            ...S.dockedPanel,
+            right: panelPos.right,
+            bottom: panelPos.bottom,
+          }}
+        >
+          <div style={S.dockedPanelDragHandle} onMouseDown={onPanelMouseDown}>
+            <span style={S.dockedPanelGrip}>{"⠿"}</span>
+          </div>
+          <TypoOverridePanel onClose={() => setExpanded(null)} />
+        </div>
+      )}
     </div>
   );
 }
@@ -1204,9 +2172,12 @@ function FloatingPanel({
   const panelRef = useRef<HTMLDivElement>(null);
   const overrideCount = Object.keys(getFeatureFlagOverrides()).length;
   const colorOverrideCount = Object.keys(readColorOverrides()).length;
+  const typoOverrideCount = countTypoOverrides(readTypoOverrides()) +
+    (readFontFamilyOverrides().sans ? 1 : 0) +
+    (readFontFamilyOverrides().mono ? 1 : 0);
 
   const togglePanel = useCallback(
-    (panel: "flags" | "colors") => {
+    (panel: "flags" | "colors" | "typo") => {
       setActivePanel(activePanel === panel ? null : panel);
     },
     [activePanel]
@@ -1311,6 +2282,15 @@ function FloatingPanel({
               <span style={S.dockedBadge}>{colorOverrideCount}</span>
             )}
           </button>
+          <button
+            style={S.dockedTextBtn(activePanel === "typo")}
+            onClick={() => togglePanel("typo")}
+          >
+            Typo
+            {typoOverrideCount > 0 && (
+              <span style={S.dockedBadge}>{typoOverrideCount}</span>
+            )}
+          </button>
         </div>
         <div style={S.dockedSection}>
           <PerfBar metrics={metrics} />
@@ -1334,6 +2314,9 @@ function FloatingPanel({
       {activePanel === "colors" && (
         <ColorOverridePanel onClose={() => setActivePanel(null)} />
       )}
+      {activePanel === "typo" && (
+        <TypoOverridePanel onClose={() => setActivePanel(null)} />
+      )}
     </div>
   );
 }
@@ -1354,8 +2337,10 @@ export function DevFeatureFlagPanel({ serverFlags }: DevFeatureFlagPanelProps) {
   useEffect(() => {
     setDockMode(readDockMode());
     setMounted(true);
-    // Restore color overrides on mount so they persist across navigations.
+    // Restore overrides on mount so they persist across navigations.
     injectColorStyles(readColorOverrides());
+    injectTypoStyles(readTypoOverrides());
+    injectFontFamilyStyles(readFontFamilyOverrides());
   }, []);
 
   // Reserve space at the bottom of the page when docked.
@@ -1451,7 +2436,7 @@ const S = {
     cursor: "pointer" as const,
     background: active ? "#7fdbca22" : "transparent",
     color: active ? "#7fdbca" : "#b0b0b8",
-    fontWeight: active ? 700 : 400,
+    fontWeight: 500,
     display: "inline-flex" as const,
     alignItems: "center" as const,
     gap: 4,
