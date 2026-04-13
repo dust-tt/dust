@@ -42,6 +42,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "suggest_tools": "never_ask",
     "update_suggestions_state": "never_ask",
   },
+  "clari_copilot": {
+    "get_call_details": "never_ask",
+    "search_calls": "never_ask",
+  },
   "ashby": {
     "create_candidate_note": "high",
     "create_referral": "high",
