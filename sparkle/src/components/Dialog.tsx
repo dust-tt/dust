@@ -51,9 +51,24 @@ const heightClasses: Record<DialogHeightType, string> = {
   "2xl": "sm:s-h-2xl",
 };
 
+const DIALOG_VARIANTS = ["default", "command"] as const;
+type DialogVariantType = (typeof DIALOG_VARIANTS)[number];
+
+const variantClasses: Record<DialogVariantType, string> = {
+  default: cn(
+    "s-top-[50%] s-translate-y-[-50%] s-duration-200",
+    "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out",
+    "data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0",
+    "data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95",
+    "data-[state=closed]:s-slide-out-to-left-1/2 data-[state=closed]:s-slide-out-to-top-[48%]",
+    "data-[state=open]:s-slide-in-from-left-1/2 data-[state=open]:s-slide-in-from-top-[48%]"
+  ),
+  command: "s-top-[20%]",
+};
+
 const dialogVariants = cva(
   cn(
-    "s-fixed s-left-[50%] s-top-[50%] s-z-50 s-overflow-hidden s-translate-x-[-50%] s-translate-y-[-50%] s-duration-200 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[state=closed]:s-slide-out-to-left-1/2 data-[state=closed]:s-slide-out-to-top-[48%] data-[state=open]:s-slide-in-from-left-1/2 data-[state=open]:s-slide-in-from-top-[48%]",
+    "s-fixed s-left-[50%] s-z-50 s-overflow-hidden s-translate-x-[-50%]",
     "s-rounded-2xl s-flex s-flex-col s-w-full s-max-w-[calc(100vw-2rem)] s-border s-border s-shadow-lg s-sm:rounded-lg",
     "s-bg-background dark:s-bg-background-night",
     "s-border-border dark:s-border-border-night",
@@ -63,9 +78,11 @@ const dialogVariants = cva(
     variants: {
       size: sizeClasses,
       height: heightClasses,
+      variant: variantClasses,
     },
     defaultVariants: {
       size: "md",
+      variant: "default",
     },
   }
 );
@@ -74,6 +91,7 @@ interface DialogContentProps
   extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   size?: DialogSizeType;
   height?: DialogHeightType;
+  variant?: DialogVariantType;
   trapFocusScope?: boolean;
   isAlertDialog?: boolean;
   preventAutoFocusOnClose?: boolean;
@@ -90,6 +108,7 @@ const DialogContent = React.forwardRef<
       children,
       size,
       height,
+      variant,
       trapFocusScope,
       isAlertDialog,
       preventAutoFocusOnClose = true,
@@ -115,7 +134,7 @@ const DialogContent = React.forwardRef<
         <FocusScope trapped={trapFocusScope} asChild>
           <DialogPrimitive.Content
             ref={ref}
-            className={cn(dialogVariants({ size, height }), className)}
+            className={cn(dialogVariants({ size, height, variant }), className)}
             onInteractOutside={
               isAlertDialog
                 ? (e) => e.preventDefault()

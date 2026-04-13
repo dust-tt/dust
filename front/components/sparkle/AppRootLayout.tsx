@@ -1,5 +1,6 @@
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { WelcomeTourGuideProvider } from "@app/components/assistant/WelcomeTourGuideProvider";
+import { CommandPaletteProvider } from "@app/components/command_palette/CommandPaletteContext";
 import { DesktopNavigationProvider } from "@app/components/navigation/DesktopNavigationContext";
 import { QuickStartGuide } from "@app/components/QuickStartGuide";
 import { useAppHeadSetup } from "@app/hooks/useAppHeadSetup";
@@ -20,12 +21,14 @@ export default function AppRootLayout({
   return (
     <ClientTypeProvider value="web">
       <WelcomeTourGuideProvider>
-        <DesktopNavigationProvider>
-          <InputBarProvider>
-            {children}
-            <QuickStartGuide />
-          </InputBarProvider>
-        </DesktopNavigationProvider>
+        <CommandPaletteProvider>
+          <DesktopNavigationProvider>
+            <InputBarProvider>
+              {children}
+              <QuickStartGuide />
+            </InputBarProvider>
+          </DesktopNavigationProvider>
+        </CommandPaletteProvider>
       </WelcomeTourGuideProvider>
     </ClientTypeProvider>
   );
