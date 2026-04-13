@@ -232,8 +232,8 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                     variant="info"
                     title="Only workspace members can be added"
                   >
-                    Your admin has disabled external sharing. You can only share with people already
-                    in your workspace.
+                    Your admin has disabled external sharing. You can only share
+                    with people already in your workspace.
                   </ContentMessage>
                 )}
                 <fieldset className="flex flex-col gap-2 border-none p-0">
@@ -322,6 +322,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                       <ScrollArea className="max-h-96">
                         {grants
                           .filter((g) => !g.blockedByPolicy)
+                          .sort((a, b) => a.email.localeCompare(b.email))
                           .map((grant) => (
                             <GrantRow
                               key={grant.id}
@@ -336,6 +337,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                             </p>
                             {grants
                               .filter((g) => g.blockedByPolicy)
+                              .sort((a, b) => a.email.localeCompare(b.email))
                               .map((grant) => (
                                 <GrantRow
                                   key={grant.id}
