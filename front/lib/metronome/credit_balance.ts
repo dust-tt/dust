@@ -1,6 +1,7 @@
 import { runOnRedisCache } from "@app/lib/api/redis";
 import { listMetronomeBalances } from "@app/lib/metronome/client";
 import logger from "@app/logger/logger";
+import { getCreditTypeAwuId } from "./constants";
 
 const REDIS_ORIGIN = "metronome_credit_cache" as const;
 const CACHE_TTL_SECONDS = 60;
@@ -77,10 +78,13 @@ async function fetchAndCachePoolCredits(
     return 1;
   }
 
-  const totalBalanceCents = result.value.reduce(
-    (sum, entry) => sum + (entry.balance ?? 0),
-    0
-  );
+  const totalBalanceCents = result.value.reduce((sum, entry) => {
+    const creditTypeId = entry.access_schedule?.credit_type?.id;
+    if (creditTypeId !== getCreditTypeAwuId()) {
+      return sum; // skip non-AWU credits
+    }
+    return sum + (entry.balance ?? 0);
+  }, 0);
 
   await setWorkspacePoolCreditBalance(workspaceSId, totalBalanceCents);
   return totalBalanceCents;
