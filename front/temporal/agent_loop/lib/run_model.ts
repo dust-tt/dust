@@ -113,12 +113,14 @@ export async function runModel(
     step,
     functionCallStepContentIds,
     durationRecorder,
+    activityTimeoutDeadlineMs,
   }: {
     runAgentData: AgentLoopExecutionData;
     runIds: string[];
     step: number;
     functionCallStepContentIds: Record<string, ModelId>;
     durationRecorder: DurationRecorder;
+    activityTimeoutDeadlineMs: number;
   }
 ): Promise<{
   actions: AgentActionsEvent["actions"];
@@ -615,6 +617,7 @@ export async function runModel(
     step,
     agentConfiguration,
     model,
+    activityTimeoutDeadlineMs,
     publishAgentError,
     prompt,
     llm,

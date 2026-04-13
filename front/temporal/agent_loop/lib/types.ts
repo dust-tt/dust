@@ -48,6 +48,7 @@ export type GetOutputRequestParams = {
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
   model: ModelConfigurationType;
+  activityTimeoutDeadlineMs: number;
   publishAgentError: (error: {
     code: string;
     message: string;
