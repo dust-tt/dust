@@ -187,6 +187,31 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     return Array.from(latestBySId.values());
   }
 
+  // Returns the latest version of each logical todo across ALL users for the given
+  // space. Used by MCP tools that need to list todos for all project members.
+  static async fetchLatestAllBySpace(
+    auth: Authenticator,
+    { spaceId }: { spaceId: ModelId }
+  ): Promise<ProjectTodoResource[]> {
+    const all = await this.baseFetch(auth, {
+      where: { spaceId },
+      order: [
+        ["sId", "ASC"],
+        ["version", "DESC"],
+      ],
+    });
+
+    // O(n) deduplication — keep the first occurrence per sId (highest version).
+    const latestBySId = new Map<string, ProjectTodoResource>();
+    for (const todo of all) {
+      if (!latestBySId.has(todo.sId)) {
+        latestBySId.set(todo.sId, todo);
+      }
+    }
+
+    return Array.from(latestBySId.values());
+  }
+
   // Returns every version row for (spaceId, userId), across all sIds. Used by the
   // diff algorithm to reconstruct snapshots at arbitrary cutoff dates.
   static async fetchAllVersionsBySpace(

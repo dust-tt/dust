@@ -60,6 +60,10 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "skill_management", id: 1019 },
       { name: "schedules_management", id: 1020 },
       { name: "project_manager", id: 1021 },
+      {
+        name: "project_todos",
+        id: 1029,
+      },
       { name: "agent_sidekick_context", id: 1022 },
       { name: "agent_sidekick_agent_state", id: 1023 },
       { name: "sandbox", id: 1024 },
