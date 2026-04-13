@@ -1,6 +1,7 @@
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import type { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
+import type { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
@@ -38,6 +39,7 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   // Note: Using spaceId for the FK instead of vaultId as it is not a "ResourceWithSpace" and it's aligned with "requestedSpaceIds".
   declare spaceId: ForeignKey<SpaceModel["id"]> | null;
   declare space: NonAttribute<SpaceModel>;
+  declare forkedFrom?: NonAttribute<ConversationForkModel | null>;
 }
 
 ConversationModel.init(

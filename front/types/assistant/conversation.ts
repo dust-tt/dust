@@ -374,6 +374,13 @@ export type ConversationVisibility = "unlisted" | "deleted" | "test";
 
 export type ConversationMetadata = Record<string, unknown>;
 
+export type ConversationForkedFromType = {
+  parentConversationId: string;
+  sourceMessageId: string;
+  branchedAt: number;
+  user: UserType;
+};
+
 /**
  * A lighter version of Conversation without the content (for menu display).
  *
@@ -394,6 +401,7 @@ export type ConversationWithoutContentType = {
   depth: number;
   metadata: ConversationMetadata;
   branchId: string | null;
+  forkedFrom?: ConversationForkedFromType;
 
   // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];

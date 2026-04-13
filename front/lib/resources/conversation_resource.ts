@@ -10,6 +10,7 @@ import {
   UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import "@app/lib/models/agent/conversation_fork";
 import { REINFORCEMENT_METADATA_KEYS } from "@app/lib/reinforced_agent/types";
 import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -31,6 +32,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
+  ConversationForkedFromType,
   ConversationMCPServerViewType,
   ConversationVisibility,
   ConversationWithoutContentType,
@@ -79,6 +81,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   // User-specific fields (populated when conversations are listed for a user).
   private userParticipation?: UserParticipation;
   private userLastReadAt: Date | null = null;
+  private forkedFromData?: ConversationForkedFromType;
 
   constructor(
     model: ModelStaticWorkspaceAware<ConversationModel>,
@@ -86,6 +89,83 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     private readonly _space: SpaceResource | null
   ) {
     super(ConversationModel, blob);
+  }
+
+  private static getForkedFromInclude() {
+    return [
+      {
+        association: "forkedFrom" as const,
+        required: false,
+        attributes: ["branchedAt", "childConversationId"],
+        include: [
+          {
+            association: "parentConversation" as const,
+            required: true,
+            attributes: ["sId"],
+          },
+          {
+            association: "sourceMessage" as const,
+            required: true,
+            attributes: ["sId"],
+          },
+          {
+            association: "createdByUser" as const,
+            required: true,
+            attributes: [
+              "id",
+              "sId",
+              "createdAt",
+              "provider",
+              "username",
+              "email",
+              "firstName",
+              "lastName",
+              "imageUrl",
+              "lastLoginAt",
+            ],
+          },
+        ],
+      },
+    ];
+  }
+
+  private static getForkedFromData(
+    conversation: ConversationModel
+  ): ConversationForkedFromType | undefined {
+    const fork = conversation.forkedFrom;
+    if (!fork) {
+      return undefined;
+    }
+
+    assert(
+      fork.parentConversation,
+      "Forked conversation parent conversation must be loaded."
+    );
+    assert(
+      fork.sourceMessage,
+      "Forked conversation source message must be loaded."
+    );
+    assert(fork.createdByUser, "Forked conversation creator must be loaded.");
+
+    return {
+      parentConversationId: fork.parentConversation.sId,
+      sourceMessageId: fork.sourceMessage.sId,
+      branchedAt: fork.branchedAt.getTime(),
+      user: new UserResource(
+        UserResource.model,
+        fork.createdByUser.get()
+      ).toJSON(),
+    };
+  }
+
+  private static fromModel(
+    conversation: ConversationModel,
+    space: SpaceResource | null
+  ): ConversationResource {
+    const resource = new this(this.model, conversation.get(), space);
+    resource.forkedFromData = this.getForkedFromData(conversation);
+
+    return resource;
   }
 
   static async fetchByModelIds(
@@ -114,11 +194,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         ...(excludeTest ? { visibility: { [Op.ne]: "test" } } : {}),
         ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
       } as WhereOptions<ConversationModel>,
+      include: this.getForkedFromInclude(),
       transaction,
     });
 
     // Note: no permission filtering here. Callers must ensure the auth is allowed.
-    return conversations.map((c) => new this(this.model, c.get(), null));
+    return conversations.map((c) => this.fromModel(c, null));
+  }
+
+  get forkedFromInfo(): ConversationForkedFromType | undefined {
+    return this.forkedFromData;
   }
 
   get space(): SpaceResource | null {
@@ -296,6 +381,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         ...options.where,
         workspaceId: workspace.id,
       },
+      include: this.getForkedFromInclude(),
       limit: options.limit,
       order: options.order,
     });
@@ -316,13 +402,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));
 
     if (fetchConversationOptions?.dangerouslySkipPermissionFiltering) {
-      return conversations.map(
-        (c) =>
-          new this(
-            this.model,
-            c.get(),
-            c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null
-          )
+      return conversations.map((c) =>
+        this.fromModel(
+          c,
+          c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null
+        )
       );
     }
 
@@ -336,13 +420,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const foundSpaceIds = new Set(spaces.map((s) => s.id));
     const validConversations = conversations
       .filter((c) => c.requestedSpaceIds.every((id) => foundSpaceIds.has(id)))
-      .map(
-        (c) =>
-          new this(
-            this.model,
-            c.get(),
-            c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null
-          )
+      .map((c) =>
+        this.fromModel(
+          c,
+          c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null
+        )
       );
 
     // Create space-to-groups mapping once for efficient permission checks.
@@ -972,6 +1054,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       depth: conversation.depth,
       metadata: conversation.metadata,
       branchId: null,
+      ...(conversation.forkedFromInfo && {
+        forkedFrom: conversation.forkedFromInfo,
+      }),
     });
   }
 
@@ -2690,6 +2775,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       depth: this.depth,
       metadata: this.metadata,
       branchId: null,
+      ...(this.forkedFromInfo && { forkedFrom: this.forkedFromInfo }),
     };
   }
 }
