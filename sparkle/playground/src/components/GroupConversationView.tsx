@@ -1,4 +1,5 @@
 import {
+  ArchiveIcon,
   ArrowDownOnSquareIcon,
   ArrowUpOnSquareIcon,
   Avatar,
@@ -9,12 +10,12 @@ import {
   Card,
   CardGrid,
   ChatBubbleLeftRightIcon,
-  CheckDoubleIcon,
   CheckIcon,
   Checkbox,
-  CircleIcon,
   Chip,
+  CircleIcon,
   Cog6ToothIcon,
+  ContentMessage,
   ConversationListItem,
   DataTable,
   Dialog,
@@ -52,18 +53,18 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  Tooltip,
   ToolsIcon,
+  Tooltip,
   TrashIcon,
   TriangleIcon,
   TypingAnimation,
   UserGroupIcon,
-  XMarkIcon,
   WindIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
-import type { ColumnDef } from "@tanstack/react-table";
 import { cn } from "@sparkle/lib/utils";
+import type { ColumnDef } from "@tanstack/react-table";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { getAgentById } from "../data/agents";
@@ -919,6 +920,12 @@ export function GroupConversationView({
     null
   );
 
+  const [isProjectArchived, setIsProjectArchived] = useState(false);
+  const [archivedAt, setArchivedAt] = useState<Date | null>(null);
+  const [archivedByName, setArchivedByName] = useState<string | null>(null);
+  const [showDeleteProjectDialog, setShowDeleteProjectDialog] = useState(false);
+  const [deleteConfirmDraft, setDeleteConfirmDraft] = useState("");
+
   // Active tab (for switching from suggestion cards)
   const [activeTab, setActiveTab] = useState("conversations");
 
@@ -1355,6 +1362,18 @@ export function GroupConversationView({
     setShowPublicToggleDialog(false);
   };
 
+  const handleArchiveProject = () => {
+    setIsProjectArchived(true);
+    setArchivedAt(new Date());
+    setArchivedByName(users[0]?.fullName ?? users[0]?.email ?? "Unknown");
+  };
+
+  const handleUnarchiveProject = () => {
+    setIsProjectArchived(false);
+    setArchivedAt(null);
+    setArchivedByName(null);
+  };
+
   // Reset room name when space changes
   useEffect(() => {
     setRoomName(space.name);
@@ -1363,6 +1382,11 @@ export function GroupConversationView({
     setIsEditingDescription(false);
     setEditorIds(editorUserIds);
     setIsPublic(spacePublicSettings?.get(space.id) ?? space.isPublic ?? true);
+    setIsProjectArchived(false);
+    setArchivedAt(null);
+    setArchivedByName(null);
+    setShowDeleteProjectDialog(false);
+    setDeleteConfirmDraft("");
   }, [space.id, space.name, spacePublicSettings, space.isPublic]);
 
   useEffect(() => {
@@ -1971,16 +1995,6 @@ export function GroupConversationView({
                     </h3>
                     <CardGrid>
                       {[
-                        {
-                          id: "kickoff",
-                          label: "Get your project running",
-                          icon: MagicIcon,
-                          variant: "highlight" as const,
-                          description:
-                            "Answer a few questions and an agent will fill in your project details.",
-                          onClick: () => {},
-                          isPulsing: true,
-                        },
                         {
                           id: "add-knowledge",
                           label: "Add knowledge",
@@ -2670,14 +2684,28 @@ export function GroupConversationView({
                     <Button variant="outline" icon={MoreIcon} />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem
-                      icon={TrashIcon}
-                      label="Archive project"
-                      variant="warning"
-                    />
+                    {isProjectArchived ? (
+                      <DropdownMenuItem
+                        icon={ArrowUpOnSquareIcon}
+                        label="Unarchive project"
+                        onClick={handleUnarchiveProject}
+                      />
+                    ) : (
+                      <DropdownMenuItem
+                        icon={ArchiveIcon}
+                        label="Archive project"
+                        variant="warning"
+                        onClick={handleArchiveProject}
+                      />
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
+              {isProjectArchived && (
+                <ContentMessage variant="info" size="lg">
+                  This project has been archived.
+                </ContentMessage>
+              )}
               <div className="s-flex s-w-full s-flex-col s-gap-2">
                 <h3 className="s-heading-lg">Name</h3>
                 <div className="s-flex s-w-full s-min-w-0 s-gap-2">
@@ -2808,6 +2836,69 @@ export function GroupConversationView({
                   </>
                 )}
               </div>
+
+              <div className="s-flex s-w-full s-flex-col s-gap-8 s-border-t s-border-border dark:s-border-border-night s-pt-8">
+                <div className="s-flex s-w-full s-flex-col s-gap-3">
+                  <h3 className="s-heading-lg">Danger Zone</h3>
+                  <h4 className="s-heading-base">Archive</h4>
+                  {!isProjectArchived && (
+                    <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                      This project will be removed from the sidebar. Its data
+                      stays intact and can still be used as a data source.
+                    </p>
+                  )}
+                  {isProjectArchived ? (
+                    <div className="s-flex s-flex-col s-gap-3">
+                      {archivedAt && archivedByName && (
+                        <p className="s-text-sm s-text-foreground dark:s-text-foreground-night">
+                          Archived on{" "}
+                          <span className="s-font-medium">
+                            {formatDate(archivedAt)} ·{" "}
+                            {archivedAt.toLocaleTimeString("en-US", {
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })}
+                          </span>{" "}
+                          by{" "}
+                          <span className="s-font-medium">
+                            {archivedByName}
+                          </span>
+                          .
+                        </p>
+                      )}
+                      <div className="s-flex s-w-full s-flex-col s-items-start">
+                        <Button
+                          icon={ArrowUpOnSquareIcon}
+                          variant="outline"
+                          label="Unarchive"
+                          onClick={handleUnarchiveProject}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="s-flex s-w-full s-flex-col s-items-start">
+                      <Button
+                        icon={ArchiveIcon}
+                        variant="warning-secondary"
+                        label="Archive"
+                        onClick={handleArchiveProject}
+                      />
+                    </div>
+                  )}
+                  <h4 className="s-heading-base">Delete</h4>
+                  <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    {`This permanently removes all content—conversations, folders, websites, and data sources. Assistants using this project's tools will be impacted. This cannot be undone.`}
+                  </p>
+                  <div className="s-flex s-w-full s-flex-col s-items-start">
+                    <Button
+                      icon={TrashIcon}
+                      variant="warning"
+                      label="Delete project"
+                      onClick={() => setShowDeleteProjectDialog(true)}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </TabsContent>
@@ -2841,6 +2932,61 @@ export function GroupConversationView({
               label: "Rename",
               variant: "warning",
               onClick: handleNameSaveConfirm,
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete project (playground mockup) */}
+      <Dialog
+        open={showDeleteProjectDialog}
+        onOpenChange={(open: boolean) => {
+          setShowDeleteProjectDialog(open);
+          if (!open) {
+            setDeleteConfirmDraft("");
+          }
+        }}
+      >
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Delete {space.name}?</DialogTitle>
+          </DialogHeader>
+          <DialogContainer className="s-flex s-flex-col s-gap-4">
+            <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              Type{" "}
+              <span className="s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                delete
+              </span>{" "}
+              below to confirm. This permanently removes all project content and
+              cannot be undone.
+            </p>
+            <Input
+              name="delete-confirm"
+              value={deleteConfirmDraft}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setDeleteConfirmDraft(e.target.value)
+              }
+              placeholder="Type delete to confirm"
+              containerClassName="s-w-full"
+            />
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: () => {
+                setShowDeleteProjectDialog(false);
+                setDeleteConfirmDraft("");
+              },
+            }}
+            rightButtonProps={{
+              label: "Delete permanently",
+              variant: "warning",
+              disabled: deleteConfirmDraft.trim().toLowerCase() !== "delete",
+              onClick: () => {
+                setShowDeleteProjectDialog(false);
+                setDeleteConfirmDraft("");
+              },
             }}
           />
         </DialogContent>
