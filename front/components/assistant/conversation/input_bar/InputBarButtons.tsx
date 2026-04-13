@@ -96,7 +96,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       }}
       agents={allAgents}
       showDropdownArrow={false}
-      side={conversation ? "bottom" : "top"}
+      side={conversation ? "top" : "bottom"}
       showFooterButtons={
         actions.includes("agents-list-with-actions") &&
         clientType !== "extension"
