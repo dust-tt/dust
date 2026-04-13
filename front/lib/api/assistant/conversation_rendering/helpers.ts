@@ -126,7 +126,14 @@ export function getSteps(
   if (!supportedModel) {
     return [];
   }
-  const actions = removeNulls(message.actions);
+  // Filter out sandbox-originated actions and their matching function_call
+  // contents: these are nested tool calls that ran inside the sandbox and
+  // whose results are already captured in the parent sandbox bash tool output.
+  const allActions = removeNulls(message.actions);
+  const sandboxOriginCallIds = new Set(
+    allActions.filter((a) => a.sandboxOrigin).map((a) => a.functionCallId)
+  );
+  const actions = allActions.filter((a) => !a.sandboxOrigin);
 
   // We store for each step (identified by its index) the "contents" array (raw model outputs, including
   // text content, reasoning and function calls) and "actions", i.e the function results.
@@ -165,6 +172,14 @@ export function getSteps(
         },
         "agent message step with error content in renderConversationForModelMultiActions"
       );
+      continue;
+    }
+
+    // Skip function_call contents from sandbox-originated actions.
+    if (
+      content.content.type === "function_call" &&
+      sandboxOriginCallIds.has(content.content.value.id)
+    ) {
       continue;
     }
 

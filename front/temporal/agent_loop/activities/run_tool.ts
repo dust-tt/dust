@@ -380,5 +380,16 @@ async function executeToolStreaming(
     }
   }
 
+  // If the generator returned without yielding a terminal event and the action
+  // is blocked (e.g., sandbox paused for tool approval), pause the workflow.
+  // No deferred events are published — the child action's approval dialog was
+  // already published directly by the call_tool endpoint.
+  if (action.status === "blocked_child_action_input_required") {
+    await ConversationResource.markAsActionRequired(auth, {
+      conversation,
+    });
+    return { deferredEvents, shouldPauseAgentLoop: true };
+  }
+
   return { deferredEvents };
 }

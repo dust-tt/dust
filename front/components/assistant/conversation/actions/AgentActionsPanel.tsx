@@ -140,7 +140,11 @@ function AgentActionsPanelContent({
 
   useEffect(() => {
     async function generateParsedContents() {
-      const actions = fullAgentMessage.actions;
+      // Filter out sandbox-originated actions — they are nested tool calls
+      // that ran inside the sandbox and should not appear as separate steps.
+      const actions = fullAgentMessage.actions.filter(
+        (a) => !a.sandboxOrigin
+      );
       const agentConfiguration = fullAgentMessage.configuration;
       const messageId = fullAgentMessage.sId;
       const contents = fullAgentMessage.contents;

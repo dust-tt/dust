@@ -151,9 +151,24 @@ impl DustApiClient {
                 tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
                 // Poll the same call_tool endpoint via GET with ?actionId=...
-                let poll_result: ApprovalStatusResponse = self
-                    .get(&call_tool_path, &[("actionId", &pending.action_id)])
-                    .await?;
+                // Retry on connection errors: the sandbox may have been paused
+                // (freezing this process and breaking the TCP connection). When
+                // it resumes we just retry the poll.
+                let poll_result = match self
+                    .get::<ApprovalStatusResponse>(
+                        &call_tool_path,
+                        &[("actionId", &pending.action_id)],
+                    )
+                    .await
+                {
+                    Ok(r) => r,
+                    Err(_) => {
+                        // Connection likely broken by sandbox pause/resume.
+                        // Sleep briefly and retry.
+                        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                        continue;
+                    }
+                };
 
                 match poll_result.status {
                     ApprovalStatus::Approved => {

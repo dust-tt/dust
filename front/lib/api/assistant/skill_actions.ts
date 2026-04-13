@@ -262,6 +262,10 @@ export async function createSkillKnowledgeDataWarehouseServer(
  * Resolves all skill-based MCP servers for an agent in a conversation.
  * Includes skill MCP servers and skill knowledge servers (file system / data warehouse).
  * Shared between the agent loop, sandbox tools endpoint, and call_tool endpoint.
+ *
+ * NOTE: This mirrors the skill server resolution in the agent loop
+ * (temporal/agent_loop/lib/run_model.ts). Keep both in sync when changing
+ * skill server logic.
  */
 export async function resolveSkillMCPServers(
   auth: Authenticator,

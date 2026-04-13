@@ -157,25 +157,11 @@ export async function* runToolWithStreaming(
   }
 
   // If getExitOrPauseEvents updated the action status to blocked (e.g., sandbox
-  // pause with empty blockingEvents), signal a pause via a synthetic approval
-  // event. This causes the workflow to set shouldPauseAgentLoop=true without
-  // marking the message as completed.
+  // pause with empty blockingEvents), stop here. The temporal activity detects
+  // blocked_child_action_input_required after the loop and sets
+  // shouldPauseAgentLoop without publishing any event to the frontend — the
+  // child action's approval dialog was already published by call_tool.
   if (action.status === "blocked_child_action_input_required") {
-    yield {
-      type: "tool_approve_execution" as const,
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      conversationId: conversation.sId,
-      messageId: agentMessage.sId,
-      actionId: action.sId,
-      inputs: action.augmentedInputs,
-      metadata: {
-        toolName: action.toolConfiguration.originalName,
-        mcpServerName: action.toolConfiguration.mcpServerName,
-        agentName: agentConfiguration.name,
-        icon: action.toolConfiguration.icon,
-      },
-    };
     return;
   }
 

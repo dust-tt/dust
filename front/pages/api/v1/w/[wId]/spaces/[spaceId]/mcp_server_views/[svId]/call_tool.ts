@@ -41,9 +41,11 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { CallMCPToolResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { UniqueConstraintError } from "sequelize";
 import { z } from "zod";
 
 type CallToolPendingResponseType = {
@@ -210,19 +212,10 @@ async function createBlockedSandboxAction(
   }
 ): Promise<string> {
   // Find the current (parent) step — the one running the sandbox bash tool.
-  const [existingSteps, existingActions] = await Promise.all([
-    AgentStepContentResource.fetchByAgentMessages(auth, {
-      agentMessageIds: [agentMessage.agentMessageId],
-    }),
-    AgentMCPActionResource.listByAgentMessageIds(auth, [
-      agentMessage.agentMessageId,
-    ]),
-  ]);
-
-  const currentStep =
-    existingSteps.length > 0
-      ? Math.max(...existingSteps.map((s) => s.step))
-      : 0;
+  const existingActions = await AgentMCPActionResource.listByAgentMessageIds(
+    auth,
+    [agentMessage.agentMessageId]
+  );
 
   // Get the stepContext from the running action on this step (the sandbox bash tool).
   const parentAction = existingActions.find((a) => a.status === "running");
@@ -230,22 +223,50 @@ async function createBlockedSandboxAction(
     ...DEFAULT_SANDBOX_STEP_CONTEXT,
   };
 
-  // Create step content for the blocked action on the same step.
-  const stepContent = await AgentStepContentResource.createNewVersion({
-    workspaceId: auth.getNonNullableWorkspace().id,
-    agentMessageId: agentMessage.agentMessageId,
-    step: currentStep,
-    index: existingSteps.filter((s) => s.step === currentStep).length,
-    type: "function_call",
-    value: {
-      type: "function_call",
-      value: {
-        name: toolConfiguration.name,
-        arguments: JSON.stringify(toolArgs),
-        id: generateRandomModelSId(),
-      },
-    },
-  });
+  // Create step content with retry: concurrent sandbox tool calls race to
+  // insert at the same (step, index) pair, causing UniqueConstraintError.
+  // On conflict we re-fetch steps to get a fresh index and retry.
+  const MAX_RETRIES = 3;
+  let stepContent: Awaited<
+    ReturnType<typeof AgentStepContentResource.createNewVersion>
+  >;
+  let currentStep: number;
+
+  for (let attempt = 0; ; attempt++) {
+    const existingSteps =
+      await AgentStepContentResource.fetchByAgentMessages(auth, {
+        agentMessageIds: [agentMessage.agentMessageId],
+      });
+
+    currentStep =
+      existingSteps.length > 0
+        ? Math.max(...existingSteps.map((s) => s.step))
+        : 0;
+
+    try {
+      stepContent = await AgentStepContentResource.createNewVersion({
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentMessageId: agentMessage.agentMessageId,
+        step: currentStep,
+        index: existingSteps.filter((s) => s.step === currentStep).length,
+        type: "function_call",
+        value: {
+          type: "function_call",
+          value: {
+            name: toolConfiguration.name,
+            arguments: JSON.stringify(toolArgs),
+            id: generateRandomModelSId(),
+          },
+        },
+      });
+      break;
+    } catch (error) {
+      if (error instanceof UniqueConstraintError && attempt < MAX_RETRIES) {
+        continue;
+      }
+      throw error;
+    }
+  }
 
   // Create blocked action in DB.
   const action = await AgentMCPActionResource.makeNew(auth, {
@@ -412,7 +433,10 @@ async function handler(
           });
         }
 
-        if (action.status !== "ready_allowed_explicitly") {
+        if (
+          action.status === "blocked_validation_required" ||
+          action.status === "denied"
+        ) {
           return apiError(req, res, {
             status_code: 403,
             api_error: {
@@ -421,6 +445,8 @@ async function handler(
             },
           });
         }
+        // Any other status (ready_allowed_explicitly, running, succeeded)
+        // means the action was approved — proceed to execution.
 
         // Prefer the action's stored data; fall back to the request body.
         const toolName =
@@ -513,19 +539,38 @@ async function handler(
         );
 
         if (status === "blocked_validation_required") {
-          const actionId = await createBlockedSandboxAction(auth, {
-            agentConfiguration: runContext.agentConfiguration,
-            agentMessage: runContext.agentMessage,
-            conversation: runContext.conversation,
-            toolConfiguration: runContext.toolConfiguration,
-            toolArgs,
-          });
+          // Check if there's already an approved action for this tool on this
+          // message (e.g. from a previous sandbox pause → approve → resume
+          // cycle). If so, skip creating a new blocked action.
+          const existingActions =
+            await AgentMCPActionResource.listByAgentMessageIds(auth, [
+              runContext.agentMessage.agentMessageId,
+            ]);
+          const toolArgsJson = JSON.stringify(toolArgs);
+          const alreadyApproved = existingActions.find(
+            (a) =>
+              a.status === "ready_allowed_explicitly" &&
+              a.toolConfiguration.originalName === toolName &&
+              a.stepContext.sandboxOrigin === true &&
+              JSON.stringify(a.augmentedInputs ?? {}) === toolArgsJson
+          );
 
-          // Return 202 immediately — the client polls call_tool.
-          return res.status(202).json({
-            status: "pending",
-            actionId,
-          });
+          if (!alreadyApproved) {
+            const actionId = await createBlockedSandboxAction(auth, {
+              agentConfiguration: runContext.agentConfiguration,
+              agentMessage: runContext.agentMessage,
+              conversation: runContext.conversation,
+              toolConfiguration: runContext.toolConfiguration,
+              toolArgs,
+            });
+
+            // Return 202 immediately — the client polls call_tool.
+            return res.status(202).json({
+              status: "pending",
+              actionId,
+            });
+          }
+          // Already approved — fall through to execution.
         }
       }
 
@@ -589,17 +634,26 @@ async function handler(
       let approvalStatus: ApprovalStatusResponseType["status"];
       switch (action.status) {
         case "blocked_validation_required":
+        case "blocked_authentication_required":
+        case "blocked_file_authorization_required":
+        case "blocked_child_action_input_required":
+        case "blocked_user_answer_required":
           approvalStatus = "pending";
           break;
         case "ready_allowed_explicitly":
+        case "ready_allowed_implicitly":
+        case "running":
+        case "succeeded":
           approvalStatus = "approved";
           break;
         case "denied":
           approvalStatus = "rejected";
           break;
-        default:
+        case "errored":
           approvalStatus = "error";
           break;
+        default:
+          assertNever(action.status);
       }
 
       return res.status(200).json({ status: approvalStatus });

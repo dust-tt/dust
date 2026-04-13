@@ -16,6 +16,7 @@ import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { Result } from "@app/types/shared/result";
@@ -164,22 +165,35 @@ export async function validateAction(
       : false;
   }, getMessageChannelId(messageId));
 
-  // For sandbox-originated actions:
-  // - If the sandbox was paused (slow path), we need to relaunch the agent loop
-  //   so the bash handler can wake the sandbox and reattach to the process.
-  // - If not paused (happy path), the Rust client is polling directly and the
-  //   agent loop is still running, so we skip the re-launch.
-  if (action.stepContext.sandboxOrigin && !action.stepContext.sandboxPaused) {
-    logger.info(
-      {
-        workspaceId: owner.sId,
-        conversationId,
-        messageId,
-        actionId,
-      },
-      `Sandbox action ${approvalState === "approved" ? "approved" : "rejected"} by user (no pause)`
+  // For sandbox-originated actions, check the sandbox status to decide whether
+  // to relaunch. If the sandbox is still running (happy path), the Rust client
+  // handles the approval via polling — no relaunch needed. If the sandbox is
+  // paused (pending_approval), the workflow already exited and needs a relaunch.
+  if (action.stepContext.sandboxOrigin) {
+    const sandbox = await SandboxResource.fetchByConversationId(
+      auth,
+      conversationId
     );
-    return new Ok(undefined);
+    if (sandbox && sandbox.status !== "pending_approval") {
+      // Happy path: sandbox still running, Rust client handles it.
+      return new Ok(undefined);
+    }
+    // Slow path: sandbox paused. Fall through to check if all sandbox children
+    // are resolved before relaunching.
+    const blockedActions =
+      await AgentMCPActionResource.listBlockedActionsForAgentMessage(auth, {
+        agentMessageId: action.agentMessageId,
+      });
+    // Only sandbox-origin children that still need approval block the relaunch.
+    const pendingSandboxChildren = blockedActions.filter(
+      (a) =>
+        a.stepContext.sandboxOrigin &&
+        a.status === "blocked_validation_required"
+    );
+    if (pendingSandboxChildren.length > 0) {
+      return new Ok(undefined);
+    }
+    // All sandbox children resolved — fall through to relaunch.
   }
 
   // We only launch the agent loop if there are no remaining blocked actions.

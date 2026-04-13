@@ -110,7 +110,6 @@ function monitorBlockedActions(
   agentMessageId: number
 ): { promise: Promise<{ actionId: string }>; cleanup: () => void } {
   let resolved = false;
-  let graceStarted = false;
   let pollInterval: ReturnType<typeof setInterval> | undefined;
   let unsubscribeFn: (() => void) | undefined;
   let graceTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -132,11 +131,13 @@ function monitorBlockedActions(
   };
 
   const promise = new Promise<{ actionId: string }>((resolve) => {
-    const checkAndMaybeResolve = async (actionId: string) => {
-      if (resolved || graceStarted) {
+    let graceInProgress = false;
+
+    const startGracePeriod = async () => {
+      if (resolved || graceInProgress) {
         return;
       }
-      graceStarted = true;
+      graceInProgress = true;
 
       // Wait for the grace period.
       await new Promise<void>((r) => {
@@ -147,11 +148,32 @@ function monitorBlockedActions(
         return;
       }
 
-      // Check if the action is still blocked after grace period.
-      const action = await AgentMCPActionResource.fetchById(auth, actionId);
-      if (action && action.status === "blocked_validation_required") {
-        resolved = true;
-        resolve({ actionId });
+      // Check if ANY sandbox-origin blocked action still exists after grace.
+      // This handles both the original action being still blocked and the case
+      // where it was approved but a subsequent tool call created a new one.
+      try {
+        const actions =
+          await AgentMCPActionResource.listBlockedActionsForAgentMessage(auth, {
+            agentMessageId,
+          });
+        const stillBlocked = actions.find(
+          (a) =>
+            a.status === "blocked_validation_required" &&
+            a.stepContext.sandboxOrigin === true
+        );
+
+        if (stillBlocked) {
+          resolved = true;
+          resolve({ actionId: stillBlocked.sId });
+        } else {
+          // All actions were approved during the grace period — reset so the
+          // next blocked action (from a subsequent tool call in the same
+          // script) triggers a fresh grace period.
+          graceInProgress = false;
+        }
+      } catch {
+        // On error, reset so we can retry on the next detection.
+        graceInProgress = false;
       }
     };
 
@@ -167,7 +189,7 @@ function monitorBlockedActions(
           try {
             const data = JSON.parse(event.message["payload"]);
             if (data.actionId) {
-              void checkAndMaybeResolve(data.actionId);
+              void startGracePeriod();
             }
           } catch {
             // Ignore malformed events.
@@ -206,7 +228,7 @@ function monitorBlockedActions(
             a.stepContext.sandboxOrigin === true
         );
         if (blockedAction) {
-          void checkAndMaybeResolve(blockedAction.sId);
+          void startGracePeriod();
         }
       } catch {
         // Ignore poll errors.
