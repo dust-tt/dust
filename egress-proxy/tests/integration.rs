@@ -265,6 +265,29 @@ async fn unsafe_ssrf_bypass_fails_startup_outside_test_env() -> Result<()> {
     wait_for_startup_failure(&mut child).await
 }
 
+#[tokio::test]
+async fn health_bind_failure_fails_startup() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+    let certs = generate_test_certs(temp_dir.path())?;
+    let proxy_addr = free_addr()?;
+    let occupied_health_listener = StdTcpListener::bind("127.0.0.1:0")?;
+    let health_addr = occupied_health_listener.local_addr()?;
+
+    let mut child = Command::new(env!("CARGO_BIN_EXE_egress-proxy"))
+        .env("EGRESS_PROXY_LISTEN_ADDR", proxy_addr.to_string())
+        .env("EGRESS_PROXY_HEALTH_ADDR", health_addr.to_string())
+        .env("EGRESS_PROXY_TLS_CERT", certs.server_cert_path)
+        .env("EGRESS_PROXY_TLS_KEY", certs.server_key_path)
+        .env("EGRESS_PROXY_JWT_SECRET", SECRET)
+        .env("EGRESS_PROXY_ALLOWED_DOMAINS", "localhost")
+        .env("EGRESS_PROXY_ENV", "production")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?;
+
+    wait_for_startup_failure(&mut child).await
+}
+
 async fn start_proxy(
     allowed_domains: &str,
     unsafe_skip_ssrf_check: bool,

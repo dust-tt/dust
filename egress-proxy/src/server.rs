@@ -8,9 +8,11 @@ use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::signal;
 use tokio::sync::{watch, Semaphore};
+use tokio::task::{JoinError, JoinSet};
 use tokio::time::timeout;
 use tracing::{error, info, warn};
 
+const CONNECTION_DRAIN_TIMEOUT_SECONDS: u64 = 5;
 const TLS_ACCEPT_TIMEOUT_SECONDS: u64 = 5;
 const MAX_CONCURRENT_CONNECTIONS: usize = 1024;
 
@@ -27,7 +29,7 @@ pub async fn run(config: Config) -> Result<()> {
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
 
     let mut health_handle = tokio::spawn(health::serve(health_listener, shutdown_rx.clone()));
-    let proxy_handle = tokio::spawn(run_proxy_listener(
+    let mut proxy_handle = tokio::spawn(run_proxy_listener(
         listener,
         tls_acceptor,
         state,
@@ -52,6 +54,11 @@ pub async fn run(config: Config) -> Result<()> {
                 return Err(error);
             }
         }
+        proxy_result = &mut proxy_handle => {
+            let _ = shutdown_tx.send(true);
+            proxy_result??;
+            return Err(anyhow!("proxy listener stopped unexpectedly"));
+        }
         health_result = &mut health_handle => {
             let _ = shutdown_tx.send(true);
             health_result??;
@@ -70,6 +77,8 @@ async fn run_proxy_listener(
     connection_slots: Arc<Semaphore>,
     mut shutdown: watch::Receiver<bool>,
 ) -> Result<()> {
+    let mut connection_tasks = JoinSet::new();
+
     loop {
         tokio::select! {
             accept_result = listener.accept() => {
@@ -89,7 +98,7 @@ async fn run_proxy_listener(
                 let tls_acceptor = tls_acceptor.clone();
                 let state = state.clone();
 
-                tokio::spawn(async move {
+                connection_tasks.spawn(async move {
                     let _permit = permit;
                     match timeout(
                         Duration::from_secs(TLS_ACCEPT_TIMEOUT_SECONDS),
@@ -115,6 +124,9 @@ async fn run_proxy_listener(
                     }
                 });
             }
+            join_result = connection_tasks.join_next(), if !connection_tasks.is_empty() => {
+                log_connection_task_result(join_result);
+            }
             changed = shutdown.changed() => {
                 if changed.is_err() || *shutdown.borrow() {
                     break;
@@ -123,9 +135,44 @@ async fn run_proxy_listener(
         }
     }
 
-    // TODO(sandbox-egress): In PR 3, supervise the proxy listener task and give accepted
-    // connections a bounded drain window during shutdown instead of detaching them.
+    drain_connection_tasks(connection_tasks).await;
+
     Ok(())
+}
+
+async fn drain_connection_tasks(mut connection_tasks: JoinSet<()>) {
+    if connection_tasks.is_empty() {
+        return;
+    }
+
+    let drain_timeout = Duration::from_secs(CONNECTION_DRAIN_TIMEOUT_SECONDS);
+    match tokio::time::timeout(drain_timeout, async {
+        while let Some(join_result) = connection_tasks.join_next().await {
+            log_connection_task_result(Some(join_result));
+        }
+    })
+    .await
+    {
+        Ok(()) => {}
+        Err(_) => {
+            let pending_tasks = connection_tasks.len();
+            warn!(
+                pending_tasks,
+                drain_timeout_seconds = CONNECTION_DRAIN_TIMEOUT_SECONDS,
+                "aborting active connections after shutdown drain timeout"
+            );
+            connection_tasks.abort_all();
+            while let Some(join_result) = connection_tasks.join_next().await {
+                log_connection_task_result(Some(join_result));
+            }
+        }
+    }
+}
+
+fn log_connection_task_result(join_result: Option<Result<(), JoinError>>) {
+    if let Some(Err(error)) = join_result {
+        warn!(error = %error, "connection task failed");
+    }
 }
 
 async fn wait_for_shutdown_signal() {
