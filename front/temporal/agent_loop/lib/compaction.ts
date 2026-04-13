@@ -111,19 +111,24 @@ export async function runCompaction(
     return new Err(new Error("Compaction message not found"));
   }
 
+  const summaryRes = await generateCompactionSummary(auth, {
+    conversation,
+    model,
+  });
+
   let content: string;
   let status: "succeeded" | "failed";
 
-  try {
-    content = await generateCompactionSummary(auth, { conversation, model });
+  if (summaryRes.isOk()) {
+    content = summaryRes.value;
     status = "succeeded";
-  } catch (err) {
+  } else {
     logger.error(
       {
         workspaceId: owner.sId,
         conversationId,
         compactionMessageId,
-        error: err,
+        error: summaryRes.error,
       },
       "Compaction summary generation failed"
     );
@@ -165,7 +170,7 @@ async function generateCompactionSummary(
     conversation,
     model,
   }: { conversation: ConversationType; model: SupportedModel }
-): Promise<string> {
+): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
   // renderConversationAsText stops at the last succeeded compaction boundary by default and skips
@@ -215,13 +220,13 @@ async function generateCompactionSummary(
   );
 
   if (res.isErr()) {
-    throw res.error;
+    return res;
   }
 
   const generation = res.value.generation;
   if (!generation) {
-    throw new Error("Compaction LLM returned empty generation");
+    return new Err(new Error("Compaction LLM returned empty generation"));
   }
 
-  return extractSummary(generation);
+  return new Ok(extractSummary(generation));
 }
