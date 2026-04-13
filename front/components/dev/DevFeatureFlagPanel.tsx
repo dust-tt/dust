@@ -31,130 +31,245 @@ type DockMode = "docked" | "floating";
 // ── Color override types & config ──
 
 interface ColorToken {
+  /** Display name shown in the panel. */
   label: string;
-  description: string;
+  /** Default hex value for light mode. */
   defaultLight: string;
+  /** Default hex value for dark mode. */
   defaultDark: string;
   /** CSS property prefixes to override (bg, text, border). */
   properties: ("bg" | "text" | "border")[];
-  /** Whether this token has shade variants (50–950). */
-  hasShades: boolean;
+  /** CSS class name segment (e.g. "primary-800"). Defaults to token key. */
+  cssName?: string;
 }
 
-type ColorTokenName =
-  | "background"
-  | "foreground"
-  | "muted-bg"
-  | "muted-text"
-  | "primary-bg"
-  | "primary-text"
-  | "highlight"
-  | "border";
+interface ColorGroup {
+  label: string;
+  tokens: Record<string, ColorToken>;
+}
 
-// Tokens where the semantic name differs from the key (split tokens).
-// e.g. "primary-bg" still targets classes named "primary", not "primary-bg".
-const TOKEN_SEMANTIC_NAME: Partial<Record<ColorTokenName, string>> = {
-  "muted-bg": "muted",
-  "muted-text": "muted",
-  "primary-bg": "primary",
-  "primary-text": "primary",
-};
-
-const COLOR_TOKENS: Record<ColorTokenName, ColorToken> = {
-  background: {
-    label: "Background",
-    description: "Page background",
-    defaultLight: "#FFFFFF",
-    defaultDark: "#111418",
-    properties: ["bg"],
-    hasShades: false,
+const COLOR_GROUPS: ColorGroup[] = [
+  {
+    label: "Structural",
+    tokens: {
+      background: {
+        label: "background",
+        defaultLight: "#FFFFFF",
+        defaultDark: "#111418",
+        properties: ["bg"],
+      },
+      foreground: {
+        label: "foreground",
+        defaultLight: "#111418",
+        defaultDark: "#D3D5D9",
+        properties: ["text"],
+      },
+      muted: {
+        label: "muted",
+        defaultLight: "#F7F7F7",
+        defaultDark: "#111418",
+        properties: ["bg"],
+      },
+      "muted-foreground": {
+        label: "muted-foreground",
+        defaultLight: "#545D6C",
+        defaultDark: "#969CA5",
+        properties: ["text"],
+      },
+      "muted-background": {
+        label: "muted-background",
+        defaultLight: "#F7F7F7",
+        defaultDark: "#1C222D",
+        properties: ["bg"],
+      },
+      hover: {
+        label: "hover",
+        defaultLight: "#EEEEEF",
+        defaultDark: "#2A3241",
+        properties: ["bg"],
+      },
+      faint: {
+        label: "faint",
+        defaultLight: "#969CA5",
+        defaultDark: "#545D6C",
+        properties: ["text"],
+      },
+    },
   },
-  foreground: {
-    label: "Foreground",
-    description: "Primary text color",
-    defaultLight: "#111418",
-    defaultDark: "#D3D5D9",
-    properties: ["text"],
-    hasShades: false,
+  {
+    label: "Primary",
+    tokens: {
+      "primary-950": {
+        label: "primary-950",
+        defaultLight: "#111418",
+        defaultDark: "#F0F1F1",
+        properties: ["bg", "text"],
+        cssName: "primary-950",
+      },
+      "primary-800": {
+        label: "primary-800",
+        defaultLight: "#2A3241",
+        defaultDark: "#B2B6BD",
+        properties: ["bg", "text"],
+        cssName: "primary-800",
+      },
+      "primary-500": {
+        label: "primary-500",
+        defaultLight: "#7B818D",
+        defaultDark: "#7B818D",
+        properties: ["bg", "text"],
+        cssName: "primary-500",
+      },
+      "primary-300": {
+        label: "primary-300",
+        defaultLight: "#B2B6BD",
+        defaultDark: "#2A3241",
+        properties: ["bg", "text"],
+        cssName: "primary-300",
+      },
+      "primary-100": {
+        label: "primary-100",
+        defaultLight: "#E8E9EA",
+        defaultDark: "#181D26",
+        properties: ["bg", "text"],
+        cssName: "primary-100",
+      },
+    },
   },
-  "muted-bg": {
-    label: "Muted BG",
-    description: "Subtle backgrounds (bg-muted)",
-    defaultLight: "#F7F7F7",
-    defaultDark: "#111418",
-    properties: ["bg"],
-    hasShades: false,
-  },
-  "muted-text": {
-    label: "Muted Text",
-    description: "Secondary text (text-muted)",
-    defaultLight: "#596170",
-    defaultDark: "#969CA5",
-    properties: ["text"],
-    hasShades: false,
-  },
-  "primary-bg": {
-    label: "Primary BG",
-    description: "Primary surfaces (bg-primary)",
-    defaultLight: "#2A3241",
-    defaultDark: "#D3D5D9",
-    properties: ["bg"],
-    hasShades: true,
-  },
-  "primary-text": {
-    label: "Primary Text",
-    description: "Primary text (text-primary)",
-    defaultLight: "#2A3241",
-    defaultDark: "#D3D5D9",
-    properties: ["text"],
-    hasShades: true,
-  },
-  highlight: {
+  {
     label: "Highlight",
-    description: "Accent / links / actions",
-    defaultLight: "#1C91FF",
-    defaultDark: "#1C91FF",
-    properties: ["bg", "text", "border"],
-    hasShades: true,
+    tokens: {
+      "highlight-500": {
+        label: "highlight-500",
+        defaultLight: "#1C91FF",
+        defaultDark: "#1C91FF",
+        properties: ["bg", "text", "border"],
+        cssName: "highlight-500",
+      },
+      "highlight-400": {
+        label: "highlight-400",
+        defaultLight: "#4BABFF",
+        defaultDark: "#085092",
+        properties: ["bg", "text", "border"],
+        cssName: "highlight-400",
+      },
+      "highlight-300": {
+        label: "highlight-300",
+        defaultLight: "#9FDBFF",
+        defaultDark: "#063A6B",
+        properties: ["bg", "text", "border"],
+        cssName: "highlight-300",
+      },
+      "highlight-200": {
+        label: "highlight-200",
+        defaultLight: "#CFEAFF",
+        defaultDark: "#042548",
+        properties: ["bg", "text"],
+        cssName: "highlight-200",
+      },
+      "highlight-muted": {
+        label: "highlight-muted",
+        defaultLight: "#8EB2D3",
+        defaultDark: "#8EB2D3",
+        properties: ["bg", "text"],
+        cssName: "highlight-muted",
+      },
+    },
   },
-  border: {
+  {
+    label: "Feedback",
+    tokens: {
+      "success-500": {
+        label: "success-500",
+        defaultLight: "#6AA668",
+        defaultDark: "#6AA668",
+        properties: ["bg", "text"],
+        cssName: "success-500",
+      },
+      "success-muted": {
+        label: "success-muted",
+        defaultLight: "#A9B8A9",
+        defaultDark: "#A9B8A9",
+        properties: ["bg", "text"],
+        cssName: "success-muted",
+      },
+      "warning-500": {
+        label: "warning-500",
+        defaultLight: "#E14322",
+        defaultDark: "#E14322",
+        properties: ["bg", "text"],
+        cssName: "warning-500",
+      },
+      "warning-muted": {
+        label: "warning-muted",
+        defaultLight: "#D5AAA1",
+        defaultDark: "#D5AAA1",
+        properties: ["bg", "text"],
+        cssName: "warning-muted",
+      },
+      "info-500": {
+        label: "info-500",
+        defaultLight: "#FFAA0D",
+        defaultDark: "#FFAA0D",
+        properties: ["bg", "text"],
+        cssName: "info-500",
+      },
+      "info-muted": {
+        label: "info-muted",
+        defaultLight: "#E1C99B",
+        defaultDark: "#E1C99B",
+        properties: ["bg", "text"],
+        cssName: "info-muted",
+      },
+    },
+  },
+  {
     label: "Border",
-    description: "Default border color",
-    defaultLight: "#EEEEEF",
-    defaultDark: "#2A3241",
-    properties: ["border"],
-    hasShades: false,
+    tokens: {
+      border: {
+        label: "border",
+        defaultLight: "#EEEEEF",
+        defaultDark: "#2A3241",
+        properties: ["border"],
+      },
+      "border-dark": {
+        label: "border-dark",
+        defaultLight: "#DFE0E2",
+        defaultDark: "#364153",
+        properties: ["border"],
+      },
+      "border-focus": {
+        label: "border-focus",
+        defaultLight: "#4BABFF",
+        defaultDark: "#085092",
+        properties: ["border"],
+      },
+      separator: {
+        label: "separator",
+        defaultLight: "#EEEEEF",
+        defaultDark: "#2A3241",
+        properties: ["border"],
+      },
+      ring: {
+        label: "ring",
+        defaultLight: "#9FDBFF",
+        defaultDark: "#364153",
+        properties: ["border"],
+      },
+    },
   },
-};
-
-const SHADE_SUFFIXES = [
-  "",
-  "-50",
-  "-100",
-  "-150",
-  "-200",
-  "-300",
-  "-400",
-  "-500",
-  "-600",
-  "-700",
-  "-800",
-  "-850",
-  "-900",
-  "-950",
-];
-const VARIANT_SUFFIXES = [
-  "",
-  "-light",
-  "-dark",
-  "-muted",
-  "-foreground",
-  "-background",
 ];
 
-const ALL_TOKEN_NAMES = Object.keys(COLOR_TOKENS) as ColorTokenName[];
+// Build a flat lookup for storage/injection.
+const ALL_TOKENS: Record<string, ColorToken> = {};
+for (const group of COLOR_GROUPS) {
+  for (const [key, token] of Object.entries(group.tokens)) {
+    ALL_TOKENS[key] = token;
+  }
+}
+const ALL_TOKEN_NAMES = Object.keys(ALL_TOKENS);
 
-type ColorOverrides = Partial<Record<ColorTokenName, string>>;
+type ColorOverrides = Record<string, string>;
 
 // ── Color override storage & style injection ──
 
@@ -196,30 +311,24 @@ function injectColorStyles(overrides: ColorOverrides): void {
   }
 
   const rules: string[] = [];
+  const variantSuffixes = ["", "-light", "-dark", "-muted", "-foreground", "-background"];
 
   for (const [tokenName, color] of Object.entries(overrides)) {
-    const token = COLOR_TOKENS[tokenName as ColorTokenName];
+    const token = ALL_TOKENS[tokenName];
     if (!token || !color) {
       continue;
     }
 
-    const semanticName =
-      TOKEN_SEMANTIC_NAME[tokenName as ColorTokenName] ?? tokenName;
-
-    const suffixes = token.hasShades
-      ? [...SHADE_SUFFIXES, ...VARIANT_SUFFIXES]
-      : [...VARIANT_SUFFIXES];
+    const cssName = token.cssName ?? tokenName;
 
     for (const prop of token.properties) {
       const cssProperty = CSS_PROPERTY_MAP[prop];
-      for (const suffix of suffixes) {
-        const className = `${prop}-${semanticName}${suffix}`;
-        // Unprefixed (front's own Tailwind classes)
+      for (const suffix of variantSuffixes) {
+        const className = `${prop}-${cssName}${suffix}`;
         rules.push(`.${className} { ${cssProperty}: ${color} !important; }`);
         rules.push(
           `.dark .${className}-night { ${cssProperty}: ${color} !important; }`
         );
-        // s-prefixed (Sparkle design system classes)
         rules.push(`.s-${className} { ${cssProperty}: ${color} !important; }`);
         rules.push(
           `.dark .s-${className}-night { ${cssProperty}: ${color} !important; }`
@@ -371,19 +480,127 @@ interface ColorOverridePanelProps {
   onClose: () => void;
 }
 
+function ColorTokenRow({
+  tokenKey,
+  token,
+  override,
+  isDark,
+  onSet,
+  onClear,
+}: {
+  tokenKey: string;
+  token: ColorToken;
+  override: string | undefined;
+  isDark: boolean;
+  onSet: (key: string, color: string) => void;
+  onClear: (key: string) => void;
+}) {
+  const defaultColor = isDark ? token.defaultDark : token.defaultLight;
+  const displayColor = override ?? defaultColor;
+  const isOverridden = !!override;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        padding: "4px 16px 4px 24px",
+        gap: 8,
+        minHeight: 28,
+      }}
+    >
+      {/* Color swatch with hidden color picker */}
+      <label
+        style={{
+          position: "relative",
+          width: 18,
+          height: 18,
+          borderRadius: 4,
+          border: isOverridden ? "2px solid #7fdbca" : "1px solid #444",
+          background: displayColor,
+          cursor: "pointer",
+          flexShrink: 0,
+        }}
+      >
+        <input
+          type="color"
+          value={displayColor}
+          onChange={(e) => onSet(tokenKey, e.target.value)}
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{
+            opacity: 0,
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            cursor: "pointer",
+            border: "none",
+          }}
+        />
+      </label>
+
+      {/* Token name */}
+      <span
+        style={{
+          flex: 1,
+          fontSize: 12,
+          fontFamily: "monospace",
+          color: isOverridden ? "#e0e0e0" : "#9ca3af",
+        }}
+      >
+        {token.label}
+      </span>
+
+      {/* Reset button (only when overridden) */}
+      {isOverridden && (
+        <button
+          style={{
+            background: "none",
+            border: "none",
+            color: "#666",
+            cursor: "pointer",
+            fontSize: 10,
+            padding: "0 2px",
+            lineHeight: 1,
+          }}
+          onClick={() => onClear(tokenKey)}
+          title="Reset to default"
+        >
+          {"✕"}
+        </button>
+      )}
+
+      {/* Hex value */}
+      <span
+        style={{
+          fontSize: 11,
+          fontFamily: "monospace",
+          color: isOverridden ? "#7fdbca" : "#666",
+          width: 62,
+          textAlign: "right" as const,
+          flexShrink: 0,
+        }}
+      >
+        {displayColor.toLowerCase()}
+      </span>
+    </div>
+  );
+}
+
 function ColorOverridePanel({ onClose }: ColorOverridePanelProps) {
   const { theme } = useTheme();
   const [overrides, setOverrides] =
     useState<ColorOverrides>(readColorOverrides);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [copied, setCopied] = useState(false);
   const overrideCount = Object.keys(overrides).length;
 
-  // Restore injected styles on mount (in case of re-render).
   useEffect(() => {
     injectColorStyles(readColorOverrides());
   }, []);
 
   const setColor = useCallback(
-    (token: ColorTokenName, color: string) => {
+    (token: string, color: string) => {
       const next = { ...overrides, [token]: color };
       setOverrides(next);
       writeColorOverrides(next);
@@ -392,7 +609,7 @@ function ColorOverridePanel({ onClose }: ColorOverridePanelProps) {
   );
 
   const clearColor = useCallback(
-    (token: ColorTokenName) => {
+    (token: string) => {
       const next = { ...overrides };
       delete next[token];
       setOverrides(next);
@@ -406,6 +623,25 @@ function ColorOverridePanel({ onClose }: ColorOverridePanelProps) {
     writeColorOverrides({});
   }, []);
 
+  const copyAll = useCallback(() => {
+    const isDark = theme === "dark";
+    const snapshot: Record<string, string> = {};
+    for (const [key, token] of Object.entries(ALL_TOKENS)) {
+      snapshot[key] =
+        overrides[key] ?? (isDark ? token.defaultDark : token.defaultLight);
+    }
+    void navigator.clipboard.writeText(JSON.stringify(snapshot, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }, [theme, overrides]);
+
+  const toggleGroup = useCallback(
+    (label: string) => {
+      setCollapsed((prev) => ({ ...prev, [label]: !prev[label] }));
+    },
+    []
+  );
+
   const isDark = theme === "dark";
 
   return (
@@ -416,140 +652,113 @@ function ColorOverridePanel({ onClose }: ColorOverridePanelProps) {
           {"✕"}
         </button>
       </div>
-      <div
-        style={{
-          padding: "6px 12px",
-          fontSize: 10,
-          color: "#a1a1aa",
-          borderBottom: "1px solid #2a2a4a",
-          lineHeight: 1.4,
-        }}
-      >
-        Override semantic color tokens via style injection. Changes are stored
-        in session storage and cleared when the tab closes.
-      </div>
-      <div style={{ ...S.list, padding: "4px 0" }}>
-        {ALL_TOKEN_NAMES.map((tokenName) => {
-          const token = COLOR_TOKENS[tokenName];
-          const currentOverride = overrides[tokenName];
-          const defaultColor = isDark ? token.defaultDark : token.defaultLight;
+
+      <div style={{ ...S.list, padding: 0 }}>
+        {COLOR_GROUPS.map((group) => {
+          const tokenEntries = Object.entries(group.tokens);
+          const groupOverrideCount = tokenEntries.filter(
+            ([key]) => key in overrides
+          ).length;
+          const isCollapsed = collapsed[group.label] ?? false;
 
           return (
-            <div key={tokenName} style={{ ...S.row, gap: 10 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 600 }}>
-                  {token.label}
-                </div>
-                <div style={S.flagDesc}>{token.description}</div>
-              </div>
-              <div
+            <div key={group.label}>
+              {/* Group header */}
+              <button
+                onClick={() => toggleGroup(group.label)}
                 style={{
                   display: "flex",
                   alignItems: "center",
+                  width: "100%",
+                  padding: "8px 12px",
+                  background: "none",
+                  border: "none",
+                  borderBottom: "1px solid #2a2a4a",
+                  cursor: "pointer",
                   gap: 6,
-                  flexShrink: 0,
                 }}
               >
-                <button
+                <span
                   style={{
-                    background: "none",
-                    border: "none",
-                    color: currentOverride ? "#ff6b6b" : "transparent",
-                    cursor: currentOverride ? "pointer" : "default",
-                    fontSize: 14,
-                    padding: "0 2px",
-                    lineHeight: 1,
-                    width: 18,
-                    flexShrink: 0,
-                  }}
-                  onClick={() => {
-                    if (currentOverride) {
-                      clearColor(tokenName);
-                    }
-                  }}
-                  title={currentOverride ? "Reset to default" : undefined}
-                >
-                  {"✕"}
-                </button>
-                <input
-                  type="text"
-                  value={currentOverride ?? defaultColor}
-                  placeholder={defaultColor}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (/^#[0-9a-fA-F]{6}$/.test(v)) {
-                      setColor(tokenName, v);
-                    }
-                  }}
-                  onBlur={(e) => {
-                    let v = e.target.value.trim();
-                    // Auto-prepend # if missing.
-                    if (/^[0-9a-fA-F]{6}$/.test(v)) {
-                      v = `#${v}`;
-                    }
-                    if (/^#[0-9a-fA-F]{6}$/.test(v)) {
-                      setColor(tokenName, v);
-                    }
-                  }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  style={{
-                    width: 72,
-                    fontSize: 11,
-                    fontFamily: "monospace",
-                    color: "#e0e0e0",
-                    background: "#0f0f23",
-                    border: "1px solid #555",
-                    borderRadius: 4,
-                    padding: "3px 6px",
-                    outline: "none",
+                    fontSize: 10,
+                    color: "#666",
+                    width: 12,
                     textAlign: "center" as const,
                   }}
-                />
-                <label
+                >
+                  {isCollapsed ? "\u25B6" : "\u25BC"}
+                </span>
+                <span
                   style={{
-                    position: "relative",
-                    width: 28,
-                    height: 28,
-                    borderRadius: 6,
-                    border: currentOverride
-                      ? "2px solid #7fdbca"
-                      : "2px solid #555",
-                    overflow: "hidden",
-                    cursor: "pointer",
-                    background: currentOverride ?? defaultColor,
-                    flexShrink: 0,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#e0e0e0",
                   }}
                 >
-                  <input
-                    type="color"
-                    value={currentOverride ?? defaultColor}
-                    onChange={(e) => setColor(tokenName, e.target.value)}
-                    onMouseDown={(e) => e.stopPropagation()}
+                  {group.label}
+                </span>
+                <span style={{ fontSize: 11, color: "#666" }}>
+                  ({tokenEntries.length})
+                </span>
+                {groupOverrideCount > 0 && (
+                  <span
                     style={{
-                      opacity: 0,
-                      position: "absolute",
-                      inset: 0,
-                      width: "100%",
-                      height: "100%",
-                      cursor: "pointer",
-                      border: "none",
+                      fontSize: 9,
+                      background: "#7fdbca33",
+                      color: "#7fdbca",
+                      borderRadius: 8,
+                      padding: "1px 6px",
+                      marginLeft: "auto",
                     }}
-                  />
-                </label>
-              </div>
+                  >
+                    {groupOverrideCount} modified
+                  </span>
+                )}
+              </button>
+
+              {/* Token rows */}
+              {!isCollapsed && (
+                <div style={{ padding: "4px 0" }}>
+                  {tokenEntries.map(([key, token]) => (
+                    <ColorTokenRow
+                      key={key}
+                      tokenKey={key}
+                      token={token}
+                      override={overrides[key]}
+                      isDark={isDark}
+                      onSet={setColor}
+                      onClear={clearColor}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}
       </div>
+
       <div style={S.footer}>
         <span>
-          {overrideCount} override{overrideCount !== 1 ? "s" : ""}
+          {overrideCount > 0 && (
+            <button style={S.resetBtn} onClick={resetAll}>
+              Reset
+            </button>
+          )}
         </span>
-        {overrideCount > 0 && (
-          <button style={S.resetBtn} onClick={resetAll}>
-            Reset all
-          </button>
-        )}
+        <button
+          style={{
+            background: "none",
+            border: "1px solid #555",
+            color: copied ? "#7fdbca" : "#9ca3af",
+            cursor: "pointer",
+            fontSize: 10,
+            padding: "2px 8px",
+            borderRadius: 4,
+          }}
+          onClick={copyAll}
+        >
+          {copied ? "Copied!" : "Copy All"}
+        </button>
       </div>
     </>
   );
