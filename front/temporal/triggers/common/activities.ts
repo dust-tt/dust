@@ -220,14 +220,12 @@ export async function runTriggeredAgentsActivity({
     const isNonRetryable =
       errorType === "plan_message_limit_exceeded" ||
       errorType === "model_disabled" ||
-      errorType === "invalid_request_error";
+      errorType === "invalid_request_error" ||
+      errorType === "agent_inaccessible";
 
     if (isNonRetryable) {
       // If the agent is inaccessible, disable the trigger.
-      if (
-        errorMessage ===
-        "This agent is either disabled or you don't have access to it."
-      ) {
+      if (errorType === "agent_inaccessible") {
         logger.info(
           {
             triggerId: trigger.sId,

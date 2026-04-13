@@ -730,7 +730,7 @@ export async function postUserMessage(
       return new Err({
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "agent_inaccessible",
           message:
             "This agent is either disabled or you don't have access to it.",
         },
@@ -1177,7 +1177,7 @@ export async function editUserMessage(
       return new Err({
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "agent_inaccessible",
           message:
             "This agent is either disabled or you don't have access to it.",
         },
