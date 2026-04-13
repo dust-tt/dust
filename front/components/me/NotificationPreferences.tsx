@@ -52,9 +52,18 @@ const NOTIFICATION_PREFERENCES_DELAY_LABELS: Record<
 };
 
 const NOTIFICATION_CONDITION_LABELS: Record<NotificationCondition, string> = {
-  all_messages: "Notify me for all messages",
-  only_mentions: "Notify me only when mentioned",
+  all_messages: "Notify me for all activity",
+  only_mentions: "Notify me when mentioned",
   never: "Never notify me",
+};
+
+const NOTIFICATION_CONDITION_DESCRIPTIONS: Record<
+  NotificationCondition,
+  string
+> = {
+  all_messages: "New messages in projects and conversations",
+  only_mentions: "New messages when directly mentioned",
+  never: "No notifications",
 };
 
 const NOVU_SESSION_ERROR_CODE = "novu_session_initialization_failed";
@@ -91,6 +100,8 @@ export const NotificationPreferences = forwardRef<
   );
 
   const displaySlackOption = hasSlackNotificationsFeature && canConfigureSlack;
+
+  const isProjectsFeatureEnabled = hasFeature("projects");
 
   // Novu workflow-specific channel preferences for conversation-unread
   const [conversationPreferences, setConversationPreferences] = useState<
@@ -410,14 +421,29 @@ export const NotificationPreferences = forwardRef<
               <DropdownMenuContent>
                 <DropdownMenuItem
                   label={NOTIFICATION_CONDITION_LABELS["all_messages"]}
+                  description={
+                    isProjectsFeatureEnabled
+                      ? NOTIFICATION_CONDITION_DESCRIPTIONS["all_messages"]
+                      : undefined
+                  }
                   onClick={() => setNotifyCondition("all_messages")}
                 />
                 <DropdownMenuItem
                   label={NOTIFICATION_CONDITION_LABELS["only_mentions"]}
+                  description={
+                    isProjectsFeatureEnabled
+                      ? NOTIFICATION_CONDITION_DESCRIPTIONS["only_mentions"]
+                      : undefined
+                  }
                   onClick={() => setNotifyCondition("only_mentions")}
                 />
                 <DropdownMenuItem
                   label={NOTIFICATION_CONDITION_LABELS["never"]}
+                  description={
+                    isProjectsFeatureEnabled
+                      ? NOTIFICATION_CONDITION_DESCRIPTIONS["never"]
+                      : undefined
+                  }
                   onClick={() => setNotifyCondition("never")}
                 />
               </DropdownMenuContent>

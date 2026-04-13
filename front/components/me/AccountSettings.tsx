@@ -373,7 +373,10 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
 
         {user?.subscriberHash && (
           <div className="mt-6 flex flex-col gap-4">
-            <Page.SectionHeader title="Notifications" />
+            <Page.SectionHeader
+              title="Default Notification Settings"
+              description="Tell us what you’d generally like to be notified about."
+            />
             <NotificationPreferences
               ref={notificationPreferencesRef}
               onChanged={checkNotificationChanges}
