@@ -14,6 +14,12 @@ const { trackProgrammaticUsageActivity } = proxyActivities<typeof activities>({
   },
 });
 
+const { emitMetronomeUsageEventsActivity } = proxyActivities<typeof activities>(
+  {
+    startToCloseTimeout: "5 minutes",
+  }
+);
+
 const { emitMetronomeGaugeEventsForAllWorkspacesActivity } = proxyActivities<
   typeof activities
 >({
@@ -42,4 +48,17 @@ export async function trackProgrammaticUsageWorkflow(
 
 export async function emitMetronomeGaugeEventsWorkflow(): Promise<void> {
   await emitMetronomeGaugeEventsForAllWorkspacesActivity();
+}
+
+export async function emitMetronomeUsageEventsWorkflow(
+  authType: AuthenticatorType,
+  {
+    agentLoopArgs,
+  }: {
+    agentLoopArgs: AgentLoopArgs;
+  }
+): Promise<void> {
+  await emitMetronomeUsageEventsActivity(authType, {
+    agentLoopArgs,
+  });
 }

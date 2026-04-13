@@ -9,3 +9,15 @@ export function makeTrackProgrammaticUsageWorkflowId({
 }): string {
   return `usage-tracking-${workspaceId}-${conversationId}-${agentMessageId}`;
 }
+
+export function makeMetronomeUsageEventsWorkflowId({
+  agentMessageId,
+  conversationId,
+  workspaceId,
+}: {
+  agentMessageId: string;
+  conversationId: string;
+  workspaceId: string;
+}): string {
+  return `metronome-usage-${workspaceId}-${conversationId}-${agentMessageId}`;
+}
