@@ -149,6 +149,7 @@ export function UserAnswerRequired({
               counterValue={index + 1}
               selected={selectedOptions.includes(index)}
               onClick={() => handleOptionClick(index)}
+              disabled={isAnswerSubmitting}
             />
           ))}
           <Card
