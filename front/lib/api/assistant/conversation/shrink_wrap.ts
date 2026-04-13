@@ -1,11 +1,12 @@
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import {
+  type AgentMessageFeedback,
+  renderConversationAsText,
+} from "@app/lib/api/assistant/conversation/render_as_text";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
-import {
-  isAgentMessageType,
-  isUserMessageType,
-} from "@app/types/assistant/conversation";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
@@ -270,31 +271,8 @@ export async function getShrinkWrappedConversation(
 
   const conversation = conversationRes.value;
 
-  // Flatten the 2D content array into a flat list of messages (last version of each).
-  const flatMessages: ShrinkWrapMessage[] = [];
-  for (const messageVersions of conversation.content) {
-    if (messageVersions.length === 0) {
-      continue;
-    }
-    const lastVersion = messageVersions[messageVersions.length - 1];
-    if (isUserMessageType(lastVersion)) {
-      flatMessages.push(lastVersion);
-    } else if (isAgentMessageType(lastVersion)) {
-      flatMessages.push({
-        ...lastVersion,
-        actions: lastVersion.actions.map((a) => ({
-          functionCallName: a.functionCallName,
-          status: a.status,
-          internalMCPServerName: a.internalMCPServerName,
-          params: a.params,
-          output: serializeActionOutput(a.output),
-        })),
-      });
-    }
-  }
-
   // Optionally fetch feedback and build a map of message sId → feedbacks.
-  let feedbackByMessageId: Map<string, ShrinkWrapFeedback[]> | undefined;
+  let feedbackByMessageSId: Map<string, AgentMessageFeedback[]> | undefined;
   if (includeFeedback) {
     const feedbacks =
       await AgentMessageFeedbackResource.listByConversationModelId(
@@ -315,34 +293,32 @@ export async function getShrinkWrappedConversation(
         }
       }
 
-      feedbackByMessageId = new Map();
+      feedbackByMessageSId = new Map();
       for (const f of feedbacks) {
         const messageId = agentMessageIdToSId.get(f.agentMessageId);
         if (messageId) {
-          const list = feedbackByMessageId.get(messageId) ?? [];
+          const list = feedbackByMessageSId.get(messageId) ?? [];
           list.push({
             thumbDirection: f.thumbDirection,
             content: f.content,
           });
-          feedbackByMessageId.set(messageId, list);
+          feedbackByMessageSId.set(messageId, list);
         }
       }
     }
   }
 
-  const text = formatConversationForShrinkWrap(
-    {
-      sId: conversation.sId,
-      title: conversation.title,
-      messages: flatMessages,
-    },
-    {
-      fromMessageIndex,
-      toMessageIndex,
-      feedbackByMessageId: feedbackByMessageId,
-      includeActionDetails,
-    }
-  );
+  const text = renderConversationAsText(conversation, {
+    includeTimestamps: true,
+    includeActions: true,
+    includeActionDetails,
+    includeFeedback: !!feedbackByMessageSId,
+    feedbackByMessageSId,
+    truncateMessageChars: MAX_CONTENT_CHARS_PER_MESSAGE,
+    truncateTotalChars: MAX_TOTAL_CONTENT_CHARS,
+    fromMessageIndex,
+    toMessageIndex,
+  });
 
   return new Ok({
     type: "text" as const,
