@@ -378,10 +378,10 @@ export async function emitMetronomeUsageEventsActivity(
   await ingestMetronomeEvents([...llmEvents, ...toolEvents]);
 }
 
-/*
- * Called daily by the Metronome gauge schedule.
+/**
+ * Daily sync of the MAU count to Metronome for all workspaces.
  */
-export async function emitMetronomeGaugeEventsForAllWorkspacesActivity(): Promise<void> {
+export async function syncMauCountToMetronomeForAllWorkspacesActivity(): Promise<void> {
   // Only workspaces with a metronomeCustomerId.
   const allWorkspaces = await WorkspaceResource.listAll();
   const workspaces = allWorkspaces.filter(

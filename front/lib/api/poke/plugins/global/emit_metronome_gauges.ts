@@ -1,7 +1,7 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { QUEUE_NAME } from "@app/temporal/usage_queue/config";
-import { emitMetronomeGaugeEventsWorkflow } from "@app/temporal/usage_queue/workflows";
+import { syncMauCountToMetronomeWorkflow } from "@app/temporal/usage_queue/workflows";
 import { Ok } from "@app/types/shared/result";
 
 export const emitMetronomeGaugesPlugin = createPlugin({
@@ -17,7 +17,7 @@ export const emitMetronomeGaugesPlugin = createPlugin({
     const client = await getTemporalClientForFrontNamespace();
 
     const workflowId = `metronome-gauge-manual-${Date.now()}`;
-    await client.workflow.start(emitMetronomeGaugeEventsWorkflow, {
+    await client.workflow.start(syncMauCountToMetronomeWorkflow, {
       args: [],
       taskQueue: QUEUE_NAME,
       workflowId,
