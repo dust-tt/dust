@@ -2041,6 +2041,83 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return RunResource.fetchByDustRunId(auth, { dustRunId: lastRunId });
   }
 
+  static async resolveForkSourceMessage(
+    auth: Authenticator,
+    {
+      conversationId,
+      sourceMessageId,
+      transaction,
+    }: {
+      conversationId: ModelId;
+      sourceMessageId?: string;
+      transaction?: Transaction;
+    }
+  ): Promise<Result<MessageModel, Error>> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const where: WhereOptions<MessageModel> = {
+      workspaceId,
+      conversationId,
+      visibility: { [Op.ne]: "deleted" },
+      agentMessageId: { [Op.ne]: null },
+    };
+
+    if (sourceMessageId) {
+      where.sId = sourceMessageId;
+    } else {
+      where.branchId = { [Op.is]: null };
+    }
+
+    // Keep the lookup scoped to a single conversation/workspace; ordering by rank/version only
+    // applies within that slice when choosing the latest main-thread agent message.
+    const sourceMessage = await MessageModel.findOne({
+      where,
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: ["status"],
+          where: {
+            status: { [Op.ne]: "created" },
+          },
+        },
+      ],
+      order: sourceMessageId
+        ? undefined
+        : [
+            ["rank", "DESC"],
+            ["version", "DESC"],
+          ],
+      transaction,
+    });
+
+    if (!sourceMessage) {
+      return new Err(
+        new Error(
+          sourceMessageId
+            ? "The source message is missing or cannot be used for forking."
+            : "The conversation has no completed agent message to fork from."
+        )
+      );
+    }
+
+    if (sourceMessage.branchId !== null) {
+      const [branch] = await ConversationBranchResource.fetchByModelIds(auth, [
+        sourceMessage.branchId,
+      ]);
+
+      if (!branch || !branch.canRead(auth)) {
+        return new Err(
+          new Error(
+            "The source message is missing or cannot be used for forking."
+          )
+        );
+      }
+    }
+
+    return new Ok(sourceMessage);
+  }
+
   static async getMessageByIdInConversation(
     auth: Authenticator,
     conversation: ConversationWithoutContentType,
