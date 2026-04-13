@@ -18,7 +18,7 @@ async function fetchSeatCredits(
   return 1;
 }
 
-const getCachedSeatCredits = cacheWithRedis(
+export const getCachedSeatCredits = cacheWithRedis(
   fetchSeatCredits,
   (workspaceSId, userSId) => `${workspaceSId}:${userSId}`,
   { ttlMs: CACHE_TTL_MS }
@@ -56,21 +56,6 @@ const getCachedPoolCredits = cacheWithRedis(
   (workspaceSId) => workspaceSId,
   { ttlMs: CACHE_TTL_MS }
 );
-
-// ---------------------------------------------------------------------------
-// Public API — read balances
-// ---------------------------------------------------------------------------
-
-/**
- * Get the cached per-user seat credit balance (in cents).
- * Returns `null` on cache miss or Redis failure.
- */
-export async function getUserSeatCreditBalance(
-  workspaceSId: string,
-  userSId: string
-): Promise<number | null> {
-  return getCachedSeatCredits(workspaceSId, userSId);
-}
 
 // ---------------------------------------------------------------------------
 // Public API — boolean checks
