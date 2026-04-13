@@ -398,7 +398,7 @@ export async function syncMauCountToMetronomeForAllWorkspacesActivity(): Promise
     {
       workspaceCount: workspaces.length,
     },
-    "[Metronome] Syncing MAU counts for workspaces with billing cycle ending today"
+    "[Metronome] Syncing MAU counts for all workspaces"
   );
 
   await concurrentExecutor(
