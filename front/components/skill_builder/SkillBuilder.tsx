@@ -81,11 +81,13 @@ export default function SkillBuilder({
     limit: 30,
   });
 
+  const hasReinforcedAgents = hasFeature("reinforced_agents");
+
   const { suggestions } = useSkillSuggestions({
     skillId: skill?.sId ?? null,
     states: ["pending"],
     workspaceId: owner.sId,
-    disabled: !skill,
+    disabled: !skill || !hasReinforcedAgents,
   });
 
   const hasPendingSuggestions = suggestions.length > 0;
@@ -185,7 +187,7 @@ export default function SkillBuilder({
     }
   }, [hasPendingSuggestions]);
 
-  const showSuggestionsPanel = skill && !isMobile;
+  const showSuggestionsPanel = skill && !isMobile && hasReinforcedAgents;
 
   const leftPanel = (
     <div className="flex h-full w-full flex-col">
@@ -305,11 +307,7 @@ export default function SkillBuilder({
                 {isSuggestionsPanelOpen && (
                   <>
                     <ResizableHandle withHandle />
-                    <ResizablePanel
-                      defaultSize={35}
-                      minSize={20}
-                      maxSize={50}
-                    >
+                    <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
                       <div className="h-full w-full overflow-y-auto">
                         <SkillBuilderSuggestionsPanel />
                       </div>

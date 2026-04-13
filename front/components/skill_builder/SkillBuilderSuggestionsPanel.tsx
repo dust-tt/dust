@@ -1,8 +1,8 @@
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
-import { SkillSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { SkillSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
 import {
   usePatchSkillSuggestions,
   useSkillSuggestions,
@@ -29,6 +29,27 @@ export function SkillBuilderSuggestionsPanel() {
     skillId,
     workspaceId: owner.sId,
   });
+
+  const applyInstructionEdits = useCallback(
+    (suggestion: SkillSuggestionType) => {
+      const { instructionEdits } = suggestion.suggestion;
+      if (!instructionEdits || instructionEdits.length === 0) {
+        return;
+      }
+
+      let instructions = getValues("instructions");
+
+      for (const edit of instructionEdits) {
+        instructions = instructions.replaceAll(
+          edit.old_string,
+          edit.new_string
+        );
+      }
+
+      setValue("instructions", instructions, { shouldDirty: true });
+    },
+    [getValues, setValue]
+  );
 
   const applyToolEdits = useCallback(
     (suggestion: SkillSuggestionType) => {
@@ -66,11 +87,12 @@ export function SkillBuilderSuggestionsPanel() {
     async (suggestion: SkillSuggestionType) => {
       const result = await patchSuggestions([suggestion.sId], "approved");
       if (result) {
+        applyInstructionEdits(suggestion);
         applyToolEdits(suggestion);
         await mutateSuggestions();
       }
     },
-    [patchSuggestions, mutateSuggestions, applyToolEdits]
+    [patchSuggestions, mutateSuggestions, applyInstructionEdits, applyToolEdits]
   );
 
   const handleDecline = useCallback(
@@ -90,8 +112,8 @@ export function SkillBuilderSuggestionsPanel() {
           Suggestions
         </h2>
         <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Dust has analysed conversations using this skill and has generated
-          this list of suggestions to improve it.
+          Dust continuously analyses conversations using this skill to suggest
+          improvements.
         </p>
       </div>
 
@@ -105,8 +127,7 @@ export function SkillBuilderSuggestionsPanel() {
             <div className="flex flex-col items-center gap-3 py-12 text-center">
               <LightbulbIcon className="text-muted-foreground dark:text-muted-foreground-night" />
               <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Dust will continuously analyse conversations using this skill to
-                try to suggest improvements.
+                No pending suggestions.
               </p>
             </div>
           ) : (
