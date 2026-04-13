@@ -93,7 +93,7 @@ export function ProjectsBrowsePopover({ owner }: ProjectsBrowsePopoverProps) {
   }, [projects]);
 
   return (
-    <div className="hidden sm:block">
+    <div>
       <PopoverRoot open={isOpen} onOpenChange={setIsOpen} modal>
         <PopoverTrigger asChild>
           <Button size="xs" icon={MoreIcon} variant="ghost" />
