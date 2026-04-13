@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout codex repo at pinned tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
           repository: openai/codex
           ref: ${{ inputs.codex_tag }}

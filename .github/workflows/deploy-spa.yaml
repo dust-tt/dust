@@ -80,7 +80,7 @@ jobs:
     outputs:
       short_sha: ${{ steps.short_sha.outputs.short_sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
       - name: Get short sha
         id: short_sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
@@ -92,7 +92,7 @@ jobs:
     outputs:
       thread_ts: ${{ inputs.thread_ts || steps.build_message.outputs.thread_ts }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
 
       - name: Notify SPA Deploy Start
         if: ${{ !inputs.thread_ts }}
@@ -117,7 +117,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
