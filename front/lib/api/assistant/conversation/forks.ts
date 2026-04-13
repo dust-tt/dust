@@ -64,9 +64,7 @@ export async function createConversationFork(
         depth: parentConversation.depth + 1,
         triggerId: null,
         spaceId: parentConversation.space?.id ?? null,
-        requestedSpaceIds: parentConversation.space
-          ? [parentConversation.space.id]
-          : [],
+        requestedSpaceIds: [...parentConversation.requestedSpaceIds],
         metadata: {},
       },
       parentConversation.space,

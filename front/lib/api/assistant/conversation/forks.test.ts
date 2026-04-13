@@ -1,8 +1,9 @@
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { createConversationFork } from "@app/lib/api/assistant/conversation/forks";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
+  ConversationModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
@@ -11,6 +12,9 @@ import { ConversationBranchResource } from "@app/lib/resources/conversation_bran
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -262,5 +266,79 @@ describe("createConversationFork", () => {
     expect(result.isErr() ? result.error.code : "").toBe(
       "invalid_request_error"
     );
+  });
+
+  it("inherits the parent's requested spaces so the fork does not broaden visibility", async () => {
+    const {
+      auth: initialAuth,
+      globalSpace,
+      user,
+      workspace,
+    } = await createPrivateApiMockRequest({ role: "admin" });
+
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const addMembersRes = await restrictedSpace.addMembers(initialAuth, {
+      userIds: [user.sId],
+    });
+    expect(addMembersRes.isOk()).toBe(true);
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+    const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+
+    const parentConversation = await createConversation(auth, {
+      title: "Parent conversation",
+      visibility: "unlisted",
+      spaceId: globalSpace.id,
+    });
+    await ConversationModel.update(
+      { requestedSpaceIds: [globalSpace.id, restrictedSpace.id] },
+      {
+        where: {
+          id: parentConversation.id,
+          workspaceId: workspace.id,
+        },
+      }
+    );
+
+    const userMessage = await createUserMessage(auth, {
+      conversation: parentConversation,
+      rank: 0,
+      content: "Continue from the restricted state.",
+    });
+    const sourceMessage = await createAgentMessage(auth, {
+      conversation: parentConversation,
+      rank: 1,
+      parentId: userMessage.id,
+      status: "succeeded",
+    });
+
+    const result = await createConversationFork(auth, {
+      conversationId: parentConversation.sId,
+      sourceMessageId: sourceMessage.sId,
+    });
+
+    expect(result.isErr()).toBe(false);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    expect(result.value.requestedSpaceIds).toEqual([
+      globalSpace.sId,
+      restrictedSpace.sId,
+    ]);
+
+    const childConversationForOtherUser = await ConversationResource.fetchById(
+      otherAuth,
+      result.value.sId
+    );
+    expect(childConversationForOtherUser).toBeNull();
   });
 });
