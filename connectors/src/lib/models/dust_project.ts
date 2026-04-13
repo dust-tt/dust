@@ -51,6 +51,8 @@ export class DustProjectConversationModel extends ConnectorBaseModel<DustProject
   declare projectId: string;
   declare lastSyncedAt: CreationOptional<Date | null>;
   declare sourceUpdatedAt: Date;
+  /** 1 = monolithic document id; N > 1 = base-part-1 … base-part-N. Null for rows synced before this column existed. */
+  declare documentPartCount: CreationOptional<number | null>;
 }
 
 DustProjectConversationModel.init(
@@ -81,6 +83,10 @@ DustProjectConversationModel.init(
     sourceUpdatedAt: {
       type: DataTypes.DATE,
       allowNull: false,
+    },
+    documentPartCount: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
   },
   {
