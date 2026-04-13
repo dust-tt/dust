@@ -25,7 +25,7 @@ jobs:
       has-missing: ${{ steps.check.outputs.has-missing }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
@@ -64,7 +64,7 @@ jobs:
       matrix: ${{ fromJson(needs.check.outputs.build-matrix) }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps

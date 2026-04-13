@@ -65,7 +65,7 @@ jobs:
     outputs:
       thread_ts: ${{ steps.build_message.outputs.thread_ts }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
 
       - name: Notify Start
         id: build_message
@@ -103,7 +103,7 @@ jobs:
         region: ${{ fromJson(needs.create-matrix.outputs.matrix) }}
       fail-fast: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
 
       - name: Set project ID
         id: project
@@ -160,7 +160,7 @@ jobs:
     needs: [notify-start, validate-image]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
 
       - name: Generate token
         id: generate-token
