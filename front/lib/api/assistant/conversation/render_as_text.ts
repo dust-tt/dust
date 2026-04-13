@@ -190,14 +190,6 @@ function formatUnread(
   return createdMs > lastReadMs ? "(unread)" : null;
 }
 
-/**
- * Build a message header line by joining non-null parts with spaces.
- * Example: ">> User (Alice) [2024-01-01T00:00:00.000Z] (unread):"
- */
-function buildHeaderLine(parts: (string | null)[]): string {
-  return parts.filter((p) => p !== null).join(" ") + ":";
-}
-
 function truncateContent(
   content: string,
   options: RenderConversationAsTextOptions
@@ -224,11 +216,13 @@ function renderUserMessageAsText(
     options.includeEmail && msg.user && "email" in msg.user
       ? `, ${msg.user.email}`
       : "";
-  const header = buildHeaderLine([
-    `>> User (${userName}${email})`,
-    formatTimestamp(msg.created, options),
-    formatUnread(msg.created, lastReadMs, options),
-  ]);
+  const timestamp = formatTimestamp(msg.created, options);
+  const unread = formatUnread(msg.created, lastReadMs, options);
+  const header =
+    `>> User (${userName}${email})` +
+    (timestamp ? ` ${timestamp}` : "") +
+    (unread ? ` ${unread}` : "") +
+    ":";
 
   if (msg.visibility === "deleted") {
     return {
@@ -253,11 +247,13 @@ function renderAgentMessageAsText(
   options: RenderConversationAsTextOptions
 ): RenderedMessage {
   const agentName = msg.configuration?.name ?? "Agent";
-  const header = buildHeaderLine([
-    `>> Agent (${agentName})`,
-    formatTimestamp(msg.created, options),
-    formatUnread(msg.created, lastReadMs, options),
-  ]);
+  const timestamp = formatTimestamp(msg.created, options);
+  const unread = formatUnread(msg.created, lastReadMs, options);
+  const header =
+    `>> Agent (${agentName})` +
+    (timestamp ? ` ${timestamp}` : "") +
+    (unread ? ` ${unread}` : "") +
+    ":";
 
   if (msg.visibility === "deleted") {
     return {
@@ -325,11 +321,13 @@ function renderContentFragmentAsText(
   lastReadMs: number | null,
   options: RenderConversationAsTextOptions
 ): RenderedMessage {
-  const header = buildHeaderLine([
-    ">> Content Fragment",
-    formatTimestamp(msg.created, options),
-    formatUnread(msg.created, lastReadMs, options),
-  ]);
+  const timestamp = formatTimestamp(msg.created, options);
+  const unread = formatUnread(msg.created, lastReadMs, options);
+  const header =
+    ">> Content Fragment" +
+    (timestamp ? ` ${timestamp}` : "") +
+    (unread ? ` ${unread}` : "") +
+    ":";
 
   return {
     text: `${header}\nTitle: ${msg.title}\nContent-Type: ${msg.contentType}\n`,
@@ -341,10 +339,8 @@ function renderCompactionMessageAsText(
   msg: CompactionMessageType,
   options: RenderConversationAsTextOptions
 ): RenderedMessage {
-  const header = buildHeaderLine([
-    ">> Compaction",
-    formatTimestamp(msg.created, options),
-  ]);
+  const timestamp = formatTimestamp(msg.created, options);
+  const header = ">> Compaction" + (timestamp ? ` ${timestamp}` : "") + ":";
   const content = msg.content ?? "";
 
   return {
