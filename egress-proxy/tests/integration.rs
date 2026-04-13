@@ -7,6 +7,8 @@ use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
+const SECRET: &str = "test-secret";
+
 struct ProxyProcess {
     child: Child,
     health_addr: SocketAddr,
@@ -42,6 +44,30 @@ async fn invalid_tls_assets_fail_startup() -> Result<()> {
         .env("EGRESS_PROXY_HEALTH_ADDR", health_addr.to_string())
         .env("EGRESS_PROXY_TLS_CERT", temp_dir.path().join("missing.crt"))
         .env("EGRESS_PROXY_TLS_KEY", &tls_key_path)
+        .env("EGRESS_PROXY_JWT_SECRET", SECRET)
+        .env("EGRESS_PROXY_ALLOWED_DOMAINS", "example.com")
+        .env("EGRESS_PROXY_ENV", "production")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?;
+
+    wait_for_startup_failure(&mut child).await
+}
+
+#[tokio::test]
+async fn invalid_allowed_domain_fails_startup() -> Result<()> {
+    let temp_dir = tempfile::TempDir::new()?;
+    let certs = generate_test_certs(temp_dir.path())?;
+    let health_addr = free_addr()?;
+
+    let mut child = Command::new(env!("CARGO_BIN_EXE_egress-proxy"))
+        .env("EGRESS_PROXY_LISTEN_ADDR", "127.0.0.1:4443")
+        .env("EGRESS_PROXY_HEALTH_ADDR", health_addr.to_string())
+        .env("EGRESS_PROXY_TLS_CERT", &certs.server_cert_path)
+        .env("EGRESS_PROXY_TLS_KEY", &certs.server_key_path)
+        .env("EGRESS_PROXY_JWT_SECRET", SECRET)
+        .env("EGRESS_PROXY_ALLOWED_DOMAINS", "example..com")
+        .env("EGRESS_PROXY_ENV", "production")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()?;
@@ -60,6 +86,9 @@ async fn start_proxy() -> Result<ProxyProcess> {
             .env("EGRESS_PROXY_HEALTH_ADDR", health_addr.to_string())
             .env("EGRESS_PROXY_TLS_CERT", &certs.server_cert_path)
             .env("EGRESS_PROXY_TLS_KEY", &certs.server_key_path)
+            .env("EGRESS_PROXY_JWT_SECRET", SECRET)
+            .env("EGRESS_PROXY_ALLOWED_DOMAINS", "example.com")
+            .env("EGRESS_PROXY_ENV", "production")
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()?,
