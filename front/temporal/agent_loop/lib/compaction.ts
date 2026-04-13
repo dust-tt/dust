@@ -40,9 +40,10 @@ After your analysis, provide your detailed summary in <summary> tags with these 
 1. **Primary Request and Intent** — All explicit user requests and intents.
 2. **Key Topics and Concepts** — Main subjects, domains, or frameworks discussed.
 3. **Information Exchanged** — Important data, references, or artifacts shared during the conversation.
-4. **Issues and Resolutions** — Problems encountered, how they were resolved, and user feedback.
-5. **Pending Tasks** — Explicitly requested work that is still pending.
-6. **Current State** — What was being discussed or worked on immediately before this summary.
+4. **Key Files and Resources** — Important files, documents, or resources referenced or shared in the conversation that are useful to the current work (content fragments, attachments, links).
+5. **Issues and Resolutions** — Problems encountered, how they were resolved, and user feedback.
+6. **Pending Tasks** — Explicitly requested work that is still pending.
+7. **Current State** — What was being discussed or worked on immediately before this summary.
 
 Only the content of the <summary> block will be used to continue the conversation — the <analysis> \
 block is a scratchpad and will be discarded. Make sure the summary is self-contained and includes \
