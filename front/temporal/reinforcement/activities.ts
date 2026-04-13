@@ -46,7 +46,10 @@ import {
 } from "@app/lib/reinforcement/run_reinforced_analysis";
 import { findConversationsWithSkills } from "@app/lib/reinforcement/selection";
 import type { ReinforcedSkillsOperationType } from "@app/lib/reinforcement/types";
-import { getAuthForWorkspace } from "@app/lib/reinforcement/utils";
+import {
+  getAuthForWorkspace,
+  recordSkillReinforcementAnalysisCompletion,
+} from "@app/lib/reinforcement/utils";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
@@ -996,4 +999,19 @@ export async function processSkillAggregationBatchResultActivity({
     reinforcementConversationId: firstConvId,
     toolActionInfo,
   };
+}
+
+/**
+ * Record that reinforcement analysis has completed for a skill.
+ * Sets `lastReinforcementAnalysisAt` on the skill configuration.
+ */
+export async function recordSkillReinforcementWorkflowCompletionActivity({
+  workspaceId,
+  skillId,
+}: {
+  workspaceId: string;
+  skillId: string;
+}): Promise<void> {
+  const auth = await getAuthForWorkspace(workspaceId);
+  await recordSkillReinforcementAnalysisCompletion(auth, skillId);
 }

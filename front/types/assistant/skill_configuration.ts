@@ -6,6 +6,9 @@ import { z } from "zod";
 export const SKILL_STATUSES = ["active", "archived", "suggested"] as const;
 export type SkillStatus = (typeof SKILL_STATUSES)[number];
 
+export const SKILL_REINFORCEMENT_MODES = ["auto", "on", "off"] as const;
+export type SkillReinforcementMode = (typeof SKILL_REINFORCEMENT_MODES)[number];
+
 export const SKILL_SOURCES = [
   "web_app",
   "github",
@@ -37,6 +40,8 @@ export const SkillSchema = z.object({
   icon: z.string().nullable(),
   source: z.enum(SKILL_SOURCES).nullable(),
   sourceMetadata: SkillSourceMetadataSchema.nullable(),
+  reinforcement: z.enum(SKILL_REINFORCEMENT_MODES).optional(),
+  lastReinforcementAnalysisAt: z.string().nullable().optional(),
   requestedSpaceIds: z.array(z.string()),
   tools: z.array(MCPServerViewSchema),
   fileAttachments: z.array(

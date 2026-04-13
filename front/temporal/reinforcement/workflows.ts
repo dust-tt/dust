@@ -50,11 +50,12 @@ const { aggregateSuggestionsForSkillStepActivity } = proxyActivities<
   startToCloseTimeout: "10 minutes",
 });
 
-const { finalizeSkillAggregationActivity } = proxyActivities<typeof activities>(
-  {
-    startToCloseTimeout: "5 minutes",
-  }
-);
+const {
+  finalizeSkillAggregationActivity,
+  recordSkillReinforcementWorkflowCompletionActivity,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "5 minutes",
+});
 
 const { checkBatchStatusActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
@@ -271,6 +272,11 @@ async function aggregateSkillWithMultiStepBatch({
     suggestionsCreated: totalSuggestionsCreated,
     disableNotifications,
   });
+
+  await recordSkillReinforcementWorkflowCompletionActivity({
+    workspaceId,
+    skillId,
+  });
 }
 
 /**
@@ -460,6 +466,11 @@ export async function reinforcedSkillsWorkspaceWorkflow({
         skillId: currentSkillId,
         suggestionsCreated,
         disableNotifications,
+      });
+
+      await recordSkillReinforcementWorkflowCompletionActivity({
+        workspaceId,
+        skillId: currentSkillId,
       });
     }
   }

@@ -1403,6 +1403,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         source: null,
         sourceMetadata: null,
         isDefault: def.isAutoEnabled !== true,
+        reinforcement: "auto",
+        lastReinforcementAnalysisAt: null,
       },
       {
         // Global skills do not have data source configurations.
@@ -1634,6 +1636,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           source: versionModel.source,
           sourceMetadata: versionModel.sourceMetadata,
           isDefault: versionModel.isDefault,
+          reinforcement: "auto",
+          lastReinforcementAnalysisAt: null,
         },
         {
           // We ignore data source configurations for historical versions.
@@ -2414,6 +2418,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       instructionsHtml: this.globalSId ? null : this.instructionsHtml,
       requestedSpaceIds,
       icon: this.icon ?? null,
+      reinforcement: this.reinforcement,
+      lastReinforcementAnalysisAt:
+        this.lastReinforcementAnalysisAt?.toISOString() ?? null,
       source: this.source,
       sourceMetadata: this.sourceMetadata,
       tools: this.mcpServerViews.map((view) => {
