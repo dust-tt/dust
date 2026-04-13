@@ -13,22 +13,25 @@ export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 /**
  * Build the TipTap extension list for the skill instructions editor.
  *
- * @param isReadOnly - When true, only the base parsing/rendering extensions are
- *   included. When false, caller must supply `editableExtensions` with the
- *   browser-only extensions (SlashCommand, Placeholder, CharacterCount, etc.)
- *   that cannot be statically imported in server/Node contexts.
+ * @param isReadOnly - When true, interactive editing extensions are omitted.
  * @param editableExtensions - Extensions appended when `isReadOnly` is false.
+ * @param serverSide - When true, includes InstructionsDocumentExtension,
+ *   InstructionsRootExtension, and BlockIdExtension for server-side HTML
  */
 export function buildSkillInstructionsExtensions(
   isReadOnly: boolean,
-  editableExtensions: Extensions = []
+  editableExtensions: Extensions = [],
+  { serverSide = false }: { serverSide?: boolean } = {}
 ): Extensions {
   const baseExtensions: Extensions = [
-    InstructionsDocumentExtension,
-    InstructionsRootExtension,
+    ...(serverSide
+      ? [InstructionsDocumentExtension, InstructionsRootExtension]
+      : []),
     Markdown,
     StarterKit.configure({
-      document: false,
+      // document: false is required when InstructionsDocumentExtension is present
+      // (it replaces StarterKit's default Document node).
+      ...(serverSide ? { document: false } : {}),
       orderedList: {
         HTMLAttributes: {
           class: markdownStyles.orderedList(),
@@ -70,7 +73,7 @@ export function buildSkillInstructionsExtensions(
         class: "mt-4 mb-3",
       },
     }),
-    BlockIdExtension,
+    ...(serverSide ? [BlockIdExtension] : []),
     KnowledgeNode,
   ];
 

@@ -6,7 +6,6 @@ import {
   buildSkillInstructionsExtensions,
   INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
 } from "@app/lib/editor/build_skill_instructions_extensions";
-import { preprocessMarkdown } from "@app/lib/editor/skill_instructions_preprocessing";
 import { cn } from "@dust-tt/sparkle";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import type { Transaction } from "@tiptap/pm/state";
@@ -41,7 +40,7 @@ function useEditorService(editor: Editor | null) {
       setContent(content: string) {
         // Safety check for Safari: ensure editor and docView are available
         if (editor && !editor.isDestroyed) {
-          editor.commands.setContent(preprocessMarkdown(content), {
+          editor.commands.setContent(content, {
             emitUpdate: false,
             contentType: "markdown",
           });
@@ -151,7 +150,7 @@ export function useSkillInstructionsEditor({
       // This fixes Safari crashes where docView is accessed before render
       requestAnimationFrame(() => {
         if (editor && !editor.isDestroyed) {
-          editor.commands.setContent(preprocessMarkdown(content), {
+          editor.commands.setContent(content, {
             emitUpdate: false,
             contentType: "markdown",
           });

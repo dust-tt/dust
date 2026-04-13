@@ -13,11 +13,12 @@ import { MarkdownManager } from "@tiptap/markdown";
 import { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string";
 import * as cheerio from "cheerio";
 
-const SKILL_EDITOR_EXTENSIONS = buildSkillInstructionsExtensions(true);
+const SKILL_EDITOR_EXTENSIONS = buildSkillInstructionsExtensions(true, [], {
+  serverSide: true,
+});
 const MARKDOWN_MANAGER = new MarkdownManager({
   extensions: SKILL_EDITOR_EXTENSIONS,
 });
-
 const NODE_TYPES_WITH_BLOCK_ID = new Set<string>([
   ...BLOCK_ID_UNIQUE_ID_NODE_TYPES,
   INSTRUCTIONS_ROOT_NODE_NAME,
