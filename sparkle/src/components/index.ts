@@ -176,10 +176,7 @@ export * from "./NavigationList";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
 export { NotificationButton } from "./NotificationButton";
-export type {
-  OptionCardProps,
-  OptionCardSelectionStyle,
-} from "./OptionCard";
+export type { OptionCardProps } from "./OptionCard";
 export { OptionCard } from "./OptionCard";
 export { Page } from "./Page";
 export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";

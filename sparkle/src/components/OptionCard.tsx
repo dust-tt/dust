@@ -23,6 +23,14 @@ export function OptionCard({
   onClick,
 }: OptionCardProps) {
   const variant: CardVariantType = selected ? "active" : "tertiary";
+  const isInteractive = onClick !== undefined && !disabled;
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if ((e.key === "Enter" || e.key === " ") && onClick) {
+      e.preventDefault();
+      onClick();
+    }
+  };
 
   return (
     <Card
@@ -36,6 +44,9 @@ export function OptionCard({
         className
       )}
       onClick={disabled ? undefined : onClick}
+      onKeyDown={isInteractive ? handleKeyDown : undefined}
+      tabIndex={disabled ? -1 : isInteractive ? 0 : undefined}
+      aria-pressed={isInteractive ? selected : undefined}
     >
       {counterValue !== undefined && (
         <Counter
