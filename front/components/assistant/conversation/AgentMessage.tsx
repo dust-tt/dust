@@ -28,7 +28,7 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
-import { UserQuestionRequired } from "@app/components/assistant/conversation/UserQuestionRequired";
+import { UserAnswerRequired } from "@app/components/assistant/conversation/UserAnswerRequired";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   CitationsContext,
@@ -1234,7 +1234,7 @@ function AgentMessageContent({
 
       case "blocked_user_answer_required":
         return (
-          <UserQuestionRequired
+          <UserAnswerRequired
             blockedAction={blockedAction}
             triggeringUser={triggeringUser}
             owner={owner}
