@@ -19,6 +19,20 @@ export type CreateConversationForkErrorCode =
   | "invalid_request_error"
   | "internal_error";
 
+const FORKED_CONVERSATION_TITLE_SUFFIX = " (forked)";
+
+function getForkedConversationTitle(title: string | null): string | null {
+  if (title === null) {
+    return null;
+  }
+
+  if (title.endsWith(FORKED_CONVERSATION_TITLE_SUFFIX)) {
+    return title;
+  }
+
+  return `${title}${FORKED_CONVERSATION_TITLE_SUFFIX}`;
+}
+
 async function copyConversationMCPServerViews(
   auth: Authenticator,
   {
@@ -116,7 +130,7 @@ export async function createConversationFork(
       auth,
       {
         sId: generateRandomModelSId(),
-        title: parentConversation.title,
+        title: getForkedConversationTitle(parentConversation.title),
         visibility: parentConversation.visibility,
         depth: parentConversation.depth + 1,
         triggerId: null,

@@ -144,6 +144,9 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData().conversation.title).toBe(
+      "Parent conversation (forked)"
+    );
     expect(res._getJSONData().conversation.forkedFrom).toEqual({
       parentConversationId: parentConversation.sId,
       sourceMessageId: sourceMessage.sId,

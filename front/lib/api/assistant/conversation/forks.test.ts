@@ -135,7 +135,7 @@ describe("createConversationFork", () => {
 
     const childConversation = result.value;
 
-    expect(childConversation.title).toBe("Parent conversation");
+    expect(childConversation.title).toBe("Parent conversation (forked)");
     expect(childConversation.spaceId).toBe(globalSpace.sId);
     expect(childConversation.depth).toBe(parentConversation.depth + 1);
     expect(childConversation.content).toEqual([]);
