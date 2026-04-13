@@ -3,16 +3,73 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import type {
+  ConversationType,
+  ConversationWithoutContentType,
+} from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { Transaction } from "sequelize";
 
 export type CreateConversationForkErrorCode =
   | "conversation_not_found"
   | "invalid_request_error"
   | "internal_error";
+
+async function copyConversationMCPServerViews(
+  auth: Authenticator,
+  {
+    parentConversation,
+    childConversation,
+    transaction,
+  }: {
+    parentConversation: ConversationWithoutContentType;
+    childConversation: ConversationWithoutContentType;
+    transaction: Transaction;
+  }
+): Promise<Result<undefined, DustError<CreateConversationForkErrorCode>>> {
+  const parentMCPServerViews = await ConversationResource.fetchMCPServerViews(
+    auth,
+    parentConversation,
+    { onlyEnabled: true }
+  );
+
+  if (parentMCPServerViews.length === 0) {
+    return new Ok(undefined);
+  }
+
+  const readableMCPServerViews = await MCPServerViewResource.fetchByModelIds(
+    auth,
+    parentMCPServerViews.map((view) => view.mcpServerViewId)
+  );
+
+  if (readableMCPServerViews.length === 0) {
+    return new Ok(undefined);
+  }
+
+  const upsertResult = await ConversationResource.upsertMCPServerViews(auth, {
+    conversation: childConversation,
+    mcpServerViews: readableMCPServerViews,
+    enabled: true,
+    source: "conversation",
+    agentConfigurationId: null,
+    transaction,
+  });
+
+  if (upsertResult.isErr()) {
+    return new Err(
+      new DustError(
+        "internal_error",
+        "Failed to copy MCP server views into the forked conversation."
+      )
+    );
+  }
+
+  return new Ok(undefined);
+}
 
 export async function createConversationFork(
   auth: Authenticator,
@@ -70,6 +127,19 @@ export async function createConversationFork(
       parentConversation.space,
       { transaction }
     );
+
+    const copyMCPServerViewsResult = await copyConversationMCPServerViews(
+      auth,
+      {
+        parentConversation: parentConversation.toJSON(),
+        childConversation: childConversation.toJSON(),
+        transaction,
+      }
+    );
+
+    if (copyMCPServerViewsResult.isErr()) {
+      return copyMCPServerViewsResult;
+    }
 
     await ConversationResource.upsertParticipation(auth, {
       conversation: childConversation.toJSON(),
