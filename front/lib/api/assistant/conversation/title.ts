@@ -1,5 +1,6 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
+import { renderConversationAsText } from "@app/lib/api/assistant/conversation/render_as_text";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import {
   getSmallWhitelistedModel,
@@ -26,7 +27,6 @@ import { GPT_5_1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { formatConversationForDisplay } from "../../actions/servers/project_manager/tools/conversation_formatting";
 
 export async function updateConversationTitle(
   auth: Authenticator,
@@ -188,7 +188,7 @@ async function generateConversationTitle(
         content: [
           {
             type: "text",
-            text: `Here is the conversation to generate a title for.\n\n${JSON.stringify(formatConversationForDisplay(conversation, owner.sId).messages, null, 2)}`,
+            text: `Here is the conversation to generate a title for.\n\n${renderConversationAsText(conversation, { includeTimestamps: true })}`,
           },
         ],
         name: "",
