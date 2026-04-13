@@ -35,7 +35,7 @@ thoughts and ensure you've covered all necessary points. In your analysis:
 
 2. Double-check for accuracy and completeness.
 
-After your analysis, provide your summary in <summary> tags with these sections:
+After your analysis, provide your detailed summary in <summary> tags with these sections:
 
 1. **Primary Request and Intent** — All explicit user requests and intents.
 2. **Key Topics and Concepts** — Main subjects, domains, or frameworks discussed.
@@ -43,6 +43,10 @@ After your analysis, provide your summary in <summary> tags with these sections:
 4. **Issues and Resolutions** — Problems encountered, how they were resolved, and user feedback.
 5. **Pending Tasks** — Explicitly requested work that is still pending.
 6. **Current State** — What was being discussed or worked on immediately before this summary.
+
+Only the content of the <summary> block will be used to continue the conversation — the <analysis> \
+block is a scratchpad and will be discarded. Make sure the summary is self-contained and includes \
+all the context needed to continue without access to the original messages.
 
 IMPORTANT: Respond with TEXT ONLY. Do NOT attempt to use any tools. Your entire response must be \
 plain text: an <analysis> block followed by a <summary> block.`;
@@ -130,7 +134,7 @@ export async function runCompaction(
         compactionMessageId,
         error: summaryRes.error,
       },
-      "Compaction summary generation failed"
+      "Compaction generation failed"
     );
     content = null;
     status = "failed";
@@ -181,6 +185,9 @@ async function generateCompactionSummary(
     includeActionDetails: true,
     skipRunningAgentMessages: true,
   });
+
+  // TODO(compaction): Ensure we don't exceeds the model context size here, as we have no guarantee
+  // that the current conversation is not exceeding it already.
 
   const conv: ModelConversationTypeMultiActions = {
     messages: [
