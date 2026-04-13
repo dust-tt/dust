@@ -1,7 +1,3 @@
-import {
-  isServerSideMCPServerConfiguration,
-  isServerSideMCPServerConfigurationWithName,
-} from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
@@ -14,8 +10,6 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
@@ -30,58 +24,6 @@ import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import { makeTriggerScheduleId } from "../schedule/client";
-
-/**
- * We want to create individual conversations if the agent outcome will vary from user to user.
- */
-async function shouldCreateIndividualConversations(
-  auth: Authenticator,
-  agentConfiguration: AgentConfigurationType,
-  checkedAgentConfigurationIds: string[] = []
-): Promise<boolean> {
-  // Check if one of the actions is using a personal actions or a run agent action
-  const mcpServerViews = await MCPServerViewResource.listByWorkspace(auth);
-  const mcpServerViewsMap = new Map(
-    mcpServerViews.map((mcpServerView) => [mcpServerView.sId, mcpServerView])
-  );
-  for (const action of agentConfiguration.actions) {
-    if (isServerSideMCPServerConfiguration(action)) {
-      const mcpServerView = mcpServerViewsMap.get(action.mcpServerViewId);
-      if (!mcpServerView) {
-        throw new Error(
-          `MCP server view with ID ${action.mcpServerViewId} not found.`
-        );
-      }
-      if (mcpServerView.oAuthUseCase === "personal_actions") {
-        return true;
-      }
-      // Check the chain of agents
-      if (
-        isServerSideMCPServerConfigurationWithName(action, "run_agent") &&
-        action.childAgentId &&
-        // Avoid infinite loop
-        !checkedAgentConfigurationIds.includes(action.childAgentId)
-      ) {
-        const subAgentConfiguration = await getAgentConfiguration(auth, {
-          agentId: action.childAgentId,
-          variant: "full",
-        });
-        if (subAgentConfiguration) {
-          const subCheck = await shouldCreateIndividualConversations(
-            auth,
-            subAgentConfiguration,
-            [...checkedAgentConfigurationIds, agentConfiguration.sId]
-          );
-          if (subCheck) {
-            return true;
-          }
-        }
-      }
-    }
-  }
-
-  return false;
-}
 
 async function createConversationForAgentConfiguration({
   auth,
@@ -194,6 +136,15 @@ export async function runTriggeredAgentsActivity({
   });
 
   if (!agentConfiguration) {
+    logger.info(
+      {
+        triggerId: trigger.sId,
+        agentConfigurationId: trigger.agentConfigurationId,
+        workspaceId: auth.workspace()?.sId,
+      },
+      "Disabling trigger: agent configuration not found."
+    );
+    await triggerResource.disable(auth);
     throw new TriggerNonRetryableError(
       `Agent configuration with ID ${trigger.agentConfigurationId} not found in workspace ${auth.getNonNullableWorkspace().id}.`
     );
@@ -215,19 +166,9 @@ export async function runTriggeredAgentsActivity({
     },
   });
 
-  const useIndividualConversations = await shouldCreateIndividualConversations(
-    auth,
-    agentConfiguration
-  );
-
   if (triggerResource.status !== "enabled") {
     logger.info({ triggerId: trigger.sId }, "Trigger is disabled.");
     return;
-  }
-
-  const subscribers = await triggerResource.getSubscribers(auth);
-  if (subscribers.isErr()) {
-    throw new TriggerNonRetryableError("Error getting trigger subscribers.");
   }
 
   let lastRunAt: Date | null = null;
@@ -265,86 +206,59 @@ export async function runTriggeredAgentsActivity({
     }
   }
 
-  const subscribersAuths = await Promise.all(
-    subscribers.value.map((s) =>
-      Authenticator.fromUserIdAndWorkspaceId(
-        s.sId,
-        auth.getNonNullableWorkspace().sId
-      )
-    )
-  );
+  // Create a single conversation for the editor.
+  const conversationResult = await createConversationForAgentConfiguration({
+    auth,
+    agentConfiguration,
+    trigger,
+    lastRunAt,
+    contentFragment,
+  });
+  if (conversationResult.isErr()) {
+    const { type: errorType, message: errorMessage } =
+      conversationResult.error.api_error;
+    const isNonRetryable =
+      errorType === "plan_message_limit_exceeded" ||
+      errorType === "model_disabled" ||
+      errorType === "invalid_request_error";
 
-  if (useIndividualConversations) {
-    // Create conversations for the editor and all the subscribers
-    for (const tempAuth of [auth, ...subscribersAuths]) {
-      try {
-        await createConversationForAgentConfiguration({
-          auth: tempAuth,
-          agentConfiguration,
-          trigger,
-          lastRunAt,
-          contentFragment,
-        });
-      } catch (error) {
-        // Might happen if a subscriber do not have the right permissions to use the agent
-        logger.error(
+    if (isNonRetryable) {
+      // If the agent is inaccessible, disable the trigger.
+      if (
+        errorMessage ===
+        "This agent is either disabled or you don't have access to it."
+      ) {
+        logger.info(
           {
-            error,
+            triggerId: trigger.sId,
             agentConfigurationId: trigger.agentConfigurationId,
-            userId: tempAuth.getNonNullableUser().sId,
-            workspaceId: tempAuth.getNonNullableWorkspace().sId,
+            workspaceId: auth.workspace()?.sId,
           },
-          "Error creating conversation for agent configuration."
+          "Disabling trigger: agent is inaccessible."
         );
+        await triggerResource.disable(auth);
       }
-    }
-  } else {
-    // Create a single conversation for the editor
-    const conversationResult = await createConversationForAgentConfiguration({
-      auth,
-      agentConfiguration,
-      trigger,
-      lastRunAt,
-      contentFragment,
-    });
-    if (conversationResult.isErr()) {
-      const { type: errorType, message: errorMessage } =
-        conversationResult.error.api_error;
-      const isNonRetryable =
-        errorType === "plan_message_limit_exceeded" ||
-        errorType === "model_disabled";
 
-      if (isNonRetryable) {
-        if (webhookRequestId && trigger.kind === "webhook") {
-          const webhookRequest =
-            await WebhookRequestResource.fetchByModelIdWithAuth(
-              auth,
-              webhookRequestId
-            );
-          if (webhookRequest) {
-            await webhookRequest.markRelatedTrigger({
-              trigger,
-              status: "workflow_start_failed",
-              errorMessage,
-            });
-          }
+      if (webhookRequestId && trigger.kind === "webhook") {
+        const webhookRequest =
+          await WebhookRequestResource.fetchByModelIdWithAuth(
+            auth,
+            webhookRequestId
+          );
+        if (webhookRequest) {
+          await webhookRequest.markRelatedTrigger({
+            trigger,
+            status: "workflow_start_failed",
+            errorMessage,
+          });
         }
-        // Return without throwing, this is normal behaviour so we don't want an error
-        return;
       }
-
-      throw new Error(`Error creating conversation: ${errorMessage}`, {
-        cause: conversationResult.error,
-      });
+      // Return without throwing, this is normal behaviour so we don't want an error
+      return;
     }
 
-    // Upsert all the subscribers as participants
-    for (const tempAuth of subscribersAuths) {
-      await ConversationResource.upsertParticipation(tempAuth, {
-        conversation: conversationResult.value,
-        action: "subscribed",
-        user: tempAuth.getNonNullableUser().toJSON(),
-      });
-    }
+    throw new Error(`Error creating conversation: ${errorMessage}`, {
+      cause: conversationResult.error,
+    });
   }
 }
