@@ -70,7 +70,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-const PostConversationCompactBodySchema = z.object({
+const PostConversationCompactionsBodySchema = z.object({
   model: z.object({
     providerId: z.string(),
     modelId: z.string(),
@@ -99,9 +99,14 @@ async function handler(
     });
   }
 
+  const conversationRes = await getConversation(auth, cId);
+  if (conversationRes.isErr()) {
+    return apiErrorForConversation(req, res, conversationRes.error);
+  }
+
   switch (req.method) {
     case "POST": {
-      const bodyValidation = PostConversationCompactBodySchema.safeParse(
+      const bodyValidation = PostConversationCompactionsBodySchema.safeParse(
         req.body
       );
       if (!bodyValidation.success) {
@@ -123,11 +128,6 @@ async function handler(
             message: `Unsupported model: ${model.providerId}/${model.modelId}.`,
           },
         });
-      }
-
-      const conversationRes = await getConversation(auth, cId);
-      if (conversationRes.isErr()) {
-        return apiErrorForConversation(req, res, conversationRes.error);
       }
 
       const result = await compactConversation(auth, {
