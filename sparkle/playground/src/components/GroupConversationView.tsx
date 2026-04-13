@@ -2841,10 +2841,12 @@ export function GroupConversationView({
                 <div className="s-flex s-w-full s-flex-col s-gap-3">
                   <h3 className="s-heading-lg">Danger Zone</h3>
                   <h4 className="s-heading-base">Archive</h4>
-                  <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                    This project will be removed from the sidebar. Its data
-                    stays intact and can still be used as a data source.
-                  </p>
+                  {!isProjectArchived && (
+                    <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                      This project will be removed from the sidebar. Its data
+                      stays intact and can still be used as a data source.
+                    </p>
+                  )}
                   {isProjectArchived ? (
                     <div className="s-flex s-flex-col s-gap-3">
                       {archivedAt && archivedByName && (
