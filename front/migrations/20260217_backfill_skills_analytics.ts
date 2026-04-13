@@ -10,7 +10,10 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { AgentMessageSkillModel } from "@app/lib/models/skill/conversation_skill";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
+import type {
+  GlobalSkillDefinition,
+  GlobalSkillId,
+} from "@app/lib/resources/skill/global/registry";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -133,11 +136,9 @@ async function backfillSkillsAnalyticsForWorkspace(
     }
 
     // Fetch global skill definitions for referenced global skills.
-    const globalSkillIds: string[] = [
+    const globalSkillIds: GlobalSkillId[] = [
       ...new Set(
-        skillRecords
-          .map((r) => r.globalSkillId)
-          .filter((id): id is string => id !== null)
+        skillRecords.map((r) => r.globalSkillId).filter((id) => id !== null)
       ),
     ];
 

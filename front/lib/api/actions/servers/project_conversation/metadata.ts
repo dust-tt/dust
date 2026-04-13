@@ -26,7 +26,7 @@ export const PROJECT_CONVERSATION_TOOLS_METADATA = createToolsRecord({
           INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
         ].optional(),
     },
-    stake: "low",
+    stake: "medium",
     displayLabels: {
       running: "Creating conversation",
       done: "Create conversation",
@@ -131,7 +131,7 @@ export const PROJECT_CONVERSATION_TOOLS_METADATA = createToolsRecord({
           INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
         ].optional(),
     },
-    stake: "low",
+    stake: "medium",
     displayLabels: {
       running: "Adding message to conversation",
       done: "Add message to conversation",

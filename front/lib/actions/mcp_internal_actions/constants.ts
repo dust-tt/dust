@@ -1065,13 +1065,16 @@ export const INTERNAL_MCP_SERVERS = {
   },
   project_conversation: {
     id: 1025,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("projects");
     },
-    tools_arguments_requiring_approval: undefined,
+    tools_arguments_requiring_approval: {
+      create_conversation: ["dustProject"],
+      add_message_to_conversation: ["dustProject"],
+    },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: PROJECT_CONVERSATION_SERVER,

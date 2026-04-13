@@ -6,7 +6,6 @@ import {
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
 import {
   INTERNAL_SERVERS_WITH_WEBSEARCH,
-  SEARCH_SERVER_NAME,
   SKILL_MANAGEMENT_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
@@ -19,7 +18,6 @@ import {
   CONVERSATION_FILES_SERVER_NAME,
   CONVERSATION_SEARCH_FILES_ACTION_NAME,
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
-import { PROJECT_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/project_manager/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import type {
@@ -82,42 +80,6 @@ function constructContextSection({
   }
 
   return context;
-}
-
-export function constructProjectContextSection(
-  conversation?: ConversationWithoutContentType
-): string | null {
-  if (!conversation?.spaceId) {
-    return null;
-  }
-  return `# PROJECT CONTEXT
-
-This conversation is associated with a project. The project provides:
-- Persistent knowledge storage shared accross this project
-- Project metadata (description and URLs) for organizational context
-- Semantic search over project knowledge and project conversation transcripts
-- Collaborative context that persists beyond individual conversations
-
-## Using Project Tools
-
-**${PROJECT_MANAGER_SERVER_NAME}**: Manage project knowledge (uploaded files, linked context nodes, connected data), metadata, and conversations. Use \`semantic_search\` to run semantic retrieval over project content; set \`searchScope\` to \`knowledge\` (files and linked nodes only), \`conversations\` (transcripts in the project data source only), or \`all\` (default when omitted). Optional \`nodeIds\` narrows search to specific content nodes, same idea as company filesystem search.
-
-## Tool Usage Priority
-
-When you need to find information, prefer this order (skip steps if the relevant tools are not in your tool list):
-1. **Project overview**: \`${PROJECT_MANAGER_SERVER_NAME}\` \`get_information\` — project URL, description, and what is attached to the project.
-2. **This conversation's attachments** (only when \`${CONVERSATION_FILES_SERVER_NAME}\` is available): \`${CONVERSATION_SEARCH_FILES_ACTION_NAME}\` on \`${CONVERSATION_FILES_SERVER_NAME}\` — search files attached to the current conversation.
-3. **Project-wide search**: \`${PROJECT_MANAGER_SERVER_NAME}\` \`semantic_search\` — search project knowledge and/or conversations in the project; usually the best source for project-specific questions.
-4. **Company-wide**: If still insufficient, use \`company_data_*\` tools and \`${SEARCH_SERVER_NAME}\` for broader company data sources.
-
-IMPORTANT: Always follow this priority order. Do not start by searching company-wide data before exhausting project knowledge.
-
-## Project attachments vs conversation attachments
-- **Project attachments**: Persist for every conversation in the project; managed with \`${PROJECT_MANAGER_SERVER_NAME}\` (e.g. \`add_file\`).
-- **Conversation attachments**: Only for this conversation; use \`${CONVERSATION_FILES_SERVER_NAME}\` tools when present.
-
-To keep something for later project-wide use, add it with \`add_file\`. To reuse an existing project file in this thread, use \`attach_to_conversation\`.
-`;
 }
 
 function constructToolsSection({
@@ -461,8 +423,6 @@ export function constructPromptMultiActions(
     owner,
     userMessage,
   });
-  const projectContextSection =
-    constructProjectContextSection(conversation) ?? "";
   const toolsSection = constructToolsSection({
     hasAvailableActions,
     model,
@@ -484,7 +444,7 @@ export function constructPromptMultiActions(
     // tools (directives + server listing), skills, format docs, and guidelines.
     //
     // Shared context (short cache): workspace-scoped data shared across users —
-    // date, project context, toolsets, workspace info. A cache breakpoint here
+    // date, toolsets, workspace info. A cache breakpoint here
     // lets different users in the same workspace share this prefix.
     //
     // Ephemeral context (no breakpoint): per-user data — memories, user profile.
@@ -501,7 +461,6 @@ export function constructPromptMultiActions(
 
     const sharedContext: SystemPromptContext[] = [
       { role: "context" as const, content: contextSection },
-      { role: "context" as const, content: projectContextSection },
       { role: "context" as const, content: toolsetsContext ?? "" },
       { role: "context" as const, content: workspaceContext ?? "" },
     ].filter((s) => s.content.trim() !== "");
@@ -524,7 +483,6 @@ export function constructPromptMultiActions(
   const allSections: SystemPromptContext[] = [
     { role: "context" as const, content: instructionsContent },
     { role: "context" as const, content: contextSection },
-    { role: "context" as const, content: projectContextSection },
     { role: "context" as const, content: toolsSection },
     { role: "context" as const, content: skillsSection },
     { role: "context" as const, content: attachmentsSection },

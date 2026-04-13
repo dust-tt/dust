@@ -7,6 +7,7 @@ import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversa
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -185,64 +186,53 @@ describe("getJITServers", () => {
       ).toBeUndefined();
     });
 
-    it("should include project_manager server when feature flag is enabled and conversation is in a project", async () => {
+    it("should enable projects skill in listForAgentLoop when feature flag is enabled and conversation is in a project", async () => {
       // Enable projects feature flag.
       await FeatureFlagFactory.basic(auth, "projects");
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const conversationInProject = {
+        ...conversation,
+        spaceId: conversationsSpace.sId,
+      };
+
+      const { enabledSkills } = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: agentConfig,
+        conversation: conversationInProject,
+      });
+
+      const projectsSkill = enabledSkills.find((s) => s.sId === "projects");
+      expect(projectsSkill).toBeDefined();
+      const viewNames = projectsSkill?.mcpServerConfigurations.map((c) => {
+        const json = c.view.toJSON();
+        return json.name ?? json.server.name;
+      });
+      expect(viewNames).toContain("project_manager");
+      expect(viewNames).toContain("project_conversation");
+    });
+
+    it("should not enable projects skill in listForAgentLoop when feature flag is disabled", async () => {
+      const { enabledSkills } = await SkillResource.listForAgentLoop(auth, {
         agentConfiguration: agentConfig,
         conversation: {
           ...conversation,
           spaceId: conversationsSpace.sId,
         },
-        attachments: [],
       });
 
-      const projectManagerServer = jitServers.find(
-        (server) => server.name === "project_manager"
-      );
-
-      expect(projectManagerServer).toBeDefined();
-      expect(projectManagerServer?.type).toBe("mcp_server_configuration");
-      expect(projectManagerServer?.description).toBe(
-        "Manage project files, URLs, metadata, and conversations"
-      );
-      expect(projectManagerServer?.mcpServerViewId).toBeDefined();
+      expect(enabledSkills.some((s) => s.sId === "projects")).toBe(false);
     });
 
-    it("should not include project_manager server when feature flag is disabled", async () => {
-      const { servers: jitServers } = await getJITServers(auth, {
-        agentConfiguration: agentConfig,
-        conversation: {
-          ...conversation,
-          spaceId: conversationsSpace.sId,
-        },
-        attachments: [],
-      });
-
-      const projectManagerServer = jitServers.find(
-        (server) => server.name === "project_manager"
-      );
-
-      expect(projectManagerServer).toBeUndefined();
-    });
-
-    it("should not include project_manager server when conversation is not in a project", async () => {
+    it("should not enable projects skill in listForAgentLoop when conversation is not in a project", async () => {
       // Enable projects feature flag.
       await FeatureFlagFactory.basic(auth, "projects");
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const { enabledSkills } = await SkillResource.listForAgentLoop(auth, {
         agentConfiguration: agentConfig,
         conversation,
-        attachments: [],
       });
 
-      const projectManagerServer = jitServers.find(
-        (server) => server.name === "project_manager"
-      );
-
-      expect(projectManagerServer).toBeUndefined();
+      expect(enabledSkills.some((s) => s.sId === "projects")).toBe(false);
     });
   });
 

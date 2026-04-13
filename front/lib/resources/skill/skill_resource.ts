@@ -28,7 +28,10 @@ import {
   createResourcePermissionsFromSpacesWithMap,
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
+import type {
+  GlobalSkillDefinition,
+  GlobalSkillId,
+} from "@app/lib/resources/skill/global/registry";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -48,9 +51,10 @@ import type {
 } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
-import type {
-  ConversationType,
-  ConversationWithoutContentType,
+import {
+  type ConversationType,
+  type ConversationWithoutContentType,
+  isProjectConversation,
 } from "@app/types/assistant/conversation";
 import type {
   SkillReinforcementMode,
@@ -93,7 +97,7 @@ type SkillResourceConstructorOptions =
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
       editorGroup?: undefined;
       fileAttachments: FileResource[];
-      globalSId: string;
+      globalSId: GlobalSkillId;
       mcpServerConfigurations: SkillMCPServerConfiguration[];
       version?: number;
     }
@@ -196,7 +200,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   readonly editorGroup: GroupResource | null = null;
   readonly version: number | null = null;
 
-  private readonly globalSId: string | null;
+  private readonly globalSId: GlobalSkillId | null;
 
   private _mcpServerConfigurations: SkillMCPServerConfiguration[];
 
@@ -812,7 +816,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     refs: {
       customSkillId: ModelId | null;
-      globalSkillId: string | null;
+      globalSkillId: GlobalSkillId | null;
     }[],
     {
       agentLoopData,
@@ -842,7 +846,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * Returns the fields to identify this skill in related tables (e.g., AgentSkillModel).
    */
   private get skillReference():
-    | { globalSkillId: string }
+    | { globalSkillId: GlobalSkillId }
     | { customSkillId: ModelId } {
     return this.globalSId
       ? { globalSkillId: this.globalSId }
@@ -952,7 +956,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<
     {
       customSkillId: ModelId | null;
-      globalSkillId: string | null;
+      globalSkillId: GlobalSkillId | null;
     }[]
   > {
     // For global agents, skills are defined in the config, not in the database.
@@ -960,10 +964,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       isGlobalAgentId(agentConfiguration.sId) &&
       "skills" in agentConfiguration
     ) {
-      return (agentConfiguration.skills ?? []).map((globalSkillId) => ({
-        customSkillId: null,
-        globalSkillId,
-      }));
+      return ((agentConfiguration.skills ?? []) as GlobalSkillId[]).map(
+        (globalSkillId) => ({
+          customSkillId: null,
+          globalSkillId,
+        })
+      );
     }
 
     const workspace = auth.getNonNullableWorkspace();
@@ -1210,10 +1216,24 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const sortByName = (a: SkillResource, b: SkillResource) =>
       a.name.localeCompare(b.name);
 
+    // Project skill is always enabled for project conversations, enable it if it's not enabled already.
+    const projectSkill =
+      conversation &&
+      isProjectConversation(conversation) &&
+      !autoEnabledSkills.some((s) => s.globalSId === "projects") &&
+      !conversationEnabledSkills.some((s) => s.globalSId === "projects")
+        ? await SkillResource.fetchBySkillReferences(
+            auth,
+            [{ globalSkillId: "projects", customSkillId: null }],
+            { agentLoopData }
+          )
+        : [];
+
     // Compute the enabled skills: auto-enabled skills + conversation-enabled skills.
     const enabledSkills = [
       ...autoEnabledSkills.sort(sortByName),
       ...conversationEnabledSkills.sort(sortByName),
+      ...projectSkill,
     ];
 
     const augmentedEnabledSkills = await this.augmentSkillsWithExtendedSkills(
@@ -1235,10 +1255,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (s) => !enabledSkillIds.has(s.sId) && !agentEquippedSkillIds.has(s.sId)
     );
 
-    const equippedSkills = [
+    const equippedSkills = removeNulls([
       ...agentEquippedSkills.sort(sortByName),
       ...discoveredSkills.sort(sortByName),
-    ];
+    ]);
 
     return {
       enabledSkills: augmentedEnabledSkills,
@@ -1413,7 +1433,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       {
         // Global skills do not have data source configurations.
         dataSourceConfigurations: [],
-        globalSId: def.sId,
+        globalSId: def.sId as GlobalSkillId,
         mcpServerConfigurations,
         fileAttachments: [],
       }
