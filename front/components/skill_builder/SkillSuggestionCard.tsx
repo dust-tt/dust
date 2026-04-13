@@ -5,43 +5,74 @@ import type {
   SkillSuggestionType,
   SkillToolEditItemType,
 } from "@app/types/suggestions/skill_suggestion";
-import {
-  Button,
-  Card,
-  Chip,
-  DiffBlock,
-  PlusIcon,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
+import { Button, Card, Chip, DiffBlock } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
-function useToolDisplayName(toolId: string): string {
+function useToolDisplayNames(
+  toolEdits: SkillToolEditItemType[]
+): Map<string, string> {
   const { mcpServerViews } = useMCPServerViewsContext();
 
   return useMemo(() => {
-    const view = mcpServerViews.find((v) => v.sId === toolId);
-    if (!view) {
-      return toolId;
+    const map = new Map<string, string>();
+    for (const edit of toolEdits) {
+      const view = mcpServerViews.find((v) => v.sId === edit.toolId);
+      map.set(
+        edit.toolId,
+        view ? getMcpServerViewDisplayName(view) : edit.toolId
+      );
     }
-    return getMcpServerViewDisplayName(view);
-  }, [mcpServerViews, toolId]);
+    return map;
+  }, [toolEdits, mcpServerViews]);
 }
 
-interface ToolEditChipProps {
-  toolEdit: SkillToolEditItemType;
+interface ToolEditsSectionProps {
+  toolEdits: SkillToolEditItemType[];
 }
 
-function ToolEditChip({ toolEdit }: ToolEditChipProps) {
-  const displayName = useToolDisplayName(toolEdit.toolId);
-  const isAdd = toolEdit.action === "add";
+function ToolEditsSection({ toolEdits }: ToolEditsSectionProps) {
+  const displayNames = useToolDisplayNames(toolEdits);
+
+  const toolsToAdd = toolEdits.filter((e) => e.action === "add");
+  const toolsToRemove = toolEdits.filter((e) => e.action === "remove");
 
   return (
-    <Chip
-      size="sm"
-      color={isAdd ? "highlight" : "warning"}
-      icon={isAdd ? PlusIcon : XMarkIcon}
-      label={displayName}
-    />
+    <div className="flex flex-col gap-2">
+      {toolsToAdd.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+            Tools to add
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {toolsToAdd.map((edit) => (
+              <Chip
+                key={edit.toolId}
+                size="sm"
+                color="highlight"
+                label={displayNames.get(edit.toolId) ?? edit.toolId}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+      {toolsToRemove.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+            Tools to remove
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {toolsToRemove.map((edit) => (
+              <Chip
+                key={edit.toolId}
+                size="sm"
+                color="warning"
+                label={displayNames.get(edit.toolId) ?? edit.toolId}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -102,16 +133,7 @@ export function SkillSuggestionCard({
       )}
 
       {toolEdits && toolEdits.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-            Tools
-          </span>
-          <div className="flex flex-wrap gap-2">
-            {toolEdits.map((toolEdit, index) => (
-              <ToolEditChip key={index} toolEdit={toolEdit} />
-            ))}
-          </div>
-        </div>
+        <ToolEditsSection toolEdits={toolEdits} />
       )}
 
       {instructionEdits && instructionEdits.length > 0 && (
