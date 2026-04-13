@@ -177,6 +177,8 @@ async function generateCompactionSummary(
   // running agent messages, producing exactly the messages that need to be summarized.
   const renderedMessages = renderConversationAsText(conversation, {
     includeTimestamps: true,
+    includeActions: true,
+    includeActionDetails: true,
     skipRunningAgentMessages: true,
   });
 
@@ -187,7 +189,7 @@ async function generateCompactionSummary(
         content: [
           {
             type: "text",
-            text: `Here is the conversation to summarize:\n\n${renderedMessages}`,
+            text: `Conversation to summarize:\n\n${renderedMessages}`,
           },
         ],
         name: "",
