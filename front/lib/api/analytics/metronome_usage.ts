@@ -19,7 +19,6 @@ import {
 } from "@app/lib/metronome/constants";
 import type { MetronomeBalance } from "@app/lib/metronome/types";
 import { METRONOME_CENTS_TO_MICRO_USD } from "@app/lib/metronome/types";
-import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -27,7 +26,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
-const METRONOME_USAGE_GROUP_BY_KEYS = ["user", "model", "origin"] as const;
+const METRONOME_USAGE_GROUP_BY_KEYS = ["api_key", "model", "origin"] as const;
 
 export type MetronomeUsageGroupByType =
   (typeof METRONOME_USAGE_GROUP_BY_KEYS)[number];
@@ -65,13 +64,13 @@ export interface GetMetronomeUsageResponse {
 }
 
 const GROUP_BY_TO_EVENT_PROPERTY: Record<MetronomeUsageGroupByType, string> = {
-  user: "user_id",
+  api_key: "api_key_name",
   model: "model_id",
   origin: "origin",
 };
 
 const GROUP_BY_TO_METRICS: Record<MetronomeUsageGroupByType, "llm" | "both"> = {
-  user: "both",
+  api_key: "both",
   model: "llm",
   origin: "both",
 };
@@ -484,14 +483,7 @@ async function resolveGroupLabels(
   const labelMap = new Map<string, string>();
 
   switch (groupBy) {
-    case "user": {
-      const users = await UserResource.fetchByIds(groupKeys);
-      const userMap = new Map(users.map((u) => [u.sId, u.fullName()]));
-      for (const key of groupKeys) {
-        labelMap.set(key, userMap.get(key) ?? key);
-      }
-      break;
-    }
+    case "api_key":
     case "model":
     case "origin":
       for (const key of groupKeys) {

@@ -62,7 +62,7 @@ const GROUP_BY_OPTIONS: {
   label: string;
 }[] = [
   { value: "global", label: "Global" },
-  { value: "user", label: "By User" },
+  { value: "api_key", label: "By API Key" },
   { value: "model", label: "By Model" },
   { value: "origin", label: "By Source" },
 ];
