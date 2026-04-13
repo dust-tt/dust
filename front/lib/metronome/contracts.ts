@@ -5,7 +5,9 @@ import {
   findMetronomeCustomerByAlias,
   scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
+import { syncMauCount } from "@app/lib/metronome/mau_sync";
 import { syncSeatCount } from "@app/lib/metronome/seats";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -50,12 +52,23 @@ export async function switchMetronomeContractPackage({
 
   const { contractId: metronomeContractId, startingAt } = contractResult.value;
 
-  await syncSeatCount({
-    metronomeCustomerId,
-    contractId: metronomeContractId,
-    workspace,
-    startingAt,
-  });
+  const syncFns = [
+    () =>
+      syncSeatCount({
+        metronomeCustomerId,
+        contractId: metronomeContractId,
+        workspace,
+        startingAt,
+      }),
+    () =>
+      syncMauCount({
+        metronomeCustomerId,
+        contractId: metronomeContractId,
+        workspace,
+        startingAt,
+      }),
+  ];
+  await concurrentExecutor(syncFns, (fn) => fn(), { concurrency: 2 });
 
   return new Ok({ metronomeContractId });
 }
@@ -109,13 +122,24 @@ export async function provisionMetronomeCustomerAndContract({
 
   const { contractId: metronomeContractId, startingAt } = contractResult.value;
 
-  // Provision all existing workspace members as seats on the new contract.
-  await syncSeatCount({
-    metronomeCustomerId,
-    contractId: metronomeContractId,
-    workspace,
-    startingAt,
-  });
+  // Provision seats and MAU on the new contract.
+  const syncFns = [
+    () =>
+      syncSeatCount({
+        metronomeCustomerId,
+        contractId: metronomeContractId,
+        workspace,
+        startingAt,
+      }),
+    () =>
+      syncMauCount({
+        metronomeCustomerId,
+        contractId: metronomeContractId,
+        workspace,
+        startingAt,
+      }),
+  ];
+  await concurrentExecutor(syncFns, (fn) => fn(), { concurrency: 2 });
 
   return new Ok({
     metronomeCustomerId,
