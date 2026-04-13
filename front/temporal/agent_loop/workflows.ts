@@ -379,6 +379,9 @@ async function executeStepIteration({
       //    denied). Old workflows keep the previous behavior (shouldContinue: false).
       // 2. + a few hours: Replace patched() with deprecatePatch(), remove conditional.
       // 3. + a few hours: Remove deprecatePatch() entirely.
+
+      // if runId is null that means we unpaused the loop with no new tools (eg: they were all
+      // denied) and no LLM call, so we need to continue as the agent loop is not finished.
       shouldContinue: patched("tool-denial-continue-loop")
         ? runId === null
         : false,
