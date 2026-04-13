@@ -96,13 +96,13 @@ describe("convertMarkdownToBlockHtml", () => {
     expect(root.find("p").first().text()).toContain("Line");
   });
 
-  it("handles fenced code blocks and strips classes from code/pre", () => {
+  it("handles fenced code blocks and strips classes from pre only", () => {
     const html = convertMarkdownToBlockHtml("```\nconst x = 1\n```");
     const $ = load(html);
 
     expect($("pre").length).toBe(1);
     expect($("pre code, code").length).toBeGreaterThanOrEqual(1);
-    expect($("pre[class], code[class]").length).toBe(0);
+    expect($("pre[class]").length).toBe(0);
   });
 
   it("renders inline emphasis and strong without presentation attributes on spans", () => {

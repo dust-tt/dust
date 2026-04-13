@@ -1,9 +1,17 @@
-import { Extension, Node } from "@tiptap/core";
+import { Extension, type JSONContent, Node } from "@tiptap/core";
 import type { NodeViewProps } from "@tiptap/react";
 import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 
 // These are the standard markdown token types that no other extension claims.
 const SIMPLE_TOKEN_TYPES = ["table", "hr", "blockquote", "def"];
+
+function rawContentFromNodeAttrs(attrs: unknown): string {
+  if (typeof attrs !== "object" || attrs === null) {
+    return "";
+  }
+  const raw = Reflect.get(attrs, "rawContent");
+  return typeof raw === "string" ? raw : "";
+}
 
 /**
  * Catch-all atom block node for content no other extension claims.
@@ -51,15 +59,17 @@ export const RawMarkdownBlock = Node.create({
   renderHTML({ node }) {
     return [
       "div",
-      { "data-raw-markdown": "", "data-content": node.attrs.rawContent },
+      {
+        "data-raw-markdown": "",
+        "data-content": rawContentFromNodeAttrs(node.attrs),
+      },
     ];
   },
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  renderMarkdown(node: any) {
+  renderMarkdown(node: JSONContent) {
     // token.raw already contains trailing newlines from marked.js, so trim
     // before appending the standard block separator to avoid doubled spacing.
-    return (node.attrs.rawContent as string).trimEnd();
+    return rawContentFromNodeAttrs(node.attrs).trimEnd();
   },
 
   addNodeView() {
@@ -73,7 +83,7 @@ function RawMarkdownBlockView({ node }: RawMarkdownBlockViewProps) {
   return (
     <NodeViewWrapper as="div" contentEditable={false}>
       <div className="whitespace-pre-wrap">
-        {node.attrs.rawContent as string}
+        {rawContentFromNodeAttrs(node.attrs)}
       </div>
     </NodeViewWrapper>
   );
