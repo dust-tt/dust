@@ -53,6 +53,7 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import type {
+  SkillReinforcementMode,
   SkillSourceMetadata,
   SkillSourceType,
   SkillStatus,
@@ -1002,6 +1003,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       onlyCustom,
       isDefault,
       updatedAfter,
+      reinforcementNotOff,
     }: {
       status?: SkillStatus | SkillStatus[];
       limit?: number;
@@ -1009,6 +1011,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       onlyCustom?: boolean;
       isDefault?: boolean;
       updatedAfter?: Date;
+      reinforcementNotOff?: boolean;
     } = {}
   ): Promise<SkillResource[]> {
     const skills = await this.baseFetch(auth, {
@@ -1016,6 +1019,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         status,
         ...(isDefault !== undefined ? { isDefault } : {}),
         ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
+        ...(reinforcementNotOff ? { reinforcement: { [Op.ne]: "off" } } : {}),
       },
       ...(limit ? { limit } : {}),
       onlyCustom,
@@ -1403,6 +1407,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         source: null,
         sourceMetadata: null,
         isDefault: def.isAutoEnabled !== true,
+        reinforcement: "auto",
+        lastReinforcementAnalysisAt: null,
       },
       {
         // Global skills do not have data source configurations.
@@ -1634,6 +1640,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           source: versionModel.source,
           sourceMetadata: versionModel.sourceMetadata,
           isDefault: versionModel.isDefault,
+          reinforcement: "auto",
+          lastReinforcementAnalysisAt: null,
         },
         {
           // We ignore data source configurations for historical versions.
@@ -1852,6 +1860,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     await this.upsertCurrentUserAsEditor(auth);
+  }
+
+  async updateReinforcement(
+    reinforcement: SkillReinforcementMode
+  ): Promise<void> {
+    await this.update({ reinforcement });
+  }
+
+  async recordReinforcementAnalysisCompletion(): Promise<void> {
+    await this.update({ lastReinforcementAnalysisAt: new Date() });
   }
 
   /**
@@ -2414,6 +2432,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       instructionsHtml: this.globalSId ? null : this.instructionsHtml,
       requestedSpaceIds,
       icon: this.icon ?? null,
+      reinforcement: this.reinforcement,
+      lastReinforcementAnalysisAt:
+        this.lastReinforcementAnalysisAt?.toISOString() ?? null,
       source: this.source,
       sourceMetadata: this.sourceMetadata,
       tools: this.mcpServerViews.map((view) => {

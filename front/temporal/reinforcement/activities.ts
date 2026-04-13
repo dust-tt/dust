@@ -484,6 +484,13 @@ export async function finalizeSkillAggregationActivity({
     "approved"
   );
 
+  // Record that reinforcement analysis has completed for this skill.
+  const skill = await SkillResource.fetchById(auth, skillId);
+  if (!skill) {
+    throw new Error(`Skill not found: ${skillId}`);
+  }
+  await skill.recordReinforcementAnalysisCompletion();
+
   logger.info(
     {
       skillId,
