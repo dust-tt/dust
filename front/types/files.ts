@@ -67,6 +67,8 @@ export interface SharingGrantType {
   grantedBy: UserType | null;
   expiresAt: Date | null;
   lastViewedAt: Date | null;
+  // True when the workspace policy prevents this grant from granting access.
+  blockedByPolicy?: boolean;
 }
 
 export interface FileType {
