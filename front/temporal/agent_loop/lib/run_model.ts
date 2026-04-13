@@ -69,6 +69,7 @@ import {
 import { METRICS } from "@app/temporal/agent_loop/activities/instrumentation";
 import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
+import { heartbeatRunModelAndCreateActionsActivity } from "@app/temporal/agent_loop/lib/heartbeat_details";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { AgentActionsEvent } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
@@ -82,7 +83,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { startActiveObservation } from "@langfuse/tracing";
-import { Context, heartbeat } from "@temporalio/activity";
+import { Context } from "@temporalio/activity";
 import assert from "assert";
 
 // Concatenate two content strings, ensuring at least one whitespace character
@@ -222,6 +223,11 @@ export async function runModel(
     });
     return null;
   }
+
+  heartbeatRunModelAndCreateActionsActivity({
+    step,
+    phase: "resolving_tools",
+  });
 
   const {
     enabledSkills,
@@ -429,6 +435,10 @@ export async function runModel(
 
   // Turn the conversation into a digest that can be presented to the model.
   const promptText = systemPromptToText(prompt);
+  heartbeatRunModelAndCreateActionsActivity({
+    step,
+    phase: "rendering_conversation",
+  });
   const modelConversationRes = await startActiveObservation(
     "render-conversation",
     () =>
@@ -518,6 +528,11 @@ export async function runModel(
     workspaceId: conversation.owner.sId,
   };
 
+  heartbeatRunModelAndCreateActionsActivity({
+    step,
+    phase: "preparing_model_call",
+  });
+
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,
   });
@@ -566,7 +581,10 @@ export async function runModel(
   // Heartbeat before starting the LLM stream to ensure the activity is still
   // considered alive after potentially long setup operations (MCP tools
   // listing, conversation rendering, etc.).
-  heartbeat();
+  heartbeatRunModelAndCreateActionsActivity({
+    step,
+    phase: "starting_model_stream",
+  });
 
   localLogger.info(
     {
@@ -677,6 +695,11 @@ export async function runModel(
 
   const { dustRunId, nativeChainOfThought, output } =
     getOutputFromActionResponse.value;
+
+  heartbeatRunModelAndCreateActionsActivity({
+    step,
+    phase: "persisting_model_output",
+  });
 
   // Create a new object to avoid mutation
   const updatedFunctionCallStepContentIds = { ...functionCallStepContentIds };

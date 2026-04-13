@@ -17,6 +17,7 @@ import {
 import { RUN_MODEL_ACTIVITY_TIMEOUT_SAFETY_MARGIN_MS } from "@app/temporal/agent_loop/config";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
+import { heartbeatRunModelAndCreateActionsActivity } from "@app/temporal/agent_loop/lib/heartbeat_details";
 import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
 import { runModel } from "@app/temporal/agent_loop/lib/run_model";
 import { getMaxActionsPerStep } from "@app/types/assistant/agent";
@@ -101,6 +102,11 @@ async function _runModelAndCreateActionsActivity({
 }): Promise<RunModelAndCreateActionsResult | null> {
   const activityTimeoutDeadlineMs = getActivityTimeoutDeadlineMs();
 
+  heartbeatRunModelAndCreateActionsActivity({
+    step,
+    phase: "loading_agent_loop_data",
+  });
+
   const runAgentDataRes = await startActiveObservation(
     "get-agent-loop-data",
     () => getAgentLoopData(authType, runAgentArgs)
@@ -124,6 +130,11 @@ async function _runModelAndCreateActionsActivity({
   const durationRecorder = DurationRecorder.create([
     `workspace:${auth.getNonNullableWorkspace().sId}`,
   ]);
+
+  heartbeatRunModelAndCreateActionsActivity({
+    step,
+    phase: "checking_guardrails",
+  });
 
   // Intentionally check at step start (not step end) to early exit if dollar amount too high.
   // This can miss thresholds crossed on the final step.
@@ -214,6 +225,10 @@ async function _runModelAndCreateActionsActivity({
   }
 
   // Tool test run: bypass LLM and directly execute tool commands.
+  heartbeatRunModelAndCreateActionsActivity({
+    step,
+    phase: "checking_prompt_command",
+  });
   const featureFlags = await getFeatureFlags(auth);
   if (featureFlags.includes("run_tools_from_prompt")) {
     const result = await handlePromptCommand(auth, runAgentData, step, runIds);
@@ -223,6 +238,11 @@ async function _runModelAndCreateActionsActivity({
   }
 
   if (checkForResume) {
+    heartbeatRunModelAndCreateActionsActivity({
+      step,
+      phase: "checking_resume",
+    });
+
     // Check if actions already exist for this step. If so, we are resuming from tool validation.
     const existingData = await getExistingActionsAndBlobs(
       auth,
@@ -280,6 +300,10 @@ async function _runModelAndCreateActionsActivity({
   // 2. Create tool actions.
   // Include the new runId in the runIds array when creating actions
   const currentRunIds = runId ? [...runIds, runId] : runIds;
+  heartbeatRunModelAndCreateActionsActivity({
+    step,
+    phase: "creating_actions",
+  });
   const createResult = await startActiveObservation("create-tool-actions", () =>
     createToolActionsActivity(auth, {
       runAgentData,
@@ -293,6 +317,10 @@ async function _runModelAndCreateActionsActivity({
 
   const needsApproval = createResult.actionBlobs.some((a) => a.needsApproval);
   if (needsApproval) {
+    heartbeatRunModelAndCreateActionsActivity({
+      step,
+      phase: "marking_action_required",
+    });
     await ConversationResource.markAsActionRequired(auth, {
       conversation: runAgentData.conversation,
     });

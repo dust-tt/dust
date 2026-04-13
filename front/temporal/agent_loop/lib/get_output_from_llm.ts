@@ -1,8 +1,10 @@
 import type { LLM } from "@app/lib/api/llm/llm";
+import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import { heartbeatRunModelAndCreateActionsActivity } from "@app/temporal/agent_loop/lib/heartbeat_details";
 import type {
   GetOutputRequestParams,
   GetOutputResponse,
@@ -11,7 +13,7 @@ import type {
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { Err, Ok } from "@app/types/shared/result";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
-import { CancelledFailure, heartbeat, sleep } from "@temporalio/activity";
+import { CancelledFailure, sleep } from "@temporalio/activity";
 
 const LLM_HEARTBEAT_INTERVAL_MS = 10_000;
 // Log heartbeat status periodically to track long-waiting LLM calls.
@@ -87,21 +89,22 @@ function makeLLMTimeoutResponse(kind: LLMStreamTimeoutKind): GetOutputResponse {
 
 // Wraps an async iterator and ensures heartbeat() is called at regular intervals
 // even when the source is slow to yield values.
-async function* withPeriodicHeartbeat<T>(
-  stream: AsyncIterator<T>,
+async function* withPeriodicHeartbeat(
+  stream: AsyncIterator<LLMEvent>,
   activityTimeoutDeadlineMs: number,
-  logContext?: {
+  logContext: {
     workspaceId: string;
     conversationId: string;
     step: number;
     modelId: ModelIdType;
   }
-): AsyncGenerator<T> {
+): AsyncGenerator<LLMEvent> {
   let nextPromise = stream.next();
   let streamExhausted = false;
   let heartbeatCount = 0;
   const streamStartTimeMs = Date.now();
   let lastEventTimeMs = Date.now();
+  let lastEventType: LLMEvent["type"] | undefined;
 
   let heartbeatTimer: NodeJS.Timeout | undefined;
 
@@ -143,12 +146,19 @@ async function* withPeriodicHeartbeat<T>(
       // Clear the heartbeat timer if the stream event won the race.
       clearTimeout(heartbeatTimer);
 
-      heartbeat();
-
       if (result.type === "heartbeat") {
         heartbeatCount++;
         const now = Date.now();
-        const elapsedMs = now - lastEventTimeMs;
+        const timeSinceLastEventMs = now - lastEventTimeMs;
+
+        heartbeatRunModelAndCreateActionsActivity({
+          step: logContext.step,
+          phase: "waiting_model_event",
+          elapsedMs: now - streamStartTimeMs,
+          heartbeatCount,
+          lastEventType,
+          timeSinceLastEventMs,
+        });
 
         if (now >= activityTimeoutDeadlineMs) {
           logger.error(
@@ -167,17 +177,21 @@ async function* withPeriodicHeartbeat<T>(
         }
 
         // Check for timeout waiting on event.
-        if (elapsedMs >= LLM_EVENT_TIMEOUT_MS) {
+        if (timeSinceLastEventMs >= LLM_EVENT_TIMEOUT_MS) {
           logger.error(
             {
               ...logContext,
               heartbeatCount,
-              elapsedMs,
+              elapsedMs: timeSinceLastEventMs,
               timeoutMinutes: LLM_EVENT_TIMEOUT_MINUTES,
             },
             "[LLM stream] timeout - no event received"
           );
-          throw new LLMStreamTimeoutError("event", elapsedMs, logContext);
+          throw new LLMStreamTimeoutError(
+            "event",
+            timeSinceLastEventMs,
+            logContext
+          );
         }
 
         // Log every minute to track long-waiting LLM calls.
@@ -186,7 +200,7 @@ async function* withPeriodicHeartbeat<T>(
             {
               ...logContext,
               heartbeatCount,
-              elapsedMs,
+              elapsedMs: timeSinceLastEventMs,
             },
             "[LLM stream] heartbeat - still waiting for event"
           );
@@ -203,6 +217,16 @@ async function* withPeriodicHeartbeat<T>(
         streamExhausted = true;
         break;
       }
+
+      const now = Date.now();
+      lastEventType = streamResult.value.type;
+      heartbeatRunModelAndCreateActionsActivity({
+        step: logContext.step,
+        phase: "processing_model_event",
+        elapsedMs: now - streamStartTimeMs,
+        lastEventType,
+        timeSinceLastEventMs: now - lastEventTimeMs,
+      });
 
       yield streamResult.value;
       nextPromise = stream.next();
