@@ -2,24 +2,20 @@ import type { LLMConfig } from "@app/lib/api/assistant/call_llm";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { updateCompactionMessageWithContentAndFinalStatus } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { renderConversationAsText } from "@app/lib/api/assistant/conversation/render_as_text";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type {
-  AgentMessageType,
   CompactionMessageType,
   ConversationType,
-  MessageType,
-  UserMessageType,
 } from "@app/types/assistant/conversation";
 import { isCompactionMessageType } from "@app/types/assistant/conversation";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type { SupportedModel } from "@app/types/assistant/models/types";
-import type { ContentFragmentType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const COMPACTION_PROMPT = `Your task is to create a detailed summary of the conversation so far, \
 paying close attention to the user's explicit requests and the agents' previous actions and \
@@ -50,111 +46,6 @@ After your analysis, provide your summary in <summary> tags with these sections:
 
 IMPORTANT: Respond with TEXT ONLY. Do NOT attempt to use any tools. Your entire response must be \
 plain text: an <analysis> block followed by a <summary> block.`;
-
-/**
- * Render the messages that need to be compacted into a text representation suitable for the
- * compaction LLM prompt. Only messages after the last succeeded compaction are included.
- */
-function renderMessagesForCompaction(conversation: ConversationType): string {
-  const messages: string[] = [];
-  let pastCompactionBoundary = false;
-
-  // Find the last succeeded compaction message to use as boundary.
-  let lastSucceededCompactionIdx = -1;
-  for (let i = conversation.content.length - 1; i >= 0; i--) {
-    const group = conversation.content[i];
-    const msg = group[group.length - 1];
-    if (
-      msg &&
-      isCompactionMessageType(msg) &&
-      msg.status === "succeeded" &&
-      msg.content
-    ) {
-      lastSucceededCompactionIdx = i;
-      break;
-    }
-  }
-
-  for (let i = 0; i < conversation.content.length; i++) {
-    const group = conversation.content[i];
-    const msg = group[group.length - 1];
-    if (!msg) {
-      continue;
-    }
-
-    // Skip everything up to and including the last succeeded compaction.
-    if (lastSucceededCompactionIdx >= 0 && i <= lastSucceededCompactionIdx) {
-      if (i === lastSucceededCompactionIdx) {
-        pastCompactionBoundary = true;
-      }
-      continue;
-    }
-
-    // Skip compaction messages with status "created" (the one being generated).
-    if (isCompactionMessageType(msg) && msg.status === "created") {
-      continue;
-    }
-
-    const formatted = formatMessageForCompaction(msg);
-    if (formatted) {
-      messages.push(formatted);
-    }
-  }
-
-  // If there was a previous compaction, prepend its summary as context.
-  if (pastCompactionBoundary) {
-    const compactionGroup = conversation.content[lastSucceededCompactionIdx];
-    const compactionMsg = compactionGroup[compactionGroup.length - 1];
-    if (compactionMsg && isCompactionMessageType(compactionMsg)) {
-      messages.unshift(
-        `[Previous compaction summary]\n${compactionMsg.content}\n`
-      );
-    }
-  }
-
-  return messages.join("\n");
-}
-
-function formatMessageForCompaction(msg: MessageType): string | null {
-  switch (msg.type) {
-    case "user_message":
-      return formatUserMessage(msg);
-    case "agent_message":
-      return formatAgentMessage(msg);
-    case "content_fragment":
-      return formatContentFragment(msg);
-    case "compaction_message":
-      // Succeeded compaction messages in the middle of the range are included as-is.
-      if (msg.status === "succeeded" && msg.content) {
-        return `[Compaction summary]\n${msg.content}\n`;
-      }
-      return null;
-    default:
-      assertNever(msg);
-  }
-}
-
-function formatUserMessage(msg: UserMessageType): string {
-  const userName = msg.user?.fullName ?? msg.user?.username ?? "User";
-  const content = msg.content ?? "";
-  if (msg.visibility === "deleted") {
-    return `>> User (${userName}):\n[Deleted message]\n`;
-  }
-  return `>> User (${userName}):\n${content}\n`;
-}
-
-function formatAgentMessage(msg: AgentMessageType): string {
-  const agentName = msg.configuration?.name ?? "Agent";
-  const content = msg.content ?? "";
-  if (msg.visibility === "deleted") {
-    return `>> Agent (${agentName}):\n[Deleted message]\n`;
-  }
-  return `>> Agent (${agentName}):\n${content}\n`;
-}
-
-function formatContentFragment(msg: ContentFragmentType): string {
-  return `>> Content Fragment:\nTitle: ${msg.title}\nContent-Type: ${msg.contentType}\n`;
-}
 
 /**
  * Extract the <summary> block from the LLM response, stripping the <analysis> scratchpad.
@@ -277,7 +168,12 @@ async function generateCompactionSummary(
 ): Promise<string> {
   const owner = auth.getNonNullableWorkspace();
 
-  const renderedMessages = renderMessagesForCompaction(conversation);
+  // renderConversationAsText stops at the last succeeded compaction boundary by default and skips
+  // running agent messages, producing exactly the messages that need to be summarized.
+  const renderedMessages = renderConversationAsText(conversation, {
+    includeTimestamps: true,
+    skipRunningAgentMessages: true,
+  });
 
   const conv: ModelConversationTypeMultiActions = {
     messages: [
