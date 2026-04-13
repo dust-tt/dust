@@ -1136,7 +1136,10 @@ DataTable.CellContent = function CellContent({
         />
       )}
       <div
-        className={cn("s-flex s-shrink s-truncate", grow ? "s-flex-grow" : "")}
+        className={cn(
+          "s-flex s-shrink s-truncate s-items-center",
+          grow ? "s-flex-grow" : ""
+        )}
       >
         <div
           className={cn(
