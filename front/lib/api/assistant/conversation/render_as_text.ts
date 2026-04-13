@@ -59,7 +59,17 @@ export function renderConversationAsText(
   const parts: string[] = [];
   let totalChars = 0;
 
-  const allMessages = flattenConversationMessages(conversation);
+  // Flatten version groups into an ordered list of messages (last version of each group).
+  const allMessages: AnyMessageType[] = isLightConversationType(conversation)
+    ? [...conversation.content]
+    : conversation.content.reduce<AnyMessageType[]>((acc, versions) => {
+        const msg = versions[versions.length - 1];
+        if (msg) {
+          acc.push(msg);
+        }
+        return acc;
+      }, []);
+
   const from = options.fromMessageIndex ?? 0;
   const to = options.toMessageIndex ?? allMessages.length;
   const slicedMessages = allMessages.slice(from, to);
@@ -94,27 +104,6 @@ export function countConversationMessages(
     return conversation.content.length;
   }
   return conversation.content.filter((versions) => versions.length > 0).length;
-}
-
-/**
- * Flatten a conversation's version-grouped content into an ordered list of messages, taking the
- * last version of each group.
- */
-function flattenConversationMessages(
-  conversation: ConversationType | LightConversationType
-): AnyMessageType[] {
-  if (isLightConversationType(conversation)) {
-    return [...conversation.content];
-  }
-
-  const result: AnyMessageType[] = [];
-  for (const versions of conversation.content) {
-    const msg = versions[versions.length - 1];
-    if (msg) {
-      result.push(msg);
-    }
-  }
-  return result;
 }
 
 interface RenderedMessage {
