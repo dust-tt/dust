@@ -3,6 +3,10 @@ import { BlockIdExtension } from "@app/components/editor/extensions/instructions
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/instructions/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
 import { KnowledgeNode } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import {
+  RawMarkdownBlock,
+  rawMarkdownBlockParsers,
+} from "@app/components/editor/extensions/skill_builder/RawMarkdownBlock";
 import { markdownStyles } from "@dust-tt/sparkle";
 import type { Extensions } from "@tiptap/core";
 import { Markdown } from "@tiptap/markdown";
@@ -75,6 +79,8 @@ export function buildSkillInstructionsExtensions(
     }),
     ...(serverSide ? [BlockIdExtension] : []),
     KnowledgeNode,
+    RawMarkdownBlock,
+    ...rawMarkdownBlockParsers,
   ];
 
   if (!isReadOnly) {

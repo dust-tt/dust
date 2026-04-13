@@ -4,7 +4,10 @@ import {
 } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
-import { preprocessMarkdown } from "@app/lib/editor/skill_instructions_preprocessing";
+import {
+  postProcessMarkdown,
+  preprocessMarkdownForEditor,
+} from "@app/lib/editor/skill_instructions_preprocessing";
 import { generateShortBlockId } from "@app/lib/generate_short_block_id";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { JSONContent } from "@tiptap/core";
@@ -23,6 +26,34 @@ const NODE_TYPES_WITH_BLOCK_ID = new Set<string>([
   ...BLOCK_ID_UNIQUE_ID_NODE_TYPES,
   INSTRUCTIONS_ROOT_NODE_NAME,
 ]);
+
+/**
+ * This is only needed on the server-side path, not in the browser editor.
+ *
+ * The browser editor never touches HTML: it goes markdown → ProseMirror nodes
+ * (in memory) → markdown via getMarkdown(). Text nodes are plain strings in
+ * that in-memory tree, never serialised to HTML and re-parsed.
+ *
+ * The server path has an extra hop: ProseMirror JSON → renderToHTMLString →
+ * generateJSON. renderToHTMLString splices node.text verbatim into HTML markup
+ * without escaping (it's a known limitation of TipTap's static renderer).
+ */
+function prepareTextNodes(node: JSONContent): JSONContent {
+  if (node.type === "text" && typeof node.text === "string") {
+    return {
+      ...node,
+      text: node.text
+        .replace(/\u200B/g, "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;"),
+    };
+  }
+  if (node.content) {
+    return { ...node, content: node.content.map(prepareTextNodes) };
+  }
+  return node;
+}
 
 function addBlockIds(node: JSONContent | undefined): void {
   if (!node?.type) {
@@ -46,10 +77,12 @@ function addBlockIds(node: JSONContent | undefined): void {
  */
 function stripPresentationAttributes(html: string): string {
   const $ = cheerio.load(html, { xmlMode: false }, false);
-  $("[class], [style], [id]")
-    .removeAttr("class")
-    .removeAttr("style")
-    .removeAttr("id");
+  // Strip class from all elements except <code>. The codeBlock extension
+  // stores the fenced-code language as class="language-typescript", which is
+  // the round-trip mechanism for recovering the language on generateJSON
+  $("[class]").not("code").removeAttr("class");
+  $("[style]").removeAttr("style");
+  $("[id]").removeAttr("id");
   return $.html();
 }
 
@@ -58,8 +91,10 @@ function stripPresentationAttributes(html: string): string {
  * Uses the same extension schema as the browser editor, then strips CSS class attrs.
  */
 export function convertMarkdownToBlockHtml(markdown: string): string {
-  const preprocessed = markdown.trim() ? preprocessMarkdown(markdown) : null;
-  const parsedDoc = preprocessed ? MARKDOWN_MANAGER.parse(preprocessed) : null;
+  const preprocessed = preprocessMarkdownForEditor(markdown);
+  const parsedDoc = preprocessed.trim()
+    ? MARKDOWN_MANAGER.parse(preprocessed)
+    : null;
 
   const json: JSONContent = {
     type: "doc",
@@ -74,7 +109,7 @@ export function convertMarkdownToBlockHtml(markdown: string): string {
   addBlockIds(json);
 
   const rendered = renderToHTMLString({
-    content: json,
+    content: prepareTextNodes(json),
     extensions: SKILL_EDITOR_EXTENSIONS,
   });
 
@@ -87,5 +122,5 @@ export function convertMarkdownToBlockHtml(markdown: string): string {
  */
 export function convertBlockHtmlToMarkdown(html: string): string {
   const json = generateJSON(html, SKILL_EDITOR_EXTENSIONS);
-  return MARKDOWN_MANAGER.serialize(json);
+  return postProcessMarkdown(MARKDOWN_MANAGER.serialize(json));
 }
