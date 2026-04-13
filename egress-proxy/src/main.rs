@@ -1,9 +1,5 @@
 mod config;
-mod domain;
-mod handshake;
 mod health;
-mod jwt;
-mod policy;
 mod server;
 mod tls;
 
@@ -26,7 +22,6 @@ async fn run() -> Result<()> {
     info!(
         configured_proxy_addr = %config.listen_addr,
         health_addr = %config.health_addr,
-        env = %config.environment,
         "starting egress proxy"
     );
 

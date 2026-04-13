@@ -7,8 +7,6 @@ use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
-const SECRET: &str = "test-secret";
-
 struct ProxyProcess {
     child: Child,
     health_addr: SocketAddr,
@@ -32,6 +30,25 @@ async fn healthz_returns_ok() -> Result<()> {
     Ok(())
 }
 
+#[tokio::test]
+async fn invalid_tls_assets_fail_startup() -> Result<()> {
+    let temp_dir = tempfile::TempDir::new()?;
+    let tls_key_path = temp_dir.path().join("tls.key");
+    write(&tls_key_path, "not a private key")?;
+    let health_addr = free_addr()?;
+
+    let mut child = Command::new(env!("CARGO_BIN_EXE_egress-proxy"))
+        .env("EGRESS_PROXY_LISTEN_ADDR", "127.0.0.1:4443")
+        .env("EGRESS_PROXY_HEALTH_ADDR", health_addr.to_string())
+        .env("EGRESS_PROXY_TLS_CERT", temp_dir.path().join("missing.crt"))
+        .env("EGRESS_PROXY_TLS_KEY", &tls_key_path)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?;
+
+    wait_for_startup_failure(&mut child).await
+}
+
 async fn start_proxy() -> Result<ProxyProcess> {
     let temp_dir = tempfile::TempDir::new()?;
     let certs = generate_test_certs(temp_dir.path())?;
@@ -43,9 +60,6 @@ async fn start_proxy() -> Result<ProxyProcess> {
             .env("EGRESS_PROXY_HEALTH_ADDR", health_addr.to_string())
             .env("EGRESS_PROXY_TLS_CERT", &certs.server_cert_path)
             .env("EGRESS_PROXY_TLS_KEY", &certs.server_key_path)
-            .env("EGRESS_PROXY_JWT_SECRET", SECRET)
-            .env("EGRESS_PROXY_ALLOWED_DOMAINS", "example.com")
-            .env("EGRESS_PROXY_ENV", "production")
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()?,
@@ -55,27 +69,6 @@ async fn start_proxy() -> Result<ProxyProcess> {
     wait_for_health(&mut proxy.child, proxy.health_addr).await?;
 
     Ok(proxy)
-}
-
-#[tokio::test]
-async fn invalid_allowed_domain_fails_startup() -> Result<()> {
-    let temp_dir = tempfile::TempDir::new()?;
-    let certs = generate_test_certs(temp_dir.path())?;
-    let health_addr = free_addr()?;
-
-    let mut child = Command::new(env!("CARGO_BIN_EXE_egress-proxy"))
-        .env("EGRESS_PROXY_LISTEN_ADDR", "127.0.0.1:4443")
-        .env("EGRESS_PROXY_HEALTH_ADDR", health_addr.to_string())
-        .env("EGRESS_PROXY_TLS_CERT", &certs.server_cert_path)
-        .env("EGRESS_PROXY_TLS_KEY", &certs.server_key_path)
-        .env("EGRESS_PROXY_JWT_SECRET", SECRET)
-        .env("EGRESS_PROXY_ALLOWED_DOMAINS", "example..com")
-        .env("EGRESS_PROXY_ENV", "production")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()?;
-
-    wait_for_startup_failure(&mut child).await
 }
 
 async fn wait_for_health(child: &mut Child, health_addr: SocketAddr) -> Result<()> {
