@@ -1,4 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  emitAuditLogEventDirect,
+} from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import { isGoogleAuthenticationErrorMessage } from "@app/lib/api/llm/clients/google/utils/errors";
 import type { Authenticator } from "@app/lib/auth";
@@ -282,12 +287,29 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
 
     notifyProviderCredentialsHealthUpdated(auth);
 
-    return new ProviderCredentialResource(
+    const resource = new ProviderCredentialResource(
       ProviderCredentialModel,
       model.get(),
       // TODO (BYOK): handle different credential content shapes for different providers
       { api_key: apiKey }
     );
+
+    void emitAuditLogEvent({
+      auth,
+      action: "credentials.created",
+      targets: [
+        buildAuditLogTarget("workspace", workspace),
+        buildAuditLogTarget("credential", {
+          sId: resource.sId,
+          name: providerId,
+        }),
+      ],
+      metadata: {
+        providerId,
+      },
+    });
+
+    return resource;
   }
 
   async updateApiKey(
@@ -362,6 +384,21 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
 
     notifyProviderCredentialsHealthUpdated(auth);
 
+    void emitAuditLogEvent({
+      auth,
+      action: "credentials.updated",
+      targets: [
+        buildAuditLogTarget("workspace", workspace),
+        buildAuditLogTarget("credential", {
+          sId: this.sId,
+          name: this.providerId,
+        }),
+      ],
+      metadata: {
+        providerId: this.providerId,
+      },
+    });
+
     return this;
   }
 
@@ -428,6 +465,28 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     if (affectedCount > 0) {
       await this.invalidateProviderCredentialCache(workspace.id);
       notifyProviderCredentialsHealthUpdated(auth);
+
+      void emitAuditLogEventDirect({
+        workspace,
+        action: "credentials.invalidated",
+        actor: {
+          type: "system",
+          id: "byok_health_check",
+          name: "BYOK Health Check",
+        },
+        targets: [
+          buildAuditLogTarget("workspace", workspace),
+          buildAuditLogTarget("credential", {
+            sId: credential.sId,
+            name: providerId,
+          }),
+        ],
+        context: { location: "internal" },
+        metadata: {
+          providerId: String(providerId),
+          reason: "authentication_failed",
+        },
+      });
     }
   }
 
@@ -460,6 +519,22 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
         );
 
         notifyProviderCredentialsHealthUpdated(auth);
+
+        void emitAuditLogEvent({
+          auth,
+          action: "credentials.revoked",
+          targets: [
+            buildAuditLogTarget("workspace", workspace),
+            buildAuditLogTarget("credential", {
+              sId: this.sId,
+              name: this.providerId,
+            }),
+          ],
+          metadata: {
+            providerId: this.providerId,
+            reason: "user_deleted",
+          },
+        });
       }
 
       return new Ok(affectedCount);
