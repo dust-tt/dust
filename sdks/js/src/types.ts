@@ -742,7 +742,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "conversations_slack_notifications"
   | "anthropic_reasoning_token_count"
   | "collapsible_messages"
-  | "email_restricted_sharing"
   | "use_dust_keys"
   | "enable_steering"
 >();

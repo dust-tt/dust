@@ -2,7 +2,6 @@ import { VisualizationActionIframe } from "@app/components/assistant/conversatio
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
-import { ShareFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover";
 import { ShareFrameSheet } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSheet";
 import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
 import { ConfirmContext } from "@app/components/Confirm";
@@ -211,7 +210,6 @@ export function FrameRenderer({
 }: FrameRendererProps) {
   const { vizUrl } = useAuth();
   const { hasFeature } = useFeatureFlags();
-  const hasEmailRestrictedSharing = hasFeature("email_restricted_sharing");
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
   const [isLoading, setIsLoading] = useState(false);
@@ -464,15 +462,7 @@ export function FrameRenderer({
               fileContent={fileContent ?? null}
               fileName={fileMetadata?.fileName}
             />
-            {hasEmailRestrictedSharing ? (
-              <ShareFrameSheet fileId={fileId} owner={owner} />
-            ) : (
-              <ShareFramePopover
-                fileId={fileId}
-                owner={owner}
-                isUsingConversationFiles={isFileUsingConversationFiles}
-              />
-            )}
+            <ShareFrameSheet fileId={fileId} owner={owner} />
             {projectSaveState === "saved" && (
               <Button
                 icon={CheckCircleIcon}
