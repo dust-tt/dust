@@ -30,6 +30,8 @@ export interface RenderConversationAsTextOptions {
   includeActions?: boolean;
   // Include action input params and output (requires includeActions).
   includeActionDetails?: boolean;
+  // Skip agent messages with status "created" (still running).
+  skipRunningAgentMessages?: boolean;
   // Truncate each message's content to this many characters.
   truncateMessageChars?: number;
   // Stop rendering once total content characters reach this limit.
@@ -100,6 +102,14 @@ export function renderConversationAsText(
     }
 
     const msg = slicedMessages[i];
+
+    if (
+      options.skipRunningAgentMessages &&
+      msg.type === "agent_message" &&
+      msg.status === "created"
+    ) {
+      continue;
+    }
 
     const rendered = renderMessageAsText(msg, conversation.lastReadMs, options);
     if (!rendered) {
