@@ -7,7 +7,11 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { SANDBOX_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox/metadata";
 import config from "@app/lib/api/config";
-import { generateSandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
+import {
+  generateExecId,
+  generateSandboxExecToken,
+  revokeExecToken,
+} from "@app/lib/api/sandbox/access_tokens";
 import {
   mountConversationFiles,
   refreshGcsToken,
@@ -138,10 +142,12 @@ export function createSandboxTools(
         );
       }
 
+      const execId = generateExecId();
       const sandboxToken = generateSandboxExecToken(auth, {
         agentConfiguration,
         conversation,
         sandbox,
+        execId,
         expiryMs: DEFAULT_EXEC_TIMEOUT_MS,
       });
 
@@ -173,6 +179,10 @@ export function createSandboxTools(
         durationMs,
         metricsCtx,
         execResult.isOk() ? "success" : "error"
+      );
+
+      void revokeExecToken({ sbId: sandbox.sId, execId }).catch((err) =>
+        logger.error({ error: err }, "Failed to revoke exec token")
       );
 
       if (execResult.isErr()) {

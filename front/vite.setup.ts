@@ -58,6 +58,17 @@ function createStatefulMockRedisClient() {
     unsubscribe: vi.fn().mockResolvedValue(undefined),
     ping: vi.fn().mockResolvedValue("PONG"),
     eval: vi.fn().mockResolvedValue(1),
+    exists: vi.fn(async (key: string) => {
+      const entry = redisStore.get(key);
+      if (!entry) {
+        return 0;
+      }
+      if (entry.expiresAtMs > 0 && Date.now() > entry.expiresAtMs) {
+        redisStore.delete(key);
+        return 0;
+      }
+      return 1;
+    }),
   };
 }
 

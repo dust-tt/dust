@@ -1,10 +1,12 @@
 import config from "@app/lib/api/config";
+import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 
@@ -16,11 +18,73 @@ const SandboxExecTokenPayloadSchema = z.object({
   uId: z.string(),
   aId: z.string(),
   sbId: z.string(),
+  execId: z.string(),
 });
 
 export type SandboxExecTokenPayload = z.infer<
   typeof SandboxExecTokenPayloadSchema
 >;
+
+const EXEC_TOKEN_REDIS_TTL_SECONDS = 24 * 60 * 60; // 24 hours
+
+function sandboxTokenRedisKey(sbId: string, execId: string): string {
+  return `sandbox:${sbId}:exec:${execId}`;
+}
+
+function sandboxTokenRedisKeyPattern(sbId: string): string {
+  return `sandbox:${sbId}:exec:*`;
+}
+
+const REDIS_ORIGIN = "sandbox_exec_tokens" as const;
+
+export function generateExecId(): string {
+  return crypto.randomBytes(8).toString("hex");
+}
+
+async function registerExecToken(
+  token: Pick<SandboxExecTokenPayload, "sbId" | "execId">
+): Promise<void> {
+  await runOnRedis({ origin: REDIS_ORIGIN }, (client) =>
+    client.set(sandboxTokenRedisKey(token.sbId, token.execId), "1", {
+      EX: EXEC_TOKEN_REDIS_TTL_SECONDS,
+    })
+  );
+}
+
+export async function revokeExecToken(
+  token: Pick<SandboxExecTokenPayload, "sbId" | "execId">
+): Promise<void> {
+  await runOnRedis({ origin: REDIS_ORIGIN }, (client) =>
+    client.del(sandboxTokenRedisKey(token.sbId, token.execId))
+  );
+}
+
+async function isExecTokenValid(
+  token: Pick<SandboxExecTokenPayload, "sbId" | "execId">
+): Promise<boolean> {
+  return runOnRedis({ origin: REDIS_ORIGIN }, async (client) => {
+    const result = await client.exists(
+      sandboxTokenRedisKey(token.sbId, token.execId)
+    );
+    return result === 1;
+  });
+}
+
+export async function revokeAllExecTokensForSandbox(
+  sbId: string
+): Promise<void> {
+  await runOnRedis({ origin: REDIS_ORIGIN }, async (client) => {
+    const keys: string[] = [];
+    for await (const key of client.scanIterator({
+      MATCH: sandboxTokenRedisKeyPattern(sbId),
+    })) {
+      keys.push(key);
+    }
+    if (keys.length > 0) {
+      await client.del(keys);
+    }
+  });
+}
 
 export function generateSandboxExecToken(
   auth: Authenticator,
@@ -28,11 +92,13 @@ export function generateSandboxExecToken(
     agentConfiguration,
     conversation,
     sandbox,
+    execId,
     expiryMs = 2 * 60 * 1000, // Default to 2 minutes
   }: {
     agentConfiguration: AgentConfigurationType;
     conversation: ConversationType;
     sandbox: SandboxResource;
+    execId: string;
     expiryMs?: number;
   }
 ): string {
@@ -42,7 +108,10 @@ export function generateSandboxExecToken(
     uId: auth.getNonNullableUser().sId,
     aId: agentConfiguration.sId,
     sbId: sandbox.sId,
+    execId,
   };
+
+  void registerExecToken(payload);
 
   const secret = config.getSandboxJwtSecret();
 
@@ -54,9 +123,12 @@ export function generateSandboxExecToken(
   return `${SANDBOX_TOKEN_PREFIX}${token}`;
 }
 
-export function verifySandboxExecToken(
+/**
+ * Verify a sandbox exec token and check Redis-backed revocation.
+ */
+export async function verifySandboxExecToken(
   token: string
-): SandboxExecTokenPayload | null {
+): Promise<SandboxExecTokenPayload | null> {
   if (!token.startsWith(SANDBOX_TOKEN_PREFIX)) {
     return null;
   }
@@ -84,5 +156,16 @@ export function verifySandboxExecToken(
     return null;
   }
 
-  return parseResult.data;
+  const payload = parseResult.data;
+
+  const valid = await isExecTokenValid(payload);
+  if (!valid) {
+    logger.warn(
+      { sbId: payload.sbId, execId: payload.execId },
+      "Sandbox exec token revoked"
+    );
+    return null;
+  }
+
+  return payload;
 }
