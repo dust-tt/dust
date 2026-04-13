@@ -133,6 +133,7 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   skill_management: "platform",
   schedules_management: "platform",
   project_manager: "platform",
+  project_todos: "platform",
   poke: "platform",
   project_conversation: "platform",
   sandbox: "platform",

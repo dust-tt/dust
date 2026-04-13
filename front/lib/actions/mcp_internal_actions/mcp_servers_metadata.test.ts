@@ -265,7 +265,7 @@ describe("MCP Servers Metadata Snapshot", () => {
     } catch (error) {
       const hint =
         "\n\nTool stakes changed. Review the diff above and run:\n" +
-        "  NODE_ENV=test npm test -- --update lib/actions/" +
+        "  NODE_ENV=test npm test -w front -- --update lib/actions/" +
         "mcp_internal_actions/mcp_servers_metadata.test.ts\n" +
         "to update the snapshot.";
 
