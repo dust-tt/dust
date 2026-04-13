@@ -272,9 +272,7 @@ export default function AgentBuilder({
       actions: processedActions,
       skills: processedSkills,
       additionalSpaces: computedAdditionalSpaces,
-      triggersToCreate: duplicateAgentId
-        ? userOwnedTriggers
-        : [],
+      triggersToCreate: duplicateAgentId ? userOwnedTriggers : [],
       triggersToUpdate: duplicateAgentId ? [] : userOwnedTriggers,
       triggersToDelete: [],
       agentSettings: {
