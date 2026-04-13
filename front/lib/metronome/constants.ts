@@ -74,12 +74,14 @@ export const CREDIT_TYPE_USD_ID = "2714e483-4ff1-48e4-9e25-ac732e8f24f2";
 export const CREDIT_TYPE_EUR_ID = "58f0be15-cc47-4220-bdaf-072ab0e44f96";
 
 // AWU (Agentic Work Units) differs per environment.
-const DEV_CREDIT_TYPE_AWU_ID = "1ad632f0-4e5a-44d6-a1bf-aa6f6bc550d8";
-const PROD_CREDIT_TYPE_AWU_ID = "e53a841e-b741-4bc3-8148-f377c1fb2501";
+export const DEV_CREDIT_TYPE_AWU_ID = "1ad632f0-4e5a-44d6-a1bf-aa6f6bc550d8";
+export const PROD_CREDIT_TYPE_AWU_ID = "e53a841e-b741-4bc3-8148-f377c1fb2501";
 
-// AWU (Agentic Work Units) differs per environment.
-const DEV_CREDIT_TYPE_PROG_USD_ID = "713dda3d-4e9c-456f-91cf-c79cf5b71412";
-const PROD_CREDIT_TYPE_PROG_USD_ID = "db4b2912-4dfc-43ee-a910-1a894b89fe60";
+// Programmatic USD differs per environment.
+export const DEV_CREDIT_TYPE_PROG_USD_ID =
+  "713dda3d-4e9c-456f-91cf-c79cf5b71412";
+export const PROD_CREDIT_TYPE_PROG_USD_ID =
+  "db4b2912-4dfc-43ee-a910-1a894b89fe60";
 
 /** Map Stripe currency code to Metronome credit type ID. */
 export const CURRENCY_TO_CREDIT_TYPE_ID: Record<string, string> = {

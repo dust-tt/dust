@@ -16,8 +16,10 @@ import { getMetronomeClient } from "@app/lib/metronome/client";
 import {
   CREDIT_TYPE_EUR_ID,
   CREDIT_TYPE_USD_ID,
-  getCreditTypeAwuId,
-  getCreditTypeProgrammaticUsdId,
+  DEV_CREDIT_TYPE_AWU_ID,
+  DEV_CREDIT_TYPE_PROG_USD_ID,
+  PROD_CREDIT_TYPE_AWU_ID,
+  PROD_CREDIT_TYPE_PROG_USD_ID,
 } from "@app/lib/metronome/constants";
 
 if (!process.env.METRONOME_API_KEY) {
@@ -30,9 +32,7 @@ const EXECUTE = process.argv.includes("--execute");
 const client = getMetronomeClient();
 
 // Detect environment by listing pricing units and checking for the AWU credit type.
-// AWU has a different ID in sandbox vs production; USD/EUR are the same.
-const SANDBOX_AWU_ID = "1ad632f0-4e5a-44d6-a1bf-aa6f6bc550d8";
-const PRODUCTION_AWU_ID = "e53a841e-b741-4bc3-8148-f377c1fb2501";
+// AWU and Programmatic USD have different IDs in sandbox vs production; USD/EUR are the same.
 
 async function detectEnvironment(): Promise<"sandbox" | "production"> {
   const creditTypeIds = new Set<string>();
@@ -41,20 +41,31 @@ async function detectEnvironment(): Promise<"sandbox" | "production"> {
       creditTypeIds.add(pu.id);
     }
   }
-  if (creditTypeIds.has(PRODUCTION_AWU_ID)) {
+  if (creditTypeIds.has(PROD_CREDIT_TYPE_AWU_ID)) {
     return "production";
   }
-  if (creditTypeIds.has(SANDBOX_AWU_ID)) {
+  if (creditTypeIds.has(DEV_CREDIT_TYPE_AWU_ID)) {
     return "sandbox";
   }
   throw new Error(
     "Cannot detect Metronome environment: AWU credit type not found. " +
-      `Expected sandbox=${SANDBOX_AWU_ID} or production=${PRODUCTION_AWU_ID}`
+      `Expected sandbox=${DEV_CREDIT_TYPE_AWU_ID} or production=${PROD_CREDIT_TYPE_AWU_ID}`
   );
 }
 
 // Resolved in main() before anything else runs.
 let ENV: "sandbox" | "production" = "sandbox";
+
+// Credit type accessors based on the script-detected ENV (not NODE_ENV).
+function getCreditTypeAwuId(): string {
+  return ENV === "sandbox" ? DEV_CREDIT_TYPE_AWU_ID : PROD_CREDIT_TYPE_AWU_ID;
+}
+
+function getCreditTypeProgrammaticUsdId(): string {
+  return ENV === "sandbox"
+    ? DEV_CREDIT_TYPE_PROG_USD_ID
+    : PROD_CREDIT_TYPE_PROG_USD_ID;
+}
 
 // ---------------------------------------------------------------------------
 // Types for desired state definitions
@@ -1540,7 +1551,7 @@ async function main(): Promise<void> {
   );
 
   console.log(
-    `Credit types: USD=${CREDIT_TYPE_USD_ID}, AWU=${getCreditTypeAwuId()}`
+    `Credit types: USD=${CREDIT_TYPE_USD_ID}, AWU=${getCreditTypeAwuId()}, PROG_USD=${getCreditTypeProgrammaticUsdId()}`
   );
 
   await syncMetrics();
