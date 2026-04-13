@@ -27,10 +27,12 @@ import {
 import { provisionSeatsForContract } from "@app/lib/metronome/seats";
 import {
   LEGACY_BUSINESS_PACKAGE_ALIAS,
+  LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS,
   LEGACY_ENTERPRISE_PACKAGE_ALIAS,
   LEGACY_PRO_ANNUAL_PACKAGE_ALIAS,
   LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
 } from "@app/lib/metronome/types";
+import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
 import {
   isEntreprisePlanPrefix,
   PRO_PLAN_SEAT_29_CODE,
@@ -42,6 +44,7 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
+import { isSupportedCurrency } from "@app/types/currency";
 import type { LightWorkspaceType } from "@app/types/user";
 import type Stripe from "stripe";
 import { makeScript } from "./helpers";
@@ -380,37 +383,26 @@ async function getSubscriptionInfo(
   }
 
   // Get Stripe subscription start date, rounded to hour boundary (Metronome requirement).
-  let startDate: string | undefined;
-  let isAnnual = false;
-  let stripeSubscription: Stripe.Subscription | null = null;
-  try {
-    stripeSubscription = await getStripeSubscription(
-      subscription.stripeSubscriptionId
-    );
-    if (stripeSubscription) {
-      // Use current billing period start — not the original subscription start date.
-      // This ensures the Metronome contract aligns with the current billing cycle.
-      const startTimestamp = stripeSubscription.current_period_start;
-      // Round to hour boundary (Metronome requirement).
-      const rounded = Math.floor(startTimestamp / 3600) * 3600;
-      startDate = new Date(rounded * 1000).toISOString();
+  let stripeSubscription = await getStripeSubscription(
+    subscription.stripeSubscriptionId
+  );
 
-      // Detect annual billing from the Stripe price interval.
-      const interval =
-        stripeSubscription.items?.data[0]?.price?.recurring?.interval;
-      isAnnual = interval === "year";
-    }
-  } catch (err) {
-    logger.warn(
-      { workspaceId, error: String(err) },
-      "Failed to fetch Stripe subscription — skipping"
-    );
+  if (!stripeSubscription) {
     return undefined;
   }
 
-  if (!startDate) {
-    return undefined;
-  }
+  // Use current billing period start — not the original subscription start date.
+  // This ensures the Metronome contract aligns with the current billing cycle.
+  const startTimestamp = stripeSubscription.current_period_start;
+  // Round to hour boundary (Metronome requirement).
+  const rounded = Math.floor(startTimestamp / 3600) * 3600;
+  const startDate = new Date(rounded * 1000).toISOString();
+  const stripeCurrency = stripeSubscription.currency;
+
+  // Detect annual billing from the Stripe price interval.
+  const firstItem = stripeSubscription.items?.data[0];
+  const interval = firstItem?.price?.recurring?.interval;
+  const isAnnual = interval === "year";
 
   const planCode = subscription.getPlan().code;
 
@@ -433,26 +425,36 @@ async function getSubscriptionInfo(
     }
 
     return {
-      packageAlias: LEGACY_ENTERPRISE_PACKAGE_ALIAS,
+      packageAlias: resolvePackageAliasForCurrency(
+        LEGACY_ENTERPRISE_PACKAGE_ALIAS,
+        isSupportedCurrency(enterprisePricing.currency)
+          ? enterprisePricing.currency
+          : "usd"
+      ),
       startDate,
       subscriptionModelId: subscription.id,
       enterprisePricing,
     };
   }
 
-  // Determine alias from plan code + billing interval.
+  // Determine alias from plan code + billing interval + currency.
   const isPro = planCode === PRO_PLAN_SEAT_29_CODE;
   const isBusiness = planCode === PRO_PLAN_SEAT_39_CODE;
-  let packageAlias: string;
+  let baseAlias: string;
   if (isBusiness) {
-    packageAlias = LEGACY_BUSINESS_PACKAGE_ALIAS;
+    baseAlias = LEGACY_BUSINESS_PACKAGE_ALIAS;
   } else if (isPro) {
-    packageAlias = isAnnual
+    baseAlias = isAnnual
       ? LEGACY_PRO_ANNUAL_PACKAGE_ALIAS
       : LEGACY_PRO_MONTHLY_PACKAGE_ALIAS;
   } else {
     return undefined;
   }
+
+  const packageAlias = resolvePackageAliasForCurrency(
+    baseAlias,
+    isSupportedCurrency(stripeCurrency) ? stripeCurrency : "usd"
+  );
 
   return {
     packageAlias,
@@ -517,7 +519,9 @@ async function migrateWorkspace(
     }
 
     const targetPackageAlias = subInfo.packageAlias;
-    const isEnterprise = targetPackageAlias === LEGACY_ENTERPRISE_PACKAGE_ALIAS;
+    const isEnterprise =
+      targetPackageAlias === LEGACY_ENTERPRISE_PACKAGE_ALIAS ||
+      targetPackageAlias === LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS;
 
     logger.info(
       {
@@ -734,7 +738,10 @@ async function migrateWorkspace(
     );
 
     // 3. For enterprise contracts migrating to the enterprise package, apply overrides.
-    if (targetAlias === LEGACY_ENTERPRISE_PACKAGE_ALIAS) {
+    if (
+      targetAlias === LEGACY_ENTERPRISE_PACKAGE_ALIAS ||
+      targetAlias === LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS
+    ) {
       const subInfo = await getSubscriptionInfo(workspace.id, logger);
       if (subInfo?.enterprisePricing) {
         await applyEnterpriseOverrides({
@@ -749,7 +756,10 @@ async function migrateWorkspace(
     }
 
     // 4. Provision seats on the new contract (for seat-based plans).
-    if (targetAlias !== LEGACY_ENTERPRISE_PACKAGE_ALIAS) {
+    if (
+      targetAlias !== LEGACY_ENTERPRISE_PACKAGE_ALIAS &&
+      targetAlias !== LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS
+    ) {
       const seatResult2 = await provisionSeatsForContract({
         metronomeCustomerId,
         contractId: newContractId,

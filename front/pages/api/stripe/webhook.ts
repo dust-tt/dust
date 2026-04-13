@@ -32,6 +32,7 @@ import {
 import { getProductFreeMonthlyCreditId } from "@app/lib/metronome/constants";
 import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
+import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   assertStripeSubscriptionIsValid,
@@ -511,10 +512,17 @@ async function handler(
               newSubscription &&
               isString(checkoutStripeSubscription.customer)
             ) {
+              // Resolve EUR variant based on Stripe subscription currency.
+              const subscriptionCurrency =
+                checkoutStripeSubscription.currency === "eur" ? "eur" : "usd";
+              const resolvedAlias = resolvePackageAliasForCurrency(
+                metronomePackageAlias,
+                subscriptionCurrency
+              );
               void shadowProvisionMetronome({
                 workspace,
                 stripeCustomerId: checkoutStripeSubscription.customer,
-                metronomePackageAlias,
+                metronomePackageAlias: resolvedAlias,
                 sessionId: session.id,
                 subscriptionModelId: newSubscription.id,
               });

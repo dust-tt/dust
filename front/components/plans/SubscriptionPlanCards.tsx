@@ -1,9 +1,9 @@
 import config from "@app/lib/api/config";
 import {
   BUSINESS_PLAN_COST_MONTHLY,
-  getPriceWithCurrency,
   PRO_PLAN_COST_MONTHLY,
   PRO_PLAN_COST_YEARLY,
+  usePriceWithCurrency,
 } from "@app/lib/client/subscription";
 import { isWhitelistedBusinessPlan } from "@app/lib/plans/plan_codes";
 import type { BillingPeriod } from "@app/types/plan";
@@ -54,11 +54,12 @@ export function SubscriptionPlanCards({
   owner,
 }: SubscriptionPlanCardsProps) {
   const isBusiness = isWhitelistedBusinessPlan(owner);
-  const price = isBusiness
-    ? getPriceWithCurrency(BUSINESS_PLAN_COST_MONTHLY)
+  const rawPrice = isBusiness
+    ? BUSINESS_PLAN_COST_MONTHLY
     : billingPeriod === "monthly"
-      ? getPriceWithCurrency(PRO_PLAN_COST_MONTHLY)
-      : getPriceWithCurrency(PRO_PLAN_COST_YEARLY);
+      ? PRO_PLAN_COST_MONTHLY
+      : PRO_PLAN_COST_YEARLY;
+  const price = usePriceWithCurrency(rawPrice);
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

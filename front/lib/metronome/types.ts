@@ -14,10 +14,19 @@ export const LEGACY_PRO_ANNUAL_PACKAGE_ALIAS = "legacy-pro-annual";
 export const LEGACY_BUSINESS_PACKAGE_ALIAS = "legacy-business";
 export const LEGACY_ENTERPRISE_PACKAGE_ALIAS = "legacy-enterprise";
 
+// EUR variants — same plans, billed in EUR for Eurozone/EEA/Switzerland customers.
+export const LEGACY_PRO_MONTHLY_EUR_PACKAGE_ALIAS = "legacy-pro-monthly-eur";
+export const LEGACY_PRO_ANNUAL_EUR_PACKAGE_ALIAS = "legacy-pro-annual-eur";
+export const LEGACY_BUSINESS_EUR_PACKAGE_ALIAS = "legacy-business-eur";
+export const LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS = "legacy-enterprise-eur";
+
 export const PRO_OR_BUSINESS_PACKAGE_ALIASES: ReadonlySet<string> = new Set([
   LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
   LEGACY_PRO_ANNUAL_PACKAGE_ALIAS,
   LEGACY_BUSINESS_PACKAGE_ALIAS,
+  LEGACY_PRO_MONTHLY_EUR_PACKAGE_ALIAS,
+  LEGACY_PRO_ANNUAL_EUR_PACKAGE_ALIAS,
+  LEGACY_BUSINESS_EUR_PACKAGE_ALIAS,
 ]);
 
 export interface MetronomeEvent {
