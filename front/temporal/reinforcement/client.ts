@@ -25,7 +25,7 @@ function getMidnightUtcHour(timezone: string): number {
 }
 
 function makeWorkspaceCronWorkflowId(workspaceId: string): string {
-  return `reinforced-skills-workspace-${workspaceId}`;
+  return `reinforcement-workspace-${workspaceId}`;
 }
 
 /**
@@ -190,7 +190,7 @@ export async function startReinforcementWorkspaceWorkflow({
   disableNotifications?: boolean;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClientForFrontNamespace();
-  const workflowId = `reinforced-skills-workspace-${workspaceId}-manual-${Date.now()}`;
+  const workflowId = `reinforcement-workspace-${workspaceId}-manual-${Date.now()}`;
 
   await client.workflow.start(reinforcedSkillsWorkspaceWorkflow, {
     args: [
