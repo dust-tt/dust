@@ -292,7 +292,7 @@ export const buildInternalId = ({
 }) => {
   return [databaseName, schemaName, tableName]
     .filter((name) => name !== undefined)
-    .map((name) => name!.replace(".", "__DUST_DOT__"))
+    .map((name) => name!.replaceAll(".", "__DUST_DOT__"))
     .join(".");
 };
 
@@ -309,7 +309,7 @@ export const parseInternalId = (
 } => {
   const [databaseName, schemaName, tableName] = internalId
     .split(".")
-    .map((name) => name.replace("__DUST_DOT__", "."));
+    .map((name) => name.replaceAll("__DUST_DOT__", "."));
   if (!databaseName) {
     throw new Error(
       "Invalid internal ID, it requires at least a database name: " + internalId
