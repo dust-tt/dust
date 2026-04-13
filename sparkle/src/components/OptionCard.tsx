@@ -3,8 +3,6 @@ import { Counter } from "@sparkle/components/Counter";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
-export type OptionCardSelectionStyle = "single" | "multi";
-
 export interface OptionCardProps {
   label: string;
   description?: string | null;
@@ -24,7 +22,7 @@ export function OptionCard({
   className,
   onClick,
 }: OptionCardProps) {
-  let variant: CardVariantType = selected ? "active" : "tertiary";
+  const variant: CardVariantType = selected ? "active" : "tertiary";
 
   return (
     <Card
