@@ -30,6 +30,14 @@ import type {
 } from "snowflake-sdk";
 import snowflake from "snowflake-sdk";
 
+/**
+ * Quote a Snowflake identifier for safe use in SQL.
+ * Wraps in double quotes and doubles any internal double-quote characters.
+ */
+function sanitizeSnowflakeIdentifier(identifier: string): string {
+  return `"${identifier.replace(/"/g, '""')}"`;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SnowflakeRow = Record<string, any>;
 type SnowflakeRows = Array<SnowflakeRow>;
@@ -371,7 +379,7 @@ export const fetchSchemas = async ({
   fromDatabase: string;
   connection?: Connection;
 }): Promise<Result<Array<RemoteDBSchema>, Error>> => {
-  const query = `SHOW SCHEMAS IN DATABASE ${fromDatabase}`;
+  const query = `SHOW SCHEMAS IN DATABASE ${sanitizeSnowflakeIdentifier(fromDatabase)}`;
   return _fetchRows<RemoteDBSchema>({
     credentials,
     query,
@@ -395,12 +403,14 @@ export const fetchTables = async ({
   connection?: Connection;
 }): Promise<Result<Array<RemoteDBTable>, Error>> => {
   // We fetch the tables in the schema provided if defined, otherwise in the database provided if
-  // defined, otherwise globally.
-  const query = fromSchema
-    ? `SHOW TABLES IN SCHEMA ${fromSchema}`
-    : fromDatabase
-      ? `SHOW TABLES IN DATABASE ${fromDatabase}`
-      : "SHOW TABLES";
+  // defined, otherwise globally. When both fromDatabase and fromSchema are set, we build a fully
+  // qualified schema reference.
+  const query =
+    fromSchema && fromDatabase
+      ? `SHOW TABLES IN SCHEMA ${sanitizeSnowflakeIdentifier(fromDatabase)}.${sanitizeSnowflakeIdentifier(fromSchema)}`
+      : fromDatabase
+        ? `SHOW TABLES IN DATABASE ${sanitizeSnowflakeIdentifier(fromDatabase)}`
+        : "SHOW TABLES";
 
   return _fetchRows<RemoteDBTable>({
     credentials,
@@ -526,7 +536,10 @@ export const useWarehouse = async ({
   connection: Connection;
 }): Promise<Result<void, Error>> => {
   const warehouse = credentials.warehouse;
-  const res = await _executeQuery(connection, `USE WAREHOUSE ${warehouse}`);
+  const res = await _executeQuery(
+    connection,
+    `USE WAREHOUSE ${sanitizeSnowflakeIdentifier(warehouse)}`
+  );
   if (res.isErr()) {
     const e = normalizeError(res.error);
 
@@ -573,7 +586,7 @@ async function _checkRoleGrants(
   // Check current grants
   const currentGrantsRes = await _fetchRows<SnowflakeGrant>({
     credentials,
-    query: `SHOW GRANTS TO ${isDbRole ? "DATABASE ROLE" : "ROLE"} ${roleName}`,
+    query: `SHOW GRANTS TO ${isDbRole ? "DATABASE ROLE" : "ROLE"} ${sanitizeSnowflakeIdentifier(roleName)}`,
     codec: snowflakeGrantCodec,
     connection,
   });
@@ -588,7 +601,7 @@ async function _checkRoleGrants(
     // Check future grants
     futureGrantsRes = await _fetchRows<SnowflakeFutureGrant>({
       credentials,
-      query: `SHOW FUTURE GRANTS TO ROLE ${roleName}`,
+      query: `SHOW FUTURE GRANTS TO ROLE ${sanitizeSnowflakeIdentifier(roleName)}`,
       codec: snowflakeFutureGrantCodec,
       connection,
     });

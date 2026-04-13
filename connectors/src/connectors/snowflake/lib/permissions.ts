@@ -87,7 +87,7 @@ export const fetchAvailableChildrenInSnowflake = async ({
 
     const allSchemasRes = await fetchSchemas({
       credentials,
-      fromDatabase: parentInternalId,
+      fromDatabase: databaseName,
     });
     if (allSchemasRes.isErr()) {
       return new Err(allSchemasRes.error);
@@ -124,7 +124,8 @@ export const fetchAvailableChildrenInSnowflake = async ({
 
     const allTablesRes = await fetchTables({
       credentials,
-      fromSchema: parentInternalId,
+      fromDatabase: databaseName,
+      fromSchema: schemaName,
     });
     if (allTablesRes.isErr()) {
       return new Err(allTablesRes.error);
