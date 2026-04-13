@@ -93,11 +93,13 @@ export function renderConversationAsText(
   const slicedMessages = allMessages.slice(from, to);
 
   // Iterate most-recent-first so that truncateTotalChars keeps the latest messages.
+  let truncatedByTotalChars = false;
   for (let i = slicedMessages.length - 1; i >= 0; i--) {
     if (
       options.truncateTotalChars !== undefined &&
       totalChars >= options.truncateTotalChars
     ) {
+      truncatedByTotalChars = true;
       break;
     }
 
@@ -123,6 +125,12 @@ export function renderConversationAsText(
     if (msg.type === "compaction_message" && msg.status === "succeeded") {
       break;
     }
+  }
+
+  if (truncatedByTotalChars) {
+    parts.unshift(
+      `(conversation content truncated at ${options.truncateTotalChars} chars)\n`
+    );
   }
 
   return parts.join("\n");
