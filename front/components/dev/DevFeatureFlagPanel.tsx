@@ -498,6 +498,7 @@ function ColorTokenRow({
   const defaultColor = isDark ? token.defaultDark : token.defaultLight;
   const displayColor = override ?? defaultColor;
   const isOverridden = !!override;
+  const [editingHex, setEditingHex] = useState<string | null>(null);
 
   return (
     <div
@@ -570,19 +571,47 @@ function ColorTokenRow({
         </button>
       )}
 
-      {/* Hex value */}
-      <span
+      {/* Editable hex value */}
+      <input
+        type="text"
+        value={editingHex ?? displayColor.toLowerCase()}
+        onChange={(e) => {
+          const v = e.target.value;
+          setEditingHex(v);
+          if (/^#[0-9a-fA-F]{6}$/.test(v.trim())) {
+            onSet(tokenKey, v.trim().toLowerCase());
+          }
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        onFocus={(e) => {
+          setEditingHex(displayColor.toLowerCase());
+          e.currentTarget.style.borderColor = "#555";
+          e.currentTarget.style.background = "#0f0f23";
+        }}
+        onBlur={(e) => {
+          setEditingHex(null);
+          e.currentTarget.style.borderColor = "transparent";
+          e.currentTarget.style.background = "transparent";
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.currentTarget.blur();
+          }
+        }}
         style={{
           fontSize: 11,
           fontFamily: "monospace",
           color: isOverridden ? "#7fdbca" : "#666",
-          width: 62,
+          width: 68,
           textAlign: "right" as const,
           flexShrink: 0,
+          background: "transparent",
+          border: "1px solid transparent",
+          borderRadius: 3,
+          padding: "1px 4px",
+          outline: "none",
         }}
-      >
-        {displayColor.toLowerCase()}
-      </span>
+      />
     </div>
   );
 }
@@ -971,6 +1000,21 @@ interface DockedToolbarProps {
 
 type ExpandedPanel = "flags" | "colors" | null;
 
+const DOCKED_PANEL_POS_KEY = "dust_dev_docked_panel_pos";
+
+function readDockedPanelPosition(): { right: number; bottom: number } {
+  try {
+    const raw = localStorage.getItem(DOCKED_PANEL_POS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return { right: parsed.right ?? 8, bottom: parsed.bottom ?? 33 };
+    }
+  } catch {
+    // ignore
+  }
+  return { right: 8, bottom: 33 };
+}
+
 function DockedToolbar({
   serverFlags,
   metrics,
@@ -978,6 +1022,13 @@ function DockedToolbar({
 }: DockedToolbarProps) {
   const { theme, setTheme } = useTheme();
   const [expanded, setExpanded] = useState<ExpandedPanel>(null);
+  const [panelPos, setPanelPos] = useState(readDockedPanelPosition);
+  const dragRef = useRef<{
+    startX: number;
+    startY: number;
+    origRight: number;
+    origBottom: number;
+  } | null>(null);
   const overrideCount = Object.keys(getFeatureFlagOverrides()).length;
   const colorOverrideCount = Object.keys(readColorOverrides()).length;
 
@@ -986,6 +1037,46 @@ function DockedToolbar({
       setExpanded(expanded === panel ? null : panel);
     },
     [expanded]
+  );
+
+  const onPanelMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      dragRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        origRight: panelPos.right,
+        origBottom: panelPos.bottom,
+      };
+
+      const onMouseMove = (ev: MouseEvent) => {
+        if (!dragRef.current) {
+          return;
+        }
+        const dx = ev.clientX - dragRef.current.startX;
+        const dy = ev.clientY - dragRef.current.startY;
+        setPanelPos({
+          right: Math.max(0, dragRef.current.origRight - dx),
+          bottom: Math.max(33, dragRef.current.origBottom - dy),
+        });
+      };
+
+      const onMouseUp = () => {
+        if (dragRef.current) {
+          setPanelPos((pos) => {
+            localStorage.setItem(DOCKED_PANEL_POS_KEY, JSON.stringify(pos));
+            return pos;
+          });
+          dragRef.current = null;
+        }
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+      };
+
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    },
+    [panelPos]
   );
 
   return (
@@ -1053,7 +1144,16 @@ function DockedToolbar({
 
       {/* Expandable panels */}
       {expanded === "flags" && (
-        <div style={S.dockedPanel}>
+        <div
+          style={{
+            ...S.dockedPanel,
+            right: panelPos.right,
+            bottom: panelPos.bottom,
+          }}
+        >
+          <div style={S.dockedPanelDragHandle} onMouseDown={onPanelMouseDown}>
+            <span style={S.dockedPanelGrip}>{"⠿"}</span>
+          </div>
           <PanelContent
             serverFlags={serverFlags}
             onClose={() => setExpanded(null)}
@@ -1061,7 +1161,16 @@ function DockedToolbar({
         </div>
       )}
       {expanded === "colors" && (
-        <div style={S.dockedPanel}>
+        <div
+          style={{
+            ...S.dockedPanel,
+            right: panelPos.right,
+            bottom: panelPos.bottom,
+          }}
+        >
+          <div style={S.dockedPanelDragHandle} onMouseDown={onPanelMouseDown}>
+            <span style={S.dockedPanelGrip}>{"⠿"}</span>
+          </div>
           <ColorOverridePanel onClose={() => setExpanded(null)} />
         </div>
       )}
@@ -1367,9 +1476,7 @@ const S = {
     lineHeight: "14px",
   },
   dockedPanel: {
-    position: "absolute" as const,
-    bottom: 33,
-    right: 8,
+    position: "fixed" as const,
     width: 380,
     maxHeight: "70vh",
     background: "#1a1a2e",
@@ -1379,6 +1486,23 @@ const S = {
     display: "flex" as const,
     flexDirection: "column" as const,
     overflow: "hidden" as const,
+    zIndex: 2147483647,
+  },
+  dockedPanelDragHandle: {
+    display: "flex" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    padding: "2px 0",
+    cursor: "grab" as const,
+    background: "#111827",
+    borderBottom: "1px solid #2a2a4a",
+    flexShrink: 0,
+  },
+  dockedPanelGrip: {
+    fontSize: 12,
+    color: "#555",
+    lineHeight: 1,
+    letterSpacing: 2,
   },
 
   // Floating panel
