@@ -329,7 +329,7 @@ export const getUserFacingLLMErrorMessage = (
       return "An unexpected error occurred. Please try again or contact support if the issue persists.";
     }
     case "llm_timeout_error": {
-      return "The model took too long to respond.";
+      return `${userFacingProvider} is taking longer than expected. Please try again.`;
     }
     default: {
       assertNever(type);
