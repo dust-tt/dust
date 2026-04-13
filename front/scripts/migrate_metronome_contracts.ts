@@ -24,7 +24,7 @@ import {
   getProductMauBilling10Id,
   getProductPrepaidCommitId,
 } from "@app/lib/metronome/constants";
-import { provisionSeatsForContract } from "@app/lib/metronome/seats";
+import { syncSeatCount } from "@app/lib/metronome/seats";
 import {
   LEGACY_BUSINESS_PACKAGE_ALIAS,
   LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS,
@@ -578,7 +578,7 @@ async function migrateWorkspace(
 
     // Provision seats for all existing members (for seat-based plans).
     if (!isEnterprise) {
-      const seatResult = await provisionSeatsForContract({
+      const seatResult = await syncSeatCount({
         metronomeCustomerId,
         contractId: newContractId,
         workspace,
@@ -760,7 +760,7 @@ async function migrateWorkspace(
       targetAlias !== LEGACY_ENTERPRISE_PACKAGE_ALIAS &&
       targetAlias !== LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS
     ) {
-      const seatResult2 = await provisionSeatsForContract({
+      const seatResult2 = await syncSeatCount({
         metronomeCustomerId,
         contractId: newContractId,
         workspace,

@@ -397,37 +397,22 @@ export async function getMetronomeContractPackageAliases({
 // ---------------------------------------------------------------------------
 
 /**
- * Update the quantity on a MANUAL subscription (delta or absolute).
- * Used for seat count changes when members join/leave.
+ * Set the absolute quantity on a QUANTITY_ONLY subscription.
+ * Always sets the total — safe against race conditions.
  */
 export async function updateSubscriptionQuantity({
   metronomeCustomerId,
   contractId,
   subscriptionId,
-  quantityDelta,
   quantity,
   startingAt,
 }: {
   metronomeCustomerId: string;
   contractId: string;
   subscriptionId: string;
-  /** Relative change (+1 for add, -1 for remove). Mutually exclusive with quantity. */
-  quantityDelta?: number;
-  /** Absolute quantity. Mutually exclusive with quantityDelta. */
-  quantity?: number;
+  quantity: number;
   startingAt?: string;
 }): Promise<Result<void, Error>> {
-  if (quantity !== undefined && quantityDelta !== undefined) {
-    return new Err(
-      new Error("quantity and quantityDelta are mutually exclusive")
-    );
-  }
-  if (quantity === undefined && quantityDelta === undefined) {
-    return new Err(
-      new Error("one of quantity or quantityDelta must be provided")
-    );
-  }
-
   const now = startingAt ?? floorToHourISO(new Date());
 
   try {
@@ -440,10 +425,7 @@ export async function updateSubscriptionQuantity({
           quantity_updates: [
             {
               starting_at: now,
-              ...(quantity !== undefined ? { quantity } : {}),
-              ...(quantityDelta !== undefined
-                ? { quantity_delta: quantityDelta }
-                : {}),
+              quantity,
             },
           ],
         },

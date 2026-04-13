@@ -6,7 +6,7 @@ import { getProductWorkspaceSeatId } from "@app/lib/metronome/constants";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 
 /**
@@ -37,70 +37,14 @@ async function getSeatSubscriptionId(
 }
 
 /**
- * Increment seat count by 1 when a member joins.
- * Called from membership create hook.
+ * Sync the Metronome seat subscription quantity to the current active member count.
+ * Always sets the absolute quantity — safe against race conditions.
+ *
+ * Called from:
+ * - membership create/revoke/update hooks (addSeat/removeSeat wrappers)
+ * - contract provisioning after creation or migration
  */
-export async function addSeat({
-  metronomeCustomerId,
-  contractId,
-  workspaceId,
-}: {
-  metronomeCustomerId: string;
-  contractId: string;
-  userId: string;
-  workspaceId: string;
-}): Promise<Result<void, Error>> {
-  const subscriptionId = await getSeatSubscriptionId(
-    metronomeCustomerId,
-    contractId
-  );
-  if (!subscriptionId) {
-    return new Err(new Error("No seat subscription found on contract"));
-  }
-
-  return await updateSubscriptionQuantity({
-    metronomeCustomerId,
-    contractId,
-    subscriptionId,
-    quantityDelta: 1,
-  });
-}
-
-/**
- * Decrement seat count by 1 when a member leaves.
- * Called from membership revoke hook.
- */
-export async function removeSeat({
-  metronomeCustomerId,
-  contractId,
-  workspaceId,
-}: {
-  metronomeCustomerId: string;
-  contractId: string;
-  userId: string;
-  workspaceId: string;
-}): Promise<Result<void, Error>> {
-  const subscriptionId = await getSeatSubscriptionId(
-    metronomeCustomerId,
-    contractId
-  );
-  if (!subscriptionId) {
-    return new Err(new Error("No seat subscription found on contract"));
-  }
-
-  return await updateSubscriptionQuantity({
-    metronomeCustomerId,
-    contractId,
-    subscriptionId,
-    quantityDelta: -1,
-  });
-}
-
-/**
- * Set absolute seat count to match the current workspace member count.
- * Called after contract creation (both new provisioning and migration).
- */
-export async function provisionSeatsForContract({
+export async function syncSeatCount({
   metronomeCustomerId,
   contractId,
   workspace,
@@ -109,7 +53,7 @@ export async function provisionSeatsForContract({
   metronomeCustomerId: string;
   contractId: string;
   workspace: LightWorkspaceType;
-  startingAt: string;
+  startingAt?: string;
 }): Promise<Result<void, Error>> {
   const subscriptionId = await getSeatSubscriptionId(
     metronomeCustomerId,
@@ -118,7 +62,7 @@ export async function provisionSeatsForContract({
   if (!subscriptionId) {
     logger.warn(
       { workspaceId: workspace.sId, contractId },
-      "[Metronome] No seat subscription found on contract — cannot provision seats"
+      "[Metronome] No seat subscription found on contract — cannot sync seats"
     );
     return new Err(new Error("No seat subscription found on contract"));
   }
@@ -128,19 +72,11 @@ export async function provisionSeatsForContract({
   });
   const memberCount = memberships.length;
 
-  if (memberCount === 0) {
-    logger.info(
-      { workspaceId: workspace.sId },
-      "[Metronome] No active members — no seats to provision"
-    );
-    return new Ok(undefined);
-  }
-
   return await updateSubscriptionQuantity({
     metronomeCustomerId,
     contractId,
     subscriptionId,
-    quantity: memberCount,
+    quantity: Math.max(memberCount, 1),
     startingAt,
   });
 }
