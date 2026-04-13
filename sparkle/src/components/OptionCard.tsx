@@ -39,7 +39,7 @@ export function OptionCard({
       )}
       onClick={disabled ? undefined : onClick}
     >
-      {counterValue && (
+      {counterValue !== undefined && (
         <Counter
           value={counterValue}
           size="sm"
