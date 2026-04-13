@@ -7,12 +7,7 @@ import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mc
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
-import {
-  createSkillKnowledgeDataWarehouseServer,
-  createSkillKnowledgeFileSystemServer,
-  getSkillDataSourceConfigurations,
-  getSkillServers,
-} from "@app/lib/api/assistant/skill_actions";
+import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -182,27 +177,6 @@ async function listAvailableTools(
     agentConfiguration,
     skills: enabledSkills,
   });
-
-  const {
-    documentDataSourceConfigurations,
-    warehouseDataSourceConfigurations,
-  } = await getSkillDataSourceConfigurations(auth, { skills: enabledSkills });
-
-  const fileSystemServer = await createSkillKnowledgeFileSystemServer(auth, {
-    dataSourceConfigurations: documentDataSourceConfigurations,
-  });
-  const dataWarehouseServer = await createSkillKnowledgeDataWarehouseServer(
-    auth,
-    {
-      dataSourceConfigurations: warehouseDataSourceConfigurations,
-    }
-  );
-  if (fileSystemServer) {
-    skillServers.push(fileSystemServer);
-  }
-  if (dataWarehouseServer) {
-    skillServers.push(dataWarehouseServer);
-  }
 
   const { serverToolsAndInstructions: mcpActions } = await tryListMCPTools(
     auth,
