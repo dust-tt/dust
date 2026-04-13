@@ -30,6 +30,7 @@ import type {
 } from "@temporalio/workflow";
 import {
   CancellationScope,
+  patched,
   proxyActivities,
   proxySinks,
   setHandler,
@@ -369,14 +370,18 @@ async function executeStepIteration({
 
   const { runId, actionBlobs } = result;
 
-  // Generation completed (text response, no tool calls).
+  // Generation completed or the loop unpaused and no new tools were generated.
   if (actionBlobs.length === 0) {
     return {
       runId,
-      // If the step was already complete (e.g., all actions denied during tool validation), the
-      // loop must continue to the next step so the model sees the denied results and can generate a
-      // follow-up response or try alternatives.
-      shouldContinue: result.stepAlreadyComplete === true,
+      // Patch lifecycle for tool-denial continue loop:
+      // 1. Now: patched() makes new workflows continue the loop when runId is null (all actions
+      //    denied). Old workflows keep the previous behavior (shouldContinue: false).
+      // 2. + a few hours: Replace patched() with deprecatePatch(), remove conditional.
+      // 3. + a few hours: Remove deprecatePatch() entirely.
+      shouldContinue: patched("tool-denial-continue-loop")
+        ? runId === null
+        : false,
     };
   }
 
