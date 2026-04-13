@@ -39,6 +39,7 @@ import { useAppRouter } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import {
@@ -400,6 +401,8 @@ export function AgentSidebarMenu({
   const { hasFeature } = useFeatureFlags();
   const moveConversationToProject = useMoveConversationToProject(owner);
 
+  const isMobile = useIsMobile();
+
   const { providersHealth } = useAuth();
   const noHealthyProviders = !hasHealthyProviders(providersHealth);
 
@@ -683,6 +686,7 @@ export function AgentSidebarMenu({
           overflowHasActivity={hiddenOverflowHasActivity}
           open={!isProjectsSectionCollapsed}
           onOpenChange={(open) => setProjectsSectionCollapsed(!open)}
+          actionOnHover={!isMobile}
           action={
             summary.length > 0 ? (
               <>
@@ -790,7 +794,10 @@ export function AgentSidebarMenu({
       />
       <CreateProjectModal
         isOpen={isCreateProjectModalOpen}
-        onClose={() => setIsCreateProjectModalOpen(false)}
+        onClose={() => {
+          setIsCreateProjectModalOpen(false);
+          setSidebarOpen(false);
+        }}
         owner={owner}
       />
       {isImportSkillDialogOpen && (
