@@ -8823,6 +8823,184 @@
         }
       }
     },
+    "/api/w/{wId}/spaces/{spaceId}/project_notification_preferences": {
+      "get": {
+        "summary": "Get project notification preference",
+        "description": "Returns the current user's notification preference for a project space.",
+        "tags": [
+          "Private Spaces"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "description": "ID of the project space",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "userProjectNotificationPreference": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "sId": {
+                          "type": "string"
+                        },
+                        "spaceId": {
+                          "type": "string"
+                        },
+                        "userId": {
+                          "type": "string"
+                        },
+                        "preference": {
+                          "type": "string",
+                          "enum": [
+                            "all_messages",
+                            "only_mentions",
+                            "never"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (space is not a project)"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Set project notification preference",
+        "description": "Sets the current user's notification preference for a project space.",
+        "tags": [
+          "Private Spaces"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "description": "ID of the project space",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "preference"
+                ],
+                "properties": {
+                  "preference": {
+                    "type": "string",
+                    "enum": [
+                      "all_messages",
+                      "only_mentions",
+                      "never"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "userProjectNotificationPreference": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "sId": {
+                          "type": "string"
+                        },
+                        "spaceId": {
+                          "type": "string"
+                        },
+                        "userId": {
+                          "type": "string"
+                        },
+                        "preference": {
+                          "type": "string",
+                          "enum": [
+                            "all_messages",
+                            "only_mentions",
+                            "never"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (space is not a project or invalid body)"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "405": {
+            "description": "Method not supported"
+          }
+        }
+      }
+    },
     "/api/w/{wId}/spaces": {
       "get": {
         "summary": "List spaces",
