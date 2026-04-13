@@ -19,11 +19,6 @@ type AnyMessageType =
   | CompactionMessageType
   | UserMessageTypeWithContentFragments;
 
-export interface AgentMessageFeedback {
-  thumbDirection: "up" | "down";
-  content: string | null;
-}
-
 export interface RenderConversationAsTextOptions {
   // Include ISO timestamps on each message header line.
   includeTimestamps?: boolean;
@@ -35,10 +30,6 @@ export interface RenderConversationAsTextOptions {
   includeActions?: boolean;
   // Include action input params and output (requires includeActions).
   includeActionDetails?: boolean;
-  // Include user feedback on agent messages.
-  includeFeedback?: boolean;
-  // Pre-fetched feedback keyed by agent message sId. Required when includeFeedback is true.
-  feedbackByMessageSId?: Map<string, AgentMessageFeedback[]>;
   // Truncate each message's content to this many characters.
   truncateMessageChars?: number;
   // Stop rendering once total content characters reach this limit.
@@ -88,25 +79,6 @@ export function renderConversationAsText(
 
     totalChars += rendered.contentLength;
     parts.push(rendered.text);
-
-    // Append feedback after agent messages if requested.
-    if (
-      options.includeFeedback &&
-      options.feedbackByMessageSId &&
-      msg.type === "agent_message"
-    ) {
-      const feedbacks = options.feedbackByMessageSId.get(msg.sId);
-      if (feedbacks && feedbacks.length > 0) {
-        const feedbackLines: string[] = ["Feedback:"];
-        for (const f of feedbacks) {
-          const direction = f.thumbDirection === "up" ? "+1" : "-1";
-          const comment = f.content ? `: ${f.content}` : "";
-          feedbackLines.push(`- ${direction}${comment}`);
-        }
-        feedbackLines.push("");
-        parts.push(feedbackLines.join("\n"));
-      }
-    }
   }
 
   return parts.join("\n");
