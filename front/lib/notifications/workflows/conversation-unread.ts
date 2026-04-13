@@ -1,6 +1,9 @@
 import { isMessageUnread } from "@app/components/assistant/conversation/utils";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { formatConversationForDisplay } from "@app/lib/api/actions/servers/project_manager/tools/conversation_formatting";
+import {
+  countConversationMessages,
+  renderConversationAsText,
+} from "@app/lib/api/assistant/conversation/render_as_text";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
 import config from "@app/lib/api/config";
@@ -472,17 +475,26 @@ const generateUnreadMessagesSummary = async ({
     `Remember: Use "you/your" - NEVER write "${userFullName}".\n` +
     `Write in a natural, engaging tone that makes someone want to read it.`;
 
-  let conversationSnippet = JSON.stringify(
-    formatConversationForDisplay(conversation, owner.sId).messages,
-    null,
-    2
-  );
+  const renderedMessages = renderConversationAsText(conversation, {
+    includeTimestamps: true,
+    includeEmail: true,
+    includeUnread: true,
+    truncateTotalChars: MAX_CONVERSATION_SNIPPET_LENGTH,
+  });
 
-  if (conversationSnippet.length > MAX_CONVERSATION_SNIPPET_LENGTH) {
-    conversationSnippet =
-      "(the conversation history has been truncated)...\n\n" +
-      conversationSnippet.substring(0, MAX_CONVERSATION_SNIPPET_LENGTH);
-  }
+  const preamble = [
+    `Conversation: ${conversation.sId}`,
+    `Title: ${conversation.title ?? "Untitled Conversation"}`,
+    `Created: ${new Date(conversation.created).toISOString()}`,
+    `Updated: ${new Date(conversation.updated).toISOString()}`,
+    `Unread: ${conversation.unread}`,
+    `Action Required: ${conversation.actionRequired}`,
+    `Has Error: ${conversation.hasError}`,
+    `Message Count: ${countConversationMessages(conversation)}`,
+    `URL: /w/${owner.sId}/assistant/${conversation.sId}`,
+  ].join("\n");
+
+  const conversationSnippet = `${preamble}\n\n${renderedMessages}`;
 
   const res = await runMultiActionsAgent(
     auth,
@@ -500,7 +512,7 @@ const generateUnreadMessagesSummary = async ({
             content: [
               {
                 type: "text",
-                text: `This is the content of the conversation to summarize:\n\n\`\`\`json\n${conversationSnippet}\n\`\`\``,
+                text: `This is the content of the conversation to summarize:\n\n${conversationSnippet}`,
               },
             ],
           },
