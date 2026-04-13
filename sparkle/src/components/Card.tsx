@@ -13,6 +13,7 @@ import React from "react";
 
 export const CARD_VARIANTS = [
   "primary",
+  "active",
   "secondary",
   "tertiary",
   "highlight",
@@ -47,6 +48,12 @@ const cardVariants = cva(
           "s-border-border/0",
           "dark:s-bg-muted-background-night",
           "dark:s-border-border-night/0"
+        ),
+        active: cn(
+          "s-bg-muted-background",
+          "s-border-border",
+          "dark:s-bg-muted-background-night",
+          "dark:s-border-border-night"
         ),
         highlight: cn(
           "s-bg-highlight-50",

@@ -1,4 +1,4 @@
-import { Card } from "@sparkle/components/Card";
+import { Card, type CardVariantType } from "@sparkle/components/Card";
 import { Counter } from "@sparkle/components/Counter";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
@@ -26,26 +26,21 @@ export function OptionCard({
   className,
   onClick,
 }: OptionCardProps) {
+  let variant: CardVariantType = "tertiary";
+
+  if (selected) {
+    variant = selectionStyle === "multi" ? "active" : "primary";
+  }
+
   return (
     <Card
-      variant="tertiary"
+      variant={variant}
       className={cn(
         "s-flex s-w-full s-items-center s-gap-2 s-rounded-2xl s-p-3 s-text-left s-transition-colors",
         !disabled && "s-cursor-pointer",
         disabled && "s-pointer-events-none s-opacity-60",
-        selected
-          ? [
-              "s-bg-muted-background dark:s-bg-muted-background-night",
-              // Add a border in multi-select mode.
-              ...(selectionStyle === "multi"
-                ? ["s-border-border dark:s-border-border-night"]
-                : []),
-            ]
-          : [
-              "s-bg-background hover:s-bg-muted-background/60",
-              "dark:s-bg-background-night",
-              "dark:hover:s-bg-muted-background-night/60",
-            ],
+        !selected &&
+          "hover:s-bg-muted-background/60 dark:hover:s-bg-muted-background-night/60",
         className
       )}
       onClick={disabled ? undefined : onClick}
