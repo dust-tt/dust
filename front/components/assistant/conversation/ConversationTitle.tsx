@@ -85,7 +85,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
         className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-3"
         onContextMenu={handleRightClick}
       >
-        <div className="min-w-0 overflow-scroll">
+        <div className="min-w-0 overflow-x-auto scrollbar-hide">
           <Breadcrumbs
             items={breadcrumbItems}
             className="dd-privacy-mask"
