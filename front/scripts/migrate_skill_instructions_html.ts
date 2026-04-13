@@ -49,7 +49,12 @@ function normalizeForComparison(s: string): string {
     // TipTap's list extension (no task-list extension installed). The text
     // content is preserved, so treat the difference as acceptable.
     .replace(/^- \[[ xX]\] /gm, "- ")
-    .replace(/\s+/g, " ")
+    // Normalize null link titles injected by TipTap's MarkdownManager:
+    // [text](url "null") → [text](url)
+    .replace(/(\[[^\]]*\]\([^)\s]+) "null"\)/g, "$1)")
+    // Collapse all whitespace (including newlines) to a single space so that
+    // cosmetic differences in spacing, indentation, and blank lines are ignored.
+    .replace(/\s+/g, "")
     .trim();
 
   if (codeBlocks.length === 0) {
@@ -159,7 +164,7 @@ async function processSkillsForWorkspace(
     const result = convertSkill(skill, workspace.sId);
     results.push(result);
 
-    if (execute && result.error === null && result.html !== null) {
+    if (execute && result.error?.kind !== "conversion-failed" && result.html !== null) {
       await skill.update({ instructionsHtml: result.html });
     }
   }
