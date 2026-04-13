@@ -14,6 +14,8 @@ export const FILE_OFFLOAD_SNIPPET_LENGTH = 8_000; // Approximately 2K tokens.
 export const REMOTE_MAX_TEXT_SIZE_BYTES = 2 * 1024 * 1024; // 2MB.
 export const REMOTE_MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB.
 export const REMOTE_MAX_RESOURCE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB.
+// Hard limit on the entire array of tool outputs.
+export const REMOTE_MAX_TOOL_RESULT_SIZE_BYTES = 50 * 1024 * 1024; // 50MB.
 
 export function computeTextByteSize(text: string): number {
   return Buffer.byteLength(text, "utf8");
@@ -41,7 +43,7 @@ export function getRemoteContentMaxSize(
   }
 }
 
-export function calculateContentSize(
+export function computeContentSize(
   item: CallToolResult["content"][number]
 ): number {
   switch (item.type) {
@@ -75,7 +77,16 @@ export function calculateContentSize(
 export function isWithinRemoteContentLimit(
   content: CallToolResult["content"]
 ): boolean {
-  return !content.some(
-    (item) => calculateContentSize(item) > getRemoteContentMaxSize(item)
-  );
+  let totalOutputSize = 0;
+  for (const item of content) {
+    const itemSize = computeContentSize(item);
+    if (itemSize > getRemoteContentMaxSize(item)) {
+      return false;
+    }
+    totalOutputSize += itemSize;
+    if (totalOutputSize > REMOTE_MAX_TOOL_RESULT_SIZE_BYTES) {
+      return false;
+    }
+  }
+  return true;
 }
