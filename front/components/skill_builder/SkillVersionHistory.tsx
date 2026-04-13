@@ -62,8 +62,8 @@ export function SkillVersionHistory({
   }, [editedByLookupMembers]);
 
   function formatVersionLabel(config: SkillWithVersionType): string {
-    return config.createdAt
-      ? format(config.createdAt, "Pp")
+    return config.updatedAt
+      ? format(config.updatedAt, "Pp")
       : `Version ${config.version}`;
   }
 
