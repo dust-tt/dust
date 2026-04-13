@@ -1,5 +1,6 @@
 use crate::config::Config;
 use crate::health;
+use crate::tls::load_tls_acceptor;
 use anyhow::{anyhow, Result};
 use tokio::net::TcpListener;
 use tokio::signal;
@@ -7,11 +8,21 @@ use tokio::sync::watch;
 use tracing::{error, info};
 
 pub async fn run(config: Config) -> Result<()> {
-    let listener = TcpListener::bind(config.health_addr).await?;
+    let Config {
+        listen_addr,
+        health_addr,
+        tls_cert_path,
+        tls_key_path,
+    } = config;
+
+    let _tls_acceptor = load_tls_acceptor(&tls_cert_path, &tls_key_path)?;
+
+    let listener = TcpListener::bind(health_addr).await?;
     let health_addr = listener.local_addr()?;
 
-    // TODO(sandbox-egress): Add the proxy listener, TLS loading, and protocol wiring in the next
-    // PR once the service shell has landed.
+    // TODO(sandbox-egress): Bind and accept the sandbox forwarder listener on listen_addr in a
+    // later PR once the parser/auth building blocks have landed.
+    let _ = listen_addr;
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
     let mut health_handle = tokio::spawn(health::serve(listener, shutdown_rx));
 

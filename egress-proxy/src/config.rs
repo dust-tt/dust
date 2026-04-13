@@ -1,49 +1,41 @@
-use anyhow::{anyhow, Result};
-use std::env;
+use anyhow::Result;
+use clap::Parser;
 use std::net::SocketAddr;
+use std::path::PathBuf;
 
-const DEFAULT_HEALTH_ADDR: &str = "0.0.0.0:8080";
-
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Config {
+    pub listen_addr: SocketAddr,
     pub health_addr: SocketAddr,
+    pub tls_cert_path: PathBuf,
+    pub tls_key_path: PathBuf,
+}
+
+#[derive(Debug, Parser)]
+#[command(name = "egress-proxy", about = "Dust sandbox egress proxy")]
+struct RawConfig {
+    #[arg(long, env = "EGRESS_PROXY_LISTEN_ADDR", default_value = "0.0.0.0:4443")]
+    listen_addr: SocketAddr,
+
+    #[arg(long, env = "EGRESS_PROXY_HEALTH_ADDR", default_value = "0.0.0.0:8080")]
+    health_addr: SocketAddr,
+
+    #[arg(long, env = "EGRESS_PROXY_TLS_CERT")]
+    tls_cert: PathBuf,
+
+    #[arg(long, env = "EGRESS_PROXY_TLS_KEY")]
+    tls_key: PathBuf,
 }
 
 impl Config {
     pub fn from_env() -> Result<Self> {
-        let health_addr = match env::var("EGRESS_PROXY_HEALTH_ADDR") {
-            Ok(value) if !value.trim().is_empty() => parse_socket_addr(&value)?,
-            Ok(_) | Err(env::VarError::NotPresent) => parse_socket_addr(DEFAULT_HEALTH_ADDR)?,
-            Err(env::VarError::NotUnicode(_)) => {
-                return Err(anyhow!("EGRESS_PROXY_HEALTH_ADDR must be valid unicode"));
-            }
-        };
+        let raw = RawConfig::parse();
 
-        Ok(Self { health_addr })
-    }
-}
-
-fn parse_socket_addr(value: &str) -> Result<SocketAddr> {
-    value
-        .parse()
-        .map_err(|error| anyhow!("invalid socket address {value:?}: {error}"))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::parse_socket_addr;
-
-    #[test]
-    fn parses_socket_addresses() {
-        assert_eq!(
-            parse_socket_addr("127.0.0.1:8080").unwrap().to_string(),
-            "127.0.0.1:8080"
-        );
-    }
-
-    #[test]
-    fn rejects_invalid_socket_addresses() {
-        assert!(parse_socket_addr("not-an-addr").is_err());
-        assert!(parse_socket_addr("127.0.0.1").is_err());
+        Ok(Self {
+            listen_addr: raw.listen_addr,
+            health_addr: raw.health_addr,
+            tls_cert_path: raw.tls_cert,
+            tls_key_path: raw.tls_key,
+        })
     }
 }
