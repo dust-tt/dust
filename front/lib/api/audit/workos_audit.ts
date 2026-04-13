@@ -127,14 +127,23 @@ export async function emitAuditLogEvent({
       return;
     }
 
+    const actor = buildAuditActor(auth);
+
+    if (!actor.type) {
+      logger.warn({ action }, "Audit event emitted without actor_type");
+    }
+
     await createAuditLogEvent({
       workspace,
       event: {
         action,
-        actor: buildAuditActor(auth),
+        actor,
         targets,
         context: context ?? { location: auth.clientIp() ?? "internal" },
-        metadata,
+        metadata: {
+          ...metadata,
+          actor_type: actor.type,
+        },
       },
     });
   } catch (error) {
@@ -187,6 +196,10 @@ export async function emitAuditLogEventDirect({
       return;
     }
 
+    if (!actor.type) {
+      logger.warn({ action }, "Audit event emitted without actor_type");
+    }
+
     await createAuditLogEvent({
       workspace,
       event: {
@@ -194,7 +207,10 @@ export async function emitAuditLogEventDirect({
         actor,
         targets,
         context,
-        metadata,
+        metadata: {
+          ...metadata,
+          actor_type: actor.type,
+        },
       },
     });
   } catch (error) {
