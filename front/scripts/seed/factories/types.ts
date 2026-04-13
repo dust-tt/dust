@@ -39,6 +39,22 @@ export interface SkillAsset {
   instructions: string;
 }
 
+export interface SkillSuggestionAsset {
+  skillName: string;
+  kind: "edit";
+  analysis: string | null;
+  state: "pending" | "approved" | "rejected" | "outdated";
+  source: "reinforcement" | "synthetic";
+  suggestion: {
+    instructionEdits?: {
+      old_string: string;
+      new_string: string;
+      expected_occurrences: number;
+    }[];
+    toolEdits?: { action: "add" | "remove"; toolId: string }[];
+  };
+}
+
 export interface SuggestedSkillAsset {
   name: string;
   agentFacingDescription: string;

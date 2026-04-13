@@ -7,6 +7,7 @@ export * from "./seedDataSources";
 export * from "./seedFeedbacks";
 export * from "./seedMCPTools";
 export * from "./seedSkill";
+export * from "./seedSkillSuggestions";
 export * from "./seedSpace";
 export * from "./seedSuggestedSkills";
 export * from "./seedTemplate";
