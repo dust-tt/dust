@@ -53,6 +53,7 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import type {
+  SkillReinforcementMode,
   SkillSourceMetadata,
   SkillSourceType,
   SkillStatus,
@@ -1859,6 +1860,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     await this.upsertCurrentUserAsEditor(auth);
+  }
+
+  async updateReinforcement(
+    reinforcement: SkillReinforcementMode
+  ): Promise<void> {
+    await this.update({ reinforcement });
   }
 
   async recordReinforcementAnalysisCompletion(): Promise<void> {
