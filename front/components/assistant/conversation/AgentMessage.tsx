@@ -1184,7 +1184,10 @@ function AgentMessageContent({
     isLastMessage,
   });
 
-  if (blockedAction) {
+  const blockedActionUI = (() => {
+    if (!blockedAction) {
+      return null;
+    }
     switch (blockedAction.status) {
       case "blocked_validation_required":
         return (
@@ -1243,6 +1246,10 @@ function AgentMessageContent({
           />
         );
     }
+  })();
+
+  if (blockedActionUI && !isInlineActivityEnabled) {
+    return blockedActionUI;
   }
 
   if (agentMessage.status === "created" && !!streamError) {
@@ -1330,6 +1337,7 @@ function AgentMessageContent({
             onOpenDetails={onOpenDetails}
             owner={owner}
             isLastMessage={isLastMessage}
+            blockedAction={blockedAction ?? null}
           />
         ) : (
           <AgentMessageActions
@@ -1340,6 +1348,7 @@ function AgentMessageContent({
             owner={owner}
           />
         )}
+        {blockedActionUI}
         <AgentMessageInteractiveContentGeneratedFiles
           files={interactiveFiles}
         />
