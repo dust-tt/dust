@@ -674,14 +674,16 @@ export const ConversationViewer = ({
           }
         }
 
-        // An agent will answer immediately only if it is explicitely mentioned.
+        // An agent will answer immediately only if it is explicitly mentioned.
         // In that case, we want to scroll to put the user message at the top.
+        // But when steering (agent already running), don't auto-scroll — let the
+        // user keep their current scroll position.
         const isMentioningAgent = mentions.some(isRichAgentMention);
 
         const nbMessages = ref.current.data.get().length;
         ref.current.data.append(
           [placeholderUserMsg, ...placeholderAgentMessages],
-          isMentioningAgent
+          isMentioningAgent && !hasRunningAgent
             ? () => {
                 return {
                   index: nbMessages, // Avoid jumping around when the agent message is generated.
