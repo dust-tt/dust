@@ -6,9 +6,13 @@ import type { Authenticator } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentConfigurationType,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 const SKILL_KNOWLEDGE_FILE_SYSTEM_SERVER_NAME = "skill_knowledge_file_system";
@@ -41,7 +45,7 @@ export async function getSkillServers(
     (v) => !isRemoteDatabase(v.dataSource)
   );
 
-  return skills.flatMap((skill) =>
+  const mcpServers = skills.flatMap((skill) =>
     [
       ...skill.mcpServerConfigurations,
       ...(skill.extendedSkill?.mcpServerConfigurations ?? []),
@@ -76,6 +80,26 @@ export async function getSkillServers(
       });
     })
   );
+
+  // Add knowledge servers (file system / data warehouse) from skills with attached data sources.
+  const {
+    documentDataSourceConfigurations,
+    warehouseDataSourceConfigurations,
+  } = await getSkillDataSourceConfigurations(auth, { skills });
+
+  const [fileSystemServer, dataWarehouseServer] = await Promise.all([
+    createSkillKnowledgeFileSystemServer(auth, {
+      dataSourceConfigurations: documentDataSourceConfigurations,
+    }),
+    createSkillKnowledgeDataWarehouseServer(auth, {
+      dataSourceConfigurations: warehouseDataSourceConfigurations,
+    }),
+  ]);
+
+  return [
+    ...mcpServers,
+    ...removeNulls([fileSystemServer, dataWarehouseServer]),
+  ];
 }
 
 /**
@@ -192,7 +216,7 @@ export async function getSkillDataSourceConfigurations(
  * Creates a file system server configuration scoped to the provided data source configurations.
  * Returns null if no configurations are provided or the server view doesn't exist.
  */
-export async function createSkillKnowledgeFileSystemServer(
+async function createSkillKnowledgeFileSystemServer(
   auth: Authenticator,
   {
     dataSourceConfigurations,
@@ -225,7 +249,7 @@ export async function createSkillKnowledgeFileSystemServer(
  * Creates a data warehouse server configuration scoped to the provided data source configurations.
  * Returns null if no configurations are provided or the server view doesn't exist.
  */
-export async function createSkillKnowledgeDataWarehouseServer(
+async function createSkillKnowledgeDataWarehouseServer(
   auth: Authenticator,
   {
     dataSourceConfigurations,
@@ -251,5 +275,33 @@ export async function createSkillKnowledgeDataWarehouseServer(
     mcpServerView,
     dataSources: dataSourceConfigurations,
     serverNameOverride: SKILL_KNOWLEDGE_DATA_WAREHOUSE_SERVER_NAME,
+  });
+}
+
+/**
+ * Resolves all skill-based MCP servers for an agent in a conversation.
+ */
+export async function resolveSkillMCPServers(
+  auth: Authenticator,
+  {
+    agentConfiguration,
+    conversation,
+  }: {
+    agentConfiguration: AgentConfigurationType;
+    conversation: ConversationType;
+  }
+): Promise<MCPServerConfigurationType[]> {
+  const { enabledSkills } = await SkillResource.listForAgentLoop(auth, {
+    agentConfiguration,
+    conversation,
+  });
+
+  if (enabledSkills.length === 0) {
+    return [];
+  }
+
+  return getSkillServers(auth, {
+    agentConfiguration,
+    skills: enabledSkills,
   });
 }

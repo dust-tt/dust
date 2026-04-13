@@ -4,6 +4,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
+import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
@@ -99,8 +100,17 @@ async function handler(
         conversation,
         attachments,
       });
+      const skillServers = await resolveSkillMCPServers(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+      });
       for (const srv of jitServers) {
         viewIds.add(srv.mcpServerViewId);
+      }
+      for (const srv of skillServers) {
+        if (isServerSideMCPServerConfiguration(srv)) {
+          viewIds.add(srv.mcpServerViewId);
+        }
       }
 
       if (viewIds.size === 0) {
