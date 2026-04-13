@@ -449,7 +449,7 @@ describe("augmentInputsWithConfiguration after hideInternalConfiguration", () =>
     });
   });
 
-  it("does not overwrite optional internal fields when the model already provided them", () => {
+  it("overwrites model-provided optional internal fields with action configuration", () => {
     const timeFrameSchema =
       ConfigurableToolInputJSONSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
@@ -484,6 +484,71 @@ describe("augmentInputsWithConfiguration after hideInternalConfiguration", () =>
         },
       ],
       timeFrame: { duration: 99, unit: "year" },
+      inputSchema,
+    });
+
+    const userTimeFrame = {
+      duration: 3,
+      unit: "hour" as const,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
+    };
+
+    const augmented = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs: {
+        query: "x",
+        timeFrame: userTimeFrame,
+      },
+      actionConfiguration: config,
+    });
+
+    expect(augmented.timeFrame).toEqual({
+      duration: 99,
+      unit: "year",
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
+    });
+    const augmentedDataSources = augmented.dataSources;
+    expect(Array.isArray(augmentedDataSources)).toBe(true);
+    if (Array.isArray(augmentedDataSources)) {
+      expect(augmentedDataSources).toHaveLength(1);
+      expect(augmentedDataSources[0]).toMatchObject({
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+      });
+    }
+  });
+
+  it("keeps model-provided optional internal fields when action configuration has no value for them", () => {
+    const timeFrameSchema =
+      ConfigurableToolInputJSONSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+      ];
+    const dataSourcesSchema =
+      ConfigurableToolInputJSONSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+      ];
+    const inputSchema = {
+      type: "object",
+      properties: {
+        query: { type: "string" },
+        dataSources: dataSourcesSchema,
+        timeFrame: timeFrameSchema,
+      },
+      required: ["query", "dataSources"],
+    } as JSONSchema;
+
+    const config = createBasicMCPConfiguration({
+      dataSources: [
+        {
+          workspaceId: mockWorkspace.sId,
+          sId: "dsc_cfg",
+          dataSourceViewId: "view_cfg",
+          filter: {
+            tags: { in: [], not: [], mode: "custom" },
+            parents: { in: [], not: [] },
+          },
+        },
+      ],
+      timeFrame: null,
       inputSchema,
     });
 
