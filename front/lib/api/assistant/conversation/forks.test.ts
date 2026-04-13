@@ -135,7 +135,7 @@ describe("createConversationFork", () => {
 
     const childConversation = result.value;
 
-    expect(childConversation.title).toBe("Parent conversation");
+    expect(childConversation.title).toBe("Parent conversation (forked)");
     expect(childConversation.spaceId).toBe(globalSpace.sId);
     expect(childConversation.depth).toBe(parentConversation.depth + 1);
     expect(childConversation.content).toEqual([]);
@@ -236,6 +236,40 @@ describe("createConversationFork", () => {
     expect(result.value.forkedFrom?.sourceMessageId).toBe(
       firstAgentMessage.sId
     );
+  });
+
+  it("does not duplicate the fork suffix when forking an already forked conversation", async () => {
+    const { auth } = await createPrivateApiMockRequest();
+
+    const parentConversation = await createConversation(auth, {
+      title: "Parent conversation (forked)",
+      visibility: "unlisted",
+      spaceId: null,
+    });
+
+    const userMessage = await createUserMessage(auth, {
+      conversation: parentConversation,
+      rank: 0,
+      content: "Continue from here",
+    });
+    const sourceMessage = await createAgentMessage(auth, {
+      conversation: parentConversation,
+      rank: 1,
+      parentId: userMessage.id,
+      status: "succeeded",
+    });
+
+    const result = await createConversationFork(auth, {
+      conversationId: parentConversation.sId,
+      sourceMessageId: sourceMessage.sId,
+    });
+
+    expect(result.isErr()).toBe(false);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    expect(result.value.title).toBe("Parent conversation (forked)");
   });
 
   it("returns invalid_request_error when the source message is not forkable", async () => {
