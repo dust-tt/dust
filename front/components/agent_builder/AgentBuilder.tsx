@@ -263,6 +263,9 @@ export default function AgentBuilder({
     const currentValues = form.getValues();
 
     const defaultModel = getDefaultModel(availableModels);
+    const userOwnedTriggers = triggers.filter(
+      (trigger) => trigger.editor === user.id
+    );
 
     form.reset({
       ...currentValues,
@@ -270,14 +273,14 @@ export default function AgentBuilder({
       skills: processedSkills,
       additionalSpaces: computedAdditionalSpaces,
       triggersToCreate: duplicateAgentId
-        ? triggers.map((trigger) => ({
-            ...trigger,
-            editor: user.id,
-          }))
+        ? userOwnedTriggers.map((trigger) => ({
+              ...trigger,
+              editor: user.id,
+            }))
         : [],
       triggersToUpdate: duplicateAgentId
         ? []
-        : triggers.filter((t) => t.editor === user.id),
+        : userOwnedTriggers,
       triggersToDelete: [],
       agentSettings: {
         ...currentValues.agentSettings,
