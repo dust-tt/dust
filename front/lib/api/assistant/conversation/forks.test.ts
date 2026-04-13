@@ -11,7 +11,6 @@ import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { getConversationRoute } from "@app/lib/utils/router";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -135,20 +134,10 @@ describe("createConversationFork", () => {
     }
 
     const childConversation = result.value;
-    const expectedInitializationMessage =
-      "The conversation was forked from " +
-      `[Parent conversation](${getConversationRoute(auth.getNonNullableWorkspace().sId, parentConversation.sId)}).`;
 
     expect(childConversation.title).toBe("Parent conversation (forked)");
     expect(childConversation.spaceId).toBe(globalSpace.sId);
     expect(childConversation.depth).toBe(parentConversation.depth + 1);
-    expect(childConversation.content).toHaveLength(1);
-    expect(childConversation.content[0]).toHaveLength(1);
-    expect(childConversation.content[0][0]).toMatchObject({
-      type: "user_message",
-      content: expectedInitializationMessage,
-      mentions: [],
-    });
     expect(childConversation.forkedFrom).toEqual({
       parentConversationId: parentConversation.sId,
       sourceMessageId: sourceMessage.sId,

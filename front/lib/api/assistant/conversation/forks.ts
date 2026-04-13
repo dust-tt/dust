@@ -120,6 +120,8 @@ async function createForkInitializationMessage(
     transaction: Transaction;
   }
 ) {
+  // TODO(sessions): Replace this placeholder user message with a compaction message once
+  // compaction messages are rendered in the main conversation UI.
   const user = auth.getNonNullableUser();
 
   await createUserMessage(auth, {
