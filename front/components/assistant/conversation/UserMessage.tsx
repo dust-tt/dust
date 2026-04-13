@@ -33,7 +33,6 @@ import {
 import type { WorkspaceType } from "@app/types/user";
 import {
   ActionTimeIcon,
-  AnimatedText,
   Avatar,
   BoltIcon,
   Button,
@@ -379,15 +378,13 @@ export function UserMessage({
               <ConversationMessageContent
                 citations={citations}
                 type="user"
-                className={cn(shouldShowBiggerUserMessage && "@sm:min-w-100")}
+                className={cn(
+                  shouldShowBiggerUserMessage && "@sm:min-w-100",
+                  message.visibility === "pending" && "opacity-70"
+                )}
                 reversed={isCurrentUser}
               >
-                <div
-                  className={cn(
-                    "flex items-center gap-2",
-                    message.visibility === "pending" && "s-animate-opacity-pulse"
-                  )}
-                >
+                <div className="flex items-center gap-2">
                   {isDeleted ? (
                     <DeletedMessage />
                   ) : isEmpty ? (
