@@ -238,14 +238,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       );
     }
 
-    // Add spaceId to the requestedSpaceIds if it is not already part of the requestedSpaceIds.
-    if (space && !blob.requestedSpaceIds.includes(space.id)) {
-      blob.requestedSpaceIds.push(space.id);
-    }
+    const requestedSpaceIds =
+      space && !blob.requestedSpaceIds.includes(space.id)
+        ? [...blob.requestedSpaceIds, space.id]
+        : blob.requestedSpaceIds;
 
     const conversation = await this.model.create(
       {
         ...blob,
+        requestedSpaceIds,
         workspaceId: workspace.id,
       },
       { transaction }
