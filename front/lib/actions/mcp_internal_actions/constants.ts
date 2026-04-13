@@ -1109,8 +1109,9 @@ export const INTERNAL_MCP_SERVERS = {
     id: 1029,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: undefined,
-    isPreview: false,
+    isRestricted: ({ featureFlags }) =>
+      !featureFlags.includes("clari_copilot_mcp"),
+    isPreview: true,
     requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,

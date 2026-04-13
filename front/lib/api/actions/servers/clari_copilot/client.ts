@@ -16,6 +16,15 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const CLARI_COPILOT_BASE_URL = "https://rest-api.copilot.clari.com";
 
+function isCustomHeaders(value: unknown): value is Record<string, string> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.values(value).every((v) => typeof v === "string")
+  );
+}
+
 export interface SearchCallsParams {
   from_date?: string;
   to_date?: string;
@@ -27,9 +36,8 @@ export interface SearchCallsParams {
 export function getClariClient(
   extra: ToolHandlerExtra
 ): Result<ClariCopilotClient, MCPError> {
-  const customHeaders = extra.authInfo?.extra?.customHeaders as
-    | Record<string, string>
-    | undefined;
+  const rawHeaders = extra.authInfo?.extra?.customHeaders;
+  const customHeaders = isCustomHeaders(rawHeaders) ? rawHeaders : undefined;
   const apiKey = customHeaders?.["X-Api-Key"];
   const apiPassword = customHeaders?.["X-Api-Password"];
 

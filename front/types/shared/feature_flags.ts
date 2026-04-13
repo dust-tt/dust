@@ -269,6 +269,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Gong MCP tool for sales conversation analytics",
     stage: "dust_only",
   },
+  clari_copilot_mcp: {
+    description:
+      "Enable the Clari Copilot MCP server for call transcript and summary access.",
+    stage: "on_demand",
+  },
   official_notion_mcp: {
     description:
       "Use the official Notion MCP server instead of the internal one",

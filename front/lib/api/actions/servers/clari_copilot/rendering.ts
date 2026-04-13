@@ -4,9 +4,9 @@ import type {
 } from "@app/lib/api/actions/servers/clari_copilot/types";
 
 function formatDurationSeconds(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}m${s > 0 ? `${s}s` : ""}`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}m${remainingSeconds > 0 ? `${remainingSeconds}s` : ""}`;
 }
 
 function formatTimestamp(isoString: string): string {
