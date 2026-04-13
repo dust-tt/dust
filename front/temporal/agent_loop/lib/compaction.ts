@@ -116,7 +116,7 @@ export async function runCompaction(
     model,
   });
 
-  let content: string;
+  let content: string | null;
   let status: "succeeded" | "failed";
 
   if (summaryRes.isOk()) {
@@ -132,7 +132,7 @@ export async function runCompaction(
       },
       "Compaction summary generation failed"
     );
-    content = "";
+    content = null;
     status = "failed";
   }
 

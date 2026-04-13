@@ -2762,7 +2762,7 @@ export async function updateCompactionMessageWithContentAndFinalStatus(
     conversation: ConversationWithoutContentType;
     compactionMessage: CompactionMessageType;
     status: "succeeded" | "failed";
-    content: string;
+    content: string | null;
   }
 ): Promise<{
   completedTs: number;
