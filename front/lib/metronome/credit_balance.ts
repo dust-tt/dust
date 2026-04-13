@@ -12,15 +12,15 @@ const CACHE_TTL_MS = 60 * 1000;
 // TODO: implement seat credit fetching from Metronome.
 // For now, we return a positive value so we don't block the user.
 async function fetchSeatCredits(
-  _workspaceSId: string,
-  _userSId: string
+  _workspaceId: string,
+  _userId: string
 ): Promise<number> {
   return 1;
 }
 
 export const getCachedSeatCredits = cacheWithRedis(
   fetchSeatCredits,
-  (workspaceSId, userSId) => `${workspaceSId}:${userSId}`,
+  (workspaceId, userId) => `${workspaceId}:${userId}`,
   { ttlMs: CACHE_TTL_MS }
 );
 
@@ -29,13 +29,13 @@ export const getCachedSeatCredits = cacheWithRedis(
 // ---------------------------------------------------------------------------
 
 async function fetchPoolCredits(
-  workspaceSId: string,
+  workspaceId: string,
   metronomeCustomerId: string
 ): Promise<number> {
   const result = await listMetronomeBalances(metronomeCustomerId);
   if (result.isErr()) {
     logger.warn(
-      { workspaceSId, metronomeCustomerId, error: result.error },
+      { workspaceId, metronomeCustomerId, error: result.error },
       "[Metronome CreditCache] Failed to fetch balances — allowing usage"
     );
     // Fail-open: return a positive value so we don't block the user.
@@ -53,7 +53,7 @@ async function fetchPoolCredits(
 
 const getCachedPoolCredits = cacheWithRedis(
   fetchPoolCredits,
-  (workspaceSId) => workspaceSId,
+  (workspaceId) => workspaceId,
   { ttlMs: CACHE_TTL_MS }
 );
 
@@ -65,8 +65,8 @@ const getCachedPoolCredits = cacheWithRedis(
  * Seat credit distinction is not implemented yet — always allow.
  */
 export async function hasUserSeatCredits(
-  _workspaceSId: string,
-  _userSId: string
+  _workspaceId: string,
+  _userId: string
 ): Promise<boolean> {
   // TODO: implement seat credit tracking and enforcement.
   // For now, we return `true` to allow usage.
@@ -79,13 +79,13 @@ export async function hasUserSeatCredits(
  * Returns `null` when no customer ID is available.
  */
 export async function hasWorkspacePoolCredits(
-  workspaceSId: string,
+  workspaceId: string,
   metronomeCustomerId?: string | null
 ): Promise<boolean | null> {
   if (!metronomeCustomerId) {
     return null;
   }
-  const balance = await getCachedPoolCredits(workspaceSId, metronomeCustomerId);
+  const balance = await getCachedPoolCredits(workspaceId, metronomeCustomerId);
   return balance !== null && balance > 0;
 }
 
@@ -95,13 +95,13 @@ export async function hasWorkspacePoolCredits(
  * or cache is cold and no Metronome customer ID is available.
  */
 export async function hasCredits(
-  workspaceSId: string,
-  userSId: string,
+  workspaceId: string,
+  userId: string,
   metronomeCustomerId?: string | null
 ): Promise<boolean> {
   const [seatResult, poolResult] = await Promise.all([
-    hasUserSeatCredits(workspaceSId, userSId),
-    hasWorkspacePoolCredits(workspaceSId, metronomeCustomerId),
+    hasUserSeatCredits(workspaceId, userId),
+    hasWorkspacePoolCredits(workspaceId, metronomeCustomerId),
   ]);
 
   if (seatResult === false && poolResult === false) {
@@ -118,10 +118,10 @@ export async function hasCredits(
 
 export const invalidateUserSeatCredits = invalidateCacheWithRedis(
   fetchSeatCredits,
-  (workspaceSId: string, userSId: string) => `${workspaceSId}:${userSId}`
+  (workspaceId: string, userId: string) => `${workspaceId}:${userId}`
 );
 
 export const invalidateWorkspacePoolCredits = invalidateCacheWithRedis(
   fetchPoolCredits,
-  (workspaceSId: string) => workspaceSId
+  (workspaceId: string) => workspaceId
 );

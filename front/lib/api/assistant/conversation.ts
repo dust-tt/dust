@@ -2243,10 +2243,10 @@ async function checkMessagesLimit(
   if (featureFlags.includes("metronome_billing") && owner.metronomeCustomerId) {
     const user = auth.user();
     if (user) {
-      const userSId = user.sId;
+      const userId = user.sId;
       const hasCreds = await hasCredits(
         owner.sId,
-        userSId,
+        userId,
         owner.metronomeCustomerId
       );
       if (!hasCreds) {
