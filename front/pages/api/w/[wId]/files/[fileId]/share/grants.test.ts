@@ -1,5 +1,4 @@
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -225,9 +224,16 @@ describe("sharing grants endpoint", () => {
       const { req, res, auth, user, workspace } =
         await createPrivateApiMockRequest({ method: "POST", role: "user" });
 
-        { sharingPolicy: "workspace_only" },
-        { where: { sId: workspace.sId } }
-      );
+      {
+        sharingPolicy: "workspace_only";
+      }
+      ,
+      {
+        where: {
+          sId: workspace.sId;
+        }
+      }
+      )
 
       const file = await FileFactory.create(auth, user, {
         contentType: frameContentType,
@@ -248,9 +254,16 @@ describe("sharing grants endpoint", () => {
       const { req, res, auth, user, workspace } =
         await createPrivateApiMockRequest({ method: "POST", role: "user" });
 
-        { sharingPolicy: "workspace_only" },
-        { where: { sId: workspace.sId } }
-      );
+      {
+        sharingPolicy: "workspace_only";
+      }
+      ,
+      {
+        where: {
+          sId: workspace.sId;
+        }
+      }
+      )
 
       // Create a second workspace member to invite.
       const member = await UserFactory.basic();
@@ -358,9 +371,16 @@ describe("sharing grants endpoint", () => {
       const { req, res, auth, user, workspace } =
         await createPrivateApiMockRequest({ method: "POST", role: "user" });
 
-        { sharingPolicy: "workspace_only" },
-        { where: { sId: workspace.sId } }
-      );
+      {
+        sharingPolicy: "workspace_only";
+      }
+      ,
+      {
+        where: {
+          sId: workspace.sId;
+        }
+      }
+      )
 
       const member = await UserFactory.basic();
       await MembershipFactory.associate(workspace, member, { role: "user" });
