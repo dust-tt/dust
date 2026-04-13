@@ -66,7 +66,7 @@ export interface RenderConversationAsTextOptions {
  *   >> Compaction [timestamp]:
  *   compaction summary
  *
- * Deleted messages render as `Deleted message` in place of content.
+ * [Deleted message]s render as `[Deleted message]` in place of content.
  */
 export function renderConversationAsText(
   conversation: ConversationType | LightConversationType,
@@ -211,7 +211,7 @@ function renderUserMessageAsText(
 
   if (msg.visibility === "deleted") {
     return {
-      text: `${header}\nDeleted message\n`,
+      text: `${header}\n[Deleted message]\n`,
       contentLength: 0,
     };
   }
@@ -242,7 +242,7 @@ function renderAgentMessageAsText(
 
   if (msg.visibility === "deleted") {
     return {
-      text: `${header}\nDeleted message\n`,
+      text: `${header}\n[Deleted message]\n`,
       contentLength: 0,
     };
   }
