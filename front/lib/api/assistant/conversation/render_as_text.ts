@@ -50,12 +50,10 @@ export interface RenderConversationAsTextOptions {
  * Each message is rendered as a header line followed by content. Optional parts (timestamps, email,
  * unread markers, truncation indicators) appear only when their corresponding option is enabled.
  *
- *   >> User (Name, email) [timestamp] (unread): (truncated)
+ *   >> User (Name, email) [timestamp] (unread):
  *   message content
  *
- *   >> Agent (Name) [timestamp] (unread): (truncated)
- *   Actions:
- *   - toolName (success)
+ *   >> Agent (Name) [timestamp] (unread):
  *   message content
  *
  *   >> Content Fragment [timestamp] (unread):
