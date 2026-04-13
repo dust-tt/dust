@@ -148,7 +148,6 @@ export function UserAnswerRequired({
               description={option.description}
               counterValue={index + 1}
               selected={selectedOptions.includes(index)}
-              selectionStyle={question.multiSelect ? "multi" : "single"}
               onClick={() => handleOptionClick(index)}
             />
           ))}

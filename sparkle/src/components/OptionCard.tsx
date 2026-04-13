@@ -10,7 +10,6 @@ export interface OptionCardProps {
   description?: string | null;
   counterValue?: number;
   selected?: boolean;
-  selectionStyle?: OptionCardSelectionStyle;
   disabled?: boolean;
   className?: string;
   onClick?: () => void;
@@ -21,16 +20,11 @@ export function OptionCard({
   description,
   counterValue,
   selected = false,
-  selectionStyle = "single",
   disabled = false,
   className,
   onClick,
 }: OptionCardProps) {
-  let variant: CardVariantType = "tertiary";
-
-  if (selected) {
-    variant = selectionStyle === "multi" ? "active" : "primary";
-  }
+  let variant: CardVariantType = selected ? "active" : "tertiary";
 
   return (
     <Card
