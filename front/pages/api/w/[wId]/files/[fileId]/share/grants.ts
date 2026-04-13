@@ -165,8 +165,8 @@ async function handler(
           memberships.map((m) => userIdToEmail.get(m.userId)).filter(Boolean)
         );
 
-        const nonMemberEmails = emails.filter((e) => !memberEmails.has(e));
-        if (nonMemberEmails.length > 0) {
+        const hasNonMemberEmails = emails.some((e) => !memberEmails.has(e));
+        if (hasNonMemberEmails) {
           return apiError(req, res, {
             status_code: 403,
             api_error: {

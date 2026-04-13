@@ -55,7 +55,7 @@ function getScopeOptions(sharingPolicy: WorkspaceSharingPolicy): {
   return [
     {
       icon: LockIcon,
-      label: externalOff ? "Specific members" : "Invite only",
+      label: externalOff ? "Invited members only" : "Invite only",
       description: externalOff
         ? "Only the workspace members you invite"
         : "Only the people you invite",
@@ -64,7 +64,7 @@ function getScopeOptions(sharingPolicy: WorkspaceSharingPolicy): {
     {
       icon: UserGroupIcon,
       label: externalOff
-        ? "All workspace members + specific members"
+        ? "All workspace members + invited members"
         : "All workspace members + invites",
       description: externalOff
         ? "Everyone in your workspace, plus members you invite individually"
@@ -163,6 +163,14 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
 
   const showEmailSection =
     currentScope === "emails_only" || currentScope === "workspace_and_emails";
+
+  const activeGrants = grants
+    .filter((g) => !g.blockedByPolicy)
+    .sort((a, b) => a.email.localeCompare(b.email));
+
+  const blockedGrants = grants
+    .filter((g) => g.blockedByPolicy)
+    .sort((a, b) => a.email.localeCompare(b.email));
 
   const onInviteSubmit = async (data: InviteFormValues) => {
     const emails = data.emailsRaw
@@ -320,32 +328,27 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                       </p>
                     ) : (
                       <ScrollArea className="max-h-96">
-                        {grants
-                          .filter((g) => !g.blockedByPolicy)
-                          .sort((a, b) => a.email.localeCompare(b.email))
-                          .map((grant) => (
-                            <GrantRow
-                              key={grant.id}
-                              grant={grant}
-                              onRevoke={() => handleRevoke(grant)}
-                            />
-                          ))}
-                        {grants.some((g) => g.blockedByPolicy) && (
+                        {activeGrants.map((grant) => (
+                          <GrantRow
+                            key={grant.id}
+                            grant={grant}
+                            onRevoke={() => handleRevoke(grant)}
+                          />
+                        ))}
+                        {blockedGrants.length > 0 && (
                           <>
                             <p className="pb-2 pt-6 text-xs font-medium text-warning-500 dark:text-warning-500-night">
-                              No longer have access · not in your workspace
+                              No longer have access since they are not in your
+                              workspace
                             </p>
-                            {grants
-                              .filter((g) => g.blockedByPolicy)
-                              .sort((a, b) => a.email.localeCompare(b.email))
-                              .map((grant) => (
-                                <GrantRow
-                                  key={grant.id}
-                                  grant={grant}
-                                  onRevoke={() => handleRevoke(grant)}
-                                  blocked
-                                />
-                              ))}
+                            {blockedGrants.map((grant) => (
+                              <GrantRow
+                                key={grant.id}
+                                grant={grant}
+                                onRevoke={() => handleRevoke(grant)}
+                                blocked
+                              />
+                            ))}
                           </>
                         )}
                       </ScrollArea>
