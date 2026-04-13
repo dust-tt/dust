@@ -205,6 +205,15 @@ export async function sendEmailReplyOnCompletion(
       return;
     }
 
+    if (agentMessage.status === "failed") {
+      await sendEmailReplyOnError(
+        authType,
+        agentLoopArgs,
+        agentMessage.error?.message ?? "Agent execution failed."
+      );
+      return;
+    }
+
     // Check if blocked on tool validation — send validation email instead.
     const blocked = await handleBlockedValidation(
       auth,
