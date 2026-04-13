@@ -19,10 +19,12 @@ import {
   Button,
   ClipboardCheckIcon,
   ClipboardIcon,
+  ContentMessage,
   ContextItem,
   GlobeAltIcon,
   Icon,
   IconButton,
+  InformationCircleIcon,
   Input,
   Label,
   LockIcon,
@@ -43,38 +45,47 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-const SCOPE_OPTIONS: {
+function getScopeOptions(sharingPolicy: WorkspaceSharingPolicy): {
   icon: typeof LockIcon;
   label: string;
   description: string;
   value: FileShareScope;
-}[] = [
-  {
-    icon: LockIcon,
-    label: "Email invites only",
-    description: "Only people you invite by email can view this",
-    value: "emails_only",
-  },
-  {
-    icon: UserGroupIcon,
-    label: "Workspace members and email invites",
-    description: "Everyone in your workspace, plus anyone you invite by email",
-    value: "workspace_and_emails",
-  },
-  {
-    icon: GlobeAltIcon,
-    label: "Anyone with the link",
-    description: "No sign-in required",
-    value: "public",
-  },
-];
+}[] {
+  const externalOff = sharingPolicy === "workspace_only";
+  return [
+    {
+      icon: LockIcon,
+      label: externalOff ? "Specific members" : "Invite only",
+      description: externalOff
+        ? "Only the workspace members you invite"
+        : "Only the people you invite",
+      value: "emails_only",
+    },
+    {
+      icon: UserGroupIcon,
+      label: externalOff
+        ? "All workspace members + specific members"
+        : "All workspace members + invites",
+      description: externalOff
+        ? "Everyone in your workspace, plus members you invite individually"
+        : "Everyone in your workspace, plus anyone you invite",
+      value: "workspace_and_emails",
+    },
+    {
+      icon: GlobeAltIcon,
+      label: "Anyone with the link",
+      description: "No sign-in required",
+      value: "public",
+    },
+  ];
+}
 
 // Scopes allowed by each workspace sharing policy.
 const ALLOWED_SCOPES_BY_POLICY: Record<
   WorkspaceSharingPolicy,
   FileShareScope[]
 > = {
-  workspace_only: ["workspace_and_emails"],
+  workspace_only: ["emails_only", "workspace_and_emails"],
   workspace_and_emails: ["emails_only", "workspace_and_emails"],
   all_scopes: ["emails_only", "workspace_and_emails", "public"],
 };
@@ -146,13 +157,12 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
   const shareURL = fileShare?.shareUrl ?? "";
 
   const allowedScopes = ALLOWED_SCOPES_BY_POLICY[owner.sharingPolicy];
-  const availableScopeOptions = SCOPE_OPTIONS.filter((o) =>
-    allowedScopes.includes(o.value)
+  const availableScopeOptions = getScopeOptions(owner.sharingPolicy).filter(
+    (o) => allowedScopes.includes(o.value)
   );
 
   const showEmailSection =
-    owner.sharingPolicy !== "workspace_only" &&
-    (currentScope === "emails_only" || currentScope === "workspace_and_emails");
+    currentScope === "emails_only" || currentScope === "workspace_and_emails";
 
   const onInviteSubmit = async (data: InviteFormValues) => {
     const emails = data.emailsRaw
@@ -216,6 +226,16 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
               </div>
             ) : (
               <div className="flex flex-col gap-6">
+                {owner.sharingPolicy === "workspace_only" && (
+                  <ContentMessage
+                    icon={InformationCircleIcon}
+                    variant="info"
+                    title="Only workspace members can be added"
+                  >
+                    Your admin has disabled external sharing. You can only share with people already
+                    in your workspace.
+                  </ContentMessage>
+                )}
                 <fieldset className="flex flex-col gap-2 border-none p-0">
                   <legend className="text-sm font-semibold text-foreground dark:text-foreground-night mb-2">
                     Who has access
@@ -300,13 +320,32 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                       </p>
                     ) : (
                       <ScrollArea className="max-h-96">
-                        {grants.map((grant) => (
-                          <GrantRow
-                            key={grant.id}
-                            grant={grant}
-                            onRevoke={() => handleRevoke(grant)}
-                          />
-                        ))}
+                        {grants
+                          .filter((g) => !g.blockedByPolicy)
+                          .map((grant) => (
+                            <GrantRow
+                              key={grant.id}
+                              grant={grant}
+                              onRevoke={() => handleRevoke(grant)}
+                            />
+                          ))}
+                        {grants.some((g) => g.blockedByPolicy) && (
+                          <>
+                            <p className="pb-2 pt-6 text-xs font-medium text-warning-500 dark:text-warning-500-night">
+                              No longer have access · not in your workspace
+                            </p>
+                            {grants
+                              .filter((g) => g.blockedByPolicy)
+                              .map((grant) => (
+                                <GrantRow
+                                  key={grant.id}
+                                  grant={grant}
+                                  onRevoke={() => handleRevoke(grant)}
+                                  blocked
+                                />
+                              ))}
+                          </>
+                        )}
                       </ScrollArea>
                     )}
                   </div>
@@ -323,9 +362,10 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
 interface GrantRowProps {
   grant: SharingGrantType;
   onRevoke: () => void;
+  blocked?: boolean;
 }
 
-function GrantRow({ grant, onRevoke }: GrantRowProps) {
+function GrantRow({ grant, onRevoke, blocked = false }: GrantRowProps) {
   const now = new Date();
   const invitedBy = grant.grantedBy?.fullName ?? grant.grantedBy?.email;
   const grantedAgo = intlFormatDistance(new Date(grant.grantedAt), now);
@@ -342,7 +382,14 @@ function GrantRow({ grant, onRevoke }: GrantRowProps) {
   return (
     <ContextItem
       title={grant.email}
-      visual={<Avatar size="xs" name={grant.email} isRounded />}
+      visual={
+        <Avatar
+          size="xs"
+          name={grant.email}
+          isRounded
+          className={blocked ? "opacity-40" : undefined}
+        />
+      }
       hasSeparator={false}
       action={
         <IconButton
@@ -353,6 +400,7 @@ function GrantRow({ grant, onRevoke }: GrantRowProps) {
         />
       }
       hoverAction
+      className={blocked ? "opacity-60" : undefined}
     >
       <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
         {invitedLabel} · {viewedLabel}

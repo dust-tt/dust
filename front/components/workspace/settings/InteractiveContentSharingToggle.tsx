@@ -66,13 +66,21 @@ export function InteractiveContentSharingToggle({
   );
 
   const handlePolicyChange = (newPolicy: WorkspaceSharingPolicy) => {
-    // Downgrading from all_scopes requires confirmation (revokes public links).
-    if (sharingPolicy === "all_scopes" && newPolicy !== "all_scopes") {
+    // Downgrading from all_scopes (revokes public links) or switching to
+    // workspace_only (blocks existing email invitees) requires confirmation.
+    if (
+      (sharingPolicy === "all_scopes" && newPolicy !== "all_scopes") ||
+      newPolicy === "workspace_only"
+    ) {
       setPendingPolicy(newPolicy);
     } else {
       void doUpdateSharingPolicy(newPolicy);
     }
   };
+
+  const isRestrictingToWorkspaceOnly = pendingPolicy === "workspace_only";
+  const isDowngradingFromAllScopes =
+    sharingPolicy === "all_scopes" && pendingPolicy !== null;
 
   return (
     <>
@@ -121,10 +129,26 @@ export function InteractiveContentSharingToggle({
       >
         <DialogContent size="md" isAlertDialog>
           <DialogHeader hideButton>
-            <DialogTitle>Restrict Frame sharing</DialogTitle>
+            <DialogTitle>
+              {isRestrictingToWorkspaceOnly
+                ? "Block external access"
+                : "Restrict Frame sharing"}
+            </DialogTitle>
             <DialogDescription>
-              This will revoke public access to all currently shared Frames in
-              this workspace. Existing public links will stop working.
+              {isRestrictingToWorkspaceOnly ? (
+                <>
+                  Non-workspace members with email invites will immediately lose access to all
+                  frames in this workspace. Their invites are preserved and will resume if you
+                  change this setting later.
+                  {isDowngradingFromAllScopes &&
+                    " Public links will also stop working."}
+                </>
+              ) : (
+                <>
+                  This will revoke public access to all currently shared frames in this workspace.
+                  Existing public links will stop working.
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter
@@ -134,7 +158,9 @@ export function InteractiveContentSharingToggle({
               variant: "outline",
             }}
             rightButtonProps={{
-              label: "Restrict sharing",
+              label: isRestrictingToWorkspaceOnly
+                ? "Block external access"
+                : "Restrict sharing",
               disabled: isChanging,
               variant: "warning",
               onClick: async () => {
