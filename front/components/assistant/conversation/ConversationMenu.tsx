@@ -14,9 +14,11 @@ import { useURLSheet } from "@app/hooks/useURLSheet";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
+import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import {
   getAgentBuilderRoute,
@@ -24,11 +26,15 @@ import {
   getProjectRoute,
   setQueryParam,
 } from "@app/lib/utils/router";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type {
+  ConversationType,
+  ConversationWithoutContentType,
+} from "@app/types/assistant/conversation";
 import { isProjectConversation } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
+  ActionGitBranchIcon,
   ArrowRightIcon,
   Avatar,
   ContactsUserIcon,
@@ -227,6 +233,8 @@ export function ConversationMenu({
   const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState<boolean>(false);
   const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
+  const [isBranchingConversation, setIsBranchingConversation] =
+    useState<boolean>(false);
 
   const conversationLink = getConversationRoute(
     owner.sId,
@@ -258,6 +266,49 @@ export function ConversationMenu({
   const openConversationInBrowser = () => {
     window.open(conversationLink, "_blank");
   };
+
+  const branchConversation = useCallback(async () => {
+    if (!activeConversationId) {
+      return;
+    }
+
+    setIsBranchingConversation(true);
+
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/assistant/conversations/${activeConversationId}/forks`,
+        {
+          method: "POST",
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+
+        sendNotification({
+          type: "error",
+          title: "Failed to branch conversation",
+          description: errorData.message,
+        });
+        return;
+      }
+
+      const { conversation: forkedConversation } = (await res.json()) as {
+        conversation: ConversationType;
+      };
+
+      await router.push(
+        getConversationRoute(owner.sId, forkedConversation.sId)
+      );
+    } catch {
+      sendNotification({
+        type: "error",
+        title: "Failed to branch conversation",
+      });
+    } finally {
+      setIsBranchingConversation(false);
+    }
+  }, [activeConversationId, owner.sId, router, sendNotification]);
 
   if (!activeConversationId) {
     return null;
@@ -324,6 +375,17 @@ export function ConversationMenu({
             onClick={() => setShowRenameDialog(true)}
             icon={PencilSquareIcon}
           />
+          {hasFeature("sessions_branching") && (
+            <>
+              <DropdownMenuItem
+                label="Branch conversation"
+                onClick={branchConversation}
+                icon={ActionGitBranchIcon}
+                disabled={isBranchingConversation}
+              />
+              <DropdownMenuSeparator />
+            </>
+          )}
           {hasFeature("projects") && (
             <DropdownMenuSub>
               <DropdownMenuSubTrigger
