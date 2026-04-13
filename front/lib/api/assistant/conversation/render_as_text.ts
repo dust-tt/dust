@@ -172,22 +172,30 @@ function renderMessageAsText(
 function formatTimestamp(
   createdMs: number,
   options: RenderConversationAsTextOptions
-): string {
+): string | null {
   if (!options.includeTimestamps) {
-    return "";
+    return null;
   }
-  return ` [${new Date(createdMs).toISOString()}]`;
+  return `[${new Date(createdMs).toISOString()}]`;
 }
 
 function formatUnread(
   createdMs: number,
   lastReadMs: number | null,
   options: RenderConversationAsTextOptions
-): string {
+): string | null {
   if (!options.includeUnread || lastReadMs === null) {
-    return "";
+    return null;
   }
-  return createdMs > lastReadMs ? " (unread)" : "";
+  return createdMs > lastReadMs ? "(unread)" : null;
+}
+
+/**
+ * Build a message header line by joining non-null parts with spaces.
+ * Example: ">> User (Alice) [2024-01-01T00:00:00.000Z] (unread):"
+ */
+function buildHeaderLine(parts: (string | null)[]): string {
+  return parts.filter((p) => p !== null).join(" ") + ":";
 }
 
 function truncateContent(
@@ -213,23 +221,28 @@ function renderUserMessageAsText(
 ): RenderedMessage {
   const userName = msg.user?.fullName ?? msg.user?.username ?? "User";
   const email =
-    options.includeEmail && "email" in msg.user! ? `, ${msg.user!.email}` : "";
-  const timestamp = formatTimestamp(msg.created, options);
-  const unread = formatUnread(msg.created, lastReadMs, options);
+    options.includeEmail && msg.user && "email" in msg.user
+      ? `, ${msg.user.email}`
+      : "";
+  const header = buildHeaderLine([
+    `>> User (${userName}${email})`,
+    formatTimestamp(msg.created, options),
+    formatUnread(msg.created, lastReadMs, options),
+  ]);
 
   if (msg.visibility === "deleted") {
     return {
-      text: `>> User (${userName}${email})${timestamp}${unread}:\n[Deleted message]\n`,
+      text: `${header}\n[Deleted message]\n`,
       contentLength: 0,
     };
   }
 
   const rawContent = msg.content ?? "";
   const { text: content, truncated } = truncateContent(rawContent, options);
-  const truncatedMarker = truncated ? " (truncated)" : "";
+  const truncatedSuffix = truncated ? " (truncated)" : "";
 
   return {
-    text: `>> User (${userName}${email})${timestamp}${unread}:${truncatedMarker}\n${content}\n`,
+    text: `${header}${truncatedSuffix}\n${content}\n`,
     contentLength: content.length,
   };
 }
@@ -240,22 +253,25 @@ function renderAgentMessageAsText(
   options: RenderConversationAsTextOptions
 ): RenderedMessage {
   const agentName = msg.configuration?.name ?? "Agent";
-  const timestamp = formatTimestamp(msg.created, options);
-  const unread = formatUnread(msg.created, lastReadMs, options);
+  const header = buildHeaderLine([
+    `>> Agent (${agentName})`,
+    formatTimestamp(msg.created, options),
+    formatUnread(msg.created, lastReadMs, options),
+  ]);
 
   if (msg.visibility === "deleted") {
     return {
-      text: `>> Agent (${agentName})${timestamp}${unread}:\n[Deleted message]\n`,
+      text: `${header}\n[Deleted message]\n`,
       contentLength: 0,
     };
   }
 
   const rawContent = msg.content ?? "";
   const { text: content, truncated } = truncateContent(rawContent, options);
-  const truncatedMarker = truncated ? " (truncated)" : "";
+  const truncatedSuffix = truncated ? " (truncated)" : "";
 
   const lines: string[] = [];
-  lines.push(`>> Agent (${agentName})${timestamp}${unread}:${truncatedMarker}`);
+  lines.push(`${header}${truncatedSuffix}`);
 
   // Render actions if requested and available on full AgentMessageType.
   if (options.includeActions && "actions" in msg && msg.actions.length > 0) {
@@ -309,11 +325,14 @@ function renderContentFragmentAsText(
   lastReadMs: number | null,
   options: RenderConversationAsTextOptions
 ): RenderedMessage {
-  const timestamp = formatTimestamp(msg.created, options);
-  const unread = formatUnread(msg.created, lastReadMs, options);
+  const header = buildHeaderLine([
+    ">> Content Fragment",
+    formatTimestamp(msg.created, options),
+    formatUnread(msg.created, lastReadMs, options),
+  ]);
 
   return {
-    text: `>> Content Fragment${timestamp}${unread}:\nTitle: ${msg.title}\nContent-Type: ${msg.contentType}\n`,
+    text: `${header}\nTitle: ${msg.title}\nContent-Type: ${msg.contentType}\n`,
     contentLength: 0,
   };
 }
@@ -322,11 +341,14 @@ function renderCompactionMessageAsText(
   msg: CompactionMessageType,
   options: RenderConversationAsTextOptions
 ): RenderedMessage {
-  const timestamp = formatTimestamp(msg.created, options);
+  const header = buildHeaderLine([
+    ">> Compaction",
+    formatTimestamp(msg.created, options),
+  ]);
   const content = msg.content ?? "";
 
   return {
-    text: `>> Compaction${timestamp}:\n${content}\n`,
+    text: `${header}\n${content}\n`,
     contentLength: content.length,
   };
 }
