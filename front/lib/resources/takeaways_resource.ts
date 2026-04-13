@@ -25,7 +25,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
-import { col, fn, Op } from "sequelize";
+import { col, fn, Op, type WhereOptions } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -252,23 +252,34 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
   ): Promise<{ takeaway: TakeawaysResource; conversationSId: string }[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    // Fetch all rows for this space ordered so the highest version per sId
-    // comes first — the first occurrence is the latest version.
+    // Query 1: get the maximum version per sId for this space — avoids loading
+    // all historical version rows into memory.
+    const maxVersionRows = (await TakeawaysModel.findAll({
+      attributes: ["sId", [fn("MAX", col("version")), "maxVersion"]],
+      where: { workspaceId, spaceId: spaceModelId } as WhereOptions,
+      group: ["sId"],
+      raw: true,
+    })) as unknown as { sId: string; maxVersion: number }[];
+
+    if (maxVersionRows.length === 0) {
+      return [];
+    }
+
+    // Query 2: fetch only the rows that match each (sId, maxVersion) pair.
     const rows = await TakeawaysModel.findAll({
-      where: { workspaceId, spaceId: spaceModelId },
-      order: [
-        ["sId", "ASC"],
-        ["version", "DESC"],
-      ],
+      where: {
+        workspaceId,
+        spaceId: spaceModelId,
+        [Op.or]: maxVersionRows.map(({ sId, maxVersion }) => ({
+          sId,
+          version: maxVersion,
+        })),
+      } as WhereOptions,
     });
 
-    // O(n) dedup — keep only the latest version per sId.
-    const latestBySId = new Map<string, TakeawaysModel>();
-    for (const row of rows) {
-      if (!latestBySId.has(row.sId)) {
-        latestBySId.set(row.sId, row);
-      }
-    }
+    const latestBySId = new Map<string, TakeawaysModel>(
+      rows.map((r) => [r.sId, r])
+    );
 
     if (latestBySId.size === 0) {
       return [];
@@ -356,26 +367,31 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
     }
 
     return withTransaction(async (t) => {
-      let source = await TakeawaySourcesModel.findOne({
+      const source = await TakeawaySourcesModel.findOne({
         where: { workspaceId, sourceId: conversationId },
         transaction: t,
       });
 
-      let sId: string;
       if (source) {
-        sId = source.takeawaySId;
-      } else {
-        sId = uuidv4();
-        await TakeawaySourcesModel.create(
-          {
-            workspaceId,
-            takeawaySId: sId,
-            sourceType: "conversation",
-            sourceId: conversationId,
-          },
-          { transaction: t }
+        // Conversation already has a takeaway — append a new version.
+        return TakeawaysResource.createNewVersion(
+          auth,
+          source.takeawaySId,
+          { spaceId: spaceModelId, actionItems, notableFacts, keyDecisions },
+          t
         );
       }
+
+      const sId = uuidv4();
+      await TakeawaySourcesModel.create(
+        {
+          workspaceId,
+          takeawaySId: sId,
+          sourceType: "conversation",
+          sourceId: conversationId,
+        },
+        { transaction: t }
+      );
 
       return TakeawaysResource.makeNew(
         auth,

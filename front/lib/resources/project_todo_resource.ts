@@ -18,6 +18,8 @@ import { Ok, type Result } from "@app/types/shared/result";
 import {
   type Attributes,
   type CreationAttributes,
+  col,
+  fn,
   type ModelStatic,
   Op,
   type Transaction,
@@ -168,23 +170,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     auth: Authenticator,
     { spaceId, userId }: { spaceId: ModelId; userId: ModelId }
   ): Promise<ProjectTodoResource[]> {
-    const all = await this.baseFetch(auth, {
-      where: { spaceId, userId },
-      order: [
-        ["sId", "ASC"],
-        ["version", "DESC"],
-      ],
-    });
-
-    // O(n) deduplication — keep the first occurrence per sId (highest version).
-    const latestBySId = new Map<string, ProjectTodoResource>();
-    for (const todo of all) {
-      if (!latestBySId.has(todo.sId)) {
-        latestBySId.set(todo.sId, todo);
-      }
-    }
-
-    return Array.from(latestBySId.values());
+    return this.fetchLatestBySpaceInternal(auth, { spaceId, userId });
   }
 
   // Returns the latest version of each logical todo across ALL users for the given
@@ -193,23 +179,42 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     auth: Authenticator,
     { spaceId }: { spaceId: ModelId }
   ): Promise<ProjectTodoResource[]> {
-    const all = await this.baseFetch(auth, {
-      where: { spaceId },
-      order: [
-        ["sId", "ASC"],
-        ["version", "DESC"],
-      ],
-    });
+    return this.fetchLatestBySpaceInternal(auth, { spaceId });
+  }
 
-    // O(n) deduplication — keep the first occurrence per sId (highest version).
-    const latestBySId = new Map<string, ProjectTodoResource>();
-    for (const todo of all) {
-      if (!latestBySId.has(todo.sId)) {
-        latestBySId.set(todo.sId, todo);
-      }
+  // Shared implementation: pushes dedup to the DB with a two-query strategy.
+  // Query 1: GROUP BY sId to fetch (sId, MAX(version)) pairs.
+  // Query 2: Fetch the actual rows that match those (sId, version) pairs.
+  // This avoids loading every historical version row into memory.
+  private static async fetchLatestBySpaceInternal(
+    auth: Authenticator,
+    where: { spaceId: ModelId; userId?: ModelId }
+  ): Promise<ProjectTodoResource[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const maxVersionRows = (await ProjectTodoModel.findAll({
+      attributes: ["sId", [fn("MAX", col("version")), "maxVersion"]],
+      where: { workspaceId, ...where },
+      group: ["sId"],
+      raw: true,
+    })) as unknown as { sId: string; maxVersion: number }[];
+
+    if (maxVersionRows.length === 0) {
+      return [];
     }
 
-    return Array.from(latestBySId.values());
+    const todos = await ProjectTodoModel.findAll({
+      where: {
+        workspaceId,
+        ...where,
+        [Op.or]: maxVersionRows.map(({ sId, maxVersion }) => ({
+          sId,
+          version: maxVersion,
+        })),
+      },
+    });
+
+    return todos.map((t) => new this(ProjectTodoModel, t.get()));
   }
 
   // Returns every version row for (spaceId, userId), across all sIds. Used by the
