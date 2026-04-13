@@ -87,9 +87,11 @@ impl TryFrom<RawConfig> for Config {
 fn parse_bool_env(value: Option<&str>) -> Result<bool> {
     match value.map(str::trim).filter(|value| !value.is_empty()) {
         None => Ok(false),
-        Some("1") | Some("true") | Some("TRUE") | Some("yes") | Some("YES") => Ok(true),
-        Some("0") | Some("false") | Some("FALSE") | Some("no") | Some("NO") => Ok(false),
-        Some(value) => Err(anyhow!("invalid boolean env value: {value}")),
+        Some("1") => Ok(true),
+        Some("0") => Ok(false),
+        Some(value) => Err(anyhow!(
+            "invalid boolean env value: {value}; expected 0 or 1"
+        )),
     }
 }
 
@@ -103,10 +105,10 @@ mod tests {
         assert!(!parse_bool_env(Some("")).expect("empty bool env should default to false"));
         assert!(parse_bool_env(Some("1")).expect("1 should parse as true"));
         assert!(!parse_bool_env(Some("0")).expect("0 should parse as false"));
-        assert!(parse_bool_env(Some("true")).expect("true should parse as true"));
-        assert!(!parse_bool_env(Some("false")).expect("false should parse as false"));
-        assert!(parse_bool_env(Some("YES")).expect("YES should parse as true"));
-        assert!(!parse_bool_env(Some("NO")).expect("NO should parse as false"));
+        assert!(parse_bool_env(Some("true")).is_err());
+        assert!(parse_bool_env(Some("false")).is_err());
+        assert!(parse_bool_env(Some("YES")).is_err());
+        assert!(parse_bool_env(Some("NO")).is_err());
         assert!(parse_bool_env(Some("maybe")).is_err());
     }
 }

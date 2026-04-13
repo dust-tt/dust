@@ -34,8 +34,8 @@ EGRESS_PROXY_ENV=production
 EGRESS_PROXY_UNSAFE_SKIP_SSRF_CHECK=
 ```
 
-`EGRESS_PROXY_UNSAFE_SKIP_SSRF_CHECK=1` is test-only and startup rejects it unless
-`EGRESS_PROXY_ENV=test`.
+`EGRESS_PROXY_UNSAFE_SKIP_SSRF_CHECK` only accepts `1`, `0`, or unset. `1` is test-only and
+startup rejects it unless `EGRESS_PROXY_ENV=test`.
 
 ## Local Checks
 
