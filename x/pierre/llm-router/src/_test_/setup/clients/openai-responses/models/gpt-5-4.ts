@@ -1,7 +1,7 @@
 import { Setup } from "@/_test_/setup/types";
 import { WithStreamDebug } from "@/_test_/setup/utils";
 import { INPUT_CONFIGURATION_ERROR } from "@/_test_/types";
-import { OpenAiGptFiveDotFour } from "@/clients/openai-responses/models/gpt-5-4";
+import { OpenAiGptFiveDotFour } from "@/clients/openai-responses/models/openai-gpt-5-4";
 
 export const openaiGptFiveDotFourSetup: Setup = {
   instance: new (WithStreamDebug(OpenAiGptFiveDotFour))({
