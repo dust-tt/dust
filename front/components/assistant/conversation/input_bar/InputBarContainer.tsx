@@ -632,7 +632,9 @@ const InputBarContainer = ({
       // Include the selected single agent so the debounced save doesn't
       // overwrite the agent mention saved by the single-agent effect.
       const { markdown, mentions } = editorService.getMarkdownAndMentions();
-      saveDraft(markdown, selectedSingleAgentRef.current);
+      if (!editorService.isEmpty()) {
+        saveDraft(markdown, selectedSingleAgentRef.current);
+      }
       const userMentioned = mentions.some((m) => m.type === "user");
       setHasUserMention(userMentioned);
       onEditorMentionsChangedRef.current(userMentioned);
