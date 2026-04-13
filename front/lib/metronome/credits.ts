@@ -59,7 +59,7 @@ export async function grantMetronomeFreeCredits({
       return;
     }
 
-    // Convert micro-USD to cents (Metronome credits are in cents).
+    // Convert micro-USD to custom credit units (1 unit ≈ $0.01, so divide by 1M).
     const amount = Math.ceil(amountMicroUsd / 10_000_000);
 
     const monthKey = `${startDate.getUTCFullYear()}-${String(startDate.getUTCMonth() + 1).padStart(2, "0")}`;
