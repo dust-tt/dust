@@ -99,17 +99,20 @@ export function renderConversationAsText(
       break;
     }
 
-    const rendered = renderMessageAsText(
-      slicedMessages[i],
-      conversation.lastReadMs,
-      options
-    );
+    const msg = slicedMessages[i];
+
+    const rendered = renderMessageAsText(msg, conversation.lastReadMs, options);
     if (!rendered) {
       continue;
     }
 
     totalChars += rendered.contentLength;
     parts.unshift(rendered.text);
+
+    // A succeeded compaction message is a history boundary. Include it and stop.
+    if (msg.type === "compaction_message" && msg.status === "succeeded") {
+      break;
+    }
   }
 
   return parts.join("\n");
