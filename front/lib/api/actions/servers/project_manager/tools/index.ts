@@ -542,6 +542,7 @@ export function createProjectManagerTools(
         return runIncludeDataRetrieval(auth, agentLoopContext, {
           timeFrame: params.timeFrame,
           dataSources,
+          nodeIds: params.nodeIds,
         });
       }, "Failed to retrieve recent project documents");
     },

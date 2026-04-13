@@ -5,7 +5,10 @@ import type {
   WarningResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
-import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import {
+  applyNodeIdsFilterToCoreSearchArgs,
+  getCoreSearchArgs,
+} from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   makeIncludeResultResource,
@@ -34,11 +37,13 @@ export async function runIncludeDataRetrieval(
   {
     timeFrame,
     dataSources,
+    nodeIds,
     tagsIn,
     tagsNot,
   }: {
     timeFrame?: TimeFrame;
     dataSources: DataSourcesToolConfigurationType;
+    nodeIds?: string[];
     tagsIn?: string[];
     tagsNot?: string[];
   }
@@ -74,7 +79,10 @@ export async function runIncludeDataRetrieval(
     );
   }
 
-  const coreSearchArgs = coreSearchArgsResults.value;
+  const coreSearchArgs = applyNodeIdsFilterToCoreSearchArgs(
+    coreSearchArgsResults.value,
+    nodeIds
+  );
 
   const conflictingTagsError = checkConflictingTags(
     coreSearchArgs.map(({ filter }) => filter.tags),
