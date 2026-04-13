@@ -89,9 +89,11 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
+import type { OAuthProvider } from "@app/types/oauth/lib";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { slugify } from "@app/types/shared/utils/string_utils";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
@@ -190,7 +192,7 @@ export function getToolExtraFields(
   });
 }
 
-function makeServerSideMCPToolConfigurations(
+export function makeServerSideMCPToolConfigurations(
   config: ServerSideMCPServerConfigurationType,
   tools: ServerSideMCPToolTypeWithStakeAndRetryPolicy[],
   toolsArgumentsRequiringApproval?: Record<string, string[]>
@@ -325,59 +327,73 @@ export async function* tryCallMCPTool(
     workspaceId,
   };
 
-  let connectionParams: MCPConnectionParams;
-  if (isServerSideMCPToolConfiguration(toolConfiguration)) {
-    const mcpServerView = await MCPServerViewResource.fetchById(
-      auth,
-      toolConfiguration.mcpServerViewId
-    );
-    if (!mcpServerView) {
-      return {
-        isError: true,
-        content: [
-          {
-            type: "text",
-            text: "Could not call tool: configuration not found",
-          },
-        ],
-      };
-    }
-    connectionParams = makeServerSideMCPConnectionParams(mcpServerView);
-  } else {
-    connectionParams = makeClientSideMCPConnectionParams(toolConfiguration, {
-      conversationId,
-      messageId,
-    });
-  }
-
   let mcpClient;
   try {
-    const connectionResult = await connectToMCPServer(auth, {
-      params: connectionParams,
-      agentLoopContext: { runContext: agentLoopRunContext },
-    });
-    if (connectionResult.isErr()) {
-      if (
-        connectionResult.error instanceof
-        MCPServerPersonalAuthenticationRequiredError
-      ) {
-        return {
-          // Complex code path, but errors returned here are processed in getExitOrPauseEvents.
-          isError: false,
-          content: makePersonalAuthenticationError(
-            connectionResult.error.provider,
-            connectionResult.error.scope
-          ).content,
-        };
+    if (isServerSideMCPToolConfiguration(toolConfiguration)) {
+      const connResult = await connectServerSideMCP(
+        auth,
+        toolConfiguration,
+        agentLoopRunContext
+      );
+      if (connResult.isErr()) {
+        switch (connResult.error.type) {
+          case "not_found":
+            return {
+              isError: true,
+              content: [
+                {
+                  type: "text",
+                  text: "Could not call tool: configuration not found",
+                },
+              ],
+            };
+          case "personal_auth_required":
+            // Complex code path: errors returned here are processed in getExitOrPauseEvents.
+            return {
+              isError: false,
+              content: makePersonalAuthenticationError(
+                connResult.error.provider,
+                connResult.error.scope
+              ).content,
+            };
+          case "admin_auth_required":
+          case "connection_failed":
+            return {
+              isError: true,
+              content: [
+                {
+                  type: "text",
+                  text: `The tool execution failed with the following error: ${connResult.error.message}`,
+                },
+              ],
+            };
+          default:
+            assertNever(connResult.error);
+        }
       }
-
-      // Admin auth errors (no connection or expired token) are surfaced as
-      // tool errors — the user cannot fix these in-conversation; an admin
-      // must act in the MCP server settings.
-      if (
-        connectionResult.error instanceof
-        MCPServerRequiresAdminAuthenticationError
-      ) {
+      mcpClient = connResult.value;
+    } else {
+      const connectionParams = makeClientSideMCPConnectionParams(
+        toolConfiguration,
+        { conversationId, messageId }
+      );
+      const connectionResult = await connectToMCPServer(auth, {
+        params: connectionParams,
+        agentLoopContext: { runContext: agentLoopRunContext },
+      });
+      if (connectionResult.isErr()) {
+        if (
+          connectionResult.error instanceof
+          MCPServerPersonalAuthenticationRequiredError
+        ) {
+          return {
+            isError: false,
+            content: makePersonalAuthenticationError(
+              connectionResult.error.provider,
+              connectionResult.error.scope
+            ).content,
+          };
+        }
         return {
           isError: true,
           content: [
@@ -388,18 +404,8 @@ export async function* tryCallMCPTool(
           ],
         };
       }
-
-      return {
-        isError: true,
-        content: [
-          {
-            type: "text",
-            text: `The tool execution failed with the following error: ${connectionResult.error.message}`,
-          },
-        ],
-      };
+      mcpClient = connectionResult.value;
     }
-    mcpClient = connectionResult.value;
 
     heartbeat();
 
@@ -523,58 +529,7 @@ export async function* tryCallMCPTool(
       throw toolError;
     }
 
-    // Type inference is not working here because of them using passthrough in the zod schema.
-    const content: CallToolResult["content"] = (toolCallResult.content ??
-      []) as CallToolResult["content"];
-
-    let serverType;
-    if (isClientSideMCPToolConfiguration(toolConfiguration)) {
-      serverType = "client";
-    } else if (isServerSideMCPToolConfiguration(toolConfiguration)) {
-      serverType = toolConfiguration.internalMCPServerId
-        ? "internal"
-        : "remote";
-    }
-
-    if (serverType === "remote") {
-      const isValid = isWithinRemoteContentLimit(content);
-      if (!isValid) {
-        const contentMetadata = generateRemoteContentMetadata(content);
-        logger.info(
-          { contentMetadata, isValid },
-          "Information on MCP tool result"
-        );
-
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: "The tool execution failed because the tool output exceeds the maximum size limit.",
-            },
-          ],
-        };
-      }
-    }
-    if (serverType === "internal" || serverType === "client") {
-      // The MCP SDK is now stripping extra properties from the tool result (both client and server).
-      // To keep the same behavior as before, we moved the extra properties on the _meta field of each resource item.
-      // We now need to move them back to the resource items root level.
-      content.forEach((item) => {
-        if (item.type === "resource" && item.resource._meta) {
-          item.resource = {
-            ...item.resource,
-            ...item.resource._meta,
-          };
-          delete item.resource._meta;
-        }
-      });
-    }
-
-    return {
-      isError: (toolCallResult.isError as boolean) ?? false,
-      content,
-    };
+    return postProcessMCPToolResult(toolCallResult, toolConfiguration);
   } catch (error) {
     logger.error(
       {
@@ -677,6 +632,281 @@ function makeServerSideMCPConnectionParams(
     oAuthUseCase: mcpServerView.oAuthUseCase,
     oauthScope: mcpServerView.oauthScope,
   };
+}
+
+/**
+ * Tagged union for connection errors from connectServerSideMCP.
+ * Callers handle each case differently:
+ * - Agent loop: personal_auth → isError: false (triggers re-auth UI)
+ * - Sandbox: personal_auth → isError: true (can't re-auth from sandbox)
+ */
+type ServerSideMCPConnectionError =
+  | { type: "not_found" }
+  | { type: "personal_auth_required"; provider: OAuthProvider; scope?: string }
+  | { type: "admin_auth_required"; message: string }
+  | { type: "connection_failed"; message: string };
+
+/**
+ * Connect to a server-side MCP server for tool execution. Returns a typed
+ * error so callers can handle auth scenarios differently. Used by both the
+ * Temporal agent-loop path and the sandbox REST endpoint.
+ */
+async function connectServerSideMCP(
+  auth: Authenticator,
+  toolConfiguration: ServerSideMCPToolConfigurationType,
+  agentLoopRunContext: AgentLoopRunContextType
+): Promise<Result<Client, ServerSideMCPConnectionError>> {
+  const mcpServerView = await MCPServerViewResource.fetchById(
+    auth,
+    toolConfiguration.mcpServerViewId
+  );
+  if (!mcpServerView) {
+    return new Err({ type: "not_found" });
+  }
+
+  const connectionParams = makeServerSideMCPConnectionParams(mcpServerView);
+  const connectionResult = await connectToMCPServer(auth, {
+    params: connectionParams,
+    agentLoopContext: { runContext: agentLoopRunContext },
+  });
+
+  if (connectionResult.isErr()) {
+    if (
+      connectionResult.error instanceof
+      MCPServerPersonalAuthenticationRequiredError
+    ) {
+      return new Err({
+        type: "personal_auth_required",
+        provider: connectionResult.error.provider,
+        scope: connectionResult.error.scope,
+      });
+    }
+    if (
+      connectionResult.error instanceof
+      MCPServerRequiresAdminAuthenticationError
+    ) {
+      return new Err({
+        type: "admin_auth_required",
+        message: connectionResult.error.message,
+      });
+    }
+    return new Err({
+      type: "connection_failed",
+      message: connectionResult.error.message,
+    });
+  }
+
+  return new Ok(connectionResult.value);
+}
+
+/**
+ * Post-process a raw MCP tool result: enforce content limits and normalize
+ * metadata. Shared between the Temporal agent-loop path and the sandbox REST
+ * endpoint.
+ */
+function postProcessMCPToolResult(
+  toolCallResult: Awaited<ReturnType<Client["callTool"]>>,
+  toolConfiguration: MCPToolConfigurationType
+): CallToolResult {
+  // Type inference is not working here because of them using passthrough in the zod schema.
+  const content: CallToolResult["content"] = (toolCallResult.content ??
+    []) as CallToolResult["content"];
+
+  let serverType;
+  if (isClientSideMCPToolConfiguration(toolConfiguration)) {
+    serverType = "client";
+  } else if (isServerSideMCPToolConfiguration(toolConfiguration)) {
+    serverType = toolConfiguration.internalMCPServerId ? "internal" : "remote";
+  }
+
+  if (serverType === "remote") {
+    const isValid = isWithinRemoteContentLimit(content);
+    if (!isValid) {
+      const contentMetadata = generateRemoteContentMetadata(content);
+      logger.info(
+        { contentMetadata, isValid },
+        "Information on MCP tool result"
+      );
+
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: "The tool execution failed because the tool output exceeds the maximum size limit.",
+          },
+        ],
+      };
+    }
+  }
+  if (serverType === "internal" || serverType === "client") {
+    // The MCP SDK is now stripping extra properties from the tool result (both client and server).
+    // To keep the same behavior as before, we moved the extra properties on the _meta field of each resource item.
+    // We now need to move them back to the resource items root level.
+    content.forEach((item) => {
+      if (item.type === "resource" && item.resource._meta) {
+        item.resource = {
+          ...item.resource,
+          ...item.resource._meta,
+        };
+        delete item.resource._meta;
+      }
+    });
+  }
+
+  return {
+    isError: toolCallResult.isError === true ? true : false,
+    content,
+  };
+}
+
+/**
+ * Simplified MCP tool caller for REST/sandbox context. No progress
+ * notifications, no heartbeats, no Temporal retry logic. Never throws — all
+ * error paths return a CallToolResult with isError: true.
+ */
+export async function callMCPToolForSandbox(
+  auth: Authenticator,
+  inputs: Record<string, unknown> | undefined,
+  agentLoopRunContext: AgentLoopRunContextType
+): Promise<CallToolResult> {
+  const { toolConfiguration } = agentLoopRunContext;
+
+  if (!isMCPToolConfiguration(toolConfiguration)) {
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: "Could not call tool, invalid action configuration: not an MCP action configuration",
+        },
+      ],
+    };
+  }
+
+  if (!isServerSideMCPToolConfiguration(toolConfiguration)) {
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: "Sandbox tool calls only support server-side MCP tools.",
+        },
+      ],
+    };
+  }
+
+  const connResult = await connectServerSideMCP(
+    auth,
+    toolConfiguration,
+    agentLoopRunContext
+  );
+  if (connResult.isErr()) {
+    switch (connResult.error.type) {
+      case "not_found":
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: "Could not call tool: configuration not found",
+            },
+          ],
+        };
+      case "personal_auth_required":
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: "Tool requires personal authentication that cannot be completed from sandbox.",
+            },
+          ],
+        };
+      case "admin_auth_required":
+      case "connection_failed":
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `The tool execution failed with the following error: ${connResult.error.message}`,
+            },
+          ],
+        };
+      default:
+        assertNever(connResult.error);
+    }
+  }
+
+  const mcpClient = connResult.value;
+  try {
+    const toolCallResult = await tracer.trace(
+      "mcp.tool.call",
+      { resource: toolConfiguration.originalName },
+      async () =>
+        mcpClient.callTool(
+          {
+            name: toolConfiguration.originalName,
+            arguments: inputs,
+          },
+          CallToolResultSchema,
+          {
+            timeout:
+              toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+          }
+        )
+    );
+
+    return postProcessMCPToolResult(toolCallResult, toolConfiguration);
+  } catch (error) {
+    logger.error(
+      {
+        error,
+        toolName: toolConfiguration.originalName,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      },
+      "Exception calling MCP tool in callMCPToolForSandbox()"
+    );
+
+    if (isMcpTimeoutError(error)) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: "The tool execution timed out.",
+          },
+        ],
+      };
+    }
+
+    // OAuth errors during tool execution (e.g., expired token mid-call).
+    // Sandbox can't re-authenticate, so surface as an error.
+    if (error instanceof MCPOAuthProviderError) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: "Tool requires re-authentication that cannot be completed from sandbox.",
+          },
+        ],
+      };
+    }
+
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: `The tool execution failed with the following error: ${normalizeError(error).message}`,
+        },
+      ],
+    };
+  } finally {
+    await mcpClient.close();
+  }
 }
 
 function makeClientSideMCPConnectionParams(

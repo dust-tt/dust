@@ -97,7 +97,8 @@ export function createSandboxTools(
       const conversation = agentLoopContext?.runContext?.conversation;
       const agentConfiguration =
         agentLoopContext?.runContext?.agentConfiguration;
-      if (!conversation || !agentConfiguration) {
+      const agentMessage = agentLoopContext?.runContext?.agentMessage;
+      if (!conversation || !agentConfiguration || !agentMessage) {
         return new Err(new MCPError("No conversation context available."));
       }
 
@@ -145,6 +146,7 @@ export function createSandboxTools(
       const execId = generateExecId();
       const sandboxToken = await generateSandboxExecToken(auth, {
         agentConfiguration,
+        agentMessage,
         conversation,
         sandbox,
         execId,
