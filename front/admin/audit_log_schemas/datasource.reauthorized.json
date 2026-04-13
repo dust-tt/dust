@@ -1,0 +1,13 @@
+{
+  "action": "datasource.reauthorized",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "data_source" }
+  ],
+  "metadata": {
+    "dataSourceName": "string",
+    "provider": "string",
+    "newConnectionId": "string",
+    "actor_type": "string"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "action": "mcp_connection.deleted",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "mcp_connection" }
+  ],
+  "metadata": {
+    "connectionType": "string",
+    "serverType": "string",
+    "authType": "string",
+    "actor_type": "string"
+  }
+}
