@@ -1,7 +1,6 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -35,17 +34,6 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GrantsResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const featureFlags = await getFeatureFlags(auth);
-  if (!featureFlags.includes("email_restricted_sharing")) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Email-restricted sharing is not enabled for this workspace.",
-      },
-    });
-  }
-
   const { fileId } = req.query;
   if (!isString(fileId)) {
     return apiError(req, res, {
