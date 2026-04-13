@@ -1,10 +1,12 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { createUserMessage } from "@app/lib/api/assistant/conversation/messages";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { getConversationRoute } from "@app/lib/utils/router";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   ConversationType,
@@ -20,6 +22,8 @@ export type CreateConversationForkErrorCode =
   | "internal_error";
 
 const FORKED_CONVERSATION_TITLE_SUFFIX = " (forked)";
+const FORK_INITIALIZATION_MESSAGE_RANK = 0;
+const UNTITLED_CONVERSATION_TITLE = "Untitled conversation";
 
 function getForkedConversationTitle(title: string | null): string | null {
   if (title === null) {
@@ -31,6 +35,25 @@ function getForkedConversationTitle(title: string | null): string | null {
   }
 
   return `${title}${FORKED_CONVERSATION_TITLE_SUFFIX}`;
+}
+
+function escapeMarkdownLinkText(text: string): string {
+  return text.replace(/[\\[\]]/g, "\\$&");
+}
+
+function getForkInitializationMessageContent(
+  workspaceId: string,
+  parentConversation: ConversationWithoutContentType
+): string {
+  const parentConversationTitle = escapeMarkdownLinkText(
+    parentConversation.title ?? UNTITLED_CONVERSATION_TITLE
+  );
+  const parentConversationUrl = getConversationRoute(
+    workspaceId,
+    parentConversation.sId
+  );
+
+  return `The conversation was forked from [${parentConversationTitle}](${parentConversationUrl}).`;
 }
 
 async function copyConversationMCPServerViews(
@@ -83,6 +106,45 @@ async function copyConversationMCPServerViews(
   }
 
   return new Ok(undefined);
+}
+
+async function createForkInitializationMessage(
+  auth: Authenticator,
+  {
+    parentConversation,
+    childConversation,
+    transaction,
+  }: {
+    parentConversation: ConversationWithoutContentType;
+    childConversation: ConversationWithoutContentType;
+    transaction: Transaction;
+  }
+) {
+  // TODO(sessions): Replace this placeholder user message with a compaction message once
+  // compaction messages are rendered in the main conversation UI.
+  const user = auth.getNonNullableUser();
+
+  await createUserMessage(auth, {
+    conversation: childConversation,
+    content: getForkInitializationMessageContent(
+      auth.getNonNullableWorkspace().sId,
+      parentConversation
+    ),
+    metadata: {
+      type: "create",
+      user: user.toJSON(),
+      rank: FORK_INITIALIZATION_MESSAGE_RANK,
+      context: {
+        username: user.username,
+        fullName: user.fullName(),
+        email: user.email,
+        profilePictureUrl: user.imageUrl,
+        timezone: "UTC",
+        origin: "api",
+      },
+    },
+    transaction,
+  });
 }
 
 export async function createConversationFork(
@@ -155,12 +217,18 @@ export async function createConversationFork(
       return copyMCPServerViewsResult;
     }
 
+    await createForkInitializationMessage(auth, {
+      parentConversation: parentConversation.toJSON(),
+      childConversation: childConversation.toJSON(),
+      transaction,
+    });
+
     await ConversationResource.upsertParticipation(auth, {
       conversation: childConversation.toJSON(),
       action: "subscribed",
       user: auth.getNonNullableUser().toJSON(),
       transaction,
-      lastReadAt: branchedAt,
+      lastReadAt: new Date(),
     });
 
     await ConversationForkResource.makeNew(

@@ -155,7 +155,6 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
     });
     expect(res._getJSONData().conversation.depth).toBe(1);
     expect(res._getJSONData().conversation.spaceId).toBe(globalSpace.sId);
-    expect(res._getJSONData().conversation.content).toEqual([]);
   });
 
   it("returns 400 when the source message cannot be forked", async () => {
