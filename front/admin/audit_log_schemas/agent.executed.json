@@ -11,6 +11,7 @@
   "metadata": {
     "conversationId": "string",
     "agentName": "string",
-    "origin": "string"
+    "origin": "string",
+    "actor_type": "string"
   }
 }

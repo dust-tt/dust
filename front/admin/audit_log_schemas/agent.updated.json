@@ -11,6 +11,7 @@
   "metadata": {
     "agentName": "string",
     "scope": "string",
-    "model": "string"
+    "model": "string",
+    "actor_type": "string"
   }
 }

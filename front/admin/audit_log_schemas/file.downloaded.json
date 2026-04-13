@@ -1,0 +1,14 @@
+{
+  "action": "file.downloaded",
+  "targets": [
+    {
+      "type": "file"
+    }
+  ],
+  "metadata": {
+    "contentType": {
+      "type": "string"
+    },
+    "actor_type": "string"
+  }
+}

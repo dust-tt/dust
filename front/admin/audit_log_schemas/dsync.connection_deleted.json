@@ -6,6 +6,7 @@
     }
   ],
   "metadata": {
-    "directoryType": "string"
+    "directoryType": "string",
+    "actor_type": "string"
   }
 }

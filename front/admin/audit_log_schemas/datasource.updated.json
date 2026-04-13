@@ -10,6 +10,7 @@
   ],
   "metadata": {
     "dataSourceName": "string",
-    "field": "string"
+    "field": "string",
+    "actor_type": "string"
   }
 }

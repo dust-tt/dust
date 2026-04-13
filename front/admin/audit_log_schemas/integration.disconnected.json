@@ -1,0 +1,14 @@
+{
+  "action": "integration.disconnected",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "integration"
+    }
+  ],
+  "metadata": {
+    "actor_type": "string"
+  }
+}

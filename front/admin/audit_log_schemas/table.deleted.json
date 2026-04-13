@@ -1,0 +1,17 @@
+{
+  "action": "table.deleted",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "data_source"
+    },
+    {
+      "type": "table"
+    }
+  ],
+  "metadata": {
+    "actor_type": "string"
+  }
+}

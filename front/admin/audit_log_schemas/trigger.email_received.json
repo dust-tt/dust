@@ -10,6 +10,7 @@
   ],
   "metadata": {
     "senderEmail": "string",
-    "agentId": "string"
+    "agentId": "string",
+    "actor_type": "string"
   }
 }

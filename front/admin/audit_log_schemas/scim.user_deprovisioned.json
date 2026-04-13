@@ -11,6 +11,7 @@
   "metadata": {
     "email": "string",
     "directoryId": "string",
-    "triggersDeleted": "string"
+    "triggersDeleted": "string",
+    "actor_type": "string"
   }
 }

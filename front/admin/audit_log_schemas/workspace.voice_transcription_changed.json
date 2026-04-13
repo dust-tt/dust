@@ -1,0 +1,17 @@
+{
+  "action": "workspace.voice_transcription_changed",
+  "targets": [
+    {
+      "type": "workspace"
+    }
+  ],
+  "metadata": {
+    "previousValue": {
+      "type": "string"
+    },
+    "newValue": {
+      "type": "string"
+    },
+    "actor_type": "string"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "action": "conversation.deleted",
+  "targets": [
+    {
+      "type": "conversation"
+    }
+  ],
+  "metadata": {
+    "actor_type": "string"
+  }
+}

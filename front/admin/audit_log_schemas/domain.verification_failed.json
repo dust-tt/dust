@@ -7,6 +7,7 @@
   ],
   "metadata": {
     "domain": "string",
-    "reason": "string"
+    "reason": "string",
+    "actor_type": "string"
   }
 }

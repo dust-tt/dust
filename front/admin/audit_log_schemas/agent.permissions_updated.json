@@ -1,0 +1,17 @@
+{
+  "action": "agent.permissions_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "agent"
+    }
+  ],
+  "metadata": {
+    "editorsCount": {
+      "type": "string"
+    },
+    "actor_type": "string"
+  }
+}

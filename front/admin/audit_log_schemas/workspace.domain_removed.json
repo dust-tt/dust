@@ -1,0 +1,14 @@
+{
+  "action": "workspace.domain_removed",
+  "targets": [
+    {
+      "type": "workspace"
+    }
+  ],
+  "metadata": {
+    "domain": {
+      "type": "string"
+    },
+    "actor_type": "string"
+  }
+}
