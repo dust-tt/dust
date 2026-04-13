@@ -34,6 +34,8 @@ pub fn normalize_dns_name(value: &str) -> Result<String, DomainValidationError> 
 }
 
 fn is_valid_dns_name(value: &str) -> bool {
+    // A DNS name is at most 255 octets on the wire including the root terminator. We normalize
+    // away a trailing dot above, so the presentation form here is capped at 253 characters.
     if value.len() > 253 {
         return false;
     }
