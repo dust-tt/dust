@@ -17,7 +17,6 @@ Current functionality:
 Not implemented yet:
 
 - GCS policy reads
-- production lifecycle hardening around listener supervision and graceful tunnel draining
 - configurable idle or max-lifetime policy for established tunnels
 
 ## Configuration
