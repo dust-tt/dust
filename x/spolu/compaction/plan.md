@@ -117,19 +117,19 @@ PR #24107.
 - `postUserMessage` blocking: checks for active compaction (`status: "created"`) in conversation
   content, returns 409 if found.
 
-### - [ ] PR 3.4 — Implement compaction summary generation
+### - [x] PR 3.4 — Implement compaction summary generation
 
-The LLM call that produces the summary.
+PR #24111. The LLM call that produces the summary.
 
-- In `compactionActivity` (`front/temporal/agent_loop/activities/`):
-  - Fetch all messages since the last succeeded `CompactionMessage` (or all messages if none).
-  - Render them into a compaction prompt (adapt from Claude Code's approach — system prompt +
-    conversation + "summarize" instruction, see `x/spolu/compaction/claude_compaction.md` for
-    reference).
-  - Call the LLM via `callModel` / `queryModelWithStreaming` to generate the summary.
-  - Store the content on the `CompactionMessage`.
-- Add the compaction prompt template (can live in the activity file or a dedicated prompt file
-  under `front/temporal/agent_loop/`).
+- `renderMessagesForCompaction()`: renders messages since the last succeeded compaction into text,
+  prepending previous compaction summary as context if one exists.
+- `generateCompactionSummary()`: calls LLM via `runMultiActionsAgent` with an `<analysis>` +
+  `<summary>` block prompt adapted for Dust's multi-agent platform.
+- `extractSummary()`: parses LLM response, strips the `<analysis>` scratchpad.
+- Thread `SupportedModel` through the full chain: `compactConversation` →
+  `launchCompactionWorkflow` → workflow → activity → `runCompaction` →
+  `generateCompactionSummary`. The caller controls which model is used.
+- Add `"compaction"` to the LLM trace `operationType` union.
 
 ---
 

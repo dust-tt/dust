@@ -138,6 +138,7 @@ import {
   isUserMention,
   toMentionType,
 } from "@app/types/assistant/mentions";
+import type { SupportedModel } from "@app/types/assistant/models/types";
 import type {
   ContentFragmentContextType,
   ContentFragmentType,
@@ -2618,7 +2619,13 @@ export async function isConversationEventAllowedForAuth(
  */
 export async function compactConversation(
   auth: Authenticator,
-  { conversation }: { conversation: ConversationType }
+  {
+    conversation,
+    model,
+  }: {
+    conversation: ConversationType;
+    model: SupportedModel;
+  }
 ): Promise<
   Result<{ compactionMessage: CompactionMessageType }, APIErrorWithStatusCode>
 > {
@@ -2738,6 +2745,7 @@ export async function compactConversation(
     conversationId: conversation.sId,
     compactionMessageId: compactionMessage.sId,
     compactionMessageVersion: compactionMessage.version,
+    model,
   });
 
   return new Ok({ compactionMessage });
@@ -2754,7 +2762,7 @@ export async function updateCompactionMessageWithContentAndFinalStatus(
     conversation: ConversationWithoutContentType;
     compactionMessage: CompactionMessageType;
     status: "succeeded" | "failed";
-    content: string;
+    content: string | null;
   }
 ): Promise<{
   completedTs: number;
