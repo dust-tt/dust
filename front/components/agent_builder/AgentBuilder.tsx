@@ -274,13 +274,11 @@ export default function AgentBuilder({
       additionalSpaces: computedAdditionalSpaces,
       triggersToCreate: duplicateAgentId
         ? userOwnedTriggers.map((trigger) => ({
-              ...trigger,
-              editor: user.id,
-            }))
+            ...trigger,
+            editor: user.id,
+          }))
         : [],
-      triggersToUpdate: duplicateAgentId
-        ? []
-        : userOwnedTriggers,
+      triggersToUpdate: duplicateAgentId ? [] : userOwnedTriggers,
       triggersToDelete: [],
       agentSettings: {
         ...currentValues.agentSettings,
