@@ -142,6 +142,18 @@ function getErrorMessage(domain: string | null, reason: string | null) {
         </>
       );
 
+    case "sso-not-allowed":
+      return (
+        <>
+          {headerNode}
+          <p className={defaultErrorMessageClassName}>
+            SSO login is not available for this workspace.
+            <br />
+            Please contact your workspace administrator for assistance.
+          </p>
+        </>
+      );
+
     default:
       return (
         <>

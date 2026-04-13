@@ -1,9 +1,6 @@
 import assert from "node:assert";
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
-import {
-  disableWorkOSSSOAndSCIM,
-  getOrCreateWorkOSOrganization,
-} from "@app/lib/api/workos/organization";
+import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -54,6 +51,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   cacheWithRedis,
   invalidateCacheAfterCommit,
@@ -257,6 +255,29 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     SubscriptionResource._fetchActiveByWorkspaceModelIdUncached,
     SubscriptionResource.subscriptionCacheKeyResolver
   );
+
+  /**
+   * Invalidate subscription caches for all workspaces on a given plan.
+   * Should be called when plan attributes are updated (e.g., via Poke).
+   */
+  static async invalidateSubscriptionCacheForPlan(
+    planId: number
+  ): Promise<void> {
+    const subscriptions = await SubscriptionResource.model.findAll({
+      attributes: ["workspaceId"],
+      where: { planId, status: "active" },
+      // WORKSPACE_ISOLATION_BYPASS: We need to invalidate caches across all workspaces on this plan.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+
+    await concurrentExecutor(
+      subscriptions,
+      (sub) =>
+        SubscriptionResource.invalidateSubscriptionCache(sub.workspaceId),
+      { concurrency: 8 }
+    );
+  }
 
   private static fromCachedData(
     workspaceModelId: ModelId,
@@ -589,12 +610,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
 
     await this.endActiveSubscription(workspace);
 
-    // FREE_NO_PLAN never allows SSO/SCIM, clean up any existing WorkOS config.
-    await disableWorkOSSSOAndSCIM(workspace, {
-      disableSSO: true,
-      disableSCIM: true,
-    });
-
     await SubscriptionResource.invalidateSubscriptionCache(workspace.id);
 
     return new SubscriptionResource(
@@ -700,14 +715,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       if (result.isErr() && !activeSubscription.isMetronomeShadowBilled) {
         throw result.error;
       }
-    }
-
-    // Clean up WorkOS config for features the new plan doesn't allow.
-    if (!newPlan.isSSOAllowed || !newPlan.isSCIMAllowed) {
-      await disableWorkOSSSOAndSCIM(workspace, {
-        disableSSO: !newPlan.isSSOAllowed,
-        disableSCIM: !newPlan.isSCIMAllowed,
-      });
     }
 
     await SubscriptionResource.invalidateSubscriptionCache(workspace.id);
