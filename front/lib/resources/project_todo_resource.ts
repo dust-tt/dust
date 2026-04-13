@@ -261,6 +261,75 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     return this.fetchBySId(auth, matched[0].sId);
   }
 
+  // Returns all source entries grouped by logical todo sId. Because sources are
+  // linked to specific version rows, this queries across ALL versions for the
+  // given set of logical todo sIds and deduplicates by (sId, sourceType, sourceId).
+  static async fetchSourcesForTodoSIds(
+    auth: Authenticator,
+    { sIds }: { sIds: string[] }
+  ): Promise<
+    Map<string, Array<{ sourceType: ProjectTodoSourceType; sourceId: string }>>
+  > {
+    if (sIds.length === 0) {
+      return new Map();
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Get all version row IDs for these logical todos.
+    const allVersions = await ProjectTodoModel.findAll({
+      where: { workspaceId, sId: { [Op.in]: sIds } },
+      attributes: ["id", "sId"],
+    });
+
+    if (allVersions.length === 0) {
+      return new Map();
+    }
+
+    const versionIdToSId = new Map(
+      allVersions.map((v) => [v.id, v.sId] as const)
+    );
+
+    // Fetch sources for all version rows in a single query.
+    const sources = await ProjectTodoSourceModel.findAll({
+      where: {
+        workspaceId,
+        projectTodoId: {
+          [Op.in]: allVersions.map((v) => v.id),
+        },
+      },
+    });
+
+    // Group by logical todo sId, deduplicating by (sourceType, sourceId).
+    const result = new Map<
+      string,
+      Array<{ sourceType: ProjectTodoSourceType; sourceId: string }>
+    >();
+    const seen = new Set<string>();
+
+    for (const source of sources) {
+      const todoSId = versionIdToSId.get(source.projectTodoId);
+      if (!todoSId) {
+        continue;
+      }
+
+      const dedupeKey = `${todoSId}:${source.sourceType}:${source.sourceId}`;
+      if (seen.has(dedupeKey)) {
+        continue;
+      }
+      seen.add(dedupeKey);
+
+      const existing = result.get(todoSId) ?? [];
+      existing.push({
+        sourceType: source.sourceType,
+        sourceId: source.sourceId,
+      });
+      result.set(todoSId, existing);
+    }
+
+    return result;
+  }
+
   // ── Output conversation links (todo => conversation) ────────────────────
 
   async addOutputConversation(
@@ -356,6 +425,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       markedAsDoneByType: this.markedAsDoneByType,
       markedAsDoneByAgentConfigurationId:
         this.markedAsDoneByAgentConfigurationId,
+      sources: [],
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };
