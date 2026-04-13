@@ -24,6 +24,7 @@ pub async fn serve(listener: TcpListener, mut shutdown: watch::Receiver<bool>) -
 }
 
 async fn healthz() -> &'static str {
-    // TODO(sandbox-egress): Add readiness checks once the GCS-backed policy provider is wired.
+    // TODO(sandbox-egress): Add readiness checks once the proxy listener and policy provider are
+    // wired.
     "ok"
 }

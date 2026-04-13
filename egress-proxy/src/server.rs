@@ -1,5 +1,7 @@
 use crate::config::Config;
 use crate::health;
+use crate::jwt::JwtValidator;
+use crate::tls::load_tls_acceptor;
 use anyhow::{anyhow, Result};
 use tokio::net::TcpListener;
 use tokio::signal;
@@ -7,11 +9,27 @@ use tokio::sync::watch;
 use tracing::{error, info};
 
 pub async fn run(config: Config) -> Result<()> {
-    let listener = TcpListener::bind(config.health_addr).await?;
+    let Config {
+        listen_addr,
+        health_addr,
+        tls_cert_path,
+        tls_key_path,
+        jwt_secret,
+        temporary_allowlist,
+        environment,
+        unsafe_skip_ssrf_check,
+    } = config;
+
+    let _tls_acceptor = load_tls_acceptor(&tls_cert_path, &tls_key_path)?;
+    let _jwt_validator = JwtValidator::new(&jwt_secret);
+    let _temporary_allowlist = temporary_allowlist;
+
+    let listener = TcpListener::bind(health_addr).await?;
     let health_addr = listener.local_addr()?;
 
-    // TODO(sandbox-egress): Add the proxy listener, TLS loading, and protocol wiring in the next
-    // PR once the service shell has landed.
+    // TODO(sandbox-egress): Bind and accept the sandbox forwarder listener on listen_addr in the
+    // next PR once the parser/auth building blocks have landed.
+    let _ = (listen_addr, environment, unsafe_skip_ssrf_check);
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
     let mut health_handle = tokio::spawn(health::serve(listener, shutdown_rx));
 
