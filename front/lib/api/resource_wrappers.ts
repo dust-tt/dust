@@ -1,3 +1,8 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -152,6 +157,14 @@ export function withResourceFetchingFromRoute<
   ) => wrappedHandler(req, res, auth, {}, options, sessionOrKeyAuth);
 }
 
+function deriveAccessMethod(auth: Authenticator): string {
+  const key = auth.key();
+  if (key) {
+    return key.isSystem ? "system_key" : "api_key";
+  }
+  return "ui";
+}
+
 /**
  *  for /w/[wId]/spaces/[spaceId]/... => check the space exists, that it's
  *  not a conversation space, etc. and provide the space resource to the handler.
@@ -198,6 +211,26 @@ function withSpaceFromRoute<T, A extends SessionOrKeyAuthType>(
           api_error: {
             type: "space_not_found",
             message: "The space you requested was not found.",
+          },
+        });
+      }
+
+      // Emit space.accessed for restricted spaces only.
+      const spaceJSON = space.toJSON();
+      if (spaceJSON.isRestricted) {
+        void emitAuditLogEvent({
+          auth,
+          action: "space.accessed",
+          targets: [
+            buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+            buildAuditLogTarget("space", space),
+          ],
+          context: getAuditLogContext(auth, req),
+          metadata: {
+            spaceName: space.name,
+            spaceKind: spaceJSON.kind,
+            isRestricted: "true",
+            accessMethod: deriveAccessMethod(auth),
           },
         });
       }

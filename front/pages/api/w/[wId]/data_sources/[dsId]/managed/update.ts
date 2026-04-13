@@ -1,6 +1,11 @@
 /** @ignoreswagger */
 // Public API types are okay to use here because it's front/connectors communication.
 
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { registerSlackWebhookRouterEntry } from "@app/lib/api/data_sources";
@@ -141,6 +146,21 @@ async function handler(
           });
         }
       }
+
+      void emitAuditLogEvent({
+        auth,
+        action: "datasource.reauthorized",
+        targets: [
+          buildAuditLogTarget("workspace", owner),
+          buildAuditLogTarget("data_source", dataSource),
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          dataSourceName: dataSource.name,
+          provider: dataSource.connectorProvider ?? "unknown",
+          newConnectionId: bodyValidation.right.connectionId,
+        },
+      });
 
       // For Slack connections, update the signing secret in the webhook router
       if (dataSource.connectorProvider === "slack") {
