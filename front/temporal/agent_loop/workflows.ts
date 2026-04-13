@@ -11,6 +11,7 @@ import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
 import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
+import { isTerminalRunModelAndCreateActionsTimeout } from "@app/temporal/agent_loop/lib/workflow_failures";
 import { makeAgentLoopConversationTitleWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import {
   cancelAgentLoopSignal,
@@ -296,29 +297,44 @@ export async function agentLoopWorkflow({
     });
   } catch (err) {
     const workflowError = err instanceof Error ? err : new Error(String(err));
+    // This activity already turns terminal model/provider failures into a user-facing agent error
+    // when our code regains control. We swallow only the final Temporal StartToClose timeout so the
+    // workflow does not surface that infrastructure timeout as a separate workflow failure.
+    const shouldSwallowWorkflowFailure =
+      isTerminalRunModelAndCreateActionsTimeout(err);
 
     // Notify error in a non-cancellable scope to ensure it runs even if the workflow is canceled.
-    await CancellationScope.nonCancellable(async () => {
-      // Pass this execution's runIds and startStep to finalize so tracking
-      // workflows only process this execution's runs and actions.
-      deprecatePatch("pass-dustRunIds-to-finalize");
-      const argsWithRunIds = {
-        ...agentLoopArgs,
-        dustRunIds: runIds,
-        startStep,
-      };
-      if (cancelRequested) {
-        return finalizeCancelledAgentLoopActivity(authType, argsWithRunIds);
-      }
-      // Error objects don't survive JSON serialization across the workflow→activity boundary
-      // (Error.message is not enumerable), so we extract the relevant fields into a plain object
-      // before passing to the activity.
-      await finalizeErroredAgentLoopActivity(authType, argsWithRunIds, {
+    // Pass this execution's runIds and startStep to finalize so tracking
+    // workflows only process this execution's runs and actions.
+    deprecatePatch("pass-dustRunIds-to-finalize");
+    const argsWithRunIds = {
+      ...agentLoopArgs,
+      dustRunIds: runIds,
+      startStep,
+    };
+
+    if (cancelRequested) {
+      await CancellationScope.nonCancellable(async () =>
+        finalizeCancelledAgentLoopActivity(authType, argsWithRunIds)
+      );
+      return;
+    }
+
+    await CancellationScope.nonCancellable(async () =>
+      finalizeErroredAgentLoopActivity(authType, argsWithRunIds, {
+        // Error objects don't survive JSON serialization across the workflow→activity boundary
+        // (Error.message is not enumerable), so we extract the relevant fields into a plain object
+        // before passing to the activity.
         message: workflowError.message,
         name: workflowError.name,
-      });
-      throw err;
-    });
+      })
+    );
+
+    if (shouldSwallowWorkflowFailure) {
+      return;
+    }
+
+    throw err;
   }
 }
 
