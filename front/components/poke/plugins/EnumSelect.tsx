@@ -65,7 +65,6 @@ export function EnumSelect({
       </PopoverTrigger>
       <PopoverContent
         className="z-[100] w-[var(--radix-popover-trigger-width)]"
-        mountPortal={false}
         onKeyDown={(e) => {
           e.stopPropagation();
         }}
