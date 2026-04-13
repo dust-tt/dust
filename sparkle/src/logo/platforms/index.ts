@@ -36,6 +36,7 @@ export { default as GoogleSpreadsheetLogo } from "./GoogleSpreadsheet";
 export { default as GranolaLogo } from "./Granola";
 export { default as GrokLogo } from "./Grok";
 export { default as GuruLogo } from "./Guru";
+export { default as HexLogo } from "./Hex";
 export { default as HubspotLogo } from "./Hubspot";
 export { default as HuggingFaceLogo } from "./HuggingFace";
 export { default as ImageLogo } from "./Image";
