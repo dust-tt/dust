@@ -484,6 +484,13 @@ export async function finalizeSkillAggregationActivity({
     "approved"
   );
 
+  // Record that reinforcement analysis has completed for this skill.
+  const skill = await SkillResource.fetchById(auth, skillId);
+  if (!skill) {
+    throw new Error(`Skill not found: ${skillId}`);
+  }
+  await skill.recordReinforcementAnalysisCompletion();
+
   logger.info(
     {
       skillId,
@@ -996,23 +1003,4 @@ export async function processSkillAggregationBatchResultActivity({
     reinforcementConversationId: firstConvId,
     toolActionInfo,
   };
-}
-
-/**
- * Record that reinforcement analysis has completed for a skill.
- * Sets `lastReinforcementAnalysisAt` on the skill configuration.
- */
-export async function recordSkillReinforcementWorkflowCompletionActivity({
-  workspaceId,
-  skillId,
-}: {
-  workspaceId: string;
-  skillId: string;
-}): Promise<void> {
-  const auth = await getAuthForWorkspace(workspaceId);
-  const skill = await SkillResource.fetchById(auth, skillId);
-  if (!skill) {
-    throw new Error(`Skill not found: ${skillId}`);
-  }
-  await skill.recordReinforcementAnalysisCompletion();
 }
