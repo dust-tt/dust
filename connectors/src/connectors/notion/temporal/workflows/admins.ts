@@ -246,10 +246,15 @@ export async function updateOrphanedResourcesParentsWorkflow({
   } | null = null;
 
   do {
-    const { pageIds, databaseIds, nextCursor } = await getAllOrphanedResources({
-      connectorId,
-      cursor,
-    });
+    const {
+      pageIds,
+      databaseIds,
+      nextCursor,
+    }: Awaited<ReturnType<typeof activities.getAllOrphanedResources>> =
+      await getAllOrphanedResources({
+        connectorId,
+        cursor,
+      });
 
     const allResources: Array<{ notionId: string; type: "page" | "database" }> =
       [

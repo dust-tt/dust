@@ -134,13 +134,14 @@ export async function googleDriveFullSync({
       throw new Error("folderId should be defined");
     }
     do {
-      const res = await syncFiles(
-        connectorId,
-        folder,
-        startSyncTs,
-        nextPageToken,
-        mimeTypeFilter
-      );
+      const res: Awaited<ReturnType<typeof activities.syncFiles>> =
+        await syncFiles(
+          connectorId,
+          folder,
+          startSyncTs,
+          nextPageToken,
+          mimeTypeFilter
+        );
       nextPageToken = res.nextPageToken ? res.nextPageToken : undefined;
       totalCount += res.count;
       foldersToBrowse = foldersToBrowse.concat(res.subfolders);
@@ -375,13 +376,14 @@ export async function googleDriveFolderSync({
 
     // Sync all files in this folder (with pagination)
     do {
-      const res = await syncFiles(
-        connectorId,
-        folder,
-        startSyncTs,
-        nextPageToken,
-        mimeTypeFilter
-      );
+      const res: Awaited<ReturnType<typeof activities.syncFiles>> =
+        await syncFiles(
+          connectorId,
+          folder,
+          startSyncTs,
+          nextPageToken,
+          mimeTypeFilter
+        );
       nextPageToken = res.nextPageToken ? res.nextPageToken : undefined;
       totalCount += res.count;
       // Add discovered subfolders to the queue
