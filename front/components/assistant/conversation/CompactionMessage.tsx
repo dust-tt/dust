@@ -1,9 +1,9 @@
-import type { CompactionVirtuosoMessage } from "@app/components/assistant/conversation/types";
 import { formatTimestring } from "@app/lib/utils/timestamps";
+import type { CompactionMessageType } from "@app/types/assistant/conversation";
 import { AnimatedText, Spinner } from "@dust-tt/sparkle";
 
 interface CompactionMessageProps {
-  message: CompactionVirtuosoMessage;
+  message: CompactionMessageType;
 }
 
 export function CompactionMessage({ message }: CompactionMessageProps) {

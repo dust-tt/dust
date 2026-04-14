@@ -565,8 +565,7 @@ export const ConversationViewer = ({
           case "compaction_message_new":
             if (ref.current) {
               const compactionMessage = event.message;
-              const predicate =
-                getPredicateForRankAndBranch(compactionMessage);
+              const predicate = getPredicateForRankAndBranch(compactionMessage);
               const exists = ref.current.data.find(predicate);
 
               if (!exists) {
