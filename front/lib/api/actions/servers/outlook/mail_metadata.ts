@@ -288,7 +288,7 @@ export const OUTLOOK_MAIL_SERVER = {
     description: "Read emails, manage drafts and contacts.",
     authorization: {
       provider: "microsoft_tools",
-      supported_use_cases: ["personal_actions", "platform_actions"],
+      supported_use_cases: ["personal_actions"],
       scope:
         "Mail.ReadWrite.Shared Mail.Send Contacts.ReadWrite Contacts.ReadWrite.Shared User.Read offline_access",
       availableScopes: [
