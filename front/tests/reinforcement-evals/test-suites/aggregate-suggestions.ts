@@ -1,4 +1,5 @@
 import {
+  editSkillCallCount,
   editSkillWithInstructions,
   editSkillWithTool,
   mockTool,
@@ -292,6 +293,79 @@ as a previously rejected suggestion. The analyst must not recreate it.
 Score 0 if it creates a suggestion similar to the rejected one (empathy/acknowledging frustration).
 Score 1 if it creates an unrelated suggestion.
 Score 3 if no suggestion is created.`,
+    },
+    {
+      scenarioId: "split-unrelated-topics",
+      type: "aggregation",
+      skillConfig: {
+        name: "Customer Support",
+        sId: SKILL_SID,
+        description: "Handles customer support inquiries",
+        instructions:
+          "Help customers with their questions. Be professional. Use the CRM tool to look up customer accounts.",
+      },
+      syntheticSuggestions: [
+        makeInstructionSuggestion({
+          sId: "sug-tone-1",
+          analysis:
+            "User found the responses cold and transactional. The skill should adopt a warmer, more empathetic tone to make customers feel heard.",
+          instructionEdits: [
+            {
+              old_string: "Be professional.",
+              new_string:
+                "Be professional and empathetic. Acknowledge the customer's feelings before moving to solutions.",
+            },
+          ],
+        }),
+        makeInstructionSuggestion({
+          sId: "sug-tone-2",
+          analysis:
+            "User felt the skill's language was overly formal and robotic. Instructions should encourage a more natural, conversational style.",
+          instructionEdits: [
+            {
+              old_string: "Be professional.",
+              new_string:
+                "Be professional but approachable. Use natural, conversational language instead of formal or robotic phrasing.",
+            },
+          ],
+        }),
+        makeInstructionSuggestion({
+          sId: "sug-tool-1",
+          analysis:
+            "User asked to update their account email but the skill looked up the wrong account because it searched by name instead of account ID. Instructions should require using the account ID when calling the CRM tool.",
+          instructionEdits: [
+            {
+              old_string: "Use the CRM tool to look up customer accounts.",
+              new_string:
+                "Use the CRM tool to look up customer accounts. Always search by account ID rather than customer name to avoid fetching the wrong record.",
+            },
+          ],
+        }),
+        makeInstructionSuggestion({
+          sId: "sug-tool-2",
+          analysis:
+            "User reported the skill retrieved outdated account data. The CRM tool must be called with the refresh flag so the skill always works with the latest information.",
+          instructionEdits: [
+            {
+              old_string: "Use the CRM tool to look up customer accounts.",
+              new_string:
+                "Use the CRM tool to look up customer accounts. Pass the refresh flag when calling the CRM tool to ensure account data is up to date.",
+            },
+          ],
+        }),
+      ],
+      workspaceContext: WORKSPACE_CONTEXT,
+      expectedToolCalls: [editSkillCallCount(2)],
+      judgeCriteria: `The analyst receives 4 synthetic suggestions: 2 about tone (warmth/empathy and natural language)
+and 2 about CRM tool usage (search by ID, use refresh flag). These are unrelated topics and MUST
+result in 2 separate edit_skill calls — one for tone, one for CRM tool usage.
+
+Score 0 if only 1 edit_skill call is made (topics incorrectly merged into one suggestion).
+Score 0 if more than 2 edit_skill calls are made (suggestions not merged within each topic).
+Score 1 if 2 calls are made but each call mixes both topics instead of grouping by theme.
+Score 2 if 2 calls are made and correctly split by topic but the merged edits are incomplete.
+Score 3 if 2 calls are made, one covering tone (warmth + natural language) and one covering CRM
+tool usage (account ID + refresh flag), each with well-written merged instruction edits.`,
     },
     {
       scenarioId: "drop-minor-single",

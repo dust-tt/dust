@@ -91,9 +91,7 @@ interface InputParamSchema {
   required?: string[];
 }
 
-function formatInputParams(
-  inputSchema: InputParamSchema | undefined
-): string {
+function formatInputParams(inputSchema: InputParamSchema | undefined): string {
   if (inputSchema?.type !== "object" || !inputSchema.properties) {
     return "  Input parameters: none";
   }
@@ -149,11 +147,7 @@ export function formatMcpDescription(
     for (const tool of server.tools) {
       lines.push(`- ${tool.name}`);
       lines.push(`  Description: ${tool.description}`);
-      lines.push(
-        formatInputParams(
-          tool.inputSchema
-        )
-      );
+      lines.push(formatInputParams(tool.inputSchema));
       lines.push("");
     }
   }

@@ -152,6 +152,16 @@ export function validateToolCallAssertion(
       }
       return { success: true };
     }
+    case "editSkillCallCount": {
+      const actual = toolCalls.filter((tc) => tc.name === "edit_skill").length;
+      if (actual !== assertion.count) {
+        return {
+          success: false,
+          error: `Expected exactly ${assertion.count} edit_skill call(s), but got ${actual}`,
+        };
+      }
+      return { success: true };
+    }
     case "calledDescribeMcp": {
       const called = toolCalls.some(
         (tc) =>
