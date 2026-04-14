@@ -11,13 +11,15 @@ interface ContextUsageIndicatorProps {
   buttonSize: "xs" | "sm";
 }
 
+interface CircleProgressProps {
+  percentage: number;
+  size?: number;
+}
+
 function CircleProgress({
   percentage,
   size = 16,
-}: {
-  percentage: number;
-  size?: number;
-}) {
+}: CircleProgressProps) {
   const strokeWidth = size * 0.12;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
