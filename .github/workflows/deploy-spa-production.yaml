@@ -63,7 +63,7 @@ jobs:
 
       - name: Create deploy tag
         if: ${{ github.event.client_payload.sha && github.event.client_payload.image_tag }}
-        uses: actions/github-script@v7.1.0
+        uses: actions/github-script@v9.0.0
         with:
           script: |
             const tag = `refs/tags/spa/${{ matrix.app }}/${{ github.event.client_payload.image_tag }}`;

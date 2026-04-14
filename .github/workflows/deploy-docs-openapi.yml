@@ -15,6 +15,6 @@ jobs:
         uses: actions/checkout@v6.0.2
 
       - name: Run `openapi` command 🚀
-        uses: readmeio/rdme@v8
+        uses: readmeio/rdme@v10.6.2
         with:
           rdme: openapi front/public/swagger.json --version=v1.1 --key=${{ secrets.README_API_KEY }} --id=66cee36af1922700458e4678

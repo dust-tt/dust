@@ -218,7 +218,7 @@ jobs:
 
       - name: Generate token
         id: generate-token
-        uses: actions/create-github-app-token@v2.2.2
+        uses: actions/create-github-app-token@v3.1.1
         with:
           app-id: ${{ secrets.INFRA_DISPATCH_APP_ID }}
           private-key: ${{ secrets.INFRA_DISPATCH_APP_PRIVATE_KEY }}
@@ -226,7 +226,7 @@ jobs:
           repositories: dust-infra
 
       - name: Trigger dust-infra workflow
-        uses: actions/github-script@v7.1.0
+        uses: actions/github-script@v9.0.0
         env:
           OWNER: ${{ github.repository_owner }}
           COMPONENT: ${{ inputs.component }}
