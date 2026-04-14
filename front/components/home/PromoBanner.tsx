@@ -42,10 +42,7 @@ export function PromoBanner() {
     if (!CURRENT_PROMO) {
       return;
     }
-    if (
-      CURRENT_PROMO.expiresAt &&
-      new Date() > CURRENT_PROMO.expiresAt
-    ) {
+    if (CURRENT_PROMO.expiresAt && new Date() > CURRENT_PROMO.expiresAt) {
       return;
     }
     if (sessionStorage.getItem(storageKey(CURRENT_PROMO.id)) !== "true") {
