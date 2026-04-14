@@ -24,7 +24,7 @@ export function WithStreamDebug<I, O, T extends AbstractConstructor<I, O>>(
         yield {
           type: "error",
           content: {
-            type: "input_configuration",
+            type: "input_configuration_error",
             message: "Configuration is invalid.",
             originalError: configValidationResult.error.format(),
           },

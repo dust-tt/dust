@@ -77,7 +77,21 @@ export interface SuccessEvent {
   metadata: Metadata;
 }
 
-export const ERROR_TYPES = ["input_configuration", "stream"] as const;
+export const ERROR_TYPES = [
+  "input_configuration_error",
+  // HTTP errors
+  "rate_limit_error",
+  "overloaded_error",
+  "invalid_request_error",
+  "authentication_error",
+  "permission_error",
+  "not_found_error",
+  "network_error",
+  "timeout_error",
+  "server_error",
+  "stream_error",
+  "unknown_error",
+] as const;
 export type ErrorType = (typeof ERROR_TYPES)[number];
 export type ErrorContent = {
   type: ErrorType;
