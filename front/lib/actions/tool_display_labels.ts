@@ -560,7 +560,6 @@ function getDynamicToolDisplayLabels({
     case "zendesk":
     case "schedules_management":
     case "poke":
-    case "project_conversation":
     default:
       return null;
   }

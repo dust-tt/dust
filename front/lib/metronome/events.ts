@@ -135,7 +135,6 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   project_manager: "platform",
   project_todos: "platform",
   poke: "platform",
-  project_conversation: "platform",
   sandbox: "platform",
   ask_user_question: "platform",
 };
