@@ -28,6 +28,7 @@ on:
           - oauth
           - viz
           - dante
+          - egress-proxy
       check_deployment_blocked:
         description: "Check #deployment locks or force deploy"
         required: true
@@ -211,7 +212,10 @@ jobs:
 
   deploy:
     needs: [prepare, notify-start, build, deploy-app, deploy-poke, ensure-sandbox-images]
-    if: ${{ !failure() && !cancelled() && (needs.ensure-sandbox-images.result == 'success' || needs.ensure-sandbox-images.result == 'skipped') }}
+    # egress-proxy has no dust-infra helm release yet; this workflow is used as a
+    # build-and-publish-only path until the chart lands. Drop this guard once the
+    # release exists.
+    if: ${{ !failure() && !cancelled() && inputs.component != 'egress-proxy' && (needs.ensure-sandbox-images.result == 'success' || needs.ensure-sandbox-images.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
