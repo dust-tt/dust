@@ -1,5 +1,4 @@
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
-import { stripMarkdown } from "@app/types/shared/utils/string_utils";
 import { cn, Markdown } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -46,12 +45,9 @@ export function ThinkingStep({
     );
   }
 
-  const collapsedTextContent = stripMarkdown(content).trim();
   const needsTruncation =
-    isMessageDone && collapsedTextContent.length > MAX_THINKING_DISPLAY_LENGTH;
-
-  const collapsedPreviewContent =
-    collapsedTextContent.slice(0, MAX_THINKING_DISPLAY_LENGTH) + "…";
+    isMessageDone && content.length > MAX_THINKING_DISPLAY_LENGTH;
+  const isCollapsed = needsTruncation && !isExpanded;
 
   return (
     <div
@@ -63,14 +59,13 @@ export function ThinkingStep({
       }
     >
       <TimelineRow icon="circle" isLast={isLast}>
-        <div className="min-w-0 flex-1">
-          {needsTruncation && !isExpanded ? (
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              {collapsedPreviewContent}
-            </span>
-          ) : (
-            markdown
+        <div
+          className={cn(
+            "min-w-0 flex-1",
+            isCollapsed && "line-clamp-3"
           )}
+        >
+          {markdown}
         </div>
       </TimelineRow>
     </div>
