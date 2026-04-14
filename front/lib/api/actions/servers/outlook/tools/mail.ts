@@ -485,6 +485,69 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     ]);
   },
 
+  send_mail: async (
+    {
+      to,
+      cc,
+      bcc,
+      subject,
+      contentType = "text",
+      body,
+      saveToSentItems = true,
+    },
+    { authInfo }
+  ) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const message: Record<string, unknown> = {
+      subject,
+      body: {
+        contentType,
+        content: body,
+      },
+      toRecipients: to.map((email) => ({
+        emailAddress: { address: email },
+      })),
+    };
+
+    if (cc && cc.length > 0) {
+      message.ccRecipients = cc.map((email) => ({
+        emailAddress: { address: email },
+      }));
+    }
+
+    if (bcc && bcc.length > 0) {
+      message.bccRecipients = bcc.map((email) => ({
+        emailAddress: { address: email },
+      }));
+    }
+
+    const response = await fetchFromOutlook("/me/sendMail", accessToken, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message,
+        saveToSentItems,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await getErrorText(response);
+      return new Err(
+        new MCPError(
+          `Failed to send email: ${response.status} ${response.statusText} - ${errorText}`
+        )
+      );
+    }
+
+    return new Ok([{ type: "text" as const, text: "Email sent successfully" }]);
+  },
+
   get_contacts: async (
     { search, top = 20, skip = 0, select },
     { authInfo }
