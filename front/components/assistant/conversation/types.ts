@@ -7,6 +7,7 @@ import type { DustError } from "@app/lib/error";
 import type { AgentMCPActionType } from "@app/types/actions";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
+  CompactionMessageType,
   ConversationWithoutContentType,
   InlineActivityStep,
   LightAgentMessageType,
@@ -86,9 +87,12 @@ export type AgentMessageStateWithControlEvent =
   | AgentMessageStateEvent
   | { type: "end-of-stream" };
 
+export type CompactionVirtuosoMessage = CompactionMessageType;
+
 export type VirtuosoMessage =
   | AgentMessageWithStreaming
-  | UserMessageTypeWithContentFragments;
+  | UserMessageTypeWithContentFragments
+  | CompactionVirtuosoMessage;
 
 export type VirtuosoMessageListContext = {
   owner: LightWorkspaceType;
@@ -153,6 +157,10 @@ export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
   );
 };
 
+export const isCompactionMessage = (
+  msg: VirtuosoMessage
+): msg is CompactionVirtuosoMessage => msg.type === "compaction_message";
+
 export const isUserMessage = (
   msg: VirtuosoMessage
 ): msg is UserMessageTypeWithContentFragments =>
@@ -193,14 +201,19 @@ export const isSidekickBootstrapMessage = (
   return message.context.origin === "agent_sidekick" && message.rank === 0;
 };
 
+export const makeCompactionVirtuosoMessage = (
+  message: CompactionMessageType
+): CompactionVirtuosoMessage => message;
+
 export const convertLightMessageTypeToVirtuosoMessages = (
   messages: LightMessageType[]
-) =>
-  messages
-    // TODO(compaction): Add support for compaction messages in the UI instead of filtering.
-    .filter((message) => !isCompactionMessageType(message))
-    .map((message) =>
-      isUserMessageTypeWithContentFragments(message)
-        ? message
-        : makeInitialMessageStreamState(message)
-    );
+): VirtuosoMessage[] =>
+  messages.map((message) => {
+    if (isCompactionMessageType(message)) {
+      return makeCompactionVirtuosoMessage(message);
+    }
+    if (isUserMessageTypeWithContentFragments(message)) {
+      return message;
+    }
+    return makeInitialMessageStreamState(message);
+  });
