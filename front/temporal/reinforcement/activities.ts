@@ -10,7 +10,7 @@ import {
 import type { BatchStatus } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { notifySkillSuggestionsReady } from "@app/lib/notifications/workflows/skill-suggestions-ready";
 import {
   prepareReinforcedToolActions,
@@ -493,7 +493,9 @@ export async function finalizeSkillAggregationActivity({
   }
   await skill.recordReinforcementAnalysisCompletion();
 
-  if (suggestionsCreated > 0 && !disableNotifications) {
+  const hasReinforcementUi = await hasFeatureFlag(auth, "reinforcement_ui");
+
+  if (suggestionsCreated > 0 && !disableNotifications && hasReinforcementUi) {
     const skillType = skill.toJSON(auth);
     const editors = (await skill.listEditors(auth)) ?? [];
     const editorTypes = editors.map((e) => e.toJSON());
