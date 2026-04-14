@@ -49,6 +49,8 @@ const EXCLUDED_MCP_SERVERS = new Set([
   "slack_bot",
   "openai_usage",
   "http_client",
+  // Internal admin only
+  "poke",
 ]);
 
 // Connectors to exclude (hidden or bot-only or internal)
