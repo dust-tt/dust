@@ -247,6 +247,14 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return null;
     }
 
+    const topMargin = getMessageTopMargin({
+      data,
+      prevData,
+      isPreviousMessageSameSender,
+      isSteeredAgentMessage,
+      isPreviousAgentMessageSteered,
+    });
+
     if (isCompactionMessage(data)) {
       // TODO(compaction): handle failed compaction display
       if (data.status === "failed") {
@@ -255,7 +263,11 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return (
         <div
           ref={ref}
-          className={cn("mx-auto max-w-conversation mt-8", !nextData && "mb-8")}
+          className={cn(
+            "mx-auto max-w-conversation",
+            topMargin,
+            !nextData && "mb-8"
+          )}
         >
           <CompactionMessage message={data} />
         </div>
@@ -266,14 +278,6 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     if (!context.conversation) {
       return null;
     }
-
-    const topMargin = getMessageTopMargin({
-      data,
-      prevData,
-      isPreviousMessageSameSender,
-      isSteeredAgentMessage,
-      isPreviousAgentMessageSteered,
-    });
 
     return (
       <>

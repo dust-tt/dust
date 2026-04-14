@@ -8,7 +8,7 @@ interface CompactionMessageProps {
 
 export function CompactionMessage({ message }: CompactionMessageProps) {
   return (
-    <div className="flex items-center justify-center gap-1.5 py-4">
+    <div className="flex items-center justify-center gap-1.5">
       {message.status === "succeeded" && (
         <span className="text-base text-muted-foreground">
           Context compacted · {formatTimestring(message.created)}
