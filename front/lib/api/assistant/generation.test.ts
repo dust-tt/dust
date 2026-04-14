@@ -1,12 +1,4 @@
-import {
-  CONVERSATION_FILES_SERVER_NAME,
-  CONVERSATION_SEARCH_FILES_ACTION_NAME,
-} from "@app/lib/api/actions/servers/conversation_files/metadata";
-import { PROJECT_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/project_manager/metadata";
-import {
-  constructProjectContextSection,
-  constructPromptMultiActions,
-} from "@app/lib/api/assistant/generation";
+import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { buildMemoriesContext } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import {
   globalAgentInjectsMemory,
@@ -33,88 +25,6 @@ import type {
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { WorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it } from "vitest";
-
-describe("constructProjectContextSection", () => {
-  it("should return null when conversation is undefined", () => {
-    const result = constructProjectContextSection(undefined);
-    expect(result).toBeNull();
-  });
-
-  it("should return null when conversation has no spaceId", () => {
-    const conversation: ConversationWithoutContentType = {
-      id: 1,
-      sId: "conv-123",
-      created: 1234567890,
-      updated: 1234567890,
-      unread: false,
-      lastReadMs: 1234567890,
-      actionRequired: false,
-      hasError: false,
-      title: "Test Conversation",
-      spaceId: null,
-      triggerId: null,
-      depth: 0,
-      requestedSpaceIds: [],
-      metadata: {},
-      branchId: null,
-    };
-
-    const result = constructProjectContextSection(conversation);
-    expect(result).toBeNull();
-  });
-
-  it("should return project context section when conversation has spaceId", () => {
-    const conversation: ConversationWithoutContentType = {
-      id: 1,
-      sId: "conv-123",
-      created: 1234567890,
-      updated: 1234567890,
-      unread: false,
-      lastReadMs: 1234567890,
-      actionRequired: false,
-      hasError: false,
-      title: "Test Conversation",
-      spaceId: "space-456",
-      triggerId: null,
-      depth: 0,
-      requestedSpaceIds: [],
-      metadata: {},
-      branchId: null,
-    };
-
-    const result = constructProjectContextSection(conversation);
-
-    expect(result).not.toBeNull();
-    expect(result).toEqual(`# PROJECT CONTEXT
-
-This conversation is associated with a project. The project provides:
-- Persistent knowledge storage shared accross this project
-- Project metadata (description and URLs) for organizational context
-- Semantic search over project knowledge and project conversation transcripts
-- Collaborative context that persists beyond individual conversations
-
-## Using Project Tools
-
-**${PROJECT_MANAGER_SERVER_NAME}**: Manage project knowledge (uploaded files, linked context nodes, connected data), metadata, and conversations. Use \`semantic_search\` to run semantic retrieval over project content; set \`searchScope\` to \`knowledge\` (files and linked nodes only), \`conversations\` (transcripts in the project data source only), or \`all\` (default when omitted). Optional \`nodeIds\` narrows search to specific content nodes, same idea as company filesystem search.
-
-## Tool Usage Priority
-
-When you need to find information, prefer this order (skip steps if the relevant tools are not in your tool list):
-1. **Project overview**: \`${PROJECT_MANAGER_SERVER_NAME}\` \`get_information\` — project URL, description, and what is attached to the project.
-2. **This conversation's attachments** (only when \`${CONVERSATION_FILES_SERVER_NAME}\` is available): \`${CONVERSATION_SEARCH_FILES_ACTION_NAME}\` on \`${CONVERSATION_FILES_SERVER_NAME}\` — search files attached to the current conversation.
-3. **Project-wide search**: \`${PROJECT_MANAGER_SERVER_NAME}\` \`semantic_search\` — search project knowledge and/or conversations in the project; usually the best source for project-specific questions.
-4. **Company-wide**: If still insufficient, use \`company_data_*\` tools and \`search\` for broader company data sources.
-
-IMPORTANT: Always follow this priority order. Do not start by searching company-wide data before exhausting project knowledge.
-
-## Project attachments vs conversation attachments
-- **Project attachments**: Persist for every conversation in the project; managed with \`${PROJECT_MANAGER_SERVER_NAME}\` (e.g. \`add_file\`).
-- **Conversation attachments**: Only for this conversation; use \`${CONVERSATION_FILES_SERVER_NAME}\` tools when present.
-
-To keep something for later project-wide use, add it with \`add_file\`. To reuse an existing project file in this thread, use \`attach_to_conversation\`.
-`);
-  });
-});
 
 describe("constructPromptMultiActions - system prompt stability", () => {
   // This test ensures that the system prompt remains stable across multiple calls

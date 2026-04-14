@@ -555,6 +555,7 @@ function _getDustLikeGlobalAgent(
       "go-deep",
       "mention_users",
       "sandbox",
+      "projects",
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     omittedThinking: omittedThinking ?? false,
