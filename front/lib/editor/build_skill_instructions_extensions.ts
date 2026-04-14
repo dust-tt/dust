@@ -19,23 +19,23 @@ export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
  *
  * @param isReadOnly - When true, interactive editing extensions are omitted.
  * @param editableExtensions - Extensions appended when `isReadOnly` is false.
- * @param serverSide - When true, includes InstructionsDocumentExtension,
- *   InstructionsRootExtension, and BlockIdExtension for server-side HTML
+ * @param withDocumentExtensions - When true, includes InstructionsDocumentExtension,
+ *   InstructionsRootExtension, and BlockIdExtension (document + block IDs).
  */
 export function buildSkillInstructionsExtensions(
   isReadOnly: boolean,
   editableExtensions: Extensions = [],
-  { serverSide = false }: { serverSide?: boolean } = {}
+  { withDocumentExtensions = false }: { withDocumentExtensions?: boolean } = {}
 ): Extensions {
   const baseExtensions: Extensions = [
-    ...(serverSide
+    ...(withDocumentExtensions
       ? [InstructionsDocumentExtension, InstructionsRootExtension]
       : []),
-    Markdown,
+    Markdown.configure(),
     StarterKit.configure({
       // document: false is required when InstructionsDocumentExtension is present
       // (it replaces StarterKit's default Document node).
-      ...(serverSide ? { document: false } : {}),
+      ...(withDocumentExtensions ? { document: false } : {}),
       orderedList: {
         HTMLAttributes: {
           class: markdownStyles.orderedList(),
@@ -72,12 +72,12 @@ export function buildSkillInstructionsExtensions(
       },
     }),
     HeadingExtension.configure({
-      levels: [1, 2, 3],
+      levels: [1, 2, 3, 4, 5, 6],
       HTMLAttributes: {
         class: "mt-4 mb-3",
       },
     }),
-    ...(serverSide ? [BlockIdExtension] : []),
+    ...(withDocumentExtensions ? [BlockIdExtension] : []),
     KnowledgeNode,
     RawMarkdownBlock,
     ...rawMarkdownBlockParsers,

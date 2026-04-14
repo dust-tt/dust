@@ -85,7 +85,7 @@ export const KnowledgeNode = Node.create<{}>({
           // Primary path: deserialization from renderHTML (span with JSON data).
           const data = element.getAttribute("data-selected-items");
           if (data) {
-            return JSON.parse(data);
+            return JSON.parse(decodeURIComponent(data));
           }
 
           // Fallback path: deserialization from a <knowledge> HTML element.
@@ -113,7 +113,9 @@ export const KnowledgeNode = Node.create<{}>({
           return [];
         },
         renderHTML: (attributes) => ({
-          "data-selected-items": JSON.stringify(attributes.selectedItems),
+          "data-selected-items": encodeURIComponent(
+            JSON.stringify(attributes.selectedItems)
+          ),
         }),
       },
     };

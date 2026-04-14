@@ -15,6 +15,7 @@ export function transformSkillTypeToFormData(
     agentFacingDescription: skill.agentFacingDescription,
     userFacingDescription: skill.userFacingDescription,
     instructions: skill.instructions ?? "",
+    instructionsHtml: skill.instructionsHtml ?? "",
     editors: [], // Will be populated reactively from useEditors hook
     tools: skill.tools.map(getDefaultMCPAction),
     fileAttachments: skill.fileAttachments,
@@ -39,6 +40,7 @@ export function getDefaultSkillFormData({
     agentFacingDescription: "",
     userFacingDescription: "",
     instructions: "",
+    instructionsHtml: "",
     editors: [user],
     tools: [],
     fileAttachments: [],
