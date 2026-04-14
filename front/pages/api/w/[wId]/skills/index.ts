@@ -68,6 +68,7 @@ const PostSkillRequestBodySchema = t.intersection([
   t.partial({
     fileAttachments: t.array(t.type({ fileId: t.string })),
     isDefault: t.boolean,
+    instructionsHtml: t.union([t.string, t.null]),
   }),
   t.union([
     t.type({
@@ -354,6 +355,7 @@ async function handler(
           agentFacingDescription: body.agentFacingDescription,
           userFacingDescription: body.userFacingDescription,
           instructions: body.instructions,
+          instructionsHtml: body.instructionsHtml ?? null,
           editedBy: user.id,
           requestedSpaceIds,
           extendedSkillId: body.extendedSkillId,

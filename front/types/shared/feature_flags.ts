@@ -1,4 +1,9 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  skill_builder_instructions_html: {
+    description:
+      "Enable HTML-backed instructions in the skill builder (block IDs, HTML round-trip storage)",
+    stage: "dust_only",
+  },
   advanced_notion_management: {
     description:
       "Advanced features for Notion workspace management shown to admins",

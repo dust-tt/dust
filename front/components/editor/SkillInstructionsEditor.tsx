@@ -87,6 +87,8 @@ function useEditorService(editor: Editor | null) {
 
 interface UseSkillInstructionsEditorProps {
   content: string;
+  htmlContent?: string;
+  withDocumentExtensions?: boolean;
   isReadOnly: boolean;
   onUpdate?: (props: { editor: Editor; transaction: Transaction }) => void;
   onBlur?: () => void;
@@ -108,6 +110,8 @@ const skillInstructionsEditableExtensions = [
 
 export function useSkillInstructionsEditor({
   content,
+  htmlContent,
+  withDocumentExtensions = false,
   isReadOnly,
   onUpdate,
   onBlur,
@@ -117,9 +121,10 @@ export function useSkillInstructionsEditor({
     () =>
       buildSkillInstructionsExtensions(
         isReadOnly,
-        skillInstructionsEditableExtensions
+        skillInstructionsEditableExtensions,
+        { withDocumentExtensions }
       ),
-    [isReadOnly]
+    [isReadOnly, withDocumentExtensions]
   );
 
   // Track if initial content has been set
@@ -139,11 +144,12 @@ export function useSkillInstructionsEditor({
 
   const editorService = useEditorService(editor);
 
-  // Set initial content after editor is created (markdown must be set via setContent)
+  // Set initial content after editor is created
   useEffect(() => {
+    const hasContent = htmlContent || content;
     if (
       editor &&
-      content &&
+      hasContent &&
       !initialContentSetRef.current &&
       !editor.isDestroyed
     ) {
@@ -151,15 +157,19 @@ export function useSkillInstructionsEditor({
       // This fixes Safari crashes where docView is accessed before render
       requestAnimationFrame(() => {
         if (editor && !editor.isDestroyed) {
-          editor.commands.setContent(preprocessMarkdownForEditor(content), {
-            emitUpdate: false,
-            contentType: "markdown",
-          });
+          if (htmlContent) {
+            editor.commands.setContent(htmlContent, { emitUpdate: false });
+          } else {
+            editor.commands.setContent(preprocessMarkdownForEditor(content), {
+              emitUpdate: false,
+              contentType: "markdown",
+            });
+          }
           initialContentSetRef.current = true;
         }
       });
     }
-  }, [editor, content]);
+  }, [editor, content, htmlContent]);
 
   return { editor, editorService };
 }

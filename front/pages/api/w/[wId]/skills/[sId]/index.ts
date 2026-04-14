@@ -64,6 +64,7 @@ const PatchSkillRequestBodySchema = t.intersection([
   t.partial({
     fileAttachments: t.array(t.type({ fileId: t.string })),
     isDefault: t.boolean,
+    instructionsHtml: t.union([t.string, t.null]),
   }),
 ]);
 
@@ -318,6 +319,7 @@ async function handler(
         fileAttachments: files,
         icon: body.icon,
         instructions: body.instructions,
+        instructionsHtml: body.instructionsHtml,
         isDefault: body.isDefault,
         mcpServerViews,
         name,

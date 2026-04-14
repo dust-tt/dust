@@ -9,6 +9,7 @@ import { useEffect } from "react";
 
 interface SkillInstructionsReadOnlyEditorProps {
   content: string;
+  htmlContent?: string;
   owner: LightWorkspaceType;
   onKnowledgeItemsChange?: (items: KnowledgeItem[]) => void;
   className?: string;
@@ -16,12 +17,18 @@ interface SkillInstructionsReadOnlyEditorProps {
 
 export function SkillInstructionsReadOnlyEditor({
   content,
+  htmlContent,
   owner,
   onKnowledgeItemsChange,
   className,
 }: SkillInstructionsReadOnlyEditorProps) {
+  const htmlForEditor =
+    htmlContent && htmlContent.trim() !== "" ? htmlContent : undefined;
+
   const { editor, editorService } = useSkillInstructionsEditor({
     content,
+    htmlContent: htmlForEditor,
+    withDocumentExtensions: Boolean(htmlForEditor),
     isReadOnly: true,
   });
 

@@ -1806,6 +1806,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       fileAttachments,
       icon,
       instructions,
+      instructionsHtml,
       isDefault,
       mcpServerViews,
       name,
@@ -1820,6 +1821,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       fileAttachments?: FileResource[];
       icon: string | null;
       instructions: string;
+      instructionsHtml?: string | null;
       isDefault?: boolean;
       mcpServerViews: MCPServerViewResource[];
       name: string;
@@ -1847,6 +1849,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           agentFacingDescription,
           userFacingDescription,
           instructions,
+          ...(instructionsHtml !== undefined
+            ? { instructionsHtml: instructionsHtml ?? null }
+            : {}),
           icon,
           requestedSpaceIds,
           editedBy,

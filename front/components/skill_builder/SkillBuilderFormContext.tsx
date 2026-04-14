@@ -32,6 +32,7 @@ export const skillBuilderFormSchema = z.object({
     ),
   userFacingDescription: z.string().min(1, "Skill description is required"),
   instructions: z.string().min(1, "Skill instructions are required"),
+  instructionsHtml: z.string(),
   editors: z.array(editorUserSchema),
   tools: z.array(actionSchema),
   icon: z.string().nullable(),

@@ -40,6 +40,10 @@ export async function submitSkillBuilderForm({
         agentFacingDescription: formData.agentFacingDescription,
         userFacingDescription: formData.userFacingDescription,
         instructions: formData.instructions,
+        instructionsHtml:
+          formData.instructionsHtml.trim() === ""
+            ? null
+            : formData.instructionsHtml,
         icon: formData.icon,
         extendedSkillId: formData.extendedSkillId,
         isDefault: formData.isDefault,

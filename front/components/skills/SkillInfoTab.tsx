@@ -113,6 +113,7 @@ export function SkillInfoTab({
           </div>
           <SkillInstructionsReadOnlyEditor
             content={skill.instructions}
+            htmlContent={skill.instructionsHtml ?? ""}
             owner={owner}
             onKnowledgeItemsChange={handleKnowledgeItemsChange}
             className="max-h-150 overflow-y-auto"
