@@ -1,11 +1,6 @@
 /** @ignoreswagger */
 import apiConfig from "@app/lib/api/config";
-import {
-  getMetronomeClient,
-  getMetronomeContractPackageAliases,
-} from "@app/lib/metronome/client";
-import { grantMetronomeFreeCredits } from "@app/lib/metronome/credits";
-import { PRO_OR_BUSINESS_PACKAGE_ALIASES } from "@app/lib/metronome/types";
+import { getMetronomeClient } from "@app/lib/metronome/client";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -23,14 +18,6 @@ type ResponseBody = {
   success: boolean;
   message?: string;
 };
-
-const InvoiceFinalizedEventSchema = z.object({
-  type: z.literal("invoice.finalized"),
-  customer_id: z.string(),
-  contract_id: z.string(),
-  start_timestamp: z.string(),
-  end_timestamp: z.string(),
-});
 
 const ContractEndEventSchema = z.object({
   type: z.literal("contract.end"),
@@ -233,70 +220,6 @@ async function handler(
 
         case "invoice.finalized": {
           logger.info({ event }, "[Metronome Webhook] Invoice finalized");
-
-          const invoiceParsed = InvoiceFinalizedEventSchema.safeParse(event);
-          if (!invoiceParsed.success) {
-            // Not a contract invoice or missing billing period — skip.
-            break;
-          }
-
-          const {
-            customer_id: invoiceCustomerId,
-            contract_id: invoiceContractId,
-            start_timestamp: startTimestamp,
-            end_timestamp: endTimestamp,
-          } = invoiceParsed.data;
-
-          const invoiceWorkspace =
-            await WorkspaceResource.fetchByMetronomeCustomerId(
-              invoiceCustomerId
-            );
-          if (!invoiceWorkspace) {
-            logger.warn(
-              { customerId: invoiceCustomerId },
-              "[Metronome Webhook] invoice.finalized: workspace not found"
-            );
-            break;
-          }
-
-          // Only grant free credits for legacy contracts.
-          const invoiceAliasesResult = await getMetronomeContractPackageAliases(
-            {
-              metronomeCustomerId: invoiceCustomerId,
-              metronomeContractId: invoiceContractId,
-            }
-          );
-          if (invoiceAliasesResult.isErr()) {
-            logger.error(
-              {
-                workspaceId: invoiceWorkspace.sId,
-                error: invoiceAliasesResult.error,
-              },
-              "[Metronome Webhook] invoice.finalized: failed to get package aliases"
-            );
-            break;
-          }
-          const isLegacy = invoiceAliasesResult.value.some((alias) =>
-            PRO_OR_BUSINESS_PACKAGE_ALIASES.has(alias)
-          );
-          if (!isLegacy) {
-            break;
-          }
-
-          // The invoice covers the period that just ended.
-          // Grant free credits for the next billing period.
-          const invoiceStart = new Date(startTimestamp);
-          const invoiceEnd = new Date(endTimestamp);
-          const periodMs = invoiceEnd.getTime() - invoiceStart.getTime();
-          const nextPeriodEnd = new Date(invoiceEnd.getTime() + periodMs);
-
-          // Fire-and-forget: failure should not block the webhook.
-          void grantMetronomeFreeCredits({
-            workspace: invoiceWorkspace,
-            startDate: invoiceEnd,
-            endDate: nextPeriodEnd,
-          });
-
           break;
         }
 
