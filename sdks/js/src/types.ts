@@ -743,6 +743,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "anthropic_reasoning_token_count"
   | "collapsible_messages"
   | "use_dust_keys"
+  | "enable_compaction"
   | "enable_steering"
 >();
 

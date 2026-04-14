@@ -279,6 +279,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Dummy feature flag used for testing feature flag behavior",
     stage: "dust_only",
   },
+  enable_compaction: {
+    description:
+      "Enable context compaction: summarize older messages to free up context window",
+    stage: "dust_only",
+  },
   enable_steering: {
     description:
       "Enable steering: pending user messages + graceful stop of running agent loops",

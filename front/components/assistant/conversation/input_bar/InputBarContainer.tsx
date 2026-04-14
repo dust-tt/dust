@@ -202,11 +202,12 @@ const InputBarContainer = ({
   const isMobile = useIsMobile();
   const { hasFeature } = useFeatureFlags();
   const singleAgentInput = hasFeature("enable_steering");
+  const isCompactionEnabled = hasFeature("enable_compaction");
   const { selectedSingleAgent, setSelectedSingleAgent } =
     useContext(InputBarContext);
 
   const { contextUsage } = useConversationContextUsage({
-    conversationId: conversation?.sId,
+    conversationId: isCompactionEnabled ? conversation?.sId : null,
     workspaceId: owner.sId,
   });
   const [hasUserMention, setHasUserMention] = useState(false);
@@ -1241,15 +1242,13 @@ const InputBarContainer = ({
           </div>
         </div>
         <div
-          className={cn(
-            "absolute bottom-2 right-2 flex items-center gap-2"
-          )}
+          className={cn("absolute bottom-2 right-2 flex items-center gap-2")}
         >
           <div className="flex items-center">
-            {contextUsage && (
+            {isCompactionEnabled && (
               <ContextUsageIndicator
-                contextUsage={contextUsage.contextUsage}
-                contextSize={contextUsage.contextSize}
+                contextUsage={contextUsage?.contextUsage ?? 0}
+                contextSize={contextUsage?.contextSize ?? 0}
                 buttonSize={buttonSize}
               />
             )}
