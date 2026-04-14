@@ -308,13 +308,7 @@ export class AgentYAMLConverter {
     action: AgentYAMLAction
   ): Promise<
     Result<
-      | (Omit<
-          PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number],
-          "name" | "description"
-        > & {
-          name?: string | null;
-          description?: string | null;
-        })
+      | PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number]
       | null,
       Error
     >
@@ -358,8 +352,8 @@ export class AgentYAMLConverter {
       return new Ok({
         type: "mcp_server_configuration",
         mcpServerViewId: mcpServerView.sId,
-        name: action.name,
-        description: action.description,
+        name: action.name ?? "",
+        description: action.description ?? null,
         dataSources: configuration.data_sources
           ? this.convertDataSources(configuration.data_sources, workspaceId)
           : null,

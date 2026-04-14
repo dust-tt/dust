@@ -142,7 +142,7 @@ async function importAgentConfiguration(
   return new Ok({
     agentConfiguration: agentConfigurationRes.value,
     skippedActions: skippedActions.map(({ action, reason }) => ({
-      name: action.name,
+      name: action.name ?? "",
       reason,
     })),
   });
