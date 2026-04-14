@@ -31,7 +31,6 @@ import type {
 } from "@temporalio/workflow";
 import {
   CancellationScope,
-  deprecatePatch,
   proxyActivities,
   proxySinks,
   setHandler,
@@ -376,7 +375,6 @@ async function executeStepIteration({
 
   // Generation completed or the loop unpaused and no new tools were generated.
   if (actionBlobs.length === 0) {
-    deprecatePatch("tool-denial-continue-loop");
     return {
       runId,
       // If runId is null that means we unpaused the loop with no new tools (eg: they were all
