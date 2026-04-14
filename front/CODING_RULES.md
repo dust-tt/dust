@@ -5,14 +5,14 @@ automatically. This file contains rules specific to the `front` workspace.
 
 ## BACKEND
 
-### [BACK1] No sequelize models in API routes
+### [BACK1] No Sequelize models in API routes
 
-API routes should not interact with sequelize models directly. Use `lib/api/*` interfaces (creating
-them if missing). Direct Resource interaction are acceptable.
+API routes should not interact with Sequelize models directly. Use `lib/api/*` interfaces (creating
+them if missing). Direct Resource interactions are acceptable.
 
-### [BACK2] No sequelize models or ModelId in `lib/api/*` interfaces
+### [BACK2] No Sequelize models or ModelId in `lib/api/*` interfaces
 
-Interfaces in `lib/api/*` should not expose ModelId or sequelize model objects.
+Interfaces in `lib/api/*` should not expose ModelId or Sequelize model objects.
 
 Example:
 
@@ -26,20 +26,20 @@ function doWorkspace({ id }: { id: ModelId }) { }
 function doWorkspace({ workspace }: { workspace: WorkspaceType }) { }
 ```
 
-### [BACK3] Resource invariant: no sequelize models outside of resources
+### [BACK3] Resource invariant: no Sequelize models outside of resources
 
 Any new model should be abstracted to the rest of the codebase through a pre-existing or new
 `Resource`.
 
 ### [BACK4] Resource invariant: no models in interfaces
 
-Resources interface should take Resource or Types but not model objects.
+Resource interfaces should take Resource or Types but not model objects.
 
 ### [BACK5] Resource invariant: `lib/api/*` should use Resources not models
 
 Any newly introduced function in `lib/api/*` should rely on Resources and not models directly.
 
-### [BACK6] Use ConcurrentExecutor vs PQueue
+### [BACK6] Use ConcurrentExecutor vs. PQueue
 
 We are deprecating our use of `PQueue` in favor of `ConcurrentExecutor`. Use `ConcurrentExecutor`
 for all new code and migrate to it from `PQueue` when modifying existing code that involves
@@ -50,7 +50,7 @@ for all new code and migrate to it from `PQueue` when modifying existing code th
 Never use `Promise.all` on anything else than static arrays of promises with a known length (8 max).
 To parallelize asynchronous handling of dynamic arrays, use `ConcurrentExecutor`.
 
-### [BACK8] Favor typeguards over other methods
+### [BACK8] Favor type guards over other methods
 
 When checking types, use explicit typeguards over `typeof`, `instanceof`, etc.
 
@@ -162,10 +162,10 @@ Follow these steps based on the type of change:
 **1. Deleting an endpoint:**
 
 - Do NOT delete the endpoint immediately
-- Mark the endpoint as deprecated in code comments with deprecation date
+- Mark the endpoint as deprecated in code comments with a deprecation date
 - Create the replacement endpoint or functionality first
 - Monitor usage metrics to ensure all clients have migrated
-- Only delete after confirmed all clients have stopped using it
+- Only delete after having confirmed all clients have stopped using it
 - If deletion is urgent, coordinate a synchronized release across all clients
 
 **2. Adding a mandatory input parameter:**
@@ -187,7 +187,7 @@ Follow these steps based on the type of change:
 
 - Do NOT remove fields from responses immediately
 - First: Update all client code to stop using the field
-- Remove the field from backend response only after a period of time
+- Remove the field from the backend response only after a period of time
 - If removal is urgent, create a new endpoint version instead
 
 **5. Adding or removing enum values in responses:**
@@ -198,7 +198,7 @@ Follow these steps based on the type of change:
 - **Removing** an enum value from responses:
   - Do NOT remove enum values immediately
   - First: Update all client code to stop relying on the removed value
-  - Stop returning the enum value from backend only after a period of time
+  - Stop returning the enum value from the backend only after a period of time
 
 ### [BACK13] Foreign key must be indexed
 
@@ -314,7 +314,7 @@ will be default exported.
 
 If a tool in an internal MCP server outputs a custom resource, a `zod` schema that describes the
 output must be defined in `lib/actions/mcp_internal_actions/output_schemas.ts`. This way, when
-processing the tool output, a typeguard that checks the output against the schema
+processing the tool output, a type guard that checks the output against the schema
 can be used to identify this output type. In the code of the internal server the type inferred
 from the `zod` schema should be used to type the tool output.
 
@@ -331,9 +331,9 @@ desired.
 Test state setup should be done through factories. Factories should return Resources whenever
 possible.
 
-### [TEST5] Avoid sequelize models in tests
+### [TEST5] Avoid Sequelize models in tests
 
-Direct use of sequelize models in tests should be avoided in favor of Resources. This includes test
+Direct use of Sequelize models in tests should be avoided in favor of Resources. This includes test
 setup and assertions.
 
 ## REACT
@@ -423,16 +423,16 @@ function MCPServerDetails({ owner, disabled }: MCPServerDetailsProps) {
 <MCPServerDetails owner={owner} disabled={!isOpen} />
 ```
 
-Reviewer: If you see an SWR hook called unconditionally inside a conditionally-visible component,
+Reviewer: If you see an SWR hook called unconditionally inside a conditionally visible component,
 require the author to either add a `disabled` prop forwarded to the hook or justify the prefetch
 with a comment.
 
-In NextJS pages, getServerSideProps should not fetch data and return more that what's
+In NextJS pages, getServerSideProps should not fetch data and return more than what's
 available in authenticator. Rather rely on API endpoint and SWR calls.
 
 ### [REACT3] Any async network operation should have a visual loading state
 
-Any load/async has a visible visual state (spinner, busy state, disabled button, etc), even if the
+Any load/async has a visible visual state (spinner, busy state, disabled button, etc.), even if the
 load time is expected to be small.
 
 ### [REACT4] Stable references on Context provider values
