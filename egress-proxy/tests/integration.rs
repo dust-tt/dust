@@ -31,8 +31,8 @@ struct ProxyProcess {
 struct TestClaims {
     #[serde(rename = "sbId")]
     sb_id: String,
-    iss: &'static str,
-    aud: &'static str,
+    iss: String,
+    aud: String,
     exp: usize,
 }
 
@@ -101,7 +101,8 @@ async fn invalid_allowed_domain_fails_startup() -> Result<()> {
 
 #[tokio::test]
 async fn allowed_domain_forwards_bytes() -> Result<()> {
-    let (upstream_port, mut upstream_handles) = start_localhost_echo_servers().await?;
+    let (upstream_port, mut upstream_handles) =
+        start_localhost_servers(UpstreamBehavior::EchoFixed { read_len: 4 }).await?;
     let proxy = start_proxy("localhost", true, "test").await?;
     let token = make_token(SECRET, 60);
     let mut stream = connect_forwarder(&proxy).await?;
@@ -120,7 +121,7 @@ async fn allowed_domain_forwards_bytes() -> Result<()> {
     assert_eq!(&echoed, b"ping");
 
     drop(stream);
-    wait_for_echo(&mut upstream_handles).await?;
+    wait_for_upstream_completion(&mut upstream_handles, Duration::from_secs(2)).await?;
     Ok(())
 }
 
@@ -158,6 +159,63 @@ async fn expired_jwt_returns_deny() -> Result<()> {
 }
 
 #[tokio::test]
+async fn invalid_issuer_returns_deny() -> Result<()> {
+    let proxy = start_proxy("example.com", false, "production").await?;
+    let token = make_token_with_claims(
+        SECRET,
+        FullClaims {
+            sb_id: "test-egress-proxy",
+            iss: "wrong-front",
+            aud: "dust-egress-proxy",
+            exp_offset_seconds: 60,
+        },
+    );
+
+    let response = send_handshake(&proxy, &token, "example.com", 443).await?;
+
+    assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
+async fn invalid_audience_returns_deny() -> Result<()> {
+    let proxy = start_proxy("example.com", false, "production").await?;
+    let token = make_token_with_claims(
+        SECRET,
+        FullClaims {
+            sb_id: "test-egress-proxy",
+            iss: "dust-front",
+            aud: "wrong-audience",
+            exp_offset_seconds: 60,
+        },
+    );
+
+    let response = send_handshake(&proxy, &token, "example.com", 443).await?;
+
+    assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
+async fn empty_sandbox_id_claim_returns_deny() -> Result<()> {
+    let proxy = start_proxy("example.com", false, "production").await?;
+    let token = make_token_with_claims(
+        SECRET,
+        FullClaims {
+            sb_id: "   ",
+            iss: "dust-front",
+            aud: "dust-egress-proxy",
+            exp_offset_seconds: 60,
+        },
+    );
+
+    let response = send_handshake(&proxy, &token, "example.com", 443).await?;
+
+    assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
 async fn allowed_loopback_without_ssrf_bypass_returns_deny() -> Result<()> {
     let proxy = start_proxy("localhost", false, "production").await?;
     let token = make_token(SECRET, 60);
@@ -165,6 +223,29 @@ async fn allowed_loopback_without_ssrf_bypass_returns_deny() -> Result<()> {
     let response = send_handshake(&proxy, &token, "localhost", 443).await?;
 
     assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
+async fn unsafe_ip_literals_return_deny() -> Result<()> {
+    let token = make_token(SECRET, 60);
+
+    for domain in [
+        "127.0.0.1",
+        "::1",
+        "::ffff:127.0.0.1",
+        "::ffff:169.254.169.254",
+    ] {
+        let proxy = start_proxy(domain, false, "production").await?;
+        let response = send_handshake(&proxy, &token, domain, 443).await?;
+
+        assert_eq!(
+            response,
+            Some(DENY_RESPONSE),
+            "unexpected response for {domain}"
+        );
+    }
+
     Ok(())
 }
 
@@ -180,11 +261,35 @@ async fn globally_blocklisted_domain_returns_deny() -> Result<()> {
 }
 
 #[tokio::test]
+async fn dns_resolution_failure_returns_deny() -> Result<()> {
+    let unresolved_domain = "sandbox-egress-contract-test.invalid";
+    let proxy = start_proxy(unresolved_domain, false, "production").await?;
+    let token = make_token(SECRET, 60);
+
+    let response = send_handshake(&proxy, &token, unresolved_domain, 443).await?;
+
+    assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
 async fn empty_domain_returns_deny() -> Result<()> {
     let proxy = start_proxy("example.com", false, "production").await?;
     let token = make_token(SECRET, 60);
 
     let response = send_handshake(&proxy, &token, "", 443).await?;
+
+    assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
+async fn upstream_connect_failure_returns_deny() -> Result<()> {
+    let upstream_addr = free_addr()?;
+    let proxy = start_proxy("localhost", true, "test").await?;
+    let token = make_token(SECRET, 60);
+
+    let response = send_handshake(&proxy, &token, "localhost", upstream_addr.port()).await?;
 
     assert_eq!(response, Some(DENY_RESPONSE));
     Ok(())
@@ -286,6 +391,117 @@ async fn health_bind_failure_fails_startup() -> Result<()> {
         .spawn()?;
 
     wait_for_startup_failure(&mut child).await
+}
+
+#[tokio::test]
+async fn relay_supports_upstream_banner_and_large_response() -> Result<()> {
+    let request = vec![b'x'; 32 * 1024];
+    let response = vec![b'y'; 48 * 1024];
+    let banner = b"upstream-ready".to_vec();
+    let (upstream_port, mut upstream_handles) =
+        start_localhost_servers(UpstreamBehavior::BannerThenReply {
+            banner: banner.clone(),
+            expected_request: request.clone(),
+            response: response.clone(),
+        })
+        .await?;
+    let proxy = start_proxy("localhost", true, "test").await?;
+    let token = make_token(SECRET, 60);
+    let mut stream = connect_forwarder(&proxy).await?;
+
+    stream
+        .write_all(&build_frame(&token, "localhost", upstream_port)?)
+        .await?;
+
+    let mut allow_response = [0; 1];
+    stream.read_exact(&mut allow_response).await?;
+    assert_eq!(allow_response[0], ALLOW_RESPONSE);
+
+    let mut received_banner = vec![0; banner.len()];
+    stream.read_exact(&mut received_banner).await?;
+    assert_eq!(received_banner, banner);
+
+    stream.write_all(&request).await?;
+    let mut received_response = vec![0; response.len()];
+    stream.read_exact(&mut received_response).await?;
+    assert_eq!(received_response, response);
+
+    drop(stream);
+    wait_for_upstream_completion(&mut upstream_handles, Duration::from_secs(2)).await?;
+    Ok(())
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn sigterm_keeps_active_tunnel_alive_until_client_closes() -> Result<()> {
+    let (upstream_port, mut upstream_handles) =
+        start_localhost_servers(UpstreamBehavior::EchoSequence {
+            chunks: vec![b"pingpong".to_vec(), b"pingpong".to_vec()],
+        })
+        .await?;
+    let mut proxy = start_proxy("localhost", true, "test").await?;
+    let token = make_token(SECRET, 60);
+    let mut stream = connect_forwarder(&proxy).await?;
+
+    stream
+        .write_all(&build_frame(&token, "localhost", upstream_port)?)
+        .await?;
+
+    let mut response = [0; 1];
+    stream.read_exact(&mut response).await?;
+    assert_eq!(response[0], ALLOW_RESPONSE);
+
+    stream.write_all(b"pingpong").await?;
+    let mut echoed = [0; 8];
+    stream.read_exact(&mut echoed).await?;
+    assert_eq!(&echoed, b"pingpong");
+
+    send_sigterm(proxy.child.id()).await?;
+
+    stream.write_all(b"pingpong").await?;
+    stream.read_exact(&mut echoed).await?;
+    assert_eq!(&echoed, b"pingpong");
+
+    drop(stream);
+    wait_for_exit(&mut proxy.child, Duration::from_secs(2), true).await?;
+    wait_for_upstream_completion(&mut upstream_handles, Duration::from_secs(2)).await?;
+    Ok(())
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn sigterm_aborts_stuck_tunnel_after_drain_timeout() -> Result<()> {
+    let (upstream_port, mut upstream_handles) =
+        start_localhost_servers(UpstreamBehavior::HoldUntilPeerCloses).await?;
+    let mut proxy = start_proxy("localhost", true, "test").await?;
+    let token = make_token(SECRET, 60);
+    let mut stream = connect_forwarder(&proxy).await?;
+
+    stream
+        .write_all(&build_frame(&token, "localhost", upstream_port)?)
+        .await?;
+
+    let mut response = [0; 1];
+    stream.read_exact(&mut response).await?;
+    assert_eq!(response[0], ALLOW_RESPONSE);
+
+    send_sigterm(proxy.child.id()).await?;
+    wait_for_exit(&mut proxy.child, Duration::from_secs(8), true).await?;
+
+    let mut buffer = [0; 1];
+    match tokio::time::timeout(Duration::from_secs(2), stream.read(&mut buffer)).await {
+        Ok(Ok(0)) => {}
+        Ok(Err(_)) => {}
+        Ok(Ok(read_bytes)) => {
+            return Err(anyhow!(
+                "expected tunnel close after shutdown drain timeout, read {read_bytes} byte(s)"
+            ));
+        }
+        Err(error) => return Err(error.into()),
+    }
+
+    wait_for_upstream_completion(&mut upstream_handles, Duration::from_secs(2)).await?;
+    Ok(())
 }
 
 async fn start_proxy(
@@ -445,19 +661,31 @@ fn build_oversized_domain_frame(token: &str) -> Vec<u8> {
 }
 
 fn make_token(secret: &str, exp_offset_seconds: i64) -> String {
+    make_token_with_claims(
+        secret,
+        FullClaims {
+            sb_id: "test-egress-proxy",
+            iss: "dust-front",
+            aud: "dust-egress-proxy",
+            exp_offset_seconds,
+        },
+    )
+}
+
+fn make_token_with_claims(secret: &str, claims: FullClaims<'_>) -> String {
     let now_seconds = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("current time should be after the Unix epoch")
         .as_secs();
-    let exp = if exp_offset_seconds.is_negative() {
-        now_seconds - exp_offset_seconds.unsigned_abs()
+    let exp = if claims.exp_offset_seconds.is_negative() {
+        now_seconds - claims.exp_offset_seconds.unsigned_abs()
     } else {
-        now_seconds + exp_offset_seconds.unsigned_abs()
+        now_seconds + claims.exp_offset_seconds.unsigned_abs()
     };
     let claims = TestClaims {
-        sb_id: "test-egress-proxy".to_string(),
-        iss: "dust-front",
-        aud: "dust-egress-proxy",
+        sb_id: claims.sb_id.to_string(),
+        iss: claims.iss.to_string(),
+        aud: claims.aud.to_string(),
         exp: usize::try_from(exp).expect("expiration timestamp should fit in usize"),
     };
 
@@ -473,6 +701,13 @@ struct TestCerts {
     ca_cert_path: PathBuf,
     server_cert_path: PathBuf,
     server_key_path: PathBuf,
+}
+
+struct FullClaims<'a> {
+    sb_id: &'a str,
+    iss: &'a str,
+    aud: &'a str,
+    exp_offset_seconds: i64,
 }
 
 fn generate_test_certs(temp_dir: &Path) -> Result<TestCerts> {
@@ -567,32 +802,82 @@ fn generate_test_certs(temp_dir: &Path) -> Result<TestCerts> {
     })
 }
 
-async fn start_localhost_echo_servers() -> Result<(u16, JoinSet<Result<()>>)> {
+#[derive(Clone)]
+enum UpstreamBehavior {
+    EchoFixed {
+        read_len: usize,
+    },
+    EchoSequence {
+        chunks: Vec<Vec<u8>>,
+    },
+    BannerThenReply {
+        banner: Vec<u8>,
+        expected_request: Vec<u8>,
+        response: Vec<u8>,
+    },
+    HoldUntilPeerCloses,
+}
+
+async fn start_localhost_servers(behavior: UpstreamBehavior) -> Result<(u16, JoinSet<Result<()>>)> {
     let ipv4_listener = TcpListener::bind("127.0.0.1:0").await?;
     let port = ipv4_listener.local_addr()?.port();
     let mut handles = JoinSet::new();
-    spawn_echo_server(&mut handles, ipv4_listener);
+    spawn_upstream_server(&mut handles, ipv4_listener, behavior.clone());
 
     let ipv6_addr = SocketAddr::new(Ipv6Addr::LOCALHOST.into(), port);
     if let Ok(ipv6_listener) = TcpListener::bind(ipv6_addr).await {
-        spawn_echo_server(&mut handles, ipv6_listener);
+        spawn_upstream_server(&mut handles, ipv6_listener, behavior);
     }
 
     Ok((port, handles))
 }
 
-fn spawn_echo_server(handles: &mut JoinSet<Result<()>>, listener: TcpListener) {
+fn spawn_upstream_server(
+    handles: &mut JoinSet<Result<()>>,
+    listener: TcpListener,
+    behavior: UpstreamBehavior,
+) {
     handles.spawn(async move {
         let (mut stream, _) = listener.accept().await?;
-        let mut buffer = [0; 4];
-        stream.read_exact(&mut buffer).await?;
-        stream.write_all(&buffer).await?;
+        match behavior {
+            UpstreamBehavior::EchoFixed { read_len } => {
+                let mut buffer = vec![0; read_len];
+                stream.read_exact(&mut buffer).await?;
+                stream.write_all(&buffer).await?;
+            }
+            UpstreamBehavior::EchoSequence { chunks } => {
+                for expected_chunk in chunks {
+                    let mut received_chunk = vec![0; expected_chunk.len()];
+                    stream.read_exact(&mut received_chunk).await?;
+                    assert_eq!(received_chunk, expected_chunk);
+                    stream.write_all(&received_chunk).await?;
+                }
+            }
+            UpstreamBehavior::BannerThenReply {
+                banner,
+                expected_request,
+                response,
+            } => {
+                stream.write_all(&banner).await?;
+                let mut received_request = vec![0; expected_request.len()];
+                stream.read_exact(&mut received_request).await?;
+                assert_eq!(received_request, expected_request);
+                stream.write_all(&response).await?;
+            }
+            UpstreamBehavior::HoldUntilPeerCloses => {
+                let mut buffer = [0; 1024];
+                while stream.read(&mut buffer).await? != 0 {}
+            }
+        }
         Ok(())
     });
 }
 
-async fn wait_for_echo(handles: &mut JoinSet<Result<()>>) -> Result<()> {
-    let join_result = tokio::time::timeout(Duration::from_secs(2), handles.join_next()).await?;
+async fn wait_for_upstream_completion(
+    handles: &mut JoinSet<Result<()>>,
+    timeout_duration: Duration,
+) -> Result<()> {
+    let join_result = tokio::time::timeout(timeout_duration, handles.join_next()).await?;
     handles.abort_all();
 
     match join_result {
@@ -604,4 +889,48 @@ async fn wait_for_echo(handles: &mut JoinSet<Result<()>>) -> Result<()> {
 fn free_addr() -> Result<SocketAddr> {
     let listener = StdTcpListener::bind("127.0.0.1:0")?;
     Ok(listener.local_addr()?)
+}
+
+#[cfg(unix)]
+async fn send_sigterm(pid: u32) -> Result<()> {
+    let status = Command::new("kill")
+        .arg("-TERM")
+        .arg(pid.to_string())
+        .status()?;
+
+    if !status.success() {
+        return Err(anyhow!("failed to send SIGTERM to process {pid}"));
+    }
+
+    Ok(())
+}
+
+async fn wait_for_exit(
+    child: &mut Child,
+    timeout_duration: Duration,
+    expect_success: bool,
+) -> Result<()> {
+    let deadline = tokio::time::Instant::now() + timeout_duration;
+
+    loop {
+        if let Some(status) = child.try_wait()? {
+            if expect_success {
+                assert!(
+                    status.success(),
+                    "expected successful exit, got status {status}"
+                );
+            } else {
+                assert!(!status.success(), "expected non-success exit, got {status}");
+            }
+            return Ok(());
+        }
+
+        if tokio::time::Instant::now() >= deadline {
+            break;
+        }
+
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+
+    Err(anyhow!("process did not exit within {timeout_duration:?}"))
 }
