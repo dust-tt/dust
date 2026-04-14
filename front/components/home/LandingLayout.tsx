@@ -4,6 +4,7 @@ import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
 import { OpenDustButton } from "@app/components/home/OpenDustButton";
+import { PromoBanner } from "@app/components/home/PromoBanner";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
 import UTMButton from "@app/components/UTMButton";
 import { useStripUtmParams } from "@app/hooks/useStripUtmParams";
@@ -214,6 +215,7 @@ export default function LandingLayout({
         >
           {children}
         </div>
+        <PromoBanner />
         <CookieBanner
           className="fixed bottom-0 left-0 z-50 w-full"
           show={showCookieBanner}
