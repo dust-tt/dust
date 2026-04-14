@@ -166,14 +166,17 @@ Make compaction actually affect what the model sees.
 - Display a progress bar or indicator showing context fullness.
 - Show a warning when approaching the compaction threshold.
 
-### - [ ] PR 5.2 — Compaction message rendering in conversation UI
+### - [x] PR 5.2 — Compaction message rendering in conversation UI
 
 - Render `CompactionMessage` as a lightweight separator/divider in the conversation view.
 - Show "Earlier messages were summarized" with an expandable summary.
 - Show a loading indicator while `status === "created"`.
-- Disable input bar while compaction is in progress (mirror the pending steering UX).
 
-### - [ ] PR 5.3 — Manual compaction trigger
+### - [ ] PR 5.3 — Steering during compaction
+
+- Add support for steering (creating pending message) while compaction is running.
+
+### - [ ] PR 5.4 — Manual compaction trigger
 
 - Add a UI affordance (button in the context usage indicator, or a `/compact` command) that calls
   `compaction`.

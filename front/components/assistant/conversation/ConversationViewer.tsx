@@ -20,6 +20,7 @@ import {
   convertLightMessageTypeToVirtuosoMessages,
   getPredicateForRankAndBranch,
   isAgentMessageWithStreaming,
+  isCompactionMessage,
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
@@ -562,8 +563,35 @@ export const ConversationViewer = ({
             void mutateConversationAttachments();
             break;
           case "compaction_message_new":
+            if (ref.current) {
+              const compactionMessage = event.message;
+              const predicate = getPredicateForRankAndBranch(compactionMessage);
+              const exists = ref.current.data.find(predicate);
+
+              if (!exists) {
+                const currentData = ref.current.data.get();
+                const offset = getBranchedInsertIndex(
+                  currentData,
+                  compactionMessage
+                );
+                if (offset < currentData.length) {
+                  ref.current.data.insert([compactionMessage], offset);
+                } else {
+                  ref.current.data.append([compactionMessage]);
+                }
+              }
+            }
+            break;
+
           case "compaction_message_done":
-            // TODO(compaction): handle compaction events in the UI.
+            if (ref.current) {
+              const doneMessage = event.message;
+              ref.current.data.map((m) =>
+                isCompactionMessage(m) && m.sId === event.messageId
+                  ? doneMessage
+                  : m
+              );
+            }
             break;
           default:
             ((t: never) => {

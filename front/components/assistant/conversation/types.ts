@@ -7,6 +7,7 @@ import type { DustError } from "@app/lib/error";
 import type { AgentMCPActionType } from "@app/types/actions";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
+  CompactionMessageType,
   ConversationWithoutContentType,
   InlineActivityStep,
   LightAgentMessageType,
@@ -17,6 +18,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import {
   isCompactionMessageType,
+  isLightAgentMessageType,
   isLightAgentMessageWithActionsType,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
@@ -25,6 +27,7 @@ import type { RichMention } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
@@ -88,7 +91,8 @@ export type AgentMessageStateWithControlEvent =
 
 export type VirtuosoMessage =
   | AgentMessageWithStreaming
-  | UserMessageTypeWithContentFragments;
+  | UserMessageTypeWithContentFragments
+  | CompactionMessageType;
 
 export type VirtuosoMessageListContext = {
   owner: LightWorkspaceType;
@@ -153,6 +157,10 @@ export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
   );
 };
 
+export const isCompactionMessage = (
+  msg: VirtuosoMessage
+): msg is CompactionMessageType => msg.type === "compaction_message";
+
 export const isUserMessage = (
   msg: VirtuosoMessage
 ): msg is UserMessageTypeWithContentFragments =>
@@ -195,12 +203,18 @@ export const isSidekickBootstrapMessage = (
 
 export const convertLightMessageTypeToVirtuosoMessages = (
   messages: LightMessageType[]
-) =>
-  messages
-    // TODO(compaction): Add support for compaction messages in the UI instead of filtering.
-    .filter((message) => !isCompactionMessageType(message))
-    .map((message) =>
-      isUserMessageTypeWithContentFragments(message)
-        ? message
-        : makeInitialMessageStreamState(message)
-    );
+): VirtuosoMessage[] =>
+  messages.map((message) => {
+    if (isCompactionMessageType(message)) {
+      return message;
+    } else if (isUserMessageTypeWithContentFragments(message)) {
+      return message;
+    } else if (isLightAgentMessageWithActionsType(message)) {
+      return makeInitialMessageStreamState(message);
+    } else if (isLightAgentMessageType(message)) {
+      return makeInitialMessageStreamState(message);
+    } else {
+      assertNeverAndIgnore(message);
+      return message; // Non reachable
+    }
+  });
