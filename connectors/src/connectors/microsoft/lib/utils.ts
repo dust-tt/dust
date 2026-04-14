@@ -120,6 +120,50 @@ export async function _getListColumns({
   return res.value.filter(isCustomColumn);
 }
 
+/**
+ * Extract a display string from a SharePoint field value.
+ * Graph API returns objects for taxonomy terms, lookups, and person/group
+ * fields — interpolating them directly produces "[object Object]".
+ */
+function formatFieldValue(v: unknown): string | null {
+  if (v === null || v === undefined) {
+    return null;
+  }
+
+  if (Array.isArray(v)) {
+    const parts = v.map(formatFieldValue).filter((s) => s !== null);
+    return parts.length > 0 ? parts.join(", ") : null;
+  }
+
+  if (typeof v === "object") {
+    const obj = v as Record<string, unknown>;
+    // Taxonomy / managed-metadata fields.
+    if (typeof obj.Label === "string") {
+      return obj.Label;
+    }
+    // Lookup fields.
+    if (typeof obj.LookupValue === "string") {
+      return obj.LookupValue;
+    }
+    // Person / group fields (and some lookup variants).
+    // Person / group fields.
+    if (typeof obj.displayName === "string") {
+      return obj.displayName;
+    }
+    if (typeof obj.Email === "string") {
+      return obj.Email;
+    }
+    if (typeof obj.Title === "string") {
+      return obj.Title;
+    }
+
+    // Fallback: JSON-serialize so we never produce "[object Object]".
+    return JSON.stringify(v);
+  }
+
+  return String(v);
+}
+
 // Turn the labels into a string array of formatted string such as column.displayName:value
 export const getColumnsFromListItem = async (
   file: DriveItem,
@@ -151,7 +195,10 @@ export const getColumnsFromListItem = async (
     for (const [k, v] of Object.entries(fields as Record<string, unknown>)) {
       const column = columns.find((column) => column.name === k);
       if (column) {
-        columnsList.push(`${column.displayName}:${v}`);
+        const formatted = formatFieldValue(v);
+        if (formatted !== null) {
+          columnsList.push(`${column.displayName}:${formatted}`);
+        }
       }
     }
 
