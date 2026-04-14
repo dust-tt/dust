@@ -1297,7 +1297,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }: {
       conversationId: ModelId;
       enabled: boolean;
-    }
+    },
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     const user = auth.user();
     if (!user) {
@@ -1313,22 +1314,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         conversationId,
         agentConfigurationId: null,
       },
+      transaction,
     });
 
     if (existingConversationSkill && !enabled) {
-      await existingConversationSkill.destroy();
+      await existingConversationSkill.destroy({ transaction });
       return new Ok(undefined);
     }
 
     if (!existingConversationSkill && enabled) {
-      await ConversationSkillModel.create({
-        ...this.skillReference,
-        conversationId,
-        workspaceId: workspace.id,
-        agentConfigurationId: null,
-        source: "conversation",
-        addedByUserId: user.id,
-      } satisfies ConversationSkillCreationAttributes);
+      await ConversationSkillModel.create(
+        {
+          ...this.skillReference,
+          conversationId,
+          workspaceId: workspace.id,
+          agentConfigurationId: null,
+          source: "conversation",
+          addedByUserId: user.id,
+        } satisfies ConversationSkillCreationAttributes,
+        { transaction }
+      );
       return new Ok(undefined);
     }
 
@@ -1345,13 +1350,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       conversationId: ModelId;
       skills: SkillResource[];
       enabled: boolean;
-    }
+    },
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     for (const skill of skills) {
-      const result = await skill.upsertToConversation(auth, {
-        conversationId,
-        enabled,
-      });
+      const result = await skill.upsertToConversation(
+        auth,
+        {
+          conversationId,
+          enabled,
+        },
+        { transaction }
+      );
 
       if (result.isErr()) {
         return result;
