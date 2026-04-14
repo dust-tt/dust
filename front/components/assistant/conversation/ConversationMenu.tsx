@@ -334,7 +334,9 @@ export function ConversationMenu({
             <>
               <DropdownMenuItem
                 label="Branch conversation"
-                onClick={branchConversation}
+                onClick={() => {
+                  void branchConversation();
+                }}
                 icon={ActionGitBranchIcon}
                 disabled={isBranching}
               />

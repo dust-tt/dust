@@ -39,6 +39,7 @@ import {
   sanitizeVisualizationContent,
 } from "@app/components/markdown/VisualizationBlock";
 import {
+  useBranchConversation,
   useCancelMessage,
   usePostOnboardingFollowUp,
 } from "@app/hooks/conversations";
@@ -82,6 +83,7 @@ import type {
 } from "@app/types/user";
 import type { DropdownMenuItemProps, StreamingState } from "@dust-tt/sparkle";
 import {
+  ActionGitBranchIcon,
   ArrowPathIcon,
   Button,
   ButtonGroup,
@@ -624,6 +626,8 @@ export function AgentMessage({
     agentMessage.status !== "failed" &&
     !shouldStream &&
     !isAgentMessageHandingOver;
+  const canBranchConversation =
+    hasFeature("sessions_branching") && shouldShowCopy;
 
   const shouldShowFeedback =
     !isDeleted &&
@@ -636,6 +640,10 @@ export function AgentMessage({
         isGlobalAgentWithFeedback(agentMessage.configuration.sId)));
 
   const retryMessage = useRetryMessage({ owner });
+  const { branchConversation, isBranching } = useBranchConversation({
+    owner,
+    conversationId,
+  });
 
   const retryHandler = useCallback(
     async ({
@@ -718,7 +726,10 @@ export function AgentMessage({
   }
 
   // Add copy button or split button with dropdown (hover only)
-  if (shouldShowCopy && (shouldShowRetry || canDeleteAgentMessage)) {
+  if (
+    shouldShowCopy &&
+    (canBranchConversation || shouldShowRetry || canDeleteAgentMessage)
+  ) {
     const dropdownItems: DropdownMenuItemProps[] = [
       {
         label: "Copy message link",
@@ -726,6 +737,17 @@ export function AgentMessage({
         onSelect: handleCopyMessageLink,
       },
     ];
+
+    if (canBranchConversation) {
+      dropdownItems.push({
+        label: "Branch conversation",
+        icon: ActionGitBranchIcon,
+        onSelect: () => {
+          void branchConversation(agentMessage.sId);
+        },
+        disabled: isBranching,
+      });
+    }
 
     if (shouldShowRetry) {
       dropdownItems.push({
