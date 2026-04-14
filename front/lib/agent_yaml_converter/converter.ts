@@ -308,7 +308,10 @@ export class AgentYAMLConverter {
     action: AgentYAMLAction
   ): Promise<
     Result<
-      | (PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] & {
+      | (Omit<
+          PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number],
+          "name" | "description"
+        > & {
           name?: string | null;
           description?: string | null;
         })
