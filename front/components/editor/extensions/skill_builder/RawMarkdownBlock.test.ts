@@ -110,5 +110,30 @@ describe("RawMarkdownBlock", () => {
       expect(outputHtml).toContain("data-raw-markdown");
       expect(outputHtml).toContain(`data-content="${rawContent}"`);
     });
+
+    it("round-trips raw content containing quotes, angle brackets, ampersands, newlines, and backslashes", () => {
+      // These characters would break the data-content attribute if not encoded.
+      const table =
+        '| "quoted" | <tag> | &amp; | back\\slash |\n|---|---|---|---|\n| 1 | 2 | 3 | 4 |';
+      editor.commands.setContent(table, { contentType: "markdown" });
+
+      // Confirm the node holds the raw content correctly.
+      const blocks = rawBlocks(editor);
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0]).toContain('"quoted"');
+      expect(blocks[0]).toContain("<tag>");
+      expect(blocks[0]).toContain("&amp;");
+      expect(blocks[0]).toContain("back\\slash");
+
+      // Confirm the HTML attribute is properly encoded (no bare " breaking the attr).
+      const html = editor.getHTML();
+      expect(html).not.toContain('data-content="| "quoted"');
+      expect(html).toContain("&quot;");
+
+      // Confirm the round-trip back to markdown preserves the content.
+      const md = editor.getMarkdown();
+      expect(md).toContain('"quoted"');
+      expect(md).toContain("<tag>");
+    });
   });
 });

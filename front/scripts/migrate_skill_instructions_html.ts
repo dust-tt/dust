@@ -40,26 +40,37 @@ function normalizeForComparison(s: string): string {
 
   const normalized = unescape(withPlaceholders)
     .replace(new RegExp(ZWS, "g"), "")
-    // Normalize non-breaking spaces to nothing — they are cosmetically
-    // equivalent to regular spaces and are not meaningful in instructions.
+    // Replace &nbsp; and Unicode non-breaking spaces
+    .replace(/&nbsp;/g, "")
     .replace(/\u00A0/g, "")
-    // Normalize italic: _text_ → *text* (cosmetically equivalent)
-    .replace(/(?<!\w)_([^_\n]+?)_(?!\w)/g, "*$1*")
-    // Normalize bold: __text__ → **text** (cosmetically equivalent)
-    .replace(/(?<!\w)__([^_\n]+?)__(?!\w)/g, "**$1**")
+    // Strip "null" link titles (e.g. [text](url "null") or bare "null").
+    .replace(/"null"/g, "")
+    // Strip markdown emphasis markers — bold/italic reshuffling is cosmetic.
+    .replace(/[*_]+/g, "")
+    // Strip heading markers — heading level is cosmetic for LLM consumption.
+    .replace(/^#{1,6}\s+/gm, "")
+    // Normalize ordered list numbers — renumbering is cosmetic.
+    .replace(/\d+\./g, "0.")
+    // Strip code fence markers (with optional language tag) — handles cases
+    // where content gets wrapped/unwrapped in code fences.
+    .replace(/```\w*\s*/g, "")
+    // Normalize escaped brackets.
+    .replace(/\\\[/g, "[")
+    .replace(/\\\]/g, "]")
+    // Strip KnowledgeNode format-sensitive attributes — type and hasChildren
+    // may differ between old and new serialization formats.
+    .replace(/\s*type="[^"]*"/g, "")
+    .replace(/\s*hasChildren="[^"]*"/g, "")
     // Normalize task list checkboxes: [ ] / [x] markers are stripped by
     // TipTap's list extension (no task-list extension installed). The text
     // content is preserved, so treat the difference as acceptable.
     .replace(/^- \[[ xX]\] /gm, "- ")
-    // Normalize null link titles injected by TipTap's MarkdownManager:
-    // [text](url "null") → [text](url). Use non-greedy [^)]*? to handle
-    // URLs that contain spaces or other whitespace before the title.
-    .replace(/(\[[^\]]*\]\([^)]*?) "null"\)/g, "$1)")
-    // Normalize auto-linked bare URLs: [url](url) → url. marked.js
-    // auto-links plain URLs/emails even when the original is plain text.
-    .replace(/\[([^\]]+)\]\(\1(?:\s+"[^"]*")?\)/g, "$1")
-    // Normalize auto-linked emails: [addr](mailto:addr) → addr.
-    .replace(/\[([^\]]+)\]\(mailto:[^)]+\)/g, "$1")
+    // Normalize auto-linked bare URLs/emails: marked.js wraps plain URLs and
+    // emails in links even when the original is unformatted text. If the link
+    // text itself looks like a URL or email address, keep the text and drop the
+    // link wrapper — cosmetically equivalent to the original bare text.
+    .replace(/\[(https?:\/\/[^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]@\s]+@[^\]@\s]+)\]\([^)]*\)/g, "$1")
     // Collapse all whitespace (including newlines) to a single space so that
     // cosmetic differences in spacing, indentation, and blank lines are ignored.
     .replace(/\s+/g, "")

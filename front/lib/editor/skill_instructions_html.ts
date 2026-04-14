@@ -27,31 +27,36 @@ const NODE_TYPES_WITH_BLOCK_ID = new Set<string>([
   INSTRUCTIONS_ROOT_NODE_NAME,
 ]);
 
-/**
- * This is only needed on the server-side path, not in the browser editor.
- *
- * The browser editor never touches HTML: it goes markdown → ProseMirror nodes
- * (in memory) → markdown via getMarkdown(). Text nodes are plain strings in
- * that in-memory tree, never serialised to HTML and re-parsed.
- *
- * The server path has an extra hop: ProseMirror JSON → renderToHTMLString →
- * generateJSON. renderToHTMLString splices node.text verbatim into HTML markup
- * without escaping (it's a known limitation of TipTap's static renderer).
- */
-function prepareTextNodes(node: JSONContent): JSONContent {
+function htmlEncode(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function prepareNodesForStaticRenderer(node: JSONContent): JSONContent {
   if (node.type === "text" && typeof node.text === "string") {
+    return { ...node, text: htmlEncode(node.text.replace(/\u200B/g, "")) };
+  }
+
+  if (
+    node.type === "rawMarkdownBlock" &&
+    typeof node.attrs?.rawContent === "string"
+  ) {
     return {
       ...node,
-      text: node.text
-        .replace(/\u200B/g, "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;"),
+      attrs: { ...node.attrs, rawContent: htmlEncode(node.attrs.rawContent) },
     };
   }
+
   if (node.content) {
-    return { ...node, content: node.content.map(prepareTextNodes) };
+    return {
+      ...node,
+      content: node.content.map(prepareNodesForStaticRenderer),
+    };
   }
+
   return node;
 }
 
@@ -109,7 +114,7 @@ export function convertMarkdownToBlockHtml(markdown: string): string {
   addBlockIds(json);
 
   const rendered = renderToHTMLString({
-    content: prepareTextNodes(json),
+    content: prepareNodesForStaticRenderer(json),
     extensions: SKILL_EDITOR_EXTENSIONS,
   });
 
