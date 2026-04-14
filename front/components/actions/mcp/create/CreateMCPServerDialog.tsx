@@ -26,6 +26,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import { getTokenFieldLabel } from "@app/lib/actions/mcp_internal_actions/server_token_labels";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
@@ -128,12 +129,20 @@ export function CreateMCPServerDialog({
     [needsCustomName, internalMCPServer, existingViewNames]
   );
 
+  const predefinedHeaders = internalMCPServer
+    ? getTokenFieldLabel(internalMCPServer.name).predefinedHeaders
+    : undefined;
+
   const defaultValues = useMemo<CreateMCPServerDialogFormValues>(() => {
     return {
       ...getCreateMCPServerDialogDefaultValues(defaultServerConfig),
       viewName: suggestedViewName,
+      ...(predefinedHeaders && {
+        useCustomHeaders: true,
+        customHeaders: predefinedHeaders.map((key) => ({ key, value: "" })),
+      }),
     };
-  }, [defaultServerConfig, suggestedViewName]);
+  }, [defaultServerConfig, suggestedViewName, predefinedHeaders]);
 
   const form = useForm<CreateMCPServerDialogFormValues>({
     resolver: zodResolver(createMCPServerDialogFormSchema),
@@ -523,7 +532,8 @@ export function CreateMCPServerDialog({
               )}
 
               {internalMCPServer &&
-                requiresBearerTokenConfiguration(internalMCPServer) && (
+                requiresBearerTokenConfiguration(internalMCPServer) &&
+                !predefinedHeaders && (
                   <InternalBearerTokenSection
                     serverName={internalMCPServer.name}
                   />
@@ -532,6 +542,7 @@ export function CreateMCPServerDialog({
               <CustomHeadersConfigurationSection
                 defaultServerConfig={defaultServerConfig}
                 internalMCPServer={internalMCPServer}
+                predefinedHeaders={predefinedHeaders}
               />
             </div>
           </DialogContainer>
