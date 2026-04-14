@@ -169,12 +169,56 @@ export function extractArgRequiringApprovalValues(
       // Handle single-element arrays (e.g., ["adrien@dust.tt"]).
       result[argName] = value[0].toString();
     } else {
-      // For objects/arrays with multiple elements, we do not support approval. Skip them.
-      // In fact, it's very unlikely the model will infer two times the same
-      // object/array as identical, so storing the approval would be useless.
-      continue;
+      const stableValue = stableStringify(value);
+      if (stableValue !== null) {
+        result[argName] = stableValue;
+      }
     }
   }
 
   return result;
+}
+
+function stableStringify(value: unknown): string | null {
+  const normalizedValue = normalizeForStableStringify(value);
+  if (normalizedValue === undefined) {
+    return null;
+  }
+
+  return JSON.stringify(normalizedValue);
+}
+
+function normalizeForStableStringify(value: unknown): unknown {
+  if (value === null || isString(value) || isNumberOrBoolean(value)) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => normalizeForStableStringify(entry));
+  }
+
+  if (isPlainObject(value)) {
+    const sortedKeys = Object.keys(value).sort();
+    const normalizedObject: Record<string, unknown> = {};
+
+    for (const key of sortedKeys) {
+      const normalizedProperty = normalizeForStableStringify(value[key]);
+      if (normalizedProperty !== undefined) {
+        normalizedObject[key] = normalizedProperty;
+      }
+    }
+
+    return normalizedObject;
+  }
+
+  return undefined;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
