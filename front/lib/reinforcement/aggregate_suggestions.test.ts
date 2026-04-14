@@ -46,9 +46,9 @@ function makeInstructionSuggestion(
     suggestion: {
       instructionEdits: [
         {
-          old_string: "verify data",
-          new_string: "always verify data before responding",
-          expected_occurrences: 1,
+          targetBlockId: "abc12345",
+          content: "<p>Always verify data before responding</p>",
+          type: "replace",
         },
       ],
     },
@@ -93,9 +93,9 @@ describe("buildSkillAggregationPrompt", () => {
       suggestion: {
         instructionEdits: [
           {
-            old_string: "old text",
-            new_string: "New improved instructions.",
-            expected_occurrences: 1,
+            targetBlockId: "abc12345",
+            content: "<p>New improved instructions.</p>",
+            type: "replace",
           },
         ],
       },

@@ -47,9 +47,9 @@ export interface SkillSuggestionAsset {
   source: "reinforcement" | "synthetic";
   suggestion: {
     instructionEdits?: {
-      old_string: string;
-      new_string: string;
-      expected_occurrences: number;
+      targetBlockId: string;
+      content: string;
+      type: "replace";
     }[];
     toolEdits?: { action: "add" | "remove"; toolId: string }[];
   };

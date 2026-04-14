@@ -5,7 +5,7 @@ import type {
   SkillSuggestionType,
   SkillToolEditItemType,
 } from "@app/types/suggestions/skill_suggestion";
-import { Button, Card, Chip, DiffBlock } from "@dust-tt/sparkle";
+import { Button, Card, Chip } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 function useToolDisplayNames(
@@ -81,14 +81,12 @@ interface InstructionEditBlockProps {
 }
 
 function InstructionEditBlock({ edit }: InstructionEditBlockProps) {
-  const changes = [
-    {
-      old: edit.old_string,
-      new: edit.new_string || undefined,
-    },
-  ];
-
-  return <DiffBlock changes={changes} />;
+  // TODO(reinforced-skills): This is a placeholder for the actual implementation (Issue #7388)
+  return (
+    <p className="whitespace-pre-wrap text-sm text-foreground dark:text-foreground-night">
+      {edit.content}
+    </p>
+  );
 }
 
 interface SkillSuggestionCardProps {

@@ -57,9 +57,9 @@ describe("buildSkillAnalysisPrompt", () => {
     expect(userMessage).toMatch(/<skill[^>]+><\/skill>/);
   });
 
-  it("includes instructions when present", () => {
+  it("includes instructions when instructionsHtml is present", () => {
     const skill = makeSkill({
-      instructions: "Always verify data before responding.",
+      instructionsHtml: "Always verify data before responding.",
     });
     const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);
 
@@ -68,7 +68,7 @@ describe("buildSkillAnalysisPrompt", () => {
   });
 
   it("omits instructions when null", () => {
-    const skill = makeSkill({ instructions: null });
+    const skill = makeSkill({ instructions: null, instructionsHtml: null });
     const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);
 
     expect(userMessage).not.toContain("<instructions>");

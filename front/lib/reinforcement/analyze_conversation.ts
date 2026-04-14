@@ -3,6 +3,7 @@ import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { formatSkillContext } from "@app/lib/reinforcement/format_skill_context";
 import { buildReinforcedSkillsLLMParams } from "@app/lib/reinforcement/run_reinforced_analysis";
+import { SKILL_INSTRUCTION_HTML_EDIT_PROMPT } from "@app/lib/reinforcement/skill_instruction_edit_prompt";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -13,6 +14,7 @@ const ASSEMBLY_ORDER = [
   "analysis_workflow",
   "conversation_analysis",
   "instructions_guidance",
+  "instruction_editing",
   "tools_guidance",
 ] as const;
 
@@ -71,7 +73,7 @@ Evaluate if any suggestions could improve the behavior of ALL agents and users u
 
 Step 6: Build a final plan for skill suggestions. You MUST include an "analysis" field explaining why this change would improve the skill.
 This MUST include the signal that was discovered in <conversation_analysis> that led to the suggestion.
-Subsequently, an aggregation workflow will use this analysis to determine which suggestions are most impactful.
+You MUST follow <instruction_editing> when formatting instruction edits.
 
 Step 7: Make suggestions.
 ONLY make suggestions that will affect the skill behavior. NEVER suggest cosmetic-only fixes.
@@ -93,6 +95,8 @@ ONLY make suggestions that will affect the skill behavior. NEVER suggest cosmeti
 - Prefer small, focused changes over large rewrites.
 - Extract the INTENT from examples, not the literal pattern.
 - Filter out information only relevant for humans, not the LLM.`,
+
+  instruction_editing: SKILL_INSTRUCTION_HTML_EDIT_PROMPT,
 
   tools_guidance: `Tools provide capabilities to the skill. When evaluating tool changes:
 

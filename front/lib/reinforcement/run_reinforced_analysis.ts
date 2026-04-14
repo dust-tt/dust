@@ -5,7 +5,6 @@ import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { getSkillInstructionEditsValidationError } from "@app/lib/api/skills/apply_skill_instruction_edits";
 import { getLargeWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -53,30 +52,22 @@ const REINFORCED_SKILLS_TOOL_DEFINITIONS: Record<
       instructionEdits: z
         .array(
           z.object({
-            old_string: z
-              .string()
-              .min(1)
-              .describe(
-                "Exact text to find in the current skill instructions."
-              ),
-            new_string: z
+            targetBlockId: z
               .string()
               .describe(
-                "Replacement text. Empty string deletes the matched span."
+                'The data-block-id of the block to replace. Use "instructions-root" to replace all instructions.'
               ),
-            expected_occurrences: z
-              .number()
-              .int()
-              .min(1)
-              .default(1)
+            content: z
+              .string()
               .describe(
-                "How many times old_string is expected to appear. Used to validate the edit is still applicable."
+                "Full replacement content for the block, including its wrapping tag. Must be a single-line string with no literal newlines."
               ),
+            type: z.literal("replace"),
           })
         )
         .optional()
         .describe(
-          "Sequential search-and-replace operations applied to the skill instructions."
+          "Block-targeted edits to the skill instructions. Each item targets one block by its data-block-id."
         ),
       toolEdits: z
         .array(
@@ -398,26 +389,33 @@ async function createSkillSuggestionsFromToolCall({
         };
       }
 
-      if (
-        parsed.data.instructionEdits &&
-        parsed.data.instructionEdits.length > 0
-      ) {
-        const currentInstructions = skill.instructions ?? "";
-        const validationError = getSkillInstructionEditsValidationError(
-          currentInstructions,
-          parsed.data.instructionEdits
+      if (hasInstructionEdits && !skill.instructionsHtml) {
+        return {
+          suggestionsCreated: 0,
+          error:
+            "edit_skill with instructionEdits requires the skill to have instructionsHtml.",
+        };
+      }
+
+      if (hasInstructionEdits && parsed.data.instructionEdits) {
+        const edits = parsed.data.instructionEdits;
+
+        // Reject if multiple edits target the same block.
+        const blockIds = edits.map(
+          (e: { targetBlockId: string }) => e.targetBlockId
         );
-        if (validationError) {
-          logger.warn(
-            { skillId: parsed.data.skillId, contextId, validationError },
-            "ReinforcedSkills: invalid instruction edits"
-          );
-          return { suggestionsCreated: 0, error: validationError };
+        const uniqueBlockIds = new Set(blockIds);
+        if (uniqueBlockIds.size !== blockIds.length) {
+          return {
+            suggestionsCreated: 0,
+            error:
+              "Multiple edits target the same block ID. Use one edit per block.",
+          };
         }
       }
 
       // Mark any existing pending edit suggestions for this skill as outdated.
-      // This is not strictly necessary, but it is unclear if we want to allow multiple pending edit suggestions for the same skill.
+      // TODO(reinforced-skills): Allow multiple pending edit suggestions (Issue #7444)
       const existingPending =
         await SkillSuggestionResource.listBySkillConfigurationId(
           auth,

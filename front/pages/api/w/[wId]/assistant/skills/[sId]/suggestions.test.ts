@@ -218,9 +218,9 @@ describe("PATCH /api/w/[wId]/assistant/skills/[sId]/suggestions", () => {
       suggestion: {
         instructionEdits: [
           {
-            old_string: "original text",
-            new_string: "updated instructions",
-            expected_occurrences: 1,
+            targetBlockId: "abc12345",
+            content: "<p>Updated instructions</p>",
+            type: "replace",
           },
         ],
       },
@@ -249,9 +249,9 @@ describe("PATCH /api/w/[wId]/assistant/skills/[sId]/suggestions", () => {
       suggestion: {
         instructionEdits: [
           {
-            old_string: "original text",
-            new_string: "updated instructions",
-            expected_occurrences: 1,
+            targetBlockId: "abc12345",
+            content: "<p>Updated instructions</p>",
+            type: "replace",
           },
         ],
       },

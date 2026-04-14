@@ -70,9 +70,8 @@ function formatSuggestion(s: SkillSuggestionType): string {
       let xml = `<suggestion kind="edit"><skillId>${escapeXml(s.skillConfigurationId)}</skillId><analysis>${escapeXml(s.analysis ?? "N/A")}</analysis>`;
       if (s.suggestion.instructionEdits?.length) {
         xml += "<instructionEdits>";
-        for (let i = 0; i < s.suggestion.instructionEdits.length; i++) {
-          const e = s.suggestion.instructionEdits[i];
-          xml += `<instructionEdit index="${i + 1}" expected_occurrences="${e.expected_occurrences}"><oldString>${escapeXml(e.old_string)}</oldString><newString>${escapeXml(e.new_string)}</newString></instructionEdit>`;
+        for (const e of s.suggestion.instructionEdits) {
+          xml += `<instructionEdit targetBlockId="${escapeXml(e.targetBlockId)}" type="${escapeXml(e.type)}"><content>${escapeXml(e.content)}</content></instructionEdit>`;
         }
         xml += "</instructionEdits>";
       }
