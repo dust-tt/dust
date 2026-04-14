@@ -203,7 +203,11 @@ async function handler(
       }
 
       try {
-        await SubscriptionResource.pokeUpgradeWorkspaceToEnterprise(auth, body);
+        await SubscriptionResource.pokeUpgradeWorkspaceToEnterprise(
+          auth,
+          body,
+          stripeSubscription
+        );
         // Restore workspace functionality after subscription upgrade
         await restoreWorkspaceAfterSubscription(auth);
 

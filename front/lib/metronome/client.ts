@@ -33,6 +33,11 @@ export function floorToHourISO(date: Date): string {
   return new Date(Math.floor(date.getTime() / HOUR_MS) * HOUR_MS).toISOString();
 }
 
+/** Convert an epoch-seconds timestamp (e.g. from Stripe) to an hour-floored ISO string. */
+export function epochSecondsToFloorHourISO(epochSeconds: number): string {
+  return floorToHourISO(new Date(epochSeconds * 1000));
+}
+
 export function ceilToHourISO(date: Date): string {
   return new Date(Math.ceil(date.getTime() / HOUR_MS) * HOUR_MS).toISOString();
 }

@@ -11,7 +11,7 @@ export const SUPPORTED_ENTERPRISE_REPORT_USAGE = [
   "MAU_10",
   "FIXED",
 ] as const;
-type SupportedEnterpriseReportUsage =
+export type SupportedEnterpriseReportUsage =
   (typeof SUPPORTED_ENTERPRISE_REPORT_USAGE)[number];
 
 export const SUPPORTED_REPORT_USAGE = [
