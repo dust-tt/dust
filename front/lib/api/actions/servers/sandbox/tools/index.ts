@@ -7,7 +7,11 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { SANDBOX_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox/metadata";
 import config from "@app/lib/api/config";
-import { generateSandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
+import {
+  generateExecId,
+  generateSandboxExecToken,
+  revokeExecToken,
+} from "@app/lib/api/sandbox/access_tokens";
 import {
   mountConversationFiles,
   refreshGcsToken,
@@ -26,6 +30,7 @@ import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
+import { isDevelopment } from "@app/types/shared/env";
 import { Err, Ok } from "@app/types/shared/result";
 
 const DEFAULT_WORKING_DIRECTORY = "/home/agent";
@@ -137,10 +142,12 @@ export function createSandboxTools(
         );
       }
 
-      const sandboxToken = generateSandboxExecToken(auth, {
+      const execId = generateExecId();
+      const sandboxToken = await generateSandboxExecToken(auth, {
         agentConfiguration,
         conversation,
         sandbox,
+        execId,
         expiryMs: DEFAULT_EXEC_TIMEOUT_MS,
       });
 
@@ -153,11 +160,16 @@ export function createSandboxTools(
         timeoutSec,
       });
 
+      const sandboxAPIBase =
+        isDevelopment() && config.getSandboxDevFrontHostName()
+          ? `https://${config.getSandboxDevFrontHostName()}`
+          : config.getClientFacingUrl();
+
       const execResult = await sandbox.exec(auth, wrappedCommand, {
         workingDirectory: workingDirectory ?? DEFAULT_WORKING_DIRECTORY,
         envVars: {
           DUST_SANDBOX_TOKEN: sandboxToken,
-          DUST_API_URL: `${config.getClientFacingUrl()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
+          DUST_API_URL: `${sandboxAPIBase}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
         },
       });
 
@@ -167,6 +179,10 @@ export function createSandboxTools(
         durationMs,
         metricsCtx,
         execResult.isOk() ? "success" : "error"
+      );
+
+      void revokeExecToken({ sbId: sandbox.sId, execId }).catch((err) =>
+        logger.error({ error: err }, "Failed to revoke exec token")
       );
 
       if (execResult.isErr()) {

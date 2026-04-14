@@ -4,6 +4,7 @@ import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import {
   AgentMessageFeedbackModel,
   AgentMessageModel,
+  CompactionMessageModel,
   MentionModel,
   MessageModel,
   MessageReactionModel,
@@ -18,6 +19,7 @@ import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -64,6 +66,10 @@ async function destroyMessageRelatedResources(
   messageIds: ModelId[]
 ) {
   const owner = auth.getNonNullableWorkspace();
+
+  await ConversationForkResource.deleteBySourceMessageModelIds(auth, {
+    sourceMessageModelIds: messageIds,
+  });
 
   await ConversationBranchModel.destroy({
     where: {
@@ -172,6 +178,10 @@ export async function destroyConversation(
 ): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
+  await ConversationForkResource.deleteForConversationModelId(auth, {
+    conversationModelId: conversation.id,
+  });
+
   // Clean up all branches attached to this conversation before deleting messages.
   await ConversationBranchModel.destroy({
     where: {
@@ -187,6 +197,7 @@ export async function destroyConversation(
       "userMessageId",
       "agentMessageId",
       "contentFragmentId",
+      "compactionMessageId",
     ],
     where: {
       conversationId: conversation.id,
@@ -203,6 +214,9 @@ export async function destroyConversation(
     );
     const agentMessageIds = removeNulls(
       messagesChunk.map((m) => m.agentMessageId)
+    );
+    const compactionMessageIds = removeNulls(
+      messagesChunk.map((m) => m.compactionMessageId)
     );
     const messageAndContentFragmentIds = removeNulls(
       messagesChunk.map((m) => {
@@ -251,6 +265,13 @@ export async function destroyConversation(
       conversationId: conversation.sId,
     });
 
+    await CompactionMessageModel.destroy({
+      where: {
+        id: compactionMessageIds,
+        workspaceId: owner.id,
+      },
+    });
+
     await destroyMessageRelatedResources(auth, messageIds);
   }
 
@@ -290,7 +311,7 @@ export async function destroyConversation(
     where: { workspaceId: owner.id, conversationId: conversation.id },
   });
   await ProjectTodoSourceModel.destroy({
-    where: { workspaceId: owner.id, sourceConversationId: conversation.id },
+    where: { workspaceId: owner.id, sourceId: conversation.sId },
   });
 
   await SandboxResource.deleteByConversationId(auth, conversation.sId);

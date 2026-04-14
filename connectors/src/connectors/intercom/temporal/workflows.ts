@@ -318,13 +318,16 @@ export async function intercomHelpCenterFullSyncWorkflow({
   // We loop over the conversations to sync them all, by batch of INTERCOM_CONVO_BATCH_SIZE.
   let page: number | null = 1;
   do {
-    const { nextPage } = await syncArticleBatchActivity({
-      connectorId,
-      helpCenterId,
-      page,
-      currentSyncMs,
-      forceResync,
-    });
+    const {
+      nextPage,
+    }: Awaited<ReturnType<typeof activities.syncArticleBatchActivity>> =
+      await syncArticleBatchActivity({
+        connectorId,
+        helpCenterId,
+        page,
+        currentSyncMs,
+        forceResync,
+      });
     page = nextPage;
   } while (page);
 }
@@ -462,13 +465,17 @@ async function syncTeamConversations({
 
   // We loop over the conversations to sync them all, by batch of INTERCOM_CONVO_BATCH_SIZE.
   do {
-    const { conversationIds, nextPageCursor } =
-      await getNextConversationBatchToSyncActivity({
-        connectorId,
-        teamId,
-        cursor,
-        closedAfterTimeWindowMinutes: CONVERSATION_SYNC_WINDOW_MINUTES,
-      });
+    const {
+      conversationIds,
+      nextPageCursor,
+    }: Awaited<
+      ReturnType<typeof activities.getNextConversationBatchToSyncActivity>
+    > = await getNextConversationBatchToSyncActivity({
+      connectorId,
+      teamId,
+      cursor,
+      closedAfterTimeWindowMinutes: CONVERSATION_SYNC_WINDOW_MINUTES,
+    });
 
     await syncConversationBatchActivity({
       connectorId,

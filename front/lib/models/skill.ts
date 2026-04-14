@@ -6,6 +6,7 @@ import { FileModel } from "@app/lib/resources/storage/models/files";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
+  SkillReinforcementMode,
   SkillSourceMetadata,
   SkillSourceType,
   SkillStatus,
@@ -44,6 +45,10 @@ const SKILL_MODEL_ATTRIBUTES = {
   instructions: {
     type: DataTypes.TEXT,
     allowNull: false,
+  },
+  instructionsHtml: {
+    type: DataTypes.TEXT,
+    allowNull: true,
   },
   requestedSpaceIds: {
     type: DataTypes.ARRAY(DataTypes.BIGINT),
@@ -100,6 +105,7 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare agentFacingDescription: string;
   declare userFacingDescription: string;
   declare instructions: string;
+  declare instructionsHtml: string | null;
   declare icon: string | null;
 
   declare editedBy: ForeignKey<UserModel["id"]> | null;
@@ -110,32 +116,50 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare sourceMetadata: SkillSourceMetadata | null;
   declare isDefault: boolean;
 
+  declare reinforcement: CreationOptional<SkillReinforcementMode>;
+  declare lastReinforcementAnalysisAt: CreationOptional<Date | null>;
+
   declare requestedSpaceIds: number[];
 }
 
-SkillConfigurationModel.init(SKILL_MODEL_ATTRIBUTES, {
-  modelName: "skill_configuration",
-  sequelize: frontSequelize,
-  indexes: [
-    {
-      fields: ["workspaceId", "status"],
-      concurrently: true,
+SkillConfigurationModel.init(
+  {
+    ...SKILL_MODEL_ATTRIBUTES,
+    reinforcement: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "auto",
     },
-    {
-      fields: ["workspaceId", "status", "isDefault"],
-      concurrently: true,
+    lastReinforcementAnalysisAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
     },
-    {
-      fields: ["workspaceId", "editedBy"],
-      concurrently: true,
-    },
-    {
-      unique: true,
-      fields: ["workspaceId", "name", "status"],
-      concurrently: true,
-    },
-  ],
-});
+  },
+  {
+    modelName: "skill_configuration",
+    sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["workspaceId", "status"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "status", "isDefault"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "editedBy"],
+        concurrently: true,
+      },
+      {
+        unique: true,
+        fields: ["workspaceId", "name", "status"],
+        concurrently: true,
+      },
+    ],
+  }
+);
 
 export class SkillVersionModel extends SkillConfigurationModel {
   declare skillConfigurationId: ForeignKey<SkillConfigurationModel["id"]>;

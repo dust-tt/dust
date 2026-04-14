@@ -6,6 +6,7 @@ import { NoopSpanExporter } from "@app/lib/api/instrumentation/noop_span_exporte
 import { getTemporalAgentWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
+import { compactionActivity } from "@app/temporal/agent_loop/activities/compaction";
 import { ensureConversationTitleActivity } from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import {
   finalizeCancelledAgentLoopActivity,
@@ -47,6 +48,7 @@ export async function runAgentLoopWorker() {
       getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities: {
+      compactionActivity,
       ensureConversationTitleActivity,
       finalizeSuccessfulAgentLoopActivity,
       finalizeGracefullyStoppedAgentLoopActivity,

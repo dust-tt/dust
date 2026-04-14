@@ -6,6 +6,7 @@ import {
   eitherGlobalOrCustomSkillValidation,
   SkillConfigurationModel,
 } from "@app/lib/models/skill";
+import type { GlobalSkillId } from "@app/lib/resources/skill/global/registry";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -74,7 +75,7 @@ export class ConversationSkillModel extends WorkspaceAwareModel<ConversationSkil
   declare agentConfigurationId: string | null;
 
   declare customSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
-  declare globalSkillId: string | null;
+  declare globalSkillId: GlobalSkillId | null;
 
   declare conversationId: ForeignKey<ConversationModel["id"]>;
 

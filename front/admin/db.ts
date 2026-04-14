@@ -25,6 +25,7 @@ import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import {
   AgentMessageFeedbackModel,
   AgentMessageModel,
+  CompactionMessageModel,
   ConversationModel,
   ConversationParticipantModel,
   MentionModel,
@@ -34,6 +35,7 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
+import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TriggerSubscriberModel } from "@app/lib/models/agent/triggers/trigger_subscriber";
@@ -194,6 +196,7 @@ export function loadAllModels() {
     AgentMessageModel,
     AgentMessageFeedbackModel,
     ContentFragmentModel,
+    CompactionMessageModel,
     MessageModel,
     MessageReactionModel,
     MentionModel,
@@ -228,6 +231,7 @@ export function loadAllModels() {
     AcademyChapterVisitModel,
     SandboxModel,
     ConversationBranchModel,
+    ConversationForkModel,
     ProjectTodoModel,
     ProjectTodoConversationModel,
     ProjectTodoSourceModel,

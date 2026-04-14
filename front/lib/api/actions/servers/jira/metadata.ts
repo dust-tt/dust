@@ -13,8 +13,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const JIRA_TOOL_NAME = "jira" as const;
-
 export const JIRA_TOOLS_METADATA = createToolsRecord({
   // Read operations
   get_issue_read_fields: {

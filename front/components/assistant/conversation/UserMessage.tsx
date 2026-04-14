@@ -17,6 +17,8 @@ import { useEditUserMessage } from "@app/hooks/useEditUserMessage";
 import { useHover } from "@app/hooks/useHover";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { AGENT_MENTION_REGEX } from "@app/lib/mentions/format";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
@@ -24,8 +26,13 @@ import type {
   UserMessageType,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
+import {
+  isAgentMention,
+  isRichAgentMention,
+} from "@app/types/assistant/mentions";
 import type { WorkspaceType } from "@app/types/user";
 import {
+  ActionTimeIcon,
   Avatar,
   BoltIcon,
   Button,
@@ -41,7 +48,6 @@ import {
   LinkIcon,
   MoreIcon,
   PencilSquareIcon,
-  Spinner,
   Toolbar,
   Tooltip,
   TrashIcon,
@@ -52,7 +58,7 @@ import { BubbleMenu } from "@tiptap/react/menus";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { cva } from "class-variance-authority";
 import type React from "react";
-import { useCallback, useContext, useState } from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 
 interface UserMessageEditorProps {
   editor: Editor | null;
@@ -152,14 +158,41 @@ export function UserMessage({
     conversationId,
   });
   const confirm = useContext(ConfirmContext);
+  const { hasFeature } = useFeatureFlags();
+  const singleAgentInput = hasFeature("enable_steering");
+
+  const originalAgentIds = useMemo(
+    () =>
+      new Set(
+        message.mentions.filter(isAgentMention).map((m) => m.configurationId)
+      ),
+    [message.mentions]
+  );
 
   const handleSave = async () => {
     const { markdown, mentions } = editorService.getMarkdownAndMentions();
 
+    let content = markdown;
+    let filteredMentions = mentions;
+    if (singleAgentInput) {
+      filteredMentions = mentions.filter(
+        (m) => !isRichAgentMention(m) || originalAgentIds.has(m.id)
+      );
+
+      if (filteredMentions.length < mentions.length) {
+        // Strip agent mention syntax from the markdown to match the filtered mentions array.
+        content = markdown
+          .replaceAll(AGENT_MENTION_REGEX, (_match, _label, agentId) =>
+            originalAgentIds.has(agentId) ? _match : ""
+          )
+          .trim();
+      }
+    }
+
     await editMessage({
       messageId: message.sId,
-      content: markdown,
-      mentions,
+      content,
+      mentions: filteredMentions,
     });
 
     setShouldShowEditor(false);
@@ -170,6 +203,9 @@ export function UserMessage({
     conversationId,
     onEnterKeyDown: handleSave,
     disableAutoFocus: false,
+    // This editor is only mounted in edit mode, so singleAgentInput
+    // alone is sufficient to disable agent mentions (edit mode is implied).
+    disableAgentMentions: singleAgentInput,
   });
 
   const renderName = useCallback(
@@ -246,13 +282,6 @@ export function UserMessage({
   // Otherwise, show it to the side of the message.
   const showBottomActionMenu = !isDeleted && (hasReactions || isMobile);
   const showSideActionMenu = !isDeleted && !hasReactions && !isMobile;
-  // With reactions the button is always below; without, CSS container query floats it to the side.
-  // Deleted messages have no action menu → tight spacing.
-  const actionMenuBottomMargin = isDeleted
-    ? "mb-1"
-    : hasReactions
-      ? "mb-8"
-      : "mb-8 @sm/conversation:mb-1";
 
   const displayChip =
     message.version > 0 || isTriggeredOrigin(message.context.origin);
@@ -341,8 +370,7 @@ export function UserMessage({
             type="user"
             className={cn(
               isCurrentUser ? "ml-auto" : undefined,
-              "relative max-w-conversation @xxxs/conversation:max-w-[95%] @xxs/conversation:max-w-[80%] @xs/conversation:max-w-[85%]",
-              actionMenuBottomMargin
+              "relative max-w-conversation @xxxs/conversation:max-w-[95%] @xxs/conversation:max-w-[80%] @xs/conversation:max-w-[85%]"
             )}
             ref={userMessageHoveredRef}
           >
@@ -350,10 +378,13 @@ export function UserMessage({
               <ConversationMessageContent
                 citations={citations}
                 type="user"
-                className={cn(shouldShowBiggerUserMessage && "@sm:min-w-100")}
+                className={cn(
+                  shouldShowBiggerUserMessage && "@sm:min-w-100",
+                  message.visibility === "pending" && "opacity-70"
+                )}
+                reversed={isCurrentUser}
               >
                 <div className="flex items-center gap-2">
-                  {message.visibility === "pending" && <Spinner size="xs" />}
                   {isDeleted ? (
                     <DeletedMessage />
                   ) : isEmpty ? (
@@ -405,6 +436,17 @@ export function UserMessage({
               />
             )}
           </ConversationMessageContainer>
+        </div>
+      )}
+      {message.visibility === "pending" && isLastMessage && (
+        <div
+          className={cn(
+            "mt-1 mr-3 flex items-center gap-1 text-xs text-muted-foreground dark:text-muted-foreground-night",
+            isCurrentUser && "justify-end"
+          )}
+        >
+          <Icon visual={ActionTimeIcon} size="xs" />
+          Waiting for the current step to finish
         </div>
       )}
     </>

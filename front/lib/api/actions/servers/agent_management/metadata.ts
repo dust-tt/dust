@@ -4,8 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const AGENT_MANAGEMENT_TOOL_NAME = "agent_management" as const;
-
 // Tools metadata with exhaustive keys
 export const AGENT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
   create_agent: {

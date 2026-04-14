@@ -1,10 +1,10 @@
-import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
 import {
   CLOSING_TAG_REGEX,
   INSTRUCTION_BLOCK_REGEX,
   OPENING_TAG_BEGINNING_REGEX,
   OPENING_TAG_REGEX,
 } from "@app/components/editor/extensions/agent_builder/instructionBlockUtils";
+import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { ChevronDownIcon, ChevronRightIcon, Chip, cn } from "@dust-tt/sparkle";

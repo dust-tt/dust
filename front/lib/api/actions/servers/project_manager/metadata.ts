@@ -1,6 +1,10 @@
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import {
+  IncludeInputSchema,
+  SearchWithNodesInputSchema,
+} from "@app/lib/actions/mcp_internal_actions/types";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
@@ -33,12 +37,15 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
         .describe(
           "MIME type (default: inferred from file extension, e.g. text/markdown for .md files, or text/plain if unknown. Inherited from sourceFileId if provided)"
         ),
-      dustProject:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-        ].optional(),
+      dustProject: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+      ]
+        .optional()
+        .describe(
+          "Optional project to add the file to, will fallback to the conversation's project."
+        ),
     },
-    stake: "low",
+    stake: "never_ask",
     displayLabels: {
       running: "Adding file to project",
       done: "Add file to project",
@@ -62,15 +69,39 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
         .describe(
           "ID of an existing file to copy content from (provide either this or content)"
         ),
-      dustProject:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-        ].optional(),
+      dustProject: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+      ]
+        .optional()
+        .describe(
+          "Optional project to update the file in, will fallback to the conversation's project."
+        ),
     },
     stake: "medium",
     displayLabels: {
       running: "Updating file in project",
       done: "Update file in project",
+    },
+  },
+  attach_to_conversation: {
+    description:
+      "Attach an existing project context file to the current conversation without creating or copying a new file.",
+    schema: {
+      fileId: z
+        .string()
+        .describe("ID of an existing file in the project context to attach"),
+      dustProject: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+      ]
+        .optional()
+        .describe(
+          "Optional project to attach the file to, will fallback to the conversation's project."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Attaching project file to conversation",
+      done: "Attach project file to conversation",
     },
   },
   edit_description: {
@@ -82,10 +113,13 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
         .describe(
           "New project description. Must be plain text only (no markdown, HTML, or other formatting). Keep it brief and concise: 1-2 short sentences max."
         ),
-      dustProject:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-        ].optional(),
+      dustProject: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+      ]
+        .optional()
+        .describe(
+          "Optional project to edit the description of, will fallback to the conversation's project."
+        ),
     },
     stake: "low",
     displayLabels: {
@@ -97,10 +131,13 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
     description:
       "Get comprehensive information about the project context, including project URL, description, file count, and file list.",
     schema: {
-      dustProject:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-        ].optional(),
+      dustProject: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+      ]
+        .optional()
+        .describe(
+          "Optional project to get information from, will fallback to the conversation's project."
+        ),
     },
     stake: "never_ask",
     displayLabels: {
@@ -108,25 +145,22 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
       done: "Get project information",
     },
   },
-  list_unread: {
+  list_projects: {
     description:
-      "List unread conversations in the project. Returns conversations that have been updated since the user last read them, " +
-      "within an optional time window (defaults to 30 days).",
+      "List non-archived projects where you are a space member (same scope as the workspace project sidebar source). Each entry includes spaceId, name, and dustProject (uri + mimeType) to pass as the dustProject argument to other project_manager tools.",
+    schema: {},
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing projects",
+      done: "List projects",
+    },
+  },
+  retrieve_recent_documents: {
+    description:
+      "Fetch the most recent documents from this project's knowledge data source and from any content nodes linked in the project context, in reverse chronological order up to the retrieval limit. Respects optional time window. Optionally restrict to subtrees using nodeIds.",
     schema: {
-      daysBack: z
-        .number()
-        .optional()
-        .default(30)
-        .describe(
-          "Number of days to look back for unread conversations (default: 30 days)"
-        ),
-      limit: z
-        .number()
-        .optional()
-        .default(20)
-        .describe(
-          "Maximum number of conversations to return (default: 20, max: 100)"
-        ),
+      timeFrame: IncludeInputSchema.shape.timeFrame,
+      nodeIds: SearchWithNodesInputSchema.shape.nodeIds,
       dustProject:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
@@ -134,8 +168,42 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Searching unread conversations",
-      done: "Search unread conversations",
+      running: "Retrieving recent project documents",
+      done: "Retrieve recent project documents",
+    },
+  },
+  semantic_search: {
+    description:
+      "Semantic search over this project using the same retrieval pipeline as company data search. Scope selects the project dust_project data source slice (knowledge vs conversation transcripts vs both) plus searchable context nodes for knowledge/all. Optionally restrict to subtrees using nodeIds (same as company data_sources_file_system search).",
+    schema: {
+      query: z
+        .string()
+        .describe(
+          "Natural-language query; include enough context from the conversation for good retrieval."
+        ),
+      searchScope: z
+        .enum(["knowledge", "conversations", "all"])
+        .optional()
+        .describe(
+          "knowledge: project files, metadata, and linked searchable nodes (excludes conversation transcripts in the project data source); conversations: only those transcripts; all: entire project data source plus linked nodes (default when omitted)."
+        ),
+      relativeTimeFrame: z
+        .string()
+        .regex(/^(all|\d+[hdwmy])$/)
+        .optional()
+        .describe(
+          "Restrict matches by document time (same as company search): `all`, or `{k}h|d|w|m|y`. Omit for all time."
+        ),
+      nodeIds: SearchWithNodesInputSchema.shape.nodeIds,
+      dustProject:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        ].optional(),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Searching project",
+      done: "Search project",
     },
   },
 });
@@ -144,6 +212,10 @@ const PROJECT_MANAGER_INSTRUCTIONS =
   "Project files and metadata are shared across all conversations in this project. " +
   "Only text-based files are supported for adding/updating. " +
   "You can add/update files by providing text content directly, or by copying from existing files (like those you've generated). " +
+  "You can also attach an existing project context file to the current conversation without recreating it. " +
+  "Use list_projects to discover projects you can access and obtain the dustProject uri for other tools. " +
+  "Use semantic_search to find relevant chunks in project knowledge and/or conversations (scope: knowledge, conversations, or all). " +
+  "Use retrieve_recent_documents to load recent content from the project data source and from knowledge nodes in the project context. " +
   "Requires write permissions on the project space. " +
   "After adding or updating files, always list the file names you changed in your response so the user knows exactly what was modified.";
 

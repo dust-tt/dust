@@ -685,6 +685,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_opus_feature"
   | "confluence_tool"
   | "conversation_branches"
+  | "sessions_branching"
   | "project_todo"
   | "projects"
   | "databricks_tool"
@@ -733,7 +734,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
   | "slack_message_splitting"
-  | "slack_native_streaming"
   | "slideshow"
   | "snowflake_tool"
   | "run_tools_from_prompt"
@@ -742,7 +742,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "conversations_slack_notifications"
   | "anthropic_reasoning_token_count"
   | "collapsible_messages"
-  | "email_restricted_sharing"
   | "use_dust_keys"
   | "enable_steering"
 >();
@@ -1454,16 +1453,6 @@ const ToolErrorEventSchema = z.object({
 });
 export type ToolErrorEvent = z.infer<typeof ToolErrorEventSchema>;
 
-export function isMCPServerPersonalAuthRequiredError(
-  error: ToolErrorEvent["error"]
-) {
-  return (
-    error.code === "mcp_server_personal_authentication_required" &&
-    error.metadata &&
-    "mcp_server_id" in error.metadata
-  );
-}
-
 const AgentErrorEventSchema = z.object({
   type: z.literal("agent_error"),
   created: z.number(),
@@ -1538,6 +1527,18 @@ const AgentMessageSuccessEventSchema = z.object({
 });
 export type AgentMessageSuccessEvent = z.infer<
   typeof AgentMessageSuccessEventSchema
+>;
+
+const AgentMessageGracefullyStoppedEventSchema = z.object({
+  type: z.literal("agent_message_gracefully_stopped"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  message: AgentMessageTypeSchema,
+  runIds: z.array(z.string()),
+});
+export type AgentMessageGracefullyStoppedEvent = z.infer<
+  typeof AgentMessageGracefullyStoppedEventSchema
 >;
 
 const AgentMessageDoneEventSchema = z.object({
@@ -3138,6 +3139,8 @@ export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
 
 const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionBrainIcon"
+  | "ActionChatBubbleBottomCenterTextIcon"
+  | "ActionChatBubbleThoughtIcon"
   | "ActionCloudArrowLeftRightIcon"
   | "ActionDocumentTextIcon"
   | "ActionEmotionLaughIcon"

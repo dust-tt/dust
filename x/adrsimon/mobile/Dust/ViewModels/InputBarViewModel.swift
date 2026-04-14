@@ -16,11 +16,17 @@ final class InputBarViewModel: ObservableObject {
     @Published var attachments: [Attachment] = []
     @Published var showPhotoPicker = false
     @Published var showDocumentPicker = false
+    @Published var showCapabilitiesPicker = false
+    @Published var showKnowledgePicker = false
+    @Published var availableCapabilities: [Capability] = []
+    @Published var selectedCapabilities: [Capability] = []
+    @Published var selectedKnowledgeItems: [KnowledgeItem] = []
+    private var hasLoadedCapabilities = false
 
     lazy var speechService = SpeechService(workspaceId: workspaceId, tokenProvider: tokenProvider)
 
-    private let workspaceId: String
-    private let tokenProvider: TokenProvider
+    let workspaceId: String
+    let tokenProvider: TokenProvider
     private let user: User
     private let spaceId: String?
 
@@ -54,6 +60,69 @@ final class InputBarViewModel: ObservableObject {
         } catch {
             logger.error("Failed to load agents: \(error)")
         }
+    }
+
+    func loadCapabilities() async {
+        guard !hasLoadedCapabilities else { return }
+        hasLoadedCapabilities = true
+        do {
+            // Skills don't need spaceIds, so fetch them alongside spaces
+            async let skillsFetch = CapabilityService.fetchSkills(
+                workspaceId: workspaceId,
+                tokenProvider: tokenProvider
+            )
+            async let spacesFetch = SpaceService.fetchGlobalSpaces(
+                workspaceId: workspaceId,
+                tokenProvider: tokenProvider
+            )
+
+            let (skills, globalSpaces) = try await (skillsFetch, spacesFetch)
+
+            let tools = try await CapabilityService.fetchMCPServerViews(
+                workspaceId: workspaceId,
+                spaceIds: globalSpaces.map(\.sId),
+                tokenProvider: tokenProvider
+            )
+
+            let merged: [Capability] = tools.map { .tool($0) } + skills.map { .skill($0) }
+            availableCapabilities = merged.sorted { $0.sortKey < $1.sortKey }
+        } catch {
+            logger.error("Failed to load capabilities: \(error)")
+        }
+    }
+
+    func selectCapability(_ capability: Capability, conversationId: String? = nil) {
+        guard !selectedCapabilities.contains(where: { $0.id == capability.id }) else { return }
+        selectedCapabilities.append(capability)
+        showCapabilitiesPicker = false
+
+        if let conversationId {
+            Task {
+                do { try await syncCapability(capability, action: .add, conversationId: conversationId) }
+                catch { logger.error("Failed to sync capability: \(error)") }
+            }
+        }
+    }
+
+    func deselectCapability(_ capability: Capability, conversationId: String? = nil) {
+        selectedCapabilities.removeAll { $0.id == capability.id }
+
+        if let conversationId {
+            Task {
+                do { try await syncCapability(capability, action: .delete, conversationId: conversationId) }
+                catch { logger.error("Failed to sync capability: \(error)") }
+            }
+        }
+    }
+
+    func selectKnowledgeItem(_ item: KnowledgeItem) {
+        guard !selectedKnowledgeItems.contains(where: { $0.id == item.id }) else { return }
+        selectedKnowledgeItems.append(item)
+        showKnowledgePicker = false
+    }
+
+    func deselectKnowledgeItem(_ item: KnowledgeItem) {
+        selectedKnowledgeItems.removeAll { $0.id == item.id }
     }
 
     func handleTextChange(_ text: String) {
@@ -250,9 +319,19 @@ final class InputBarViewModel: ObservableObject {
     // MARK: - Private
 
     private var messageContext: MessageContext {
-        MessageContext(
+        var toolIds: [String] = []
+        var skillIds: [String] = []
+        for capability in selectedCapabilities {
+            switch capability {
+            case let .tool(serverView): toolIds.append(serverView.sId)
+            case let .skill(skill): skillIds.append(skill.sId)
+            }
+        }
+        return MessageContext(
             timezone: TimeZone.current.identifier,
-            profilePictureUrl: user.profilePictureUrl
+            profilePictureUrl: user.profilePictureUrl,
+            selectedMCPServerViewIds: toolIds.isEmpty ? nil : toolIds,
+            selectedSkillIds: skillIds.isEmpty ? nil : skillIds
         )
     }
 
@@ -276,12 +355,37 @@ final class InputBarViewModel: ObservableObject {
             messageText = ""
             selectedAgent = nil
             attachments = []
+            selectedCapabilities = []
+            selectedKnowledgeItems = []
             return result
         } catch {
             logger.error("Send failed: \(error)")
             self.error = error.localizedDescription
             isSending = false
             return nil
+        }
+    }
+
+    // MARK: - Capabilities
+
+    private func syncCapability(_ capability: Capability, action: ConversationAction, conversationId: String) async throws {
+        switch capability {
+        case let .tool(serverView):
+            try await CapabilityService.updateTool(
+                action: action,
+                workspaceId: workspaceId,
+                conversationId: conversationId,
+                mcpServerViewId: serverView.sId,
+                tokenProvider: tokenProvider
+            )
+        case let .skill(skill):
+            try await CapabilityService.updateSkill(
+                action: action,
+                workspaceId: workspaceId,
+                conversationId: conversationId,
+                skillId: skill.sId,
+                tokenProvider: tokenProvider
+            )
         }
     }
 
@@ -342,13 +446,17 @@ final class InputBarViewModel: ObservableObject {
     }
 
     private func buildContentFragmentPayloads() -> [ContentFragmentPayload] {
-        attachments.compactMap { attachment in
+        let ctx = ContentFragmentContext(profilePictureUrl: user.profilePictureUrl)
+
+        let fileFragments: [ContentFragmentPayload] = attachments.compactMap { attachment in
             guard let fileId = attachment.fileId else { return nil }
-            return ContentFragmentPayload(
-                title: attachment.fileName,
-                fileId: fileId,
-                context: ContentFragmentContext(profilePictureUrl: user.profilePictureUrl)
-            )
+            return .file(title: attachment.fileName, fileId: fileId, context: ctx)
         }
+
+        let knowledgeFragments: [ContentFragmentPayload] = selectedKnowledgeItems.map { item in
+            .node(title: item.title, nodeId: item.internalId, nodeDataSourceViewId: item.dataSourceViewId, context: ctx)
+        }
+
+        return fileFragments + knowledgeFragments
     }
 }

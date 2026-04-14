@@ -146,7 +146,6 @@ function PreviewContent({
               }
               disableAutoFocus
               isFloating={false}
-              shouldUseDraft={false}
             />
           </div>
         )}

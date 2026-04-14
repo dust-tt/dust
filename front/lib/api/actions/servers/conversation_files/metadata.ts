@@ -59,7 +59,7 @@ export const CONVERSATION_FILES_TOOLS_METADATA = createToolsRecord({
   },
   [CONVERSATION_SEARCH_FILES_ACTION_NAME]: {
     description:
-      "Perform a semantic search within the files attached to the conversation.",
+      "Perform a semantic search within the files and content nodes attached to the conversation.",
     schema: {
       query: z.string().describe("The query to search for."),
     },
@@ -68,21 +68,6 @@ export const CONVERSATION_FILES_TOOLS_METADATA = createToolsRecord({
       running: "Searching files in conversation",
       done: "Search files in conversation",
     },
-  },
-});
-
-// Add a custom description on each tool to indicate that the tools are available in the project context.
-export const CONVERSATION_FILES_TOOLS_IN_PROJECT_METADATA = createToolsRecord({
-  ...CONVERSATION_FILES_TOOLS_METADATA,
-  [CONVERSATION_LIST_FILES_ACTION_NAME]: {
-    ...CONVERSATION_FILES_TOOLS_METADATA[CONVERSATION_LIST_FILES_ACTION_NAME],
-    description:
-      "List all files attached to the conversation and in the project context.",
-  },
-  [CONVERSATION_SEARCH_FILES_ACTION_NAME]: {
-    ...CONVERSATION_FILES_TOOLS_METADATA[CONVERSATION_SEARCH_FILES_ACTION_NAME],
-    description:
-      "Perform a semantic search within the files attached to the conversation and in the project context.",
   },
 });
 

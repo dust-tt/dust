@@ -37,18 +37,21 @@ export type MessageReactionType = {
 export type MessageType =
   | AgentMessageType
   | UserMessageType
-  | ContentFragmentType;
+  | ContentFragmentType
+  | CompactionMessageType;
 
 // This is the old format where content fragments are separated from the user messages.
 export type LegacyLightMessageType =
   | LightAgentMessageType
   | UserMessageType
-  | ContentFragmentType;
+  | ContentFragmentType
+  | CompactionMessageType;
 
 // This is the new format where content fragments are attached to the user messages.
 export type LightMessageType =
   | LightAgentMessageType
-  | UserMessageTypeWithContentFragments;
+  | UserMessageTypeWithContentFragments
+  | CompactionMessageType;
 
 /**
  * User messages
@@ -315,6 +318,42 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
   return arg.type === "agent_message";
 }
 
+// This guard is used to distinguish (light) agent message from the messages on the content of a
+// LightConversationType.
+export function isLightAgentMessageType(
+  message: LightMessageType
+): message is LightAgentMessageType {
+  return message.type === "agent_message";
+}
+
+/**
+ * Compaction messages
+ */
+export type CompactionMessageStatus = "created" | "succeeded" | "failed";
+
+/**
+ * @swaggerschema PrivateCompactionMessage (swagger_private_schemas.ts)
+ */
+export type CompactionMessageType = {
+  type: "compaction_message";
+  id: ModelId;
+  compactionMessageId: ModelId;
+  sId: string;
+  created: number;
+  visibility: MessageVisibility;
+  version: number;
+  rank: number;
+  branchId: string | null;
+  status: CompactionMessageStatus; // Lifecycle: created → succeeded | failed.
+  content: string | null; // null while status is "created".
+};
+
+export function isCompactionMessageType(
+  arg: MessageType | LegacyLightMessageType | LightMessageType
+): arg is CompactionMessageType {
+  return arg.type === "compaction_message";
+}
+
 /**
  * Conversations
  */
@@ -334,6 +373,13 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
 export type ConversationVisibility = "unlisted" | "deleted" | "test";
 
 export type ConversationMetadata = Record<string, unknown>;
+
+export type ConversationForkedFromType = {
+  parentConversationId: string;
+  sourceMessageId: string;
+  branchedAt: number;
+  user: UserType;
+};
 
 /**
  * A lighter version of Conversation without the content (for menu display).
@@ -355,6 +401,7 @@ export type ConversationWithoutContentType = {
   depth: number;
   metadata: ConversationMetadata;
   branchId: string | null;
+  forkedFrom?: ConversationForkedFromType;
 
   // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];
@@ -369,7 +416,12 @@ export type ConversationWithoutContentType = {
 export type ConversationType = ConversationWithoutContentType & {
   owner: WorkspaceType;
   visibility: ConversationVisibility;
-  content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
+  content: (
+    | UserMessageType[]
+    | AgentMessageType[]
+    | ContentFragmentType[]
+    | CompactionMessageType[]
+  )[];
 };
 
 /**
@@ -379,7 +431,11 @@ export type ConversationType = ConversationWithoutContentType & {
 export type LightConversationType = ConversationWithoutContentType & {
   owner: WorkspaceType;
   visibility: ConversationVisibility;
-  content: (LightAgentMessageType | UserMessageTypeWithContentFragments)[];
+  content: (
+    | LightAgentMessageType
+    | UserMessageTypeWithContentFragments
+    | CompactionMessageType
+  )[];
 };
 
 export function isLightConversationType(
@@ -430,6 +486,7 @@ export const CONVERSATION_ERROR_TYPES = [
   "message_not_found",
   "message_deletion_not_authorized",
   "branch_not_found",
+  "conversation_context_usage_not_found",
 ] as const;
 
 export type ConversationErrorType = (typeof CONVERSATION_ERROR_TYPES)[number];
@@ -490,6 +547,22 @@ export type AgentMessageNewEvent = {
   configurationId: string;
   messageId: string;
   message: AgentMessageType;
+};
+
+// Event sent when a new compaction message is created (compaction is starting).
+export type CompactionMessageNewEvent = {
+  type: "compaction_message_new";
+  created: number;
+  messageId: string;
+  message: CompactionMessageType;
+};
+
+// Event sent when compaction completes or fails.
+export type CompactionMessageDoneEvent = {
+  type: "compaction_message_done";
+  created: number;
+  messageId: string;
+  message: CompactionMessageType;
 };
 
 // Event sent when the conversation title is updated.

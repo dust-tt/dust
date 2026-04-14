@@ -142,7 +142,7 @@ const CollapseButton: React.FC<CollapseButtonProps> = ({
     const timeoutId = setTimeout(initializeAnimation, 100);
 
     return () => clearTimeout(timeoutId);
-  }, [direction]);
+  }, []);
 
   return (
     <div

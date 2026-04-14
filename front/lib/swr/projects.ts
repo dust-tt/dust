@@ -32,17 +32,36 @@ import type { Fetcher } from "swr";
 export function useProjectContextAttachments({
   owner,
   spaceId,
+  query,
+  type,
   disabled,
 }: {
   owner: LightWorkspaceType;
   spaceId: string;
+  query?: string;
+  type?: "file" | "content-node";
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const projectContextFetcher: Fetcher<GetProjectContextResponseBody> = fetcher;
 
+  const key = useMemo(() => {
+    if (disabled) {
+      return null;
+    }
+    const params = new URLSearchParams();
+    if (query && query.trim().length > 0) {
+      params.set("query", query);
+    }
+    if (type) {
+      params.set("type", type);
+    }
+    const qs = params.toString();
+    return `/api/w/${owner.sId}/spaces/${spaceId}/project_context${qs ? `?${qs}` : ""}`;
+  }, [disabled, owner.sId, spaceId, query, type]);
+
   const { data, error, mutate } = useSWRWithDefaults(
-    disabled ? null : `/api/w/${owner.sId}/spaces/${spaceId}/project_context`,
+    key,
     projectContextFetcher
   );
 
@@ -259,9 +278,11 @@ export function useRenameProjectFile({ owner }: { owner: LightWorkspaceType }) {
 export function useCheckProjectName({
   owner,
   initialName = "",
+  whitelistedName,
 }: {
   owner: LightWorkspaceType;
   initialName?: string;
+  whitelistedName?: string;
 }) {
   const { fetcher } = useFetcher();
   const {
@@ -273,9 +294,16 @@ export function useCheckProjectName({
     minLength: 1,
   });
 
+  // If the name matches the whitelisted name (case-insensitive), skip the API
+  // call entirely — the name is available by definition (e.g. when renaming a
+  // space to its current name).
+  const isWhitelisted =
+    !!whitelistedName &&
+    debouncedName.trim().toLowerCase() === whitelistedName.trim().toLowerCase();
+
   const shouldFetch = useMemo(() => {
-    return debouncedName.trim().length > 0;
-  }, [debouncedName]);
+    return debouncedName.trim().length > 0 && !isWhitelisted;
+  }, [debouncedName, isWhitelisted]);
 
   const checkKey = shouldFetch
     ? `/api/w/${owner.sId}/spaces/check-name?name=${encodeURIComponent(debouncedName)}`
@@ -286,8 +314,8 @@ export function useCheckProjectName({
   const { data, isLoading } = useSWRWithDefaults(checkKey, checkFetcher);
 
   return {
-    isNameAvailable: data?.available ?? true,
-    isChecking: isLoading || isDebouncing,
+    isNameAvailable: isWhitelisted || (data?.available ?? true),
+    isChecking: !isWhitelisted && (isLoading || isDebouncing),
     setValue,
   };
 }

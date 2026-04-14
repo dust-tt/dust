@@ -1,6 +1,5 @@
 import type { SlackChatBotMessageModel } from "@connectors/lib/models/slack";
 import type {
-  ChatPostMessageResponse,
   CodedError,
   WebAPIHTTPError,
   WebAPIPlatformError,
@@ -19,7 +18,6 @@ export class SlackMessageError extends Error {
   constructor(
     message: string,
     public slackChatBotMessage: Attributes<SlackChatBotMessageModel>,
-    public mainMessage?: ChatPostMessageResponse,
     public streamTs?: string
   ) {
     super(message);

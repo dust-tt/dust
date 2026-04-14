@@ -1,102 +1,50 @@
 import {
-  editMetronomeContractSeats,
   getMetronomeClient,
+  updateSubscriptionQuantity,
 } from "@app/lib/metronome/client";
+import { getProductWorkspaceSeatId } from "@app/lib/metronome/constants";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 
 /**
- * Find the default SEAT_BASED subscription on a contract.
- * For legacy packages there's only one; for new pricing, this returns the first
- * SEAT_BASED subscription (Guest/Pro/Max — caller decides which to use).
+ * Find the seat subscription ID on a contract by matching the Workspace Seat product ID.
  */
-export async function getDefaultSeatProductId(
+async function getSeatSubscriptionId(
   metronomeCustomerId: string,
   contractId: string
 ): Promise<string | undefined> {
   const client = getMetronomeClient();
+  const seatProductId = getProductWorkspaceSeatId();
+
   const response = await client.v2.contracts.list({
     customer_id: metronomeCustomerId,
   });
-  const contract = response.data.find((c) => c.id === contractId);
+  const contract = response.data.find(
+    (c: { id: string }) => c.id === contractId
+  );
   if (!contract?.subscriptions?.length) {
     return undefined;
   }
 
   const seatSub = contract.subscriptions.find(
-    (s) => s.quantity_management_mode === "SEAT_BASED"
+    (s: { subscription_rate: { product: { id: string } } }) =>
+      s.subscription_rate.product.id === seatProductId
   );
   return seatSub?.id ?? undefined;
 }
 
 /**
- * Add a single member as a seat on a contract's default seat subscription.
- * Called from membership create hook.
+ * Sync the Metronome seat subscription quantity to the current active member count.
+ * Always sets the absolute quantity — safe against race conditions.
+ *
+ * Called from:
+ * - membership create/revoke/update hooks (addSeat/removeSeat wrappers)
+ * - contract provisioning after creation or migration
  */
-export async function addSeat({
-  metronomeCustomerId,
-  contractId,
-  userId,
-  workspaceId,
-}: {
-  metronomeCustomerId: string;
-  contractId: string;
-  userId: string;
-  workspaceId: string;
-}): Promise<Result<void, Error>> {
-  const seatProductId = await getDefaultSeatProductId(
-    metronomeCustomerId,
-    contractId
-  );
-  if (!seatProductId) {
-    return new Err(new Error("No SEAT_BASED subscription found on contract"));
-  }
-
-  return await editMetronomeContractSeats({
-    metronomeCustomerId,
-    contractId,
-    edits: [{ subscriptionId: seatProductId, addSeatIds: [userId] }],
-  });
-}
-
-/**
- * Remove a single member's seat from a contract.
- * Called from membership revoke hook.
- */
-export async function removeSeat({
-  metronomeCustomerId,
-  contractId,
-  userId,
-  workspaceId,
-}: {
-  metronomeCustomerId: string;
-  contractId: string;
-  userId: string;
-  workspaceId: string;
-}): Promise<Result<void, Error>> {
-  const seatProductId = await getDefaultSeatProductId(
-    metronomeCustomerId,
-    contractId
-  );
-  if (!seatProductId) {
-    return new Err(new Error("No SEAT_BASED subscription found on contract"));
-  }
-
-  return await editMetronomeContractSeats({
-    metronomeCustomerId,
-    contractId,
-    edits: [{ subscriptionId: seatProductId, removeSeatIds: [userId] }],
-  });
-}
-
-/**
- * Add all active workspace members as seats on a contract's default seat subscription.
- * Called after contract creation (both new provisioning and migration).
- */
-export async function provisionSeatsForContract({
+export async function syncSeatCount({
   metronomeCustomerId,
   contractId,
   workspace,
@@ -105,49 +53,30 @@ export async function provisionSeatsForContract({
   metronomeCustomerId: string;
   contractId: string;
   workspace: LightWorkspaceType;
-  startingAt: string;
+  startingAt?: string;
 }): Promise<Result<void, Error>> {
-  const subscriptionId = await getDefaultSeatProductId(
+  const subscriptionId = await getSeatSubscriptionId(
     metronomeCustomerId,
     contractId
   );
   if (!subscriptionId) {
     logger.warn(
       { workspaceId: workspace.sId, contractId },
-      "[Metronome] No SEAT_BASED subscription found on contract — cannot provision seats"
+      "[Metronome] No seat subscription found on contract — cannot sync seats"
     );
-    return new Err(new Error("No SEAT_BASED subscription found on contract"));
+    return new Err(new Error("No seat subscription found on contract"));
   }
 
   const { memberships } = await MembershipResource.getActiveMemberships({
     workspace,
   });
-  const memberIds = memberships
-    .map((m) => m.user?.sId)
-    .filter((s): s is string => !!s);
+  const memberCount = memberships.length;
 
-  if (memberIds.length === 0) {
-    logger.info(
-      { workspaceId: workspace.sId },
-      "[Metronome] No active members — no seats to provision"
-    );
-    return new Ok(undefined);
-  }
-
-  // Metronome limits to 500 seats per subscription edit. Batch if needed.
-  const SEAT_BATCH_SIZE = 500;
-  for (let i = 0; i < memberIds.length; i += SEAT_BATCH_SIZE) {
-    const batch = memberIds.slice(i, i + SEAT_BATCH_SIZE);
-    const result = await editMetronomeContractSeats({
-      metronomeCustomerId,
-      contractId,
-      edits: [{ subscriptionId, addSeatIds: batch }],
-      startingAt,
-    });
-    if (result.isErr()) {
-      return result;
-    }
-  }
-
-  return new Ok(undefined);
+  return await updateSubscriptionQuantity({
+    metronomeCustomerId,
+    contractId,
+    subscriptionId,
+    quantity: Math.max(memberCount, 1),
+    startingAt,
+  });
 }

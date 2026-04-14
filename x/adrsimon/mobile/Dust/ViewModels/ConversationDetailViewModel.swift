@@ -20,6 +20,8 @@ final class ConversationDetailViewModel: ObservableObject {
     @Published var streamingPhase: AgentStreamingPhase = .idle
     /// Currently running actions (tools executing in parallel).
     @Published var activeActions: [ActiveAction] = []
+    /// Completed activity timeline steps (thinking segments + finished actions).
+    @Published var completedSteps: [ActivityStep] = []
     /// sId of the message currently being streamed.
     @Published var streamingMessageId: String?
     /// Error info for the last failed agent message (if any).
@@ -33,6 +35,10 @@ final class ConversationDetailViewModel: ObservableObject {
     private var lastValue: Int?
     /// Monotonic counter to identify the active message stream generation.
     private var streamGeneration: UInt64 = 0
+    /// Buffer for the current thinking segment, flushed as a completed step on transition.
+    private var currentThinkingBuffer: String = ""
+    /// Counter for generating unique step IDs.
+    private var stepCounter: Int = 0
 
     // Streaming tasks
     private var conversationEventsTask: Task<Void, Never>?
@@ -171,6 +177,11 @@ final class ConversationDetailViewModel: ObservableObject {
         case let .userMessageNew(newEvent):
             insertMessageIfNew(.user(newEvent.message))
 
+        case let .userMessagePromoted(event):
+            updateUserMessage(id: event.messageId) { msg in
+                msg.visibility = "visible"
+            }
+
         case .agentMessageDone, .conversationTitle, .unknown:
             break
         }
@@ -204,6 +215,9 @@ final class ConversationDetailViewModel: ObservableObject {
         streamingMessageId = messageId
         streamingPhase = .thinking
         lastError = nil
+        completedSteps = []
+        currentThinkingBuffer = ""
+        stepCounter = 0
 
         messageStreamTask = Task { [weak self] in
             guard let self else { return }
@@ -259,6 +273,11 @@ final class ConversationDetailViewModel: ObservableObject {
             handleGenerationTokens(tokens, messageId: messageId)
 
         case let .toolParams(params):
+            flushThinkingBuffer()
+            // Clear the live chainOfThought on the message since it was flushed to a step.
+            updateAgentMessage(id: messageId) { msg in
+                msg.chainOfThought = nil
+            }
             let action = ActiveAction(
                 id: params.action.id,
                 label: params.action.displayLabels?.running ?? params.action.toolName ?? "Working…",
@@ -269,6 +288,13 @@ final class ConversationDetailViewModel: ObservableObject {
             }
 
         case let .agentActionSuccess(event):
+            let doneLabel = event.action.displayLabels?.done ?? event.action.toolName ?? "Tool"
+            stepCounter += 1
+            completedSteps.append(.action(
+                id: "action-\(stepCounter)",
+                label: doneLabel,
+                serverName: event.action.internalMCPServerName
+            ))
             activeActions.removeAll { $0.id == event.action.id }
             if activeActions.isEmpty, streamingPhase != .generating, streamingPhase != .thinking {
                 streamingPhase = .thinking
@@ -276,6 +302,9 @@ final class ConversationDetailViewModel: ObservableObject {
 
         case let .agentMessageSuccess(success):
             finalizeMessage(messageId: messageId, status: .succeeded, from: success.message)
+
+        case let .agentMessageGracefullyStopped(event):
+            finalizeMessage(messageId: messageId, status: .gracefullyStopped, from: event.message)
 
         case let .agentError(event):
             lastError = ErrorInfo(from: event.error, messageId: messageId)
@@ -324,6 +353,9 @@ final class ConversationDetailViewModel: ObservableObject {
                 break
             }
         }
+        if tokens.classification == .chainOfThought {
+            currentThinkingBuffer += tokens.text
+        }
         let newPhase: AgentStreamingPhase? = switch tokens.classification {
         case .chainOfThought: .thinking
         case .tokens: .generating
@@ -335,6 +367,7 @@ final class ConversationDetailViewModel: ObservableObject {
     }
 
     private func finalizeMessage(messageId: String, status: AgentMessageStatus, from final: AgentMessage? = nil) {
+        flushThinkingBuffer()
         updateAgentMessage(id: messageId) { msg in
             if let final {
                 msg.content = final.content
@@ -347,6 +380,24 @@ final class ConversationDetailViewModel: ObservableObject {
         streamingPhase = .idle
         activeActions = []
         streamingMessageId = nil
+    }
+
+    /// Flush the current thinking buffer as a completed thinking step if non-empty.
+    private func flushThinkingBuffer() {
+        let text = currentThinkingBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        stepCounter += 1
+        completedSteps.append(.thinking(id: "thinking-\(stepCounter)", content: text))
+        currentThinkingBuffer = ""
+    }
+
+    private func updateUserMessage(id: String, mutate: (inout UserMessage) -> Void) {
+        guard let index = messages.firstIndex(where: { $0.id == id }),
+              case var .user(userMsg) = messages[index]
+        else { return }
+
+        mutate(&userMsg)
+        messages[index] = .user(userMsg)
     }
 
     private func updateAgentMessage(id: String, mutate: (inout AgentMessage) -> Void) {

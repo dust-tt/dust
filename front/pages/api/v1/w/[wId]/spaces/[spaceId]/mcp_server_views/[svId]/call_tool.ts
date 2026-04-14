@@ -89,7 +89,6 @@ async function handler(
           mcpServerId: view.mcpServerId,
           oAuthUseCase: view.oAuthUseCase,
         },
-        allowDirectToolExecution: true,
       });
 
       if (clientRes.isErr()) {

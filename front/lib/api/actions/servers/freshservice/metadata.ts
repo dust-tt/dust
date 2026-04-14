@@ -6,8 +6,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const FRESHSERVICE_TOOL_NAME = "freshservice" as const;
-
 const ALLOWED_TICKET_INCLUDES = [
   "conversations",
   "requester",

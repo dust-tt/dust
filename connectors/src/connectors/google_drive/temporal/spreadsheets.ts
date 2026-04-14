@@ -37,6 +37,7 @@ import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
 import { GaxiosError } from "googleapis-common";
 
 const MAXIMUM_NUMBER_OF_GSHEET_ROWS = 50000;
+const MAXIMUM_NUMBER_OF_SHEETS_PER_SPREADSHEET = 50;
 
 export type Sheet = sheets_v4.Schema$ValueRange & {
   id: number;
@@ -536,6 +537,14 @@ export async function syncSpreadSheet(
           }
           throw err;
         }
+      }
+
+      if (sheets.length > MAXIMUM_NUMBER_OF_SHEETS_PER_SPREADSHEET) {
+        localLogger.info(
+          { sheetCount: sheets.length },
+          "[Spreadsheet] Spreadsheet has too many sheets, skipping."
+        );
+        return { isSupported: false, skipReason: "too_many_sheets" };
       }
 
       // List synced sheets.

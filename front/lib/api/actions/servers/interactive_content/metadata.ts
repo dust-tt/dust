@@ -80,8 +80,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     enableAlerting: true,
     stake: "never_ask",
     displayLabels: {
-      running: "Creating new Interactive Content file",
-      done: "Create new Interactive Content file",
+      running: "Creating new Frame",
+      done: "Create new Frame",
     },
   },
   [EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
@@ -101,6 +101,12 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
       "**Critical:** Multiple matches or inexact matches will cause failure. " +
       "Validation (Tailwind, TypeScript) is non-blocking: warnings are returned but the edit succeeds.",
     schema: {
+      description: z
+        .string()
+        .describe(
+          "The reason this edit is being made and what it achieves, in a few words. " +
+            'Use infinitive verbs (e.g. "Fix chart colors", "Add filtering controls").'
+        ),
       file_id: z
         .string()
         .describe(
@@ -132,8 +138,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     enableAlerting: true,
     stake: "never_ask",
     displayLabels: {
-      running: "Updating Interactive Content file",
-      done: "Update Interactive Content file",
+      running: "Updating Frame",
+      done: "Update Frame",
     },
   },
   [REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
@@ -150,8 +156,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     enableAlerting: true,
     stake: "never_ask",
     displayLabels: {
-      running: "Reverting Interactive Content file",
-      done: "Revert Interactive Content file",
+      running: "Reverting changes on Frame",
+      done: "Revert changes on Frame",
     },
   },
   [RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
@@ -172,8 +178,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     enableAlerting: true,
     stake: "never_ask",
     displayLabels: {
-      running: "Renaming Interactive Content file",
-      done: "Rename Interactive Content file",
+      running: "Renaming Frame",
+      done: "Rename Frame",
     },
   },
   [RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
@@ -192,8 +198,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     enableAlerting: true,
     stake: "never_ask",
     displayLabels: {
-      running: "Reading Interactive Content file",
-      done: "Read Interactive Content file",
+      running: "Reading Frame content",
+      done: "Read Frame content",
     },
   },
   [GET_INTERACTIVE_CONTENT_FILE_SHARE_URL_TOOL_NAME]: {

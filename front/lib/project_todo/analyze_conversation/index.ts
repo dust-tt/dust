@@ -112,6 +112,16 @@ export async function analyzeConversationTodos(
   }
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
+
+  const { spaceId } = conversation;
+  if (!spaceId) {
+    logger.warn(
+      { conversationId: conversation.id, workspaceId: owner.sId },
+      "Conversation todo: skipping analysis for conversation without a space"
+    );
+    return;
+  }
+
   // Fetch the model and the previous version concurrently — they are independent.
   const [model, previousVersion] = await Promise.all([
     getFastestWhitelistedModel(auth),
@@ -182,6 +192,7 @@ export async function analyzeConversationTodos(
 
   await TakeawaysResource.makeNewForConversation(auth, {
     conversationId: conversation.sId,
+    spaceId,
     actionItems,
     notableFacts,
     keyDecisions,

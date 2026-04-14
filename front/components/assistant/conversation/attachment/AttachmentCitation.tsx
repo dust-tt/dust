@@ -4,7 +4,12 @@ import {
   isAudioContentType,
   isTextualContentType,
 } from "@app/components/assistant/conversation/attachment/utils";
-import { getFileFormat, isSupportedImageContentType } from "@app/types/files";
+import { ConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import {
+  getFileFormat,
+  isInteractiveContentType,
+  isSupportedImageContentType,
+} from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Citation,
@@ -18,20 +23,22 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import type React from "react";
-import { useState } from "react";
+import { useContext, useState } from "react";
 
 interface AttachmentCitationProps {
   owner: LightWorkspaceType;
   attachmentCitation: AttachmentCitation;
   conversationId?: string | null;
+  compact?: boolean;
 }
 
 export function AttachmentCitation({
   owner,
   attachmentCitation,
-  conversationId,
+  compact,
 }: AttachmentCitationProps) {
   const [viewerOpen, setViewerOpen] = useState(false);
+  const sidePanel = useContext(ConversationSidePanelContext);
 
   const tooltipContent =
     attachmentCitation.type === "file" ? (
@@ -62,18 +69,35 @@ export function AttachmentCitation({
     (isTextualContentType(attachmentCitation) ||
       isAudioContentType(attachmentCitation));
 
-  const dialogOrDownloadProps = canOpenInDialog
+  const canOpenInteractivePanel =
+    attachmentCitation.type === "file" &&
+    Boolean(attachmentCitation.fileId) &&
+    !attachmentCitation.isUploading &&
+    isInteractiveContentType(attachmentCitation.contentType) &&
+    sidePanel != null;
+
+  const dialogOrDownloadProps = canOpenInteractivePanel
     ? {
         onClick: (e: React.MouseEvent<HTMLDivElement>) => {
           e.preventDefault();
-          setViewerOpen(true);
+          sidePanel.openPanel({
+            type: "interactive_content",
+            fileId: attachmentCitation.fileId as string,
+          });
         },
       }
-    : isImage
-      ? {} // ImagePreview handles click with its own zoom dialog
-      : {
-          href: attachmentCitation.sourceUrl ?? undefined,
-        };
+    : canOpenInDialog
+      ? {
+          onClick: (e: React.MouseEvent<HTMLDivElement>) => {
+            e.preventDefault();
+            setViewerOpen(true);
+          },
+        }
+      : isImage
+        ? {} // ImagePreview handles click with its own zoom dialog
+        : {
+            href: attachmentCitation.sourceUrl ?? undefined,
+          };
 
   return (
     <>
@@ -82,7 +106,8 @@ export function AttachmentCitation({
           <Citation
             {...dialogOrDownloadProps}
             isLoading={isLoading}
-            containerClassName={cn("h-full", isImage && "aspect-video")}
+            compact={compact}
+            containerClassName={cn("h-full", isImage && "min-h-24")}
             action={
               !isImage &&
               attachmentCitation.onRemove && (

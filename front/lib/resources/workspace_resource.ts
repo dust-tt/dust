@@ -152,7 +152,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     whiteListedProviders: ModelProviderIdType[] | null
   ): Promise<ModelProviderIdType[] | null> {
     const enabledKillSwitches =
-      await KillSwitchResource.listEnabledKillSwitchesCached();
+      await KillSwitchResource.listEnabledKillSwitches();
 
     const isAnthropicBlacklisted = enabledKillSwitches.includes(
       "global_blacklist_anthropic"

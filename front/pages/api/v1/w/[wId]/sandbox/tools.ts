@@ -1,12 +1,10 @@
-import {
-  isInternalMCPServerAvailableInDirectExecution,
-  isInternalMCPServerName,
-} from "@app/lib/actions/mcp_internal_actions/constants";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
+import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
@@ -49,7 +47,7 @@ async function handler(
       }
 
       const claims: SandboxExecTokenPayload | null =
-        verifySandboxExecToken(token);
+        await verifySandboxExecToken(token);
       if (!claims) {
         return apiError(req, res, {
           status_code: 401,
@@ -102,8 +100,17 @@ async function handler(
         conversation,
         attachments,
       });
+      const skillServers = await resolveSkillMCPServers(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+      });
       for (const srv of jitServers) {
         viewIds.add(srv.mcpServerViewId);
+      }
+      for (const srv of skillServers) {
+        if (isServerSideMCPServerConfiguration(srv)) {
+          viewIds.add(srv.mcpServerViewId);
+        }
       }
 
       if (viewIds.size === 0) {
@@ -117,14 +124,7 @@ async function handler(
 
       let serverViews = views
         .map((view) => view.toJSON())
-        // Filter out internal servers not available in direct execution.
-        .filter((sv) => {
-          const name = sv.server.name;
-          if (isInternalMCPServerName(name)) {
-            return isInternalMCPServerAvailableInDirectExecution(name);
-          }
-          return true;
-        });
+        .filter((sv) => sv.server.name !== SANDBOX_TOOL_NAME);
 
       // Filter by server name if requested.
       if (isString(server)) {

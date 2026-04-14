@@ -11,6 +11,7 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  MoreIcon,
   RobotIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -19,9 +20,11 @@ interface AgentPickerProps {
   owner: WorkspaceType;
   agents: LightAgentConfigurationType[];
   onItemClick: (agent: LightAgentConfigurationType) => void;
+  onAgentDetailsClick?: (agentId: string) => void;
   pickerButton?: React.ReactNode;
   showDropdownArrow?: boolean;
   showFooterButtons?: boolean;
+  side?: "top" | "bottom";
   size?: "xs" | "sm" | "md";
   isLoading?: boolean;
   disabled?: boolean;
@@ -32,9 +35,11 @@ export function AgentPicker({
   owner,
   agents,
   onItemClick,
+  onAgentDetailsClick,
   pickerButton,
   showDropdownArrow = true,
   showFooterButtons = true,
+  side,
   size = "md",
   isLoading = false,
   disabled = false,
@@ -70,7 +75,8 @@ export function AgentPicker({
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="h-96 w-96"
+        className="h-96 w-80"
+        side={side}
         align="start"
         dropdownHeaders={
           <>
@@ -104,6 +110,23 @@ export function AgentPicker({
               icon={() => <Avatar size="xs" visual={c.pictureUrl} />}
               label={c.name}
               truncateText
+              className="group py-1"
+              endComponent={
+                onAgentDetailsClick ? (
+                  <Button
+                    icon={MoreIcon}
+                    variant="outline"
+                    size="mini"
+                    className="opacity-0 group-hover:opacity-100"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      onAgentDetailsClick(c.sId);
+                      setIsOpen(false);
+                    }}
+                  />
+                ) : undefined
+              }
               onClick={() => {
                 onItemClick(c);
                 setSearchText("");

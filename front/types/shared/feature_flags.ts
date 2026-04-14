@@ -177,11 +177,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
     stage: "dust_only",
   },
-  slack_native_streaming: {
-    description:
-      "Use Slack's native streaming API for bot responses instead of throttled chat.update loop",
-    stage: "dust_only",
-  },
   slack_bot_mcp: {
     description: "Slack bot MCP server for workspace-level Slack integration",
     stage: "on_demand",
@@ -243,6 +238,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable conversation branches",
     stage: "dust_only",
   },
+  sessions_branching: {
+    description: "Enable sessions branching",
+    stage: "dust_only",
+  },
   reinforced_agents: {
     description:
       "Enable reinforcement: background analysis of conversations to suggest improvements to skills.",
@@ -250,11 +249,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   collapsible_messages: {
     description: "Enable collapsible messages in conversations",
-    stage: "dust_only",
-  },
-  email_restricted_sharing: {
-    description:
-      "Enable email-restricted sharing for interactive content (Frames)",
     stage: "dust_only",
   },
   poke_mcp: {

@@ -163,7 +163,7 @@ export function MembersTable({
         id: "name",
         sortingFn: "text",
         meta: {
-          className: "w-full",
+          className: "w-[250px]",
         },
         cell: (info: MemberRowInfo) => {
           return (
@@ -322,6 +322,10 @@ export function MembersTable({
       filter={searchSelectedMembers}
       filterColumn="email"
       sorting={[{ id: "name", desc: false }]}
+      columnsBreakpoints={{
+        email: "sm",
+        joinedAt: "sm",
+      }}
     />
   );
 }

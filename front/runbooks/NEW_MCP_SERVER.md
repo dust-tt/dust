@@ -98,8 +98,6 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
-export const YOUR_PROVIDER_TOOL_NAME = "your_provider" as const;
-
 // Tools metadata with exhaustive keys
 // Adding a tool here without implementing its handler will cause a type error
 export const YOUR_PROVIDER_TOOLS_METADATA = createToolsRecord({
@@ -267,7 +265,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { YOUR_PROVIDER_TOOL_NAME } from "@app/lib/api/actions/servers/your_provider/metadata";
 import { TOOLS } from "@app/lib/api/actions/servers/your_provider/tools";
 import type { Authenticator } from "@app/lib/auth";
 
@@ -279,7 +276,7 @@ function createServer(
 
   for (const tool of TOOLS) {
     registerTool(auth, agentLoopContext, server, tool, {
-      monitoringName: YOUR_PROVIDER_TOOL_NAME,
+      monitoringName: "your_provider",
     });
   }
 
@@ -470,7 +467,7 @@ export function createYourProviderTools(auth: Authenticator): ToolDefinition[] {
 const tools = createYourProviderTools(auth);
 for (const tool of tools) {
   registerTool(auth, agentLoopContext, server, tool, {
-    monitoringName: YOUR_PROVIDER_TOOL_NAME,
+    monitoringName: "your_provider",
   });
 }
 ```
@@ -497,7 +494,7 @@ your_provider: {
   isRestricted: ({ featureFlags }) => {
     return !featureFlags.includes("your_provider_tool");
   },
-  isPreview: true,
+    isPreview: true,
   // ...
 }
 ```
@@ -571,7 +568,7 @@ Always add `.describe()` to schema fields - this helps the LLM understand what v
 ```typescript
 schema: {
   query: z.string().describe("Search query to find items by name or description."),
-  limit: z.number().optional().describe("Maximum number of results (default: 50, max: 100)."),
+    limit: z.number().optional().describe("Maximum number of results (default: 50, max: 100)."),
 }
 ```
 
@@ -605,16 +602,16 @@ private async request<T extends z.Schema>(
 
   const parseResult = schema.safeParse(rawData);
   if (!parseResult.success) {
-    logger.error(
-      { endpoint, error: parseResult.error.message },
-      "[Provider] Invalid API response format"
-    );
-    return new Err(
-      new Error(`Invalid API response format: ${parseResult.error.message}`)
-    );
-  }
+  logger.error(
+    { endpoint, error: parseResult.error.message },
+    "[Provider] Invalid API response format"
+  );
+  return new Err(
+    new Error(`Invalid API response format: ${parseResult.error.message}`)
+  );
+}
 
-  return new Ok(parseResult.data);
+return new Ok(parseResult.data);
 }
 ```
 

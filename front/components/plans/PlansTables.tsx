@@ -1,9 +1,9 @@
 import { FairUsageModal } from "@app/components/FairUsageModal";
 import {
   BUSINESS_PLAN_COST_MONTHLY,
-  getPriceWithCurrency,
   PRO_PLAN_COST_MONTHLY,
   PRO_PLAN_COST_YEARLY,
+  usePriceWithCurrency,
 } from "@app/lib/client/subscription";
 import {
   isProOrBusinessPlanCode,
@@ -311,6 +311,10 @@ export function ProPriceTable({
   plan,
   size,
 }: PriceTableProps) {
+  const rawPrice =
+    billingPeriod === "monthly" ? PRO_PLAN_COST_MONTHLY : PRO_PLAN_COST_YEARLY;
+  const price = usePriceWithCurrency(rawPrice);
+
   if (isWhitelistedBusinessPlan(owner)) {
     return (
       <BusinessPriceTable
@@ -322,11 +326,6 @@ export function ProPriceTable({
       />
     );
   }
-
-  const price =
-    billingPeriod === "monthly"
-      ? getPriceWithCurrency(PRO_PLAN_COST_MONTHLY)
-      : getPriceWithCurrency(PRO_PLAN_COST_YEARLY);
 
   return (
     <SeatBasedPriceTable
@@ -350,12 +349,13 @@ export function BusinessPriceTable({
   plan,
   size,
 }: PriceTableProps) {
+  const price = usePriceWithCurrency(BUSINESS_PLAN_COST_MONTHLY);
   return (
     <SeatBasedPriceTable
       plan="business"
       title="Enterprise (Seat-based)"
       color="blue"
-      price={getPriceWithCurrency(BUSINESS_PLAN_COST_MONTHLY)}
+      price={price}
       showButton={!plan || !isProPlan(plan)}
       display={display}
       isProcessing={isProcessing}

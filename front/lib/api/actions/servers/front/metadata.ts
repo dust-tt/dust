@@ -4,8 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const FRONT_TOOL_NAME = "front" as const;
-
 export const FRONT_TOOLS_METADATA = createToolsRecord({
   search_conversations: {
     description:

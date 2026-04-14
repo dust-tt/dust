@@ -39,7 +39,7 @@ export function PokeMetronomeUsageChart({
       billingCycleStartDay,
       groupBy,
       groupByCount,
-      windowSize: displayMode === "cumulative" ? "HOUR" : "DAY",
+      windowSize: displayMode === "cumulative" ? "FOUR_HOURS" : "DAY",
     });
 
   return (

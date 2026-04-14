@@ -1,7 +1,7 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getPaginationParams } from "@app/lib/api/pagination";
-import { enrichProjectsWithMetadata } from "@app/lib/api/projects";
+import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";

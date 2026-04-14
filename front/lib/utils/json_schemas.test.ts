@@ -2,8 +2,11 @@
 
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   ensurePathExists,
+  hasNoRequiredProperties,
+  jsonSchemaHasRequiredDustToolInput,
   setValueAtPath,
   validateJsonSchema,
 } from "@app/lib/utils/json_schemas";
@@ -514,5 +517,444 @@ describe("validateJsonSchema", () => {
       { enforceRequiredFields: true }
     );
     expect(result.isValid).toBe(true);
+  });
+});
+
+const DUST_DS_MIME = "application/vnd.dust.tool-input.data-source";
+
+function dustDataSourceItemSchema(): JSONSchema {
+  return {
+    type: "object",
+    properties: {
+      uri: { type: "string" },
+      mimeType: { const: DUST_DS_MIME },
+    },
+    required: ["uri", "mimeType"],
+    additionalProperties: false,
+  };
+}
+
+function minimalView(
+  inputSchemas: Array<JSONSchema | undefined>
+): MCPServerViewType {
+  return {
+    server: {
+      tools: inputSchemas.map((inputSchema, i) => ({
+        name: `tool_${i}`,
+        description: "",
+        inputSchema,
+      })),
+    },
+  } as MCPServerViewType;
+}
+
+describe("jsonSchemaHasRequiredDustToolInput", () => {
+  const fromRoot = true;
+
+  it("returns false for null, undefined, and non-objects", () => {
+    expect(jsonSchemaHasRequiredDustToolInput(null, fromRoot)).toBe(false);
+    expect(jsonSchemaHasRequiredDustToolInput(undefined, fromRoot)).toBe(false);
+    expect(jsonSchemaHasRequiredDustToolInput(1, fromRoot)).toBe(false);
+    expect(jsonSchemaHasRequiredDustToolInput("x", fromRoot)).toBe(false);
+  });
+
+  it("returns false when path is not all-required even if schema is a Dust object", () => {
+    const dustObject: JSONSchema = {
+      type: "object",
+      properties: {
+        uri: { type: "string" },
+        mimeType: { const: DUST_DS_MIME },
+      },
+      required: ["uri", "mimeType"],
+    };
+    expect(jsonSchemaHasRequiredDustToolInput(dustObject, false)).toBe(false);
+  });
+
+  it("returns true when the root schema is a Dust object and path is all-required", () => {
+    const dustObject: JSONSchema = {
+      type: "object",
+      properties: {
+        uri: { type: "string" },
+        mimeType: { const: DUST_DS_MIME },
+      },
+      required: ["uri", "mimeType"],
+    };
+    expect(jsonSchemaHasRequiredDustToolInput(dustObject, true)).toBe(true);
+  });
+
+  it("detects required array property whose items are Dust objects (dataSources pattern)", () => {
+    const schema: JSONSchema = {
+      type: "object",
+      properties: {
+        dataSources: {
+          type: "array",
+          items: dustDataSourceItemSchema(),
+        },
+        objective: { type: "string" },
+      },
+      required: ["dataSources", "objective"],
+      additionalProperties: false,
+    };
+    expect(jsonSchemaHasRequiredDustToolInput(schema, true)).toBe(true);
+  });
+
+  it("returns false when Dust-like items sit under an optional array property", () => {
+    const schema: JSONSchema = {
+      type: "object",
+      properties: {
+        dataSources: {
+          type: "array",
+          items: dustDataSourceItemSchema(),
+        },
+      },
+      required: [],
+    };
+    expect(jsonSchemaHasRequiredDustToolInput(schema, true)).toBe(false);
+  });
+
+  it("returns false when Dust project field is optional at root", () => {
+    const schema: JSONSchema = {
+      type: "object",
+      properties: {
+        message: { type: "string" },
+        dustProject: {
+          type: "object",
+          properties: {
+            uri: { type: "string" },
+            mimeType: { const: "application/vnd.dust.tool-input.dust-project" },
+          },
+          required: ["uri", "mimeType"],
+        },
+      },
+      required: ["message"],
+    };
+    expect(jsonSchemaHasRequiredDustToolInput(schema, true)).toBe(false);
+  });
+
+  it("returns true when Dust project field is required at root", () => {
+    const schema: JSONSchema = {
+      type: "object",
+      properties: {
+        dustProject: {
+          type: "object",
+          properties: {
+            uri: { type: "string" },
+            mimeType: { const: "application/vnd.dust.tool-input.dust-project" },
+          },
+          required: ["uri", "mimeType"],
+        },
+      },
+      required: ["dustProject"],
+    };
+    expect(jsonSchemaHasRequiredDustToolInput(schema, true)).toBe(true);
+  });
+
+  it("returns false when optional wrapper contains required Dust child", () => {
+    const schema: JSONSchema = {
+      type: "object",
+      properties: {
+        wrapper: {
+          type: "object",
+          properties: {
+            dustProject: {
+              type: "object",
+              properties: {
+                uri: { type: "string" },
+                mimeType: {
+                  const: "application/vnd.dust.tool-input.dust-project",
+                },
+              },
+              required: ["uri", "mimeType"],
+            },
+          },
+          required: ["dustProject"],
+        },
+      },
+      required: [],
+    };
+    expect(jsonSchemaHasRequiredDustToolInput(schema, true)).toBe(false);
+  });
+
+  it("detects mimeType via enum strings under the Dust prefix", () => {
+    const schema: JSONSchema = {
+      type: "object",
+      properties: {
+        cfg: {
+          type: "object",
+          properties: {
+            uri: { type: "string" },
+            mimeType: {
+              type: "string",
+              enum: [
+                "application/vnd.dust.tool-input.data-source",
+                "application/vnd.dust.tool-input.folder",
+              ],
+            },
+          },
+        },
+      },
+      required: ["cfg"],
+    };
+    expect(jsonSchemaHasRequiredDustToolInput(schema, true)).toBe(true);
+  });
+
+  it("returns false when mimeType const is not a Dust tool-input type", () => {
+    const schema: JSONSchema = {
+      type: "object",
+      properties: {
+        x: {
+          type: "object",
+          properties: {
+            mimeType: { const: "application/json" },
+          },
+        },
+      },
+      required: ["x"],
+    };
+    expect(jsonSchemaHasRequiredDustToolInput(schema, true)).toBe(false);
+  });
+
+  it("treats top-level schema array like oneOf: bad only if every branch requires Dust", () => {
+    const onlyStrings: JSONSchema = {
+      type: "object",
+      properties: { a: { type: "string" } },
+      required: ["a"],
+    };
+    expect(
+      jsonSchemaHasRequiredDustToolInput([onlyStrings, onlyStrings], true)
+    ).toBe(false);
+
+    const withDust: JSONSchema = {
+      type: "object",
+      properties: {
+        p: {
+          type: "object",
+          properties: {
+            uri: { type: "string" },
+            mimeType: { const: DUST_DS_MIME },
+          },
+          required: ["uri", "mimeType"],
+        },
+      },
+      required: ["p"],
+    };
+    expect(
+      jsonSchemaHasRequiredDustToolInput([onlyStrings, withDust], true)
+    ).toBe(false);
+    expect(jsonSchemaHasRequiredDustToolInput([withDust, withDust], true)).toBe(
+      true
+    );
+  });
+
+  it("oneOf: false when at least one branch has no required Dust path", () => {
+    const clean: JSONSchema = {
+      type: "object",
+      properties: { x: { type: "string" } },
+      required: ["x"],
+    };
+    const dustRequired: JSONSchema = {
+      type: "object",
+      properties: {
+        p: {
+          type: "object",
+          properties: {
+            uri: { type: "string" },
+            mimeType: { const: DUST_DS_MIME },
+          },
+          required: ["uri", "mimeType"],
+        },
+      },
+      required: ["p"],
+    };
+    expect(
+      jsonSchemaHasRequiredDustToolInput({ oneOf: [clean, dustRequired] }, true)
+    ).toBe(false);
+  });
+
+  it("anyOf: behaves like oneOf for required Dust (any clean branch is enough)", () => {
+    const clean: JSONSchema = {
+      type: "object",
+      properties: { x: { type: "string" } },
+      required: ["x"],
+    };
+    const dustRequired: JSONSchema = {
+      type: "object",
+      properties: {
+        p: {
+          type: "object",
+          properties: {
+            uri: { type: "string" },
+            mimeType: { const: DUST_DS_MIME },
+          },
+          required: ["uri", "mimeType"],
+        },
+      },
+      required: ["p"],
+    };
+    expect(
+      jsonSchemaHasRequiredDustToolInput({ anyOf: [clean, dustRequired] }, true)
+    ).toBe(false);
+    expect(
+      jsonSchemaHasRequiredDustToolInput(
+        { anyOf: [dustRequired, dustRequired] },
+        true
+      )
+    ).toBe(true);
+  });
+
+  it("oneOf: true when every branch forces required Dust", () => {
+    const a: JSONSchema = {
+      type: "object",
+      properties: {
+        p: {
+          type: "object",
+          properties: {
+            uri: { type: "string" },
+            mimeType: { const: DUST_DS_MIME },
+          },
+          required: ["uri", "mimeType"],
+        },
+      },
+      required: ["p"],
+    };
+    expect(jsonSchemaHasRequiredDustToolInput({ oneOf: [a, a] }, true)).toBe(
+      true
+    );
+  });
+
+  it("allOf: true when any combined branch introduces required Dust", () => {
+    const base: JSONSchema = {
+      type: "object",
+      properties: { x: { type: "string" } },
+    };
+    const extra: JSONSchema = {
+      type: "object",
+      properties: {
+        p: {
+          type: "object",
+          properties: {
+            uri: { type: "string" },
+            mimeType: { const: DUST_DS_MIME },
+          },
+          required: ["uri", "mimeType"],
+        },
+      },
+      required: ["p"],
+    };
+    expect(
+      jsonSchemaHasRequiredDustToolInput({ allOf: [base, extra] }, true)
+    ).toBe(true);
+    expect(
+      jsonSchemaHasRequiredDustToolInput({ allOf: [base, base] }, true)
+    ).toBe(false);
+  });
+
+  it("accepts object-like schema without explicit type: object when properties carry Dust", () => {
+    const schema = {
+      properties: {
+        dustProject: {
+          type: "object",
+          properties: {
+            uri: { type: "string" },
+            mimeType: { const: "application/vnd.dust.tool-input.dust-project" },
+          },
+          required: ["uri", "mimeType"],
+        },
+      },
+      required: ["dustProject"],
+    };
+    expect(jsonSchemaHasRequiredDustToolInput(schema, true)).toBe(true);
+  });
+
+  it("detects Dust object when type is a tuple including object", () => {
+    const schema: JSONSchema = {
+      type: "object",
+      properties: {
+        v: {
+          type: ["object", "null"] as unknown as JSONSchema["type"],
+          properties: {
+            uri: { type: "string" },
+            mimeType: { const: DUST_DS_MIME },
+          },
+          required: ["uri", "mimeType"],
+        },
+      },
+      required: ["v"],
+    };
+    expect(jsonSchemaHasRequiredDustToolInput(schema, true)).toBe(true);
+  });
+
+  it("root-level array schema passes path flag to items", () => {
+    const schema: JSONSchema = {
+      type: "array",
+      items: dustDataSourceItemSchema(),
+    };
+    expect(jsonSchemaHasRequiredDustToolInput(schema, true)).toBe(true);
+    expect(jsonSchemaHasRequiredDustToolInput(schema, false)).toBe(false);
+  });
+
+  it("tuple items array on property: any item schema with required Dust triggers", () => {
+    const schema: JSONSchema = {
+      type: "object",
+      properties: {
+        pair: {
+          type: "array",
+          items: [
+            { type: "string" },
+            {
+              type: "object",
+              properties: {
+                uri: { type: "string" },
+                mimeType: { const: DUST_DS_MIME },
+              },
+              required: ["uri", "mimeType"],
+            },
+          ],
+        },
+      },
+      required: ["pair"],
+    };
+    expect(jsonSchemaHasRequiredDustToolInput(schema, true)).toBe(true);
+  });
+});
+
+describe("hasNoRequiredProperties (MCP view)", () => {
+  it("returns true when there are no input schemas", () => {
+    expect(hasNoRequiredProperties(minimalView([]))).toBe(true);
+  });
+
+  it("returns true when every tool inputSchema is undefined", () => {
+    expect(hasNoRequiredProperties(minimalView([undefined, undefined]))).toBe(
+      true
+    );
+  });
+
+  it("returns true when no tool requires Dust on a mandatory path", () => {
+    const clean: JSONSchema = {
+      type: "object",
+      properties: { q: { type: "string" } },
+      required: ["q"],
+    };
+    expect(hasNoRequiredProperties(minimalView([clean]))).toBe(true);
+  });
+
+  it("returns false when any tool has required Dust path", () => {
+    const clean: JSONSchema = {
+      type: "object",
+      properties: { q: { type: "string" } },
+      required: ["q"],
+    };
+    const bad: JSONSchema = {
+      type: "object",
+      properties: {
+        dataSources: {
+          type: "array",
+          items: dustDataSourceItemSchema(),
+        },
+      },
+      required: ["dataSources"],
+    };
+    expect(hasNoRequiredProperties(minimalView([clean, bad]))).toBe(false);
+    expect(hasNoRequiredProperties(minimalView([bad]))).toBe(false);
   });
 });

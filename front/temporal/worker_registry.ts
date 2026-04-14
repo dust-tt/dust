@@ -13,7 +13,7 @@ import { runProductionChecksWorker } from "@app/temporal/production_checks/worke
 import { runProjectTodoWorker } from "@app/temporal/project_todo/worker";
 import { runUserProjectDigestQueueWorker } from "@app/temporal/project_user_digest_queue/worker";
 import { runReinforcedAgentWorker } from "@app/temporal/reinforced_agent/worker";
-import { runReinforcedSkillsWorker } from "@app/temporal/reinforcement/worker";
+import { runReinforcementWorker } from "@app/temporal/reinforcement/worker";
 import { runRelocationWorker } from "@app/temporal/relocation/worker";
 import { runRemoteToolsSyncWorker } from "@app/temporal/remote_tools/worker";
 import { runSandboxReaperWorker } from "@app/temporal/sandbox_reaper/worker";
@@ -68,7 +68,7 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   poke: runPokeWorker,
   production_checks: runProductionChecksWorker,
   reinforced_agent: runReinforcedAgentWorker,
-  reinforcement: runReinforcedSkillsWorker,
+  reinforcement: runReinforcementWorker,
   project_user_digest_queue: runUserProjectDigestQueueWorker,
   project_todo: runProjectTodoWorker,
   relocation: runRelocationWorker,

@@ -1,4 +1,5 @@
 import {
+  ArchiveIcon,
   Avatar,
   BoltOffIcon,
   BookOpenIcon,
@@ -1153,6 +1154,15 @@ function DustMain() {
                               <DropdownMenuItem
                                 label="Explore"
                                 icon={MagnifyingGlassIcon}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                }}
+                              />
+                              <DropdownMenuItem
+                                label="Archive"
+                                icon={ArchiveIcon}
+                                variant="warning"
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();

@@ -21,7 +21,7 @@ runs:
   using: "composite"
   steps:
     - name: Setup Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4.4.0
       with:
         node-version: ${{ inputs.node-version }}
 
@@ -31,7 +31,7 @@ runs:
 
     - name: Cache node_modules
       id: cache-node-modules
-      uses: actions/cache@v3
+      uses: actions/cache@v4.3.0
       with:
         path: |
           node_modules

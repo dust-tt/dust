@@ -4,8 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const OUTLOOK_CALENDAR_TOOL_NAME = "outlook_calendar" as const;
-
 export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
   get_user_timezone: {
     description:

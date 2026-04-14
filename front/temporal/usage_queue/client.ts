@@ -8,8 +8,8 @@ import {
   makeTrackProgrammaticUsageWorkflowId,
 } from "@app/temporal/usage_queue/helpers";
 import {
-  emitMetronomeGaugeEventsWorkflow,
   emitMetronomeUsageEventsWorkflow,
+  syncMauCountToMetronomeWorkflow,
   trackProgrammaticUsageWorkflow,
   updateWorkspaceUsageWorkflow,
 } from "@app/temporal/usage_queue/workflows";
@@ -184,13 +184,13 @@ export async function launchEmitMetronomeUsageEventsWorkflow({
   }
 }
 
-const METRONOME_GAUGE_SCHEDULE_ID = "metronome-gauge-events-schedule";
+const METRONOME_GAUGE_SCHEDULE_ID = "metronome-gauge-schedule";
 
 /**
  * Launch a schedule that emits Metronome workspace_gauge events for all
  * workspaces. Runs daily in prod, every 1h in dev.
  */
-export async function launchMetronomeGaugeEventsSchedule(): Promise<
+export async function launchMetronomeGaugeSchedule(): Promise<
   Result<undefined, Error>
 > {
   const client = await getTemporalClientForFrontNamespace();
@@ -199,7 +199,7 @@ export async function launchMetronomeGaugeEventsSchedule(): Promise<
     await client.schedule.create({
       action: {
         type: "startWorkflow",
-        workflowType: emitMetronomeGaugeEventsWorkflow,
+        workflowType: syncMauCountToMetronomeWorkflow,
         args: [],
         taskQueue: QUEUE_NAME,
       },

@@ -1,5 +1,4 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -7,7 +6,7 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
-  isLightServerSideMCPToolConfiguration,
+  isLightServerSideMCPToolConfigurationWithName,
   isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
 import {
@@ -17,7 +16,6 @@ import {
   prepareParamsWithHistory,
   processDustFileOutput,
 } from "@app/lib/api/actions/servers/run_dust_app/helpers";
-import { RUN_DUST_APP_TOOL_NAME } from "@app/lib/api/actions/servers/run_dust_app/metadata";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -93,15 +91,14 @@ export default async function createServer(
     };
 
     registerTool(auth, agentLoopContext, server, toolDefinition, {
-      monitoringName: RUN_DUST_APP_TOOL_NAME,
+      monitoringName: "run_dust_app",
     });
   } else if (agentLoopContext?.runContext) {
     // Context: Running the Dust app
     const { toolConfiguration } = agentLoopContext.runContext;
     if (
-      !isLightServerSideMCPToolConfiguration(toolConfiguration) ||
-      !matchesInternalMCPServerName(
-        toolConfiguration.internalMCPServerId,
+      !isLightServerSideMCPToolConfigurationWithName(
+        toolConfiguration,
         "run_dust_app"
       )
     ) {
@@ -221,7 +218,7 @@ export default async function createServer(
     };
 
     registerTool(auth, agentLoopContext, server, toolDefinition, {
-      monitoringName: RUN_DUST_APP_TOOL_NAME,
+      monitoringName: "run_dust_app",
     });
   } else {
     // Context: Configuration - selecting which Dust app to use
@@ -249,7 +246,7 @@ export default async function createServer(
     };
 
     registerTool(auth, agentLoopContext, server, toolDefinition, {
-      monitoringName: RUN_DUST_APP_TOOL_NAME,
+      monitoringName: "run_dust_app",
     });
   }
 

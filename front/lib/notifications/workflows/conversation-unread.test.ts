@@ -436,6 +436,8 @@ describe("conversation-unread workflow business logic", () => {
     let messageId: string;
 
     beforeEach(async () => {
+      vi.clearAllMocks();
+
       workspace = await WorkspaceFactory.basic();
       user1 = await UserFactory.basic();
       user2 = await UserFactory.basic();
@@ -584,6 +586,105 @@ describe("conversation-unread workflow business logic", () => {
       // even though user2 has "never" preference and gets filtered out
       expect(vi.mocked(getNovuClient)).toHaveBeenCalled();
     });
+
+    it("should skip notifications for email-origin user messages", async () => {
+      const { ConversationParticipantModel } = await import(
+        "@app/lib/models/agent/conversation"
+      );
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Email Agent",
+        description: "Test",
+      });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+
+      const { messageRow } = await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Forwarded by email",
+        origin: "email",
+      });
+
+      await ConversationParticipantModel.upsert({
+        conversationId: conversation.id,
+        userId: user1.id,
+        workspaceId: workspace.id,
+        action: "posted",
+        actionRequired: false,
+      });
+      await ConversationParticipantModel.upsert({
+        conversationId: conversation.id,
+        userId: user2.id,
+        workspaceId: workspace.id,
+        action: "posted",
+        actionRequired: false,
+      });
+
+      const result = await triggerConversationUnreadNotifications(auth, {
+        conversationId: conversation.sId,
+        messageId: messageRow.sId,
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(vi.mocked(getNovuClient)).not.toHaveBeenCalled();
+    });
+
+    it("should skip notifications for agent replies to email-origin user messages", async () => {
+      const { ConversationParticipantModel } = await import(
+        "@app/lib/models/agent/conversation"
+      );
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Email Agent",
+        description: "Test",
+      });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+
+      const { messageRow: userMessageRow } =
+        await ConversationFactory.createUserMessage({
+          auth,
+          workspace,
+          conversation,
+          content: "Forwarded by email",
+          origin: "email",
+        });
+      const agentMessageRow =
+        await ConversationFactory.createAgentMessageWithRank({
+          workspace,
+          conversationId: conversation.id,
+          rank: 1,
+          agentConfigurationId: agent.sId,
+          parentId: userMessageRow.id,
+        });
+
+      await ConversationParticipantModel.upsert({
+        conversationId: conversation.id,
+        userId: user1.id,
+        workspaceId: workspace.id,
+        action: "posted",
+        actionRequired: false,
+      });
+      await ConversationParticipantModel.upsert({
+        conversationId: conversation.id,
+        userId: user2.id,
+        workspaceId: workspace.id,
+        action: "posted",
+        actionRequired: false,
+      });
+
+      const result = await triggerConversationUnreadNotifications(auth, {
+        conversationId: conversation.sId,
+        messageId: agentMessageRow.sId,
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(vi.mocked(getNovuClient)).not.toHaveBeenCalled();
+    });
   });
 });
 
@@ -594,6 +695,7 @@ describe("getMessagePreview", () => {
     authorIsAgent: false,
     avatarUrl: "https://example.com/avatar.jpg",
     isFromTrigger: false,
+    isFromEmailAgentConversation: false,
     workspaceName: "Test Workspace",
     mentionedUserIds: [],
     hasUnreadMessages: true,
@@ -727,6 +829,7 @@ describe("getEmailSummary", () => {
     author: "Test User",
     authorIsAgent: false,
     isFromTrigger: false,
+    isFromEmailAgentConversation: false,
     workspaceName: "Test Workspace",
     mentionedUserIds: [],
     hasUnreadMessages: true,

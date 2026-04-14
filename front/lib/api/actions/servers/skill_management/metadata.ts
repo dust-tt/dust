@@ -5,8 +5,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const SKILL_MANAGEMENT_TOOL_NAME = "skill_management" as const;
-
 export const SKILL_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
   [ENABLE_SKILL_TOOL_NAME]: {
     description:

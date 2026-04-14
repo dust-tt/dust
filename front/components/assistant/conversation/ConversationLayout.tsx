@@ -21,6 +21,7 @@ import {
 } from "@app/components/sparkle/AppLayoutContext";
 import { useConversation } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
+import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { ONBOARDING_CONVERSATION_ENABLED } from "@app/lib/onboarding";
@@ -68,6 +69,7 @@ const ConversationLayoutContent = ({
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
   const { onOpenChange: onOpenChangeUserModal } = useURLSheet("userDetails");
   const activeConversationId = useActiveConversationId();
+  const activeSpaceId = useActiveSpaceId();
   const { conversation, conversationError } = useConversation({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
@@ -118,7 +120,7 @@ const ConversationLayoutContent = ({
     [owner]
   );
 
-  useSetHasTitle(!!activeConversationId);
+  useSetHasTitle(!!activeConversationId || !!activeSpaceId);
   useSetPageTitle(pageTitle);
   useSetNavChildren(navChildren);
 

@@ -6,6 +6,18 @@ export class MCPServerNotFoundError extends Error {
   }
 }
 
+export class RemoteMCPServerError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+export function isRemoteMCPServerError(
+  error: Error
+): error is RemoteMCPServerError {
+  return error instanceof RemoteMCPServerError;
+}
+
 export class MCPError extends Error {
   // Whether the error should be tracked and reported on our observability stack.
   public readonly tracked: boolean;

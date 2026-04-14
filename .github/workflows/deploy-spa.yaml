@@ -75,24 +75,24 @@ jobs:
           exit 1
 
   prepare:
-    needs: [check-branch]
+    needs: [ check-branch ]
     runs-on: ubuntu-latest
     outputs:
       short_sha: ${{ steps.short_sha.outputs.short_sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
       - name: Get short sha
         id: short_sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
   notify-start:
     if: ${{ !inputs.skip_slack }}
-    needs: [prepare]
+    needs: [ prepare ]
     runs-on: ubuntu-latest
     outputs:
       thread_ts: ${{ inputs.thread_ts || steps.build_message.outputs.thread_ts }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
 
       - name: Notify SPA Deploy Start
         if: ${{ !inputs.thread_ts }}
@@ -106,7 +106,7 @@ jobs:
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
 
   deploy:
-    needs: [prepare, notify-start]
+    needs: [ prepare, notify-start ]
     if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     outputs:
@@ -117,7 +117,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
@@ -178,9 +178,13 @@ jobs:
             --release-version=${{ github.sha }} \
             --service=${{ inputs.app }}-spa-browser
 
+      - name: Remove sourcemaps
+        working-directory: front-spa
+        run: find dist -name "*.map" -delete
+
       - name: Upload version
         id: upload_version
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v3.14.1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -192,6 +196,7 @@ jobs:
               && format('--preview-alias {0}', steps.branch.outputs.sanitized)
               || '' }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          wranglerVersion: "4.80.0"
 
       - name: Extract version ID
         id: extract_version

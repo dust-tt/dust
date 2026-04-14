@@ -4,12 +4,14 @@ import {
   RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
 import type { AuthenticatorType } from "@app/lib/auth";
+import type * as compactionActivities from "@app/temporal/agent_loop/activities/compaction";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
 import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
+import { isTerminalRunModelAndCreateActionsTimeout } from "@app/temporal/agent_loop/lib/workflow_failures";
 import { makeAgentLoopConversationTitleWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import {
   cancelAgentLoopSignal,
@@ -21,6 +23,7 @@ import type {
   AgentLoopArgs,
   AgentLoopArgsWithTiming,
 } from "@app/types/assistant/agent_run";
+import type { SupportedModel } from "@app/types/assistant/models/types";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 import type {
   ChildWorkflowHandle,
@@ -28,7 +31,6 @@ import type {
 } from "@temporalio/workflow";
 import {
   CancellationScope,
-  patched,
   proxyActivities,
   proxySinks,
   setHandler,
@@ -106,6 +108,13 @@ const { ensureConversationTitleActivity } = proxyActivities<
   },
 });
 
+const { compactionActivity } = proxyActivities<typeof compactionActivities>({
+  startToCloseTimeout: "5 minutes",
+  retry: {
+    maximumAttempts: 3,
+  },
+});
+
 const {
   finalizeSuccessfulAgentLoopActivity,
   finalizeGracefullyStoppedAgentLoopActivity,
@@ -123,6 +132,27 @@ export async function agentLoopConversationTitleWorkflow({
   agentLoopArgs: AgentLoopArgs;
 }) {
   await ensureConversationTitleActivity(authType, agentLoopArgs);
+}
+
+export async function compactionWorkflow({
+  authType,
+  conversationId,
+  compactionMessageId,
+  compactionMessageVersion,
+  model,
+}: {
+  authType: AuthenticatorType;
+  conversationId: string;
+  compactionMessageId: string;
+  compactionMessageVersion: number;
+  model: SupportedModel;
+}) {
+  await compactionActivity(authType, {
+    conversationId,
+    compactionMessageId,
+    compactionMessageVersion,
+    model,
+  });
 }
 
 export async function agentLoopWorkflow({
@@ -246,9 +276,11 @@ export async function agentLoopWorkflow({
       // these runs (not all accumulated runs on the agent message).
       // Pass this execution's runIds and startStep to finalize so tracking
       // workflows only process this execution's runs and actions.
-      const argsWithRunIds = patched("pass-dustRunIds-to-finalize")
-        ? { ...agentLoopArgs, dustRunIds: runIds, startStep }
-        : agentLoopArgs;
+      const argsWithRunIds = {
+        ...agentLoopArgs,
+        dustRunIds: runIds,
+        startStep,
+      };
 
       await CancellationScope.nonCancellable(async () => {
         if (gracefulStopRequested) {
@@ -267,26 +299,43 @@ export async function agentLoopWorkflow({
     });
   } catch (err) {
     const workflowError = err instanceof Error ? err : new Error(String(err));
+    // This activity already turns terminal model/provider failures into a user-facing agent error
+    // when our code regains control. We swallow only the final Temporal StartToClose timeout so the
+    // workflow does not surface that infrastructure timeout as a separate workflow failure.
+    const shouldSwallowWorkflowFailure =
+      isTerminalRunModelAndCreateActionsTimeout(err);
 
     // Notify error in a non-cancellable scope to ensure it runs even if the workflow is canceled.
-    await CancellationScope.nonCancellable(async () => {
-      // Pass this execution's runIds and startStep to finalize so tracking
-      // workflows only process this execution's runs and actions.
-      const argsWithRunIds = patched("pass-dustRunIds-to-finalize")
-        ? { ...agentLoopArgs, dustRunIds: runIds, startStep }
-        : agentLoopArgs;
-      if (cancelRequested) {
-        return finalizeCancelledAgentLoopActivity(authType, argsWithRunIds);
-      }
-      // Error objects don't survive JSON serialization across the workflow→activity boundary
-      // (Error.message is not enumerable), so we extract the relevant fields into a plain object
-      // before passing to the activity.
-      await finalizeErroredAgentLoopActivity(authType, argsWithRunIds, {
+    // Pass this execution's runIds and startStep to finalize so tracking
+    // workflows only process this execution's runs and actions.
+    const argsWithRunIds = {
+      ...agentLoopArgs,
+      dustRunIds: runIds,
+      startStep,
+    };
+
+    if (cancelRequested) {
+      await CancellationScope.nonCancellable(async () =>
+        finalizeCancelledAgentLoopActivity(authType, argsWithRunIds)
+      );
+      return;
+    }
+
+    await CancellationScope.nonCancellable(async () =>
+      finalizeErroredAgentLoopActivity(authType, argsWithRunIds, {
+        // Error objects don't survive JSON serialization across the workflow→activity boundary
+        // (Error.message is not enumerable), so we extract the relevant fields into a plain object
+        // before passing to the activity.
         message: workflowError.message,
         name: workflowError.name,
-      });
-      throw err;
-    });
+      })
+    );
+
+    if (shouldSwallowWorkflowFailure) {
+      return;
+    }
+
+    throw err;
   }
 }
 
@@ -324,11 +373,13 @@ async function executeStepIteration({
 
   const { runId, actionBlobs } = result;
 
-  // Generation completed (text response, no tool calls).
+  // Generation completed or the loop unpaused and no new tools were generated.
   if (actionBlobs.length === 0) {
     return {
       runId,
-      shouldContinue: false,
+      // If runId is null that means we unpaused the loop with no new tools (eg: they were all
+      // denied) and no LLM call, so we need to continue as the agent loop is not finished.
+      shouldContinue: runId === null,
     };
   }
 

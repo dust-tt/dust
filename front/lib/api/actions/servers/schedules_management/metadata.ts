@@ -4,8 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const SCHEDULES_MANAGEMENT_TOOL_NAME = "schedules_management" as const;
-
 export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
   create_schedule: {
     description: "Create a schedule that runs this agent at specified times.",

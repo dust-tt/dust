@@ -467,7 +467,9 @@ async function runZendeskBrandHelpCenterSyncActivities({
   let hasMore = true;
   while (hasMore) {
     // not using runZendeskActivityWithPagination because we need to add result.categoriesToUpdate to the Set
-    const result = await syncZendeskCategoryBatchActivity({
+    const result: Awaited<
+      ReturnType<typeof activities.syncZendeskCategoryBatchActivity>
+    > = await syncZendeskCategoryBatchActivity({
       connectorId,
       brandId,
       currentSyncDateMs,

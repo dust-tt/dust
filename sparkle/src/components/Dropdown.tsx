@@ -765,6 +765,7 @@ const DropdownMenuSearchbar = React.forwardRef<
       name,
       className,
       disabled = false,
+      isLoading = false,
       button,
       autoFocus,
     },
@@ -819,6 +820,7 @@ const DropdownMenuSearchbar = React.forwardRef<
           onChange={onChange}
           onKeyDown={handleKeyDown}
           disabled={disabled}
+          isLoading={isLoading}
         />
         {button}
       </div>

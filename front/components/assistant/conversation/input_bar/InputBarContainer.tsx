@@ -131,7 +131,7 @@ export interface InputBarContainerProps {
   actions: InputBarAction[];
   allAgents: LightAgentConfigurationType[];
   attachedNodes: DataSourceViewContentNode[];
-  blockedByGeneratingAgentName: string | null;
+  agentSwitchBlockMessage: string | null;
   onShake: () => void;
   conversation?: ConversationWithoutContentType;
   space?: SpaceType;
@@ -192,10 +192,10 @@ const InputBarContainer = ({
   selectedSkills,
   saveDraft,
   user,
-  blockedByGeneratingAgentName,
+  agentSwitchBlockMessage,
   onShake,
 }: InputBarContainerProps) => {
-  const isBlockedByAgentSwitch = blockedByGeneratingAgentName !== null;
+  const isBlockedByAgentSwitch = agentSwitchBlockMessage !== null;
   const { subscription } = useAuth();
   const isMobile = useIsMobile();
   const { hasFeature } = useFeatureFlags();
@@ -578,27 +578,50 @@ const InputBarContainer = ({
   const selectedSingleAgentRef = useRef(selectedSingleAgent);
   selectedSingleAgentRef.current = selectedSingleAgent;
 
-  // When a user is mentioned in single-agent mode, deselect the agent and clear capabilities.
-  // Uses a ref so the editor listener (registered once in the useEffect below) always calls
-  // the latest closure without re-registering the listener on every render.
+  // When a user mention is *newly added* in single-agent mode, deselect the agent
+  // and clear capabilities. Only triggers on the transition from no-user-mention to
+  // user-mention so that re-selecting an agent (via card click or URL param) isn't
+  // immediately clobbered by the existing @user mention on the next editor update.
+  // Uses a ref so the editor listener (registered once in the useEffect below) always
+  // calls the latest closure without re-registering the listener on every render.
+  const prevUserMentionedRef = useRef(false);
   const onEditorMentionsChangedRef = useRef((_userMentioned: boolean) => {});
 
   onEditorMentionsChangedRef.current = (userMentioned: boolean) => {
     shouldSuggestAgentRef.current = !(singleAgentInput && userMentioned);
-    if (singleAgentInput && userMentioned) {
+    const wasUserMentioned = prevUserMentionedRef.current;
+    prevUserMentionedRef.current = userMentioned;
+    if (singleAgentInput && userMentioned && !wasUserMentioned) {
       setSelectedSingleAgent(null);
       onResetSelections();
       fileUploaderService.resetUpload();
     }
   };
 
-  // Persist the selected agent to the draft whenever it changes.
+  // When the selected agent changes, remove any @user mentions (which are
+  // incompatible with single-agent mode), notify the user, and persist the draft.
   useEffect(() => {
     if (singleAgentInput && selectedSingleAgent) {
+      const hadUserMentions = editorService.removeUserMentions();
+      if (hadUserMentions) {
+        sendNotification({
+          type: "info",
+          title: "User mentions removed",
+          description:
+            "You can’t mention both users and agents in the same message.",
+        });
+      }
+      editorService.focusEnd();
       const { markdown } = editorService.getMarkdownAndMentions();
       saveDraft(markdown, selectedSingleAgent);
     }
-  }, [singleAgentInput, selectedSingleAgent, editorService, saveDraft]);
+  }, [
+    singleAgentInput,
+    selectedSingleAgent,
+    editorService,
+    saveDraft,
+    sendNotification,
+  ]);
 
   // Update the editor ref when the editor is created and listen for updates to the editor.
   useEffect(() => {
@@ -609,7 +632,9 @@ const InputBarContainer = ({
       // Include the selected single agent so the debounced save doesn't
       // overwrite the agent mention saved by the single-agent effect.
       const { markdown, mentions } = editorService.getMarkdownAndMentions();
-      saveDraft(markdown, selectedSingleAgentRef.current);
+      if (!editorService.isEmpty()) {
+        saveDraft(markdown, selectedSingleAgentRef.current);
+      }
       const userMentioned = mentions.some((m) => m.type === "user");
       setHasUserMention(userMentioned);
       onEditorMentionsChangedRef.current(userMentioned);
@@ -1235,11 +1260,7 @@ const InputBarContainer = ({
             icon={ArrowUpIcon}
             variant={isBlockedByAgentSwitch ? "ghost-secondary" : "highlight"}
             disabled={isSubmitDisabled}
-            tooltip={
-              blockedByGeneratingAgentName
-                ? `Wait for @${blockedByGeneratingAgentName} to finish before switching agent`
-                : undefined
-            }
+            tooltip={agentSwitchBlockMessage ?? undefined}
             className={cn(
               isBlockedByAgentSwitch &&
                 "hover:s-bg-transparent dark:hover:s-bg-transparent hover:s-text-muted-foreground dark:hover:s-text-muted-foreground-night"

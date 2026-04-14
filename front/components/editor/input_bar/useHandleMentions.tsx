@@ -72,7 +72,10 @@ const useHandleMentions = ({
     }
 
     // Agent builder: wait for the draft agent to arrive via stickyMentions.
+    // Clear any stale selectedSingleAgent from the previous page while waiting,
+    // so the old agent doesn't flash in the input bar.
     if (isAgentBuilder && (!stickyMentions || stickyMentions.length === 0)) {
+      setSelectedSingleAgent(null);
       return;
     }
 
@@ -143,13 +146,6 @@ const useHandleMentions = ({
         // @TODO we should handle this in each event handler and not inside the useEffect
         setSelectedSingleAgent(selectedAgent);
         externalAgentSetRef.current = true;
-        // If the restored draft contains @user mentions, clear the editor
-        // to prevent the user-mention handler from calling
-        // setSelectedSingleAgent(null) and overriding the URL agent.
-        const { mentions } = editorService.getMarkdownAndMentions();
-        if (mentions.some((m) => m.type === "user")) {
-          queueMicrotask(() => editorService.clearEditor());
-        }
         return;
       }
       if (!editorService.hasMention(selectedAgent)) {

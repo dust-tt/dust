@@ -23,6 +23,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import {
   isAgentMessageType,
+  isCompactionMessageType,
   isProjectConversation,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
@@ -116,6 +117,15 @@ async function handler(
       api_error: {
         type: "invalid_request_error",
         message: "The message you're trying to react to does not exist.",
+      },
+    });
+  }
+  if (isCompactionMessageType(message)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Reactions are not allowed on compaction messages.",
       },
     });
   }

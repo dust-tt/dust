@@ -4,8 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const TOOLSETS_TOOL_NAME = "toolsets" as const;
-
 export const TOOLSETS_TOOLS_METADATA = createToolsRecord({
   list: {
     description:

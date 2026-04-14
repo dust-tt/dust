@@ -113,6 +113,14 @@ pre-commit:
       run: cargo fmt -- {staged_files}
       stage_fixed: true
 
+    # Egress Proxy (Rust) format check
+    egress-proxy-fmt:
+      tags: egress-proxy
+      glob: "*.rs"
+      root: egress-proxy/
+      run: cargo fmt -- {staged_files}
+      stage_fixed: true
+
     # Biome checks (all JS/TS files in monorepo)
     biome:
       glob: "*.{js,jsx,ts,tsx,css,scss}"

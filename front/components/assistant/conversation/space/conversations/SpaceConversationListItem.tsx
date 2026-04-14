@@ -1,7 +1,12 @@
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { LightConversationType } from "@app/types/assistant/conversation";
-import { isUserMessageTypeWithContentFragments } from "@app/types/assistant/conversation";
+import {
+  isCompactionMessageType,
+  isLightAgentMessageType,
+  isUserMessageTypeWithContentFragments,
+} from "@app/types/assistant/conversation";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { stripMarkdown } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import type { Avatar } from "@dust-tt/sparkle";
@@ -9,7 +14,6 @@ import { ConversationListItem, ReplySection } from "@dust-tt/sparkle";
 import uniqBy from "lodash/uniqBy";
 import moment from "moment";
 import { useMemo } from "react";
-
 import { isHiddenMessage } from "../../types";
 import { isMessageUnread } from "../../utils";
 
@@ -23,7 +27,10 @@ function isVisibleMessage(
 ): boolean {
   return (
     m.visibility !== "deleted" &&
-    !(isUserMessageTypeWithContentFragments(m) && isHiddenMessage(m))
+    !(isUserMessageTypeWithContentFragments(m) && isHiddenMessage(m)) &&
+    // Compaction message will possibly be first messages of a conversation (forking) but they are
+    // not "visible" per se. `firstVisibleMessage` should null until a first user message is posted.
+    !isCompactionMessageType(m)
   );
 }
 
@@ -34,6 +41,9 @@ export function SpaceConversationListItem({
   const router = useAppRouter();
 
   const validMessages = conversation.content.filter((message) => {
+    if (isCompactionMessageType(message)) {
+      return false;
+    }
     return (
       (isUserMessageTypeWithContentFragments(message) &&
         message.visibility === "visible" &&
@@ -58,12 +68,16 @@ export function SpaceConversationListItem({
           visual:
             message.user?.image ?? message.context?.profilePictureUrl ?? "",
         });
-      } else {
+      } else if (isCompactionMessageType(message)) {
+        // Nothing to do unless we want to show that the conversation was compacted.
+      } else if (isLightAgentMessageType(message)) {
         avatars.push({
           isRounded: false,
           name: "@" + (message.configuration.name ?? ""),
           visual: message.configuration.pictureUrl ?? "",
         });
+      } else {
+        assertNeverAndIgnore(message);
       }
     }
     return uniqBy(avatars.reverse(), "visual");
@@ -75,7 +89,7 @@ export function SpaceConversationListItem({
     }).length;
   }, [validMessages, conversation.lastReadMs]);
 
-  if (!firstVisibleMessage) {
+  if (!firstVisibleMessage || isCompactionMessageType(firstVisibleMessage)) {
     return null;
   }
 
@@ -101,9 +115,11 @@ export function SpaceConversationListItem({
       firstVisibleMessage.user?.image ??
       firstVisibleMessage.context?.profilePictureUrl ??
       undefined;
-  } else {
+  } else if (isLightAgentMessageType(firstVisibleMessage)) {
     creatorName = `@${firstVisibleMessage.configuration.name}`;
     creatorVisual = firstVisibleMessage.configuration.pictureUrl || undefined;
+  } else {
+    assertNeverAndIgnore(firstVisibleMessage);
   }
 
   return (

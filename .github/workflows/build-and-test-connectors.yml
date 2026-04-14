@@ -16,11 +16,11 @@ jobs:
   tsgo:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
         with:
-          node-version: "22.22.0"
+          node-version: "24.14.0"
           build-sdks: "true"
       - name: Typecheck
         run: npm -w connectors run tsgo -- --version && npm -w connectors run tsgo
@@ -32,11 +32,11 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
         with:
-          node-version: "22.22.0"
+          node-version: "24.14.0"
           build-sdks: "true"
       - name: Install Postgres
         uses: dust-tt/postgresql-action@91c1ba371e7f9529945c312bb2883e9e0630063b
@@ -55,7 +55,7 @@ jobs:
         run: npx tsx src/admin/db.ts && npm run test:ci
       - name: Build Tests Report
         if: always()
-        uses: mikepenz/action-junit-report@v5
+        uses: mikepenz/action-junit-report@v5.6.2
         with:
           report_paths: "**/connectors/junit*.xml"
           detailed_summary: true

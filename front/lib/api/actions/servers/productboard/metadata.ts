@@ -4,8 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const PRODUCTBOARD_TOOL_NAME = "productboard" as const;
-
 export const PRODUCTBOARD_TOOLS_METADATA = createToolsRecord({
   create_note: {
     description:

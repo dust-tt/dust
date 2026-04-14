@@ -103,7 +103,9 @@ struct NewConversationView: View {
         .background(Color.dustBackground)
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            await inputBarViewModel.loadAgents()
+            async let agents: () = inputBarViewModel.loadAgents()
+            async let caps: () = inputBarViewModel.loadCapabilities()
+            _ = await (agents, caps)
         }
         .onDisappear {
             inputBarViewModel.cancelUploads()

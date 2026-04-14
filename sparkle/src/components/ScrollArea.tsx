@@ -50,6 +50,7 @@ const ScrollArea = React.forwardRef<
 
     const shouldHideDefaultScrollBar = hideScrollBar || hasCustomScrollBar;
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: ref.current is mutable and should not be in deps; callback reads current value at call time
     const handleScroll = React.useCallback(() => {
       if (viewportRef && viewportRef.current) {
         setIsScrolled(viewportRef.current.scrollTop > 0);

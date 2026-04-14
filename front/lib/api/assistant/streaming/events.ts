@@ -128,6 +128,8 @@ function isMessageEventParams(
     case "user_message_promoted":
     case "agent_message_new":
     case "agent_message_done":
+    case "compaction_message_new":
+    case "compaction_message_done":
     case "conversation_title":
       return false;
     default:

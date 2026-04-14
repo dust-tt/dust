@@ -4,8 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const GITHUB_TOOL_NAME = "github" as const;
-
 export const GITHUB_TOOLS_METADATA = createToolsRecord({
   create_issue: {
     description: "Create a new issue on a specified GitHub repository.",
@@ -36,7 +34,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
   get_pull_request: {
     description:
       "Retrieve a pull request from a specified GitHub repository including" +
-      " its associated description, diff, comments and reviews.",
+      " its associated description, creation time (createdAt), merge time" +
+      " (mergedAt when merged), diff, comments and reviews.",
     schema: {
       owner: z
         .string()

@@ -219,6 +219,7 @@ export function WorkspacePage() {
               <TabsContent value="subscriptions">
                 <ActiveSubscriptionTable
                   owner={owner}
+                  metronomeCustomerId={metronomeCustomerId}
                   subscription={activeSubscription}
                   subscriptions={subscriptions}
                   programmaticUsageConfig={programmaticUsageConfig}

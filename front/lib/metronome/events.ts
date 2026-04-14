@@ -133,6 +133,7 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   skill_management: "platform",
   schedules_management: "platform",
   project_manager: "platform",
+  project_todos: "platform",
   poke: "platform",
   project_conversation: "platform",
   sandbox: "platform",
@@ -233,19 +234,17 @@ export function buildLlmUsageEvents({
   }
 
   return [...groups.values()].map((group) => ({
-    transaction_id: `llm-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${group.providerId}-${group.modelId}`,
+    transaction_id: `llm3-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${group.providerId}-${group.modelId}`,
     customer_id: workspaceId,
-    event_type: "llm_usage_v2",
+    event_type: "llm_usage_v3",
     timestamp,
     properties: {
       workspace_id: workspaceId,
-      ...(userId ? { user_id: userId } : {}),
+      user_id: userId ?? "unknown",
       agent_message_id: agentMessageId,
       conversation_id: conversationId,
-      ...(agentId ? { agent_id: agentId } : {}),
-      ...(parentAgentMessageId
-        ? { parent_agent_message_id: parentAgentMessageId }
-        : {}),
+      agent_id: agentId ?? "unknown",
+      parent_agent_message_id: parentAgentMessageId ?? "none",
       provider_id: group.providerId,
       model_id: group.modelId,
       prompt_tokens: group.promptTokens,
@@ -255,8 +254,8 @@ export function buildLlmUsageEvents({
       // Provider cost without markup — markup is applied in Metronome rate card.
       cost_micro_usd: group.costMicroUsd,
       is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
-      ...(authMethod ? { auth_method: authMethod } : {}),
-      ...(apiKeyName ? { api_key_name: apiKeyName } : {}),
+      auth_method: authMethod ?? "unknown",
+      api_key_name: apiKeyName ?? "unknown",
       message_status: messageStatus,
       is_sub_agent_message: isSubAgentMessage ? "true" : "false",
       origin,
@@ -339,22 +338,20 @@ export function buildToolUseEvents({
 
   return [...groups.values()].map(({ action, count, totalDurationMs }) => ({
     transaction_id: truncateTransactionId(
-      `tool-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}`
+      `tool3-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}`
     ),
     customer_id: workspaceId,
-    event_type: "tool_use_v2",
+    event_type: "tool_use_v3",
     timestamp,
     properties: {
       workspace_id: workspaceId,
-      ...(userId ? { user_id: userId } : {}),
+      user_id: userId ?? "unknown",
       agent_message_id: agentMessageId,
       conversation_id: conversationId,
-      ...(agentId ? { agent_id: agentId } : {}),
-      ...(parentAgentMessageId
-        ? { parent_agent_message_id: parentAgentMessageId }
-        : {}),
-      ...(authMethod ? { auth_method: authMethod } : {}),
-      ...(apiKeyName ? { api_key_name: apiKeyName } : {}),
+      agent_id: agentId ?? "unknown",
+      parent_agent_message_id: parentAgentMessageId ?? "none",
+      auth_method: authMethod ?? "unknown",
+      api_key_name: apiKeyName ?? "unknown",
       tool_name: truncatePropertyValue(action.toolName),
       mcp_server_id: truncatePropertyValue(action.mcpServerId ?? ""),
       internal_mcp_server_name: truncatePropertyValue(

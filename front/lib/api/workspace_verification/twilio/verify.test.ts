@@ -138,4 +138,50 @@ describe("sendOtp", () => {
       );
     }
   });
+
+  describe("transient network errors", () => {
+    it("should retry on ECONNRESET and succeed", async () => {
+      const econnResetError = new Error("read ECONNRESET");
+      mockVerificationsCreate
+        .mockRejectedValueOnce(econnResetError)
+        .mockResolvedValueOnce({
+          sid: VERIFICATION_SID,
+          status: "pending",
+        });
+
+      const result = await sendOtp(VALID_PHONE_NUMBER);
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.verificationSid).toBe(VERIFICATION_SID);
+      }
+      expect(mockVerificationsCreate).toHaveBeenCalledTimes(2);
+    });
+
+    it("should return error after exhausting retries on ECONNRESET", async () => {
+      const econnResetError = new Error("read ECONNRESET");
+      mockVerificationsCreate.mockRejectedValue(econnResetError);
+
+      const result = await sendOtp(VALID_PHONE_NUMBER);
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toBe(
+          "Failed to send verification code. Please try again."
+        );
+      }
+      expect(mockVerificationsCreate).toHaveBeenCalledTimes(3);
+    });
+
+    it("should not retry on non-transient errors", async () => {
+      mockVerificationsCreate.mockRejectedValue(
+        new Error("Invalid parameter `To`: +invalid")
+      );
+
+      const result = await sendOtp("+invalid");
+
+      expect(result.isErr()).toBe(true);
+      expect(mockVerificationsCreate).toHaveBeenCalledTimes(1);
+    });
+  });
 });

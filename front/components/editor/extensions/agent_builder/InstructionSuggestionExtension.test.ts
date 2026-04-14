@@ -1,7 +1,3 @@
-import {
-  BLOCK_ID_ATTRIBUTE,
-  BlockIdExtension,
-} from "@app/components/editor/extensions/agent_builder/BlockIdExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
 import type { BlockChange } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import {
@@ -11,8 +7,12 @@ import {
   InstructionSuggestionExtension,
   SUGGESTION_ID_ATTRIBUTE,
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
-import { InstructionsDocumentExtension } from "@app/components/editor/extensions/agent_builder/InstructionsDocumentExtension";
-import { InstructionsRootExtension } from "@app/components/editor/extensions/agent_builder/InstructionsRootExtension";
+import {
+  BLOCK_ID_ATTRIBUTE,
+  BlockIdExtension,
+} from "@app/components/editor/extensions/instructions/BlockIdExtension";
+import { InstructionsDocumentExtension } from "@app/components/editor/extensions/instructions/InstructionsDocumentExtension";
+import { InstructionsRootExtension } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
 import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";

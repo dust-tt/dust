@@ -1,13 +1,13 @@
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
+import { PendingToolCallDetails } from "@app/components/assistant/conversation/actions/PendingToolCallDetails";
 import {
   getPendingToolCallKey,
   type PendingToolCall,
 } from "@app/components/assistant/conversation/types";
-import { getToolCallDisplayLabel } from "@app/lib/actions/tool_display_labels";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { ParsedContentItem } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
-import { ContentMessage, Markdown, Spinner } from "@dust-tt/sparkle";
+import { ContentMessage, Markdown } from "@dust-tt/sparkle";
 
 interface AgentStepProps {
   stepNumber: number;
@@ -121,30 +121,14 @@ export function PanelAgentStep({
         </div>
       )}
 
-      {pendingToolCalls.length > 0 && (
-        <ContentMessage variant="primary" className="min-h-fit p-3">
-          <div className="flex w-full flex-row">
-            <div className="flex flex-col gap-y-1">
-              {pendingToolCalls.map((pendingToolCall, index) => (
-                <span
-                  key={getPendingToolCallKey(pendingToolCall, index)}
-                  className="text-sm text-muted-foreground dark:text-muted-foreground-night"
-                >
-                  Preparing to{" "}
-                  <span className="font-medium text-foreground dark:text-foreground-night">
-                    {getToolCallDisplayLabel(pendingToolCall.toolName)}
-                  </span>
-                  ...
-                </span>
-              ))}
-            </div>
-            <span className="flex-grow"></span>
-            <div className="w-8 self-start pl-4 pt-0.5">
-              <Spinner size="xs" />
-            </div>
-          </div>
-        </ContentMessage>
-      )}
+      {pendingToolCalls.map((pendingToolCall, index) => (
+        <div key={getPendingToolCallKey(pendingToolCall, index)}>
+          <PendingToolCallDetails
+            displayContext="sidebar-all-actions"
+            functionCallName={pendingToolCall.toolName}
+          />
+        </div>
+      ))}
     </div>
   );
 }

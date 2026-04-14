@@ -6,9 +6,6 @@ import {
   getConversationMCPServers,
 } from "@app/lib/api/assistant/jit/conversation";
 import { getFolderSearchServers } from "@app/lib/api/assistant/jit/folder";
-import { getProjectConversationServer } from "@app/lib/api/assistant/jit/project_conversation";
-import { getProjectManagerServer } from "@app/lib/api/assistant/jit/project_manager";
-import { getProjectSearchServer } from "@app/lib/api/assistant/jit/projects";
 import { getQueryTablesServer } from "@app/lib/api/assistant/jit/query_tables_v2";
 import { getSchedulesManagementServer } from "@app/lib/api/assistant/jit/schedules_management";
 import { getSkillManagementServer } from "@app/lib/api/assistant/jit/skills";
@@ -45,23 +42,6 @@ async function getUnconditionalJITServers(
     conversation
   );
   servers.push(skillManagementServer);
-
-  // Add the three project servers if the conversation belongs to a project.
-
-  const projectSearchServer = await getProjectSearchServer(auth, conversation);
-  servers.push(projectSearchServer);
-
-  const projectManagerServer = await getProjectManagerServer(
-    auth,
-    conversation
-  );
-  servers.push(projectManagerServer);
-
-  const projectConversationServer = await getProjectConversationServer(
-    auth,
-    conversation
-  );
-  servers.push(projectConversationServer);
 
   return removeNulls(servers);
 }

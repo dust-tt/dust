@@ -144,7 +144,7 @@ export default function AgentBuilder({
     }
   );
 
-  const { editors } = useEditors({
+  const { editors, mutateEditors } = useEditors({
     owner,
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
@@ -263,21 +263,17 @@ export default function AgentBuilder({
     const currentValues = form.getValues();
 
     const defaultModel = getDefaultModel(availableModels);
+    const userOwnedTriggers = triggers.filter(
+      (trigger) => trigger.editor === user.id
+    );
 
     form.reset({
       ...currentValues,
       actions: processedActions,
       skills: processedSkills,
       additionalSpaces: computedAdditionalSpaces,
-      triggersToCreate: duplicateAgentId
-        ? triggers.map((trigger) => ({
-            ...trigger,
-            editor: user.id,
-          }))
-        : [],
-      triggersToUpdate: duplicateAgentId
-        ? []
-        : triggers.filter((t) => t.editor === user.id),
+      triggersToCreate: duplicateAgentId ? userOwnedTriggers : [],
+      triggersToUpdate: duplicateAgentId ? [] : userOwnedTriggers,
       triggersToDelete: [],
       agentSettings: {
         ...currentValues.agentSettings,
@@ -444,7 +440,12 @@ export default function AgentBuilder({
       }
 
       // Mutate triggers and actions to refresh from backend
-      await Promise.all([mutateTriggers(), mutateActions(), mutateSkills()]);
+      await Promise.all([
+        mutateTriggers(),
+        mutateActions(),
+        mutateSkills(),
+        mutateEditors(),
+      ]);
       onSaved?.();
 
       if (isCreatingNew && createdAgent.sId) {

@@ -16,15 +16,29 @@ import isObject from "lodash/isObject";
  */
 function fixCorruptedUnicodeInJSON(jsonString: string): string {
   // Match the JSON escape sequence \u0000 followed by two hex digits
-  return jsonString.replace(/\\u0000([0-9a-fA-F]{2})/g, (_match, hex) => {
-    const codePoint = parseInt(hex, 16);
-    // Only fix if it maps to a Latin-1 Supplement character (0x80-0xFF)
-    // This avoids false positives with ASCII range (0x00-0x7F)
-    if (codePoint >= 0x80 && codePoint <= 0xff) {
-      return `\\u00${hex}`;
+  const fixed = jsonString.replace(
+    /\\u0000([0-9a-fA-F]{2})/g,
+    (_match, hex) => {
+      const codePoint = parseInt(hex, 16);
+      // Only fix if it maps to a Latin-1 Supplement character (0x80-0xFF)
+      // This avoids false positives with ASCII range (0x00-0x7F)
+      if (codePoint >= 0x80 && codePoint <= 0xff) {
+        return `\\u00${hex}`;
+      }
+      return _match; // Leave unchanged if outside target range
     }
-    return _match; // Leave unchanged if outside target range
-  });
+  );
+
+  // Strip remaining standalone \u0000 not followed by two hex digits (those are handled above).
+  const stripped = fixed.replace(/\\u0000(?![0-9a-fA-F]{2})/g, "");
+
+  // Strip JSON-escaped control characters (U+0000–U+001F, U+007F–U+009F) and any trailing
+  // orphan digits left by the corruption. This runs after the Latin-1 fix above, so recoverable
+  // characters (0x80–0xFF) have already been rescued — only true control chars remain.
+  return stripped.replace(
+    /\\u00(0[0-9a-fA-F]|1[0-9a-fA-F]|7[fF]|[89][0-9a-fA-F])[0-9]*/gi,
+    ""
+  );
 }
 
 export const parseToolArguments = (

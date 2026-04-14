@@ -262,9 +262,7 @@ async function handler(
       }
 
       const isSaveDataSourceViewsEnabled =
-        await KillSwitchResource.isKillSwitchEnabledCached(
-          "save_data_source_views"
-        );
+        await KillSwitchResource.isKillSwitchEnabled("save_data_source_views");
       if (isSaveDataSourceViewsEnabled) {
         return apiError(req, res, {
           status_code: 400,

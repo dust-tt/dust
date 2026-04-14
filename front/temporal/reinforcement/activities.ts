@@ -16,7 +16,10 @@ import {
   type ReinforcedToolActionInfo,
   storeTerminalToolCallResults,
 } from "@app/lib/reinforced_agent/tool_execution";
-import { hasReinforcementEnabled } from "@app/lib/reinforced_agent/workspace_check";
+import {
+  hasReinforcementEnabled,
+  isReinforcementBatchModeAllowed,
+} from "@app/lib/reinforced_agent/workspace_check";
 import {
   buildSkillAggregationBatchMap,
   buildSkillAggregationSystemPrompt,
@@ -228,15 +231,20 @@ async function runReinforcedSkillsStep({
 // ---------------------------------------------------------------------------
 
 /**
- * Checks if skill reinforcement is allowed for this workspace.
+ * Checks reinforcement settings for this workspace:
+ * - whether reinforcement is enabled at all
+ * - whether batch mode is allowed
  */
-export async function isSkillReinforcementAllowedActivity({
+export async function getReinforcementSettingsActivity({
   workspaceId,
 }: {
   workspaceId: string;
-}): Promise<boolean> {
+}): Promise<{ reinforcementEnabled: boolean; batchModeAllowed: boolean }> {
   const auth = await getAuthForWorkspace(workspaceId);
-  return hasReinforcementEnabled(auth);
+  return {
+    reinforcementEnabled: await hasReinforcementEnabled(auth),
+    batchModeAllowed: isReinforcementBatchModeAllowed(auth),
+  };
 }
 
 /**
@@ -252,7 +260,7 @@ export async function getRecentConversationsWithSkillsActivity({
   lookbackDays?: number;
   maxConversations?: number;
   skillId?: string;
-}): Promise<{ conversationSId: string; skillSIds: string[] }[]> {
+}): Promise<{ conversationId: string; skillIds: string[] }[]> {
   const auth = await getAuthForWorkspace(workspaceId);
 
   const cutoffDate = new Date();
@@ -280,12 +288,12 @@ export async function getRecentConversationsWithSkillsActivity({
 export async function analyzeConversationStepActivity({
   workspaceId,
   conversationId,
-  skillSIds,
+  skillIds,
   reinforcementConversationId,
 }: {
   workspaceId: string;
   conversationId: string;
-  skillSIds: string[];
+  skillIds: string[];
   reinforcementConversationId?: string;
 }): Promise<{
   isTerminal: boolean;
@@ -303,7 +311,7 @@ export async function analyzeConversationStepActivity({
         includeFeedback: true,
         includeActionDetails: true,
       }),
-      SkillResource.fetchByIds(auth, skillSIds),
+      SkillResource.fetchByIds(auth, skillIds),
     ]);
     if (conversationRes.isErr()) {
       logger.warn(
@@ -315,7 +323,7 @@ export async function analyzeConversationStepActivity({
 
     if (skills.length === 0) {
       logger.warn(
-        { conversationId, skillSIds },
+        { conversationId, skillIds },
         "ReinforcedSkills: no skills found for step activity"
       );
       return { isTerminal: true, suggestionsCreated: 0 };
@@ -333,7 +341,7 @@ export async function analyzeConversationStepActivity({
         prompt,
         operationType: "reinforcement_analyze_conversation",
         contextId: conversationId,
-        skillIds: skillSIds,
+        skillIds: skillIds,
       }
     );
   }
@@ -476,6 +484,13 @@ export async function finalizeSkillAggregationActivity({
     "approved"
   );
 
+  // Record that reinforcement analysis has completed for this skill.
+  const skill = await SkillResource.fetchById(auth, skillId);
+  if (!skill) {
+    throw new Error(`Skill not found: ${skillId}`);
+  }
+  await skill.recordReinforcementAnalysisCompletion();
+
   logger.info(
     {
       skillId,
@@ -529,7 +544,7 @@ export async function startSkillConversationAnalysisBatchActivity({
   existingReinforcementConversationMap,
 }: {
   workspaceId: string;
-  conversationsWithSkills: { conversationSId: string; skillSIds: string[] }[];
+  conversationsWithSkills: { conversationId: string; skillIds: string[] }[];
   existingReinforcementConversationMap?: Record<string, string>;
 }): Promise<{
   batchId: string;
@@ -551,7 +566,7 @@ export async function startSkillConversationAnalysisBatchActivity({
 
   // Build the analysis prompt for first-time conversations.
   const firstTimeConversations = conversationsWithSkills.filter(
-    (c) => !existingReinforcementConversationMap?.[c.conversationSId]
+    (c) => !existingReinforcementConversationMap?.[c.conversationId]
   );
 
   let batchMap: Map<string, LLMStreamParameters> | null = null;
@@ -568,9 +583,9 @@ export async function startSkillConversationAnalysisBatchActivity({
   const batchConversations: LlmConversationOptions[] = [];
   const orderedAnalysedConversationIds: string[] = [];
 
-  for (const { conversationSId, skillSIds } of conversationsWithSkills) {
+  for (const { conversationId, skillIds } of conversationsWithSkills) {
     const existingReinforcementConvId =
-      existingReinforcementConversationMap?.[conversationSId];
+      existingReinforcementConversationMap?.[conversationId];
 
     if (existingReinforcementConvId) {
       // Continuation: reuse existing reinforcement conversation.
@@ -581,10 +596,10 @@ export async function startSkillConversationAnalysisBatchActivity({
         specifications,
         userContextOrigin: "reinforcement",
       });
-      orderedAnalysedConversationIds.push(conversationSId);
+      orderedAnalysedConversationIds.push(conversationId);
     } else {
       // First time: create a new reinforcement conversation with the analysis prompt.
-      const llmParams = batchMap?.get(conversationSId);
+      const llmParams = batchMap?.get(conversationId);
       if (!llmParams) {
         continue;
       }
@@ -593,15 +608,15 @@ export async function startSkillConversationAnalysisBatchActivity({
         newMessages: conversation.messages,
         title: reinforcedSkillsConversationTitle(
           "reinforcement_analyze_conversation",
-          conversationSId
+          conversationId
         ),
         ...llmParamsWithoutConversation,
         ...getReinforcedSkillsDefaultOptions(
           "reinforcement_analyze_conversation",
-          skillSIds
+          skillIds
         ),
       });
-      orderedAnalysedConversationIds.push(conversationSId);
+      orderedAnalysedConversationIds.push(conversationId);
     }
   }
 

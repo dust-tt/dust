@@ -30,8 +30,7 @@ describe("buildReinforcedSkillsLLMParams", () => {
     });
 
     const toolNames = params.specifications?.map((s) => s.name) ?? [];
-    expect(toolNames).toContain("suggest_skill_instruction_edits");
-    expect(toolNames).toContain("suggest_skill_tools");
+    expect(toolNames).toContain("edit_skill");
     expect(toolNames).toContain("get_available_tools");
   });
 

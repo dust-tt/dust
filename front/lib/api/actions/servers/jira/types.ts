@@ -659,3 +659,16 @@ export type JiraIssueWithAttachments = z.infer<
 export function isADFDocument(value: unknown): value is ADFDocument {
   return ADFDocumentSchema.safeParse(value).success;
 }
+
+const CascadingSelectChildSchema = z.object({
+  value: z.string(),
+  child: z.object({ value: z.string() }),
+});
+
+type CascadingSelectChild = z.infer<typeof CascadingSelectChildSchema>;
+
+export function isCascadingSelectChild(
+  value: unknown
+): value is CascadingSelectChild {
+  return CascadingSelectChildSchema.safeParse(value).success;
+}

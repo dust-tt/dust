@@ -46,10 +46,12 @@ import logger from "@app/logger/logger";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type {
   AgentMessageType,
+  CompactionMessageType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import {
   isAgentMessageType,
+  isCompactionMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import { isAgentMention } from "@app/types/assistant/mentions";
@@ -1549,11 +1551,16 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     const conversation = conversationRes.value;
 
     // Flatten to last version of each message, find the target by sId.
-    let foundMessage: UserMessageType | AgentMessageType | null = null;
+    let foundMessage:
+      | UserMessageType
+      | AgentMessageType
+      | CompactionMessageType
+      | null = null;
     let foundIndex = -1;
     const flatMessages: (
       | UserMessageType
       | AgentMessageType
+      | CompactionMessageType
       | ContentFragmentType
     )[] = [];
 
@@ -1568,7 +1575,9 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     for (let i = 0; i < flatMessages.length; i++) {
       const msg = flatMessages[i];
       if (
-        (isUserMessageType(msg) || isAgentMessageType(msg)) &&
+        (isUserMessageType(msg) ||
+          isAgentMessageType(msg) ||
+          isCompactionMessageType(msg)) &&
         msg.sId === messageId
       ) {
         foundMessage = msg;
@@ -1634,6 +1643,23 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
         }
         lines.push("");
       }
+
+      lines.push("## Content");
+      lines.push(foundMessage.content ?? "_empty_");
+      lines.push("");
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: lines.join("\n"),
+        },
+      ]);
+    }
+
+    if (isCompactionMessageType(foundMessage)) {
+      lines.push(`# Compaction message ${foundMessage.sId}`);
+      lines.push(`at ${foundMessage.created}`);
+      lines.push("");
 
       lines.push("## Content");
       lines.push(foundMessage.content ?? "_empty_");

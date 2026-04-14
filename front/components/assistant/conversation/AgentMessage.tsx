@@ -28,7 +28,7 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
-import { UserQuestionRequired } from "@app/components/assistant/conversation/UserQuestionRequired";
+import { UserAnswerRequired } from "@app/components/assistant/conversation/UserAnswerRequired";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   CitationsContext,
@@ -66,7 +66,7 @@ import {
   isGlobalAgentId,
   isGlobalAgentWithFeedback,
 } from "@app/types/assistant/assistant";
-import { isUserMessageType } from "@app/types/assistant/conversation";
+import { isLightAgentMessageType } from "@app/types/assistant/conversation";
 import type {
   RichAgentMention,
   RichMention,
@@ -677,7 +677,10 @@ export function AgentMessage({
           await response.json();
         // Update the message state from the backend
         methods.data.map((m) => {
-          if (m.sId === msg.message.sId && !isUserMessageType(msg.message)) {
+          if (
+            isLightAgentMessageType(msg.message) &&
+            m.sId === msg.message.sId
+          ) {
             return makeInitialMessageStreamState(msg.message);
           }
           return m;
@@ -1231,7 +1234,7 @@ function AgentMessageContent({
 
       case "blocked_user_answer_required":
         return (
-          <UserQuestionRequired
+          <UserAnswerRequired
             blockedAction={blockedAction}
             triggeringUser={triggeringUser}
             owner={owner}
@@ -1316,44 +1319,49 @@ function AgentMessageContent({
   );
 
   return (
-    <div className="flex flex-col gap-y-4">
-      {isInlineActivityEnabled ? (
-        <InlineActivitySteps
-          agentMessage={agentMessage}
-          lastAgentStateClassification={agentMessage.streaming.agentState}
-          completedSteps={agentMessage.streaming.inlineActivitySteps}
-          pendingToolCalls={agentMessage.streaming.pendingToolCalls}
-          onOpenDetails={onOpenDetails}
+    <CitationsContext.Provider value={citationsContextValue}>
+      <div className="flex flex-col gap-y-4">
+        {isInlineActivityEnabled ? (
+          <InlineActivitySteps
+            agentMessage={agentMessage}
+            lastAgentStateClassification={agentMessage.streaming.agentState}
+            completedSteps={agentMessage.streaming.inlineActivitySteps}
+            pendingToolCalls={agentMessage.streaming.pendingToolCalls}
+            onOpenDetails={onOpenDetails}
+            owner={owner}
+            isLastMessage={isLastMessage}
+          />
+        ) : (
+          <AgentMessageActions
+            agentMessage={agentMessage}
+            lastAgentStateClassification={agentMessage.streaming.agentState}
+            actionProgress={agentMessage.streaming.actionProgress}
+            pendingToolCalls={agentMessage.streaming.pendingToolCalls}
+            owner={owner}
+          />
+        )}
+        <AgentMessageInteractiveContentGeneratedFiles
+          files={interactiveFiles}
         />
-      ) : (
-        <AgentMessageActions
-          agentMessage={agentMessage}
-          lastAgentStateClassification={agentMessage.streaming.agentState}
-          actionProgress={agentMessage.streaming.actionProgress}
-          pendingToolCalls={agentMessage.streaming.pendingToolCalls}
-          owner={owner}
-        />
-      )}
-      <AgentMessageInteractiveContentGeneratedFiles files={interactiveFiles} />
-      {completedImages.length > 0 && (
-        <InteractiveImageGrid
-          images={completedImages.map((image) => ({
-            imageUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=view&version=processed`,
-            downloadUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=download`,
-            alt: image.title,
-            title: image.title,
-            isLoading: false,
-          }))}
-        />
-      )}
+        {completedImages.length > 0 && (
+          <InteractiveImageGrid
+            images={completedImages.map((image) => ({
+              imageUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=view&version=processed`,
+              downloadUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=download`,
+              alt: image.title,
+              title: image.title,
+              isLoading: false,
+            }))}
+          />
+        )}
 
-      {agentMessage.content !== null &&
-        !(
-          isInlineActivityEnabled &&
-          agentMessage.streaming.agentState !== "done"
-        ) && (
-          <div>
-            <CitationsContext.Provider value={citationsContextValue}>
+        {agentMessage.content !== null &&
+          agentMessage.content !== "" &&
+          !(
+            isInlineActivityEnabled &&
+            agentMessage.streaming.agentState !== "done"
+          ) && (
+            <div>
               <AgentMessageMarkdown
                 content={sanitizeVisualizationContent(agentMessage.content)}
                 owner={owner}
@@ -1366,60 +1374,60 @@ function AgentMessageContent({
                 additionalMarkdownComponents={additionalMarkdownComponents}
                 additionalMarkdownPlugins={additionalMarkdownPlugins}
               />
-            </CitationsContext.Provider>
+            </div>
+          )}
+        {generatedFiles.length > 0 && (
+          <div className="mt-2 grid grid-cols-5 gap-1">
+            {getCitations({
+              activeReferences: generatedFiles.map((file) => ({
+                index: -1,
+                document: {
+                  fileId: file.fileId,
+                  contentType: file.contentType,
+                  href: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`,
+                  title: file.title,
+                },
+              })),
+              owner,
+              conversationId,
+            })}
           </div>
         )}
-      {generatedFiles.length > 0 && (
-        <div className="mt-2 grid grid-cols-5 gap-1">
-          {getCitations({
-            activeReferences: generatedFiles.map((file) => ({
-              index: -1,
-              document: {
-                fileId: file.fileId,
-                contentType: file.contentType,
-                href: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`,
-                title: file.title,
-              },
-            })),
-            owner,
-            conversationId,
-          })}
-        </div>
-      )}
-      {agentMessage.status === "cancelled" && (
-        <div className="flex flex-col gap-2">
-          <div className="text-sm text-faint dark:text-faint-night">
-            Message generation was interrupted
-          </div>
-          <div>
-            <ButtonGroupDropdown
-              trigger={
-                <Button
-                  variant="outline"
-                  size="xs"
-                  icon={MoreIcon}
-                  className="text-muted-foreground"
-                />
-              }
-              items={[
-                {
-                  label: "Retry",
-                  icon: ArrowPathIcon,
-                  onSelect: () => {
-                    void retryHandler({
-                      conversationId,
-                      messageId: agentMessage.sId,
-                    });
+        {agentMessage.status === "cancelled" && (
+          <div className="flex flex-col gap-2">
+            <div className="text-sm text-faint dark:text-faint-night">
+              Message generation was interrupted
+            </div>
+            <div>
+              <ButtonGroupDropdown
+                trigger={
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    icon={MoreIcon}
+                    className="text-muted-foreground"
+                  />
+                }
+                items={[
+                  {
+                    label: "Retry",
+                    icon: ArrowPathIcon,
+                    onSelect: () => {
+                      void retryHandler({
+                        conversationId,
+                        messageId: agentMessage.sId,
+                      });
+                    },
+                    disabled: isRetryHandlerProcessing,
                   },
-                  disabled: isRetryHandlerProcessing,
-                },
-              ]}
-              align="end"
-            />
+                ]}
+                align="end"
+              />
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </CitationsContext.Provider>
   );
 }
 
@@ -1456,6 +1464,7 @@ function getCitations({
       <AttachmentCitation
         key={index}
         attachmentCitation={attachmentCitation}
+        compact
         owner={owner}
         conversationId={conversationId}
       />

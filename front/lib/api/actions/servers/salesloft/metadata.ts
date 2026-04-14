@@ -4,8 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const SALESLOFT_TOOL_NAME = "salesloft" as const;
-
 export const SALESLOFT_TOOLS_METADATA = createToolsRecord({
   get_actions: {
     description:

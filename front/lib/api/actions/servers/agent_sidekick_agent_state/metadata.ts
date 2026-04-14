@@ -4,9 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const AGENT_SIDEKICK_AGENT_STATE_TOOL_NAME =
-  "agent_sidekick_agent_state" as const;
-
 export const AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA = createToolsRecord({
   get_agent_info: {
     description:

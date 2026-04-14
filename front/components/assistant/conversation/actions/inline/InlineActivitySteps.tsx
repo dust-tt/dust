@@ -1,3 +1,4 @@
+import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
 import { ThinkingStep } from "@app/components/assistant/conversation/actions/inline/ThinkingStep";
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
@@ -17,13 +18,14 @@ import type {
 } from "@app/types/assistant/conversation";
 import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
+import type { WorkspaceType } from "@app/types/user";
 import {
   AnimatedText,
   CheckIcon,
   ChevronRightIcon,
   cn,
   Icon,
-  Markdown,
   ToolsIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -34,6 +36,8 @@ interface InlineActivityStepsProps {
   completedSteps: InlineActivityStep[];
   pendingToolCalls: PendingToolCall[];
   onOpenDetails?: (messageId: string) => void;
+  owner: WorkspaceType;
+  isLastMessage: boolean;
 }
 
 function getCompletionLabel(
@@ -73,6 +77,8 @@ export function InlineActivitySteps({
   completedSteps,
   pendingToolCalls,
   onOpenDetails,
+  owner,
+  isLastMessage,
 }: InlineActivityStepsProps) {
   const isAgentMessageWithActions =
     isLightAgentMessageWithActionsType(agentMessage);
@@ -84,7 +90,7 @@ export function InlineActivitySteps({
   const isDone =
     lastAgentStateClassification === "done" || agentMessage.status === "failed";
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(isDone && !isLastMessage);
 
   const openBreakdownPanel = (actionId?: string) => {
     if (onOpenDetails) {
@@ -203,7 +209,7 @@ export function InlineActivitySteps({
         style={getCollapseAnimationStyle(isCollapsed)}
       >
         <div className="overflow-hidden">
-          <div className="mt-4 flex flex-col gap-3">
+          <div className="mt-3 flex flex-col gap-3">
             {completedSteps.map((step, index) => {
               const isLast =
                 index === completedSteps.length - 1 &&
@@ -224,10 +230,17 @@ export function InlineActivitySteps({
                     />
                   );
                 case "content":
+                  if (
+                    !isString(step.content) ||
+                    step.content.trim().length === 0
+                  ) {
+                    return null;
+                  }
                   return (
                     <div key={step.id}>
-                      <Markdown
+                      <AgentMessageMarkdown
                         content={step.content}
+                        owner={owner}
                         isStreaming={false}
                         isLastMessage={false}
                       />
@@ -284,13 +297,11 @@ export function InlineActivitySteps({
             {/* Active writing (streaming content tokens) */}
             {showActiveWriting && agentMessage.content ? (
               <div>
-                <Markdown
+                <AgentMessageMarkdown
                   content={agentMessage.content}
+                  owner={owner}
                   isStreaming={false}
                   streamingState="streaming"
-                  enableAnimation
-                  animationDurationSeconds={0.3}
-                  delimiter=" "
                   isLastMessage={false}
                 />
               </div>

@@ -298,14 +298,6 @@ export type GenericErrorContent = {
   metadata: Record<string, string | number | boolean> | null;
 };
 
-import type { PersonalAuthenticationRequiredErrorContent } from "@app/types/assistant/agent_error";
-
-export type {
-  MCPServerPersonalAuthenticationRequiredMetadata,
-  PersonalAuthenticationRequiredErrorContent,
-} from "@app/types/assistant/agent_error";
-export { isPersonalAuthenticationRequiredErrorContent } from "@app/types/assistant/agent_error";
-
 // Generic event sent when an error occurred during the model call.
 export type AgentErrorEvent = {
   type: "agent_error";
@@ -333,7 +325,7 @@ export type ToolErrorEvent = {
   configurationId: string;
   messageId: string;
   conversationId: string;
-  error: GenericErrorContent | PersonalAuthenticationRequiredErrorContent;
+  error: GenericErrorContent;
   isLastBlockingEventForStep: boolean;
   // TODO(DURABLE-AGENTS 2025-08-25): Move to a deferred event base interface.
   metadata?: {

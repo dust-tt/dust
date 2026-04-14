@@ -23,7 +23,7 @@ export function TypingAnimation({ text, duration = 50 }: TypingAnimationProps) {
     return () => {
       clearInterval(typingEffect);
     };
-  }, [duration, i]);
+  }, [duration, i, text]);
 
   return <>{displayedText ? displayedText : text}</>;
 }

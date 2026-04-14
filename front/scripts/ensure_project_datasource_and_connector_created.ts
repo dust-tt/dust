@@ -1,8 +1,6 @@
 import { default as config } from "@app/lib/api/config";
-import {
-  createDataSourceAndConnectorForProject,
-  fetchProjectDataSource,
-} from "@app/lib/api/projects";
+import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects/connector";
+import { fetchProjectDataSource } from "@app/lib/api/projects/data_sources";
 import { Authenticator } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";

@@ -13,6 +13,16 @@ export function makeAgentLoopWorkflowId({
   return `agent-loop-workflow-${workspaceId}-${conversationId}-${agentMessageId}`;
 }
 
+export function makeCompactionWorkflowId({
+  workspaceId,
+  conversationId,
+}: {
+  workspaceId: string;
+  conversationId: string;
+}) {
+  return `compaction-workflow-${workspaceId}-${conversationId}`;
+}
+
 export function makeAgentLoopConversationTitleWorkflowId(
   authType: AuthenticatorType,
   runAgentArgs: AgentLoopArgs

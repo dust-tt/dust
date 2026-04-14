@@ -17,7 +17,7 @@ jobs:
       # Determine if we should run the review
       - name: Determine if review should run
         id: should-run
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7.1.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           result-encoding: string
@@ -33,7 +33,7 @@ jobs:
       # Only proceed if the label is added.
       - name: Checkout code
         if: steps.should-run.outputs.result == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0 # Fetch full history for accurate diffs
 

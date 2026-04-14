@@ -135,12 +135,20 @@ export function buildTools<T extends Record<string, ToolMeta>>(
 }
 
 // Internal MCP server tools must have displayLabels (unlike remote servers).
-type InternalMCPToolType = MCPToolType & {
+type InternalMCPToolType<TName extends string = string> = Omit<
+  MCPToolType,
+  "name" | "displayLabels"
+> & {
+  name: TName;
   displayLabels: ToolDisplayLabels;
 };
 
-export type ServerMetadata = {
-  serverInfo: InternalMCPServerDefinitionType;
-  tools: InternalMCPToolType[];
-  tools_stakes: Record<string, MCPToolStakeLevelType>;
+export type ServerMetadata<
+  TServerName extends
+    InternalMCPServerDefinitionType["name"] = InternalMCPServerDefinitionType["name"],
+  TToolName extends string = string,
+> = {
+  serverInfo: InternalMCPServerDefinitionType & { name: TServerName };
+  tools: InternalMCPToolType<TToolName>[];
+  tools_stakes: Record<TToolName, MCPToolStakeLevelType>;
 };

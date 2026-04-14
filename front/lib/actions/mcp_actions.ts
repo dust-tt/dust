@@ -1,7 +1,7 @@
 // All mime types are okay to use from the public API.
 
 import {
-  calculateContentSize,
+  computeContentSize,
   getRemoteContentMaxSize,
   isWithinRemoteContentLimit,
 } from "@app/lib/actions/action_output_limits";
@@ -107,8 +107,6 @@ import assert from "assert";
 import tracer from "dd-trace";
 import EventEmitter from "events";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-
-const MAX_OUTPUT_ITEMS = 128;
 
 const MCP_NOTIFICATION_EVENT_NAME = "mcp-notification";
 const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
@@ -268,7 +266,7 @@ function generateRemoteContentMetadata(content: CallToolResult["content"]): {
 }[] {
   const result = [];
   for (const item of content) {
-    const byteSize = calculateContentSize(item);
+    const byteSize = computeContentSize(item);
     const maxSize = getRemoteContentMaxSize(item);
 
     result.push({ type: item.type, byteSize, maxSize });
@@ -529,20 +527,6 @@ export async function* tryCallMCPTool(
     const content: CallToolResult["content"] = (toolCallResult.content ??
       []) as CallToolResult["content"];
 
-    if (content.length >= MAX_OUTPUT_ITEMS) {
-      return {
-        isError: true,
-        content: [
-          {
-            type: "text",
-            text:
-              "The tool execution failed because of too many output items: " +
-              `${content.length} (max is ${MAX_OUTPUT_ITEMS})`,
-          },
-        ],
-      };
-    }
-
     let serverType;
     if (isClientSideMCPToolConfiguration(toolConfiguration)) {
       serverType = "client";
@@ -566,9 +550,7 @@ export async function* tryCallMCPTool(
           content: [
             {
               type: "text",
-              text:
-                "The tool execution failed because of a tool result content size exceeding " +
-                "the maximum limit.",
+              text: "The tool execution failed because the tool output exceeds the maximum size limit.",
             },
           ],
         };

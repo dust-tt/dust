@@ -5,8 +5,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const HUBSPOT_TOOL_NAME = "hubspot" as const;
-
 const ALL_OBJECTS = ["contacts", "companies", "deals", "owners"] as const;
 const SIMPLE_OBJECTS = ["contacts", "companies", "deals"] as const;
 

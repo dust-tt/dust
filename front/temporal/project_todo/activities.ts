@@ -1,7 +1,7 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { Authenticator, type AuthenticatorType } from "@app/lib/auth";
 import { analyzeConversationTodos } from "@app/lib/project_todo/analyze_conversation";
-import { mergeConversationTodosIntoProject } from "@app/lib/project_todo/merge_into_project";
+import { mergeTakeawaysIntoProject } from "@app/lib/project_todo/merge_into_project";
 import logger from "@app/logger/logger";
 import { signalOrStartProjectMergeWorkflow } from "@app/temporal/project_todo/client";
 
@@ -80,5 +80,5 @@ export async function mergeTodosForProjectActivity({
     "Project todo merge: activity invoked (not yet implemented)"
   );
 
-  await mergeConversationTodosIntoProject(auth, { spaceId });
+  await mergeTakeawaysIntoProject(auth, { spaceId });
 }

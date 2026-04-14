@@ -16,6 +16,7 @@ import type {
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 import {
+  isCompactionMessageType,
   isLightAgentMessageWithActionsType,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
@@ -114,7 +115,7 @@ export type VirtuosoMessageListContext = {
   // Project membership fields (undefined for non-project conversations)
   isProjectMember?: boolean;
   isProjectRestricted?: boolean;
-  projectSpaceId?: string;
+  projectId?: string;
   projectSpaceName?: string;
   branchIdToApprove?: string;
   setBranchIdToApprove?: (branchId: string | null) => void;
@@ -162,7 +163,8 @@ export const isHandoverUserMessage = (msg: VirtuosoMessage): boolean =>
 
 export const isAgentMessageWithStreaming = (
   msg: VirtuosoMessage
-): msg is AgentMessageWithStreaming => "streaming" in msg;
+): msg is AgentMessageWithStreaming =>
+  "streaming" in msg && msg.type === "agent_message";
 
 export const getMessageDate = (msg: VirtuosoMessage): Date =>
   new Date(msg.created);
@@ -194,8 +196,11 @@ export const isSidekickBootstrapMessage = (
 export const convertLightMessageTypeToVirtuosoMessages = (
   messages: LightMessageType[]
 ) =>
-  messages.map((message) =>
-    isUserMessageTypeWithContentFragments(message)
-      ? message
-      : makeInitialMessageStreamState(message)
-  );
+  messages
+    // TODO(compaction): Add support for compaction messages in the UI instead of filtering.
+    .filter((message) => !isCompactionMessageType(message))
+    .map((message) =>
+      isUserMessageTypeWithContentFragments(message)
+        ? message
+        : makeInitialMessageStreamState(message)
+    );

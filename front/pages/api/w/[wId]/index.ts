@@ -79,6 +79,10 @@ const WorkspaceAgentReinforcementUpdateBodySchema = t.type({
   allowReinforcement: t.boolean,
 });
 
+const WorkspaceReinforcementBatchModeUpdateBodySchema = t.type({
+  allowReinforcementBatchMode: t.boolean,
+});
+
 const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceAllowedDomainUpdateBodySchema,
   WorkspaceBatchDomainUpdateBodySchema,
@@ -91,6 +95,7 @@ const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceVoiceTranscriptionUpdateBodySchema,
   WorkspaceEmailAgentsUpdateBodySchema,
   WorkspaceAgentReinforcementUpdateBodySchema,
+  WorkspaceReinforcementBatchModeUpdateBodySchema,
 ]);
 
 async function handler(
@@ -227,6 +232,14 @@ async function handler(
         const newMetadata = {
           ...previousMetadata,
           allowReinforcement: body.allowReinforcement,
+        };
+        await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+        owner.metadata = newMetadata;
+      } else if ("allowReinforcementBatchMode" in body) {
+        const previousMetadata = owner.metadata ?? {};
+        const newMetadata = {
+          ...previousMetadata,
+          allowReinforcementBatchMode: body.allowReinforcementBatchMode,
         };
         await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;

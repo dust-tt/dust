@@ -4,8 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const DATABRICKS_TOOL_NAME = "databricks" as const;
-
 export const DATABRICKS_TOOLS_METADATA = createToolsRecord({
   list_warehouses: {
     description:

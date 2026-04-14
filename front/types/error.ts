@@ -64,6 +64,7 @@ const API_ERROR_TYPES = [
   "connector_credentials_not_found",
   "connector_operation_in_progress",
   "agent_configuration_not_found",
+  "agent_inaccessible",
   "agent_group_permission_error",
   "agent_message_error",
   "unprocessable_entity",

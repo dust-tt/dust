@@ -154,109 +154,120 @@ export function PluginForm({
         onSubmit={form.handleSubmit(handleSubmit)}
         className="max-w-[600px] space-y-8"
       >
-        {Object.entries(manifest.args).map(([key, arg]) => {
-          const isDependentFieldHidden =
-            arg.dependsOn &&
-            watchedValues[arg.dependsOn.field] !== arg.dependsOn.value;
+        <div className="max-h-[50vh] space-y-8 overflow-y-auto pr-2">
+          {Object.entries(manifest.args).map(([key, arg]) => {
+            const isDependentFieldHidden =
+              arg.dependsOn &&
+              watchedValues[arg.dependsOn.field] !== arg.dependsOn.value;
 
-          if (isDependentFieldHidden) {
-            return null;
-          }
+            if (isDependentFieldHidden) {
+              return null;
+            }
 
-          let defaultValue = undefined;
-          let options = undefined;
+            let defaultValue = undefined;
+            let options = undefined;
 
-          if (arg.type === "enum") {
-            options =
-              arg.async && asyncArgs?.[key]
-                ? (asyncArgs[key] as AsyncEnumValues)
-                : arg.values;
-            defaultValue = options.filter((v) => v.checked).map((v) => v.value);
-          }
-          const fieldDescription =
-            arg.asyncDescription &&
-            asyncArgs?.[`${key}_description`] !== undefined
-              ? String(asyncArgs[`${key}_description`])
-              : arg.description;
+            if (arg.type === "enum") {
+              options =
+                arg.async && asyncArgs?.[key]
+                  ? (asyncArgs[key] as AsyncEnumValues)
+                  : arg.values;
+              defaultValue = options
+                .filter((v) => v.checked)
+                .map((v) => v.value);
+            }
+            const fieldDescription =
+              arg.asyncDescription &&
+              asyncArgs?.[`${key}_description`] !== undefined
+                ? String(asyncArgs[`${key}_description`])
+                : arg.description;
 
-          return (
-            <PokeFormField
-              key={key}
-              control={form.control}
-              name={key}
-              disabled={disabled}
-              defaultValue={defaultValue}
-              render={({ field }) => (
-                <PokeFormItem>
-                  <div
-                    className={
-                      arg.type === "boolean"
-                        ? "flex flex-row items-center gap-x-2"
-                        : "flex flex-col gap-y-2"
-                    }
-                  >
-                    <PokeFormLabel>{arg.label}</PokeFormLabel>
-                    <PokeFormControl>
-                      <>
-                        {arg.type === "text" && <PokeFormTextArea {...field} />}
-                        {arg.type === "string" && <PokeFormInput {...field} />}
-                        {arg.type === "number" && (
-                          <PokeFormInput
-                            type={arg.variant === "text" ? "text" : "number"}
-                            {...field}
-                            onChange={(e) => {
-                              const parsed = Number(e.target.value);
-                              if (isFinite(parsed)) {
-                                field.onChange(parsed);
-                              }
-                            }}
-                          />
-                        )}
-                        {arg.type === "boolean" && arg.variant === "toggle" && (
-                          <SliderToggle
-                            selected={field.value}
-                            onClick={() => field.onChange(!field.value)}
-                            disabled={field.disabled}
-                          />
-                        )}
-                        {arg.type === "boolean" &&
-                          (arg.variant === "checkbox" ||
-                            arg.variant === undefined) && (
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
+            return (
+              <PokeFormField
+                key={key}
+                control={form.control}
+                name={key}
+                disabled={disabled}
+                defaultValue={defaultValue}
+                render={({ field }) => (
+                  <PokeFormItem>
+                    <div
+                      className={
+                        arg.type === "boolean"
+                          ? "flex flex-row items-center gap-x-2"
+                          : "flex flex-col gap-y-2"
+                      }
+                    >
+                      <PokeFormLabel>{arg.label}</PokeFormLabel>
+                      <PokeFormControl>
+                        <>
+                          {arg.type === "text" && (
+                            <PokeFormTextArea {...field} />
+                          )}
+                          {arg.type === "string" && (
+                            <PokeFormInput {...field} />
+                          )}
+                          {arg.type === "number" && (
+                            <PokeFormInput
+                              type={arg.variant === "text" ? "text" : "number"}
+                              {...field}
+                              onChange={(e) => {
+                                const parsed = Number(e.target.value);
+                                if (isFinite(parsed)) {
+                                  field.onChange(parsed);
+                                }
+                              }}
                             />
                           )}
-                        {arg.type === "enum" && (
-                          <EnumSelect
-                            label={arg.label}
-                            onValuesChange={(values) => field.onChange(values)}
-                            options={options ?? []}
-                            placeholder="Select value"
-                            values={field.value}
-                            multiple={arg.multiple}
-                          />
-                        )}
-                        {arg.type === "file" && (
-                          <PokeFormUpload type="file" {...field} />
-                        )}
-                        {arg.type === "date" && (
-                          <PokeFormInput type="date" {...field} />
-                        )}
-                      </>
-                    </PokeFormControl>
-                  </div>
-                  {fieldDescription && (
-                    <PokeFormDescription>
-                      {fieldDescription}
-                    </PokeFormDescription>
-                  )}
-                  <PokeFormMessage />
-                </PokeFormItem>
-              )}
-            />
-          );
-        })}
+                          {arg.type === "boolean" &&
+                            arg.variant === "toggle" && (
+                              <SliderToggle
+                                selected={field.value}
+                                onClick={() => field.onChange(!field.value)}
+                                disabled={field.disabled}
+                              />
+                            )}
+                          {arg.type === "boolean" &&
+                            (arg.variant === "checkbox" ||
+                              arg.variant === undefined) && (
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            )}
+                          {arg.type === "enum" && (
+                            <EnumSelect
+                              label={arg.label}
+                              onValuesChange={(values) =>
+                                field.onChange(values)
+                              }
+                              options={options ?? []}
+                              placeholder="Select value"
+                              values={field.value}
+                              multiple={arg.multiple}
+                            />
+                          )}
+                          {arg.type === "file" && (
+                            <PokeFormUpload type="file" {...field} />
+                          )}
+                          {arg.type === "date" && (
+                            <PokeFormInput type="date" {...field} />
+                          )}
+                        </>
+                      </PokeFormControl>
+                    </div>
+                    {fieldDescription && (
+                      <PokeFormDescription>
+                        {fieldDescription}
+                      </PokeFormDescription>
+                    )}
+                    <PokeFormMessage />
+                  </PokeFormItem>
+                )}
+              />
+            );
+          })}
+        </div>
         <Button
           type="submit"
           variant="outline"

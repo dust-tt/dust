@@ -46,11 +46,24 @@ vi.mock("@app/components/resources/resources_icons", () => ({
   isInternalAllowedIcon: () => false,
 }));
 
+vi.mock("@app/lib/file_icon_utils", () => ({
+  getFileTypeIcon: (contentType: string, _fileName?: string) => {
+    if (
+      contentType === "application/vnd.dust.frame" ||
+      contentType === "application/vnd.dust.frame.slideshow"
+    ) {
+      return "ActionFrameIcon";
+    }
+    return "DocumentIcon";
+  },
+}));
+
 // Mock sparkle icon components and wrappers with light-weight test doubles.
 vi.mock("@dust-tt/sparkle", () => ({
   // Visual icon identifiers
   ActionAtomIcon: "ActionAtomIcon",
   ActionBrainIcon: "ActionBrainIcon",
+  ActionFrameIcon: "ActionFrameIcon",
   ActionIcons: "ActionIcons",
   ActionVolumeUpIcon: "ActionVolumeUpIcon",
   DocumentIcon: "DocumentIcon",
@@ -104,6 +117,7 @@ function TestIcon(props: {
   nodeType?: any; // keep it lax for the test environment
   contentType?: string;
   sourceUrl?: string;
+  fileName?: string;
 }) {
   return <>{IconForAttachmentCitation(props)}</>;
 }
@@ -184,6 +198,18 @@ describe("IconForAttachmentCitation", () => {
     const el = screen.getByTestId("icon");
     expect(el).toBeInTheDocument();
     expect(el).toHaveAttribute("data-visual", "DoubleQuotesIcon");
+  });
+
+  it("renders frame icon for Dust frame content type", () => {
+    render(
+      <TestIcon
+        contentType="application/vnd.dust.frame"
+        fileName="HelloWorld4.tsx"
+      />
+    );
+    const el = screen.getByTestId("icon");
+    expect(el).toBeInTheDocument();
+    expect(el).toHaveAttribute("data-visual", "ActionFrameIcon");
   });
 
   it("renders default Document icon when nothing matches", () => {

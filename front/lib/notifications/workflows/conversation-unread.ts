@@ -1,8 +1,11 @@
 import { isMessageUnread } from "@app/components/assistant/conversation/utils";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { formatConversationForDisplay } from "@app/lib/api/actions/servers/project_manager/tools/conversation_formatting";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
+import {
+  countConversationMessages,
+  renderConversationAsText,
+} from "@app/lib/api/assistant/conversation/render_as_text";
 import config from "@app/lib/api/config";
 import { getSmallWhitelistedModel } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
@@ -25,6 +28,8 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import {
   ConversationError,
+  isCompactionMessageType,
+  isLightAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import { isRichUserMention } from "@app/types/assistant/mentions";
@@ -106,6 +111,7 @@ const ConversationDetailsSchema = z.object({
   authorIsAgent: z.boolean(),
   avatarUrl: z.string().optional(),
   isFromTrigger: z.boolean(),
+  isFromEmailAgentConversation: z.boolean(),
   workspaceName: z.string(),
   mentionedUserIds: z.array(z.string()),
   hasUnreadMessages: z.boolean(),
@@ -152,6 +158,7 @@ const getConversationDetails = async ({
         author: "Deleted conversation",
         authorIsAgent: false,
         isFromTrigger: false,
+        isFromEmailAgentConversation: false,
         workspaceName: "Deleted conversation",
         mentionedUserIds: [],
         avatarUrl: undefined,
@@ -214,8 +221,21 @@ const getConversationDetails = async ({
     message.type === "agent_message" || message.type === "user_message"
       ? message.content
       : "";
+  const parentUserMessage = isLightAgentMessageType(message)
+    ? conversation.content
+        .flat()
+        .find((msg) => msg.sId === message.parentMessageId)
+    : undefined;
+  const isFromEmailAgentConversation =
+    (isUserMessageType(message) && message.context.origin === "email") ||
+    (parentUserMessage !== undefined &&
+      isUserMessageType(parentUserMessage) &&
+      parentUserMessage.context.origin === "email");
 
-  if (isContentFragmentType(message)) {
+  if (isCompactionMessageType(message)) {
+    // Compaction messages don't trigger notifications.
+    return new Err(new ConversationError("message_not_found"));
+  } else if (isContentFragmentType(message)) {
     // Content fragments don't have author info.
     author = "Someone else";
     authorIsAgent = false;
@@ -228,12 +248,14 @@ const getConversationDetails = async ({
     mentionedUserIds = message.richMentions
       .filter((m) => isRichUserMention(m) && m.status === "approved")
       .map((m) => m.id);
-  } else {
+  } else if (isLightAgentMessageType(message)) {
     author = message.configuration.name
       ? `@${message.configuration.name}`
       : "An agent";
     avatarUrl = message.configuration.pictureUrl ?? undefined;
     authorIsAgent = true;
+  } else {
+    assertNever(message);
   }
 
   const unreadMessages = conversation.content
@@ -243,7 +265,7 @@ const getConversationDetails = async ({
   const hasUnreadMessages = unreadMessages.length > 0;
 
   const hasUnreadMentions = unreadMessages.some((msg) => {
-    if (isContentFragmentType(msg)) {
+    if (isContentFragmentType(msg) || isCompactionMessageType(msg)) {
       return false;
     }
     return msg.richMentions.some(
@@ -269,6 +291,7 @@ const getConversationDetails = async ({
     authorIsAgent,
     avatarUrl,
     isFromTrigger,
+    isFromEmailAgentConversation,
     workspaceName,
     mentionedUserIds,
     hasUnreadMessages,
@@ -452,17 +475,26 @@ const generateUnreadMessagesSummary = async ({
     `Remember: Use "you/your" - NEVER write "${userFullName}".\n` +
     `Write in a natural, engaging tone that makes someone want to read it.`;
 
-  let conversationSnippet = JSON.stringify(
-    formatConversationForDisplay(conversation, owner.sId).messages,
-    null,
-    2
-  );
+  const renderedMessages = renderConversationAsText(conversation, {
+    includeTimestamps: true,
+    includeEmail: true,
+    includeUnread: true,
+    truncateTotalChars: MAX_CONVERSATION_SNIPPET_LENGTH,
+  });
 
-  if (conversationSnippet.length > MAX_CONVERSATION_SNIPPET_LENGTH) {
-    conversationSnippet =
-      "(the conversation history has been truncated)...\n\n" +
-      conversationSnippet.substring(0, MAX_CONVERSATION_SNIPPET_LENGTH);
-  }
+  const preamble = [
+    `Conversation: ${conversation.sId}`,
+    `Title: ${conversation.title ?? "Untitled Conversation"}`,
+    `Created: ${new Date(conversation.created).toISOString()}`,
+    `Updated: ${new Date(conversation.updated).toISOString()}`,
+    `Unread: ${conversation.unread}`,
+    `Action Required: ${conversation.actionRequired}`,
+    `Has Error: ${conversation.hasError}`,
+    `Message Count: ${countConversationMessages(conversation)}`,
+    `URL: /w/${owner.sId}/assistant/${conversation.sId}`,
+  ].join("\n");
+
+  const conversationSnippet = `${preamble}\n\n${renderedMessages}`;
 
   const res = await runMultiActionsAgent(
     auth,
@@ -480,7 +512,7 @@ const generateUnreadMessagesSummary = async ({
             content: [
               {
                 type: "text",
-                text: `This is the content of the conversation to summarize:\n\n\`\`\`json\n${conversationSnippet}\n\`\`\``,
+                text: `This is the content of the conversation to summarize:\n\n${conversationSnippet}`,
               },
             ],
           },
@@ -955,6 +987,9 @@ export const triggerConversationUnreadNotifications = async (
   });
   if (detailsResult.isErr()) {
     // Conversation or message was deleted - no notification needed.
+    return new Ok(undefined);
+  }
+  if (detailsResult.value.isFromEmailAgentConversation) {
     return new Ok(undefined);
   }
 

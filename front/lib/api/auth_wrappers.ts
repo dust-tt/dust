@@ -550,7 +550,7 @@ async function handleSandboxAuth(
   token: string,
   wId: string
 ): Promise<Result<Authenticator, APIErrorWithStatusCode>> {
-  const payload = verifySandboxExecToken(token);
+  const payload = await verifySandboxExecToken(token);
   if (!payload) {
     return new Err({
       status_code: 401,

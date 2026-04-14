@@ -322,7 +322,7 @@ async function handler(
       });
     case "POST":
       const isSaveAgentConfigurationsEnabled =
-        await KillSwitchResource.isKillSwitchEnabledCached(
+        await KillSwitchResource.isKillSwitchEnabled(
           "save_agent_configurations"
         );
       if (isSaveAgentConfigurationsEnabled) {

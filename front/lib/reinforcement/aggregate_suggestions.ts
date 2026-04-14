@@ -6,6 +6,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import logger from "@app/logger/logger";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { escapeXml } from "@app/types/shared/utils/string_utils";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 
 const AGGREGATION_ASSEMBLY_ORDER = [
@@ -23,9 +24,8 @@ const REINFORCED_SKILL_AGGREGATION_SECTIONS: Record<
   primary: `You improve a skill's configuration by consolidating many draft suggestions. Each draft was produced from a single conversation that used the skill.
 Your job is to produce a subset of the highest quality suggestions for the skill builder to review.
 
-You have access to the following tools:
-- suggest_skill_instruction_edits: For suggesting instruction changes to the skill.
-- suggest_skill_tools: For suggesting tools to add or remove from the skill.
+You have access to the following tool:
+- edit_skill: For suggesting instruction edits and tool add/remove for one skill. The skill block above includes <agentFacingDescription> when set (for context only); you MUST NOT use edit_skill to change it.
 
 Your goal is to keep the most impactful suggestions. NEVER create more than 5 suggestions.
 You MUST follow <aggregation_rules> to determine the final set of suggestions.
@@ -66,21 +66,26 @@ export function buildSkillAggregationSystemPrompt(): string {
 
 function formatSuggestion(s: SkillSuggestionType): string {
   switch (s.kind) {
-    case "edit_instructions":
-      return `kind: edit_instructions
-skillId: ${s.skillConfigurationId}
-analysis: ${s.analysis ?? "N/A"}
-instructions: ${s.suggestion.instructions}`;
-    case "tools":
-      return `kind: tools
-skillId: ${s.skillConfigurationId}
-action: ${s.suggestion.action}
-toolId: ${s.suggestion.toolId}
-analysis: ${s.analysis ?? "N/A"}`;
-    case "create":
-      return `kind: create
-skillId: ${s.skillConfigurationId}
-analysis: ${s.analysis ?? "N/A"}`;
+    case "edit": {
+      let xml = `<suggestion kind="edit"><skillId>${escapeXml(s.skillConfigurationId)}</skillId><analysis>${escapeXml(s.analysis ?? "N/A")}</analysis>`;
+      if (s.suggestion.instructionEdits?.length) {
+        xml += "<instructionEdits>";
+        for (let i = 0; i < s.suggestion.instructionEdits.length; i++) {
+          const e = s.suggestion.instructionEdits[i];
+          xml += `<instructionEdit index="${i + 1}" expected_occurrences="${e.expected_occurrences}"><oldString>${escapeXml(e.old_string)}</oldString><newString>${escapeXml(e.new_string)}</newString></instructionEdit>`;
+        }
+        xml += "</instructionEdits>";
+      }
+      if (s.suggestion.toolEdits?.length) {
+        xml += "<toolEdits>";
+        for (const t of s.suggestion.toolEdits) {
+          xml += `<toolEdit action="${escapeXml(t.action)}" toolId="${escapeXml(t.toolId)}"/>`;
+        }
+        xml += "</toolEdits>";
+      }
+      xml += "</suggestion>";
+      return xml;
+    }
   }
 }
 

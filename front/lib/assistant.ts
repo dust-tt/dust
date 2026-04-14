@@ -107,17 +107,21 @@ export function getFastestWhitelistedModel(
 }
 
 export function getSmallWhitelistedModel(
-  auth: Authenticator
+  auth: Authenticator,
+  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set()
 ): ModelConfigurationType | null {
-  const whitelistedProviders = getWhitelistedProviders(auth);
-  return _getSmallWhitelistedModel(whitelistedProviders);
+  return _getSmallWhitelistedModel(
+    getWhitelistedProviders(auth).difference(excludeProviders)
+  );
 }
 
 export function getLargeWhitelistedModel(
-  auth: Authenticator
+  auth: Authenticator,
+  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set()
 ): ModelConfigurationType | null {
-  const whitelistedProviders = getWhitelistedProviders(auth);
-  return _getLargeWhitelistedModel(whitelistedProviders);
+  return _getLargeWhitelistedModel(
+    getWhitelistedProviders(auth).difference(excludeProviders)
+  );
 }
 
 function _getSmallWhitelistedModel(

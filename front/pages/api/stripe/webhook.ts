@@ -26,12 +26,16 @@ import {
 import { handleMetronomeSetupCheckout } from "@app/lib/metronome/checkout";
 import {
   createMetronomeCredit,
-  endMetronomeContract,
-  getMetronomeActiveContract,
+  reactivateMetronomeContract,
+  scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
-import { getProductFreeMonthlyCreditId } from "@app/lib/metronome/constants";
+import {
+  getCreditTypeProgrammaticUsdId,
+  getProductFreeMonthlyCreditId,
+} from "@app/lib/metronome/constants";
 import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
+import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   assertStripeSubscriptionIsValid,
@@ -186,18 +190,6 @@ async function grantMetronomeFreeCredits({
   }
 
   try {
-    // Resolve the active contract.
-    const contractResult = await getMetronomeActiveContract(
-      workspace.metronomeCustomerId
-    );
-    if (contractResult.isErr() || !contractResult.value) {
-      logger.error(
-        { workspaceId: workspace.sId },
-        "[Stripe Webhook] No active Metronome contract found for free credit grant"
-      );
-      return;
-    }
-
     const productId = getProductFreeMonthlyCreditId();
 
     // Count active members and compute bracket amount.
@@ -209,8 +201,8 @@ async function grantMetronomeFreeCredits({
       return;
     }
 
-    // Convert micro-USD to cents (Metronome credits are in cents).
-    const amountCents = Math.ceil(amountMicroUsd / 10_000);
+    // Convert micro-USD to custom credit units (1 unit ≈ $0.01, so divide by 1M).
+    const amount = Math.ceil(amountMicroUsd / 1_000_000);
 
     const periodStart = new Date(
       stripeSubscription.current_period_start * 1000
@@ -220,9 +212,9 @@ async function grantMetronomeFreeCredits({
 
     const result = await createMetronomeCredit({
       metronomeCustomerId: workspace.metronomeCustomerId,
-      contractId: contractResult.value.contractId,
       productId,
-      amountCents,
+      creditTypeId: getCreditTypeProgrammaticUsdId(),
+      amount,
       startingAt: periodStart.toISOString(),
       endingBefore: periodEnd.toISOString(),
       name: `Free Monthly Credits (${memberCount} users, ${monthKey})`,
@@ -234,7 +226,7 @@ async function grantMetronomeFreeCredits({
         {
           workspaceId: workspace.sId,
           memberCount,
-          amountCents,
+          amount,
           monthKey,
         },
         "[Stripe Webhook] Metronome free credits granted"
@@ -524,10 +516,17 @@ async function handler(
               newSubscription &&
               isString(checkoutStripeSubscription.customer)
             ) {
+              // Resolve EUR variant based on Stripe subscription currency.
+              const subscriptionCurrency =
+                checkoutStripeSubscription.currency === "eur" ? "eur" : "usd";
+              const resolvedAlias = resolvePackageAliasForCurrency(
+                metronomePackageAlias,
+                subscriptionCurrency
+              );
               void shadowProvisionMetronome({
                 workspace,
                 stripeCustomerId: checkoutStripeSubscription.customer,
-                metronomePackageAlias,
+                metronomePackageAlias: resolvedAlias,
                 sessionId: session.id,
                 subscriptionModelId: newSubscription.id,
               });
@@ -1251,14 +1250,14 @@ async function handler(
                 endDate,
               });
 
-              // Shadow mode: schedule the Metronome contract end at the same time.
+              // Schedule the Metronome contract end (always shadow-billed here).
               if (subscription.metronomeContractId) {
                 const trialingWorkspace =
                   await WorkspaceResource.fetchByModelId(
                     subscription.workspaceId
                   );
                 if (trialingWorkspace?.metronomeCustomerId) {
-                  void endMetronomeContract({
+                  void scheduleMetronomeContractEnd({
                     metronomeCustomerId: trialingWorkspace.metronomeCustomerId,
                     contractId: subscription.metronomeContractId,
                     endingBefore: endDate,
@@ -1306,13 +1305,13 @@ async function handler(
               "Workspace not found for subscription in customer.subscription.updated."
             );
 
-            // Shadow mode: schedule the Metronome contract end at the same time.
+            // Schedule the Metronome contract end (always shadow-billed here).
             if (
               endDate &&
               subscription.metronomeContractId &&
               workspace.metronomeCustomerId
             ) {
-              void endMetronomeContract({
+              void scheduleMetronomeContractEnd({
                 metronomeCustomerId: workspace.metronomeCustomerId,
                 contractId: subscription.metronomeContractId,
                 endingBefore: endDate,
@@ -1323,8 +1322,15 @@ async function handler(
               workspace.sId
             );
             if (!endDate) {
-              // TODO(pricing): reactivate Metronome contract (remove scheduled end date)
-              // by calling updateEndDate without ending_before.
+              if (
+                subscription.metronomeContractId &&
+                workspace.metronomeCustomerId
+              ) {
+                void reactivateMetronomeContract({
+                  metronomeCustomerId: workspace.metronomeCustomerId,
+                  contractId: subscription.metronomeContractId,
+                });
+              }
 
               // Subscription is re-activated, so we need to unpause the connectors and re-enable triggers.
               await restoreWorkspaceAfterSubscription(auth);

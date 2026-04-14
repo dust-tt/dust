@@ -7,6 +7,7 @@ import type {
   FeedbackAsset,
   SeedContext,
   SkillAsset,
+  SkillSuggestionAsset,
 } from "@app/scripts/seed/factories";
 import {
   seedAgents,
@@ -14,6 +15,7 @@ import {
   seedConversations,
   seedFeedbacks,
   seedSkill,
+  seedSkillSuggestions,
 } from "@app/scripts/seed/factories";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import * as fs from "fs";
@@ -26,7 +28,8 @@ interface Assets {
   conversations: ConversationAsset[];
   dustConversations: ConversationAsset[];
   feedbacks: FeedbackAsset[];
-  skill: SkillAsset;
+  skills: SkillAsset[];
+  skillSuggestions: SkillSuggestionAsset[];
 }
 
 // Load assets from JSON files
@@ -44,22 +47,46 @@ function loadAssets(): Assets {
   const feedbacks = JSON.parse(
     fs.readFileSync(path.join(assetsDir, "feedbacks.json"), "utf-8")
   );
-  const skill = JSON.parse(
-    fs.readFileSync(path.join(assetsDir, "skill.json"), "utf-8")
+  const skills: SkillAsset[] = JSON.parse(
+    fs.readFileSync(path.join(assetsDir, "skills.json"), "utf-8")
   );
-  return { agents, conversations, dustConversations, feedbacks, skill };
+  const skillSuggestions: SkillSuggestionAsset[] = JSON.parse(
+    fs.readFileSync(path.join(assetsDir, "skill_suggestions.json"), "utf-8")
+  );
+  return {
+    agents,
+    conversations,
+    dustConversations,
+    feedbacks,
+    skills,
+    skillSuggestions,
+  };
 }
 
 export async function seedReinforcement(
   ctx: SeedContext,
   { skipAnalytics }: { skipAnalytics?: boolean } = {}
 ): Promise<void> {
-  const { agents, conversations, dustConversations, feedbacks, skill } =
-    loadAssets();
+  const {
+    agents,
+    conversations,
+    dustConversations,
+    feedbacks,
+    skills,
+    skillSuggestions,
+  } = loadAssets();
 
-  ctx.logger.info("Seeding skill...");
-  const createdSkill = await seedSkill(ctx, skill);
-  const skillsToLink = createdSkill ? [createdSkill] : [];
+  ctx.logger.info("Seeding skills...");
+  const createdSkills = new Map<string, SkillResource>();
+  for (const skillAsset of skills) {
+    const created = await seedSkill(ctx, skillAsset);
+    if (created) {
+      createdSkills.set(skillAsset.name, created);
+    }
+  }
+  const skillsToLink = Array.from(createdSkills.values());
+
+  const poemAnalyserSkill = skillsToLink[0] ?? null;
 
   ctx.logger.info("Seeding agents...");
   const createdAgents = await seedAgents(ctx, agents, {
@@ -83,7 +110,7 @@ export async function seedReinforcement(
   });
 
   // Activate the Poem Analyser skill as JIT skill in Dust conversations
-  if (ctx.execute && createdSkill) {
+  if (ctx.execute && poemAnalyserSkill) {
     ctx.logger.info("Activating JIT skills in Dust conversations...");
     for (const conv of dustConversations) {
       const conversation = await ConversationResource.fetchById(
@@ -96,7 +123,7 @@ export async function seedReinforcement(
       }
 
       // Activate the skill in the conversation
-      await createdSkill.upsertToConversation(ctx.auth, {
+      await poemAnalyserSkill.upsertToConversation(ctx.auth, {
         conversationId: conversation.id,
         enabled: true,
       });
@@ -119,6 +146,9 @@ export async function seedReinforcement(
 
   ctx.logger.info("Seeding feedbacks...");
   await seedFeedbacks(ctx, feedbacks);
+
+  ctx.logger.info("Seeding skill suggestions...");
+  await seedSkillSuggestions(ctx, skillSuggestions, createdSkills);
 
   if (!skipAnalytics) {
     ctx.logger.info("Indexing analytics to Elasticsearch...");

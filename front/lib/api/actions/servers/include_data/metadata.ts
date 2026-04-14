@@ -12,8 +12,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const INCLUDE_DATA_TOOL_NAME = "include_data" as const;
-
 // Base tool without tags support
 export const INCLUDE_DATA_BASE_TOOLS_METADATA = createToolsRecord({
   retrieve_recent_documents: {

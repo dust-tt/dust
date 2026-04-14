@@ -210,6 +210,7 @@ export function DataTable<TData extends TBaseData>({
     getRowId,
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: table is recreated every render, adding it would cause infinite re-runs
   useEffect(() => {
     if (filterColumn) {
       table.getColumn(filterColumn)?.setFilterValue(filter);
@@ -1135,7 +1136,10 @@ DataTable.CellContent = function CellContent({
         />
       )}
       <div
-        className={cn("s-flex s-shrink s-truncate", grow ? "s-flex-grow" : "")}
+        className={cn(
+          "s-flex s-shrink s-truncate s-items-center",
+          grow ? "s-flex-grow" : ""
+        )}
       >
         <div
           className={cn(

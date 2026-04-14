@@ -1,8 +1,10 @@
+import { useAppRouter } from "@app/lib/platform";
 import {
   useCreateProjectTodo,
   useProjectTodos,
   useUpdateProjectTodo,
 } from "@app/lib/swr/projects";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   ProjectTodoCategory,
   ProjectTodoType,
@@ -157,10 +159,12 @@ interface TodoItemProps {
   todo: ProjectTodoType;
   isPendingDone: boolean;
   onMarkDone: (todo: ProjectTodoType) => void;
+  owner: LightWorkspaceType;
 }
 
-function TodoItem({ todo, isPendingDone, onMarkDone }: TodoItemProps) {
+function TodoItem({ todo, isPendingDone, onMarkDone, owner }: TodoItemProps) {
   const isDone = isPendingDone || todo.status === "done";
+  const router = useAppRouter();
 
   return (
     <li className="flex items-start gap-2 py-0.5">
@@ -176,16 +180,46 @@ function TodoItem({ todo, isPendingDone, onMarkDone }: TodoItemProps) {
           }}
         />
       </div>
-      <span
-        className={cn(
-          "text-sm leading-5 transition-all duration-300",
-          isDone
-            ? "text-faint dark:text-faint-night line-through"
-            : "text-foreground dark:text-foreground-night"
+      <div className="flex flex-col gap-0.5">
+        <span
+          className={cn(
+            "text-sm leading-5 transition-all duration-300",
+            isDone
+              ? "text-faint dark:text-faint-night line-through"
+              : "text-foreground dark:text-foreground-night"
+          )}
+        >
+          {todo.text}
+        </span>
+        {todo.sources.length > 0 && (
+          <span
+            className={cn(
+              "text-xs",
+              isDone
+                ? "text-faint dark:text-faint-night"
+                : "text-muted-foreground dark:text-muted-foreground-night"
+            )}
+          >
+            In{" "}
+            {todo.sources.map((source, index) => (
+              <span key={`${source.sourceType}-${source.sourceId}`}>
+                {index > 0 && ", "}
+                <button
+                  type="button"
+                  className="underline hover:no-underline"
+                  onClick={() => {
+                    void router.push(
+                      getConversationRoute(owner.sId, source.sourceId)
+                    );
+                  }}
+                >
+                  {source.title ?? source.sourceId}
+                </button>
+              </span>
+            ))}
+          </span>
         )}
-      >
-        {todo.text}
-      </span>
+      </div>
     </li>
   );
 }
@@ -361,6 +395,7 @@ export function ProjectTodosPanel({ owner, spaceId }: ProjectTodosPanelProps) {
                       todo={todo}
                       isPendingDone={pendingDoneIds.has(todo.sId)}
                       onMarkDone={handleMarkDone}
+                      owner={owner}
                     />
                   ))}
                 </ul>

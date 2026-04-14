@@ -8,7 +8,6 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   CONVERSATION_CAT_FILE_ACTION_NAME,
-  CONVERSATION_FILES_TOOLS_IN_PROJECT_METADATA,
   CONVERSATION_FILES_TOOLS_METADATA,
   CONVERSATION_LIST_FILES_ACTION_NAME,
   CONVERSATION_SEARCH_FILES_ACTION_NAME,
@@ -22,23 +21,15 @@ import {
   isContentNodeAttachmentType,
   renderAttachmentXml,
 } from "@app/lib/api/assistant/conversation/attachments";
-import {
-  getConversationDataSourceViews,
-  getProjectContextDataSourceView,
-} from "@app/lib/api/assistant/jit/utils";
+import { getConversationDataSourceViews } from "@app/lib/api/assistant/jit/utils";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
-import { PROJECT_CONTEXT_FOLDER_ID } from "@app/lib/api/projects/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
   CONTENT_OUTDATED_MSG,
   getContentFragmentFromAttachmentFile,
 } from "@app/lib/resources/content_fragment_resource";
-import logger from "@app/logger/logger";
-import {
-  type ConversationType,
-  isProjectConversation,
-} from "@app/types/assistant/conversation";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
   ImageContent,
   TextContent,
@@ -326,33 +317,6 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
       });
     }
 
-    const isPartOfProject = isProjectConversation(conversation);
-
-    if (isPartOfProject) {
-      const projectDatasourceView = await getProjectContextDataSourceView(
-        auth,
-        conversation
-      );
-
-      if (!projectDatasourceView) {
-        logger.warn(
-          { conversationId: conversation.sId },
-          "Project context datasource view not found for conversation."
-        );
-      } else {
-        dataSources.push({
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          dataSourceViewId: projectDatasourceView.sId,
-          filter: {
-            // Intentionaly only search the project context folder, not the entire project.
-            // The conversations from the project can be searched using the project search action.
-            parents: { in: [PROJECT_CONTEXT_FOLDER_ID], not: [] },
-            tags: null,
-          },
-        });
-      }
-    }
-
     const searchResults = await searchFunction(auth, {
       query,
       relativeTimeFrame: "all",
@@ -428,7 +392,3 @@ async function getFileFromConversation(
 }
 
 export const TOOLS = buildTools(CONVERSATION_FILES_TOOLS_METADATA, handlers);
-export const TOOLS_IN_PROJECT = buildTools(
-  CONVERSATION_FILES_TOOLS_IN_PROJECT_METADATA,
-  handlers
-);

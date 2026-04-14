@@ -195,20 +195,23 @@ export async function createMetronomeContract({
   metronomeCustomerId,
   packageAlias,
   uniquenessKey,
+  startingAt: startingAtOverride,
 }: {
   metronomeCustomerId: string;
   packageAlias: string;
-  uniquenessKey: string;
+  uniquenessKey?: string;
+  startingAt?: Date;
 }): Promise<Result<{ contractId: string; startingAt: string }, Error>> {
   // Metronome requires starting_at on an hour boundary — round down to current hour.
-  const startingAt = floorToHourISO(new Date());
+  // Callers may pass an explicit startingAt (e.g. to align with a contract end time).
+  const startingAt = floorToHourISO(startingAtOverride ?? new Date());
 
   try {
     const response = await getMetronomeClient().v1.contracts.create({
       customer_id: metronomeCustomerId,
       package_alias: packageAlias,
       starting_at: startingAt,
-      uniqueness_key: uniquenessKey,
+      ...(uniquenessKey ? { uniqueness_key: uniquenessKey } : {}),
     });
 
     logger.info(
@@ -242,9 +245,8 @@ export async function createMetronomeContract({
 }
 
 /**
- * Get the active contract and subscription IDs for a Metronome customer.
- * Returns the contract ID and a map of product_id -> subscription_id
- * for seat-based subscriptions.
+ * Get the active contract for a Metronome customer.
+ * Returns the contract ID if found.
  */
 export async function getMetronomeActiveContract(
   metronomeCustomerId: string
@@ -252,7 +254,6 @@ export async function getMetronomeActiveContract(
   Result<
     {
       contractId: string;
-      seatSubscriptions: Record<string, string>;
     } | null,
     Error
   >
@@ -268,17 +269,9 @@ export async function getMetronomeActiveContract(
 
     // Take the most recent contract.
     const contract = response.data[0];
-    const subscriptions = contract.subscriptions ?? [];
-    const seatSubscriptions: Record<string, string> = {};
-    for (const sub of subscriptions) {
-      if (sub.quantity_management_mode === "SEAT_BASED" && sub.id) {
-        seatSubscriptions[sub.subscription_rate.product.id] = sub.id;
-      }
-    }
 
     return new Ok({
       contractId: contract.id,
-      seatSubscriptions,
     });
   } catch (err) {
     const error = normalizeError(err);
@@ -291,11 +284,11 @@ export async function getMetronomeActiveContract(
 }
 
 /**
- * End (cancel) a Metronome contract at the next hour boundary.
+ * Schedule a Metronome contract to end at the given date (defaults to now).
  * Metronome requires ending_before on an hour boundary; we ceil to avoid
  * dropping usage in the current partial hour.
  */
-export async function endMetronomeContract({
+export async function scheduleMetronomeContractEnd({
   metronomeCustomerId,
   contractId,
   endingBefore,
@@ -304,23 +297,56 @@ export async function endMetronomeContract({
   contractId: string;
   endingBefore?: Date;
 }): Promise<Result<void, Error>> {
+  const endDate = ceilToHourISO(endingBefore ?? new Date());
   try {
     await getMetronomeClient().v1.contracts.updateEndDate({
       customer_id: metronomeCustomerId,
       contract_id: contractId,
-      ending_before: ceilToHourISO(endingBefore ?? new Date()),
+      ending_before: endDate,
+    });
+
+    logger.info(
+      { metronomeCustomerId, contractId, endingBefore: endDate },
+      "[Metronome] Contract end date scheduled"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, contractId, endingBefore: endDate },
+      "[Metronome] Failed to schedule contract end date"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Remove the scheduled end date on a Metronome contract, making it open-ended.
+ * Used when a subscription is reactivated after cancellation.
+ */
+export async function reactivateMetronomeContract({
+  metronomeCustomerId,
+  contractId,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+}): Promise<Result<void, Error>> {
+  try {
+    await getMetronomeClient().v1.contracts.updateEndDate({
+      customer_id: metronomeCustomerId,
+      contract_id: contractId,
     });
 
     logger.info(
       { metronomeCustomerId, contractId },
-      "[Metronome] Contract ended"
+      "[Metronome] Contract reactivated (end date removed)"
     );
     return new Ok(undefined);
   } catch (err) {
     const error = normalizeError(err);
     logger.error(
       { error, metronomeCustomerId, contractId },
-      "[Metronome] Failed to end contract"
+      "[Metronome] Failed to reactivate contract"
     );
     return new Err(error);
   }
@@ -370,74 +396,48 @@ export async function getMetronomeContractPackageAliases({
 // Seat management
 // ---------------------------------------------------------------------------
 
-interface SeatSubscriptionEdit {
-  subscriptionId: string;
-  addSeatIds?: string[];
-  removeSeatIds?: string[];
-  addUnassignedSeats?: number;
-}
-
 /**
- * Add or remove seat IDs on a Metronome contract subscription.
- * Used when members join/leave or change seat type.
+ * Set the absolute quantity on a QUANTITY_ONLY subscription.
+ * Always sets the total — safe against race conditions.
  */
-export async function editMetronomeContractSeats({
+export async function updateSubscriptionQuantity({
   metronomeCustomerId,
   contractId,
-  edits,
+  subscriptionId,
+  quantity,
   startingAt,
 }: {
   metronomeCustomerId: string;
   contractId: string;
-  edits: SeatSubscriptionEdit[];
+  subscriptionId: string;
+  quantity: number;
   startingAt?: string;
 }): Promise<Result<void, Error>> {
-  // Metronome requires starting_at on an hour boundary — round down to current hour.
   const now = startingAt ?? floorToHourISO(new Date());
 
   try {
     await getMetronomeClient().v2.contracts.edit({
       customer_id: metronomeCustomerId,
       contract_id: contractId,
-      update_subscriptions: edits.map((edit) => ({
-        subscription_id: edit.subscriptionId,
-        seat_updates: {
-          ...(edit.addSeatIds
-            ? {
-                add_seat_ids: edit.addSeatIds.map((id) => ({
-                  seat_ids: [id],
-                  starting_at: now,
-                })),
-              }
-            : {}),
-          ...(edit.removeSeatIds
-            ? {
-                remove_seat_ids: edit.removeSeatIds.map((id) => ({
-                  seat_ids: [id],
-                  starting_at: now,
-                })),
-              }
-            : {}),
-          ...(edit.addUnassignedSeats !== undefined
-            ? {
-                add_unassigned_seats: [
-                  {
-                    quantity: edit.addUnassignedSeats,
-                    starting_at: now,
-                  },
-                ],
-              }
-            : {}),
+      update_subscriptions: [
+        {
+          subscription_id: subscriptionId,
+          quantity_updates: [
+            {
+              starting_at: now,
+              quantity,
+            },
+          ],
         },
-      })),
+      ],
     });
 
     return new Ok(undefined);
   } catch (err) {
     const error = normalizeError(err);
     logger.error(
-      { error, metronomeCustomerId, contractId },
-      "[Metronome] Failed to edit contract seats"
+      { error, metronomeCustomerId, contractId, subscriptionId },
+      "[Metronome] Failed to update subscription quantity"
     );
     return new Err(error);
   }
@@ -448,13 +448,13 @@ export async function editMetronomeContractSeats({
 // ---------------------------------------------------------------------------
 
 /**
- * Add paid credits (=commits) to a Metronome contract via a contract edit.
+ * Add paid credits (=commits) to a Metronome customer.
  */
 export async function createMetronomeCommit({
   metronomeCustomerId,
-  contractId,
   productId,
-  amountCents,
+  creditTypeId,
+  amount,
   startingAt,
   endingBefore,
   name,
@@ -462,9 +462,9 @@ export async function createMetronomeCommit({
   priority,
 }: {
   metronomeCustomerId: string;
-  contractId: string;
   productId: string;
-  amountCents: number;
+  creditTypeId: string;
+  amount: number;
   startingAt: Date;
   endingBefore: Date;
   idempotencyKey: string;
@@ -478,51 +478,44 @@ export async function createMetronomeCommit({
     logger.info(
       {
         metronomeCustomerId,
-        contractId,
         productId,
-        amountCents,
+        creditTypeId,
+        amount,
         roundedStartingAt,
         roundedEndingBefore,
       },
-      "[Metronome] Adding commits to contract"
+      "[Metronome] Adding commits to customer"
     );
 
-    await getMetronomeClient().v2.contracts.edit(
-      {
-        customer_id: metronomeCustomerId,
-        contract_id: contractId,
-        add_commits: [
+    await getMetronomeClient().v1.customers.commits.create({
+      customer_id: metronomeCustomerId,
+      type: "PREPAID",
+      product_id: productId,
+      name: name ?? "Commit purchase",
+      applicable_product_tags: ["usage"],
+      priority: priority ?? 2, // Apply after any free credits
+      access_schedule: {
+        credit_type_id: creditTypeId,
+        schedule_items: [
           {
-            type: "PREPAID",
-            product_id: productId,
-            name: name ?? "Commit purchase",
-            applicable_product_tags: ["usage"],
-            priority,
-            access_schedule: {
-              schedule_items: [
-                {
-                  amount: amountCents,
-                  starting_at: roundedStartingAt,
-                  ending_before: roundedEndingBefore,
-                },
-              ],
-            },
+            amount,
+            starting_at: roundedStartingAt,
+            ending_before: roundedEndingBefore,
           },
         ],
       },
-      { idempotencyKey }
-    );
+      uniqueness_key: idempotencyKey,
+    });
 
     logger.info(
       {
         metronomeCustomerId,
-        contractId,
         productId,
-        amountCents,
+        amount,
         roundedStartingAt,
         roundedEndingBefore,
       },
-      "[Metronome] Commits added to contract"
+      "[Metronome] Commits added to customer"
     );
     return new Ok(undefined);
   } catch (err) {
@@ -531,13 +524,12 @@ export async function createMetronomeCommit({
       {
         error,
         metronomeCustomerId,
-        contractId,
         productId,
-        amountCents,
+        amount,
         roundedStartingAt,
         roundedEndingBefore,
       },
-      "[Metronome] Failed to add commits to contract"
+      "[Metronome] Failed to add commits to customer"
     );
     return new Err(error);
   }
@@ -707,18 +699,18 @@ export async function listMetronomeUsageWithGroups({
  */
 export async function createMetronomeCredit({
   metronomeCustomerId,
-  contractId,
   productId,
-  amountCents,
+  creditTypeId,
+  amount,
   startingAt,
   endingBefore,
   name,
   idempotencyKey,
 }: {
   metronomeCustomerId: string;
-  contractId: string;
   productId: string;
-  amountCents: number;
+  creditTypeId: string;
+  amount: number;
   startingAt: string;
   endingBefore: string;
   name: string;
@@ -729,30 +721,24 @@ export async function createMetronomeCredit({
   const roundedEndingBefore = ceilToHourISO(new Date(endingBefore));
 
   try {
-    const response = await getMetronomeClient().v2.contracts.edit(
-      {
-        customer_id: metronomeCustomerId,
-        contract_id: contractId,
-        add_credits: [
+    const response = await getMetronomeClient().v1.customers.credits.create({
+      customer_id: metronomeCustomerId,
+      product_id: productId,
+      name,
+      priority: 1, // Apply credits before any prepaid commits
+      applicable_product_tags: ["usage"],
+      access_schedule: {
+        credit_type_id: creditTypeId,
+        schedule_items: [
           {
-            product_id: productId,
-            name,
-            priority: 1, // Apply credits before any prepaid commits
-            applicable_product_tags: ["usage"],
-            access_schedule: {
-              schedule_items: [
-                {
-                  amount: amountCents,
-                  starting_at: roundedStartingAt,
-                  ending_before: roundedEndingBefore,
-                },
-              ],
-            },
+            amount,
+            starting_at: roundedStartingAt,
+            ending_before: roundedEndingBefore,
           },
         ],
       },
-      { idempotencyKey }
-    );
+      uniqueness_key: idempotencyKey,
+    });
 
     return new Ok({ creditId: response.data.id });
   } catch (err) {

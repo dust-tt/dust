@@ -185,20 +185,24 @@ export async function upsertDatabaseInCore({
   const isBatchSync = isNewDatabase;
 
   do {
-    const { pageIds, nextCursor } = await fetchDatabaseChildPages({
-      connectorId,
-      databaseId,
-      cursor,
-      loggerArgs: {
-        ...loggerArgs,
-        pageIndex,
-      },
-      // Skip processing up-to-date pages unless this is a force resync.
-      returnUpToDatePageIdsForExistingDatabase: forceResync,
-      topLevelWorkflowId,
-      // Store all the child pages in cache.
-      storeInCache: true,
-    });
+    const {
+      pageIds,
+      nextCursor,
+    }: Awaited<ReturnType<typeof activities.fetchDatabaseChildPages>> =
+      await fetchDatabaseChildPages({
+        connectorId,
+        databaseId,
+        cursor,
+        loggerArgs: {
+          ...loggerArgs,
+          pageIndex,
+        },
+        // Skip processing up-to-date pages unless this is a force resync.
+        returnUpToDatePageIdsForExistingDatabase: forceResync,
+        topLevelWorkflowId,
+        // Store all the child pages in cache.
+        storeInCache: true,
+      });
     cursor = nextCursor;
     pageIndex += 1;
     const upsertsPromise = performUpserts({

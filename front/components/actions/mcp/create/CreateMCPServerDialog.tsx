@@ -2,7 +2,10 @@ import { CustomHeadersConfigurationSection } from "@app/components/actions/mcp/c
 import { InternalBearerTokenSection } from "@app/components/actions/mcp/create/InternalBearerTokenSection";
 import { RemoteMCPServerConfigurationSection } from "@app/components/actions/mcp/create/RemoteMCPServerConfigurationSection";
 import { getStaticCredentialForm } from "@app/components/actions/mcp/create/static_credential_forms";
-import { submitCreateMCPServerDialogForm } from "@app/components/actions/mcp/forms/submitCreateMCPServerDialogForm";
+import {
+  isCreateServerError,
+  submitCreateMCPServerDialogForm,
+} from "@app/components/actions/mcp/forms/submitCreateMCPServerDialogForm";
 import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
 import { createMCPServerDialogFormSchema } from "@app/components/actions/mcp/forms/types";
 import {
@@ -35,12 +38,14 @@ import {
 import { validateOAuthCredentials } from "@app/types/oauth/lib";
 import type { WorkspaceType } from "@app/types/user";
 import {
+  ContentMessage,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  ExclamationCircleIcon,
   Input,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -173,6 +178,11 @@ export function CreateMCPServerDialog({
   }, [needsCustomName, viewName, existingViewNames]);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [serverError, setServerError] = useState<{
+    message: string;
+    domain: string;
+    isRemoteServerError: boolean;
+  } | null>(null);
 
   // Workflow state - managed via useState, not form state.
   // These are server-derived values (from OAuth discovery or internal server config),
@@ -233,6 +243,7 @@ export function CreateMCPServerDialog({
     setAuthorization(null);
     setRemoteMCPServerOAuthDiscoveryDone(false);
     setIsStaticFormValid(false);
+    setServerError(null);
     // Reset form state.
     form.reset(defaultValues);
   };
@@ -244,6 +255,7 @@ export function CreateMCPServerDialog({
     }
 
     setIsLoading(true);
+    setServerError(null);
 
     const submitRes = await submitCreateMCPServerDialogForm({
       owner,
@@ -261,8 +273,22 @@ export function CreateMCPServerDialog({
     });
 
     if (submitRes.isErr()) {
+      const err = submitRes.error;
+      if (isCreateServerError(err)) {
+        setServerError({
+          message: err.message,
+          domain: new URL(values.remoteServerUrl).hostname,
+          isRemoteServerError: err.isRemoteServerError,
+        });
+        setIsLoading(false);
+        setExternalIsLoading(false);
+        setRemoteMCPServerOAuthDiscoveryDone(
+          err.remoteMCPServerOAuthDiscoveryDone
+        );
+        return;
+      }
       handleCreateMCPServerDialogSubmitError({
-        error: submitRes.error,
+        error: err,
         context: {
           remoteServerUrl: values.remoteServerUrl,
           provider: authorization?.provider ?? null,
@@ -438,6 +464,20 @@ export function CreateMCPServerDialog({
           </DialogHeader>
           <DialogContainer className="max-h-[80vh]">
             <div className="space-y-4">
+              {serverError && (
+                <ContentMessage
+                  variant="warning"
+                  icon={ExclamationCircleIcon}
+                  size="lg"
+                  title={
+                    serverError.isRemoteServerError
+                      ? `Server error from ${serverError.domain}`
+                      : "Failed to connect to the server"
+                  }
+                >
+                  {serverError.message}
+                </ContentMessage>
+              )}
               {needsCustomName && (
                 <div className="space-y-4">
                   <div className="heading-lg text-foreground dark:text-foreground-night">

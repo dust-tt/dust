@@ -76,7 +76,7 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Error fetching remote server metadata, URL may be invalid.",
+        message: `Error fetching remote server metadata: ${r.error.message}`,
       },
     });
   }

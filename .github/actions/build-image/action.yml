@@ -68,14 +68,14 @@ runs:
   steps:
     - id: "auth"
       name: "Authenticate to Google Cloud"
-      uses: "google-github-actions/auth@v2"
+      uses: "google-github-actions/auth@v2.1.13"
       with:
         create_credentials_file: true
         workload_identity_provider: ${{ inputs.workload_identity_provider }}
         service_account: "github-build-invoker@${{ inputs.project_id }}.iam.gserviceaccount.com"
 
     - name: "Configure GCP Artifact Auth"
-      uses: "google-github-actions/setup-gcloud@v2"
+      uses: "google-github-actions/setup-gcloud@v2.2.1"
       with:
         install_components: "docker-credential-gcr"
 
@@ -90,7 +90,7 @@ runs:
         gcloud storage cp gs://bkt-dust-infra-model-configs/custom.json front/custom-models.json 2>/dev/null || echo '{"models":[]}' > front/custom-models.json
 
     - name: "Setup Depot"
-      uses: "depot/setup-action@v1"
+      uses: "depot/setup-action@v1.7.1"
 
     - name: "Build and Push"
       shell: bash

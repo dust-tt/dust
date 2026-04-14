@@ -607,7 +607,7 @@ const ALL_TOOLS_METADATA = {
 /**
  * Returns the Google Drive server metadata with all tools including write capabilities.
  */
-export function getGoogleDriveServerMetadata(): ServerMetadata {
+export function getGoogleDriveServerMetadata() {
   return {
     serverInfo: {
       name: "google_drive",

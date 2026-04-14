@@ -1,9 +1,4 @@
-import { DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/constants";
-import { PROJECT_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/project_manager/metadata";
-import {
-  constructProjectContextSection,
-  constructPromptMultiActions,
-} from "@app/lib/api/assistant/generation";
+import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { buildMemoriesContext } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import {
   globalAgentInjectsMemory,
@@ -30,89 +25,6 @@ import type {
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { WorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it } from "vitest";
-
-describe("constructProjectContextSection", () => {
-  it("should return null when conversation is undefined", () => {
-    const result = constructProjectContextSection(undefined);
-    expect(result).toBeNull();
-  });
-
-  it("should return null when conversation has no spaceId", () => {
-    const conversation: ConversationWithoutContentType = {
-      id: 1,
-      sId: "conv-123",
-      created: 1234567890,
-      updated: 1234567890,
-      unread: false,
-      lastReadMs: 1234567890,
-      actionRequired: false,
-      hasError: false,
-      title: "Test Conversation",
-      spaceId: null,
-      triggerId: null,
-      depth: 0,
-      requestedSpaceIds: [],
-      metadata: {},
-      branchId: null,
-    };
-
-    const result = constructProjectContextSection(conversation);
-    expect(result).toBeNull();
-  });
-
-  it("should return project context section when conversation has spaceId", () => {
-    const conversation: ConversationWithoutContentType = {
-      id: 1,
-      sId: "conv-123",
-      created: 1234567890,
-      updated: 1234567890,
-      unread: false,
-      lastReadMs: 1234567890,
-      actionRequired: false,
-      hasError: false,
-      title: "Test Conversation",
-      spaceId: "space-456",
-      triggerId: null,
-      depth: 0,
-      requestedSpaceIds: [],
-      metadata: {},
-      branchId: null,
-    };
-
-    const result = constructProjectContextSection(conversation);
-
-    expect(result).not.toBeNull();
-    expect(result).toEqual(`# PROJECT CONTEXT
-
-This conversation is associated with a project. The project provides:
-- Persistent file storage shared across all conversations in this project
-- Project metadata (description and URLs) for organizational context
-- Semantic search capabilities over project files
-- Collaborative context that persists beyond individual conversations
-
-## Using Project Tools
-
-**${PROJECT_MANAGER_SERVER_NAME}**: Use these tools to manage persistent project files, metadata, and conversations
-**${DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME}**: Use this tool to semantically search across all project files when you need to:
-- Find relevant information within the project
-- Locate specific content across multiple files
-- Answer questions based on project knowledge
-
-## Tool Usage Priority
-
-When answering questions that require searching for information, follow this priority order:
-1. **First**, use \`${DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME}\` to search within the project's files. Project context is the most relevant source of information for this conversation.
-2. **Second**, use \`${PROJECT_MANAGER_SERVER_NAME}\` to gather more context on the project.
-2. **Then**, if the project context is insufficient, use \`company_data_*\` tools and \`search\` to search across the broader company data sources.
-
-## Project Files vs Conversation Attachments
-- **Project files**: Persistent, shared across all conversations in the project, managed via project_manager
-- **Conversation attachments**: Scoped to this conversation only, temporary context for the current discussion
-
-When information should be preserved for future conversations or context, add it to project files.
-`);
-  });
-});
 
 describe("constructPromptMultiActions - system prompt stability", () => {
   // This test ensures that the system prompt remains stable across multiple calls

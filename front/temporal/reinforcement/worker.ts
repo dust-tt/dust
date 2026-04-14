@@ -23,7 +23,7 @@ import { Worker } from "@temporalio/worker";
 
 import { QUEUE_NAME } from "./config";
 
-export async function runReinforcedSkillsWorker() {
+export async function runReinforcementWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
 
   initializeOpenTelemetryInstrumentation({

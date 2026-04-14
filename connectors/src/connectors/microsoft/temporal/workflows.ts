@@ -130,12 +130,13 @@ export async function fullSyncWorkflow({
     }
 
     do {
-      const res = await syncFiles({
-        connectorId,
-        parentInternalId: nodeId,
-        startSyncTs,
-        nextPageLink,
-      });
+      const res: Awaited<ReturnType<typeof activities.syncFiles>> =
+        await syncFiles({
+          connectorId,
+          parentInternalId: nodeId,
+          startSyncTs,
+          nextPageLink,
+        });
       totalCount += res.count;
       nodeIdsToSync = nodeIdsToSync.concat(res.childNodes);
       nextPageLink = res.nextLink;
@@ -246,13 +247,16 @@ export async function incrementalSyncWorkflowV2({
 
     try {
       while (cursor !== null) {
-        const { nextCursor } = await processDeltaChangesFromGCS({
-          connectorId,
-          driveId: nodeId,
-          gcsFilePath,
-          startSyncTs,
-          cursor,
-        });
+        const {
+          nextCursor,
+        }: Awaited<ReturnType<typeof activities.processDeltaChangesFromGCS>> =
+          await processDeltaChangesFromGCS({
+            connectorId,
+            driveId: nodeId,
+            gcsFilePath,
+            startSyncTs,
+            cursor,
+          });
 
         cursor = nextCursor;
 

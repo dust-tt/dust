@@ -105,10 +105,18 @@ export interface ConversationActiveIndicator {
   avatar?: AvatarData;
 }
 
+export interface ConversationPendingValidation {
+  kind: "pendingValidation";
+  id: string;
+  userMessage: ConversationMessage;
+  agentMessage: ConversationMessage;
+}
+
 export type ConversationItem =
   | ConversationMessage
   | ConversationSection
-  | ConversationActiveIndicator;
+  | ConversationActiveIndicator
+  | ConversationPendingValidation;
 
 export type Message = ConversationMessage;
 

@@ -3,14 +3,9 @@ import { z } from "zod";
 
 export type ExploratoryToolName = "get_available_tools";
 
-export type TerminalToolName =
-  | "suggest_skill_instruction_edits"
-  | "suggest_skill_tools";
+export type TerminalToolName = "edit_skill";
 
-export const TERMINAL_TOOLS: TerminalToolName[] = [
-  "suggest_skill_instruction_edits",
-  "suggest_skill_tools",
-];
+export const TERMINAL_TOOLS: TerminalToolName[] = ["edit_skill"];
 
 export const EXPLORATORY_TOOLS: ExploratoryToolName[] = ["get_available_tools"];
 
@@ -29,28 +24,53 @@ export function isExploratoryToolName(
   return EXPLORATORY_TOOL_SET.has(name);
 }
 
+const SkillInstructionEditArgSchema = z.object({
+  old_string: z
+    .string()
+    .min(1)
+    .describe("Exact text to find in the current skill instructions."),
+  new_string: z
+    .string()
+    .describe("Replacement text. Empty string deletes the matched span."),
+  expected_occurrences: z
+    .number()
+    .int()
+    .min(1)
+    .default(1)
+    .describe(
+      "How many times old_string is expected to appear. Used to validate the edit is still applicable."
+    ),
+});
+
 export const TOOL_SCHEMAS: Record<
   TerminalToolName,
   z.ZodObject<z.ZodRawShape>
 > = {
-  suggest_skill_instruction_edits: z.object({
-    suggestions: z.array(
-      z.object({
-        skillId: z.string(),
-        instructions: z.string(),
-        analysis: z.string(),
-      })
-    ),
-  }),
-  suggest_skill_tools: z.object({
-    suggestions: z.array(
-      z.object({
-        skillId: z.string(),
-        action: z.enum(["add", "remove"]),
-        toolId: z.string(),
-        analysis: z.string(),
-      })
-    ),
+  edit_skill: z.object({
+    skillId: z.string().describe("The sId of the skill to modify"),
+    instructionEdits: z
+      .array(SkillInstructionEditArgSchema)
+      .optional()
+      .describe(
+        "Sequential search-and-replace operations applied to the skill instructions."
+      ),
+    toolEdits: z
+      .array(
+        z.object({
+          action: z
+            .enum(["add", "remove"])
+            .describe("Whether to add or remove the tool"),
+          toolId: z
+            .string()
+            .describe("The identifier of the tool to add or remove"),
+        })
+      )
+      .optional()
+      .describe("Tools to add or remove from the skill."),
+    analysis: z
+      .string()
+      .optional()
+      .describe("Why this change improves the skill"),
   }),
 };
 

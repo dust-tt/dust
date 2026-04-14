@@ -1,5 +1,6 @@
 export { useAgentMessageSkills } from "./useAgentMessageSkills";
 export { useAgentMessageTools } from "./useAgentMessageTools";
+export { useBranchConversation } from "./useBranchConversation";
 export { useCancelMessage } from "./useCancelMessage";
 export { useConversation } from "./useConversation";
 export { useConversationBranchActions } from "./useConversationBranchActions";

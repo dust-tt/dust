@@ -1,3 +1,5 @@
+import { timingSafeEqual } from "node:crypto";
+
 import { Authenticator } from "@app/lib/auth";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
@@ -152,8 +154,10 @@ async function handler(
     });
   }
 
-  // Validate webhook url secret
-  if (webhookSourceUrlSecret !== webhookSource.urlSecret) {
+  // Validate webhook url secret using constant-time comparison to prevent timing attacks.
+  const a = Buffer.from(webhookSourceUrlSecret, "utf8");
+  const b = Buffer.from(webhookSource.urlSecret, "utf8");
+  if (a.length !== b.length || !timingSafeEqual(a, b)) {
     return apiError(req, res, {
       status_code: 401,
       api_error: {

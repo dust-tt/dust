@@ -30,6 +30,25 @@ import type {
 } from "snowflake-sdk";
 import snowflake from "snowflake-sdk";
 
+/**
+ * Conditionally quote a Snowflake identifier for safe use in SQL.
+ *
+ * Snowflake resolves unquoted identifiers case-insensitively (uppercased), so
+ * simple identifiers (letters, digits, _, $) are left unquoted to preserve that
+ * behavior. This matters because user-provided values (role, warehouse) are
+ * often typed lowercase but stored uppercase.
+ *
+ * Identifiers with special characters (dots, spaces, etc.) are wrapped in
+ * double quotes. These were necessarily created with quotes in Snowflake, so
+ * SHOW commands return them in their original case.
+ */
+function quoteSnowflakeIdentifier(identifier: string): string {
+  if (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(identifier)) {
+    return identifier;
+  }
+  return `"${identifier.replace(/"/g, '""')}"`;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SnowflakeRow = Record<string, any>;
 type SnowflakeRows = Array<SnowflakeRow>;
@@ -371,7 +390,7 @@ export const fetchSchemas = async ({
   fromDatabase: string;
   connection?: Connection;
 }): Promise<Result<Array<RemoteDBSchema>, Error>> => {
-  const query = `SHOW SCHEMAS IN DATABASE ${fromDatabase}`;
+  const query = `SHOW SCHEMAS IN DATABASE ${quoteSnowflakeIdentifier(fromDatabase)}`;
   return _fetchRows<RemoteDBSchema>({
     credentials,
     query,
@@ -395,12 +414,14 @@ export const fetchTables = async ({
   connection?: Connection;
 }): Promise<Result<Array<RemoteDBTable>, Error>> => {
   // We fetch the tables in the schema provided if defined, otherwise in the database provided if
-  // defined, otherwise globally.
-  const query = fromSchema
-    ? `SHOW TABLES IN SCHEMA ${fromSchema}`
-    : fromDatabase
-      ? `SHOW TABLES IN DATABASE ${fromDatabase}`
-      : "SHOW TABLES";
+  // defined, otherwise globally. When both fromDatabase and fromSchema are set, we build a fully
+  // qualified schema reference.
+  const query =
+    fromSchema && fromDatabase
+      ? `SHOW TABLES IN SCHEMA ${quoteSnowflakeIdentifier(fromDatabase)}.${quoteSnowflakeIdentifier(fromSchema)}`
+      : fromDatabase
+        ? `SHOW TABLES IN DATABASE ${quoteSnowflakeIdentifier(fromDatabase)}`
+        : "SHOW TABLES";
 
   return _fetchRows<RemoteDBTable>({
     credentials,
@@ -526,7 +547,10 @@ export const useWarehouse = async ({
   connection: Connection;
 }): Promise<Result<void, Error>> => {
   const warehouse = credentials.warehouse;
-  const res = await _executeQuery(connection, `USE WAREHOUSE ${warehouse}`);
+  const res = await _executeQuery(
+    connection,
+    `USE WAREHOUSE ${quoteSnowflakeIdentifier(warehouse)}`
+  );
   if (res.isErr()) {
     const e = normalizeError(res.error);
 
@@ -573,7 +597,9 @@ async function _checkRoleGrants(
   // Check current grants
   const currentGrantsRes = await _fetchRows<SnowflakeGrant>({
     credentials,
-    query: `SHOW GRANTS TO ${isDbRole ? "DATABASE ROLE" : "ROLE"} ${roleName}`,
+    // Database role names from SHOW GRANTS are already qualified as "database.role"
+    // where the dot is a structural separator. They must stay unquoted.
+    query: `SHOW GRANTS TO ${isDbRole ? "DATABASE ROLE" : "ROLE"} ${isDbRole ? roleName : quoteSnowflakeIdentifier(roleName)}`,
     codec: snowflakeGrantCodec,
     connection,
   });
@@ -588,7 +614,7 @@ async function _checkRoleGrants(
     // Check future grants
     futureGrantsRes = await _fetchRows<SnowflakeFutureGrant>({
       credentials,
-      query: `SHOW FUTURE GRANTS TO ROLE ${roleName}`,
+      query: `SHOW FUTURE GRANTS TO ROLE ${quoteSnowflakeIdentifier(roleName)}`,
       codec: snowflakeFutureGrantCodec,
       connection,
     });

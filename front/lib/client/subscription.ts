@@ -1,3 +1,8 @@
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { getBillingCurrencyForCountry } from "@app/lib/plans/billing_currency";
+import { useGeolocation } from "@app/lib/swr/geo";
+import type { SupportedCurrency } from "@app/types/currency";
+
 // If mention the price of the PRO plan in a few different places in the code base,
 // so this is just a way to have that value hardcoded in one place.
 // Changing this value only changes the value displayed on the webapp and the website,
@@ -6,11 +11,42 @@ export const PRO_PLAN_COST_MONTHLY = 29;
 export const PRO_PLAN_COST_YEARLY = 27;
 export const BUSINESS_PLAN_COST_MONTHLY = 45;
 
-export const getPriceWithCurrency = (price: number): string => {
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const isLikelyInUS = timeZone.startsWith("America");
-  return isLikelyInUS ? `$${price}` : `${price}€`;
-};
+export function formatPriceWithCurrency(
+  price: number,
+  currency: SupportedCurrency
+): string {
+  return currency === "usd" ? `$${price}` : `${price}€`;
+}
+
+/**
+ * Hook that resolves the user's billing currency from IP geolocation.
+ *
+ * When the workspace has the metronome_billing feature flag:
+ *   EU/EEA/CH → EUR, rest of world → USD.
+ * Without the flag (Stripe billing, or no workspace):
+ *   US → USD, rest of world → EUR (matches Stripe adaptive pricing).
+ *
+ * Falls back to Stripe behaviour while loading or on error.
+ */
+export function useUserBillingCurrency(): SupportedCurrency {
+  const { geoData } = useGeolocation();
+  const { hasFeature } = useFeatureFlags();
+  const metronomeBilled = hasFeature("metronome_billing");
+
+  if (geoData?.countryCode) {
+    return getBillingCurrencyForCountry(geoData.countryCode, metronomeBilled);
+  }
+  // No geo data yet — Stripe default (EUR base, USD for US only).
+  return "eur";
+}
+
+/**
+ * Hook: format a price with the user's billing currency.
+ */
+export function usePriceWithCurrency(price: number): string {
+  const currency = useUserBillingCurrency();
+  return formatPriceWithCurrency(price, currency);
+}
 
 export interface BillingCycle {
   cycleStart: Date;

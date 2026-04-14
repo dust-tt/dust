@@ -120,11 +120,6 @@ export async function dustProjectConversationsFullSyncActivity({
       { concurrency: 5 } // Process 5 conversations at a time
     );
 
-    // Update lastSyncedAt
-    await configuration.update({ lastSyncedAt: new Date() });
-
-    await syncSucceeded(connectorId);
-
     // Launch incremental sync workflow after successful full sync
     const incrementalSyncResult =
       await launchDustProjectIncrementalSyncWorkflow(connectorId);
@@ -187,16 +182,20 @@ export async function dustProjectConversationsIncrementalSyncActivity({
       "Starting incremental sync for dust_project connector"
     );
 
-    // Use the max synced conversation's sourceUpdatedAt as the updatedSince parameter to get only the delta from last sync
+    // Watermark: max source `updatedAt` we have synced. Front's `updatedSince` filter uses
+    // `updatedAt >= updatedSince` (inclusive), so passing the raw max would re-fetch every
+    // conversation at that timestamp every run. Use max+1 so `>=` behaves like strictly after max.
     const maxSourceUpdatedAt =
       await DustProjectConversationResource.getMaxSourceUpdatedAt(connectorId);
 
-    // Fetch conversations updated since lastSyncedAt from Front API
     const dustAPI = getDustAPI(dataSourceConfig, { useInternalAPI: false });
     const conversationsResult =
       await dustAPI.getSpaceConversationsForDataSource({
         spaceId: configuration.projectId,
-        updatedSince: maxSourceUpdatedAt?.getTime(),
+        updatedSince:
+          maxSourceUpdatedAt != null
+            ? maxSourceUpdatedAt.getTime() + 1
+            : undefined,
       });
 
     if (conversationsResult.isErr()) {
@@ -230,11 +229,6 @@ export async function dustProjectConversationsIncrementalSyncActivity({
       },
       { concurrency: 5 } // Process 5 conversations at a time
     );
-
-    // Update lastSyncedAt
-    await configuration.update({ lastSyncedAt: new Date() });
-
-    await syncSucceeded(connectorId);
 
     // Run garbage collection to remove hard-deleted conversations
     // This checks for conversations that were completely removed from the database
@@ -361,8 +355,7 @@ async function dustProjectConversationsGarbageCollectActivity({
 
 /**
  * Sync metadata activity: Fetches and syncs project metadata (description).
- * This is called during both full and incremental syncs.
- * Errors are logged but don't fail the parent sync.
+ * On fetch/upsert failure, throws so the Temporal workflow fails.
  */
 export async function dustProjectSyncMetadataActivity({
   connectorId,
@@ -384,45 +377,80 @@ export async function dustProjectSyncMetadataActivity({
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  try {
-    localLogger.info(
-      { projectId: configuration.projectId },
-      "Fetching and syncing project metadata"
+  localLogger.info(
+    { projectId: configuration.projectId },
+    "Fetching and syncing project metadata"
+  );
+
+  const dustAPI = getDustAPI(dataSourceConfig, { useInternalAPI: false });
+  const metadataResult = await dustAPI.getSpaceMetadata({
+    spaceId: configuration.projectId,
+  });
+
+  if (metadataResult.isErr()) {
+    localLogger.error(
+      {
+        error: metadataResult.error,
+        projectId: configuration.projectId,
+      },
+      "Failed to fetch project metadata"
     );
-
-    const dustAPI = getDustAPI(dataSourceConfig, { useInternalAPI: false });
-    const metadataResult = await dustAPI.getSpaceMetadata({
-      spaceId: configuration.projectId,
-    });
-
-    if (metadataResult.isErr()) {
-      localLogger.warn(
-        {
-          error: metadataResult.error,
-          projectId: configuration.projectId,
-        },
-        "Failed to fetch project metadata, skipping metadata sync"
-      );
-      // Don't throw - metadata fetch failures shouldn't fail the sync
-      return;
-    }
-
-    await syncProjectMetadata({
-      dataSourceConfig,
-      connectorId,
-      projectId: configuration.projectId,
-      metadata: metadataResult.value.metadata,
-    });
-
-    localLogger.info(
-      { projectId: configuration.projectId },
-      "Successfully synced project metadata"
+    throw new Error(
+      `Failed to fetch project metadata: ${metadataResult.error.message}`
     );
-  } catch (error) {
-    localLogger.warn(
-      { error, projectId: configuration.projectId },
-      "Failed to sync project metadata"
-    );
-    // Don't throw - metadata sync failures shouldn't fail the parent sync
   }
+
+  const metadata = metadataResult.value.metadata;
+
+  if (!metadata) {
+    localLogger.info(
+      { projectId: configuration.projectId },
+      "No project metadata from API; skipping metadata upsert"
+    );
+    return;
+  }
+
+  const lastSyncedAtMs = configuration.lastSyncedAt?.getTime();
+  if (lastSyncedAtMs !== undefined && metadata.updatedAt < lastSyncedAtMs) {
+    localLogger.info(
+      {
+        projectId: configuration.projectId,
+        metadataUpdatedAt: metadata.updatedAt,
+        lastSyncedAt: configuration.lastSyncedAt,
+      },
+      "Skipping project metadata upsert (API metadata older than last full sync)"
+    );
+    return;
+  }
+
+  await syncProjectMetadata({
+    dataSourceConfig,
+    connectorId,
+    projectId: configuration.projectId,
+    metadata,
+  });
+
+  localLogger.info(
+    { projectId: configuration.projectId },
+    "Successfully synced project metadata"
+  );
+}
+
+/**
+ * Marks a successful dust_project sync run (conversations + metadata activities).
+ * Updates connector sync status via `syncSucceeded` and sets `lastSyncedAt` on the dust project configuration.
+ */
+export async function dustProjectMarkSyncedActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}): Promise<void> {
+  const configuration =
+    await DustProjectConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`Configuration not found for connector ${connectorId}`);
+  }
+
+  await syncSucceeded(connectorId);
+  await configuration.update({ lastSyncedAt: new Date() });
 }

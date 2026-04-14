@@ -51,3 +51,53 @@ export function useReinforcementToggle({ owner }: UseReinforcementToggleProps) {
     doToggleReinforcement,
   };
 }
+
+interface UseReinforcementBatchModeToggleProps {
+  owner: LightWorkspaceType;
+}
+
+export function useReinforcementBatchModeToggle({
+  owner,
+}: UseReinforcementBatchModeToggleProps) {
+  const [isChanging, setIsChanging] = useState(false);
+  const sendNotification = useSendNotification();
+  const [isEnabled, setIsEnabled] = useState(
+    owner.metadata?.allowReinforcementBatchMode !== false
+  );
+
+  const doToggleBatchMode = async () => {
+    setIsChanging(true);
+    try {
+      const res = await clientFetch(`/api/w/${owner.sId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          allowReinforcementBatchMode: !isEnabled,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update reinforcement batch mode setting");
+      }
+      setIsEnabled(!isEnabled);
+      return true;
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to update reinforcement batch mode setting",
+        description: normalizeError(error).message,
+      });
+      return false;
+    } finally {
+      setIsChanging(false);
+    }
+  };
+
+  return {
+    isEnabled,
+    isChanging,
+    doToggleBatchMode,
+  };
+}

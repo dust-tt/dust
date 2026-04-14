@@ -1,4 +1,5 @@
 import { ProtectedRoute } from "@extension/ui/components/auth/ProtectedRoute";
+import { ErrorFallback } from "@extension/ui/components/ErrorFallback";
 import { LoginPage } from "@extension/ui/pages/LoginPage";
 import { MainPage } from "@extension/ui/pages/MainPage";
 import { ProjectMainPage } from "@extension/ui/pages/ProjectMainPage";
@@ -9,9 +10,11 @@ export const routes = [
   {
     path: "/login",
     element: <LoginPage />,
+    errorElement: <ErrorFallback />,
   },
   {
     element: <ProtectedRoute />,
+    errorElement: <ErrorFallback />,
     children: [
       {
         path: "/run",

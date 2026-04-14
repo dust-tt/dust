@@ -63,7 +63,15 @@ describe("SkillSuggestionResource", () => {
         authenticator,
         skill,
         {
-          suggestion: { instructions: "Be more detailed" },
+          suggestion: {
+            instructionEdits: [
+              {
+                old_string: "original",
+                new_string: "Be more detailed",
+                expected_occurrences: 1,
+              },
+            ],
+          },
           analysis: "Improving instructions",
           source: "reinforcement",
         }
@@ -73,7 +81,7 @@ describe("SkillSuggestionResource", () => {
       expect(suggestion.sId).toMatch(/^ssu_/);
       expect(suggestion.workspaceId).toBe(workspace.id);
       expect(suggestion.skillConfigurationId).toBe(skill.id);
-      expect(suggestion.kind).toBe("edit_instructions");
+      expect(suggestion.kind).toBe("edit");
       expect(suggestion.state).toBe("pending");
       expect(suggestion.source).toBe("reinforcement");
 
@@ -83,7 +91,7 @@ describe("SkillSuggestionResource", () => {
       );
       expect(fetched).toBeDefined();
       expect(fetched?.sId).toBe(suggestion.sId);
-      expect(fetched?.kind).toBe("edit_instructions");
+      expect(fetched?.kind).toBe("edit");
     });
 
     it("should fetch multiple suggestions by ids", async () => {
@@ -153,23 +161,17 @@ describe("SkillSuggestionResource", () => {
     });
 
     it("should filter by kind", async () => {
-      await SkillSuggestionFactory.create(authenticator, skill, {
-        kind: "edit_instructions",
-      });
-      await SkillSuggestionFactory.create(authenticator, skill, {
-        kind: "create",
-        suggestion: {},
-      });
+      await SkillSuggestionFactory.create(authenticator, skill);
 
       const editSuggestions =
         await SkillSuggestionResource.listBySkillConfigurationId(
           authenticator,
           skill.sId,
-          { kind: "edit_instructions" }
+          { kind: "edit" }
         );
 
       expect(editSuggestions).toHaveLength(1);
-      expect(editSuggestions[0].kind).toBe("edit_instructions");
+      expect(editSuggestions[0].kind).toBe("edit");
     });
 
     it("should exclude synthetic suggestions by default", async () => {
@@ -216,7 +218,15 @@ describe("SkillSuggestionResource", () => {
           authenticator,
           skill,
           {
-            suggestion: { instructions: `instruction-${i}` },
+            suggestion: {
+              instructionEdits: [
+                {
+                  old_string: "old",
+                  new_string: `instruction-${i}`,
+                  expected_occurrences: 1,
+                },
+              ],
+            },
           }
         );
         created.push(suggestion);
@@ -530,7 +540,15 @@ describe("SkillSuggestionResource", () => {
         authenticator,
         skill,
         {
-          suggestion: { instructions: "New instructions" },
+          suggestion: {
+            instructionEdits: [
+              {
+                old_string: "old text",
+                new_string: "New instructions",
+                expected_occurrences: 1,
+              },
+            ],
+          },
           analysis: "Improved clarity",
         }
       );
@@ -538,8 +556,16 @@ describe("SkillSuggestionResource", () => {
       const json = suggestion.toJSON();
 
       expect(json.sId).toBe(suggestion.sId);
-      expect(json.kind).toBe("edit_instructions");
-      expect(json.suggestion).toEqual({ instructions: "New instructions" });
+      expect(json.kind).toBe("edit");
+      expect(json.suggestion).toMatchObject({
+        instructionEdits: [
+          {
+            old_string: "old text",
+            new_string: "New instructions",
+            expected_occurrences: 1,
+          },
+        ],
+      });
       expect(json.analysis).toBe("Improved clarity");
       expect(json.state).toBe("pending");
       expect(json.source).toBe("reinforcement");

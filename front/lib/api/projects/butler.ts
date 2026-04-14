@@ -69,7 +69,7 @@ export async function generateUserProjectDigest(
 ): Promise<string> {
   const owner = auth.getNonNullableWorkspace();
 
-  // Fetch unread conversations (same logic as list_unread tool).
+  // Fetch unread conversations.
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - DAYS_BACK);
 

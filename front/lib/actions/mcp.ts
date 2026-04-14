@@ -2,7 +2,11 @@ import type {
   MCPToolStakeLevelType,
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
-import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
+import type {
+  InternalMCPServerNameType,
+  InternalMCPToolNameType,
+  MCPServerAvailability,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   MCPApproveExecutionEvent,
   ToolAskUserQuestionEvent,
@@ -23,11 +27,6 @@ import type {
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import type { ToolErrorEvent } from "@app/types/assistant/agent";
-import {
-  isPersonalAuthenticationRequiredErrorContent,
-  type PersonalAuthenticationRequiredErrorContent,
-} from "@app/types/assistant/agent_error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
@@ -83,13 +82,45 @@ export type ClientSideMCPToolType = Omit<
   displayLabels?: ToolDisplayLabels;
 };
 
-type WithToolNameMetadata<T> = T & {
-  originalName: string;
-  mcpServerName: string;
+type WithToolNameMetadata<
+  T,
+  TOriginalName extends string = string,
+  TMCPServerName extends string = string,
+> = T & {
+  originalName: TOriginalName;
+  mcpServerName: TMCPServerName;
 };
 
-export type ServerSideMCPToolConfigurationType =
-  WithToolNameMetadata<ServerSideMCPToolType>;
+type InternalServerSideMCPToolType<N extends InternalMCPServerNameType> = Omit<
+  ServerSideMCPToolType,
+  "internalMCPServerId" | "name"
+> & {
+  internalMCPServerId: string;
+  name: InternalMCPToolNameType<N>;
+};
+
+type ExternalServerSideMCPToolType = Omit<
+  ServerSideMCPToolType,
+  "internalMCPServerId"
+> & {
+  internalMCPServerId: null;
+};
+
+export type InternalServerSideMCPToolConfigurationType<
+  N extends InternalMCPServerNameType = InternalMCPServerNameType,
+> = WithToolNameMetadata<
+  InternalServerSideMCPToolType<N>,
+  InternalMCPToolNameType<N>
+>;
+
+export type ExternalServerSideMCPToolConfigurationType =
+  WithToolNameMetadata<ExternalServerSideMCPToolType>;
+
+export type ServerSideMCPToolConfigurationType<
+  N extends InternalMCPServerNameType | null = InternalMCPServerNameType | null,
+> = N extends InternalMCPServerNameType
+  ? InternalServerSideMCPToolConfigurationType<N>
+  : ExternalServerSideMCPToolConfigurationType;
 
 export type ClientSideMCPToolConfigurationType =
   WithToolNameMetadata<ClientSideMCPToolType>;
@@ -108,8 +139,9 @@ type LightMCPToolType<T> = Omit<
   (typeof MCP_TOOL_CONFIGURATION_FIELDS_TO_OMIT)[number]
 >;
 
-export type LightServerSideMCPToolConfigurationType =
-  LightMCPToolType<ServerSideMCPToolConfigurationType>;
+export type LightServerSideMCPToolConfigurationType<
+  N extends InternalMCPServerNameType | null = InternalMCPServerNameType | null,
+> = LightMCPToolType<ServerSideMCPToolConfigurationType<N>>;
 
 export type LightClientSideMCPToolConfigurationType =
   LightMCPToolType<ClientSideMCPToolConfigurationType>;
@@ -223,7 +255,7 @@ const MAX_DESCRIPTION_LENGTH = 1024;
 export function buildToolSpecification(
   actionConfiguration: MCPToolConfigurationType
 ): AgentActionSpecification {
-  // Filter out properties from the inputSchema that have a mimeType matching any value in INTERNAL_MIME_TYPES.TOOL_INPUT
+  // Hide required tool-input configuration from the model; optional internal props stay visible.
   const filteredInputSchema = hideInternalConfiguration(
     actionConfiguration.inputSchema
   );
@@ -244,21 +276,6 @@ export function isMCPApproveExecutionEvent(
     event !== null &&
     "type" in event &&
     event.type === "tool_approve_execution"
-  );
-}
-
-function isLegacyToolPersonalAuthRequiredEvent(
-  event: unknown
-): event is ToolErrorEvent & {
-  error: PersonalAuthenticationRequiredErrorContent;
-} {
-  return (
-    typeof event === "object" &&
-    event !== null &&
-    "type" in event &&
-    event.type === "tool_error" &&
-    "error" in event &&
-    isPersonalAuthenticationRequiredErrorContent(event.error)
   );
 }
 
@@ -309,7 +326,6 @@ export function isBlockedActionEvent(
     (isMCPApproveExecutionEvent(event) ||
       isToolPersonalAuthRequiredEvent(event) ||
       isToolFileAuthRequiredEvent(event) ||
-      isToolAskUserQuestionEvent(event) ||
-      isLegacyToolPersonalAuthRequiredEvent(event))
+      isToolAskUserQuestionEvent(event))
   );
 }

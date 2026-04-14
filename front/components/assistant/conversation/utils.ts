@@ -1,6 +1,7 @@
 import { removeDiacritics, subFilter } from "@app/lib/utils";
 import type {
   AgentMessageType,
+  CompactionMessageType,
   ConversationWithoutContentType,
   LightAgentMessageType,
   UserMessageType,
@@ -146,7 +147,8 @@ export function isMessageUnread(
     | AgentMessageType
     | ContentFragmentType
     | LightAgentMessageType
-    | UserMessageTypeWithContentFragments,
+    | UserMessageTypeWithContentFragments
+    | CompactionMessageType,
   lastReadMs: number | null
 ): boolean {
   if (lastReadMs === null) {

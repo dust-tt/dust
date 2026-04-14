@@ -52,7 +52,7 @@ export function Pagination({
     (pageIndex: number) => {
       setPagination({ pageSize, pageIndex });
     },
-    [pageIndex, setPagination]
+    [pageSize, setPagination]
   );
 
   const pageButtons: React.ReactNode[] = getPageButtons(

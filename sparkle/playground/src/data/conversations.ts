@@ -1,6 +1,11 @@
 import { mockAgents } from "./agents";
 import { mockSpaces } from "./spaces";
-import type { Conversation, ConversationItem } from "./types";
+import type {
+  Conversation,
+  ConversationItem,
+  ConversationMessage,
+  ConversationPendingValidation,
+} from "./types";
 import { mockUsers } from "./users";
 
 // Helper function to get random user IDs
@@ -1033,13 +1038,67 @@ Risks:
         isRounded: true,
       },
     },
+    {
+      kind: "pendingValidation",
+      id: "pending-validation-finale-rewrite",
+      userMessage: {
+        kind: "message",
+        id: "pending-user-finale",
+        content:
+          "Can you draft the 2-3 beat montage of letters to the realm? I want to include it in the next revision.",
+        timestamp: new Date(conv1Start.getTime() + 32 * 60 * 1000),
+        ownerId: locutorId,
+        ownerType: "user",
+        type: "user",
+        group: {
+          id: "group-locutor-pending-finale",
+          type: "locutor",
+          timestamp: "09:32",
+        },
+      } as ConversationMessage,
+      agentMessage: {
+        kind: "message",
+        id: "pending-agent-finale",
+        markdown: `**Letters montage (draft)**
+
+- **Winterfell**: Sansa announces Bran's coronation, calls for unity
+- **Dorne**: Prince acknowledges new order, pledges fealty
+- **Iron Islands**: Yara secures independence, warns of future threats
+
+Each beat ~30 seconds. Ready for your review.`,
+        timestamp: new Date(conv1Start.getTime() + 33 * 60 * 1000),
+        ownerId: agent1.id,
+        ownerType: "agent",
+        type: "agent",
+        group: {
+          id: "group-agent-pending-finale",
+          type: "agent",
+          name: agent1.name,
+          timestamp: "09:32",
+          completionStatus: "Completed in 15 sec",
+          avatar: {
+            emoji: agent1.emoji,
+            backgroundColor: agent1.backgroundColor,
+          },
+        },
+      } as ConversationMessage,
+    } as ConversationPendingValidation,
   ];
 
   const conversation1: Conversation = {
     id: "conv-with-msgs-1",
     title: "Finale Rewrite Thread",
     createdAt: conv1Start,
-    updatedAt: conv1Messages[conv1Messages.length - 1].timestamp,
+    updatedAt: (() => {
+      const last = conv1Messages[conv1Messages.length - 1];
+      if (last.kind === "pendingValidation") {
+        return last.agentMessage.timestamp;
+      }
+      if (last.kind === "message") {
+        return last.timestamp;
+      }
+      return conv1Start;
+    })(),
     userParticipants: [locutorId, user1.id, user2.id],
     agentParticipants: [agent1.id],
     messages: conv1Messages,
@@ -1217,13 +1276,67 @@ Risks:
         },
       },
     },
+    {
+      kind: "pendingValidation",
+      id: "pending-validation-product-review",
+      userMessage: {
+        kind: "message",
+        id: "pending-user-product-review",
+        content:
+          "Can you share the task breakdown in the shared doc? I want the team to review it before sprint planning.",
+        timestamp: new Date(conv2Start.getTime() + 50 * 60 * 1000),
+        ownerId: locutorId,
+        ownerType: "user",
+        type: "user",
+        group: {
+          id: "group-locutor-pending",
+          type: "locutor",
+          timestamp: "11:08",
+        },
+      } as ConversationMessage,
+      agentMessage: {
+        kind: "message",
+        id: "pending-agent-product-review",
+        markdown: `**Task breakdown (summary)**
+
+- **Search UX**: Move to top nav, add inline suggestions — 2–3 days
+- **Empty state**: Guided experience with example queries — 1 day
+- **Analytics**: Success metrics and suggestion ranking — 1–2 days
+
+Total estimate: ~5 days. Ready for sprint planning review.`,
+        timestamp: new Date(conv2Start.getTime() + 51 * 60 * 1000),
+        ownerId: agent2.id,
+        ownerType: "agent",
+        type: "agent",
+        group: {
+          id: "group-agent-pending",
+          type: "agent",
+          name: agent2.name,
+          timestamp: "11:08",
+          completionStatus: "Completed in 8 sec",
+          avatar: {
+            emoji: agent2.emoji,
+            backgroundColor: agent2.backgroundColor,
+          },
+        },
+      } as ConversationMessage,
+    } as ConversationPendingValidation,
   ];
 
   const conversation2: Conversation = {
     id: "conv-with-msgs-2",
     title: "Product Feature Review",
     createdAt: conv2Start,
-    updatedAt: conv2Messages[conv2Messages.length - 1].timestamp,
+    updatedAt: (() => {
+      const last = conv2Messages[conv2Messages.length - 1];
+      if (last.kind === "pendingValidation") {
+        return last.agentMessage.timestamp;
+      }
+      if (last.kind === "message") {
+        return last.timestamp;
+      }
+      return conv2Start;
+    })(),
     userParticipants: [locutorId, user3.id],
     agentParticipants: [agent2.id],
     messages: conv2Messages,

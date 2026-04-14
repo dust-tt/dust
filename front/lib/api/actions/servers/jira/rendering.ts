@@ -4,7 +4,11 @@ import { isStringArray } from "@app/types/shared/utils/general";
 import { format } from "date-fns";
 
 import type { ADFContentNode, JiraComment, JiraIssue } from "./types";
-import { isADFDocument, JiraCommentsListSchema } from "./types";
+import {
+  isADFDocument,
+  isCascadingSelectChild,
+  JiraCommentsListSchema,
+} from "./types";
 
 function formatDateTime(dateString: string): string {
   return format(new Date(dateString), "yyyy-MM-dd HH:mm");
@@ -104,6 +108,9 @@ function renderObjectValue(obj: unknown): string | null {
     return obj.key;
   }
   if ("value" in obj && typeof obj.value === "string") {
+    if (isCascadingSelectChild(obj)) {
+      return `${obj.value} > ${obj.child.value}`;
+    }
     return obj.value;
   }
   if ("id" in obj && typeof obj.id === "string") {

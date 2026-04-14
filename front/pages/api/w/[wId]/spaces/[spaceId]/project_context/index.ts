@@ -1,10 +1,14 @@
 /** @ignoreswagger */
-import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import {
+  type ConversationAttachmentType,
+  isContentNodeAttachmentType,
+  isFileAttachmentType,
+} from "@app/lib/api/assistant/conversation/attachments";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   addContentNodeToProject,
   listProjectContextAttachments,
-} from "@app/lib/api/projects";
+} from "@app/lib/api/projects/context";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -12,7 +16,6 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { ContentNodeType } from "@app/types/core/content_node";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
@@ -40,6 +43,32 @@ export type PostProjectContextContentNodeResponseBody = {
   };
 };
 
+const ProjectContextQuerySchema = z.object({
+  spaceId: z.string(),
+  query: z.string().optional(),
+  type: z.enum(["file", "content-node"]).optional(),
+});
+
+/** Lowercase + strip separators so "Hello World 4" matches query "helloworld". */
+function normalizeAttachmentSearchKey(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function attachmentTitleMatchesQuery(title: string, q: string): boolean {
+  if (q.length === 0) {
+    return true;
+  }
+  const lowerTitle = title.toLowerCase();
+  if (lowerTitle.includes(q)) {
+    return true;
+  }
+  const normalizedQuery = normalizeAttachmentSearchKey(q);
+  if (normalizedQuery.length === 0) {
+    return false;
+  }
+  return normalizeAttachmentSearchKey(title).includes(normalizedQuery);
+}
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
@@ -49,16 +78,19 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const { spaceId } = req.query;
-  if (!isString(spaceId)) {
+  const queryValidation = ProjectContextQuerySchema.safeParse(req.query);
+  if (!queryValidation.success) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid spaceId query parameter.",
+        message:
+          "Invalid query parameters. Expected `spaceId` (string), optional `query` (string), optional `type` (`file` | `content-node`).",
       },
     });
   }
+
+  const { spaceId, query, type } = queryValidation.data;
 
   const space = await SpaceResource.fetchById(auth, spaceId);
   if (!space || !space.canRead(auth)) {
@@ -74,7 +106,28 @@ async function handler(
   switch (req.method) {
     case "GET": {
       const attachments = await listProjectContextAttachments(auth, space);
-      res.status(200).json({ attachments });
+
+      const q = query?.trim().toLowerCase() ?? "";
+      const t = type ?? "";
+
+      const filtered = attachments.filter((a) => {
+        if (t) {
+          if (t === "file" && !isFileAttachmentType(a)) {
+            return false;
+          }
+          if (t === "content-node" && !isContentNodeAttachmentType(a)) {
+            return false;
+          }
+        }
+
+        if (!attachmentTitleMatchesQuery(a.title, q)) {
+          return false;
+        }
+
+        return true;
+      });
+
+      res.status(200).json({ attachments: filtered });
       return;
     }
 

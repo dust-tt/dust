@@ -23,7 +23,7 @@ export type MinimalFileForPreview = {
   fileName: string;
   contentType: string;
   /** When set (e.g. project knowledge tab), interactive frames resolve in this project space. */
-  projectSpaceId?: string | null;
+  projectId?: string | null;
 };
 
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -255,7 +255,7 @@ function FileContentRenderer({
       return (
         <FrameRenderer
           fileId={file.sId}
-          projectId={file.projectSpaceId ?? null}
+          projectId={file.projectId ?? null}
           owner={owner}
           lastEditedByAgentConfigurationId={undefined}
           contentHash={undefined}

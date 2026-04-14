@@ -1,4 +1,5 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ProjectTodoSourceType } from "@app/types/project_todo";
 import type {
@@ -6,7 +7,7 @@ import type {
   TodoVersionedKeyDecision,
   TodoVersionedNotableFact,
 } from "@app/types/takeaways";
-import type { CreationOptional } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 // ── Takeaways (versioned) ─────────────────────────────────────────────────────
@@ -16,6 +17,9 @@ import { DataTypes } from "sequelize";
 export class TakeawaysModel extends WorkspaceAwareModel<TakeawaysModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+
+  // The space (project) this takeaway belongs to.
+  declare spaceId: ForeignKey<SpaceModel["id"]>;
 
   // Stable identity: same sId across all version rows of one logical takeaway.
   declare sId: string;
@@ -74,6 +78,12 @@ TakeawaysModel.init(
       defaultValue: [],
       comment: "Key decisions made during the conversation.",
     },
+    spaceId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      references: { model: "vaults", key: "id" },
+      comment: "The space (project) this takeaway belongs to.",
+    },
   },
   {
     modelName: "takeaways",
@@ -91,9 +101,19 @@ TakeawaysModel.init(
         fields: ["sId"],
         concurrently: true,
       },
+      {
+        name: "takeaways_spaceId_idx",
+        fields: ["spaceId"],
+        concurrently: true,
+      },
     ],
   }
 );
+
+TakeawaysModel.belongsTo(SpaceModel, {
+  foreignKey: { name: "spaceId", allowNull: false },
+  onDelete: "RESTRICT",
+});
 
 // ── Source takeaways ──────────────────────────────────────────────────────────
 // Content node (conversation, etc.) that triggered the production of a

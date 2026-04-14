@@ -20,12 +20,14 @@ import { useCallback, useEffect, useState } from "react";
 interface CreateProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCreated: () => void;
   owner: LightWorkspaceType;
 }
 
 export function CreateProjectModal({
   isOpen,
   onClose,
+  onCreated,
   owner,
 }: CreateProjectModalProps) {
   const [projectName, setProjectName] = useState<string>("");
@@ -90,6 +92,7 @@ export function CreateProjectModal({
 
     if (createdSpace) {
       void mutateSpaceSummary();
+      onCreated();
       handleClose();
       void router.push(getProjectRoute(owner.sId, createdSpace.sId));
     }
@@ -98,6 +101,7 @@ export function CreateProjectModal({
     isNameAvailable,
     isPublic,
     doCreate,
+    onCreated,
     handleClose,
     mutateSpaceSummary,
     router,

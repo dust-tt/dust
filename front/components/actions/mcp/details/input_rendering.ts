@@ -36,27 +36,19 @@ function renderTagsForToolOutput(
   return `${tagsInAsString}${tagsNotAsString}`;
 }
 
-function renderSearchNodeIds(nodeIds?: string[]): string {
-  return nodeIds && nodeIds.length > 0
-    ? `within ${nodeIds.length} different subtrees `
-    : "";
-}
-
 export function makeQueryTextForDataSourceSearch({
   query,
   relativeTimeFrame,
   tagsIn,
   tagsNot,
-  nodeIds,
 }: SearchInputTypeWithTags): string {
   const timeFrameAsString = renderRelativeTimeFrame(
-    parseTimeFrame(relativeTimeFrame)
+    parseTimeFrame(relativeTimeFrame ?? "all")
   );
   const tagsAsString = renderTagsForToolOutput(tagsIn, tagsNot);
-  const nodeIdsAsString = renderSearchNodeIds(nodeIds);
 
   return query
-    ? `Searching "${query}" ${nodeIdsAsString}${timeFrameAsString}${tagsAsString}.`
+    ? `Searching "${query}" ${timeFrameAsString}${tagsAsString}.`
     : `Searching ${timeFrameAsString}${tagsAsString}.`;
 }
 

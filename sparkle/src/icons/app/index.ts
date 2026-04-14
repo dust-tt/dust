@@ -1,3 +1,4 @@
+export { default as ArchiveIcon } from "./Archive";
 export { default as ArrowCircleIcon } from "./ArrowCircle";
 export { default as ArrowDownIcon } from "./ArrowDown";
 export { default as ArrowDownCircleIcon } from "./ArrowDownCircle";

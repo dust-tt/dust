@@ -67,7 +67,7 @@ runs:
     - name: Lookup by email
       if: inputs.step == 'start' || inputs.step == 'spa_start'
       id: email
-      uses: slackapi/slack-github-action@v2.0.0
+      uses: slackapi/slack-github-action@v3.0.1
       with:
         errors: false
         method: users.lookupByEmail
@@ -90,7 +90,7 @@ runs:
     - name: Notify Build And Deploy Start
       if: inputs.step == 'start'
       id: start_notification
-      uses: slackapi/slack-github-action@v2.0.0
+      uses: slackapi/slack-github-action@v3.0.1
       with:
         method: chat.postMessage
         token: ${{ inputs.slack_token }}
@@ -169,7 +169,7 @@ runs:
 
     - name: Notify Build Success
       if: inputs.step == 'build_success'
-      uses: slackapi/slack-github-action@v2.0.0
+      uses: slackapi/slack-github-action@v3.0.1
       with:
         method: chat.postMessage
         token: ${{ inputs.slack_token }}
@@ -178,7 +178,7 @@ runs:
     - name: Notify SPA Deploy Start
       if: inputs.step == 'spa_start'
       id: spa_start_notification
-      uses: slackapi/slack-github-action@v2.0.0
+      uses: slackapi/slack-github-action@v3.0.1
       with:
         method: chat.postMessage
         token: ${{ inputs.slack_token }}
@@ -194,7 +194,7 @@ runs:
 
     - name: Notify SPA Preview Uploaded
       if: inputs.step == 'spa_preview_success'
-      uses: slackapi/slack-github-action@v2.0.0
+      uses: slackapi/slack-github-action@v3.0.1
       with:
         method: chat.postMessage
         token: ${{ inputs.slack_token }}
@@ -207,7 +207,7 @@ runs:
 
     - name: Notify SPA Deployed to Production
       if: inputs.step == 'spa_production_success'
-      uses: slackapi/slack-github-action@v2.0.0
+      uses: slackapi/slack-github-action@v3.0.1
       with:
         method: chat.postMessage
         token: ${{ inputs.slack_token }}
@@ -220,7 +220,7 @@ runs:
 
     - name: Notify Deploy Failure
       if: inputs.step == 'failure'
-      uses: slackapi/slack-github-action@v2.0.0
+      uses: slackapi/slack-github-action@v3.0.1
       with:
         method: chat.postMessage
         token: ${{ inputs.slack_token }}

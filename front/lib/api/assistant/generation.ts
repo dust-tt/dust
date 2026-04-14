@@ -1,13 +1,11 @@
 import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
-  DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME,
   ENABLE_SKILL_TOOL_NAME,
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
 import {
   INTERNAL_SERVERS_WITH_WEBSEARCH,
-  SEARCH_SERVER_NAME,
   SKILL_MANAGEMENT_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
@@ -20,7 +18,6 @@ import {
   CONVERSATION_FILES_SERVER_NAME,
   CONVERSATION_SEARCH_FILES_ACTION_NAME,
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
-import { PROJECT_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/project_manager/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import type {
@@ -83,43 +80,6 @@ function constructContextSection({
   }
 
   return context;
-}
-
-export function constructProjectContextSection(
-  conversation?: ConversationWithoutContentType
-): string | null {
-  if (!conversation?.spaceId) {
-    return null;
-  }
-  return `# PROJECT CONTEXT
-
-This conversation is associated with a project. The project provides:
-- Persistent file storage shared across all conversations in this project
-- Project metadata (description and URLs) for organizational context
-- Semantic search capabilities over project files
-- Collaborative context that persists beyond individual conversations
-
-## Using Project Tools
-
-**project_manager**: Use these tools to manage persistent project files, metadata, and conversations
-**${DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME}**: Use this tool to semantically search across all project files when you need to:
-- Find relevant information within the project
-- Locate specific content across multiple files
-- Answer questions based on project knowledge
-
-## Tool Usage Priority
-
-When answering questions that require searching for information, follow this priority order:
-1. **First**, use \`${DEFAULT_PROJECT_MANAGEMENT_SERVER_NAME}\` to search within the project's files. Project context is the most relevant source of information for this conversation.
-2. **Second**, use \`${PROJECT_MANAGER_SERVER_NAME}\` to gather more context on the project.
-2. **Then**, if the project context is insufficient, use \`company_data_*\` tools and \`${SEARCH_SERVER_NAME}\` to search across the broader company data sources.
-
-## Project Files vs Conversation Attachments
-- **Project files**: Persistent, shared across all conversations in the project, managed via project_manager
-- **Conversation attachments**: Scoped to this conversation only, temporary context for the current discussion
-
-When information should be preserved for future conversations or context, add it to project files.
-`;
 }
 
 function constructToolsSection({
@@ -463,8 +423,6 @@ export function constructPromptMultiActions(
     owner,
     userMessage,
   });
-  const projectContextSection =
-    constructProjectContextSection(conversation) ?? "";
   const toolsSection = constructToolsSection({
     hasAvailableActions,
     model,
@@ -486,7 +444,7 @@ export function constructPromptMultiActions(
     // tools (directives + server listing), skills, format docs, and guidelines.
     //
     // Shared context (short cache): workspace-scoped data shared across users —
-    // date, project context, toolsets, workspace info. A cache breakpoint here
+    // date, toolsets, workspace info. A cache breakpoint here
     // lets different users in the same workspace share this prefix.
     //
     // Ephemeral context (no breakpoint): per-user data — memories, user profile.
@@ -503,7 +461,6 @@ export function constructPromptMultiActions(
 
     const sharedContext: SystemPromptContext[] = [
       { role: "context" as const, content: contextSection },
-      { role: "context" as const, content: projectContextSection },
       { role: "context" as const, content: toolsetsContext ?? "" },
       { role: "context" as const, content: workspaceContext ?? "" },
     ].filter((s) => s.content.trim() !== "");
@@ -526,7 +483,6 @@ export function constructPromptMultiActions(
   const allSections: SystemPromptContext[] = [
     { role: "context" as const, content: instructionsContent },
     { role: "context" as const, content: contextSection },
-    { role: "context" as const, content: projectContextSection },
     { role: "context" as const, content: toolsSection },
     { role: "context" as const, content: skillsSection },
     { role: "context" as const, content: attachmentsSection },

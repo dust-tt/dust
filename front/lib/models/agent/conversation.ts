@@ -1,6 +1,7 @@
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import type { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
+import type { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
@@ -11,6 +12,7 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
 import { makeSId } from "@app/lib/resources/string_ids";
 import type {
   AgentMessageStatus,
+  CompactionMessageStatus,
   ConversationMetadata,
   ConversationVisibility,
   MessageVisibility,
@@ -37,6 +39,7 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   // Note: Using spaceId for the FK instead of vaultId as it is not a "ResourceWithSpace" and it's aligned with "requestedSpaceIds".
   declare spaceId: ForeignKey<SpaceModel["id"]> | null;
   declare space: NonAttribute<SpaceModel>;
+  declare forkedFrom?: NonAttribute<ConversationForkModel | null>;
 }
 
 ConversationModel.init(
@@ -659,6 +662,48 @@ AgentMessageFeedbackModel.belongsTo(AgentMessageModel, {
   as: "agentMessage",
 });
 
+export class CompactionMessageModel extends WorkspaceAwareModel<CompactionMessageModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare status: CompactionMessageStatus;
+  declare content: string | null;
+}
+
+CompactionMessageModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "created",
+    },
+    content: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+  },
+  {
+    modelName: "compaction_message",
+    sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["workspaceId"],
+        concurrently: true,
+      },
+    ],
+  }
+);
+
 export class MessageModel extends WorkspaceAwareModel<MessageModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -676,16 +721,18 @@ export class MessageModel extends WorkspaceAwareModel<MessageModel> {
   declare userMessageId: ForeignKey<UserMessageModel["id"]> | null;
   declare agentMessageId: ForeignKey<AgentMessageModel["id"]> | null;
   declare contentFragmentId: ForeignKey<ContentFragmentModel["id"]> | null;
+  declare compactionMessageId: ForeignKey<CompactionMessageModel["id"]> | null;
 
   declare userMessage?: NonAttribute<UserMessageModel>;
   declare agentMessage?: NonAttribute<AgentMessageModel>;
   declare contentFragment?: NonAttribute<ContentFragmentModel>;
+  declare compactionMessage?: NonAttribute<CompactionMessageModel>;
   declare reactions?: NonAttribute<MessageReactionModel[]>;
 
   declare conversation?: NonAttribute<ConversationModel>;
   declare branch?: NonAttribute<ConversationBranchModel>;
 
-  get branchSId(): string | null {
+  getBranchId(): string | null {
     return this.branchId
       ? makeSId("conversation_branch", {
           id: this.branchId,
@@ -793,6 +840,10 @@ MessageModel.init(
         concurrently: true,
       },
       {
+        fields: ["compactionMessageId"],
+        concurrently: true,
+      },
+      {
         fields: ["parentId"],
         concurrently: true,
       },
@@ -810,11 +861,12 @@ MessageModel.init(
         if (
           Number(!!message.userMessageId) +
             Number(!!message.agentMessageId) +
-            Number(!!message.contentFragmentId) !==
+            Number(!!message.contentFragmentId) +
+            Number(!!message.compactionMessageId) !==
           1
         ) {
           throw new Error(
-            "Exactly one of userMessageId, agentMessageId, contentFragmentId must be non-null"
+            "Exactly one of userMessageId, agentMessageId, contentFragmentId, compactionMessageId must be non-null"
           );
         }
       },
@@ -860,6 +912,16 @@ MessageModel.belongsTo(ContentFragmentModel, {
   as: "contentFragment",
   foreignKey: { name: "contentFragmentId", allowNull: true },
 });
+
+CompactionMessageModel.hasOne(MessageModel, {
+  as: "message",
+  foreignKey: { name: "compactionMessageId", allowNull: true },
+});
+MessageModel.belongsTo(CompactionMessageModel, {
+  as: "compactionMessage",
+  foreignKey: { name: "compactionMessageId", allowNull: true },
+});
+
 export class MessageReactionModel extends WorkspaceAwareModel<MessageReactionModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;

@@ -2,7 +2,7 @@ import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
@@ -30,12 +30,7 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
-import {
-  createSkillKnowledgeDataWarehouseServer,
-  createSkillKnowledgeFileSystemServer,
-  getSkillDataSourceConfigurations,
-  getSkillServers,
-} from "@app/lib/api/assistant/skill_actions";
+import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import { getLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import {
@@ -113,12 +108,14 @@ export async function runModel(
     step,
     functionCallStepContentIds,
     durationRecorder,
+    activityTimeoutDeadlineMs,
   }: {
     runAgentData: AgentLoopExecutionData;
     runIds: string[];
     step: number;
     functionCallStepContentIds: Record<string, ModelId>;
     durationRecorder: DurationRecorder;
+    activityTimeoutDeadlineMs: number;
   }
 ): Promise<{
   actions: AgentActionsEvent["actions"];
@@ -252,30 +249,6 @@ export async function runModel(
       skills: enabledSkills,
     });
 
-    // Add file system / data warehouse servers if skills have attached knowledge.
-    const {
-      documentDataSourceConfigurations,
-      warehouseDataSourceConfigurations,
-    } = await getSkillDataSourceConfigurations(auth, {
-      skills: enabledSkills,
-    });
-
-    const fileSystemServer = await createSkillKnowledgeFileSystemServer(auth, {
-      dataSourceConfigurations: documentDataSourceConfigurations,
-    });
-    const dataWarehouseServer = await createSkillKnowledgeDataWarehouseServer(
-      auth,
-      {
-        dataSourceConfigurations: warehouseDataSourceConfigurations,
-      }
-    );
-    if (fileSystemServer) {
-      skillServers.push(fileSystemServer);
-    }
-    if (dataWarehouseServer) {
-      skillServers.push(dataWarehouseServer);
-    }
-
     const {
       serverToolsAndInstructions: mcpActions,
       error: mcpToolsListingError,
@@ -375,7 +348,7 @@ export async function runModel(
     const filteredToolsets = allToolsets.filter((toolset) => {
       const mcpServerView = toolset.toJSON();
       return (
-        getMCPServerRequirements(mcpServerView).noRequirement &&
+        isJITMCPServerView(mcpServerView) &&
         mcpServerView.server.availability !== "auto_hidden_builder"
       );
     });
@@ -615,6 +588,7 @@ export async function runModel(
     step,
     agentConfiguration,
     model,
+    activityTimeoutDeadlineMs,
     publishAgentError,
     prompt,
     llm,
@@ -891,8 +865,8 @@ export async function runModel(
         id: -1,
         sId: generateRandomModelSId(),
         type: "mcp_configuration" as const,
-        name: a.name,
-        originalName: a.name,
+        name: "missing_action",
+        originalName: "missing_action",
         description: null,
         dataSources: null,
         tables: null,

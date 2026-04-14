@@ -13,6 +13,7 @@ import {
 } from "@app/lib/reinforced_agent/types";
 import { getReinforcedSkillsMetadata } from "@app/lib/reinforcement/types";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
+import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -132,6 +133,165 @@ describe("ConversationResource", () => {
         convoB.id,
       ]);
       expect(fetched.length).toBe(0);
+    });
+
+    it("should preload forkedFrom on forked child conversations", async () => {
+      const { workspace, authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Fork Source Agent",
+        description: "Fork source agent",
+      });
+
+      const parentConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [new Date("2026-01-01T00:00:00.000Z")],
+      });
+      const childConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+
+      const parentConversationResource = await ConversationResource.fetchById(
+        auth,
+        parentConversation.sId
+      );
+      const childConversationResource = await ConversationResource.fetchById(
+        auth,
+        childConversation.sId
+      );
+      assert(parentConversationResource, "Parent conversation not found");
+      assert(childConversationResource, "Child conversation not found");
+
+      const sourceMessage = await MessageModel.findOne({
+        where: {
+          conversationId: parentConversation.id,
+          workspaceId: workspace.id,
+          rank: 1,
+        },
+      });
+      assert(sourceMessage, "Source message not found");
+
+      const branchedAt = new Date("2026-01-02T00:00:00.000Z");
+      await ConversationForkResource.makeNew(auth, {
+        parentConversation: parentConversationResource,
+        childConversation: childConversationResource,
+        sourceMessageModelId: sourceMessage.id,
+        branchedAt,
+      });
+
+      const [fetchedChildConversation] =
+        await ConversationResource.fetchByModelIds(auth, [
+          childConversation.id,
+        ]);
+
+      expect(fetchedChildConversation.toJSON().forkedFrom).toEqual({
+        parentConversationId: parentConversation.sId,
+        sourceMessageId: sourceMessage.sId,
+        branchedAt: branchedAt.getTime(),
+        user: auth.getNonNullableUser().toJSON(),
+      });
+
+      const childConversationWithoutContent =
+        await ConversationResource.fetchConversationWithoutContent(
+          auth,
+          childConversation.sId
+        );
+      expect(childConversationWithoutContent.isOk()).toBe(true);
+
+      if (childConversationWithoutContent.isOk()) {
+        expect(childConversationWithoutContent.value.forkedFrom).toEqual({
+          parentConversationId: parentConversation.sId,
+          sourceMessageId: sourceMessage.sId,
+          branchedAt: branchedAt.getTime(),
+          user: auth.getNonNullableUser().toJSON(),
+        });
+      }
+    });
+
+    it("should expose forkedFrom even when the parent conversation is unreadable", async () => {
+      const {
+        workspace,
+        authenticator: adminAuth,
+        user: adminUser,
+      } = await createResourceTest({
+        role: "admin",
+      });
+      const regularUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, regularUser, {
+        role: "user",
+      });
+      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        regularUser.sId,
+        workspace.sId
+      );
+
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+      const addMembersRes = await restrictedSpace.addMembers(adminAuth, {
+        userIds: [adminUser.sId],
+      });
+      assert(addMembersRes.isOk(), "Failed to add admin to restricted space");
+
+      const agent = await AgentConfigurationFactory.createTestAgent(adminAuth, {
+        name: "Restricted Fork Source Agent",
+        description: "Restricted fork source agent",
+      });
+      const parentConversation = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [new Date("2026-01-03T00:00:00.000Z")],
+        requestedSpaceIds: [restrictedSpace.id],
+        spaceId: restrictedSpace.id,
+      });
+      const childConversation = await ConversationFactory.create(userAuth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+
+      const parentConversationResource = await ConversationResource.fetchById(
+        adminAuth,
+        parentConversation.sId
+      );
+      const childConversationResource = await ConversationResource.fetchById(
+        adminAuth,
+        childConversation.sId
+      );
+      assert(parentConversationResource, "Parent conversation not found");
+      assert(childConversationResource, "Child conversation not found");
+
+      const sourceMessage = await MessageModel.findOne({
+        where: {
+          conversationId: parentConversation.id,
+          workspaceId: workspace.id,
+          rank: 1,
+        },
+      });
+      assert(sourceMessage, "Source message not found");
+
+      const branchedAt = new Date("2026-01-04T00:00:00.000Z");
+      await ConversationForkResource.makeNew(adminAuth, {
+        parentConversation: parentConversationResource,
+        childConversation: childConversationResource,
+        sourceMessageModelId: sourceMessage.id,
+        branchedAt,
+      });
+
+      expect(
+        await ConversationResource.fetchById(userAuth, parentConversation.sId)
+      ).toBeNull();
+
+      const fetchedChildConversation = await ConversationResource.fetchById(
+        userAuth,
+        childConversation.sId
+      );
+      assert(fetchedChildConversation, "Child conversation not found");
+
+      expect(fetchedChildConversation.toJSON().forkedFrom).toEqual({
+        parentConversationId: parentConversation.sId,
+        sourceMessageId: sourceMessage.sId,
+        branchedAt: branchedAt.getTime(),
+        user: adminAuth.getNonNullableUser().toJSON(),
+      });
     });
   });
 
@@ -5340,6 +5500,40 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
     expect(page1Sids.some((sId) => page2Sids.includes(sId))).toBe(false);
   });
 
+  it("should apply updatedSince on every page when using lastValue cursor", async () => {
+    const outsideWindow = await createConvoWithUpdatedAt(20);
+    const insideA = await createConvoWithUpdatedAt(5);
+    const insideB = await createConvoWithUpdatedAt(3);
+
+    const daysBack = 10;
+    const cutoffMs = Date.now() - daysBack * 24 * 60 * 60 * 1000;
+
+    const seen = new Set<string>();
+    let lastValue: string | undefined;
+    for (let i = 0; i < 10; i++) {
+      const page = await ConversationResource.listConversationsInSpacePaginated(
+        adminAuth,
+        {
+          spaceId: space.sId,
+          options: { updatedSince: cutoffMs, excludeTest: true },
+          pagination: { limit: 1, lastValue },
+        }
+      );
+
+      for (const c of page.conversations) {
+        seen.add(c.sId);
+      }
+      if (!page.hasMore) {
+        break;
+      }
+      lastValue = page.lastValue ?? undefined;
+    }
+
+    expect(seen.has(insideA.sId)).toBe(true);
+    expect(seen.has(insideB.sId)).toBe(true);
+    expect(seen.has(outsideWindow.sId)).toBe(false);
+  });
+
   it("should iterate through all pages and return all conversations", async () => {
     const convos = [];
     for (let i = 0; i < 5; i++) {
@@ -5495,13 +5689,13 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   "agent_message_feedback",
   "agent_suggestion",
   "conversation_branch",
+  "conversation_fork",
   "conversation_mcp_server_view",
   "conversation_participant",
   "conversation_skills",
   "data_source",
   "message",
   "project_todo_conversation",
-  "project_todo_source",
   "sandbox",
   "skill_suggestion",
   "user_conversation_reads",
@@ -5510,10 +5704,11 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
 
 const KNOWN_MESSAGE_RELATED_MODELS = [
   // Tables that have a foreign key to the `message` table.
+  "conversation_branch",
+  "conversation_fork",
   "message",
   "message_reaction",
   "mention",
-  "conversation_branch",
 ];
 
 describe("ConversationResource cleanup on delete", () => {

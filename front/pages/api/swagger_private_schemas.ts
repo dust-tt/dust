@@ -172,6 +172,7 @@
  *                     - $ref: '#/components/schemas/PrivateUserMessage'
  *                     - $ref: '#/components/schemas/PrivateAgentMessage'
  *                     - $ref: '#/components/schemas/PrivateContentFragment'
+ *                     - $ref: '#/components/schemas/PrivateCompactionMessage'
  *     PrivateUserMessage:
  *       type: object
  *       description: A user message in a conversation.
@@ -526,6 +527,45 @@
  *         nodeDataSourceViewId:
  *           type: string
  *           nullable: true
+ *     PrivateCompactionMessage:
+ *       type: object
+ *       description: A compaction message summarizing earlier conversation content.
+ *       required:
+ *         - type
+ *         - sId
+ *         - status
+ *         - version
+ *         - rank
+ *         - created
+ *       properties:
+ *         type:
+ *           type: string
+ *           enum: [compaction_message]
+ *         id:
+ *           type: integer
+ *         compactionMessageId:
+ *           type: integer
+ *         sId:
+ *           type: string
+ *         created:
+ *           type: integer
+ *         visibility:
+ *           type: string
+ *           enum: [visible, deleted]
+ *         version:
+ *           type: integer
+ *         rank:
+ *           type: integer
+ *         branchId:
+ *           type: string
+ *           nullable: true
+ *         status:
+ *           type: string
+ *           enum: [created, succeeded, failed]
+ *         content:
+ *           type: string
+ *           nullable: true
+ *           description: Compacted summary. Null while status is "created".
  *     PrivateLightAgentConfiguration:
  *       type: object
  *       description: Agent configuration as returned by the private list endpoint.
@@ -1011,6 +1051,8 @@
  *         - $ref: '#/components/schemas/PrivateUserMessageNewEvent'
  *         - $ref: '#/components/schemas/PrivateAgentMessageNewEvent'
  *         - $ref: '#/components/schemas/PrivateAgentMessageDoneEvent'
+ *         - $ref: '#/components/schemas/PrivateCompactionMessageNewEvent'
+ *         - $ref: '#/components/schemas/PrivateCompactionMessageDoneEvent'
  *         - $ref: '#/components/schemas/PrivateConversationTitleEvent'
  *     PrivateUserMessageNewEvent:
  *       type: object
@@ -1058,6 +1100,32 @@
  *         status:
  *           type: string
  *           enum: [success, error]
+ *     PrivateCompactionMessageNewEvent:
+ *       type: object
+ *       required: [type, created, messageId, message]
+ *       properties:
+ *         type:
+ *           type: string
+ *           enum: [compaction_message_new]
+ *         created:
+ *           type: integer
+ *         messageId:
+ *           type: string
+ *         message:
+ *           $ref: '#/components/schemas/PrivateCompactionMessage'
+ *     PrivateCompactionMessageDoneEvent:
+ *       type: object
+ *       required: [type, created, messageId, message]
+ *       properties:
+ *         type:
+ *           type: string
+ *           enum: [compaction_message_done]
+ *         created:
+ *           type: integer
+ *         messageId:
+ *           type: string
+ *         message:
+ *           $ref: '#/components/schemas/PrivateCompactionMessage'
  *     PrivateConversationTitleEvent:
  *       type: object
  *       required: [type, created, title]

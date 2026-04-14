@@ -17,6 +17,8 @@ import type {
 } from "@app/types/assistant/agent";
 import type {
   AgentMessageNewEvent,
+  CompactionMessageDoneEvent,
+  CompactionMessageNewEvent,
   ConversationTitleEvent,
   UserMessageNewEvent,
   UserMessagePromotedEvent,
@@ -43,7 +45,9 @@ export type ConversationEvents =
   | AgentMessageNewEvent
   | UserMessageNewEvent
   | UserMessagePromotedEvent
-  | AgentMessageDoneEvent;
+  | AgentMessageDoneEvent
+  | CompactionMessageNewEvent
+  | CompactionMessageDoneEvent;
 
 export const TERMINAL_AGENT_MESSAGE_EVENT_TYPES: AgentMessageEvents["type"][] =
   [

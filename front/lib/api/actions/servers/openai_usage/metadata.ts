@@ -4,8 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const OPENAI_USAGE_TOOL_NAME = "openai_usage" as const;
-
 export const OPENAI_USAGE_TOOLS_METADATA = createToolsRecord({
   get_completions_usage: {
     description:

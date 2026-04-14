@@ -539,6 +539,7 @@ export class MessageStreamImpl implements MessageStream {
         return { type: "toolApprovalRequired", approval };
       }
 
+      case "agent_message_gracefully_stopped":
       case "agent_message_success": {
         this._response = {
           text: this._text,

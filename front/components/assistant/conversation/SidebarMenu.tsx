@@ -791,6 +791,7 @@ export function AgentSidebarMenu({
       <CreateProjectModal
         isOpen={isCreateProjectModalOpen}
         onClose={() => setIsCreateProjectModalOpen(false)}
+        onCreated={() => setSidebarOpen(false)}
         owner={owner}
       />
       {isImportSkillDialogOpen && (

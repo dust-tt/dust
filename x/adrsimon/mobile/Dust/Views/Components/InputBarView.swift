@@ -11,6 +11,10 @@ struct InputBarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if !viewModel.selectedCapabilities.isEmpty || !viewModel.selectedKnowledgeItems.isEmpty {
+                selectionChipsBar
+            }
+
             if !viewModel.attachments.isEmpty {
                 attachmentPreviewBar
             }
@@ -59,6 +63,56 @@ struct InputBarView: View {
                 viewModel.addDocumentResults(results)
                 viewModel.showDocumentPicker = false
             }
+        }
+        .sheet(isPresented: $viewModel.showCapabilitiesPicker) {
+            CapabilitiesPickerSheet(
+                capabilities: viewModel.availableCapabilities,
+                selectedCapabilities: viewModel.selectedCapabilities,
+                onSelect: { capability in
+                    viewModel.selectCapability(capability, conversationId: conversationId)
+                }
+            )
+            .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $viewModel.showKnowledgePicker) {
+            KnowledgePickerSheet(
+                workspaceId: viewModel.workspaceId,
+                tokenProvider: viewModel.tokenProvider,
+                selectedItems: viewModel.selectedKnowledgeItems,
+                onSelect: { item in
+                    viewModel.selectKnowledgeItem(item)
+                }
+            )
+            .presentationDetents([.medium, .large])
+        }
+    }
+
+    // MARK: - Selection Chips
+
+    private var selectionChipsBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(viewModel.selectedCapabilities) { capability in
+                    RemovableChipView(
+                        icon: capability.icon,
+                        iconColor: capability.isSkill ? Color.highlight : Color.dustForeground,
+                        text: capability.displayName
+                    ) {
+                        viewModel.deselectCapability(capability, conversationId: conversationId)
+                    }
+                }
+                ForEach(viewModel.selectedKnowledgeItems) { item in
+                    RemovableChipView(
+                        icon: item.icon,
+                        iconColor: Color.dustForeground,
+                        text: item.title
+                    ) {
+                        viewModel.deselectKnowledgeItem(item)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
         }
     }
 
@@ -176,6 +230,16 @@ struct InputBarView: View {
                 viewModel.showDocumentPicker = true
             } label: {
                 Label("Files", systemImage: "folder")
+            }
+            Button {
+                viewModel.showCapabilitiesPicker = true
+            } label: {
+                Label("Capabilities", systemImage: "bolt")
+            }
+            Button {
+                viewModel.showKnowledgePicker = true
+            } label: {
+                Label("Knowledge", systemImage: "book")
             }
         } label: {
             SparkleIcon.plus.image

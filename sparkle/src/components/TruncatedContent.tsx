@@ -82,25 +82,29 @@ export function TruncatedContent({
           <div className="s-pointer-events-none s-absolute s-bottom-0 s-left-0 s-right-0 s-h-24 s-bg-gradient-to-t s-from-background dark:s-from-background-night" />
         )}
       </div>
-      <div className="s-flex s-items-center s-gap-3">
-        {shouldShowToggle && (
-          <Button
-            variant={variant === "light" ? "ghost-secondary" : "outline"}
-            size="xs"
-            label={isCollapsed ? expandLabel : collapseLabel}
-            icon={
-              variant === "light"
-                ? undefined
-                : isCollapsed
-                  ? ChevronDownIcon
-                  : ChevronUpIcon
-            }
-            onClick={handleToggle}
-            className={buttonClassName}
-          />
-        )}
-        {footer}
-      </div>
+      {(shouldShowToggle || footer) && (
+        <div
+          className={cn("s-flex s-items-center", shouldShowToggle && "s-gap-3")}
+        >
+          {shouldShowToggle && (
+            <Button
+              variant={variant === "light" ? "ghost-secondary" : "outline"}
+              size="xs"
+              label={isCollapsed ? expandLabel : collapseLabel}
+              icon={
+                variant === "light"
+                  ? undefined
+                  : isCollapsed
+                    ? ChevronDownIcon
+                    : ChevronUpIcon
+              }
+              onClick={handleToggle}
+              className={buttonClassName}
+            />
+          )}
+          {footer}
+        </div>
+      )}
     </div>
   );
 }

@@ -18,8 +18,8 @@ jobs:
     # This ensures the workflow only runs on main branch
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6.0.2
+      - uses: actions/setup-node@v4.4.0
         with:
           node-version: "22.22.0"
           cache: "npm"

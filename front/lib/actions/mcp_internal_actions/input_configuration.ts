@@ -4,6 +4,7 @@ import {
   ConfigurableToolInputJSONSchemas,
   validateConfiguredJsonSchema,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { makeProjectConfigurationURI } from "@app/lib/actions/mcp_internal_actions/project_configuration_uri";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type {
   DataSourceConfiguration,
@@ -275,7 +276,10 @@ function generateConfiguredInput({
       }
       const project = actionConfiguration.dustProject;
       return {
-        uri: `project://dust/w/${project.workspaceId}/projects/${project.projectId}`,
+        uri: makeProjectConfigurationURI(
+          project.workspaceId,
+          project.projectId
+        ),
         mimeType,
       };
     }
@@ -333,8 +337,10 @@ function getDefaultValueAtPath(inputSchema: JSONSchema, keyPath: string) {
 }
 
 /**
- * Recursively filters out properties from the inputSchema that have a mimeType matching any value in INTERNAL_MIME_TYPES.TOOL_INPUT.
- * This function handles nested objects and arrays.
+ * Recursively filters out **required** properties whose schema matches a configurable
+ * `INTERNAL_MIME_TYPES.TOOL_INPUT` (those are injected server-side).
+ * Optional internal-configuration properties are kept so the model can see them and infer values when useful.
+ * Handles nested objects and arrays.
  */
 export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
   const resultingSchema = { ...inputSchema };
@@ -360,11 +366,12 @@ export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
           }
 
           if (schemasMatch) {
-            shouldInclude = false;
-            // Track removed properties that were in the required array.
-            if (resultingSchema.required?.includes(key)) {
+            const isRequired = resultingSchema.required?.includes(key) ?? false;
+            if (isRequired) {
+              shouldInclude = false;
               removedRequiredProps.push(key);
             }
+            // Optional internal configuration: keep in the exposed schema for the model.
             break;
           }
         }
@@ -389,30 +396,28 @@ export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
     }
   }
 
-  // Filter array items
+  // Filter array items (tuple `items` is an array; check before isJSONSchemaObject, since arrays are objects in JS)
   if (resultingSchema.type === "array" && resultingSchema.items) {
-    if (isJSONSchemaObject(resultingSchema.items)) {
-      // Single schema for all items
-      resultingSchema.items = hideInternalConfiguration(resultingSchema.items);
-    } else if (Array.isArray(resultingSchema.items)) {
-      // Array of schemas for tuple validation
+    if (Array.isArray(resultingSchema.items)) {
       resultingSchema.items = resultingSchema.items.map((item) =>
         isJSONSchemaObject(item) ? hideInternalConfiguration(item) : item
       );
+    } else if (isJSONSchemaObject(resultingSchema.items)) {
+      resultingSchema.items = hideInternalConfiguration(resultingSchema.items);
     }
   }
 
-  // Note: we don't handle allOf, oneOf yet as we cannot disambiguate whether to inject the configuration
-  // since we entirely hide the configuration from the agent.
+  // Note: we don't handle allOf, oneOf yet as we cannot disambiguate whether to inject the configuration.
 
   return resultingSchema;
 }
 
 /**
  * Augments the inputs with configuration data from actionConfiguration.
- * For each missing property that has a mimeType matching a value in INTERNAL_MIME_TYPES.TOOL_INPUT,
- * it adds the corresponding data from actionConfiguration.
- * This function uses Ajv validation errors to identify missing properties.
+ * For each property whose schema has a mimeType matching a value in INTERNAL_MIME_TYPES.TOOL_INPUT,
+ * it sets the corresponding data from actionConfiguration, overwriting model-provided values when
+ * the server has a value to inject. When the server has nothing for that field (`undefined` from
+ * generation) but the model already set the path, the model value is kept.
  */
 export function augmentInputsWithConfiguration({
   owner,
@@ -432,17 +437,19 @@ export function augmentInputsWithConfiguration({
   iterateOverSchemaPropertiesRecursive(inputSchema, (fullPath, propSchema) => {
     for (const mimeType of Object.values(INTERNAL_MIME_TYPES.TOOL_INPUT)) {
       if (isSchemaConfigurable(propSchema, mimeType)) {
-        const valueAtPath = getValueAtPath(inputs, fullPath);
-        if (valueAtPath) {
-          return false;
-        }
-
         const value = generateConfiguredInput({
           owner,
           actionConfiguration,
           mimeType,
           keyPath: fullPath.join("."),
         });
+
+        if (value === undefined) {
+          const existing = getValueAtPath(inputs, fullPath);
+          if (existing !== undefined) {
+            return false;
+          }
+        }
 
         // Ensure intermediate path exists
         ensurePathExists(inputs, fullPath);

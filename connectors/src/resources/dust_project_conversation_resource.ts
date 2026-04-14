@@ -36,12 +36,14 @@ export class DustProjectConversationResource extends BaseResource<DustProjectCon
     conversationId,
     projectId,
     sourceUpdatedAt,
+    documentPartCount,
     transaction,
   }: {
     connectorId: ModelId;
     conversationId: string;
     projectId: string;
     sourceUpdatedAt: Date;
+    documentPartCount: number;
     transaction?: Transaction;
   }): Promise<DustProjectConversationResource> {
     const model = await DustProjectConversationModel.create(
@@ -50,6 +52,7 @@ export class DustProjectConversationResource extends BaseResource<DustProjectCon
         conversationId,
         projectId,
         sourceUpdatedAt,
+        documentPartCount,
       },
       { transaction }
     );
@@ -189,6 +192,7 @@ export class DustProjectConversationResource extends BaseResource<DustProjectCon
       projectId: this.projectId,
       lastSyncedAt: this.lastSyncedAt,
       sourceUpdatedAt: this.sourceUpdatedAt,
+      documentPartCount: this.documentPartCount,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

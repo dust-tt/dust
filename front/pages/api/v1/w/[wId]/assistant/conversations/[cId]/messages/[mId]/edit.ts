@@ -141,7 +141,7 @@ async function handler(
     });
   }
 
-  const branchId = messageRes.value.branchSId ?? null;
+  const branchId = messageRes.value.getBranchId() ?? null;
 
   const conversationRes = await getConversation(
     auth,

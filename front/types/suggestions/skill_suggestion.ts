@@ -31,70 +31,73 @@ export function isSkillSuggestionSource(
   );
 }
 
-export const SKILL_SUGGESTION_KINDS = [
-  "create",
-  "edit_instructions",
-  "tools",
-] as const;
+export const SKILL_SUGGESTION_KINDS = ["edit"] as const;
 
 export type SkillSuggestionKind = (typeof SKILL_SUGGESTION_KINDS)[number];
 
-export const SkillCreateSuggestionSchema = z.object({}).strict();
-
-export type SkillCreateSuggestionType = z.infer<
-  typeof SkillCreateSuggestionSchema
->;
-
-export function isSkillCreateSuggestion(
-  data: unknown
-): data is SkillCreateSuggestionType {
-  return SkillCreateSuggestionSchema.safeParse(data).success;
-}
-
-export const SkillEditInstructionsSuggestionSchema = z.object({
-  instructions: z
+export const SkillInstructionEditItemSchema = z.object({
+  old_string: z
     .string()
-    .describe("Full replacement text for the skill instructions."),
+    .min(1)
+    .describe("Exact text to find in the current skill instructions."),
+  new_string: z
+    .string()
+    .describe("Replacement text. Empty string deletes the matched span."),
+  expected_occurrences: z
+    .number()
+    .int()
+    .min(1)
+    .default(1)
+    .describe(
+      "How many times old_string is expected to appear. Validated before applying."
+    ),
 });
 
-export type SkillEditInstructionsSuggestionType = z.infer<
-  typeof SkillEditInstructionsSuggestionSchema
+export type SkillInstructionEditItemType = z.infer<
+  typeof SkillInstructionEditItemSchema
 >;
 
-export function isSkillEditInstructionsSuggestion(
-  data: unknown
-): data is SkillEditInstructionsSuggestionType {
-  return SkillEditInstructionsSuggestionSchema.safeParse(data).success;
-}
-
-export const SkillToolsSuggestionSchema = z.object({
+export const SkillToolEditItemSchema = z.object({
   action: z.enum(["add", "remove"]),
   toolId: z.string(),
 });
 
-export type SkillToolsSuggestionType = z.infer<
-  typeof SkillToolsSuggestionSchema
->;
+export type SkillToolEditItemType = z.infer<typeof SkillToolEditItemSchema>;
 
-export type SkillSuggestionPayload =
-  | SkillCreateSuggestionType
-  | SkillEditInstructionsSuggestionType
-  | SkillToolsSuggestionType;
+export const SkillEditSuggestionSchema = z
+  .object({
+    instructionEdits: z
+      .array(SkillInstructionEditItemSchema)
+      .optional()
+      .describe(
+        "Sequential search-and-replace edits to the skill instructions."
+      ),
+    toolEdits: z
+      .array(SkillToolEditItemSchema)
+      .optional()
+      .describe("Tools to add or remove from the skill."),
+  })
+  .refine(
+    (d) =>
+      (d.instructionEdits && d.instructionEdits.length > 0) ||
+      (d.toolEdits && d.toolEdits.length > 0),
+    "At least one of instructionEdits or toolEdits must be provided."
+  );
 
-export const SkillSuggestionDataSchema = z.discriminatedUnion("kind", [
-  z.object({
-    kind: z.literal("create"),
-    suggestion: SkillCreateSuggestionSchema,
-  }),
-  z.object({
-    kind: z.literal("edit_instructions"),
-    suggestion: SkillEditInstructionsSuggestionSchema,
-  }),
-  z.object({
-    kind: z.literal("tools"),
-    suggestion: SkillToolsSuggestionSchema,
-  }),
-]);
+export type SkillEditSuggestionType = z.infer<typeof SkillEditSuggestionSchema>;
+
+export function isSkillEditSuggestion(
+  data: unknown
+): data is SkillEditSuggestionType {
+  return SkillEditSuggestionSchema.safeParse(data).success;
+}
+
+export type SkillSuggestionPayload = SkillEditSuggestionType;
+
+export const SkillSuggestionDataSchema = z.object({
+  kind: z.literal("edit"),
+  suggestion: SkillEditSuggestionSchema,
+});
 
 export type SkillSuggestionData = z.infer<typeof SkillSuggestionDataSchema>;
 

@@ -1,12 +1,77 @@
 import {
+  ceilToHourISO,
   createMetronomeContract,
   createMetronomeCustomer,
   findMetronomeCustomerByAlias,
+  scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
-import { provisionSeatsForContract } from "@app/lib/metronome/seats";
+import { syncMauCount } from "@app/lib/metronome/mau_sync";
+import { syncSeatCount } from "@app/lib/metronome/seats";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
+
+/**
+ * Switch a Metronome contract to a different package (end old + create new).
+ * Customer must already exist.
+ */
+export async function switchMetronomeContractPackage({
+  metronomeCustomerId,
+  oldContractId,
+  workspace,
+  packageAlias,
+}: {
+  metronomeCustomerId: string;
+  oldContractId: string;
+  workspace: LightWorkspaceType;
+  packageAlias: string;
+}): Promise<Result<{ metronomeContractId: string }, Error>> {
+  // Pre-round to the next hour boundary so both functions (which apply ceil
+  // and floor respectively) resolve to the same timestamp, ensuring the new
+  // contract starts exactly when the old one ends.
+  const switchAt = new Date(ceilToHourISO(new Date()));
+
+  const endResult = await scheduleMetronomeContractEnd({
+    metronomeCustomerId,
+    contractId: oldContractId,
+    endingBefore: switchAt,
+  });
+  if (endResult.isErr()) {
+    return new Err(endResult.error);
+  }
+
+  const contractResult = await createMetronomeContract({
+    metronomeCustomerId,
+    packageAlias,
+    startingAt: switchAt,
+  });
+  if (contractResult.isErr()) {
+    return new Err(contractResult.error);
+  }
+
+  const { contractId: metronomeContractId, startingAt } = contractResult.value;
+
+  const syncFns = [
+    () =>
+      syncSeatCount({
+        metronomeCustomerId,
+        contractId: metronomeContractId,
+        workspace,
+        startingAt,
+      }),
+    () =>
+      syncMauCount({
+        metronomeCustomerId,
+        contractId: metronomeContractId,
+        workspace,
+        startingAt,
+      }),
+  ];
+  await concurrentExecutor(syncFns, (fn) => fn(), { concurrency: 2 });
+
+  return new Ok({ metronomeContractId });
+}
 
 /**
  * Ensure a Metronome customer and contract exist for a workspace.
@@ -57,13 +122,24 @@ export async function provisionMetronomeCustomerAndContract({
 
   const { contractId: metronomeContractId, startingAt } = contractResult.value;
 
-  // Provision all existing workspace members as seats on the new contract.
-  await provisionSeatsForContract({
-    metronomeCustomerId,
-    contractId: metronomeContractId,
-    workspace,
-    startingAt,
-  });
+  // Provision seats and MAU on the new contract.
+  const syncFns = [
+    () =>
+      syncSeatCount({
+        metronomeCustomerId,
+        contractId: metronomeContractId,
+        workspace,
+        startingAt,
+      }),
+    () =>
+      syncMauCount({
+        metronomeCustomerId,
+        contractId: metronomeContractId,
+        workspace,
+        startingAt,
+      }),
+  ];
+  await concurrentExecutor(syncFns, (fn) => fn(), { concurrency: 2 });
 
   return new Ok({
     metronomeCustomerId,

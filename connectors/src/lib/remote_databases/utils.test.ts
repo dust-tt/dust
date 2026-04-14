@@ -38,6 +38,13 @@ describe("Remote Database Utils", () => {
         "my__DUST_DOT__database.public__DUST_DOT__schema.user__DUST_DOT__table"
       );
     });
+
+    it("should handle multiple dots in a single name", () => {
+      const result = buildInternalId({
+        databaseName: "foo.bar.baz",
+      });
+      expect(result).toBe("foo__DUST_DOT__bar__DUST_DOT__baz");
+    });
   });
 
   describe("parseInternalId", () => {
@@ -92,6 +99,17 @@ describe("Remote Database Utils", () => {
         databaseName: "my.database",
         schemaName: "public.schema",
         tableName: "user.table",
+      };
+      const built = buildInternalId(original);
+      const parsed = parseInternalId(built);
+      expect(parsed).toEqual(original);
+    });
+
+    it("should correctly roundtrip internal IDs with multiple dots in names", () => {
+      const original = {
+        databaseName: "foo.bar.baz",
+        schemaName: "a.b.c",
+        tableName: "x.y",
       };
       const built = buildInternalId(original);
       const parsed = parseInternalId(built);

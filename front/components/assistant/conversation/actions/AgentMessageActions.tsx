@@ -1,20 +1,13 @@
-import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { MCPImageGenerationGroupedDetails } from "@app/components/actions/mcp/details/MCPImageGenerationActionDetails";
+import { PendingToolCallDetails } from "@app/components/assistant/conversation/actions/PendingToolCallDetails";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type {
   ActionProgressState,
   AgentStateClassification,
   PendingToolCall,
 } from "@app/components/assistant/conversation/types";
-import { InternalActionIcons } from "@app/components/resources/resources_icons";
-import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
-import {
-  GENERATE_IMAGE_TOOL_NAME,
-  getInternalMCPServerIconByName,
-  isInternalMCPServerName,
-} from "@app/lib/actions/mcp_internal_actions/constants";
-import { getToolCallDisplayLabel } from "@app/lib/actions/tool_display_labels";
+import { GENERATE_IMAGE_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
@@ -28,7 +21,6 @@ import {
   cn,
   Markdown,
   Spinner,
-  ToolsIcon,
 } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
 
@@ -38,32 +30,6 @@ interface AgentMessageActionsProps {
   actionProgress: ActionProgressState;
   pendingToolCalls: PendingToolCall[];
   owner: LightWorkspaceType;
-}
-
-function getPendingToolCallVisual(functionCallName: string) {
-  const separatorIndex = functionCallName.lastIndexOf(TOOL_NAME_SEPARATOR);
-
-  if (separatorIndex === -1) {
-    return ToolsIcon;
-  }
-
-  const serverName = functionCallName.slice(0, separatorIndex);
-  const candidates = [serverName];
-  const nestedSeparatorIndex = serverName.lastIndexOf(TOOL_NAME_SEPARATOR);
-
-  if (nestedSeparatorIndex !== -1) {
-    candidates.push(
-      serverName.slice(nestedSeparatorIndex + TOOL_NAME_SEPARATOR.length)
-    );
-  }
-
-  for (const candidate of candidates) {
-    if (isInternalMCPServerName(candidate)) {
-      return InternalActionIcons[getInternalMCPServerIconByName(candidate)];
-    }
-  }
-
-  return ToolsIcon;
 }
 
 export function AgentMessageActions({
@@ -156,13 +122,10 @@ export function AgentMessageActions({
         </Card>
       ) : latestPendingToolCall ? (
         <Card variant="secondary" className="max-w-xl">
-          <ActionDetailsWrapper
+          <PendingToolCallDetails
             displayContext="conversation"
-            actionName={getToolCallDisplayLabel(
-              latestPendingToolCall.toolName,
-              "running"
-            )}
-            visual={getPendingToolCallVisual(latestPendingToolCall.toolName)}
+            functionCallName={latestPendingToolCall.toolName}
+            labelContext="running"
           />
         </Card>
       ) : (

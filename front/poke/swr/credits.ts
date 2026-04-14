@@ -6,6 +6,7 @@ import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
+import type { WindowSize } from "@app/lib/api/analytics/time_utils";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListCreditsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
@@ -104,7 +105,7 @@ export function usePokeMetronomeUsage({
   groupByCount?: number;
   selectedPeriod?: string;
   billingCycleStartDay: number;
-  windowSize?: "HOUR" | "DAY";
+  windowSize?: WindowSize;
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetMetronomeUsageResponse> = fetcher;

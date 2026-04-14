@@ -1,4 +1,5 @@
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import logger from "@app/logger/logger";
 import { isRecord } from "@app/types/shared/utils/general";
 import Ajv from "ajv";
@@ -374,4 +375,212 @@ export function iterateOverSchemaPropertiesRecursive(
       }
     }
   }
+}
+
+const DUST_TOOL_INPUT_MIME_PREFIX = "application/vnd.dust.tool-input.";
+
+/** Hot path: most property schemas are not Dust tool-input mime markers. */
+function mimeSchemaIndicatesDustToolInput(mimeSchema: unknown): boolean {
+  if (!mimeSchema || typeof mimeSchema !== "object") {
+    return false;
+  }
+  const m = mimeSchema as Record<string, unknown>;
+  const c = m.const;
+  if (typeof c === "string" && c.startsWith(DUST_TOOL_INPUT_MIME_PREFIX)) {
+    return true;
+  }
+  const en = m.enum;
+  if (!Array.isArray(en)) {
+    return false;
+  }
+  for (let i = 0; i < en.length; i++) {
+    const v = en[i];
+    if (typeof v === "string" && v.startsWith(DUST_TOOL_INPUT_MIME_PREFIX)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * True when this schema describes an object that carries a Dust tool-input mime marker
+ * (uri + mimeType pattern used for configurable tool inputs).
+ */
+function isDustToolInputObjectSchema(schema: unknown): boolean {
+  if (!schema || typeof schema !== "object") {
+    return false;
+  }
+  const s = schema as Record<string, unknown>;
+  const props = s.properties;
+  if (!props || typeof props !== "object") {
+    return false;
+  }
+  if (
+    !mimeSchemaIndicatesDustToolInput(
+      (props as Record<string, unknown>).mimeType
+    )
+  ) {
+    return false;
+  }
+  const t = s.type;
+  if (t === undefined || t === "object") {
+    return true;
+  }
+  return Array.isArray(t) && t.includes("object");
+}
+
+/**
+ * True if somewhere under this schema a Dust tool-input object is reachable via a path
+ * where every object property on the path is listed in that object's `required` array
+ * (starting from the tool root with the same rule).
+ *
+ * Performance: optional branches (`pathFromRootAllRequired === false`) return immediately — no
+ * nested walk, since descendants cannot sit on an all-required path from the tool root.
+ */
+export function jsonSchemaHasRequiredDustToolInput(
+  schema: unknown,
+  pathFromRootAllRequired: boolean
+): boolean {
+  if (schema === null || schema === undefined) {
+    return false;
+  }
+
+  if (Array.isArray(schema)) {
+    const subs = schema;
+    for (let i = 0; i < subs.length; i++) {
+      if (
+        !jsonSchemaHasRequiredDustToolInput(subs[i], pathFromRootAllRequired)
+      ) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  if (typeof schema !== "object") {
+    return false;
+  }
+
+  // Optional JSON subtree: cannot contain a mandatory Dust input from the tool root.
+  if (!pathFromRootAllRequired) {
+    return false;
+  }
+
+  const s = schema as Record<string, unknown> & JSONSchema;
+
+  if (isDustToolInputObjectSchema(s)) {
+    return true;
+  }
+
+  const allOf = s.allOf;
+  if (Array.isArray(allOf)) {
+    for (let i = 0; i < allOf.length; i++) {
+      if (jsonSchemaHasRequiredDustToolInput(allOf[i], true)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  const oneOf = s.oneOf;
+  if (Array.isArray(oneOf)) {
+    for (let i = 0; i < oneOf.length; i++) {
+      if (!jsonSchemaHasRequiredDustToolInput(oneOf[i], true)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  const anyOf = s.anyOf;
+  if (Array.isArray(anyOf)) {
+    for (let i = 0; i < anyOf.length; i++) {
+      if (!jsonSchemaHasRequiredDustToolInput(anyOf[i], true)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  const rawProps = s.properties;
+  if (rawProps && typeof rawProps === "object") {
+    const props = rawProps as Record<string, unknown>;
+    let requiredNames: Set<string> | undefined;
+    const req = s.required;
+    if (Array.isArray(req)) {
+      requiredNames = new Set<string>();
+      for (let i = 0; i < req.length; i++) {
+        const name = req[i];
+        if (typeof name === "string") {
+          requiredNames.add(name);
+        }
+      }
+    }
+
+    for (const propName in props) {
+      if (!Object.prototype.hasOwnProperty.call(props, propName)) {
+        continue;
+      }
+      const propSchema = props[propName];
+      if (!propSchema || typeof propSchema !== "object") {
+        continue;
+      }
+      if (!(requiredNames?.has(propName) === true)) {
+        continue;
+      }
+
+      const ps = propSchema as Record<string, unknown>;
+      if (ps.type === "array" && ps.items !== undefined) {
+        const items = ps.items;
+        if (Array.isArray(items)) {
+          for (let j = 0; j < items.length; j++) {
+            if (jsonSchemaHasRequiredDustToolInput(items[j], true)) {
+              return true;
+            }
+          }
+        } else if (jsonSchemaHasRequiredDustToolInput(items, true)) {
+          return true;
+        }
+        continue;
+      }
+
+      if (jsonSchemaHasRequiredDustToolInput(propSchema, true)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  if (s.type === "array" && s.items !== undefined) {
+    const items = s.items;
+    if (Array.isArray(items)) {
+      for (let i = 0; i < items.length; i++) {
+        if (jsonSchemaHasRequiredDustToolInput(items[i], true)) {
+          return true;
+        }
+      }
+      return false;
+    }
+    return jsonSchemaHasRequiredDustToolInput(items, true);
+  }
+
+  return false;
+}
+
+/**
+ * True when no tool input schema forces a Dust configurable input on an all-required path
+ * from the root (see {@link jsonSchemaHasRequiredDustToolInput}).
+ */
+export function hasNoRequiredProperties(view: MCPServerViewType): boolean {
+  const tools = view.server.tools;
+  for (let t = 0; t < tools.length; t++) {
+    const sch = tools[t].inputSchema;
+    if (sch !== undefined && sch !== null) {
+      if (jsonSchemaHasRequiredDustToolInput(sch, true)) {
+        return false;
+      }
+    }
+  }
+  return true;
 }

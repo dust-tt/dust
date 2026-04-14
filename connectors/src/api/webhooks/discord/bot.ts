@@ -4,7 +4,6 @@ import { apiConfig } from "@connectors/lib/api/config";
 import type { MessageFootnotes } from "@connectors/lib/bot/citations";
 import { annotateCitations } from "@connectors/lib/bot/citations";
 import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
-import { getActionName } from "@connectors/lib/tools_utils";
 import type { Logger } from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { normalizeError } from "@connectors/types";
@@ -259,10 +258,9 @@ async function streamAgentResponseToDiscord(
       }
 
       case "tool_params": {
-        const actionName = getActionName(event.action);
         await updateDiscordMessage(
           interactionToken,
-          `🔧 **${actionName}...**`,
+          `🔧 **${event.action.displayLabels?.running ?? "Running a tool"}...**`,
           logger
         );
         break;

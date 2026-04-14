@@ -8,7 +8,6 @@ import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
 import type { MentionMatch } from "@connectors/lib/bot/mentions";
 import { processMessageForMention } from "@connectors/lib/bot/mentions";
 import { MicrosoftBotMessageModel } from "@connectors/lib/models/microsoft_bot";
-import { getActionName } from "@connectors/lib/tools_utils";
 import type { Logger } from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { getHeaderFromUserEmail } from "@connectors/types";
@@ -21,12 +20,7 @@ import type {
   Result,
   UserMessageType,
 } from "@dust-tt/client";
-import {
-  DustAPI,
-  Err,
-  isMCPServerPersonalAuthRequiredError,
-  Ok,
-} from "@dust-tt/client";
+import { DustAPI, Err, Ok } from "@dust-tt/client";
 import type { ChatMessage } from "@microsoft/microsoft-graph-types";
 import type { Activity, TurnContext } from "botbuilder";
 import removeMarkdown from "remove-markdown";
@@ -415,9 +409,8 @@ async function streamAgentResponse({
         break;
       }
       case "tool_params": {
-        const action = getActionName(event.action);
         const streamingCard = createStreamingAdaptiveCard({
-          response: action,
+          response: event.action.displayLabels?.running ?? "Running a tool",
           agentName: mention.agentName,
           conversationUrl: null,
           workspaceId: connector.workspaceId,
@@ -435,21 +428,21 @@ async function streamAgentResponse({
       case "agent_action_success":
         actions.push(event.action);
         break;
+      case "tool_personal_auth_required": {
+        const conversationUrl = makeConversationUrl(
+          connector.workspaceId,
+          conversation.sId
+        );
+        await updateActivity(context, {
+          id: agentActivityId,
+          ...createPersonalAuthenticationAdaptiveCard({
+            conversationUrl,
+            workspaceId: connector.workspaceId,
+          }),
+        });
+        break;
+      }
       case "tool_error": {
-        if (isMCPServerPersonalAuthRequiredError(event.error)) {
-          const conversationUrl = makeConversationUrl(
-            connector.workspaceId,
-            conversation.sId
-          );
-          await updateActivity(context, {
-            id: agentActivityId,
-            ...createPersonalAuthenticationAdaptiveCard({
-              conversationUrl,
-              workspaceId: connector.workspaceId,
-            }),
-          });
-          break;
-        }
         return new Err(
           new Error(
             `Tool message error: code: ${event.error.code} message: ${event.error.message}`

@@ -96,7 +96,7 @@
       }
     },
     {
-      "includes": ["front-spa/**", "front/**"],
+      "includes": ["front-spa/**", "front/**", "sparkle/**"],
       "linter": {
         "rules": {
           "correctness": {

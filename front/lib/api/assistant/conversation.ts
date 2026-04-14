@@ -12,6 +12,7 @@ import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/cont
 import { createUserMentions } from "@app/lib/api/assistant/conversation/mentions";
 import {
   createAgentMessages,
+  createCompactionMessage,
   createUserMessage,
 } from "@app/lib/api/assistant/conversation/messages";
 import {
@@ -49,6 +50,7 @@ import {
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
+import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects/context";
 import { isModelAvailable, isProviderWhitelisted } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -60,6 +62,7 @@ import {
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageModel,
+  CompactionMessageModel,
   ConversationModel,
   MentionModel,
   MessageModel,
@@ -73,7 +76,6 @@ import { ConversationBranchResource } from "@app/lib/resources/conversation_bran
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -89,7 +91,10 @@ import {
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger, { auditLog } from "@app/logger/logger";
-import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import {
+  launchAgentLoopWorkflow,
+  launchCompactionWorkflow,
+} from "@app/temporal/agent_loop/client";
 import {
   launchOrSignalProjectTodoWorkflow,
   signalProjectTodoComplete,
@@ -109,6 +114,7 @@ import type {
   AgentMessageType,
   AgentMessageTypeWithoutMentions,
   CitationType,
+  CompactionMessageType,
   ConversationMetadata,
   ConversationType,
   ConversationVisibility,
@@ -122,6 +128,7 @@ import type {
 import {
   ConversationError,
   isAgentMessageType,
+  isCompactionMessageType,
   isProjectConversation,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
@@ -131,6 +138,7 @@ import {
   isUserMention,
   toMentionType,
 } from "@app/types/assistant/mentions";
+import type { SupportedModel } from "@app/types/assistant/models/types";
 import type {
   ContentFragmentContextType,
   ContentFragmentType,
@@ -328,10 +336,10 @@ export async function getConversationMessageType(
     return null;
   }
 
-  if (message.branchSId) {
+  if (message.getBranchId()) {
     const branch = await ConversationBranchResource.fetchById(
       auth,
-      message.branchSId
+      message.getBranchId()!
     );
     if (!branch || !branch.canRead(auth)) {
       return null;
@@ -604,6 +612,28 @@ export async function postUserMessage(
     return limitResult;
   }
 
+  // Block posting while compaction is in progress, for now. It's not too hard to add support for
+  // pending messages on top of compaction. We start without support for it to simplify. Note that
+  // we don't currently re-check the existence of a compaction message inside the critical section
+  // below which means an agent loop could be triggered whle a compaction is running. This is not
+  // that problematic if it happens (agent message after the compaction message).
+  const runningCompactionMessage = conversation.content
+    .flat()
+    .find(
+      (m): m is CompactionMessageType =>
+        isCompactionMessageType(m) && m.status === "created"
+    );
+  if (runningCompactionMessage) {
+    return new Err({
+      status_code: 409,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "User messages cannot be posted while conversation is being compacted.",
+      },
+    });
+  }
+
   const agentMentions = mentions.filter(isAgentMention);
   let runningAgentMessage = conversation.content
     .flat()
@@ -701,7 +731,7 @@ export async function postUserMessage(
       return new Err({
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "agent_inaccessible",
           message:
             "This agent is either disabled or you don't have access to it.",
         },
@@ -1148,7 +1178,7 @@ export async function editUserMessage(
       return new Err({
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "agent_inaccessible",
           message:
             "This agent is either disabled or you don't have access to it.",
         },
@@ -1917,6 +1947,71 @@ export async function postNewContentFragment(
     }
   }
 
+  // If the user attaches a project-context file to a project conversation, reuse the existing
+  // project content fragment and only create the message row at send time.
+  if (isProjectConversation(conversation) && "fileId" in cf) {
+    const project = await SpaceResource.fetchById(auth, conversation.spaceId);
+    if (project?.isProject()) {
+      const r = await fetchLatestProjectContextFileContentFragment(
+        auth,
+        project,
+        cf.fileId
+      );
+      if (r) {
+        const alreadyPresent = conversation.content.some((versions) => {
+          const latest = versions[versions.length - 1];
+          return (
+            isContentFragmentType(latest) &&
+            latest.contentFragmentVersion === "latest" &&
+            latest.contentFragmentId === r.fragment.sId
+          );
+        });
+
+        if (!alreadyPresent) {
+          await withTransaction(async (t) => {
+            await getConversationRankVersionLock(auth, conversation, t);
+
+            const nextMessageRank =
+              ((await MessageModel.max<number | null, MessageModel>("rank", {
+                where: {
+                  workspaceId: owner.id,
+                  conversationId: conversation.id,
+                  branchId: conversation.branchId
+                    ? getResourceIdFromSId(conversation.branchId)
+                    : null,
+                },
+                transaction: t,
+              })) ?? -1) + 1;
+
+            await MessageModel.create(
+              {
+                sId: generateRandomModelSId(),
+                rank: nextMessageRank,
+                conversationId: conversation.id,
+                branchId: conversation.branchId
+                  ? getResourceIdFromSId(conversation.branchId)
+                  : null,
+                contentFragmentId: r.fragment.id,
+                workspaceId: owner.id,
+              },
+              { transaction: t }
+            );
+
+            await ConversationResource.markAsUpdated(auth, { conversation, t });
+          });
+        }
+
+        const rendered =
+          await ContentFragmentResource.renderToContentFragmentType(
+            auth,
+            r.fragment,
+            { kind: "project_context", file: r.file }
+          );
+        return new Ok(rendered);
+      }
+    }
+  }
+
   const upsertAttachmentRes = await maybeUpsertFileAttachment(auth, {
     contentFragments: [cf],
     conversation,
@@ -2505,12 +2600,196 @@ export async function isConversationEventAllowedForAuth(
       }
       return true;
     case "agent_message_done":
+    case "compaction_message_new":
+    case "compaction_message_done":
     case "conversation_title":
     case "user_message_promoted":
       return true;
     default:
       assertNever(type);
   }
+}
+
+/**
+ * Create a CompactionMessage in the conversation and launch the compaction workflow.
+ *
+ * The CompactionMessage is created with status "created" inside the conversation advisory lock,
+ * ensuring it's serialized with other conversation operations. The workflow is launched
+ * fire-and-forget after the transaction commits.
+ */
+export async function compactConversation(
+  auth: Authenticator,
+  {
+    conversation,
+    model,
+  }: {
+    conversation: ConversationType;
+    model: SupportedModel;
+  }
+): Promise<
+  Result<{ compactionMessage: CompactionMessageType }, APIErrorWithStatusCode>
+> {
+  const owner = auth.getNonNullableWorkspace();
+
+  // Block compaction while an agent message is running or a compaction is running.
+  const runningAgentMessage = conversation.content
+    .flat()
+    .find(
+      (m): m is AgentMessageType =>
+        isAgentMessageType(m) && m.status === "created"
+    );
+  const runningCompaction = conversation.content
+    .flat()
+    .find(
+      (m): m is CompactionMessageType =>
+        isCompactionMessageType(m) && m.status === "created"
+    );
+  if (runningAgentMessage || runningCompaction) {
+    return new Err({
+      status_code: 409,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "Cannot compact while another compaction or an agent message is running.",
+      },
+    });
+  }
+
+  const { compactionMessage } = await withTransaction(async (t) => {
+    await getConversationRankVersionLock(auth, conversation, t);
+
+    // Re-check the existence of a compaction message or running agent message inside the critical
+    // section of the advisory lock to avoid stacking compaction with other compaction or running
+    // agent loop.
+    const [runningCompactionMessage, runningAgentMessage] = await Promise.all([
+      MessageModel.findOne({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: owner.id,
+        },
+        include: [
+          {
+            model: CompactionMessageModel,
+            as: "compactionMessage",
+            required: true,
+            where: { status: "created" },
+          },
+        ],
+        transaction: t,
+      }),
+      MessageModel.findOne({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: owner.id,
+        },
+        include: [
+          {
+            model: AgentMessageModel,
+            as: "agentMessage",
+            required: true,
+            where: { status: "created" },
+          },
+        ],
+        transaction: t,
+      }),
+    ]);
+
+    if (runningCompactionMessage || runningAgentMessage) {
+      return { compactionMessage: null };
+    }
+
+    const nextMessageRank =
+      ((await MessageModel.max<number | null, MessageModel>("rank", {
+        where: {
+          workspaceId: owner.id,
+          conversationId: conversation.id,
+          branchId: conversation.branchId
+            ? getResourceIdFromSId(conversation.branchId)
+            : null,
+        },
+        transaction: t,
+      })) ?? -1) + 1;
+
+    const compactionMessage = await createCompactionMessage(auth, {
+      conversation,
+      rank: nextMessageRank,
+      transaction: t,
+    });
+
+    return { compactionMessage };
+  });
+
+  if (!compactionMessage) {
+    return new Err({
+      status_code: 409,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "Cannot compact while another compaction or an agent message is running.",
+      },
+    });
+  }
+
+  await publishConversationEvent(
+    {
+      type: "compaction_message_new",
+      created: Date.now(),
+      messageId: compactionMessage.sId,
+      message: compactionMessage,
+    },
+    { conversationId: conversation.sId }
+  );
+
+  void launchCompactionWorkflow({
+    auth,
+    conversationId: conversation.sId,
+    compactionMessageId: compactionMessage.sId,
+    compactionMessageVersion: compactionMessage.version,
+    model,
+  });
+
+  return new Ok({ compactionMessage });
+}
+
+export async function updateCompactionMessageWithContentAndFinalStatus(
+  auth: Authenticator,
+  {
+    conversation,
+    compactionMessage,
+    status,
+    content,
+  }: {
+    conversation: ConversationWithoutContentType;
+    compactionMessage: CompactionMessageType;
+    status: "succeeded" | "failed";
+    content: string | null;
+  }
+): Promise<{
+  completedTs: number;
+  status: "succeeded" | "failed";
+}> {
+  const completedAt = new Date();
+  const owner = auth.getNonNullableWorkspace();
+
+  await withTransaction(async (t) => {
+    await getConversationRankVersionLock(auth, conversation, t);
+
+    await CompactionMessageModel.update(
+      { status, content },
+      {
+        where: {
+          id: compactionMessage.compactionMessageId,
+          workspaceId: owner.id,
+        },
+        transaction: t,
+      }
+    );
+  });
+
+  return {
+    completedTs: completedAt.getTime(),
+    status,
+  };
 }
 
 /**

@@ -53,6 +53,7 @@ import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/pr
 import { PRODUCTBOARD_SERVER } from "@app/lib/api/actions/servers/productboard/metadata";
 import { PROJECT_CONVERSATION_SERVER } from "@app/lib/api/actions/servers/project_conversation/metadata";
 import { PROJECT_MANAGER_SERVER } from "@app/lib/api/actions/servers/project_manager/metadata";
+import { PROJECT_TODOS_SERVER } from "@app/lib/api/actions/servers/project_todos/metadata";
 import {
   QUERY_TABLES_V2_SERVER,
   TABLE_QUERY_V2_SERVER_NAME,
@@ -203,6 +204,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "skill_management",
   "schedules_management",
   "project_manager",
+  "project_todos",
   "poke",
   "project_conversation",
   "sandbox",
@@ -302,7 +304,6 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    availableInDirectExecution: false,
     metadata: INCLUDE_DATA_SERVER,
   },
   run_dust_app: {
@@ -859,7 +860,6 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    availableInDirectExecution: false,
     metadata: SEARCH_SERVER,
   },
   run_agent: {
@@ -882,7 +882,6 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    availableInDirectExecution: false,
     metadata: QUERY_TABLES_V2_SERVER,
   },
   data_sources_file_system: {
@@ -920,7 +919,6 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    availableInDirectExecution: false,
     metadata: DATA_WAREHOUSES_SERVER,
   },
   toolsets: {
@@ -991,7 +989,6 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    availableInDirectExecution: false,
     metadata: SKILL_MANAGEMENT_SERVER,
   },
   schedules_management: {
@@ -1003,7 +1000,6 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    availableInDirectExecution: false,
     metadata: SCHEDULES_MANAGEMENT_SERVER,
   },
   project_manager: {
@@ -1018,6 +1014,19 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: PROJECT_MANAGER_SERVER,
+  },
+  project_todos: {
+    id: 1029,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("projects");
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: PROJECT_TODOS_SERVER,
   },
   agent_sidekick_context: {
     id: 1022,
@@ -1053,17 +1062,19 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: 120000, // 2 minutes for command execution
-    availableInDirectExecution: false,
   },
   project_conversation: {
     id: 1025,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("projects");
     },
-    tools_arguments_requiring_approval: undefined,
+    tools_arguments_requiring_approval: {
+      create_conversation: ["dustProject"],
+      add_message_to_conversation: ["dustProject"],
+    },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: PROJECT_CONVERSATION_SERVER,
@@ -1129,12 +1140,11 @@ type InternalMCPServerEntryCommon = {
   requiresBearerToken?: boolean;
   // When false, the server is hidden from direct execution contexts (e.g. sandbox CLI).
   // Defaults to true.
-  availableInDirectExecution?: boolean;
 };
 
 type InternalMCPServerEntryWithMetadata<K extends InternalMCPServerNameType> =
   InternalMCPServerEntryCommon & {
-    metadata: ServerMetadata;
+    metadata: ServerMetadata<K>;
     serverInfo?: InternalMCPServerDefinitionType & { name: K };
     tools_stakes?: Record<string, MCPToolStakeLevelType>;
   };
@@ -1156,6 +1166,24 @@ type InternalMCPServerEntry =
 
 export type InternalMCPServerNameType =
   (typeof AVAILABLE_INTERNAL_MCP_SERVER_NAMES)[number];
+
+type StaticInternalMCPToolNameType<N extends InternalMCPServerNameType> =
+  (typeof INTERNAL_MCP_SERVERS)[N]["metadata"]["tools"][number]["name"];
+
+type DynamicInternalMCPToolNameOverrides = {
+  data_sources_file_system: "find_tags";
+  extract_data: "find_tags";
+  include_data: "find_tags";
+  missing_action_catcher: string;
+  run_agent: string;
+  run_dust_app: string;
+  search: "find_tags";
+};
+
+export type InternalMCPToolNameType<N extends InternalMCPServerNameType> =
+  N extends keyof DynamicInternalMCPToolNameOverrides
+    ? StaticInternalMCPToolNameType<N> | DynamicInternalMCPToolNameOverrides[N]
+    : StaticInternalMCPToolNameType<N>;
 
 type AutoServerKeys<T> = {
   [K in keyof T]: T[K] extends { availability: "auto" | "auto_hidden_builder" }
@@ -1287,25 +1315,25 @@ export function getInternalMCPServerToolStakes(
   return server.metadata.tools_stakes;
 }
 
-// TODO(2026-01-27 MCP): improve typing once all servers are migrated to the metadata pattern.
-// Goal is to tie the tool name to the server name.
-export function getInternalMCPServerToolDisplayLabels(
-  name: InternalMCPServerNameType
-): Record<string, ToolDisplayLabels> | null {
+export function getInternalMCPServerToolDisplayLabels<
+  N extends InternalMCPServerNameType,
+>(name: N): Record<string, ToolDisplayLabels> | null {
   const server = INTERNAL_MCP_SERVERS[name];
+  const displayLabelsByTool: Record<string, ToolDisplayLabels> = {};
+  let hasDisplayLabels = false;
 
-  const entries = server.metadata.tools
-    .filter(
-      (tool): tool is typeof tool & { displayLabels: ToolDisplayLabels } =>
-        tool.displayLabels !== undefined
-    )
-    .map((tool) => [tool.name, tool.displayLabels] as const);
+  for (const tool of server.metadata.tools) {
+    if (tool.displayLabels) {
+      displayLabelsByTool[tool.name] = tool.displayLabels;
+      hasDisplayLabels = true;
+    }
+  }
 
-  if (entries.length === 0) {
+  if (!hasDisplayLabels) {
     return null;
   }
 
-  return Object.fromEntries(entries);
+  return displayLabelsByTool;
 }
 
 export function getInternalMCPServerInfo(
@@ -1352,17 +1380,10 @@ export function matchesInternalMCPServerName(
   return false;
 }
 
-export function getInternalMCPServerMetadata(
-  name: InternalMCPServerNameType
-): ServerMetadata {
-  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+export function getInternalMCPServerMetadata<
+  N extends InternalMCPServerNameType,
+>(name: N): (typeof INTERNAL_MCP_SERVERS)[N]["metadata"] {
+  const server = INTERNAL_MCP_SERVERS[name];
 
   return server.metadata;
-}
-
-export function isInternalMCPServerAvailableInDirectExecution(
-  name: InternalMCPServerNameType
-): boolean {
-  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
-  return server.availableInDirectExecution !== false;
 }

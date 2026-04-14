@@ -2,6 +2,8 @@ import { z } from "zod";
 
 export const MCPInternalActionIconSchema = z.enum([
   "ActionBrainIcon",
+  "ActionChatBubbleBottomCenterTextIcon",
+  "ActionChatBubbleThoughtIcon",
   "ActionCloudArrowLeftRightIcon",
   "ActionDocumentTextIcon",
   "ActionEmotionLaughIcon",
@@ -92,6 +94,8 @@ export const MCPExternalActionIconSchema = z.enum([
   "ActionCameraIcon",
   "ActionCarIcon",
   "ActionCardIcon",
+  "ActionChatBubbleBottomCenterTextIcon",
+  "ActionChatBubbleThoughtIcon",
   "ActionCheckCircleIcon",
   "ActionClipboardIcon",
   "ActionCloudArrowDownIcon",

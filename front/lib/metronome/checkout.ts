@@ -3,6 +3,10 @@ import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
+import {
+  getBillingCurrencyForCountry,
+  resolvePackageAliasForCurrency,
+} from "@app/lib/plans/billing_currency";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -14,7 +18,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import type Stripe from "stripe";
 import { z } from "zod";
 
-const MetronomeSetupSessionSchema = z.object({
+const StripeSetupSessionSchema = z.object({
   id: z.string(),
   client_reference_id: z.string(),
   metadata: z.object({
@@ -23,6 +27,17 @@ const MetronomeSetupSessionSchema = z.object({
     metronomePackageAlias: z.string(),
   }),
   customer: z.string(),
+  customer_details: z
+    .object({
+      address: z
+        .object({
+          country: z.string().nullable().optional(),
+        })
+        .nullable()
+        .optional(),
+    })
+    .nullable()
+    .optional(),
 });
 
 export async function handleMetronomeSetupCheckout({
@@ -32,7 +47,7 @@ export async function handleMetronomeSetupCheckout({
   session: Stripe.Checkout.Session;
   now: Date;
 }): Promise<Result<void, DustError>> {
-  const parsed = MetronomeSetupSessionSchema.safeParse(session);
+  const parsed = StripeSetupSessionSchema.safeParse(session);
   if (!parsed.success) {
     return new Err(
       new DustError(
@@ -47,7 +62,19 @@ export async function handleMetronomeSetupCheckout({
     client_reference_id: workspaceId,
     metadata: { planCode, userId, metronomePackageAlias },
     customer: stripeCustomerId,
+    customer_details: customerDetails,
   } = parsed.data;
+
+  // Resolve the package alias based on the customer's billing country.
+  // Stripe populates customer_details.address.country from billing_address_collection.
+  const customerCountry = customerDetails?.address?.country;
+  const billingCurrency = customerCountry
+    ? getBillingCurrencyForCountry(customerCountry, true)
+    : "usd";
+  const resolvedPackageAlias = resolvePackageAliasForCurrency(
+    metronomePackageAlias,
+    billingCurrency
+  );
 
   const workspace = await WorkspaceResource.fetchById(workspaceId);
   if (!workspace) {
@@ -69,7 +96,7 @@ export async function handleMetronomeSetupCheckout({
   const provisionResult = await provisionMetronomeCustomerAndContract({
     workspace: renderLightWorkspaceType({ workspace }),
     stripeCustomerId,
-    packageAlias: metronomePackageAlias,
+    packageAlias: resolvedPackageAlias,
     uniquenessKey: sessionId,
   });
   if (provisionResult.isErr()) {

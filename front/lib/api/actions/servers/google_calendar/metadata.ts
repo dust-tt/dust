@@ -4,8 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const GOOGLE_CALENDAR_TOOL_NAME = "google_calendar" as const;
-
 export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
   list_calendars: {
     description:

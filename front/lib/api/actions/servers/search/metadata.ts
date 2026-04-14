@@ -1,7 +1,7 @@
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { SearchInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
+import { SearchWithDataSourcesInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
 import { FIND_TAGS_TOOL_NAME } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -20,7 +20,7 @@ export const SEARCH_TOOL_DESCRIPTION =
 export const SEARCH_TOOLS_METADATA = createToolsRecord({
   [SEARCH_TOOL_NAME]: {
     description: SEARCH_TOOL_DESCRIPTION,
-    schema: SearchInputSchema.shape,
+    schema: SearchWithDataSourcesInputSchema.shape,
     stake: "never_ask" as const,
     displayLabels: {
       running: "Searching data sources",

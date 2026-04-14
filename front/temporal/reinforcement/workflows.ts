@@ -22,11 +22,11 @@ export const interceptors: WorkflowInterceptorsFactory = () => ({
   internals: [new OpenTelemetryInternalsInterceptor()],
 });
 
-const { isSkillReinforcementAllowedActivity } = proxyActivities<
-  typeof activities
->({
-  startToCloseTimeout: "5 minutes",
-});
+const { getReinforcementSettingsActivity } = proxyActivities<typeof activities>(
+  {
+    startToCloseTimeout: "5 minutes",
+  }
+);
 
 const { getRecentConversationsWithSkillsActivity } = proxyActivities<
   typeof activities
@@ -303,10 +303,15 @@ export async function reinforcedSkillsWorkspaceWorkflow({
   conversationLookbackDays?: number;
   disableNotifications?: boolean;
 }): Promise<void> {
-  const isAllowed = await isSkillReinforcementAllowedActivity({ workspaceId });
-  if (!isAllowed) {
+  const { reinforcementEnabled, batchModeAllowed } =
+    await getReinforcementSettingsActivity({ workspaceId });
+  if (!reinforcementEnabled) {
     return;
   }
+
+  // Resolve effective batch mode: the caller may request batch mode, but the
+  // workspace setting can override it to streaming.
+  const effectiveBatchMode = useBatchMode && batchModeAllowed;
 
   if (!skipDelay) {
     const delayMs = computeWorkspaceDelayMs(workspaceId);
@@ -327,7 +332,7 @@ export async function reinforcedSkillsWorkspaceWorkflow({
     return;
   }
 
-  if (useBatchMode) {
+  if (effectiveBatchMode) {
     // Phase 2: Batch-analyze conversations with multi-step loop.
     let pendingConversations = conversationsWithSkills;
     let reinforcementConversationMap: Record<string, string> | undefined;
@@ -374,7 +379,7 @@ export async function reinforcedSkillsWorkspaceWorkflow({
         continuations.map((c) => c.analysedConversationId)
       );
       pendingConversations = pendingConversations.filter((c) =>
-        continuingIds.has(c.conversationSId)
+        continuingIds.has(c.conversationId)
       );
       step++;
     }
@@ -405,12 +410,12 @@ export async function reinforcedSkillsWorkspaceWorkflow({
     // Phase 2: Analyze conversations concurrently via streaming multi-step.
     await concurrentExecutor(
       conversationsWithSkills,
-      ({ conversationSId, skillSIds }) =>
+      ({ conversationId, skillIds }) =>
         runMultiStepStreamingLoop((reinforcementConversationId) =>
           analyzeConversationStepActivity({
             workspaceId,
-            conversationId: conversationSId,
-            skillSIds,
+            conversationId,
+            skillIds,
             reinforcementConversationId,
           })
         ),

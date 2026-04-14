@@ -17,6 +17,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 import type { StripePricingData } from "@app/types/stripe/pricing";
 import type {
   LightWorkspaceType,
@@ -543,11 +544,10 @@ export async function cancelSubscriptionAtPeriodEnd({
 }
 
 /**
- * Upgrades a Pro subscription to Business by swapping the Stripe product/price.
- * Always uses monthly billing for Business plan regardless of the original billing period.
- * Also updates the subscription metadata to reflect the new plan code.
+ * Creates a new Stripe Business subscription for upgrading Pro → Business.
+ * The old subscription is cancelled separately after the DB flip.
  */
-export async function upgradeProSubscriptionToBusiness({
+export async function createStripeBusinessSubscription({
   stripeSubscriptionId,
   owner,
   planCode,
@@ -555,12 +555,13 @@ export async function upgradeProSubscriptionToBusiness({
   stripeSubscriptionId: string;
   owner: WorkspaceType;
   planCode: string;
-}): Promise<Result<Stripe.Subscription, Error>> {
+}): Promise<Result<{ stripeSubscriptionId: string }, Error>> {
   const stripe = getStripeClient();
 
-  const subscription = await getStripeSubscription(stripeSubscriptionId);
-  if (!subscription) {
-    return new Err(new Error("Subscription not found"));
+  const existingSubscription =
+    await getStripeSubscription(stripeSubscriptionId);
+  if (!existingSubscription) {
+    return new Err(new Error("Existing subscription not found"));
   }
 
   const businessProductId = getBusinessProPlanProductId();
@@ -568,36 +569,38 @@ export async function upgradeProSubscriptionToBusiness({
     businessProductId,
     "IS_DEFAULT_MONHTLY_PRICE"
   );
-
   if (!newPriceId) {
     return new Err(new Error("Business monthly price not found"));
   }
 
-  const currentItem = subscription.items.data[0];
-  if (!currentItem) {
-    return new Err(new Error("Subscription has no items"));
+  const defaultPaymentMethodId =
+    getDefaultPaymentMethodId(existingSubscription);
+
+  if (!defaultPaymentMethodId) {
+    return new Err(
+      new Error("Existing subscription has no default payment method")
+    );
   }
 
-  // Update the subscription with the new price and metadata.
-  // Proration will handle billing adjustment.
-  const updatedSubscription = await stripe.subscriptions.update(
-    stripeSubscriptionId,
-    {
-      items: [
-        {
-          id: currentItem.id,
-          price: newPriceId,
-        },
-      ],
-      proration_behavior: "create_prorations",
-      metadata: {
-        planCode,
-        workspaceId: owner.sId,
-      },
-    }
+  const quantity = await MembershipResource.countActiveSeatsInWorkspace(
+    owner.sId
   );
 
-  return new Ok(updatedSubscription);
+  const newSubscription = await stripe.subscriptions.create({
+    customer: getCustomerId(existingSubscription),
+    currency: existingSubscription.currency,
+    items: [{ price: newPriceId, quantity }],
+    default_payment_method: defaultPaymentMethodId,
+    automatic_tax: {
+      enabled: existingSubscription.automatic_tax.enabled,
+    },
+    metadata: {
+      planCode,
+      workspaceId: owner.sId,
+    },
+  });
+
+  return new Ok({ stripeSubscriptionId: newSubscription.id });
 }
 
 /**
@@ -658,6 +661,14 @@ export function getCustomerId(subscription: Stripe.Subscription): string {
   return typeof subscription.customer === "string"
     ? subscription.customer
     : subscription.customer.id;
+}
+
+export function getDefaultPaymentMethodId(
+  subscription: Stripe.Subscription
+): string | null {
+  return isString(subscription.default_payment_method)
+    ? subscription.default_payment_method
+    : (subscription.default_payment_method?.id ?? null);
 }
 
 /**

@@ -116,6 +116,31 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     );
   }
 
+  static async listByWorkspaceAndProvider({
+    auth,
+    provider,
+  }: {
+    auth: Authenticator;
+    provider: LabsTranscriptsProviderType;
+  }): Promise<LabsTranscriptsConfigurationResource[]> {
+    const owner = auth.workspace();
+
+    if (!owner) {
+      return [];
+    }
+
+    const configurations = await this.model.findAll({
+      where: {
+        workspaceId: owner.id,
+        provider,
+      },
+    });
+
+    return configurations.map(
+      (configuration) => new this(this.model, configuration.get())
+    );
+  }
+
   static async findByWorkspaceAndProvider({
     auth,
     provider,

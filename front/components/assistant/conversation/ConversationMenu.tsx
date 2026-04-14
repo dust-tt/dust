@@ -3,6 +3,7 @@ import { EditConversationTitleDialog } from "@app/components/assistant/conversat
 import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
+  useBranchConversation,
   useConversationParticipants,
   useConversationParticipationOptions,
   useJoinConversation,
@@ -29,6 +30,7 @@ import { isProjectConversation } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
+  ActionGitBranchIcon,
   ArrowRightIcon,
   Avatar,
   ContactsUserIcon,
@@ -227,6 +229,10 @@ export function ConversationMenu({
   const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState<boolean>(false);
   const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
+  const { branchConversation, isBranching } = useBranchConversation({
+    owner,
+    conversationId: activeConversationId,
+  });
 
   const conversationLink = getConversationRoute(
     owner.sId,
@@ -324,6 +330,17 @@ export function ConversationMenu({
             onClick={() => setShowRenameDialog(true)}
             icon={PencilSquareIcon}
           />
+          {hasFeature("sessions_branching") && (
+            <>
+              <DropdownMenuItem
+                label="Branch conversation"
+                onClick={branchConversation}
+                icon={ActionGitBranchIcon}
+                disabled={isBranching}
+              />
+              <DropdownMenuSeparator />
+            </>
+          )}
           {hasFeature("projects") && (
             <DropdownMenuSub>
               <DropdownMenuSubTrigger

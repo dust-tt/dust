@@ -1,6 +1,6 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { searchProjectConversations } from "@app/lib/api/projects";
+import { searchProjectConversations } from "@app/lib/api/projects/search";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";

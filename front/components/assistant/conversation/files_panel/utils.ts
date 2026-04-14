@@ -25,18 +25,35 @@ import type {
  */
 export const CATEGORY_CONFIG: {
   value: FilePanelCategory;
-  label: string;
+  singular: string;
+  plural: string;
 }[] = [
-  { value: "frame", label: "Frames" },
-  { value: "slideshow", label: "Slideshows" },
-  { value: "image", label: "Images" },
-  { value: "document", label: "Documents" },
-  { value: "pdf", label: "PDFs" },
-  { value: "table", label: "Tables" },
-  { value: "audio", label: "Audio" },
-  { value: "knowledge", label: "Knowledge" },
-  { value: "other", label: "Other" },
+  { value: "frame", singular: "Frame", plural: "Frames" },
+  { value: "slideshow", singular: "Slideshow", plural: "Slideshows" },
+  { value: "image", singular: "Image", plural: "Images" },
+  { value: "document", singular: "Document", plural: "Documents" },
+  { value: "pdf", singular: "PDF", plural: "PDFs" },
+  { value: "table", singular: "Table", plural: "Tables" },
+  { value: "audio", singular: "Audio", plural: "Audio" },
+  { value: "knowledge", singular: "Knowledge", plural: "Knowledge" },
+  { value: "other", singular: "File", plural: "Other" },
 ];
+
+/**
+ * Human-readable singular category for a file MIME type (Image, Frame, PDF, …).
+ * Aligns with {@link getFilePanelCategory} / {@link getCategoryFromContentType}.
+ */
+export function getSingularFileCategoryLabelForContentType(
+  contentType: string
+): string {
+  const category: FilePanelCategory = isInteractiveContentType(contentType)
+    ? contentType === frameSlideshowContentType
+      ? "slideshow"
+      : "frame"
+    : getCategoryFromContentType(contentType);
+  const config = CATEGORY_CONFIG.find((c) => c.value === category);
+  return config?.singular ?? "File";
+}
 
 /**
  * Categorize a file by its content type alone (used for sandbox/mounted files).
