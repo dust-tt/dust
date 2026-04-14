@@ -172,9 +172,9 @@ Make compaction actually affect what the model sees.
 - Show "Earlier messages were summarized" with an expandable summary.
 - Show a loading indicator while `status === "created"`.
 
-### - [ ] PR 5.3 — Disable input bar during compaction
+### - [ ] PR 5.3 — Steering during compaction
 
-- Disable input bar while compaction is in progress (mirror the pending steering UX).
+- Add support for steering (creating pending message) while compaction is running.
 
 ### - [ ] PR 5.4 — Manual compaction trigger
 
