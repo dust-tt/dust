@@ -9,6 +9,7 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { getShutdownSignal } from "@app/lib/shutdown_signal";
 import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
@@ -65,6 +66,27 @@ function extractDataSourceIds(
       .join(",");
   }
   return result;
+}
+
+function mergeAbortSignals(...signals: AbortSignal[]): AbortSignal {
+  const controller = new AbortController();
+
+  for (const signal of signals) {
+    if (signal.aborted) {
+      controller.abort(signal.reason);
+      return controller.signal;
+    }
+
+    signal.addEventListener(
+      "abort",
+      () => {
+        controller.abort(signal.reason);
+      },
+      { once: true }
+    );
+  }
+
+  return controller.signal;
 }
 
 export async function runToolActivity(
@@ -192,7 +214,10 @@ async function executeToolStreaming(
     step: number;
   }
 ): Promise<ToolExecutionResult> {
-  const abortSignal = Context.current().cancellationSignal;
+  const abortSignal = mergeAbortSignals(
+    Context.current().cancellationSignal,
+    getShutdownSignal()
+  );
 
   const eventStream = runToolWithStreaming(
     auth,
