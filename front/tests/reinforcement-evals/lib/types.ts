@@ -6,8 +6,30 @@ import {
 import type { AvailableTool } from "@app/lib/api/assistant/workspace_capabilities";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 
+export interface MockMcpToolInput {
+  name: string;
+  type: string;
+  description?: string;
+  /** Defaults to true if omitted. */
+  required?: boolean;
+}
+
+export interface MockMcpTool {
+  name: string;
+  description: string;
+  inputs?: MockMcpToolInput[];
+}
+
+export interface MockMcpDescription {
+  sId: string;
+  description: string;
+  tools: MockMcpTool[];
+}
+
 export interface WorkspaceContext {
   tools: AvailableTool[];
+  /** Optional MCP details returned when describe_mcp is called during eval. */
+  mcpDescriptions?: MockMcpDescription[];
 }
 
 function slugify(name: string): string {
@@ -192,7 +214,8 @@ export type ToolCallAssertion =
   | { type: "editSkillWithInstructions"; skillId: string }
   | { type: "editSkillWithTool"; skillId: string; toolId: string }
   | { type: "editSkill"; skillId: string }
-  | { type: "noSuggestion" };
+  | { type: "noSuggestion" }
+  | { type: "calledDescribeMcp"; mcpId: string };
 
 /** Expects an edit_skill call with instructionEdits for the given skill. */
 export function editSkillWithInstructions(skillId: string): ToolCallAssertion {
@@ -214,6 +237,11 @@ export function editSkill(skillId: string): ToolCallAssertion {
 
 export function noSuggestion(): ToolCallAssertion {
   return { type: "noSuggestion" };
+}
+
+/** Expects describe_mcp to have been called with the given mcpId. */
+export function calledDescribeMcp(mcpId: string): ToolCallAssertion {
+  return { type: "calledDescribeMcp", mcpId };
 }
 
 export interface JudgeResult {

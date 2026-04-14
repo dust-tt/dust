@@ -1,13 +1,68 @@
 import {
+  calledDescribeMcp,
   editSkillWithInstructions,
   editSkillWithTool,
+  type MockMcpDescription,
   mockTool,
   noSuggestion,
   type TestSuite,
   type WorkspaceContext,
 } from "@app/tests/reinforcement-evals/lib/types";
 
+const LINKEDIN_MCP_DESCRIPTION: MockMcpDescription = {
+  sId: "mcp_linkedin",
+  description: "Search and enrich company and people profiles from LinkedIn",
+  tools: [
+    {
+      name: "search_company",
+      description: "Search for a company on LinkedIn by name",
+      inputs: [
+        {
+          name: "company_name",
+          type: "string",
+          description: "The name of the company to search for",
+        },
+      ],
+    },
+    {
+      name: "search_user",
+      description: "Search for a person on LinkedIn by name",
+      inputs: [
+        {
+          name: "name",
+          type: "string",
+          description: "The full name of the person to search for",
+        },
+      ],
+    },
+    {
+      name: "enrich_company_data",
+      description: "Get detailed profile data for a company",
+      inputs: [
+        {
+          name: "company_id",
+          type: "string",
+          description:
+            "The LinkedIn company identifier returned by search_company",
+        },
+      ],
+    },
+    {
+      name: "enrich_user",
+      description: "Get detailed profile data for a person",
+      inputs: [
+        {
+          name: "user_id",
+          type: "string",
+          description: "The LinkedIn user identifier returned by search_user",
+        },
+      ],
+    },
+  ],
+};
+
 const WORKSPACE_CONTEXT: WorkspaceContext = {
+  mcpDescriptions: [LINKEDIN_MCP_DESCRIPTION],
   tools: [
     mockTool("Slack", "Read and send Slack messages"),
     mockTool("Notion", "Search Notion workspace"),
@@ -20,6 +75,10 @@ const WORKSPACE_CONTEXT: WorkspaceContext = {
     mockTool(
       "Calendar",
       "Manage calendar events, check availability, and schedule meetings"
+    ),
+    mockTool(
+      "LinkedIn",
+      "Search and enrich company and people profiles from LinkedIn"
     ),
   ],
 };
@@ -360,6 +419,57 @@ Score 0 if no edit_skill with instructionEdits call is made.
 Score 0-1 if the suggestion is generic and doesn't address the specific feedback points.
 Score 2 if the suggestion addresses tone but misses the remedy guidance (or vice versa).
 Score 3 if the suggestion addresses both brand voice and remedy guidance with a clear analysis.`,
+    },
+    {
+      scenarioId: "wrong-tool-order-linkedin-enrich",
+      type: "analysis",
+      skillConfigs: [
+        {
+          name: "Enrich user info with LinkedIn",
+          sId: "skill_linkedin_enrich",
+          description:
+            "Enriches company and people profiles using LinkedIn data",
+          instructions:
+            "Use the LinkedIn tool to enrich user and company information when requested. Call enrich_user to get detailed profile data for a person, or enrich_company_data for company information.",
+          tools: [{ name: "LinkedIn", sId: "mcp_linkedin" }],
+        },
+      ],
+      conversation: [
+        {
+          role: "user",
+          content:
+            "Can you enrich the profile of René Cotty who works at Acme Corp?",
+        },
+        {
+          role: "agent",
+          content:
+            "I wasn't able to find René Cotty's profile. The LinkedIn enrichment returned no results for the ID I tried.",
+          actions: [
+            {
+              functionCallName: "enrich_user",
+              status: "succeeded",
+              params: { user_id: "rene-cotty" },
+              output: "User not found",
+            },
+          ],
+        },
+      ],
+      workspaceContext: WORKSPACE_CONTEXT,
+      expectedToolCalls: [
+        calledDescribeMcp("mcp_linkedin"),
+        editSkillWithInstructions("skill_linkedin_enrich"),
+      ],
+      judgeCriteria: `The analyst MUST call describe_mcp with mcpId "mcp_linkedin" AND call edit_skill with instructionEdits for skill "skill_linkedin_enrich".
+Adding instructions about how to form the user_id is not enough and will never work — the suggestion MUST be about using the search_user tool to look up the correct ID first.
+The suggestion should:
+- Add a step to first call search_user (or search_company) to retrieve the correct LinkedIn ID before calling enrich_user (or enrich_company_data)
+- Reference the enrich_user call returning "User not found" as the signal
+- Preserve the skill's purpose of enriching profiles
+
+Score 0 if describe_mcp("mcp_linkedin") was not called.
+Score 0 if no edit_skill with instructionEdits call is made.
+Score 1 if the analysis correctly identifies the root failure but does not add an instruction about using search_user.
+Score 3 if describe_mcp was called, and the suggestion clearly instructs to search first to obtain the correct ID, then call enrich with that ID.`,
     },
     {
       scenarioId: "multi-skill-targeted-feedback",

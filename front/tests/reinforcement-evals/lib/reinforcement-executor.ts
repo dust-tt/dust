@@ -1,4 +1,7 @@
-import { formatAvailableTools } from "@app/lib/api/assistant/global_agents/sidekick_context";
+import {
+  formatAvailableTools,
+  formatMcpDescription,
+} from "@app/lib/api/assistant/global_agents/sidekick_context";
 import { getLLM } from "@app/lib/api/llm";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { BatchResultWithRunIds } from "@app/lib/api/llm/types/batch";
@@ -15,21 +18,25 @@ import {
   buildReinforcedSkillsLLMParams,
   classifySkillToolCalls,
 } from "@app/lib/reinforcement/run_reinforced_analysis";
+import { DESCRIBE_MCP_TOOL_NAME } from "@app/lib/reinforcement/types";
 import {
   BATCH_POLL_INTERVAL_MS,
   MODEL_ID,
+  VERBOSE,
 } from "@app/tests/reinforcement-evals/lib/config";
 import {
   buildConversationText,
   type CategorizedTestCase,
   type ExecutionResult,
   isAnalysisTestCase,
+  type MockMcpDescription,
   type MockSkillConfig,
   type TestCase,
   type ToolCall,
   type WorkspaceContext,
 } from "@app/tests/reinforcement-evals/lib/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { isString } from "@app/types/shared/utils/general";
 
 function makeSkillType(config: MockSkillConfig): SkillType {
   return {
@@ -127,12 +134,70 @@ function extractFromEvents(events: LLMEvent[]): ExecutionResult {
   return { toolCalls, responseText };
 }
 
+function mockDescriptionToFormatInput(
+  mcpName: string,
+  desc: MockMcpDescription
+) {
+  return {
+    name: mcpName,
+    description: desc.description,
+    tools: (desc.tools ?? []).map((t) => ({
+      name: t.name,
+      description: t.description,
+      inputSchema:
+        t.inputs && t.inputs.length > 0
+          ? {
+              type: "object",
+              properties: Object.fromEntries(
+                t.inputs.map((i) => [
+                  i.name,
+                  {
+                    type: i.type,
+                    ...(i.description ? { description: i.description } : {}),
+                  },
+                ])
+              ),
+              required: t.inputs
+                .filter((i) => i.required !== false)
+                .map((i) => i.name),
+            }
+          : undefined,
+    })),
+  };
+}
+
 /**
  * Simulate an exploratory tool call using the test case's workspace context.
  */
-function simulateExploratoryTool(workspaceContext: WorkspaceContext): string {
-  // The skills pipeline only has one exploratory tool: get_available_tools.
-  return formatAvailableTools(workspaceContext.tools);
+function simulateExploratoryTool(
+  toolName: string,
+  args: Record<string, unknown>,
+  workspaceContext: WorkspaceContext
+): string {
+  switch (toolName) {
+    case "get_available_tools":
+      return formatAvailableTools(workspaceContext.tools);
+    case DESCRIBE_MCP_TOOL_NAME: {
+      const mcpId = args["mcpId"];
+      if (!isString(mcpId)) {
+        return "Error: mcpId parameter is required";
+      }
+      const desc = workspaceContext.mcpDescriptions?.find(
+        (d) => d.sId === mcpId
+      );
+      if (!desc) {
+        return `MCP server not found: ${mcpId}`;
+      }
+      const mcpName =
+        workspaceContext.tools.find((t) => t.sId === mcpId)?.name ?? mcpId;
+      return formatMcpDescription(
+        mcpId,
+        mockDescriptionToFormatInput(mcpName, desc)
+      );
+    }
+    default:
+      return `Unknown exploratory tool: ${toolName}`;
+  }
 }
 
 /**
@@ -143,7 +208,8 @@ function simulateExploratoryTool(workspaceContext: WorkspaceContext): string {
 async function executeMultiStep(
   llm: LLM,
   initialParams: LLMStreamParameters,
-  workspaceContext: WorkspaceContext
+  workspaceContext: WorkspaceContext,
+  scenarioId: string
 ): Promise<ExecutionResult> {
   const allToolCalls: ToolCall[] = [];
   let lastResponseText = "";
@@ -160,6 +226,12 @@ async function executeMultiStep(
     lastResponseText = stepResult.responseText;
 
     const { exploratoryToolCalls } = classifySkillToolCalls(events);
+    if (VERBOSE && exploratoryToolCalls.length > 0) {
+      console.log(
+        `[${scenarioId}] Exploratory tool calls input:`,
+        JSON.stringify(exploratoryToolCalls, null, 2)
+      );
+    }
 
     // If no exploratory tools were called, we're done.
     if (exploratoryToolCalls.length === 0) {
@@ -169,7 +241,17 @@ async function executeMultiStep(
     // Simulate exploratory tool responses from workspace context.
     const toolResults: Record<string, string> = {};
     for (const tc of exploratoryToolCalls) {
-      toolResults[tc.id] = simulateExploratoryTool(workspaceContext);
+      toolResults[tc.id] = simulateExploratoryTool(
+        tc.name,
+        tc.arguments,
+        workspaceContext
+      );
+    }
+    if (VERBOSE && exploratoryToolCalls.length > 0) {
+      console.log(
+        `[${scenarioId}] Exploratory tool calls output:`,
+        JSON.stringify(toolResults, null, 2)
+      );
     }
 
     // Build continuation messages and extend conversation.
@@ -220,7 +302,12 @@ export async function executeReinforced(
   const prompt = buildPromptForTestCase(testCase);
   const params = buildReinforcedSkillsLLMParams(prompt);
 
-  return executeMultiStep(llm, params, testCase.workspaceContext);
+  return executeMultiStep(
+    llm,
+    params,
+    testCase.workspaceContext,
+    testCase.scenarioId
+  );
 }
 
 function sleep(ms: number): Promise<void> {
@@ -289,12 +376,26 @@ export async function executeBatch(
           responseText: stepResult.responseText,
         });
       } else {
+        if (VERBOSE) {
+          console.log(
+            `[${scenarioId}] Exploratory tool calls inputs:`,
+            JSON.stringify(exploratoryToolCalls, null, 2)
+          );
+        }
         // Simulate tool responses and prepare continuation params.
         const tc = testCaseById.get(scenarioId)!;
         const toolResultsMap: Record<string, string> = {};
         for (const toolCall of exploratoryToolCalls) {
           toolResultsMap[toolCall.id] = simulateExploratoryTool(
+            toolCall.name,
+            toolCall.arguments,
             tc.workspaceContext
+          );
+        }
+        if (VERBOSE) {
+          console.log(
+            `[${scenarioId}] Exploratory tool calls results:`,
+            JSON.stringify(toolResultsMap, null, 2)
           );
         }
 

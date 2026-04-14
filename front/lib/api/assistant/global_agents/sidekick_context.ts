@@ -85,6 +85,74 @@ export function formatAvailableTools(tools: AvailableTool[]): string {
   return `<available_tools>\n${blocks.join("\n")}\n</available_tools>`;
 }
 
+function formatInputParams(
+  inputSchema: Record<string, unknown> | undefined
+): string {
+  if (!inputSchema || inputSchema["type"] !== "object") {
+    return "  Input parameters: none";
+  }
+  const properties = inputSchema["properties"];
+  if (!properties || typeof properties !== "object") {
+    return "  Input parameters: none";
+  }
+  const required = new Set(
+    Array.isArray(inputSchema["required"]) ? inputSchema["required"] : []
+  );
+  const entries = Object.entries(
+    properties as Record<string, Record<string, unknown>>
+  );
+  if (entries.length === 0) {
+    return "  Input parameters: none";
+  }
+  const params = entries
+    .map(([name, prop]) => {
+      const type = typeof prop["type"] === "string" ? prop["type"] : "any";
+      const optStr = required.has(name) ? "" : " (optional)";
+      const descStr =
+        typeof prop["description"] === "string"
+          ? `: ${prop["description"]}`
+          : "";
+      return `    - ${name} (${type}${optStr})${descStr}`;
+    })
+    .join("\n");
+  return `  Input parameters:\n${params}`;
+}
+
+export function formatMcpDescription(
+  mcpId: string,
+  server: {
+    name: string;
+    description: string;
+    tools: {
+      name: string;
+      description: string;
+      inputSchema?: Record<string, unknown>;
+    }[];
+  }
+): string {
+  const lines: string[] = [
+    `MCP: ${server.name} (${mcpId})`,
+    `Description: ${server.description}`,
+    "",
+  ];
+  if (server.tools.length === 0) {
+    lines.push("Tools: none");
+  } else {
+    lines.push("Tools:");
+    for (const tool of server.tools) {
+      lines.push(`- ${tool.name}`);
+      lines.push(`  Description: ${tool.description}`);
+      lines.push(
+        formatInputParams(
+          tool.inputSchema as Record<string, unknown> | undefined
+        )
+      );
+      lines.push("");
+    }
+  }
+  return lines.join("\n");
+}
+
 async function fetchSidekickUserMetadata(
   auth: Authenticator
 ): Promise<SidekickUserMetadata | null> {

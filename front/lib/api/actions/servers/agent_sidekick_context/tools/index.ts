@@ -535,12 +535,15 @@ import {
   formatAvailableModels,
   formatAvailableSkills,
   formatAvailableTools,
+  formatMcpDescription,
 } from "@app/lib/api/assistant/global_agents/sidekick_context";
 import {
+  describeMcpServer,
   getAvailableModelsForWorkspace,
   listAvailableSkills,
   listAvailableTools,
 } from "@app/lib/api/assistant/workspace_capabilities";
+import { DESCRIBE_MCP_TOOL_NAME } from "@app/lib/reinforcement/types";
 import type { z } from "zod";
 
 /**
@@ -703,6 +706,18 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
         type: "text" as const,
         text: formatAvailableTools(toolList),
       },
+    ]);
+  },
+
+  [DESCRIBE_MCP_TOOL_NAME]: async ({ mcpId }, { auth }) => {
+    const server = await describeMcpServer(auth, mcpId);
+    if (!server) {
+      return new Ok([
+        { type: "text" as const, text: `MCP server not found: ${mcpId}` },
+      ]);
+    }
+    return new Ok([
+      { type: "text" as const, text: formatMcpDescription(mcpId, server) },
     ]);
   },
 

@@ -7,6 +7,7 @@ import {
   MAX_PENDING_SUB_AGENT_SUGGESTIONS,
   MAX_PENDING_TOOLS_SUGGESTIONS,
 } from "@app/lib/api/actions/servers/agent_sidekick_context/constants";
+import { DESCRIBE_MCP_TOOL_NAME } from "@app/lib/reinforcement/types";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import {
@@ -153,6 +154,18 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Listing available tools",
       done: "List available tools",
+    },
+  },
+  [DESCRIBE_MCP_TOOL_NAME]: {
+    description:
+      "Get detailed information about a specific MCP server: its description, and each tool's name, description, and input parameters.",
+    schema: {
+      mcpId: z.string().describe("The sId of the MCP server to describe"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Describing MCP server",
+      done: "Describe MCP server",
     },
   },
   get_available_agents: {

@@ -2743,4 +2743,94 @@ describe("agent_sidekick_context tools", () => {
       }
     });
   });
+
+  describe("describe_mcp", () => {
+    it("returns tool details for an accessible MCP server", async () => {
+      const { workspace, globalSpace, authenticator } =
+        await createResourceTest({ role: "user" });
+
+      const server = await RemoteMCPServerFactory.create(workspace, {
+        name: "LinkedIn",
+        description: "Search and enrich LinkedIn profiles",
+        tools: [
+          {
+            name: "search_user",
+            description: "Search for a person by name",
+            inputSchema: {
+              type: "object",
+              properties: {
+                name: {
+                  type: "string",
+                  description: "Full name to search for",
+                },
+              },
+              required: ["name"],
+            },
+          },
+          {
+            name: "enrich_user",
+            description: "Get detailed profile data for a person",
+            inputSchema: {
+              type: "object",
+              properties: {
+                user_id: {
+                  type: "string",
+                  description: "The LinkedIn user identifier",
+                },
+              },
+              required: ["user_id"],
+            },
+          },
+        ],
+      });
+
+      const view = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        globalSpace
+      );
+
+      const tool = getToolByName("describe_mcp");
+      const result = await tool.handler(
+        { mcpId: view.sId },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          expect(content.text).toContain("LinkedIn");
+          expect(content.text).toContain("Search and enrich LinkedIn profiles");
+          expect(content.text).toContain("search_user");
+          expect(content.text).toContain("Search for a person by name");
+          expect(content.text).toContain("name (string)");
+          expect(content.text).toContain("Full name to search for");
+          expect(content.text).toContain("enrich_user");
+          expect(content.text).toContain("user_id (string)");
+        }
+      }
+    });
+
+    it("returns a not-found message for an unknown MCP id", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const tool = getToolByName("describe_mcp");
+      const result = await tool.handler(
+        { mcpId: "mcp_does_not_exist" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          expect(content.text).toContain("not found");
+          expect(content.text).toContain("mcp_does_not_exist");
+        }
+      }
+    });
+  });
 });
