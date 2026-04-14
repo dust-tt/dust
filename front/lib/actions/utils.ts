@@ -35,14 +35,17 @@ export function getRetrievalTopK({
   const searchActions = stepActions.filter(
     (tool) =>
       isServerSideMCPToolConfigurationWithName(tool, "search") ||
-      isServerSideMCPToolConfigurationWithName(tool, "conversation_files") ||
-      isServerSideMCPToolConfigurationWithName(tool, "project_manager")
+      (isServerSideMCPToolConfigurationWithName(tool, "conversation_files") &&
+        tool.originalName === "semantic_search") ||
+      (isServerSideMCPToolConfigurationWithName(tool, "project_manager") &&
+        tool.originalName === "semantic_search")
   );
 
   const includeActions = stepActions.filter(
     (tool) =>
       isServerSideMCPToolConfigurationWithName(tool, "include_data") ||
-      isServerSideMCPToolConfigurationWithName(tool, "project_manager")
+      (isServerSideMCPToolConfigurationWithName(tool, "project_manager") &&
+        tool.originalName === "retrieve_recent_documents")
   );
   const dsFsActions = stepActions.filter((tool) =>
     isServerSideMCPToolConfigurationWithName(tool, "data_sources_file_system")
