@@ -6,16 +6,14 @@ import { AgentMessageActions } from "@app/components/assistant/conversation/acti
 import { InlineActivitySteps } from "@app/components/assistant/conversation/actions/inline/InlineActivitySteps";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
+import { BlockedAction } from "@app/components/assistant/conversation/BlockedAction";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { GoogleDriveFileAuthorizationRequired } from "@app/components/assistant/conversation/GoogleDriveFileAuthorizationRequired";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
-import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
-import { MCPToolValidationRequired } from "@app/components/assistant/conversation/MCPToolValidationRequired";
 import type {
   AgentMessageStateWithControlEvent,
   AgentMessageWithStreaming,
@@ -28,7 +26,6 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
-import { UserAnswerRequired } from "@app/components/assistant/conversation/UserAnswerRequired";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   CitationsContext,
@@ -1184,65 +1181,19 @@ function AgentMessageContent({
     isLastMessage,
   });
 
-  if (blockedAction) {
-    switch (blockedAction.status) {
-      case "blocked_validation_required":
-        return (
-          <MCPToolValidationRequired
-            triggeringUser={triggeringUser}
-            owner={owner}
-            blockedAction={blockedAction}
-            conversationId={conversationId}
-            messageId={sId}
-          />
-        );
+  const blockedActionElement = blockedAction ? (
+    <BlockedAction
+      blockedAction={blockedAction}
+      triggeringUser={triggeringUser}
+      owner={owner}
+      conversationId={conversationId}
+      messageId={sId}
+      retryHandler={retryHandlerWithResetState}
+    />
+  ) : null;
 
-      case "blocked_authentication_required":
-        return (
-          <MCPServerPersonalAuthenticationRequired
-            blockedAction={blockedAction}
-            triggeringUser={triggeringUser}
-            owner={owner}
-            mcpServerId={blockedAction.metadata.mcpServerId}
-            provider={blockedAction.authorizationInfo.provider}
-            scope={blockedAction.authorizationInfo.scope}
-            retryHandler={() =>
-              retryHandlerWithResetState({
-                conversationId: blockedAction.conversationId,
-                messageId: blockedAction.messageId,
-              })
-            }
-          />
-        );
-
-      case "blocked_file_authorization_required":
-        return (
-          <GoogleDriveFileAuthorizationRequired
-            blockedAction={blockedAction}
-            triggeringUser={triggeringUser}
-            owner={owner}
-            fileAuthorizationInfo={blockedAction.fileAuthorizationInfo}
-            mcpServerId={blockedAction.metadata.mcpServerId}
-            retryHandler={() =>
-              retryHandlerWithResetState({
-                conversationId: blockedAction.conversationId,
-                messageId: blockedAction.messageId,
-              })
-            }
-          />
-        );
-
-      case "blocked_user_answer_required":
-        return (
-          <UserAnswerRequired
-            blockedAction={blockedAction}
-            triggeringUser={triggeringUser}
-            owner={owner}
-            conversationId={conversationId}
-            messageId={sId}
-          />
-        );
-    }
+  if (blockedActionElement && !isInlineActivityEnabled) {
+    return blockedActionElement;
   }
 
   if (agentMessage.status === "created" && !!streamError) {
@@ -1340,6 +1291,7 @@ function AgentMessageContent({
             owner={owner}
           />
         )}
+        {blockedActionElement}
         <AgentMessageInteractiveContentGeneratedFiles
           files={interactiveFiles}
         />
