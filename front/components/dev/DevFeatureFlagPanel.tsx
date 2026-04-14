@@ -369,10 +369,10 @@ const TYPO_STYLE_ID = "dust-dev-typo-overrides";
 type TypoProp = "fontWeight" | "fontSize" | "lineHeight" | "letterSpacing";
 
 const TYPO_PROP_LABELS: Record<TypoProp, string> = {
-  fontWeight: "weight",
-  fontSize: "size",
-  lineHeight: "line-h",
-  letterSpacing: "spacing",
+  fontWeight: "w",
+  fontSize: "s",
+  lineHeight: "lh",
+  letterSpacing: "ls",
 };
 
 const TYPO_PROP_CSS: Record<TypoProp, string> = {
@@ -1070,7 +1070,7 @@ function ColorOverridePanel({ onClose }: ColorOverridePanelProps) {
         <span>
           {overrideCount > 0 && (
             <button style={S.resetBtn} onClick={resetAll}>
-              Reset
+              Reset all
             </button>
           )}
         </span>
@@ -1086,7 +1086,7 @@ function ColorOverridePanel({ onClose }: ColorOverridePanelProps) {
           }}
           onClick={copyAll}
         >
-          {copied ? "Copied!" : "Copy All"}
+          {copied ? "Copied!" : "Copy all"}
         </button>
       </div>
     </>
@@ -1134,8 +1134,8 @@ function TypoPropInput({
       <span
         style={{
           fontSize: 10,
-          color: "#9ca3af",
-          width: 42,
+          color: "#d1d5db",
+          width: 16,
           textAlign: "right" as const,
         }}
       >
@@ -1270,7 +1270,6 @@ function TypoTokenRow({
           display: "flex",
           flexWrap: "wrap",
           gap: 4,
-          paddingLeft: 36,
         }}
       >
         {TYPO_PROPS.map((prop) => (
@@ -2073,7 +2072,7 @@ function DockedToolbar({
             style={S.dockedTextBtn(expanded === "typo")}
             onClick={() => togglePanel("typo")}
           >
-            Typo
+            Typography
             {typoOverrideCount > 0 && (
               <span style={S.dockedBadge}>{typoOverrideCount}</span>
             )}
@@ -2294,7 +2293,7 @@ function FloatingPanel({
             style={S.dockedTextBtn(activePanel === "typo")}
             onClick={() => togglePanel("typo")}
           >
-            Typo
+            Typography
             {typoOverrideCount > 0 && (
               <span style={S.dockedBadge}>{typoOverrideCount}</span>
             )}
@@ -2523,7 +2522,7 @@ const S = {
     padding: "6px 12px",
     background: "#111827",
     cursor: "grab" as const,
-    borderBottom: "1px solid #333",
+    borderBottom: "1px solid #2a2a4a",
     flexShrink: 0,
   },
 
