@@ -52,7 +52,7 @@ describe("sandbox access tokens", () => {
   it("round-trip: generate → verify → check claims", async () => {
     const { auth, agentConfig, conversation, sandbox } = await setupTest();
 
-    const token = generateSandboxExecToken(auth, {
+    const token = await generateSandboxExecToken(auth, {
       agentConfiguration: agentConfig,
       conversation,
       sandbox,
@@ -74,7 +74,7 @@ describe("sandbox access tokens", () => {
   it("tampered token is rejected", async () => {
     const { auth, agentConfig, conversation, sandbox } = await setupTest();
 
-    const token = generateSandboxExecToken(auth, {
+    const token = await generateSandboxExecToken(auth, {
       agentConfiguration: agentConfig,
       conversation,
       sandbox,
@@ -97,7 +97,7 @@ describe("sandbox access tokens", () => {
   it("token without sbt- prefix is rejected", async () => {
     const { auth, agentConfig, conversation, sandbox } = await setupTest();
 
-    const token = generateSandboxExecToken(auth, {
+    const token = await generateSandboxExecToken(auth, {
       agentConfiguration: agentConfig,
       conversation,
       sandbox,

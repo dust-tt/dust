@@ -143,7 +143,7 @@ export function createSandboxTools(
       }
 
       const execId = generateExecId();
-      const sandboxToken = generateSandboxExecToken(auth, {
+      const sandboxToken = await generateSandboxExecToken(auth, {
         agentConfiguration,
         conversation,
         sandbox,

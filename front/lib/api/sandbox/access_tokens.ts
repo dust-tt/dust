@@ -86,7 +86,7 @@ export async function revokeAllExecTokensForSandbox(
   });
 }
 
-export function generateSandboxExecToken(
+export async function generateSandboxExecToken(
   auth: Authenticator,
   {
     agentConfiguration,
@@ -101,7 +101,7 @@ export function generateSandboxExecToken(
     execId: string;
     expiryMs?: number;
   }
-): string {
+): Promise<string> {
   const payload: SandboxExecTokenPayload = {
     wId: auth.getNonNullableWorkspace().sId,
     cId: conversation.sId,
@@ -111,7 +111,7 @@ export function generateSandboxExecToken(
     execId,
   };
 
-  void registerExecToken(payload);
+  await registerExecToken(payload);
 
   const secret = config.getSandboxJwtSecret();
 
