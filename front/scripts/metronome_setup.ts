@@ -234,34 +234,6 @@ const METRICS: MetricDef[] = [
       ["mcp_server_id"],
     ],
   },
-  {
-    name: "Registered Users",
-    event_type_filter: { in_values: ["workspace_gauge"] },
-    property_filters: [{ name: "member_count", exists: true }],
-    aggregation_type: "max",
-    aggregation_key: "member_count",
-  },
-  {
-    name: "MAU (1+ messages)",
-    event_type_filter: { in_values: ["workspace_gauge"] },
-    property_filters: [{ name: "mau_1_count", exists: true }],
-    aggregation_type: "max",
-    aggregation_key: "mau_1_count",
-  },
-  {
-    name: "MAU (5+ messages)",
-    event_type_filter: { in_values: ["workspace_gauge"] },
-    property_filters: [{ name: "mau_5_count", exists: true }],
-    aggregation_type: "max",
-    aggregation_key: "mau_5_count",
-  },
-  {
-    name: "MAU (10+ messages)",
-    event_type_filter: { in_values: ["workspace_gauge"] },
-    property_filters: [{ name: "mau_10_count", exists: true }],
-    aggregation_type: "max",
-    aggregation_key: "mau_10_count",
-  },
   // Phase 2 token metrics removed — will be added when Pricing Index is ready.
 ];
 
@@ -328,17 +300,14 @@ const PRODUCTS: ProductDef[] = [
   {
     name: "Workspace MAU 1",
     type: "SUBSCRIPTION",
-    billable_metric_name: "MAU (1+ messages)",
   },
   {
     name: "Workspace MAU 5",
     type: "SUBSCRIPTION",
-    billable_metric_name: "MAU (5+ messages)",
   },
   {
     name: "Workspace MAU 10",
     type: "SUBSCRIPTION",
-    billable_metric_name: "MAU (10+ messages)",
   },
   // FIXED products for credit grants — separate products for distinct invoice line items.
   {
@@ -474,6 +443,7 @@ function getRateCards(): RateCardDef[] {
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
+          billing_frequency: "MONTHLY",
           price: 4500,
         },
         // MAU-5 and MAU-10 not entitled by default — enabled per contract via overrides.
@@ -482,6 +452,7 @@ function getRateCards(): RateCardDef[] {
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: false,
           rate_type: "FLAT",
+          billing_frequency: "MONTHLY",
           price: 0,
         },
         {
@@ -489,6 +460,7 @@ function getRateCards(): RateCardDef[] {
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: false,
           rate_type: "FLAT",
+          billing_frequency: "MONTHLY",
           price: 0,
         },
         {
@@ -620,6 +592,7 @@ function getRateCards(): RateCardDef[] {
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
+          billing_frequency: "MONTHLY",
           price: 45,
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
@@ -628,6 +601,7 @@ function getRateCards(): RateCardDef[] {
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: false,
           rate_type: "FLAT",
+          billing_frequency: "MONTHLY",
           price: 0,
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
@@ -636,6 +610,7 @@ function getRateCards(): RateCardDef[] {
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: false,
           rate_type: "FLAT",
+          billing_frequency: "MONTHLY",
           price: 0,
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
