@@ -5,6 +5,7 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationAsText } from "@app/lib/api/assistant/conversation/render_as_text";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
+import { isProviderWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type {
@@ -116,6 +117,14 @@ export async function runCompaction(
 
   if (!compactionMessage) {
     return new Err(new Error("Compaction message not found"));
+  }
+
+  if (!isProviderWhitelisted(auth, model.providerId)) {
+    return new Err(
+      new Error(
+        `The model provider ${model.providerId} has been disabled by your workspace admin.`
+      )
+    );
   }
 
   const summaryRes = await generateCompactionSummary(auth, {
