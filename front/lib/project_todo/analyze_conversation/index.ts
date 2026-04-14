@@ -28,6 +28,7 @@ import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import { startActiveObservation } from "@langfuse/tracing";
 
 // Calls the LLM with a forced extract_action_items tool call and parses the result.
 // Returns null if the call fails, produces no tool call, or the output fails parsing.
@@ -48,27 +49,31 @@ async function callExtractActionItemsLLM(
   }
 ): Promise<ExtractionResult | null> {
   const owner = auth.getNonNullableWorkspace();
-  const res = await runMultiActionsAgent(
-    auth,
-    {
-      providerId: model.providerId,
-      modelId: model.modelId,
-      functionCall: specification.name,
-      useCache: false,
-    },
-    {
-      conversation: conv,
-      prompt,
-      specifications: [specification],
-      forceToolCall: specification.name,
-    },
-    {
-      context: {
-        operationType: "project_todo_analyze_conversation",
-        conversationId: conversation.sId,
-        workspaceId: owner.sId,
-      },
-    }
+  const res = await startActiveObservation(
+    "project-todo-analyze-conversation",
+    () =>
+      runMultiActionsAgent(
+        auth,
+        {
+          providerId: model.providerId,
+          modelId: model.modelId,
+          functionCall: specification.name,
+          useCache: false,
+        },
+        {
+          conversation: conv,
+          prompt,
+          specifications: [specification],
+          forceToolCall: specification.name,
+        },
+        {
+          context: {
+            operationType: "project_todo_analyze_conversation",
+            conversationId: conversation.sId,
+            workspaceId: owner.sId,
+          },
+        }
+      )
   );
   if (res.isErr()) {
     logger.error(

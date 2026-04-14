@@ -19,6 +19,7 @@ import type { ModelConversationTypeMultiActions } from "@app/types/assistant/gen
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { ProjectTodoCategory } from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";
+import { startActiveObservation } from "@langfuse/tracing";
 import { z } from "zod";
 
 // ── Public types ──────────────────────────────────────────────────────────────
@@ -164,27 +165,31 @@ async function runDeduplicationLLMCall(
     ],
   };
 
-  const res = await runMultiActionsAgent(
-    auth,
-    {
-      providerId: model.providerId,
-      modelId: model.modelId,
-      functionCall: specification.name,
-      useCache: false,
-    },
-    {
-      conversation: conv,
-      prompt:
-        "You are a TODO deduplication assistant identifying semantic duplicates.",
-      specifications: [specification],
-      forceToolCall: specification.name,
-    },
-    {
-      context: {
-        operationType: "project_todo_deduplicate_candidates",
-        workspaceId: owner.sId,
-      },
-    }
+  const res = await startActiveObservation(
+    "project-todo-deduplicate-candidates",
+    () =>
+      runMultiActionsAgent(
+        auth,
+        {
+          providerId: model.providerId,
+          modelId: model.modelId,
+          functionCall: specification.name,
+          useCache: false,
+        },
+        {
+          conversation: conv,
+          prompt:
+            "You are a TODO deduplication assistant identifying semantic duplicates.",
+          specifications: [specification],
+          forceToolCall: specification.name,
+        },
+        {
+          context: {
+            operationType: "project_todo_deduplicate_candidates",
+            workspaceId: owner.sId,
+          },
+        }
+      )
   );
 
   if (res.isErr()) {
