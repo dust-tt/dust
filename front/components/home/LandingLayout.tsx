@@ -4,6 +4,7 @@ import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
 import { OpenDustButton } from "@app/components/home/OpenDustButton";
+import { PromoBanner } from "@app/components/home/PromoBanner";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
 import UTMButton from "@app/components/UTMButton";
 import { useStripUtmParams } from "@app/hooks/useStripUtmParams";
@@ -20,7 +21,7 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames, getFaviconPath } from "@app/lib/utils";
 import { getOrCreateAnonymousId } from "@app/lib/utils/anonymous_id";
 import { appendUTMParams } from "@app/lib/utils/utm";
-import { Button, cn, DustLogo, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, cn, DustLogo } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
 import Head from "next/head";
 import Link from "next/link";
@@ -214,7 +215,7 @@ export default function LandingLayout({
         >
           {children}
         </div>
-        <WebinarBanner />
+        <PromoBanner />
         <CookieBanner
           className="fixed bottom-0 left-0 z-50 w-full"
           show={showCookieBanner}
@@ -308,65 +309,6 @@ const CookieBanner = ({
           }}
         />
       </div>
-    </div>
-  );
-};
-
-const WEBINAR_BANNER_LOCAL_STORAGE_KEY = "webinar-banner-dismissed";
-const WEBINAR_BANNER_IMAGE = "/static/landing/Webinar_Banner.jpeg";
-const WEBINAR_REGISTRATION_URL = "https://lnkd.in/eaRc2R6U";
-
-const WebinarBanner = () => {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    if (sessionStorage.getItem(WEBINAR_BANNER_LOCAL_STORAGE_KEY) !== "true") {
-      setIsVisible(true);
-    }
-  }, []);
-
-  if (!isVisible) {
-    return null;
-  }
-
-  return (
-    <div className="fixed bottom-4 left-4 z-40 max-w-[320px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg transition-opacity duration-300">
-      <div className="relative">
-        <a
-          href={WEBINAR_REGISTRATION_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img
-            src={WEBINAR_BANNER_IMAGE}
-            alt="Dust Product Vision Webinar"
-            className="w-full cursor-pointer"
-          />
-        </a>
-        <Button
-          variant="outline"
-          icon={XMarkIcon}
-          size="icon-xs"
-          className="absolute right-1 top-1"
-          onClick={() => {
-            sessionStorage.setItem(WEBINAR_BANNER_LOCAL_STORAGE_KEY, "true");
-            setIsVisible(false);
-          }}
-        />
-      </div>
-      <a
-        href={WEBINAR_REGISTRATION_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block px-4 py-3"
-      >
-        <div className="text-sm font-medium text-slate-900">
-          Dust Product Vision Webinar
-        </div>
-        <div className="mt-1 text-xs text-primary-500 hover:underline">
-          Register now →
-        </div>
-      </a>
     </div>
   );
 };
