@@ -8,7 +8,10 @@ import {
   getMetronomeContractPackageAliases,
   scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
-import { switchMetronomeContractPackage } from "@app/lib/metronome/contracts";
+import {
+  provisionEnterpriseMetronomeContract,
+  switchMetronomeContractPackage,
+} from "@app/lib/metronome/contracts";
 import {
   LEGACY_BUSINESS_PACKAGE_ALIAS,
   LEGACY_PRO_ANNUAL_PACKAGE_ALIAS,
@@ -50,7 +53,7 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   cacheWithRedis,
@@ -724,7 +727,8 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
 
   static async pokeUpgradeWorkspaceToEnterprise(
     auth: Authenticator,
-    enterpriseDetails: EnterpriseUpgradeFormType
+    enterpriseDetails: EnterpriseUpgradeFormType,
+    stripeSubscription: Stripe.Subscription
   ) {
     const owner = auth.getNonNullableWorkspace();
 
@@ -733,14 +737,48 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     }
 
     const plan = await this.findPlanOrThrow(enterpriseDetails.planCode);
-    // TODO(pricing): provision Metronome contract for enterprise plans.
     // End the current subscription if any.
-    await this.internalSubscribeWorkspaceToFreePlan({
+    const newSubscription = await this.internalSubscribeWorkspaceToFreePlan({
       workspaceId: owner.sId,
       planCode: plan.code,
       stripeSubscriptionId: enterpriseDetails.stripeSubscriptionId,
       endDate: null,
     });
+
+    // Provision Metronome customer + contract with enterprise overrides.
+    const workspaceResource = await WorkspaceResource.fetchById(owner.sId);
+    if (!workspaceResource) {
+      throw new Error(`Workspace not found: ${owner.sId}`);
+    }
+
+    const metronomeResult = await provisionEnterpriseMetronomeContract({
+      workspace: renderLightWorkspaceType({ workspace: workspaceResource }),
+      stripeSubscription,
+    });
+    if (metronomeResult.isErr()) {
+      // Shadow-billed: Stripe owns billing, Metronome failure is not critical.
+      logger.error(
+        {
+          workspaceId: owner.sId,
+          error: metronomeResult.error.message,
+        },
+        "Failed to provision Metronome contract for enterprise upgrade"
+      );
+      return;
+    }
+
+    const { metronomeCustomerId, metronomeContractId } = metronomeResult.value;
+
+    if (!workspaceResource.metronomeCustomerId) {
+      await WorkspaceResource.updateMetronomeCustomerId(
+        workspaceResource.id,
+        metronomeCustomerId
+      );
+    }
+    await SubscriptionResource.updateMetronomeContractId(
+      newSubscription.id,
+      metronomeContractId
+    );
   }
 
   /**
