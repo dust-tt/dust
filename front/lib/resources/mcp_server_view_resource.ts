@@ -1,3 +1,4 @@
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   autoInternalMCPServerNameToSId,
   getServerTypeAndIdFromSId,
@@ -1100,6 +1101,18 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     };
   }
 
+  private get allToolsMetadata(): Attributes<RemoteMCPServerToolMetadataModel>[] {
+    return [
+      ...(this.internalToolsMetadata ?? []),
+      ...(this.remoteToolsMetadata ?? []),
+    ];
+  }
+
+  getToolPermission(toolName: string): MCPToolStakeLevelType | undefined {
+    return this.allToolsMetadata.find((m) => m.toolName === toolName)
+      ?.permission;
+  }
+
   // Serialization.
   toJSON(): MCPServerViewType {
     const server =
@@ -1133,18 +1146,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         this.editedByUser,
         this.remoteMCPServer ? this.remoteMCPServer.updatedAt : this.updatedAt
       ),
-      toolsMetadata: [
-        ...(this.internalToolsMetadata ?? []).map((t) => ({
-          toolName: t.toolName,
-          permission: t.permission,
-          enabled: t.enabled,
-        })),
-        ...(this.remoteToolsMetadata ?? []).map((t) => ({
-          toolName: t.toolName,
-          permission: t.permission,
-          enabled: t.enabled,
-        })),
-      ],
+      toolsMetadata: this.allToolsMetadata.map((t) => ({
+        toolName: t.toolName,
+        permission: t.permission,
+        enabled: t.enabled,
+      })),
     };
   }
 }

@@ -45,15 +45,23 @@ async function setupTest() {
     status: "running",
   });
 
-  return { auth, agentConfig, conversation, sandbox };
+  const { agentMessage } = await ConversationFactory.createAgentMessage(auth, {
+    workspace,
+    conversation,
+    agentConfig,
+  });
+
+  return { auth, agentConfig, agentMessage, conversation, sandbox };
 }
 
 describe("sandbox access tokens", () => {
   it("round-trip: generate → verify → check claims", async () => {
-    const { auth, agentConfig, conversation, sandbox } = await setupTest();
+    const { auth, agentConfig, agentMessage, conversation, sandbox } =
+      await setupTest();
 
     const token = await generateSandboxExecToken(auth, {
       agentConfiguration: agentConfig,
+      agentMessage,
       conversation,
       sandbox,
       execId: "test-exec-id",
@@ -68,14 +76,17 @@ describe("sandbox access tokens", () => {
     expect(payload!.cId).toBe(conversation.sId);
     expect(payload!.uId).toBe(auth.getNonNullableUser().sId);
     expect(payload!.aId).toBe(agentConfig.sId);
+    expect(payload!.mId).toBe(agentMessage.sId);
     expect(payload!.sbId).toBe(sandbox.sId);
   });
 
   it("tampered token is rejected", async () => {
-    const { auth, agentConfig, conversation, sandbox } = await setupTest();
+    const { auth, agentConfig, agentMessage, conversation, sandbox } =
+      await setupTest();
 
     const token = await generateSandboxExecToken(auth, {
       agentConfiguration: agentConfig,
+      agentMessage,
       conversation,
       sandbox,
       execId: "test-exec-id",
@@ -95,10 +106,12 @@ describe("sandbox access tokens", () => {
   });
 
   it("token without sbt- prefix is rejected", async () => {
-    const { auth, agentConfig, conversation, sandbox } = await setupTest();
+    const { auth, agentConfig, agentMessage, conversation, sandbox } =
+      await setupTest();
 
     const token = await generateSandboxExecToken(auth, {
       agentConfiguration: agentConfig,
+      agentMessage,
       conversation,
       sandbox,
       execId: "test-exec-id",
