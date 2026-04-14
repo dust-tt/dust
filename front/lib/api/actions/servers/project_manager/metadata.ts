@@ -316,7 +316,7 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
 
 const PROJECT_MANAGER_INSTRUCTIONS =
   "Project files and metadata are shared across all conversations in this project. " +
-  "Only text-based files are supported for adding/updating. " +
+  "You can add all sorts of files but only text-based files are supported for updating. " +
   "You can add/update files by providing text content directly, or by copying from existing files (like those you've generated). " +
   "You can also attach an existing project context file to the current conversation without recreating it. " +
   "Use list_projects to discover projects you can access and obtain the dustProject uri for other tools. " +

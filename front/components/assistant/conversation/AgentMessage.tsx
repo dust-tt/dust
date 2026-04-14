@@ -270,6 +270,7 @@ export function AgentMessage({
                 userId: eventPayload.data.userId,
                 argumentsRequiringApproval:
                   eventPayload.data.argumentsRequiringApproval,
+                approvalArgsLabel: eventPayload.data.approvalArgsLabel,
               },
             });
             break;

@@ -1,8 +1,10 @@
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
+import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
+import { getApprovalArgsLabel } from "@app/lib/actions/tool_approval_labels";
 import type { ToolInputContext } from "@app/lib/actions/tool_status";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import type { StepContext } from "@app/lib/actions/types";
@@ -151,6 +153,8 @@ async function createActionForTool(
   );
 
   const rawInputs = JSON.parse(stepContent.value.value.arguments);
+  const argumentsRequiringApproval =
+    actionConfiguration.argumentsRequiringApproval ?? [];
 
   // Build context for medium stake per-argument approval checks
   const mediumStakeContext: ToolInputContext = {
@@ -258,8 +262,17 @@ async function createActionForTool(
               agentName: agentConfiguration.name,
               icon: actionConfiguration.icon,
             },
-            argumentsRequiringApproval:
-              actionConfiguration.argumentsRequiringApproval,
+            argumentsRequiringApproval,
+            approvalArgsLabel: await getApprovalArgsLabel({
+              auth,
+              internalMCPServerName: getInternalMCPServerNameFromSId(
+                actionConfiguration.toolServerId
+              ),
+              toolName: actionConfiguration.originalName,
+              agentName: agentConfiguration.name,
+              inputs: rawInputs,
+              argumentsRequiringApproval,
+            }),
           }
         : undefined,
   };

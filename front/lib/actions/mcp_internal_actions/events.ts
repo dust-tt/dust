@@ -24,6 +24,8 @@ export interface ToolExecution<
 
   // For medium-stake tools: which arguments will be saved for future auto-approval.
   argumentsRequiringApproval?: string[];
+  // Human-readable label for the "always allow" approval checkbox.
+  approvalArgsLabel?: string;
 }
 
 type ToolPersonalAuthError = {
