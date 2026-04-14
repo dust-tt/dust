@@ -111,7 +111,7 @@ export async function launchTrackProgrammaticUsageWorkflow({
       workflowId,
       searchAttributes: {
         conversationId: [conversationId],
-        workspaceId: authType.workspaceId ? [authType.workspaceId] : undefined,
+        workspaceId: [workspaceId],
       },
       memo: {
         agentMessageId,
@@ -160,7 +160,7 @@ export async function launchEmitMetronomeUsageEventsWorkflow({
       workflowId,
       searchAttributes: {
         conversationId: [conversationId],
-        workspaceId: workspaceId ? [workspaceId] : undefined,
+        workspaceId: [workspaceId],
       },
       memo: {
         agentMessageId,
