@@ -1,0 +1,16 @@
+{
+  "action": "trigger.created",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "trigger"
+    }
+  ],
+  "metadata": {
+    "triggerType": "string",
+    "agentId": "string",
+    "triggerName": "string"
+  }
+}
