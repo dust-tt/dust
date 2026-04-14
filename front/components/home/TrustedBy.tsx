@@ -46,7 +46,7 @@ const LOGO_SETS = {
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
       //  { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
       { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
-      { name: "evenup", src: "/static/landing/logos/gray/evenup.svg" },
+      { name: "decagon", src: "/static/landing/logos/gray/decagon.svg" },
       { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
       { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
       { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
@@ -77,7 +77,7 @@ const LOGO_SETS = {
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
       // { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
       { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
-      { name: "evenup", src: "/static/landing/logos/gray/evenup.svg" },
+      { name: "decagon", src: "/static/landing/logos/gray/decagon.svg" },
       { name: "laurel", src: "/static/landing/logos/gray/laurel.svg" },
       { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
       { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
