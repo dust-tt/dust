@@ -1,5 +1,5 @@
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { Button, ChromeLogo, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, ChromeLogo, FirefoxLogo, XMarkIcon } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 
@@ -8,24 +8,43 @@ const EXTENSION_BANNER_LOCAL_STORAGE_KEY = "extension-banner-dismissed";
 const EXTENSION_BANNER_URL =
   "https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn";
 
+const FIREFOX_EXTENSION_BANNER_LOCAL_STORAGE_KEY =
+  "firefox-extension-banner-dismissed";
+const FIREFOX_EXTENSION_BANNER_URL =
+  "https://addons.mozilla.org/firefox/addon/dust/";
+
 interface ExtensionBannerProps {
   showExtensionBanner: boolean;
   onShowExtensionBanner: (open: boolean) => void;
+  type: "chrome" | "firefox";
 }
 
 function ExtensionBanner({
   showExtensionBanner,
   onShowExtensionBanner,
+  type,
 }: ExtensionBannerProps) {
   const onDismiss = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    localStorage.setItem(EXTENSION_BANNER_LOCAL_STORAGE_KEY, "true");
+    if (type === "firefox") {
+      localStorage.setItem(FIREFOX_EXTENSION_BANNER_LOCAL_STORAGE_KEY, "true");
+    } else {
+      localStorage.setItem(EXTENSION_BANNER_LOCAL_STORAGE_KEY, "true");
+    }
     onShowExtensionBanner(false);
   };
 
   const onLearnMore = () => {
-    window.open(EXTENSION_BANNER_URL, "_blank", "noopener,noreferrer");
+    if (type === "firefox") {
+      window.open(
+        FIREFOX_EXTENSION_BANNER_URL,
+        "_blank",
+        "noopener,noreferrer"
+      );
+    } else {
+      window.open(EXTENSION_BANNER_URL, "_blank", "noopener,noreferrer");
+    }
   };
 
   if (!showExtensionBanner) {
@@ -62,7 +81,7 @@ function ExtensionBanner({
       </div>
       <div className="relative px-4 py-3">
         <div className="mb-1 text-sm font-medium text-foreground dark:text-foreground-night">
-          Meet the new Chrome Extension
+          Meet the new {type === "firefox" ? "Firefox" : "Chrome"} Extension
         </div>
         <h4 className="mb-3 text-xs leading-tight text-primary dark:text-primary-night">
           Voice input, multi-tab awareness, and page interactions are here.
@@ -70,8 +89,8 @@ function ExtensionBanner({
         <Button
           variant="highlight"
           size="xs"
-          icon={ChromeLogo}
-          label="Install the Chrome Extension"
+          icon={type === "firefox" ? FirefoxLogo : ChromeLogo}
+          label={`Install the ${type === "firefox" ? "Firefox" : "Chrome"} Extension`}
           onClick={withTracking(
             TRACKING_AREAS.EXTENSION,
             "cta_extension_banner",
@@ -90,7 +109,16 @@ interface StackedInAppBannersProps {
 export function StackedInAppBanners({
   owner: _owner,
 }: StackedInAppBannersProps) {
+  const isFirefox =
+    typeof navigator !== "undefined" && /firefox/i.test(navigator.userAgent);
+
   const [showExtensionBanner, setShowExtensionBanner] = useState(() => {
+    if (isFirefox) {
+      return (
+        localStorage.getItem(FIREFOX_EXTENSION_BANNER_LOCAL_STORAGE_KEY) !==
+        "true"
+      );
+    }
     return localStorage.getItem(EXTENSION_BANNER_LOCAL_STORAGE_KEY) !== "true";
   });
 
@@ -100,6 +128,7 @@ export function StackedInAppBanners({
         key="extension-banner"
         showExtensionBanner={showExtensionBanner}
         onShowExtensionBanner={setShowExtensionBanner}
+        type={isFirefox ? "firefox" : "chrome"}
       />
     </AnimatePresence>
   );

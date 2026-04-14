@@ -32,6 +32,7 @@ import {
   DropdownMenuTrigger,
   EyeIcon,
   EyeSlashIcon,
+  FirefoxLogo,
   Icon,
   LightbulbIcon,
   LogoutIcon,
@@ -59,6 +60,9 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
     userId: user.sId,
     draftKey: "user-menu",
   });
+
+  const isFirefox =
+    typeof navigator !== "undefined" && /firefox/i.test(navigator.userAgent);
 
   const forceRoleUpdate = useMemo(
     () => async (role: "user" | "builder" | "admin") => {
@@ -178,12 +182,21 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
         )}
 
         <DropdownMenuLabel label="Extension" />
-        <DropdownMenuItem
-          label="Dust Chrome Extension"
-          icon={ChromeLogo}
-          href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn"
-          target="_blank"
-        />
+        {isFirefox ? (
+          <DropdownMenuItem
+            label="Dust Firefox Extension"
+            icon={FirefoxLogo}
+            href="https://addons.mozilla.org/firefox/addon/dust/"
+            target="_blank"
+          />
+        ) : (
+          <DropdownMenuItem
+            label="Dust Chrome Extension"
+            icon={ChromeLogo}
+            href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn"
+            target="_blank"
+          />
+        )}
 
         <DropdownMenuLabel label="Account" />
         {subscription?.plan.limits.canUseProduct && (
