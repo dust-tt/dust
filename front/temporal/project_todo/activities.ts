@@ -43,8 +43,8 @@ export async function analyzeProjectTodosActivity({
   await analyzeConversationTodos(auth, { conversation, messageId });
 }
 
-// Called by projectTodoWorkflow after a successful analysis run. Uses signalWithStart
-// so the merge workflow is automatically created if not already running.
+// Starts or signals `projectMergeWorkflow` (signalWithStart). Used when merge is driven
+// via signals; the cron `projectTodoWorkflow` path calls `mergeTodosForProjectActivity` directly.
 export async function signalOrStartMergeWorkflowActivity({
   authType,
   spaceId,

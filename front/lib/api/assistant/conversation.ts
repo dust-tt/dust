@@ -95,10 +95,6 @@ import {
   launchAgentLoopWorkflow,
   launchCompactionWorkflow,
 } from "@app/temporal/agent_loop/client";
-import {
-  launchOrSignalProjectTodoWorkflow,
-  signalProjectTodoComplete,
-} from "@app/temporal/project_todo/client";
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
@@ -1059,23 +1055,6 @@ export async function postUserMessage(
       : Promise.resolve(undefined),
   ]);
 
-  if (isPartOfProject) {
-    const projectTodoParams = {
-      authType: auth.toJSON(),
-      spaceId: conversation.spaceId,
-      conversationId: conversation.sId,
-      messageId: userMessage.sId,
-    };
-
-    if (featureFlags.includes("project_todo")) {
-      void launchOrSignalProjectTodoWorkflow(projectTodoParams);
-
-      if (agentMessages.length === 0) {
-        void signalProjectTodoComplete(projectTodoParams);
-      }
-    }
-  }
-
   return new Ok({
     userMessage,
     agentMessages,
@@ -1391,24 +1370,6 @@ export async function editUserMessage(
     },
     agentMessages
   );
-
-  const featureFlags = await getFeatureFlags(auth);
-  if (isProjectConversation(conversation)) {
-    const projectTodoParams = {
-      authType: auth.toJSON(),
-      spaceId: conversation.spaceId,
-      conversationId: conversation.sId,
-      messageId: userMessage.sId,
-    };
-
-    if (featureFlags.includes("project_todo")) {
-      void launchOrSignalProjectTodoWorkflow(projectTodoParams);
-
-      if (agentMessages.length === 0) {
-        void signalProjectTodoComplete(projectTodoParams);
-      }
-    }
-  }
 
   return new Ok({
     userMessage,
@@ -1890,20 +1851,6 @@ export async function retryAgentMessage(
     startStep: 0,
   });
 
-  const featureFlags = await getFeatureFlags(auth);
-  if (isProjectConversation(conversation)) {
-    const projectTodoParams = {
-      authType: auth.toJSON(),
-      spaceId: conversation.spaceId,
-      conversationId: conversation.sId,
-      messageId: agentMessage.sId,
-    };
-
-    if (featureFlags.includes("project_todo")) {
-      void launchOrSignalProjectTodoWorkflow(projectTodoParams);
-    }
-  }
-
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
   // conversation state synchronization in multiplex mode. This is a temporary solution -
   // we should move this to a dedicated real-time sync mechanism.
@@ -2115,21 +2062,6 @@ export async function postNewContentFragment(
     conversationId: conversation.sId,
     message: messageRow,
   });
-
-  const featureFlags = await getFeatureFlags(auth);
-  if (isProjectConversation(conversation)) {
-    const projectTodoParams = {
-      authType: auth.toJSON(),
-      spaceId: conversation.spaceId,
-      conversationId: conversation.sId,
-      messageId,
-    };
-
-    if (featureFlags.includes("project_todo")) {
-      void launchOrSignalProjectTodoWorkflow(projectTodoParams);
-      void signalProjectTodoComplete(projectTodoParams);
-    }
-  }
 
   return new Ok(render);
 }

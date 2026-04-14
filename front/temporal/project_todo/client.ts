@@ -1,23 +1,24 @@
 import type { AuthenticatorType } from "@app/lib/auth";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/project_todo/config";
-import {
-  mergeRequestSignal,
-  todoCompleteSignal,
-  todoRefreshSignal,
-} from "@app/temporal/project_todo/signals";
+import { mergeRequestSignal } from "@app/temporal/project_todo/signals";
 import {
   projectMergeWorkflow,
   projectTodoWorkflow,
 } from "@app/temporal/project_todo/workflows";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import {
+  WorkflowExecutionAlreadyStartedError,
+  WorkflowNotFoundError,
+} from "@temporalio/client";
 
 function makeProjectTodoWorkflowId(
   workspaceId: string,
-  conversationId: string
+  spaceId: string
 ): string {
-  return `conversation-todo-${workspaceId}-${conversationId}`;
+  return `project-todo-${workspaceId}-${spaceId}`;
 }
 
 function makeProjectMergeWorkflowId(
@@ -30,84 +31,81 @@ function makeProjectMergeWorkflowId(
 export async function launchOrSignalProjectTodoWorkflow({
   authType,
   spaceId,
-  conversationId,
-  messageId,
 }: {
   authType: AuthenticatorType;
   spaceId: string;
-  conversationId: string;
-  messageId: string;
 }): Promise<void> {
   const client = await getTemporalClientForFrontNamespace();
-  const workflowId = makeProjectTodoWorkflowId(
-    authType.workspaceId,
-    conversationId
-  );
+  const workflowId = makeProjectTodoWorkflowId(authType.workspaceId, spaceId);
+  const spaceModelId = getResourceIdFromSId(spaceId);
+  if (!spaceModelId) {
+    logger.warn(
+      { workspaceId: authType.workspaceId, spaceId },
+      "Skipping project todo workflow start for invalid space ID"
+    );
+    return;
+  }
+  const scheduleOffsetMinutes = spaceModelId % 60;
+  // Spread merges across the hour: one run per workspace project at this minute every hour (UTC).
+  const cronSchedule = `${scheduleOffsetMinutes} * * * *`;
 
   try {
-    await client.workflow.signalWithStart(projectTodoWorkflow, {
-      args: [{ authType, conversationId, messageId, spaceId }],
+    await client.workflow.start(projectTodoWorkflow, {
+      args: [{ authType, spaceId }],
       taskQueue: QUEUE_NAME,
       workflowId,
-      signal: todoRefreshSignal,
-      signalArgs: [messageId],
-      workflowExecutionTimeout: "1 hour",
+      cronSchedule,
       memo: {
         workspaceId: authType.workspaceId,
-        conversationId,
-        messageId,
         spaceId,
+        scheduleOffsetMinutes,
       },
     });
   } catch (e) {
-    // Swallow errors — todo workflow failures must not block conversation flow.
-    logger.error(
-      {
-        workflowId,
-        workspaceId: authType.workspaceId,
-        conversationId,
-        messageId,
-        spaceId,
-        error: normalizeError(e),
-      },
-      "Failed starting conversation todo workflow"
-    );
+    if (!(e instanceof WorkflowExecutionAlreadyStartedError)) {
+      // Swallow errors — todo workflow failures must not block request flow.
+      logger.error(
+        {
+          workflowId,
+          workspaceId: authType.workspaceId,
+          spaceId,
+          error: normalizeError(e),
+        },
+        "Failed starting project todo workflow"
+      );
+    }
   }
 }
 
-export async function signalProjectTodoComplete({
+export async function stopProjectTodoWorkflow({
   authType,
-  conversationId,
-  messageId,
+  spaceId,
+  stopReason = "project archived",
 }: {
   authType: AuthenticatorType;
-  conversationId: string;
-  messageId: string;
+  spaceId: string;
+  stopReason?: string;
 }): Promise<void> {
   try {
     const client = await getTemporalClientForFrontNamespace();
-    const workflowId = makeProjectTodoWorkflowId(
-      authType.workspaceId,
-      conversationId
-    );
-    await client.workflow
-      .getHandle(workflowId)
-      .signal(todoCompleteSignal, messageId);
+    const workflowId = makeProjectTodoWorkflowId(authType.workspaceId, spaceId);
+    await client.workflow.getHandle(workflowId).terminate(stopReason);
   } catch (e) {
-    // Swallow errors — workflow may have already completed or timed out.
-    logger.warn(
-      {
-        conversationId,
-        error: normalizeError(e),
-      },
-      "Failed signaling conversation todo complete (workflow may have already finished)"
-    );
+    if (!(e instanceof WorkflowNotFoundError)) {
+      // Swallow errors — workflow may have already been terminated.
+      logger.warn(
+        {
+          spaceId,
+          error: normalizeError(e),
+        },
+        "Failed terminating project todo workflow"
+      );
+    }
   }
 }
 
-// Called from signalOrStartMergeWorkflowActivity to fan-in signals from per-conversation
-// workflows into the single per-project merge workflow. Uses signalWithStart so the merge
-// workflow is automatically created if not already running.
+// Called from `signalOrStartMergeWorkflowActivity` to fan-in into the per-project merge
+// workflow. Uses signalWithStart so the merge workflow is created if not already running.
 export async function signalOrStartProjectMergeWorkflow({
   authType,
   spaceId,
