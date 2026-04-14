@@ -18,6 +18,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import {
   isCompactionMessageType,
+  isLightAgentMessageType,
   isLightAgentMessageWithActionsType,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
@@ -26,6 +27,7 @@ import type { RichMention } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
@@ -87,12 +89,10 @@ export type AgentMessageStateWithControlEvent =
   | AgentMessageStateEvent
   | { type: "end-of-stream" };
 
-export type CompactionVirtuosoMessage = CompactionMessageType;
-
 export type VirtuosoMessage =
   | AgentMessageWithStreaming
   | UserMessageTypeWithContentFragments
-  | CompactionVirtuosoMessage;
+  | CompactionMessageType;
 
 export type VirtuosoMessageListContext = {
   owner: LightWorkspaceType;
@@ -159,7 +159,7 @@ export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
 
 export const isCompactionMessage = (
   msg: VirtuosoMessage
-): msg is CompactionVirtuosoMessage => msg.type === "compaction_message";
+): msg is CompactionMessageType => msg.type === "compaction_message";
 
 export const isUserMessage = (
   msg: VirtuosoMessage
@@ -201,19 +201,20 @@ export const isSidekickBootstrapMessage = (
   return message.context.origin === "agent_sidekick" && message.rank === 0;
 };
 
-export const makeCompactionVirtuosoMessage = (
-  message: CompactionMessageType
-): CompactionVirtuosoMessage => message;
-
 export const convertLightMessageTypeToVirtuosoMessages = (
   messages: LightMessageType[]
 ): VirtuosoMessage[] =>
   messages.map((message) => {
     if (isCompactionMessageType(message)) {
-      return makeCompactionVirtuosoMessage(message);
-    }
-    if (isUserMessageTypeWithContentFragments(message)) {
       return message;
+    } else if (isUserMessageTypeWithContentFragments(message)) {
+      return message;
+    } else if (isLightAgentMessageWithActionsType(message)) {
+      return makeInitialMessageStreamState(message);
+    } else if (isLightAgentMessageType(message)) {
+      return makeInitialMessageStreamState(message);
+    } else {
+      assertNeverAndIgnore(message);
+      return message; // Non reachable
     }
-    return makeInitialMessageStreamState(message);
   });
