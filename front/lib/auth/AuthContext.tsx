@@ -1,7 +1,7 @@
 import {
-  applyFfOverrides,
-  getFfOverrideVersion,
-  subscribeFfOverrides,
+  applyFeatureFlagOverrides,
+  getFeatureFlagOverrideVersion,
+  subscribeFeatureFlagOverrides,
 } from "@app/components/dev/devFeatureFlagOverrides";
 import { DEV_MODE_ACTIVE } from "@app/components/dev/devModeConstants";
 import type { SubscriptionType } from "@app/types/plan";
@@ -47,14 +47,17 @@ export function useFeatureFlags() {
   const serverFlags = ctx?.featureFlags ?? [];
 
   const overrideVersion = useSyncExternalStore(
-    DEV_MODE_ACTIVE ? subscribeFfOverrides : noopSubscribe,
-    getFfOverrideVersion,
-    getFfOverrideVersion
+    DEV_MODE_ACTIVE ? subscribeFeatureFlagOverrides : noopSubscribe,
+    getFeatureFlagOverrideVersion,
+    getFeatureFlagOverrideVersion
   );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: overrideVersion triggers recalculation when dev panel changes overrides
   const featureFlags = useMemo(
-    () => (DEV_MODE_ACTIVE ? applyFfOverrides(serverFlags) : serverFlags),
+    () =>
+      DEV_MODE_ACTIVE
+        ? applyFeatureFlagOverrides(serverFlags)
+        : serverFlags,
     [serverFlags, overrideVersion]
   );
 

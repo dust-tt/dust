@@ -8,30 +8,32 @@ import {
 
 import { DEV_MODE_ACTIVE } from "./devModeConstants";
 
-const FF_OVERRIDES_KEY = "dust_ff_overrides";
+const FEATURE_FLAG_OVERRIDES_KEY = "dust_ff_overrides";
 
 type FeatureFlagOverrides = Partial<Record<WhitelistableFeature, boolean>>;
 
 // ── Reactive store ──
 // Lets useFeatureFlags re-render when the dev panel changes overrides.
 
-let ffOverrideVersion = 0;
-const ffOverrideListeners = new Set<() => void>();
+let featureFlagOverrideVersion = 0;
+const featureFlagOverrideListeners = new Set<() => void>();
 
-export function notifyFfOverridesChanged(): void {
-  ffOverrideVersion++;
-  for (const listener of ffOverrideListeners) {
+export function notifyFeatureFlagOverridesChanged(): void {
+  featureFlagOverrideVersion++;
+  for (const listener of featureFlagOverrideListeners) {
     listener();
   }
 }
 
-export function subscribeFfOverrides(onStoreChange: () => void): () => void {
-  ffOverrideListeners.add(onStoreChange);
-  return () => ffOverrideListeners.delete(onStoreChange);
+export function subscribeFeatureFlagOverrides(
+  onStoreChange: () => void
+): () => void {
+  featureFlagOverrideListeners.add(onStoreChange);
+  return () => featureFlagOverrideListeners.delete(onStoreChange);
 }
 
-export function getFfOverrideVersion(): number {
-  return ffOverrideVersion;
+export function getFeatureFlagOverrideVersion(): number {
+  return featureFlagOverrideVersion;
 }
 
 // ── Override reading ──
@@ -41,7 +43,7 @@ export function getFeatureFlagOverrides(): FeatureFlagOverrides {
     return {};
   }
   try {
-    const raw = sessionStorage.getItem(FF_OVERRIDES_KEY);
+    const raw = sessionStorage.getItem(FEATURE_FLAG_OVERRIDES_KEY);
     if (!raw) {
       return {};
     }
@@ -67,16 +69,19 @@ export function writeFeatureFlagOverrides(
   overrides: FeatureFlagOverrides
 ): void {
   if (Object.keys(overrides).length === 0) {
-    sessionStorage.removeItem(FF_OVERRIDES_KEY);
+    sessionStorage.removeItem(FEATURE_FLAG_OVERRIDES_KEY);
   } else {
-    sessionStorage.setItem(FF_OVERRIDES_KEY, JSON.stringify(overrides));
+    sessionStorage.setItem(
+      FEATURE_FLAG_OVERRIDES_KEY,
+      JSON.stringify(overrides)
+    );
   }
-  notifyFfOverridesChanged();
+  notifyFeatureFlagOverridesChanged();
 }
 
 // ── Apply overrides to a flag list ──
 
-export function applyFfOverrides(
+export function applyFeatureFlagOverrides(
   serverFlags: WhitelistableFeature[]
 ): WhitelistableFeature[] {
   if (!DEV_MODE_ACTIVE) {
