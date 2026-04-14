@@ -348,7 +348,9 @@ export async function* tryCallMCPTool(
               ],
             };
           case "personal_auth_required":
-            // Complex code path: errors returned here are processed in getExitOrPauseEvents.
+            // Not a tool error: isError must be false so the content flows through
+            // to getExitOrPauseEvents, which detects the AGENT_PAUSE_TOOL_OUTPUT
+            // resource and pauses the agent to prompt the user to authenticate.
             return {
               isError: false,
               content: makePersonalAuthenticationError(
@@ -383,8 +385,9 @@ export async function* tryCallMCPTool(
       });
       if (connectionResult.isErr()) {
         if (
-          connectionResult.error instanceof
-          MCPServerPersonalAuthenticationRequiredError
+          MCPServerPersonalAuthenticationRequiredError.is(
+            connectionResult.error
+          )
         ) {
           return {
             isError: false,
@@ -672,8 +675,7 @@ async function connectServerSideMCP(
 
   if (connectionResult.isErr()) {
     if (
-      connectionResult.error instanceof
-      MCPServerPersonalAuthenticationRequiredError
+      MCPServerPersonalAuthenticationRequiredError.is(connectionResult.error)
     ) {
       return new Err({
         type: "personal_auth_required",
@@ -681,10 +683,7 @@ async function connectServerSideMCP(
         scope: connectionResult.error.scope,
       });
     }
-    if (
-      connectionResult.error instanceof
-      MCPServerRequiresAdminAuthenticationError
-    ) {
+    if (MCPServerRequiresAdminAuthenticationError.is(connectionResult.error)) {
       return new Err({
         type: "admin_auth_required",
         message: connectionResult.error.message,
