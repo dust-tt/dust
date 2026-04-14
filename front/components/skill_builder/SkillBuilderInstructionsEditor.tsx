@@ -8,6 +8,10 @@ import {
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
+import {
+  postProcessMarkdown,
+  preprocessMarkdownForEditor,
+} from "@app/lib/editor/skill_instructions_preprocessing";
 import { cn } from "@dust-tt/sparkle";
 import type { Transaction } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
@@ -71,9 +75,11 @@ export function SkillBuilderInstructionsEditor({
     () =>
       debounce((editor: Editor) => {
         if (!isDiffMode && !editor.isDestroyed) {
-          setValue(INSTRUCTIONS_FIELD_NAME, editor.getMarkdown().trim(), {
-            shouldDirty: true,
-          });
+          setValue(
+            INSTRUCTIONS_FIELD_NAME,
+            postProcessMarkdown(editor.getMarkdown()).trim(),
+            { shouldDirty: true }
+          );
           setValue(
             ATTACHED_KNOWLEDGE_FIELD_NAME,
             toAttachedKnowledge(collectKnowledgeItems(editor)),
@@ -195,13 +201,16 @@ export function SkillBuilderInstructionsEditor({
     ) {
       return;
     }
-    const currentContent = editor.getMarkdown();
+    const currentContent = postProcessMarkdown(editor.getMarkdown());
     if (currentContent !== instructionsField.value) {
       setTimeout(() => {
-        editor.commands.setContent(instructionsField.value, {
-          emitUpdate: false,
-          contentType: "markdown",
-        });
+        editor.commands.setContent(
+          preprocessMarkdownForEditor(instructionsField.value),
+          {
+            emitUpdate: false,
+            contentType: "markdown",
+          }
+        );
       }, 0);
     }
   }, [editor, instructionsField.value]);
@@ -219,11 +228,14 @@ export function SkillBuilderInstructionsEditor({
       const compareText = compareVersion.instructions ?? "";
       const currentText = instructionsField.value ?? "";
 
-      editor.commands.setContent(currentText, {
+      editor.commands.setContent(preprocessMarkdownForEditor(currentText), {
         emitUpdate: false,
         contentType: "markdown",
       });
-      editor.commands.applyDiff(compareText, currentText);
+      editor.commands.applyDiff(
+        preprocessMarkdownForEditor(compareText),
+        preprocessMarkdownForEditor(currentText)
+      );
       editor.setEditable(false);
     } else if (editor.storage.agentInstructionDiff?.isDiffMode) {
       editor.commands.exitDiff();
