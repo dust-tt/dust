@@ -1,5 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
@@ -12,8 +11,6 @@ export function useCancelMessage({
   conversationId?: string | null;
 }) {
   const sendNotification = useSendNotification();
-  const { hasFeature } = useFeatureFlags();
-  const isSteeringEnabled = hasFeature("enable_steering");
 
   return useCallback(
     async (messageIds: string[]) => {
@@ -27,7 +24,7 @@ export function useCancelMessage({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              action: isSteeringEnabled ? "gracefully_stop" : "cancel",
+              action: "cancel",
               messageIds,
             }),
           }
@@ -38,6 +35,6 @@ export function useCancelMessage({
         sendNotification({ type: "error", title: "Failed to cancel message" });
       }
     },
-    [owner.sId, conversationId, sendNotification, isSteeringEnabled]
+    [owner.sId, conversationId, sendNotification]
   );
 }
