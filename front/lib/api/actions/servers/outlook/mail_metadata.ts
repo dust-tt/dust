@@ -309,7 +309,6 @@ export const OUTLOOK_MAIL_SERVER = {
           value: "Mail.Send",
           label: "Send mail",
           description: "Send emails on behalf of the signed-in user.",
-          required: true,
         },
         {
           value: "Contacts.ReadWrite",
