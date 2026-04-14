@@ -85,32 +85,39 @@ export function formatAvailableTools(tools: AvailableTool[]): string {
   return `<available_tools>\n${blocks.join("\n")}\n</available_tools>`;
 }
 
+interface InputParamSchema {
+  type?: string | string[];
+  properties?: Record<string, unknown>;
+  required?: string[];
+}
+
 function formatInputParams(
-  inputSchema: Record<string, unknown> | undefined
+  inputSchema: InputParamSchema | undefined
 ): string {
-  if (!inputSchema || inputSchema["type"] !== "object") {
+  if (inputSchema?.type !== "object" || !inputSchema.properties) {
     return "  Input parameters: none";
   }
-  const properties = inputSchema["properties"];
-  if (!properties || typeof properties !== "object") {
-    return "  Input parameters: none";
-  }
-  const required = new Set(
-    Array.isArray(inputSchema["required"]) ? inputSchema["required"] : []
-  );
-  const entries = Object.entries(
-    properties as Record<string, Record<string, unknown>>
-  );
+  const required = new Set(inputSchema.required ?? []);
+  const entries = Object.entries(inputSchema.properties);
   if (entries.length === 0) {
     return "  Input parameters: none";
   }
   const params = entries
     .map(([name, prop]) => {
-      const type = typeof prop["type"] === "string" ? prop["type"] : "any";
+      const type =
+        prop !== null &&
+        typeof prop === "object" &&
+        "type" in prop &&
+        typeof prop.type === "string"
+          ? prop.type
+          : "any";
       const optStr = required.has(name) ? "" : " (optional)";
       const descStr =
-        typeof prop["description"] === "string"
-          ? `: ${prop["description"]}`
+        prop !== null &&
+        typeof prop === "object" &&
+        "description" in prop &&
+        typeof prop.description === "string"
+          ? `: ${prop.description}`
           : "";
       return `    - ${name} (${type}${optStr})${descStr}`;
     })
@@ -126,7 +133,7 @@ export function formatMcpDescription(
     tools: {
       name: string;
       description: string;
-      inputSchema?: Record<string, unknown>;
+      inputSchema?: InputParamSchema;
     }[];
   }
 ): string {
@@ -144,7 +151,7 @@ export function formatMcpDescription(
       lines.push(`  Description: ${tool.description}`);
       lines.push(
         formatInputParams(
-          tool.inputSchema as Record<string, unknown> | undefined
+          tool.inputSchema
         )
       );
       lines.push("");
