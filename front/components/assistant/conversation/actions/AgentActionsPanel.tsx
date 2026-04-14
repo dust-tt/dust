@@ -384,6 +384,7 @@ function AgentActionsPanelContent({
 interface AgentSingleActionPanelProps extends AgentActionsPanelProps {
   messageId: string;
   actionId: string;
+  virtuosoMsg: AgentMessageWithStreaming | null;
   closeIcon?: React.ComponentType;
   onClose: () => void;
 }
@@ -393,6 +394,7 @@ function AgentSingleActionPanel({
   owner,
   messageId,
   actionId,
+  virtuosoMsg,
   closeIcon = XMarkIcon,
   onClose,
 }: AgentSingleActionPanelProps) {
@@ -403,6 +405,13 @@ function AgentSingleActionPanel({
       messageId,
       actionId,
     });
+
+  // Extract streaming progress for the action from the Virtuoso message state.
+  const lastNotification =
+    action && virtuosoMsg?.sId === messageId && virtuosoMsg.status === "created"
+      ? (virtuosoMsg.streaming.actionProgress.get(action.id)?.progress ??
+          null)
+      : null;
 
   if (isActionLoading) {
     return (
@@ -445,7 +454,7 @@ function AgentSingleActionPanel({
         <MCPActionDetails
           displayContext="sidebar-single-action"
           action={action}
-          lastNotification={null}
+          lastNotification={lastNotification}
           owner={owner}
           messageStatus={messageStatus}
         />
@@ -558,6 +567,7 @@ export function AgentActionsPanel({
         owner={owner}
         messageId={messageId}
         actionId={actionId}
+        virtuosoMsg={virtuosoMsg}
         onClose={onPanelClosed}
       />
     );
