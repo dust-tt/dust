@@ -24,6 +24,7 @@ interface AgentPickerProps {
   pickerButton?: React.ReactNode;
   showDropdownArrow?: boolean;
   showFooterButtons?: boolean;
+  side?: "top" | "bottom";
   size?: "xs" | "sm" | "md";
   isLoading?: boolean;
   disabled?: boolean;
@@ -38,6 +39,7 @@ export function AgentPicker({
   pickerButton,
   showDropdownArrow = true,
   showFooterButtons = true,
+  side,
   size = "md",
   isLoading = false,
   disabled = false,
@@ -74,6 +76,7 @@ export function AgentPicker({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         className="h-96 w-80"
+        side={side}
         align="start"
         dropdownHeaders={
           <>
