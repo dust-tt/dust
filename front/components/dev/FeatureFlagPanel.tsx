@@ -3,12 +3,11 @@ import {
   type WhitelistableFeature,
 } from "@app/types/shared/feature_flags";
 import { useCallback, useMemo, useState } from "react";
-
-import type { OverrideState } from "./devModeConfig";
 import {
   getFeatureFlagOverrides,
   writeFeatureFlagOverrides,
 } from "./devFeatureFlagOverrides";
+import type { OverrideState } from "./devModeConfig";
 import { S } from "./devPanelStyles";
 
 const ALL_FLAGS = Object.keys(

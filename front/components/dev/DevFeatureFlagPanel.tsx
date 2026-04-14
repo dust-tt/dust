@@ -2,7 +2,13 @@ import {
   isWhitelistableFeature,
   type WhitelistableFeature,
 } from "@app/types/shared/feature_flags";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 
 import { ColorOverridePanel } from "./ColorOverridePanel";
@@ -20,10 +26,10 @@ import { S } from "./devPanelStyles";
 import {
   DOCK_MODE_KEY,
   DOCKED_PANEL_POS_KEY,
-  PANEL_POS_KEY,
   injectColorStyles,
   injectFontFamilyStyles,
   injectTypoStyles,
+  PANEL_POS_KEY,
   readColorOverrides,
   readDockedPanelPosition,
   readDockMode,
@@ -34,8 +40,8 @@ import {
 import { FeatureFlagPanel } from "./FeatureFlagPanel";
 import { ToolbarControls } from "./ToolbarControls";
 import { TypoOverridePanel } from "./TypoOverridePanel";
-import { useDrag } from "./useDrag";
 import { useDevPerf } from "./useDevPerf";
+import { useDrag } from "./useDrag";
 
 // ── Docked toolbar ──
 
@@ -58,15 +64,12 @@ function DockedToolbar({ serverFlags, onSwitchMode }: DockedToolbarProps) {
   );
 
   const { onMouseDown: onPanelMouseDown } = useDrag({
-    onDrag: useCallback(
-      ({ dx, dy }: { dx: number; dy: number }) => {
-        setPanelPos({
-          right: Math.max(0, origPosRef.current.right - dx),
-          bottom: Math.max(33, origPosRef.current.bottom - dy),
-        });
-      },
-      []
-    ),
+    onDrag: useCallback(({ dx, dy }: { dx: number; dy: number }) => {
+      setPanelPos({
+        right: Math.max(0, origPosRef.current.right - dx),
+        bottom: Math.max(33, origPosRef.current.bottom - dy),
+      });
+    }, []),
     onDragEnd: useCallback(() => {
       setPanelPos((pos) => {
         origPosRef.current = pos;
@@ -165,21 +168,18 @@ function FloatingPanel({ serverFlags, onSwitchMode }: FloatingPanelProps) {
   }, []);
 
   const { onMouseDown } = useDrag({
-    onDrag: useCallback(
-      ({ dx, dy }: { dx: number; dy: number }) => {
-        setPosition({
-          x: Math.max(
-            0,
-            Math.min(window.innerWidth - 100, origPosRef.current.x + dx)
-          ),
-          y: Math.max(
-            0,
-            Math.min(window.innerHeight - 40, origPosRef.current.y + dy)
-          ),
-        });
-      },
-      []
-    ),
+    onDrag: useCallback(({ dx, dy }: { dx: number; dy: number }) => {
+      setPosition({
+        x: Math.max(
+          0,
+          Math.min(window.innerWidth - 100, origPosRef.current.x + dx)
+        ),
+        y: Math.max(
+          0,
+          Math.min(window.innerHeight - 40, origPosRef.current.y + dy)
+        ),
+      });
+    }, []),
     onDragEnd: useCallback(() => {
       setPosition((pos) => {
         origPosRef.current = pos;

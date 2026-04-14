@@ -1,7 +1,7 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 
 import { getFeatureFlagOverrides } from "./devFeatureFlagOverrides";
-import { THEME_OPTIONS, type ExpandedPanel } from "./devModeConfig";
+import { type ExpandedPanel, THEME_OPTIONS } from "./devModeConfig";
 import { S } from "./devPanelStyles";
 import {
   countTypoOverrides,

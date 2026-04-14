@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
+  type FontFamilyOverrides,
   POPULAR_FONTS,
   POPULAR_MONO_FONTS,
   TYPO_GROUPS,
   TYPO_PROP_LABELS,
   TYPO_PROPS,
-  type FontFamilyOverrides,
-  type TypoProp,
   type TypoOverrides,
+  type TypoProp,
   type TypoToken,
   type TypoTokenOverride,
 } from "./devModeConfig";
@@ -97,9 +97,7 @@ function TypoPropInput({
           width: 56,
           textAlign: "right" as const,
           background: "transparent",
-          border: isOverridden
-            ? "1px solid #7fdbca55"
-            : "1px solid #333",
+          border: isOverridden ? "1px solid #7fdbca55" : "1px solid #333",
           borderRadius: 3,
           padding: "2px 4px",
           outline: "none",
@@ -452,8 +450,7 @@ interface TypoOverridePanelProps {
 }
 
 export function TypoOverridePanel({ onClose }: TypoOverridePanelProps) {
-  const [overrides, setOverrides] =
-    useState<TypoOverrides>(readTypoOverrides);
+  const [overrides, setOverrides] = useState<TypoOverrides>(readTypoOverrides);
   const [fontOverrides, setFontOverrides] = useState<FontFamilyOverrides>(
     readFontFamilyOverrides
   );
@@ -580,8 +577,7 @@ export function TypoOverridePanel({ onClose }: TypoOverridePanelProps) {
         {TYPO_GROUPS.map((group) => {
           const groupOverrideCount = group.tokens.filter(
             (t) =>
-              overrides[t.label] &&
-              Object.keys(overrides[t.label]).length > 0
+              overrides[t.label] && Object.keys(overrides[t.label]).length > 0
           ).length;
           const isCollapsed = collapsed[group.label] ?? false;
 

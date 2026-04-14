@@ -4,8 +4,8 @@
 import {
   ALL_TOKENS,
   ALL_TYPO_TOKENS,
-  TYPO_PROP_CSS,
   type FontFamilyOverrides,
+  TYPO_PROP_CSS,
   type TypoOverrides,
   type TypoProp,
 } from "./devModeConfig";
@@ -183,9 +183,7 @@ export function readFontFamilyOverrides(): FontFamilyOverrides {
   }
 }
 
-export function writeFontFamilyOverrides(
-  overrides: FontFamilyOverrides
-): void {
+export function writeFontFamilyOverrides(overrides: FontFamilyOverrides): void {
   if (!overrides.sans && !overrides.mono) {
     sessionStorage.removeItem(FONT_FAMILY_OVERRIDES_KEY);
   } else {

@@ -59,7 +59,14 @@ function patchNetworkInterceptors() {
     password?: string | null
   ) {
     netTimestamps.push(performance.now());
-    return originalXhrOpen!.call(this, method, url, async_ ?? true, username, password);
+    return originalXhrOpen!.call(
+      this,
+      method,
+      url,
+      async_ ?? true,
+      username,
+      password
+    );
   };
 }
 
@@ -137,7 +144,10 @@ export function useDevPerf(): PerfMetrics {
       const now = performance.now();
       const cutoff = now - JANK_WINDOW_MS;
       let startIdx = 0;
-      while (startIdx < jankEntries.length && jankEntries[startIdx].time < cutoff) {
+      while (
+        startIdx < jankEntries.length &&
+        jankEntries[startIdx].time < cutoff
+      ) {
         startIdx++;
       }
       if (startIdx > 0) {

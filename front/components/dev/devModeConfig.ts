@@ -239,7 +239,11 @@ export const ALL_TOKEN_NAMES = Object.keys(ALL_TOKENS);
 
 // ── Typography tokens ──
 
-export type TypoProp = "fontWeight" | "fontSize" | "lineHeight" | "letterSpacing";
+export type TypoProp =
+  | "fontWeight"
+  | "fontSize"
+  | "lineHeight"
+  | "letterSpacing";
 
 export const TYPO_PROP_LABELS: Record<TypoProp, string> = {
   fontWeight: "w",
@@ -331,9 +335,30 @@ export const TYPO_GROUPS: TypoGroup[] = [
   {
     label: "Mono Headings",
     tokens: [
-      typo("heading-mono-lg", ".s-heading-mono-lg", "18px", "26px", "-0.36px", "400"),
-      typo("heading-mono-xl", ".s-heading-mono-xl", "20px", "28px", "-0.4px", "400"),
-      typo("heading-mono-2xl", ".s-heading-mono-2xl", "24px", "30px", "-0.96px", "400"),
+      typo(
+        "heading-mono-lg",
+        ".s-heading-mono-lg",
+        "18px",
+        "26px",
+        "-0.36px",
+        "400"
+      ),
+      typo(
+        "heading-mono-xl",
+        ".s-heading-mono-xl",
+        "20px",
+        "28px",
+        "-0.4px",
+        "400"
+      ),
+      typo(
+        "heading-mono-2xl",
+        ".s-heading-mono-2xl",
+        "24px",
+        "30px",
+        "-0.96px",
+        "400"
+      ),
     ],
   },
 ];
