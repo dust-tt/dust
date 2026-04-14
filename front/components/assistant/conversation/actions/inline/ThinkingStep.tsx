@@ -1,5 +1,5 @@
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
-import { ChevronRightIcon, cn, Icon, Markdown } from "@dust-tt/sparkle";
+import { cn, Markdown } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 const MAX_THINKING_DISPLAY_LENGTH = 250;
@@ -61,16 +61,6 @@ export function ThinkingStep({
         onClick={needsTruncation ? () => setIsExpanded((v) => !v) : undefined}
       >
         {displayContent}
-        {needsTruncation && (
-          <Icon
-            size="xs"
-            visual={ChevronRightIcon}
-            className={cn(
-              "inline ml-1 shrink-0 opacity-50 transition-transform duration-200",
-              isExpanded && "rotate-90"
-            )}
-          />
-        )}
       </span>
     </TimelineRow>
   );
