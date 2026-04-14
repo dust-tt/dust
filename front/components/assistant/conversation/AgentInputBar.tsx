@@ -47,6 +47,7 @@ export const AgentInputBar = ({
 }) => {
   const [blockedActionIndex, setBlockedActionIndex] = useState<number>(0);
   const [isStopping, setIsStopping] = useState<boolean>(false);
+  const [isHoveringStop, setIsHoveringStop] = useState<boolean>(false);
   const generationContext = useGenerationContext();
   const { getBlockedActions, hasPendingValidations, startPulsingAction } =
     useBlockedActionsContext();
@@ -59,6 +60,11 @@ export const AgentInputBar = ({
   const cancelMessage = useCancelMessage({
     owner: context.owner,
     conversationId: context.conversation?.sId,
+  });
+  const forceCancelMessage = useCancelMessage({
+    owner: context.owner,
+    conversationId: context.conversation?.sId,
+    action: "cancel",
   });
 
   const agentBuilderContext = context.agentBuilderContext;
@@ -310,7 +316,7 @@ export const AgentInputBar = ({
 
   const getStopButtonLabel = () => {
     if (isStopping) {
-      return "Stopping...";
+      return singleAgentInput && isHoveringStop ? "Force stop" : "Stopping...";
     }
 
     return generatingMessages.length > 1 ? "Stop all" : "Stop";
@@ -320,12 +326,18 @@ export const AgentInputBar = ({
     if (!context.conversation) {
       return;
     }
-    setIsStopping(true); // We don't set it back to false immediately cause it takes a bit of time to cancel.
-    await cancelMessage(
-      generationContext.generatingMessages
-        .filter((m) => m.conversationId === context.conversation?.sId)
-        .map((m) => m.messageId)
-    );
+    const messageIds = generationContext.generatingMessages
+      .filter((m) => m.conversationId === context.conversation?.sId)
+      .map((m) => m.messageId);
+
+    if (singleAgentInput && isStopping) {
+      // Force stop: cancel immediately.
+      await forceCancelMessage(messageIds);
+    } else {
+      // Graceful stop (steering) or cancel (no steering).
+      setIsStopping(true);
+      await cancelMessage(messageIds);
+    }
     void mutateConversation();
   };
 
@@ -346,14 +358,21 @@ export const AgentInputBar = ({
           >
             {showStopButton && (
               <>
-                <Button
-                  variant="ghost"
-                  label={getStopButtonLabel()}
-                  icon={StopIcon}
-                  onClick={handleStopGeneration}
-                  disabled={isStopping}
-                  size="xs"
-                />
+                <div
+                  onMouseEnter={() => setIsHoveringStop(true)}
+                  onMouseLeave={() => setIsHoveringStop(false)}
+                >
+                  <Button
+                    variant="ghost"
+                    label={getStopButtonLabel()}
+                    icon={StopIcon}
+                    onClick={handleStopGeneration}
+                    disabled={
+                      isStopping && !(singleAgentInput && isHoveringStop)
+                    }
+                    size="xs"
+                  />
+                </div>
                 {showMessageNavigation && (
                   <div className="h-4 w-px bg-border dark:bg-border-night" />
                 )}

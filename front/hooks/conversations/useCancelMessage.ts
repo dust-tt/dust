@@ -7,13 +7,18 @@ import { useCallback } from "react";
 export function useCancelMessage({
   owner,
   conversationId,
+  action,
 }: {
   owner: LightWorkspaceType;
   conversationId?: string | null;
+  action?: "cancel" | "gracefully_stop";
 }) {
   const sendNotification = useSendNotification();
   const { hasFeature } = useFeatureFlags();
   const isSteeringEnabled = hasFeature("enable_steering");
+
+  const resolvedAction =
+    action ?? (isSteeringEnabled ? "gracefully_stop" : "cancel");
 
   return useCallback(
     async (messageIds: string[]) => {
@@ -27,7 +32,7 @@ export function useCancelMessage({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              action: isSteeringEnabled ? "gracefully_stop" : "cancel",
+              action: resolvedAction,
               messageIds,
             }),
           }
@@ -38,6 +43,6 @@ export function useCancelMessage({
         sendNotification({ type: "error", title: "Failed to cancel message" });
       }
     },
-    [owner.sId, conversationId, sendNotification, isSteeringEnabled]
+    [owner.sId, conversationId, sendNotification, resolvedAction]
   );
 }
