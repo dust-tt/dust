@@ -173,6 +173,7 @@ interface AgentMessageProps {
   user: UserType;
   triggeringUser: UserType | null;
   isOnboardingConversation: boolean;
+  onConversationBranched?: () => Promise<void> | void;
   onCompletionStatusClick?: (messageId: string, actionId?: string) => void;
   handleSubmit: (
     input: string,
@@ -193,6 +194,7 @@ export function AgentMessage({
   user,
   triggeringUser,
   isOnboardingConversation,
+  onConversationBranched,
   onCompletionStatusClick,
   handleSubmit,
   additionalMarkdownComponents,
@@ -643,6 +645,7 @@ export function AgentMessage({
   const { branchConversation, isBranching } = useBranchConversation({
     owner,
     conversationId,
+    onConversationBranched,
   });
 
   const retryHandler = useCallback(

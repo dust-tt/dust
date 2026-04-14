@@ -4,7 +4,7 @@ import {
 } from "@app/components/assistant/conversation/ConversationMenu";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { useConversation } from "@app/hooks/conversations";
+import { useConversation, useConversations } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
@@ -20,7 +20,7 @@ import {
   Button,
   MoreIcon,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { EditConversationTitleDialog } from "./EditConversationTitleDialog";
 
@@ -28,6 +28,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const activeConversationId = useActiveConversationId();
   const { user } = useAuth();
   const { openPanel } = useConversationSidePanelContext();
+  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
   const { conversation } = useConversation({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
@@ -40,6 +41,9 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const isMobile = useIsMobile();
 
   const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const onConversationBranched = useCallback(() => {
+    void mutateConversations();
+  }, [mutateConversations]);
 
   const {
     isMenuOpen,
@@ -111,6 +115,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
           <ConversationMenu
             activeConversationId={activeConversationId}
             conversation={conversation}
+            onConversationBranched={onConversationBranched}
             owner={owner}
             trigger={
               <Button

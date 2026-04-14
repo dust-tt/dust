@@ -292,6 +292,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               owner={context.owner}
               handleSubmit={context.handleSubmit}
               isOnboardingConversation={context.isOnboardingConversation}
+              onConversationBranched={context.onConversationBranched}
               onCompletionStatusClick={onAgentMessageCompletionStatusClick}
               additionalMarkdownComponents={
                 context.additionalMarkdownComponents

@@ -126,6 +126,7 @@ export function useConversationMenu() {
 interface ConversationMenuProps {
   activeConversationId: string | null;
   conversation?: ConversationWithoutContentType;
+  onConversationBranched?: () => Promise<void> | void;
   owner: WorkspaceType;
   trigger: ReactElement;
   isConversationDisplayed: boolean;
@@ -139,6 +140,7 @@ interface ConversationMenuProps {
 export function ConversationMenu({
   activeConversationId,
   conversation,
+  onConversationBranched,
   owner,
   trigger,
   isConversationDisplayed,
@@ -232,6 +234,7 @@ export function ConversationMenu({
   const { branchConversation, isBranching } = useBranchConversation({
     owner,
     conversationId: activeConversationId,
+    onConversationBranched,
   });
 
   const conversationLink = getConversationRoute(

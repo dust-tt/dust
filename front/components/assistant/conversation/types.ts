@@ -94,6 +94,7 @@ export type VirtuosoMessageListContext = {
   owner: LightWorkspaceType;
   user: UserType;
   isOnboardingConversation: boolean;
+  onConversationBranched?: () => Promise<void> | void;
   handleSubmit: (
     input: string,
     mentions: RichMention[],
