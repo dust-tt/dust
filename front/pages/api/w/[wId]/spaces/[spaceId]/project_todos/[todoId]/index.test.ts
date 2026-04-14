@@ -40,7 +40,6 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]", () => {
     const { todo: updated } = res._getJSONData();
     expect(updated.text).toBe("Updated text");
     expect(updated.sId).toBe(todo.sId);
-    expect(updated.version).toBe(2);
   });
 
   it("should mark a todo as done", async () => {
@@ -61,7 +60,6 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]", () => {
     expect(updated.status).toBe("done");
     expect(updated.markedAsDoneByType).toBe("user");
     expect(updated.doneAt).not.toBeNull();
-    expect(updated.version).toBe(2);
   });
 
   it("should allow un-marking a done todo", async () => {
@@ -71,7 +69,7 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]", () => {
     const todo = await ProjectTodoFactory.create(workspace, project, {
       userId: user.id,
     });
-    const doneTodo = await todo.createVersion(auth, {
+    const doneTodo = await todo.updateWithVersion(auth, {
       status: "done",
       markedAsDoneByType: "user",
       markedAsDoneByUserId: user.id,

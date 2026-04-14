@@ -127,7 +127,6 @@ async function handler(
         category,
         text,
         status: "todo",
-        version: 1,
         doneAt: null,
         actorRationale: null,
       });

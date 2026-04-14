@@ -4,11 +4,13 @@ import {
   ProjectTodoConversationModel,
   ProjectTodoModel,
   ProjectTodoSourceModel,
+  ProjectTodoVersionModel,
 } from "@app/lib/resources/storage/models/project_todo";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   ProjectTodoSourceType,
   ProjectTodoType,
@@ -39,63 +41,112 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     super(ProjectTodoModel, blob);
   }
 
+  // The stable string identifier for this todo, computed from the model's
+  // integer id. External code must use this sId — never the raw model id.
+  get sId(): string {
+    return ProjectTodoResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("project_todo", { id, workspaceId });
+  }
+
   // ── Creation ────────────────────────────────────────────────────────────────
 
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<ProjectTodoModel>, "workspaceId" | "sId">,
+    blob: Omit<CreationAttributes<ProjectTodoModel>, "workspaceId">,
     transaction?: Transaction
   ): Promise<ProjectTodoResource> {
-    const todo = await ProjectTodoModel.create(
-      {
-        ...blob,
-        sId: generateRandomModelSId(),
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      { transaction }
-    );
+    return withTransaction(async (t) => {
+      const todo = await ProjectTodoModel.create(
+        {
+          ...blob,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        { transaction: t }
+      );
 
-    return new this(ProjectTodoModel, todo.get());
+      return new this(ProjectTodoModel, todo.get());
+    }, transaction);
   }
 
-  // Inserts a new version row for this logical todo, copying unchanged fields and
-  // applying the supplied updates. Mirrors the AgentConfiguration update pattern.
-  async createVersion(
+  // Snapshots the current mutable state into the version table, then updates
+  // the main row in place. The version number is determined by the existing
+  // snapshot count + 1.
+  async updateWithVersion(
     auth: Authenticator,
     updates: Partial<
-      Omit<
+      Pick<
         CreationAttributes<ProjectTodoModel>,
-        "workspaceId" | "sId" | "version"
+        | "category"
+        | "text"
+        | "status"
+        | "doneAt"
+        | "actorRationale"
+        | "markedAsDoneByType"
+        | "markedAsDoneByUserId"
+        | "markedAsDoneByAgentConfigurationId"
       >
     >,
     transaction?: Transaction
   ): Promise<ProjectTodoResource> {
-    const newRow = await ProjectTodoModel.create(
+    return withTransaction(async (t) => {
+      await this.saveVersion(t);
+
+      const [, [updated]] = await ProjectTodoModel.update(
+        { ...updates },
+        {
+          where: {
+            id: this.id,
+            workspaceId: auth.getNonNullableWorkspace().id,
+          },
+          returning: true,
+          transaction: t,
+        }
+      );
+
+      return new ProjectTodoResource(ProjectTodoModel, updated.get());
+    }, transaction);
+  }
+
+  // Saves the current mutable state as a version snapshot. Called before every
+  // in-place update of the main row.
+  private async saveVersion(transaction?: Transaction): Promise<void> {
+    const existingCount = await ProjectTodoVersionModel.count({
+      where: {
+        workspaceId: this.workspaceId,
+        projectTodoId: this.id,
+      },
+      transaction,
+    });
+
+    await ProjectTodoVersionModel.create(
       {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        sId: this.sId,
-        version: this.version + 1,
-        spaceId: this.spaceId,
-        userId: this.userId,
-        createdByType: this.createdByType,
-        createdByUserId: this.createdByUserId ?? null,
-        createdByAgentConfigurationId:
-          this.createdByAgentConfigurationId ?? null,
-        markedAsDoneByType: this.markedAsDoneByType ?? null,
-        markedAsDoneByUserId: this.markedAsDoneByUserId ?? null,
-        markedAsDoneByAgentConfigurationId:
-          this.markedAsDoneByAgentConfigurationId ?? null,
+        workspaceId: this.workspaceId,
+        projectTodoId: this.id,
+        version: existingCount + 1,
         category: this.category,
         text: this.text,
         status: this.status,
         doneAt: this.doneAt ?? null,
         actorRationale: this.actorRationale ?? null,
-        ...updates,
+        markedAsDoneByType: this.markedAsDoneByType ?? null,
+        markedAsDoneByUserId: this.markedAsDoneByUserId ?? null,
+        markedAsDoneByAgentConfigurationId:
+          this.markedAsDoneByAgentConfigurationId ?? null,
       },
       { transaction }
     );
-
-    return new ProjectTodoResource(ProjectTodoModel, newRow.get());
   }
 
   // ── Fetching ─────────────────────────────────────────────────────────────────
@@ -125,17 +176,16 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     });
   }
 
-  // Fetches the latest version of a todo by its stable sId.
+  // Fetches a todo by its stable string sId.
   static async fetchBySId(
     auth: Authenticator,
     sId: string
   ): Promise<ProjectTodoResource | null> {
-    const results = await this.baseFetch(auth, {
-      where: { sId },
-      order: [["version", "DESC"]],
-      limit: 1,
-    });
-
+    const id = getResourceIdFromSId(sId);
+    if (id === null) {
+      return null;
+    }
+    const results = await this.baseFetch(auth, { where: { id }, limit: 1 });
     return results[0] ?? null;
   }
 
@@ -149,7 +199,8 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     });
   }
 
-  // Returns only the latest version of each logical todo for the given space.
+  // Returns all todos for the authenticated user in the given space. Each row
+  // in project_todos IS the latest state — no de-duplication needed.
   static async fetchLatestBySpace(
     auth: Authenticator,
     { spaceId }: { spaceId: ModelId }
@@ -160,76 +211,20 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     });
   }
 
-  // Returns the latest version of each logical todo for an explicit target userId
-  // in the given space. Mirrors fetchLatestBySpace but takes an explicit userId
-  // instead of using auth.user — needed by the merge workflow, which acts on
-  // behalf of specific target users rather than the authenticated principal.
+  // Returns all todos for an explicit target userId in the given space.
+  // Used by the merge workflow which acts on behalf of specific target users.
   static async fetchLatestBySpaceForUser(
     auth: Authenticator,
     { spaceId, userId }: { spaceId: ModelId; userId: ModelId }
   ): Promise<ProjectTodoResource[]> {
-    const all = await this.baseFetch(auth, {
-      where: { spaceId, userId },
-      order: [
-        ["sId", "ASC"],
-        ["version", "DESC"],
-      ],
-    });
-
-    // O(n) deduplication — keep the first occurrence per sId (highest version).
-    const latestBySId = new Map<string, ProjectTodoResource>();
-    for (const todo of all) {
-      if (!latestBySId.has(todo.sId)) {
-        latestBySId.set(todo.sId, todo);
-      }
-    }
-
-    return Array.from(latestBySId.values());
-  }
-
-  // Returns the latest version of each logical todo across ALL users for the given
-  // space. Used by MCP tools that need to list todos for all project members.
-  static async fetchLatestAllBySpace(
-    auth: Authenticator,
-    { spaceId }: { spaceId: ModelId }
-  ): Promise<ProjectTodoResource[]> {
-    const all = await this.baseFetch(auth, {
-      where: { spaceId },
-      order: [
-        ["sId", "ASC"],
-        ["version", "DESC"],
-      ],
-    });
-
-    // O(n) deduplication — keep the first occurrence per sId (highest version).
-    const latestBySId = new Map<string, ProjectTodoResource>();
-    for (const todo of all) {
-      if (!latestBySId.has(todo.sId)) {
-        latestBySId.set(todo.sId, todo);
-      }
-    }
-
-    return Array.from(latestBySId.values());
-  }
-
-  // Returns every version row for (spaceId, userId), across all sIds. Used by the
-  // diff algorithm to reconstruct snapshots at arbitrary cutoff dates.
-  static async fetchAllVersionsBySpace(
-    auth: Authenticator,
-    { spaceId }: { spaceId: ModelId }
-  ): Promise<ProjectTodoResource[]> {
     return this.baseFetch(auth, {
-      where: { spaceId, userId: auth.getNonNullableUser().id },
-      order: [
-        ["sId", "ASC"],
-        ["version", "ASC"],
-      ],
+      where: { spaceId, userId },
+      order: [["createdAt", "DESC"]],
     });
   }
 
-  // Batch variant of fetchBySourceId. Returns a map from `${sourceId}:${userId}`
-  // to the latest version of each matching todo. Replaces per-item lookups in the
-  // merge workflow with three queries total instead of N*(2–3).
+  // Batch variant: fetches the current todo row for each sourceId in one pass.
+  // Returns a map from `${sourceId}:${userId}` to the matching ProjectTodoResource.
   static async fetchBySourceIds(
     auth: Authenticator,
     { sourceIds }: { sourceIds: string[] }
@@ -240,7 +235,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
 
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    // Step 1: Find all source links for the given item IDs in a single query.
+    // Step 1: Find all source links for the given item IDs.
     const sources = await ProjectTodoSourceModel.findAll({
       where: { workspaceId, sourceId: { [Op.in]: sourceIds } },
     });
@@ -248,8 +243,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       return new Map();
     }
 
-    // Step 2: Fetch the linked todo rows (any version) to resolve their stable
-    // sIds — sources point to a specific version's PK, not the sId directly.
+    // Step 2: Fetch the linked todo rows.
     const linkedModelIds = [...new Set(sources.map((s) => s.projectTodoId))];
     const linkedRows = await this.baseFetch(auth, {
       where: { id: { [Op.in]: linkedModelIds } },
@@ -258,39 +252,19 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       return new Map();
     }
 
-    // Step 3: Batch-fetch all versions of those todos and keep the latest per sId.
-    const uniqueSIds = [...new Set(linkedRows.map((t) => t.sId))];
-    const allVersions = await this.baseFetch(auth, {
-      where: { sId: { [Op.in]: uniqueSIds } },
-      order: [
-        ["sId", "ASC"],
-        ["version", "DESC"],
-      ],
-    });
-    const latestBySId = new Map<string, ProjectTodoResource>();
-    for (const todo of allVersions) {
-      if (!latestBySId.has(todo.sId)) {
-        latestBySId.set(todo.sId, todo);
-      }
-    }
-
-    // Build a lookup from linked row model id → sId to bridge sources to latest.
-    const sIdByModelId = new Map<ModelId, string>(
-      linkedRows.map((t) => [t.id, t.sId])
+    // Build a lookup from model id → resource.
+    const rowById = new Map<ModelId, ProjectTodoResource>(
+      linkedRows.map((t) => [t.id, t])
     );
 
-    // Result: `${sourceId}:${userId}` → latest ProjectTodoResource.
+    // Result: `${sourceId}:${userId}` → ProjectTodoResource.
     const result = new Map<string, ProjectTodoResource>();
     for (const source of sources) {
-      const sId = sIdByModelId.get(source.projectTodoId);
-      if (!sId) {
+      const todo = rowById.get(source.projectTodoId);
+      if (!todo) {
         continue;
       }
-      const latest = latestBySId.get(sId);
-      if (!latest) {
-        continue;
-      }
-      result.set(`${source.sourceId}:${latest.userId}`, latest);
+      result.set(`${source.sourceId}:${todo.userId}`, todo);
     }
 
     return result;
@@ -311,48 +285,38 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
 
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    // Get all version row IDs for these logical todos.
-    const allVersions = await ProjectTodoModel.findAll({
-      where: { workspaceId, sId: { [Op.in]: sIds } },
-      attributes: ["id", "sId"],
-    });
+    // Decode each sId to its integer model id.
+    const idToSId = new Map<number, string>();
+    for (const sId of sIds) {
+      const id = getResourceIdFromSId(sId);
+      if (id !== null) {
+        idToSId.set(id, sId);
+      }
+    }
 
-    if (allVersions.length === 0) {
+    if (idToSId.size === 0) {
       return new Map();
     }
 
-    const versionIdToSId = new Map(
-      allVersions.map((v) => [v.id, v.sId] as const)
-    );
-
-    // Fetch sources for all version rows in a single query.
+    // Fetch sources for all logical todos in a single query.
     const sources = await ProjectTodoSourceModel.findAll({
       where: {
         workspaceId,
-        projectTodoId: {
-          [Op.in]: allVersions.map((v) => v.id),
-        },
+        projectTodoId: { [Op.in]: [...idToSId.keys()] },
       },
     });
 
-    // Group by logical todo sId, deduplicating by (sourceType, sourceId).
+    // Group by logical todo sId.
     const result = new Map<
       string,
       Array<{ sourceType: ProjectTodoSourceType; sourceId: string }>
     >();
-    const seen = new Set<string>();
 
     for (const source of sources) {
-      const todoSId = versionIdToSId.get(source.projectTodoId);
+      const todoSId = idToSId.get(source.projectTodoId);
       if (!todoSId) {
         continue;
       }
-
-      const dedupeKey = `${todoSId}:${source.sourceType}:${source.sourceId}`;
-      if (seen.has(dedupeKey)) {
-        continue;
-      }
-      seen.add(dedupeKey);
 
       const existing = result.get(todoSId) ?? [];
       existing.push({
@@ -363,38 +327,6 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     }
 
     return result;
-  }
-
-  // ── Output conversation links (todo => conversation) ────────────────────
-
-  async addOutputConversation(
-    auth: Authenticator,
-    { conversationId }: { conversationId: ModelId },
-    transaction?: Transaction
-  ): Promise<void> {
-    await ProjectTodoConversationModel.create(
-      {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        projectTodoId: this.id,
-        conversationId,
-      },
-      { transaction }
-    );
-  }
-
-  async removeOutputConversation(
-    auth: Authenticator,
-    { conversationId }: { conversationId: ModelId },
-    transaction?: Transaction
-  ): Promise<void> {
-    await ProjectTodoConversationModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        projectTodoId: this.id,
-        conversationId,
-      },
-      transaction,
-    });
   }
 
   // ── Source links (* => todo) ─────────────────────────────────────────────
@@ -421,28 +353,6 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     );
   }
 
-  async removeSource(
-    auth: Authenticator,
-    {
-      sourceType,
-      sourceId,
-    }: {
-      sourceType: ProjectTodoSourceType;
-      sourceId: string;
-    },
-    transaction?: Transaction
-  ): Promise<void> {
-    await ProjectTodoSourceModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        projectTodoId: this.id,
-        sourceType,
-        sourceId,
-      },
-      transaction,
-    });
-  }
-
   // ── Serialization ──────────────────────────────────────────────────────────
 
   toJSON(): ProjectTodoType {
@@ -452,7 +362,6 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       category: this.category,
       text: this.text,
       status: this.status,
-      version: this.version,
       doneAt: this.doneAt,
       actorRationale: this.actorRationale,
       createdByType: this.createdByType,
@@ -472,27 +381,25 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
     await ProjectTodoConversationModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        projectTodoId: this.id,
-      },
+      where: { workspaceId, projectTodoId: this.id },
       transaction,
     });
 
     await ProjectTodoSourceModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        projectTodoId: this.id,
-      },
+      where: { workspaceId, projectTodoId: this.id },
+      transaction,
+    });
+
+    await ProjectTodoVersionModel.destroy({
+      where: { workspaceId, projectTodoId: this.id },
       transaction,
     });
 
     await this.model.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        id: this.id,
-      },
+      where: { workspaceId, id: this.id },
       transaction,
     });
 

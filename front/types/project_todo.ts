@@ -34,7 +34,6 @@ export type ProjectTodoType = {
   category: ProjectTodoCategory;
   text: string;
   status: ProjectTodoStatus;
-  version: number;
   doneAt: Date | null;
   actorRationale: string | null;
   createdByType: ProjectTodoActorType;

@@ -28,7 +28,6 @@ export class ProjectTodoFactory {
       category: params.category ?? "follow_ups",
       text: params.text ?? "A test todo item.",
       status: "todo",
-      version: 1,
       doneAt: null,
       actorRationale: null,
     });

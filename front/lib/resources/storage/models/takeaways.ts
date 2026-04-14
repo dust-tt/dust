@@ -10,10 +10,36 @@ import type {
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
-// ── Takeaways (versioned) ─────────────────────────────────────────────────────
-// Versioned snapshot of butler-extracted takeaways (action items, notable
-// facts, key decisions). Each butler run appends a new row; the sId is stable
-// across all versions of the same logical takeaway.
+// ── Shared content attributes ─────────────────────────────────────────────────
+// Used by both the main takeaway row and its version snapshots.
+
+const TAKEAWAY_CONTENT_ATTRIBUTES = {
+  actionItems: {
+    type: DataTypes.JSONB,
+    allowNull: false,
+    defaultValue: [],
+    comment:
+      "Detected action items with assignee, status, and source message rank.",
+  },
+  notableFacts: {
+    type: DataTypes.JSONB,
+    allowNull: false,
+    defaultValue: [],
+    comment: "Notable facts extracted from the conversation.",
+  },
+  keyDecisions: {
+    type: DataTypes.JSONB,
+    allowNull: false,
+    defaultValue: [],
+    comment: "Key decisions made during the conversation.",
+  },
+} as const;
+
+// ── Takeaways (main) ──────────────────────────────────────────────────────────
+// One row per logical takeaway. The row's `id` is the stable identity used as a
+// foreign key in TakeawaysVersionModel and TakeawaySourcesModel.
+// Each butler run updates this row in place and appends a snapshot to
+// TakeawaysVersionModel for history.
 export class TakeawaysModel extends WorkspaceAwareModel<TakeawaysModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -21,14 +47,7 @@ export class TakeawaysModel extends WorkspaceAwareModel<TakeawaysModel> {
   // The space (project) this takeaway belongs to.
   declare spaceId: ForeignKey<SpaceModel["id"]>;
 
-  // Stable identity: same sId across all version rows of one logical takeaway.
-  declare sId: string;
-
-  // Versioning: each butler run appends a new row. Version is monotonically
-  // increasing per sId, starting at 1.
-  declare version: number;
-
-  // Rolling state — full replacement on each run.
+  // Rolling state — full replacement on each butler run.
   declare actionItems: TodoVersionedActionItem[];
   declare notableFacts: TodoVersionedNotableFact[];
   declare keyDecisions: TodoVersionedKeyDecision[];
@@ -46,61 +65,19 @@ TakeawaysModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    sId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      comment:
-        "Stable identifier shared across all version rows of the same logical takeaway.",
-    },
-    version: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 1,
-      comment:
-        "Monotonically increasing per sId. Each butler run inserts a new row rather than overwriting.",
-    },
-    actionItems: {
-      type: DataTypes.JSONB,
-      allowNull: false,
-      defaultValue: [],
-      comment:
-        "Detected action items with assignee, status, and source message rank.",
-    },
-    notableFacts: {
-      type: DataTypes.JSONB,
-      allowNull: false,
-      defaultValue: [],
-      comment: "Notable facts extracted from the conversation.",
-    },
-    keyDecisions: {
-      type: DataTypes.JSONB,
-      allowNull: false,
-      defaultValue: [],
-      comment: "Key decisions made during the conversation.",
-    },
     spaceId: {
       type: DataTypes.BIGINT,
       allowNull: false,
       references: { model: "vaults", key: "id" },
       comment: "The space (project) this takeaway belongs to.",
     },
+    ...TAKEAWAY_CONTENT_ATTRIBUTES,
   },
   {
     modelName: "takeaways",
     tableName: "takeaways",
     sequelize: frontSequelize,
     indexes: [
-      {
-        name: "takeaways_ws_sId_version_unique_idx",
-        fields: ["workspaceId", "sId", "version"],
-        unique: true,
-        concurrently: true,
-      },
-      {
-        name: "takeaways_sId_idx",
-        fields: ["sId"],
-        concurrently: true,
-      },
       {
         name: "takeaways_spaceId_idx",
         fields: ["spaceId"],
@@ -115,15 +92,84 @@ TakeawaysModel.belongsTo(SpaceModel, {
   onDelete: "RESTRICT",
 });
 
+// ── Takeaway versions ─────────────────────────────────────────────────────────
+// Each butler run appends a new row here before overwriting the main row,
+// preserving the full history. `takeawaysId` is the FK back to the stable
+// TakeawaysModel row.
+export class TakeawaysVersionModel extends WorkspaceAwareModel<TakeawaysVersionModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare takeawaysId: ForeignKey<TakeawaysModel["id"]>;
+
+  // Monotonically increasing per takeawaysId, starting at 1.
+  declare version: number;
+
+  // Full content snapshot at the time this version was created.
+  declare actionItems: TodoVersionedActionItem[];
+  declare notableFacts: TodoVersionedNotableFact[];
+  declare keyDecisions: TodoVersionedKeyDecision[];
+}
+
+TakeawaysVersionModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    takeawaysId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+    },
+    version: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      comment:
+        "Monotonically increasing per takeawaysId. Each butler run inserts a new row rather than overwriting.",
+    },
+    ...TAKEAWAY_CONTENT_ATTRIBUTES,
+  },
+  {
+    modelName: "takeaways_version",
+    tableName: "takeaway_versions",
+    sequelize: frontSequelize,
+    indexes: [
+      {
+        name: "takeaway_versions_ws_takeawaysId_version_unique_idx",
+        fields: ["workspaceId", "takeawaysId", "version"],
+        unique: true,
+        concurrently: true,
+      },
+    ],
+  }
+);
+
+TakeawaysVersionModel.belongsTo(TakeawaysModel, {
+  foreignKey: { name: "takeawaysId", allowNull: false },
+  onDelete: "RESTRICT",
+  as: "takeaways",
+});
+
+TakeawaysModel.hasMany(TakeawaysVersionModel, {
+  foreignKey: { name: "takeawaysId", allowNull: false },
+  as: "versions",
+});
+
 // ── Source takeaways ──────────────────────────────────────────────────────────
 // Content node (conversation, etc.) that triggered the production of a
-// takeaway snapshot, linked to the snapshot by its stable sId.
+// takeaway snapshot, linked to the stable TakeawaysModel row by its id.
 export class TakeawaySourcesModel extends WorkspaceAwareModel<TakeawaySourcesModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  // References the stable sId of the takeaway this source produced.
-  declare takeawaySId: string;
+  // FK to the stable TakeawaysModel row that this source produced.
+  declare takeawaysId: ForeignKey<TakeawaysModel["id"]>;
   declare sourceType: ProjectTodoSourceType;
   declare sourceId: string;
 }
@@ -140,10 +186,10 @@ TakeawaySourcesModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    takeawaySId: {
-      type: DataTypes.STRING,
+    takeawaysId: {
+      type: DataTypes.BIGINT,
       allowNull: false,
-      comment: "Stable sId of the takeaway this source produced.",
+      comment: "FK to the TakeawaysModel row this source produced.",
     },
     sourceType: {
       type: DataTypes.STRING,
@@ -163,8 +209,8 @@ TakeawaySourcesModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        name: "takeaway_sources_ws_takeawaySId_idx",
-        fields: ["workspaceId", "takeawaySId"],
+        name: "takeaway_sources_ws_takeawaysId_idx",
+        fields: ["workspaceId", "takeawaysId"],
         concurrently: true,
       },
       {
@@ -175,3 +221,14 @@ TakeawaySourcesModel.init(
     ],
   }
 );
+
+TakeawaySourcesModel.belongsTo(TakeawaysModel, {
+  foreignKey: { name: "takeawaysId", allowNull: false },
+  onDelete: "RESTRICT",
+  as: "takeaways",
+});
+
+TakeawaysModel.hasMany(TakeawaySourcesModel, {
+  foreignKey: { name: "takeawaysId", allowNull: false },
+  as: "sources",
+});

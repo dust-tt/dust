@@ -45,7 +45,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_todos", () => {
       text: "First todo",
     });
     // Create a new version of the same todo.
-    await todo.createVersion(auth, { text: "Updated todo" });
+    await todo.updateWithVersion(auth, { text: "Updated todo" });
 
     req.query.spaceId = project.sId;
     await handler(req, res);
@@ -117,7 +117,6 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/project_todos", () => {
     expect(todo.text).toBe("New todo item");
     expect(todo.category).toBe("follow_ups");
     expect(todo.status).toBe("todo");
-    expect(todo.version).toBe(1);
     expect(typeof todo.sId).toBe("string");
   });
 
