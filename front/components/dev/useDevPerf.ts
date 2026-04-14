@@ -4,12 +4,14 @@ export interface PerfMetrics {
   memoryMb: number | null;
   fps: number;
   jankPct: number;
+  netRequests: number;
 }
 
 const EMPTY: PerfMetrics = {
   memoryMb: null,
   fps: 0,
   jankPct: 0,
+  netRequests: 0,
 };
 
 // Chrome-only: performance.memory
@@ -29,10 +31,49 @@ function getMemoryMb(): number | null {
 
 const JANK_WINDOW_MS = 5_000;
 
+// Global network request timestamps — patched once, shared across hook instances.
+const netTimestamps: number[] = [];
+let netPatched = false;
+
+function patchNetworkInterceptors() {
+  if (netPatched) {
+    return;
+  }
+  netPatched = true;
+
+  // Intercept fetch.
+  const originalFetch = window.fetch;
+  window.fetch = function (...args: Parameters<typeof fetch>) {
+    netTimestamps.push(performance.now());
+    return originalFetch.apply(this, args);
+  };
+
+  // Intercept XMLHttpRequest.
+  const originalOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (
+    ...args: Parameters<typeof XMLHttpRequest.prototype.open>
+  ) {
+    netTimestamps.push(performance.now());
+    return originalOpen.apply(this, args);
+  };
+}
+
+const NET_WINDOW_MS = 5_000;
+
+function getNetRequestsInWindow(): number {
+  const cutoff = performance.now() - NET_WINDOW_MS;
+  while (netTimestamps.length > 0 && netTimestamps[0] < cutoff) {
+    netTimestamps.shift();
+  }
+  return netTimestamps.length;
+}
+
 export function useDevPerf(): PerfMetrics {
   const [metrics, setMetrics] = useState<PerfMetrics>(EMPTY);
 
   useEffect(() => {
+    patchNetworkInterceptors();
+
     const jankEntries: { time: number; durationMs: number }[] = [];
 
     // FPS counter via requestAnimationFrame.
@@ -85,6 +126,7 @@ export function useDevPerf(): PerfMetrics {
         memoryMb: getMemoryMb(),
         fps: currentFps,
         jankPct: Math.round((totalBlockedMs / JANK_WINDOW_MS) * 100),
+        netRequests: getNetRequestsInWindow(),
       });
     }, 1000);
 

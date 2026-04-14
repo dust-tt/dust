@@ -762,6 +762,14 @@ function PerfBar({ metrics }: { metrics: PerfMetrics }) {
           "Poor: >12% (>600ms per 5s)",
         ].join("\n")}
       />
+      <MetricItem
+        label="Net"
+        value={String(metrics.netRequests)}
+        tooltip={[
+          "Network requests in the last 5 seconds.",
+          "Counts both fetch() and XMLHttpRequest calls.",
+        ].join("\n")}
+      />
     </div>
   );
 }
