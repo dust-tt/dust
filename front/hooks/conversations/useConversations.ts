@@ -32,7 +32,7 @@ export function useConversations({
   const { data, error, mutate, size, setSize, isValidating } =
     useSWRInfiniteWithDefaults(
       (
-        _pageIndex: number,
+        pageIndex: number,
         previousPageData: GetConversationsResponseBody | null
       ) => {
         if (previousPageData && !previousPageData.hasMore) {
