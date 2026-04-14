@@ -1,16 +1,9 @@
 import type { CompactionVirtuosoMessage } from "@app/components/assistant/conversation/types";
+import { formatTimestring } from "@app/lib/utils/timestamps";
 import { AnimatedText, Spinner } from "@dust-tt/sparkle";
 
 interface CompactionMessageProps {
   message: CompactionVirtuosoMessage;
-}
-
-function formatCompactionTime(timestamp: number): string {
-  return new Date(timestamp).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
 }
 
 export function CompactionMessage({ message }: CompactionMessageProps) {
@@ -18,7 +11,7 @@ export function CompactionMessage({ message }: CompactionMessageProps) {
     <div className="flex items-center justify-center gap-1.5 py-4">
       {message.status === "succeeded" && (
         <span className="text-base text-muted-foreground">
-          Context compacted · {formatCompactionTime(message.created)}
+          Context compacted · {formatTimestring(message.created)}
         </span>
       )}
       {message.status === "created" && (
