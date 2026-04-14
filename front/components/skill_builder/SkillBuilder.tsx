@@ -81,7 +81,8 @@ export default function SkillBuilder({
     limit: 30,
   });
 
-  const hasReinforcedAgents = hasFeature("reinforced_agents");
+  const hasReinforcedAgents =
+    hasFeature("reinforced_agents") && hasFeature("reinforcement_ui");
 
   const { suggestions } = useSkillSuggestions({
     skillId: skill?.sId ?? null,
