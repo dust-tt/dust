@@ -157,6 +157,45 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
     expect(res._getJSONData().conversation.spaceId).toBe(globalSpace.sId);
   });
 
+  it("accepts an empty string body and resolves the latest source message", async () => {
+    const { req, res, auth } = await createPrivateApiMockRequest({
+      method: "POST",
+    });
+
+    await FeatureFlagFactory.basic(auth, "sessions_branching");
+
+    const parentConversation = await createConversation(auth, {
+      title: "Parent conversation",
+      visibility: "unlisted",
+      spaceId: null,
+    });
+
+    const userMessage = await createUserMessage(auth, {
+      conversation: parentConversation,
+      rank: 0,
+      content: "Please continue from here.",
+    });
+    const sourceMessage = await createAgentMessage(auth, {
+      conversation: parentConversation,
+      rank: 1,
+      parentId: userMessage.id,
+      status: "succeeded",
+    });
+
+    req.query.cId = parentConversation.sId;
+    req.body = "";
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData().conversation.forkedFrom).toEqual({
+      parentConversationId: parentConversation.sId,
+      sourceMessageId: sourceMessage.sId,
+      branchedAt: expect.any(Number),
+      user: auth.getNonNullableUser().toJSON(),
+    });
+  });
+
   it("returns 400 when the source message cannot be forked", async () => {
     const { req, res, auth } = await createPrivateApiMockRequest({
       method: "POST",

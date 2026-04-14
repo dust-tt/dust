@@ -61,7 +61,9 @@ async function handler(
     });
   }
 
-  const bodyValidation = PostConversationForkBodySchema.decode(req.body ?? {});
+  const requestBody = req.body === "" ? {} : (req.body ?? {});
+
+  const bodyValidation = PostConversationForkBodySchema.decode(requestBody);
   if (isLeft(bodyValidation)) {
     const pathError = reporter.formatValidationErrors(bodyValidation.left);
     return apiError(req, res, {
