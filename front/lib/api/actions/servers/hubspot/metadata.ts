@@ -378,6 +378,152 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
   },
 
+  // Marketing email operations
+  list_marketing_emails: {
+    description:
+      "Lists marketing emails from HubSpot. Supports filtering by state (e.g., DRAFT, PUBLISHED, AUTOMATED) and pagination. " +
+      "Returns email name, subject, state, publish date, and other metadata.",
+    schema: {
+      limit: z
+        .number()
+        .optional()
+        .default(50)
+        .describe("Maximum number of emails to return (default: 50)."),
+      after: z
+        .string()
+        .optional()
+        .describe("Pagination cursor from a previous response."),
+      state: z
+        .string()
+        .optional()
+        .describe(
+          "Filter by email state (e.g., DRAFT, PUBLISHED, AUTOMATED, AUTOMATED_FOR_FORM, AUTOMATED_FOR_FORM_LEGACY, RSS_TO_EMAIL, BLOG_EMAIL, OPTIN_EMAIL, OPTIN_FOLLOWUP)."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing HubSpot marketing emails",
+      done: "List HubSpot marketing emails",
+    },
+  },
+  get_marketing_email: {
+    description:
+      "Retrieves a single marketing email by its ID. Returns full email details including name, subject, state, content, and metadata.",
+    schema: {
+      emailId: z
+        .string()
+        .describe("The ID of the marketing email to retrieve."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving HubSpot marketing email",
+      done: "Retrieve HubSpot marketing email",
+    },
+  },
+  get_marketing_email_statistics: {
+    description:
+      "Retrieves deliverability statistics histogram for a marketing email (open rates, click rates, bounces, unsubscribes, etc.). " +
+      "Provides time-bucketed data for analyzing email performance over time.",
+    schema: {
+      emailId: z
+        .string()
+        .describe(
+          "The ID of the marketing email to get statistics for."
+        ),
+      interval: z
+        .string()
+        .optional()
+        .describe(
+          "Time interval for histogram buckets (e.g., WEEK, MONTH). Defaults to the API default if not specified."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving HubSpot marketing email statistics",
+      done: "Retrieve HubSpot marketing email statistics",
+    },
+  },
+  list_email_events: {
+    description:
+      "Lists email events (deliveries, opens, clicks, bounces, unsubscribes, etc.) from HubSpot. " +
+      "Supports filtering by event type, campaign ID, and time range. " +
+      "Event types include: SENT, DELIVERED, OPEN, CLICK, BOUNCE, DEFERRED, DROPPED, STATUSCHANGE, SPAMREPORT, UNBOUNCE.",
+    schema: {
+      limit: z
+        .number()
+        .optional()
+        .default(100)
+        .describe("Maximum number of events to return (default: 100)."),
+      offset: z
+        .string()
+        .optional()
+        .describe("Pagination offset from a previous response."),
+      eventType: z
+        .string()
+        .optional()
+        .describe(
+          "Filter by event type (e.g., SENT, DELIVERED, OPEN, CLICK, BOUNCE, DEFERRED, DROPPED, STATUSCHANGE, SPAMREPORT, UNBOUNCE)."
+        ),
+      campaignId: z
+        .string()
+        .optional()
+        .describe("Filter events by email campaign ID."),
+      startTimestamp: z
+        .string()
+        .optional()
+        .describe(
+          "Filter events after this timestamp (milliseconds since epoch)."
+        ),
+      endTimestamp: z
+        .string()
+        .optional()
+        .describe(
+          "Filter events before this timestamp (milliseconds since epoch)."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing HubSpot email events",
+      done: "List HubSpot email events",
+    },
+  },
+  list_email_campaigns: {
+    description:
+      "Lists email campaigns from HubSpot. Returns campaign IDs and basic metadata. " +
+      "Use get_email_campaign to get full details including deliverability counters for a specific campaign.",
+    schema: {
+      limit: z
+        .number()
+        .optional()
+        .default(100)
+        .describe("Maximum number of campaigns to return (default: 100)."),
+      offset: z
+        .string()
+        .optional()
+        .describe("Pagination offset from a previous response."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing HubSpot email campaigns",
+      done: "List HubSpot email campaigns",
+    },
+  },
+  get_email_campaign: {
+    description:
+      "Retrieves detailed information about a specific email campaign, including name, subject, type, " +
+      "and deliverability counters (sent, delivered, open, click, bounce, unsubscribe, etc.).",
+    schema: {
+      campaignId: z
+        .string()
+        .describe("The ID of the email campaign to retrieve."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving HubSpot email campaign",
+      done: "Retrieve HubSpot email campaign",
+    },
+  },
+
   // Create operations
   create_contact: {
     description:

@@ -11,6 +11,46 @@ import type { Property } from "@hubspot/api-client/lib/codegen/crm/properties/mo
 
 const localLogger = logger.child({ module: "hubspot_client" });
 
+const HUBSPOT_API_BASE = "https://api.hubapi.com";
+
+/**
+ * Shared helper for raw HubSpot REST API calls (for endpoints not covered by the SDK).
+ */
+async function hubspotApiFetch<T>({
+  accessToken,
+  path,
+  params,
+}: {
+  accessToken: string;
+  path: string;
+  params?: Record<string, string>;
+}): Promise<T> {
+  const url = new URL(`${HUBSPOT_API_BASE}${path}`);
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      url.searchParams.set(key, value);
+    }
+  }
+
+  // eslint-disable-next-line no-restricted-globals
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `HubSpot API error ${response.status} on ${path}: ${body}`
+    );
+  }
+
+  return response.json() as Promise<T>;
+}
+
 const MAX_ENUM_OPTIONS_DISPLAYED = 50;
 export const MAX_LIMIT = 200; // Hubspot API results are capped at 200, but this limit is set lower for internal use.
 export const MAX_COUNT_LIMIT = 10000; // This is the Hubspot API limit for total count.
@@ -1848,4 +1888,196 @@ export const removeAssociation = async ({
     );
     throw normalizeError(error);
   }
+};
+
+interface HubSpotMarketingEmail {
+  id: string;
+  name: string;
+  subject: string;
+  state: string;
+  publishDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  [key: string]: unknown;
+}
+
+interface HubSpotMarketingEmailListResponse {
+  total: number;
+  results: HubSpotMarketingEmail[];
+  paging?: { next?: { after: string } };
+}
+
+export const listMarketingEmails = async ({
+  accessToken,
+  limit = 50,
+  after,
+  state,
+}: {
+  accessToken: string;
+  limit?: number;
+  after?: string;
+  state?: string;
+}): Promise<HubSpotMarketingEmailListResponse> => {
+  const params: Record<string, string> = { limit: String(limit) };
+  if (after) {
+    params.after = after;
+  }
+  if (state) {
+    params.state = state;
+  }
+
+  return hubspotApiFetch<HubSpotMarketingEmailListResponse>({
+    accessToken,
+    path: "/marketing/v3/emails",
+    params,
+  });
+};
+
+export const getMarketingEmail = async ({
+  accessToken,
+  emailId,
+}: {
+  accessToken: string;
+  emailId: string;
+}): Promise<HubSpotMarketingEmail> => {
+  return hubspotApiFetch<HubSpotMarketingEmail>({
+    accessToken,
+    path: `/marketing/v3/emails/${encodeURIComponent(emailId)}`,
+  });
+};
+
+interface HubSpotEmailStatisticsHistogram {
+  [key: string]: unknown;
+}
+
+export const getMarketingEmailStatisticsHistogram = async ({
+  accessToken,
+  emailId,
+  interval,
+}: {
+  accessToken: string;
+  emailId: string;
+  interval?: string;
+}): Promise<HubSpotEmailStatisticsHistogram> => {
+  const params: Record<string, string> = {};
+  if (interval) {
+    params.interval = interval;
+  }
+
+  return hubspotApiFetch<HubSpotEmailStatisticsHistogram>({
+    accessToken,
+    path: `/marketing/v3/emails/${encodeURIComponent(emailId)}/statistics/histogram`,
+    params,
+  });
+};
+
+interface HubSpotEmailEvent {
+  id: string;
+  type: string;
+  recipient: string;
+  created: number;
+  [key: string]: unknown;
+}
+
+interface HubSpotEmailEventListResponse {
+  events: HubSpotEmailEvent[];
+  hasMore: boolean;
+  offset: string;
+}
+
+export const listEmailEvents = async ({
+  accessToken,
+  limit = 100,
+  offset,
+  eventType,
+  campaignId,
+  startTimestamp,
+  endTimestamp,
+}: {
+  accessToken: string;
+  limit?: number;
+  offset?: string;
+  eventType?: string;
+  campaignId?: string;
+  startTimestamp?: string;
+  endTimestamp?: string;
+}): Promise<HubSpotEmailEventListResponse> => {
+  const params: Record<string, string> = { limit: String(limit) };
+  if (offset) {
+    params.offset = offset;
+  }
+  if (eventType) {
+    params.eventType = eventType;
+  }
+  if (campaignId) {
+    params.campaignId = campaignId;
+  }
+  if (startTimestamp) {
+    params.startTimestamp = startTimestamp;
+  }
+  if (endTimestamp) {
+    params.endTimestamp = endTimestamp;
+  }
+
+  return hubspotApiFetch<HubSpotEmailEventListResponse>({
+    accessToken,
+    path: "/email/public/v1/events",
+    params,
+  });
+};
+
+interface HubSpotEmailCampaign {
+  id: number;
+  appId: number;
+  appName: string;
+  [key: string]: unknown;
+}
+
+interface HubSpotEmailCampaignListResponse {
+  campaigns: HubSpotEmailCampaign[];
+  hasMore: boolean;
+  offset: number;
+}
+
+export const listEmailCampaigns = async ({
+  accessToken,
+  limit = 100,
+  offset,
+}: {
+  accessToken: string;
+  limit?: number;
+  offset?: string;
+}): Promise<HubSpotEmailCampaignListResponse> => {
+  const params: Record<string, string> = { limit: String(limit) };
+  if (offset) {
+    params.offset = offset;
+  }
+
+  return hubspotApiFetch<HubSpotEmailCampaignListResponse>({
+    accessToken,
+    path: "/email/public/v1/campaigns",
+    params,
+  });
+};
+
+interface HubSpotEmailCampaignDetail {
+  id: number;
+  name: string;
+  subject: string;
+  type: string;
+  counters: Record<string, number>;
+  [key: string]: unknown;
+}
+
+export const getEmailCampaign = async ({
+  accessToken,
+  campaignId,
+}: {
+  accessToken: string;
+  campaignId: string;
+}): Promise<HubSpotEmailCampaignDetail> => {
+  return hubspotApiFetch<HubSpotEmailCampaignDetail>({
+    accessToken,
+    path: `/email/public/v1/campaigns/${encodeURIComponent(campaignId)}`,
+  });
 };

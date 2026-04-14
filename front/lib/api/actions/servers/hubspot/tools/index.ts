@@ -23,8 +23,14 @@ import {
   getObjectByEmail,
   getObjectProperties,
   getUserActivity,
+  getEmailCampaign,
+  getMarketingEmail,
+  getMarketingEmailStatisticsHistogram,
   getUserDetails,
   listAssociations,
+  listEmailCampaigns,
+  listEmailEvents,
+  listMarketingEmails,
   listOwners,
   MAX_COUNT_LIMIT,
   MAX_LIMIT,
@@ -533,6 +539,109 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
             2
           ),
         },
+      ]);
+    });
+  },
+
+  // Marketing email operations
+  list_marketing_emails: async ({ limit, after, state }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await listMarketingEmails({
+        accessToken,
+        limit,
+        after,
+        state,
+      });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Found ${result.total} marketing email(s).`,
+        },
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
+  get_marketing_email: async ({ emailId }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await getMarketingEmail({ accessToken, emailId });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: "Marketing email retrieved successfully.",
+        },
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
+  get_marketing_email_statistics: async ({ emailId, interval }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await getMarketingEmailStatisticsHistogram({
+        accessToken,
+        emailId,
+        interval,
+      });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: "Marketing email statistics retrieved successfully.",
+        },
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
+  list_email_events: async (
+    { limit, offset, eventType, campaignId, startTimestamp, endTimestamp },
+    extra
+  ) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await listEmailEvents({
+        accessToken,
+        limit,
+        offset,
+        eventType,
+        campaignId,
+        startTimestamp,
+        endTimestamp,
+      });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Retrieved ${result.events.length} email event(s).`,
+        },
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
+  list_email_campaigns: async ({ limit, offset }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await listEmailCampaigns({
+        accessToken,
+        limit,
+        offset,
+      });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Retrieved ${result.campaigns.length} email campaign(s).`,
+        },
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
+  get_email_campaign: async ({ campaignId }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await getEmailCampaign({ accessToken, campaignId });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: "Email campaign retrieved successfully.",
+        },
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
       ]);
     });
   },
