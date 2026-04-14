@@ -16,6 +16,7 @@ import React, {
   useEffect,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -404,7 +405,9 @@ const SuggestionSelectionHighlight = Extension.create({
   },
 });
 
-const getMentionItems = (query: string): MentionItem[] => {
+type MentionScope = "users" | "all";
+
+const getMentionItems = (query: string, scope: MentionScope): MentionItem[] => {
   const normalized = query.trim().toLowerCase();
 
   const users = mockUsers.map((user) => ({
@@ -415,14 +418,17 @@ const getMentionItems = (query: string): MentionItem[] => {
     avatarUrl: user.portrait,
   }));
 
-  const agents = mockAgents.map((agent) => ({
-    id: agent.id,
-    label: agent.name,
-    sublabel: agent.description,
-    type: "agent" as const,
-    avatarEmoji: agent.emoji,
-    avatarColor: agent.backgroundColor,
-  }));
+  const agents =
+    scope === "all"
+      ? mockAgents.map((agent) => ({
+          id: agent.id,
+          label: agent.name,
+          sublabel: agent.description,
+          type: "agent" as const,
+          avatarEmoji: agent.emoji,
+          avatarColor: agent.backgroundColor,
+        }))
+      : [];
 
   const combined = [...users, ...agents];
 
@@ -435,74 +441,76 @@ const getMentionItems = (query: string): MentionItem[] => {
     .slice(0, 8);
 };
 
-const mentionExtension = Mention.extend({
-  draggable: true,
-}).configure({
-  HTMLAttributes: {
-    class: cn(
-      "sparkle-mention",
-      "s-rounded s-px-1 s-transition-colors",
-      "s-text-highlight-600 dark:s-text-highlight-600-night",
-      "hover:s-bg-highlight-100 dark:hover:s-bg-highlight-100-night",
-      "hover:s-text-highlight-800 dark:hover:s-text-highlight-800-night"
-    ),
-  },
-  renderText({ node }) {
-    const label = node.attrs.label ?? node.attrs.id ?? "";
-    return `@${label}`;
-  },
-  renderHTML({ node, options }) {
-    const label = node.attrs.label ?? node.attrs.id ?? "";
-    return ["span", mergeAttributes(options.HTMLAttributes), `@${label}`];
-  },
-  char: "@",
-  suggestion: {
-    items: ({ query }) => getMentionItems(query),
-    render: () => {
-      let reactRenderer: ReactRenderer<SuggestionListHandle> | null = null;
-      let popup: TippyInstance | null = null;
-
-      return {
-        onStart: (props) => {
-          reactRenderer = new ReactRenderer(SuggestionList, {
-            props,
-            editor: props.editor,
-          });
-
-          popup = tippy(document.body, {
-            getReferenceClientRect: props.clientRect as () => DOMRect,
-            appendTo: () => document.body,
-            content: reactRenderer.element,
-            showOnCreate: true,
-            interactive: true,
-            trigger: "manual",
-            placement: "bottom-start",
-            arrow: false,
-            theme: "sparkle",
-          })[0];
-        },
-        onUpdate: (props) => {
-          reactRenderer?.updateProps(props);
-          popup?.setProps({
-            getReferenceClientRect: props.clientRect as () => DOMRect,
-          });
-        },
-        onKeyDown: (props) => {
-          if (props.event.key === "Escape") {
-            popup?.hide();
-            return true;
-          }
-
-          return reactRenderer?.ref?.onKeyDown(props) ?? false;
-        },
-        onExit: () => {
-          popup?.destroy();
-          reactRenderer?.destroy();
-        },
-      };
+function createMentionExtension(readScope: () => MentionScope) {
+  return Mention.extend({
+    draggable: true,
+  }).configure({
+    HTMLAttributes: {
+      class: cn(
+        "sparkle-mention",
+        "s-rounded s-px-1 s-transition-colors",
+        "s-text-highlight-600 dark:s-text-highlight-600-night",
+        "hover:s-bg-highlight-100 dark:hover:s-bg-highlight-100-night",
+        "hover:s-text-highlight-800 dark:hover:s-text-highlight-800-night"
+      ),
     },
-  },
-});
+    renderText({ node }) {
+      const label = node.attrs.label ?? node.attrs.id ?? "";
+      return `@${label}`;
+    },
+    renderHTML({ node, options }) {
+      const label = node.attrs.label ?? node.attrs.id ?? "";
+      return ["span", mergeAttributes(options.HTMLAttributes), `@${label}`];
+    },
+    suggestion: {
+      char: "@",
+      items: ({ query }) => getMentionItems(query, readScope()),
+      render: () => {
+        let reactRenderer: ReactRenderer<SuggestionListHandle> | null = null;
+        let popup: TippyInstance | null = null;
+
+        return {
+          onStart: (props) => {
+            reactRenderer = new ReactRenderer(SuggestionList, {
+              props,
+              editor: props.editor,
+            });
+
+            popup = tippy(document.body, {
+              getReferenceClientRect: props.clientRect as () => DOMRect,
+              appendTo: () => document.body,
+              content: reactRenderer.element,
+              showOnCreate: true,
+              interactive: true,
+              trigger: "manual",
+              placement: "bottom-start",
+              arrow: false,
+              theme: "sparkle",
+            })[0];
+          },
+          onUpdate: (props) => {
+            reactRenderer?.updateProps(props);
+            popup?.setProps({
+              getReferenceClientRect: props.clientRect as () => DOMRect,
+            });
+          },
+          onKeyDown: (props) => {
+            if (props.event.key === "Escape") {
+              popup?.hide();
+              return true;
+            }
+
+            return reactRenderer?.ref?.onKeyDown(props) ?? false;
+          },
+          onExit: () => {
+            popup?.destroy();
+            reactRenderer?.destroy();
+          },
+        };
+      },
+    },
+  });
+}
 
 const instructionSnippetMark = Mark.create({
   name: "instructionSnippet",
@@ -604,6 +612,8 @@ type RichTextAreaProps = {
   variant?: "default" | "compact" | "embedded";
   showFormattingMenu?: boolean;
   showAskSidekickMenu?: boolean;
+  /** `"users"`: @-mention list is humans only (playground mock members). `"all"`: members + agents. */
+  mentionScope?: MentionScope;
 };
 
 export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
@@ -625,9 +635,18 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       variant = "default",
       showFormattingMenu = false,
       showAskSidekickMenu: showAskSidekickMenu = true,
+      mentionScope = "all",
     },
     ref
   ) => {
+    const mentionScopeRef = useRef<MentionScope>(mentionScope);
+    mentionScopeRef.current = mentionScope;
+
+    const mentionExtension = useMemo(
+      () => createMentionExtension(() => mentionScopeRef.current),
+      []
+    );
+
     const hasTopBar = Boolean(topBar);
     const editorVariant =
       hasTopBar && variant === "default" ? "embedded" : variant;
