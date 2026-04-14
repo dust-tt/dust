@@ -28,16 +28,24 @@ export function createConfluenceTools(): ToolDefinition[] {
     get_connection_info: async (_params, { authInfo }: ToolHandlerExtra) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
-        return new Ok([{ type: "text" as const, text: "No access token found." }]);
+        return new Ok([
+          { type: "text" as const, text: "No access token found." },
+        ]);
       }
       const resources = await getAllConfluenceResources(accessToken);
       if (!resources) {
         return new Ok([
-          { type: "text" as const, text: "Failed to retrieve connection information." },
+          {
+            type: "text" as const,
+            text: "Failed to retrieve connection information.",
+          },
         ]);
       }
       return new Ok([
-        { type: "text" as const, text: "Connection information retrieved successfully" },
+        {
+          type: "text" as const,
+          text: "Connection information retrieved successfully",
+        },
         { type: "text" as const, text: JSON.stringify(resources, null, 2) },
       ]);
     },
@@ -102,7 +110,10 @@ export function createConfluenceTools(): ToolDefinition[] {
       ]);
     },
 
-    get_pages: async ({ cloud_id, ...pageParams }, { authInfo }: ToolHandlerExtra) => {
+    get_pages: async (
+      { cloud_id, ...pageParams },
+      { authInfo }: ToolHandlerExtra
+    ) => {
       const authResult = await withAuth(
         authInfo?.token,
         cloud_id,
@@ -175,7 +186,10 @@ export function createConfluenceTools(): ToolDefinition[] {
       ]);
     },
 
-    create_page: async ({ cloud_id, ...pageParams }, { authInfo }: ToolHandlerExtra) => {
+    create_page: async (
+      { cloud_id, ...pageParams },
+      { authInfo }: ToolHandlerExtra
+    ) => {
       const authResult = await withAuth(
         authInfo?.token,
         cloud_id,
@@ -201,7 +215,10 @@ export function createConfluenceTools(): ToolDefinition[] {
       ]);
     },
 
-    update_page: async ({ cloud_id, ...pageParams }, { authInfo }: ToolHandlerExtra) => {
+    update_page: async (
+      { cloud_id, ...pageParams },
+      { authInfo }: ToolHandlerExtra
+    ) => {
       const authResult = await withAuth(
         authInfo?.token,
         cloud_id,
