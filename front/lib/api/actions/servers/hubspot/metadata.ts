@@ -427,9 +427,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     schema: {
       emailId: z
         .string()
-        .describe(
-          "The ID of the marketing email to get statistics for."
-        ),
+        .describe("The ID of the marketing email to get statistics for."),
       interval: z
         .string()
         .optional()

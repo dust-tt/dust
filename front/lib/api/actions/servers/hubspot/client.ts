@@ -43,9 +43,7 @@ async function hubspotApiFetch<T>({
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
-    throw new Error(
-      `HubSpot API error ${response.status} on ${path}: ${body}`
-    );
+    throw new Error(`HubSpot API error ${response.status} on ${path}: ${body}`);
   }
 
   return response.json() as Promise<T>;
