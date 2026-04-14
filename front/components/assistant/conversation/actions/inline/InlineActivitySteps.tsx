@@ -159,15 +159,13 @@ export function InlineActivitySteps({
     isLast,
     label,
     onClick,
-    icon,
   }: {
     isLast: boolean;
     label: string;
     onClick?: () => void;
-    icon?: React.ComponentType<{ className?: string }>;
   }) => {
     const row = (
-      <TimelineRow spinner={!icon} icon={icon} isLast={isLast}>
+      <TimelineRow spinner isLast={isLast}>
         <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
           {label}
           <Icon
