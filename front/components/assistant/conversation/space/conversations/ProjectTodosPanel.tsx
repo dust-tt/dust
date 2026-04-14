@@ -61,7 +61,168 @@ const CATEGORY_CONFIG: Record<ProjectTodoCategory, CategoryConfig> = {
 // Stable display order for categories.
 const ORDERED_CATEGORIES: ProjectTodoCategory[] = [...PROJECT_TODO_CATEGORIES];
 
-// ── Sub-components ─────────────────────────────────────────────────────────────
+// ── Shared sub-components ─────────────────────────────────────────────────────
+
+function TodoSources({
+  sources,
+  owner,
+  isDone,
+}: {
+  sources: ProjectTodoType["sources"];
+  owner: LightWorkspaceType;
+  isDone: boolean;
+}) {
+  const router = useAppRouter();
+
+  if (sources.length === 0) {
+    return null;
+  }
+
+  return (
+    <span
+      className={cn(
+        "text-xs",
+        isDone
+          ? "text-faint dark:text-faint-night"
+          : "text-muted-foreground dark:text-muted-foreground-night"
+      )}
+    >
+      In{" "}
+      {sources.map((source, index) => (
+        <span key={`${source.sourceType}-${source.sourceId}`}>
+          {index > 0 && ", "}
+          <button
+            type="button"
+            className="underline hover:no-underline"
+            onClick={() => {
+              void router.push(
+                getConversationRoute(owner.sId, source.sourceId)
+              );
+            }}
+          >
+            {source.title ?? source.sourceId}
+          </button>
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function CategorySectionHeader({ config }: { config: CategoryConfig }) {
+  return (
+    <div className="flex items-center gap-3 pt-2">
+      <div className="flex h-4 w-4 items-center">
+        <Icon visual={config.icon} size="xs" className={config.iconClassName} />
+      </div>
+      <h4 className="heading-lg text-foreground dark:text-foreground-night">
+        {config.label}
+      </h4>
+    </div>
+  );
+}
+
+function groupTodosByCategory(todos: ProjectTodoType[]) {
+  const todosByCategory = todos.reduce<
+    Partial<Record<ProjectTodoCategory, ProjectTodoType[]>>
+  >((acc, todo) => {
+    const cat = todo.category;
+    const existing = acc[cat] ?? [];
+    return { ...acc, [cat]: [...existing, todo] };
+  }, {});
+
+  const activeSections = ORDERED_CATEGORIES.filter(
+    (cat) => (todosByCategory[cat]?.length ?? 0) > 0
+  );
+
+  return { todosByCategory, activeSections };
+}
+
+// ── Read-only panel (archived projects) ───────────────────────────────────────
+
+function ReadOnlyTodoItem({
+  todo,
+  owner,
+}: {
+  todo: ProjectTodoType;
+  owner: LightWorkspaceType;
+}) {
+  const isDone = todo.status === "done";
+
+  return (
+    <li className="flex items-start gap-2 py-0.5">
+      <div className="mt-0.5 shrink-0">
+        <Checkbox size="xs" checked={isDone} disabled />
+      </div>
+      <div className="flex flex-col gap-0.5">
+        <span
+          className={cn(
+            "text-sm leading-5",
+            isDone
+              ? "text-faint dark:text-faint-night line-through"
+              : "text-foreground dark:text-foreground-night"
+          )}
+        >
+          {todo.text}
+        </span>
+        <TodoSources sources={todo.sources} owner={owner} isDone={isDone} />
+      </div>
+    </li>
+  );
+}
+
+function ReadOnlyProjectTodosPanel({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  const { todos, isTodosLoading } = useProjectTodos({ owner, spaceId });
+  const { todosByCategory, activeSections } = groupTodosByCategory(todos);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <h3 className="heading-2xl text-foreground dark:text-foreground-night">
+        Todos
+      </h3>
+      {isTodosLoading ? (
+        <div className="flex justify-center py-4">
+          <Spinner size="sm" />
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {activeSections.map((cat) => {
+            const config = CATEGORY_CONFIG[cat];
+            const items = todosByCategory[cat] ?? [];
+
+            return (
+              <div key={cat} className="flex flex-col gap-1">
+                <CategorySectionHeader config={config} />
+                <ul className="flex flex-col pl-7">
+                  {items.map((todo) => (
+                    <ReadOnlyTodoItem
+                      key={todo.sId}
+                      todo={todo}
+                      owner={owner}
+                    />
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+
+          {activeSections.length === 0 && (
+            <p className="text-sm italic text-faint dark:text-faint-night">
+              All caught up!
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Editable sub-components ───────────────────────────────────────────────────
 
 interface AddTodoFormProps {
   defaultCategory?: ProjectTodoCategory;
@@ -155,16 +316,18 @@ function AddTodoForm({
   );
 }
 
-interface TodoItemProps {
+function EditableTodoItem({
+  todo,
+  isPendingDone,
+  onMarkDone,
+  owner,
+}: {
   todo: ProjectTodoType;
   isPendingDone: boolean;
   onMarkDone: (todo: ProjectTodoType) => void;
   owner: LightWorkspaceType;
-}
-
-function TodoItem({ todo, isPendingDone, onMarkDone, owner }: TodoItemProps) {
+}) {
   const isDone = isPendingDone || todo.status === "done";
-  const router = useAppRouter();
 
   return (
     <li className="flex items-start gap-2 py-0.5">
@@ -191,47 +354,19 @@ function TodoItem({ todo, isPendingDone, onMarkDone, owner }: TodoItemProps) {
         >
           {todo.text}
         </span>
-        {todo.sources.length > 0 && (
-          <span
-            className={cn(
-              "text-xs",
-              isDone
-                ? "text-faint dark:text-faint-night"
-                : "text-muted-foreground dark:text-muted-foreground-night"
-            )}
-          >
-            In{" "}
-            {todo.sources.map((source, index) => (
-              <span key={`${source.sourceType}-${source.sourceId}`}>
-                {index > 0 && ", "}
-                <button
-                  type="button"
-                  className="underline hover:no-underline"
-                  onClick={() => {
-                    void router.push(
-                      getConversationRoute(owner.sId, source.sourceId)
-                    );
-                  }}
-                >
-                  {source.title ?? source.sourceId}
-                </button>
-              </span>
-            ))}
-          </span>
-        )}
+        <TodoSources sources={todo.sources} owner={owner} isDone={isDone} />
       </div>
     </li>
   );
 }
 
-// ── Main component ─────────────────────────────────────────────────────────────
-
-interface ProjectTodosPanelProps {
+function EditableProjectTodosPanel({
+  owner,
+  spaceId,
+}: {
   owner: LightWorkspaceType;
   spaceId: string;
-}
-
-export function ProjectTodosPanel({ owner, spaceId }: ProjectTodosPanelProps) {
+}) {
   const { todos, isTodosLoading, mutateTodos } = useProjectTodos({
     owner,
     spaceId,
@@ -247,18 +382,7 @@ export function ProjectTodosPanel({ owner, spaceId }: ProjectTodosPanelProps) {
   >(null);
   const [isCreating, setIsCreating] = useState(false);
 
-  // Group todos by category.
-  const todosByCategory = todos.reduce<
-    Partial<Record<ProjectTodoCategory, ProjectTodoType[]>>
-  >((acc, todo) => {
-    const cat = todo.category;
-    const existing = acc[cat] ?? [];
-    return { ...acc, [cat]: [...existing, todo] };
-  }, {});
-
-  const activeSections = ORDERED_CATEGORIES.filter(
-    (cat) => (todosByCategory[cat]?.length ?? 0) > 0
-  );
+  const { todosByCategory, activeSections } = groupTodosByCategory(todos);
   const isEmpty = activeSections.length === 0 && !isCreating;
 
   const handleMarkDone = useCallback(
@@ -390,7 +514,7 @@ export function ProjectTodosPanel({ owner, spaceId }: ProjectTodosPanelProps) {
                 {/* Todo items */}
                 <ul className="flex flex-col pl-7">
                   {items.map((todo) => (
-                    <TodoItem
+                    <EditableTodoItem
                       key={todo.sId}
                       todo={todo}
                       isPendingDone={pendingDoneIds.has(todo.sId)}
@@ -455,4 +579,24 @@ export function ProjectTodosPanel({ owner, spaceId }: ProjectTodosPanelProps) {
       )}
     </div>
   );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
+
+interface ProjectTodosPanelProps {
+  owner: LightWorkspaceType;
+  spaceId: string;
+  isArchived: boolean;
+}
+
+export function ProjectTodosPanel({
+  owner,
+  spaceId,
+  isArchived,
+}: ProjectTodosPanelProps) {
+  if (isArchived) {
+    return <ReadOnlyProjectTodosPanel owner={owner} spaceId={spaceId} />;
+  }
+
+  return <EditableProjectTodosPanel owner={owner} spaceId={spaceId} />;
 }

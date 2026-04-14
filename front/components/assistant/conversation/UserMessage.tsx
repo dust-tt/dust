@@ -133,6 +133,7 @@ interface UserMessageProps {
   message: UserMessageTypeWithContentFragments;
   owner: WorkspaceType;
   onReactionToggle: (emoji: string) => void;
+  isProjectArchived?: boolean;
 }
 
 export function UserMessage({
@@ -144,6 +145,7 @@ export function UserMessage({
   message,
   owner,
   onReactionToggle,
+  isProjectArchived = false,
 }: UserMessageProps) {
   const [shouldShowEditor, setShouldShowEditor] = useState(false);
   const { ref: userMessageHoveredRef, isHovering: isUserMessageHovered } =
@@ -230,8 +232,9 @@ export function UserMessage({
   const isDeleted = message.visibility === "deleted";
   const isEmpty = !message.content && message.contentFragments.length === 0;
   const isCurrentUser = message.user?.sId === currentUserId;
-  const canDelete = (isCurrentUser || isAdmin) && !isDeleted;
-  const canEdit = isCurrentUser && !isDeleted;
+  const canDelete =
+    (isCurrentUser || isAdmin) && !isDeleted && !isProjectArchived;
+  const canEdit = isCurrentUser && !isDeleted && !isProjectArchived;
 
   const handleDeleteMessage = useCallback(async () => {
     if (isDeleting || isDeleted) {

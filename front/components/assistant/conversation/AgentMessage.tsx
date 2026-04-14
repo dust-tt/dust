@@ -182,6 +182,7 @@ interface AgentMessageProps {
   ) => Promise<Result<undefined, DustError>>;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
+  isProjectArchived?: boolean;
 }
 
 export function AgentMessage({
@@ -199,6 +200,7 @@ export function AgentMessage({
   handleSubmit,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
+  isProjectArchived = false,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
   const [streamId, setStreamId] = useState<string>(`message-${sId}`);
@@ -578,7 +580,10 @@ export function AgentMessage({
       : null;
 
   const canDeleteAgentMessage =
-    !isDeleted && agentMessage.status !== "created" && isTriggeredByCurrentUser;
+    !isDeleted &&
+    agentMessage.status !== "created" &&
+    isTriggeredByCurrentUser &&
+    !isProjectArchived;
 
   const handleDeleteAgentMessage = useCallback(async () => {
     if (isDeleted || !canDeleteAgentMessage || isDeleting) {
@@ -628,7 +633,9 @@ export function AgentMessage({
     agentMessage.status !== "created" &&
     agentMessage.status !== "failed" &&
     !shouldStream &&
-    !isAgentMessageHandingOver;
+    !isAgentMessageHandingOver &&
+    !isProjectArchived;
+
   const canBranchConversation =
     hasFeature("sessions_branching") && shouldShowCopy;
 

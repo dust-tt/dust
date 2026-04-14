@@ -904,6 +904,7 @@ export const ConversationViewer = ({
       additionalMarkdownPlugins,
       isProjectMember,
       isProjectRestricted: spaceInfo?.isRestricted,
+      isProjectArchived: !!spaceInfo?.archivedAt,
       projectId: conversation?.spaceId ?? undefined,
       projectSpaceName: spaceInfo?.name,
       branchIdToApprove: branchIdToApprove ?? undefined,
@@ -923,6 +924,7 @@ export const ConversationViewer = ({
     additionalMarkdownPlugins,
     isProjectMember,
     spaceInfo?.isRestricted,
+    spaceInfo?.archivedAt,
     spaceInfo?.name,
     branchIdToApprove,
   ]);
