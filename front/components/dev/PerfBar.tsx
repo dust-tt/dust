@@ -3,11 +3,18 @@ import type { PerfMetrics } from "./useDevPerf";
 interface MetricItemProps {
   label: string;
   value: string;
+  valueWidthPx: number;
   color?: string;
   tooltip?: string;
 }
 
-function MetricItem({ label, value, color, tooltip }: MetricItemProps) {
+function MetricItem({
+  label,
+  value,
+  valueWidthPx,
+  color,
+  tooltip,
+}: MetricItemProps) {
   return (
     <span
       title={tooltip}
@@ -21,7 +28,16 @@ function MetricItem({ label, value, color, tooltip }: MetricItemProps) {
       }}
     >
       <span style={{ color: "#9ca3af" }}>{label}</span>
-      <span style={{ color: color ?? "#ccc", fontWeight: 600 }}>{value}</span>
+      <span
+        style={{
+          color: color ?? "#ccc",
+          fontWeight: 600,
+          width: valueWidthPx,
+          textAlign: "right",
+        }}
+      >
+        {value}
+      </span>
     </span>
   );
 }
@@ -43,6 +59,7 @@ export function PerfBar({ metrics }: PerfBarProps) {
         <MetricItem
           label="Mem"
           value={`${(metrics.memoryMb / 1024).toFixed(2)}GB`}
+          valueWidthPx={48}
           tooltip={[
             "JS Heap Memory (Chrome only)",
             `Used: ${metrics.memoryMb}MB`,
@@ -59,6 +76,7 @@ export function PerfBar({ metrics }: PerfBarProps) {
       <MetricItem
         label="FPS"
         value={String(metrics.fps)}
+        valueWidthPx={22}
         color={
           metrics.fps < 30
             ? "#ff6b6b"
@@ -81,6 +99,7 @@ export function PerfBar({ metrics }: PerfBarProps) {
       <MetricItem
         label="Jank"
         value={`${metrics.jankPct}%`}
+        valueWidthPx={30}
         color={
           metrics.jankPct > 12
             ? "#ff6b6b"
@@ -102,8 +121,9 @@ export function PerfBar({ metrics }: PerfBarProps) {
       <MetricItem
         label="Net"
         value={String(metrics.netRequests)}
+        valueWidthPx={22}
         tooltip={[
-          "Network requests in the last 5 seconds.",
+          "Network requests in the last 3 seconds.",
           "Counts both fetch() and XMLHttpRequest calls.",
         ].join("\n")}
       />

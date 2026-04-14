@@ -10,8 +10,6 @@ import {
   type TypoProp,
 } from "./devModeConfig";
 
-// ── Storage keys & style element IDs ──
-
 const COLOR_OVERRIDES_KEY = "dust_color_overrides";
 const COLOR_STYLE_ID = "dust-dev-color-overrides";
 
@@ -25,8 +23,6 @@ const FONT_FAMILY_LINK_ID = "dust-dev-google-font";
 export const PANEL_POS_KEY = "dust_dev_panel_pos";
 export const DOCK_MODE_KEY = "dust_dev_dock_mode";
 export const DOCKED_PANEL_POS_KEY = "dust_dev_docked_panel_pos";
-
-// ── Color overrides ──
 
 export type ColorOverrides = Record<string, string>;
 
@@ -104,8 +100,6 @@ export function injectColorStyles(overrides: ColorOverrides): void {
   styleEl.textContent = rules.join("\n");
 }
 
-// ── Typography overrides ──
-
 export function readTypoOverrides(): TypoOverrides {
   try {
     return JSON.parse(sessionStorage.getItem(TYPO_OVERRIDES_KEY) ?? "{}");
@@ -170,8 +164,6 @@ export function injectTypoStyles(overrides: TypoOverrides): void {
 
   styleEl.textContent = rules.join("\n");
 }
-
-// ── Font family overrides ──
 
 export function readFontFamilyOverrides(): FontFamilyOverrides {
   try {
@@ -253,8 +245,6 @@ export function injectFontFamilyStyles(overrides: FontFamilyOverrides): void {
 
   styleEl.textContent = rules.join("\n");
 }
-
-// ── Position persistence ──
 
 export function readPosition(): { x: number; y: number } {
   try {

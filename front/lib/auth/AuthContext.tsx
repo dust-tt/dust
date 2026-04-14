@@ -55,9 +55,7 @@ export function useFeatureFlags() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: overrideVersion triggers recalculation when dev panel changes overrides
   const featureFlags = useMemo(
     () =>
-      DEV_MODE_ACTIVE
-        ? applyFeatureFlagOverrides(serverFlags)
-        : serverFlags,
+      DEV_MODE_ACTIVE ? applyFeatureFlagOverrides(serverFlags) : serverFlags,
     [serverFlags, overrideVersion]
   );
 

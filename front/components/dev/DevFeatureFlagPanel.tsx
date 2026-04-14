@@ -43,8 +43,6 @@ import { TypoOverridePanel } from "./TypoOverridePanel";
 import { useDevPerf } from "./useDevPerf";
 import { useDrag } from "./useDrag";
 
-// ── Docked toolbar ──
-
 interface DockedToolbarProps {
   serverFlags: WhitelistableFeature[];
   onSwitchMode: () => void;
@@ -86,27 +84,28 @@ function DockedToolbar({ serverFlags, onSwitchMode }: DockedToolbarProps) {
           metrics={metrics}
           expanded={expanded}
           onTogglePanel={togglePanel}
+          actions={
+            <>
+              <button
+                style={S.dockedIconBtn}
+                onClick={onSwitchMode}
+                title="Switch to floating mode"
+              >
+                {"↗"}
+              </button>
+              <button
+                style={S.dockedIconBtn}
+                onClick={() => {
+                  localStorage.removeItem(DEV_MODE_STORAGE_KEY);
+                  window.location.reload();
+                }}
+                title="Close dev console"
+              >
+                {"✕"}
+              </button>
+            </>
+          }
         />
-        <div style={S.dockedSection}>
-          <span style={S.dockedSep} />
-          <button
-            style={S.dockedIconBtn}
-            onClick={onSwitchMode}
-            title="Switch to floating mode"
-          >
-            {"↗"}
-          </button>
-          <button
-            style={S.dockedIconBtn}
-            onClick={() => {
-              localStorage.removeItem(DEV_MODE_STORAGE_KEY);
-              window.location.reload();
-            }}
-            title="Close dev console"
-          >
-            {"✕"}
-          </button>
-        </div>
       </div>
 
       {expanded && (
@@ -137,8 +136,6 @@ function DockedToolbar({ serverFlags, onSwitchMode }: DockedToolbarProps) {
     </div>
   );
 }
-
-// ── Floating panel ──
 
 interface FloatingPanelProps {
   serverFlags: WhitelistableFeature[];
@@ -203,17 +200,16 @@ function FloatingPanel({ serverFlags, onSwitchMode }: FloatingPanelProps) {
           metrics={metrics}
           expanded={activePanel}
           onTogglePanel={togglePanel}
+          actions={
+            <button
+              style={S.dockedIconBtn}
+              onClick={onSwitchMode}
+              title="Switch to docked mode"
+            >
+              {"↙"}
+            </button>
+          }
         />
-        <div style={S.dockedSection}>
-          <span style={S.dockedSep} />
-          <button
-            style={S.dockedIconBtn}
-            onClick={onSwitchMode}
-            title="Switch to docked mode"
-          >
-            {"↙"}
-          </button>
-        </div>
       </div>
 
       {activePanel === "flags" && (
@@ -231,8 +227,6 @@ function FloatingPanel({ serverFlags, onSwitchMode }: FloatingPanelProps) {
     </div>
   );
 }
-
-// ── Root component ──
 
 interface DevFeatureFlagPanelProps {
   serverFlags: WhitelistableFeature[];
@@ -283,9 +277,7 @@ export function DevFeatureFlagPanel({ serverFlags }: DevFeatureFlagPanelProps) {
   );
 }
 
-// ── Console helpers (window.ff) ──
 // Registered once when this lazy chunk loads (dev mode is always active here).
-
 (window as unknown as Record<string, unknown>).ff = {
   enable(flag: string) {
     if (!isWhitelistableFeature(flag)) {

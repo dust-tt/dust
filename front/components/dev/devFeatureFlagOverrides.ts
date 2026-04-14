@@ -12,9 +12,7 @@ const FEATURE_FLAG_OVERRIDES_KEY = "dust_ff_overrides";
 
 type FeatureFlagOverrides = Partial<Record<WhitelistableFeature, boolean>>;
 
-// ── Reactive store ──
 // Lets useFeatureFlags re-render when the dev panel changes overrides.
-
 let featureFlagOverrideVersion = 0;
 const featureFlagOverrideListeners = new Set<() => void>();
 
@@ -35,8 +33,6 @@ export function subscribeFeatureFlagOverrides(
 export function getFeatureFlagOverrideVersion(): number {
   return featureFlagOverrideVersion;
 }
-
-// ── Override reading ──
 
 export function getFeatureFlagOverrides(): FeatureFlagOverrides {
   if (!DEV_MODE_ACTIVE) {
@@ -63,8 +59,6 @@ export function getFeatureFlagOverrides(): FeatureFlagOverrides {
   }
 }
 
-// ── Override writing ──
-
 export function writeFeatureFlagOverrides(
   overrides: FeatureFlagOverrides
 ): void {
@@ -78,8 +72,6 @@ export function writeFeatureFlagOverrides(
   }
   notifyFeatureFlagOverridesChanged();
 }
-
-// ── Apply overrides to a flag list ──
 
 export function applyFeatureFlagOverrides(
   serverFlags: WhitelistableFeature[]

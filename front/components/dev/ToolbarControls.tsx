@@ -1,4 +1,5 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { ReactNode } from "react";
 
 import { getFeatureFlagOverrides } from "./devFeatureFlagOverrides";
 import { type ExpandedPanel, THEME_OPTIONS } from "./devModeConfig";
@@ -16,12 +17,14 @@ interface ToolbarControlsProps {
   metrics: PerfMetrics;
   expanded: ExpandedPanel;
   onTogglePanel: (panel: "flags" | "colors" | "typo") => void;
+  actions?: ReactNode;
 }
 
 export function ToolbarControls({
   metrics,
   expanded,
   onTogglePanel,
+  actions,
 }: ToolbarControlsProps) {
   const { theme, setTheme } = useTheme();
   const overrideCount = Object.keys(getFeatureFlagOverrides()).length;
@@ -79,6 +82,12 @@ export function ToolbarControls({
 
       <div style={S.dockedSection}>
         <PerfBar metrics={metrics} />
+        {actions && (
+          <>
+            <span style={S.dockedSep} />
+            {actions}
+          </>
+        )}
       </div>
     </>
   );

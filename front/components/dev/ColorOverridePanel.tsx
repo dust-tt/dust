@@ -10,8 +10,6 @@ import {
   writeColorOverrides,
 } from "./devStyleOverrides";
 
-// ── Color token row ──
-
 interface ColorTokenRowProps {
   tokenKey: string;
   token: ColorToken;
@@ -44,7 +42,6 @@ function ColorTokenRow({
         minHeight: 28,
       }}
     >
-      {/* Color swatch with hidden color picker */}
       <label
         style={{
           position: "relative",
@@ -74,7 +71,6 @@ function ColorTokenRow({
         />
       </label>
 
-      {/* Token name */}
       <span
         style={{
           flex: 1,
@@ -86,7 +82,6 @@ function ColorTokenRow({
         {token.label}
       </span>
 
-      {/* Reset button (only when overridden) */}
       {isOverridden && (
         <button
           style={{
@@ -105,7 +100,6 @@ function ColorTokenRow({
         </button>
       )}
 
-      {/* Editable hex value */}
       <input
         type="text"
         value={editingHex ?? displayColor.toLowerCase()}
@@ -149,8 +143,6 @@ function ColorTokenRow({
     </div>
   );
 }
-
-// ── Panel ──
 
 interface ColorOverridePanelProps {
   onClose: () => void;

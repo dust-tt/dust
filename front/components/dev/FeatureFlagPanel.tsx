@@ -152,7 +152,6 @@ export function FeatureFlagPanel({
 
   return (
     <>
-      {/* Header */}
       <div style={S.panelHeader}>
         <span style={S.headerTitle}>Feature Flags</span>
         <button style={S.headerBtn} onClick={onClose} title="Close">
@@ -172,7 +171,6 @@ export function FeatureFlagPanel({
         closes. Does not affect backend behavior.
       </div>
 
-      {/* Search */}
       <div style={S.search}>
         <input
           style={S.searchInput}

@@ -23,8 +23,6 @@ import {
   writeTypoOverrides,
 } from "./devStyleOverrides";
 
-// ── Typography property input ──
-
 interface TypoPropInputProps {
   prop: TypoProp;
   value: string | undefined;
@@ -124,8 +122,6 @@ function TypoPropInput({
   );
 }
 
-// ── Typography token row ──
-
 interface TypoTokenRowProps {
   token: TypoToken;
   override: TypoTokenOverride | undefined;
@@ -208,8 +204,6 @@ function TypoTokenRow({
   );
 }
 
-// ── Font family section ──
-
 interface FontFamilySectionProps {
   fontOverrides: FontFamilyOverrides;
   onUpdate: (overrides: FontFamilyOverrides) => void;
@@ -250,7 +244,6 @@ function FontFamilySection({
 
   return (
     <div style={{ borderBottom: "1px solid #2a2a4a" }}>
-      {/* Sans font */}
       <div style={{ padding: "6px 12px" }}>
         <div
           style={{
@@ -345,7 +338,6 @@ function FontFamilySection({
         </div>
       </div>
 
-      {/* Mono font */}
       <div style={{ padding: "6px 12px" }}>
         <div
           style={{
@@ -443,8 +435,6 @@ function FontFamilySection({
   );
 }
 
-// ── Main panel ──
-
 interface TypoOverridePanelProps {
   onClose: () => void;
 }
@@ -523,7 +513,6 @@ export function TypoOverridePanel({ onClose }: TypoOverridePanelProps) {
       </div>
 
       <div style={{ ...S.list, padding: 0 }}>
-        {/* Font family section */}
         <button
           onClick={() => toggleGroup("__fonts")}
           style={{
@@ -573,7 +562,6 @@ export function TypoOverridePanel({ onClose }: TypoOverridePanelProps) {
           />
         )}
 
-        {/* Token groups */}
         {TYPO_GROUPS.map((group) => {
           const groupOverrideCount = group.tokens.filter(
             (t) =>

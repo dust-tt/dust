@@ -133,7 +133,6 @@ export const S = {
     padding: "6px 12px",
     background: "#111827",
     cursor: "grab" as const,
-    borderBottom: "1px solid #2a2a4a",
     flexShrink: 0,
   },
 

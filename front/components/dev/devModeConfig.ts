@@ -1,8 +1,6 @@
 // Pure data definitions for the dev console: color tokens, typography tokens, font lists.
 // No side effects, no React imports.
 
-// ── Color tokens ──
-
 export interface ColorToken {
   label: string;
   defaultLight: string;
@@ -237,8 +235,6 @@ for (const group of COLOR_GROUPS) {
 }
 export const ALL_TOKEN_NAMES = Object.keys(ALL_TOKENS);
 
-// ── Typography tokens ──
-
 export type TypoProp =
   | "fontWeight"
   | "fontSize"
@@ -374,8 +370,6 @@ for (const group of TYPO_GROUPS) {
 export type TypoTokenOverride = Partial<Record<TypoProp, string>>;
 export type TypoOverrides = Record<string, TypoTokenOverride>;
 
-// ── Font families ──
-
 export interface FontFamilyOverrides {
   sans?: string;
   mono?: string;
@@ -409,8 +403,6 @@ export const POPULAR_MONO_FONTS = [
   "Space Mono",
   "Ubuntu Mono",
 ];
-
-// ── Misc constants ──
 
 export type OverrideState = "on" | "off" | "default";
 export type DockMode = "docked" | "floating";

@@ -30,7 +30,7 @@ function getMemoryMb(): number | null {
 }
 
 const JANK_WINDOW_MS = 5_000;
-const NET_WINDOW_MS = 5_000;
+const NET_WINDOW_MS = 3_000;
 
 // Network interceptor state — ref-counted so multiple hook instances share one patch.
 let originalFetch: typeof window.fetch | null = null;
