@@ -21,6 +21,12 @@ export const PROJECT_TODO_SOURCE_TYPES = ["conversation"] as const;
 
 export type ProjectTodoSourceType = (typeof PROJECT_TODO_SOURCE_TYPES)[number];
 
+export type ProjectTodoSourceInfo = {
+  sourceType: ProjectTodoSourceType;
+  sourceId: string;
+  title: string | null;
+};
+
 // Safe public representation of a ProjectTodo — no internal ModelIds exposed.
 export type ProjectTodoType = {
   id: ModelId;
@@ -35,6 +41,7 @@ export type ProjectTodoType = {
   createdByAgentConfigurationId: string | null;
   markedAsDoneByType: ProjectTodoActorType | null;
   markedAsDoneByAgentConfigurationId: string | null;
+  sources: ProjectTodoSourceInfo[];
   createdAt: Date;
   updatedAt: Date;
 };

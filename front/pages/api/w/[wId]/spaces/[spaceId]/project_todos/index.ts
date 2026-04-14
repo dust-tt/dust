@@ -2,6 +2,7 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -52,7 +53,51 @@ async function handler(
         spaceId: space.id,
       });
 
-      return res.status(200).json({ todos: todos.map((t) => t.toJSON()) });
+      const todoSIds = todos.map((t) => t.sId);
+
+      // Fetch sources for all todos (across all version rows).
+      const sourcesByTodoSId =
+        await ProjectTodoResource.fetchSourcesForTodoSIds(auth, {
+          sIds: todoSIds,
+        });
+
+      // Resolve conversation titles for conversation-type sources.
+      const allConversationSIds = new Set<string>();
+      for (const sources of sourcesByTodoSId.values()) {
+        for (const source of sources) {
+          if (source.sourceType === "conversation") {
+            allConversationSIds.add(source.sourceId);
+          }
+        }
+      }
+
+      const titleByConversationSId = new Map<string, string | null>();
+      if (allConversationSIds.size > 0) {
+        const conversations = await ConversationResource.fetchByIds(auth, [
+          ...allConversationSIds,
+        ]);
+        for (const conversation of conversations) {
+          titleByConversationSId.set(conversation.sId, conversation.title);
+        }
+      }
+
+      // Combine todo data with enriched sources.
+      const todosWithSources: ProjectTodoType[] = todos.map((t) => {
+        const sources = sourcesByTodoSId.get(t.sId) ?? [];
+        return {
+          ...t.toJSON(),
+          sources: sources.map((s) => ({
+            sourceType: s.sourceType,
+            sourceId: s.sourceId,
+            title:
+              s.sourceType === "conversation"
+                ? (titleByConversationSId.get(s.sourceId) ?? null)
+                : null,
+          })),
+        };
+      });
+
+      return res.status(200).json({ todos: todosWithSources });
     }
 
     case "POST": {
