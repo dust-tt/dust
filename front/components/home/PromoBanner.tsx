@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 const CURRENT_PROMO: PromoConfig | null = {
   id: "product-vision-webinar-2026-04",
   image: "/static/landing/Webinar_Banner.jpeg",
-  link: "https://lnkd.in/eaRc2R6U",
+  link: "https://watch.getcontrast.io/register/dust-dust-community-office-hours-a24c1c99?utm_source=dust-website&utm_medium=banner",
   title: "Dust Product Vision Webinar",
   subtitle: "Apr 14 at 3:45 PM · Gabriel (CEO) & Thibaut (Partnerships)",
   linkLabel: "Register now",
