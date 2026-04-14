@@ -81,16 +81,13 @@ if (isString(aId)) {
 const r = someFunction(aId);
 ```
 
-### [BACK10] Resource invariant: Resources must expose both `sId` and `id`
+### [BACK10] Resource identifier naming pattern
 
-Resources and associated types should consistently expose both `sId` (string) and `id` (ModelId) in
-their interfaces. This pattern ensures consistency across the codebase and proper type safety.
+The following naming convention applies:
 
-When extracting identifiers from resource objects into variables, follow this naming convention:
-
-- For the string identifier (`sId` field): use `<resourceName>Id` (e.g., `agentId`,
+- For the string identifier of a resource (`sId` field): use `<resourceName>Id` (e.g., `agentId`,
   `conversationId`)
-- For the numeric identifier (`id` field): use `<resourceName>ModelId` (e.g., `agentModelId`,
+- For its numeric identifier (`id` field): use `<resourceName>ModelId` (e.g., `agentModelId`,
   `conversationModelId`)
 
 Example:
@@ -111,6 +108,8 @@ id: ModelId;
 const agentId = agent.sId;           // String identifier
 const agentModelId = agent.id;       // Numeric ModelId
 ```
+
+This naming convention also implies that no variable should follow the naming `xxxSId` or `<resourceName>sId`. 
 
 ### [BACK11] Resource invariant: Use "Model" suffix for Sequelize models when creating Resources
 
@@ -253,6 +252,19 @@ export type UserTypeWithWorkspaces = UserType & {
   workspaces: WorkspaceType[];
 };
 ```
+
+### [BACK15] Use of Type interfaces vs. Resource classes, serialization
+
+Some objects have both a back-end (Resource class) and a front-end representation (Type interface).
+The back-end representation is a Resource class that wraps a Sequelize model.
+The front-end representation is a Type interface that is the result of serializing the back-end Resource, extracting the
+relevant fields for the front-end.
+
+The Resource class should have a `toJSON` method that serializes it, i.e. returns a plain object with the same shape as
+the front-end Type interface. This method should only be called at the interface with the front-end, ideally only in 
+endpoint handlers.
+
+The Type interface is not to be used in the backend.
 
 ## AUDIT LOGGING
 
