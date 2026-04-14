@@ -3,7 +3,7 @@ import { cn, Markdown } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 const MAX_THINKING_DISPLAY_LENGTH = 250;
-const COLLAPSED_THINKING_MAX_HEIGHT_CLASS = "max-h-20";
+const COLLAPSED_THINKING_MAX_HEIGHT_CLASS = "max-h-16";
 
 interface ThinkingStepProps {
   content: string;
@@ -75,9 +75,13 @@ export function ThinkingStep({
           </div>
 
           {isCollapsed ? (
-            <div className={cn("pointer-events-none absolute inset-x-0 bottom-0 h-10",
-              "bg-gradient-to-t from-background via-background/80 to-transparent",
-              "dark:from-background-night dark:via-background-night/80")} />
+            <div
+              className={cn(
+                "pointer-events-none absolute inset-x-0 bottom-0 h-6",
+                "bg-gradient-to-t from-background via-background/90 via-10% to-transparent",
+                "dark:from-background-night dark:via-background-night/90"
+              )}
+            />
           ) : null}
         </div>
       </TimelineRow>
