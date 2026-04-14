@@ -863,6 +863,10 @@ export const ConversationViewer = ({
     ? (spaceInfo?.isMember ?? false) // Default false while loading (restrictive)
     : undefined;
 
+  const onConversationBranched = useCallback(() => {
+    void mutateConversations();
+  }, [mutateConversations]);
+
   // After reversal in the hook, messages[0] is the oldest page. This only
   // returns the actual first conversation message when all pages are loaded
   // (works for onboarding conversations which are short / single-page).
@@ -876,6 +880,7 @@ export const ConversationViewer = ({
     return {
       user,
       owner,
+      onConversationBranched,
       handleSubmit,
       conversation,
       isOnboardingConversation,
@@ -894,6 +899,7 @@ export const ConversationViewer = ({
   }, [
     user,
     owner,
+    onConversationBranched,
     handleSubmit,
     conversation,
     isOnboardingConversation,

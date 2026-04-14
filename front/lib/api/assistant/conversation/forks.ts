@@ -44,7 +44,8 @@ function escapeMarkdownLinkText(text: string): string {
 
 function getForkInitializationMessageContent(
   workspaceId: string,
-  parentConversation: ConversationWithoutContentType
+  parentConversation: ConversationWithoutContentType,
+  sourceMessageId: string
 ): string {
   const parentConversationTitle = escapeMarkdownLinkText(
     parentConversation.title ?? UNTITLED_CONVERSATION_TITLE
@@ -54,7 +55,7 @@ function getForkInitializationMessageContent(
     parentConversation.sId
   );
 
-  return `The conversation was forked from [${parentConversationTitle}](${parentConversationUrl}).`;
+  return `The conversation was forked from [${parentConversationTitle}](${parentConversationUrl}). Source message: ${sourceMessageId}.`;
 }
 
 async function copyConversationMCPServerViews(
@@ -156,10 +157,12 @@ async function createForkInitializationMessage(
   {
     parentConversation,
     childConversation,
+    sourceMessageId,
     transaction,
   }: {
     parentConversation: ConversationWithoutContentType;
     childConversation: ConversationWithoutContentType;
+    sourceMessageId: string;
     transaction: Transaction;
   }
 ) {
@@ -171,7 +174,8 @@ async function createForkInitializationMessage(
     conversation: childConversation,
     content: getForkInitializationMessageContent(
       auth.getNonNullableWorkspace().sId,
-      parentConversation
+      parentConversation,
+      sourceMessageId
     ),
     metadata: {
       type: "create",
@@ -273,6 +277,7 @@ export async function createConversationFork(
     await createForkInitializationMessage(auth, {
       parentConversation: parentConversation.toJSON(),
       childConversation: childConversation.toJSON(),
+      sourceMessageId: sourceMessage.value.sId,
       transaction,
     });
 
