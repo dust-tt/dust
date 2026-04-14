@@ -742,7 +742,7 @@ const PACKAGES: PackageDef[] = [
   {
     name: "Legacy Enterprise USD",
     aliases: [{ name: "legacy-enterprise" }],
-    rate_card_name: "Legacy Enterprise USD",
+    rate_card_name: "Legacy Enterprise MAU USD",
     ...BILLING_CYCLE_CONFIG,
   },
   // EUR variants
@@ -770,7 +770,7 @@ const PACKAGES: PackageDef[] = [
   {
     name: "Legacy Enterprise EUR",
     aliases: [{ name: "legacy-enterprise-eur" }],
-    rate_card_name: "Legacy Enterprise EUR",
+    rate_card_name: "Legacy Enterprise MAU EUR",
     ...BILLING_CYCLE_CONFIG,
   },
 ];
@@ -1366,6 +1366,12 @@ interface ExistingPackage {
 function packageMatches(ex: ExistingPackage, desired: PackageDef): boolean {
   // Check rate card cascade
   if (recreated.rateCards.has(desired.rate_card_name)) {
+    return false;
+  }
+
+  // Check rate card ID matches the expected one.
+  const expectedRateCardId = ids.rateCards[desired.rate_card_name];
+  if (expectedRateCardId && ex.rate_card_id !== expectedRateCardId) {
     return false;
   }
 

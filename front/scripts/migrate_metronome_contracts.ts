@@ -22,6 +22,7 @@ import {
   getMetronomeClient,
 } from "@app/lib/metronome/client";
 import {
+  applyEnterpriseOverrides,
   buildEnterpriseOverrides,
   type EnterprisePricingCents,
   extractEnterprisePricing,
@@ -353,12 +354,12 @@ async function migrateWorkspace(
     );
   }
 
-  // Create new contract with enterprise overrides (if any).
+  // Create new contract, then apply enterprise overrides if needed.
+  // Metronome does not allow overrides in v1.contracts.create when using a package.
   const newContract = await client.v1.contracts.create({
     customer_id: metronomeCustomerId,
     package_alias: targetAlias,
     starting_at: subInfo.startDate,
-    ...enterpriseOverrides,
   });
   const newContractId = newContract.data.id;
 
@@ -366,6 +367,17 @@ async function migrateWorkspace(
     { workspaceId: workspace.sId, contractId: newContractId, targetAlias },
     "New contract created"
   );
+
+  if (enterpriseOverrides) {
+    await applyEnterpriseOverrides({
+      metronomeCustomerId,
+      contractId: newContractId,
+      pricing: subInfo.enterprisePricing!,
+      startDate: subInfo.startDate,
+      overrideLogger: logger,
+      workspaceId: workspace.sId,
+    });
+  }
 
   // Sync subscriptions: seats for pro/business, MAU for enterprise.
   if (isEnterprise) {
