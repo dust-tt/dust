@@ -10,8 +10,8 @@ import {
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import { GEMINI_2_5_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import {
@@ -160,15 +160,15 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
     case GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET:
       return {
         sId: GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET,
-        name: "claude-4.5-sonnet",
-        description: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.description,
+        name: "claude-sonnet",
+        description: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.description,
         pictureUrl:
           "https://dust.tt/static/systemavatar/claude_avatar_full.png",
       };
     case GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU:
       return {
         sId: GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU,
-        name: "claude-4.5-haiku",
+        name: "claude-haiku",
         description: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.description,
         pictureUrl:
           "https://dust.tt/static/systemavatar/claude_avatar_full.png",

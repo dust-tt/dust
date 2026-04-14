@@ -18,7 +18,7 @@ export const MISTRAL_LARGE_MODEL_CONFIG: ModelConfigurationType = {
   recommendedTopK: 16,
   recommendedExhaustiveTopK: 56, // 28_672
   largeModel: true,
-  description: "Mistral's `large 3` model (256k context).",
+  description: "Mistral's `large` model (256k context).",
   shortDescription: "Mistral's large model.",
   isLegacy: false,
   isLatest: true,
