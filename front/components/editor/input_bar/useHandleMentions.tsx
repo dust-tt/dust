@@ -81,7 +81,7 @@ const useHandleMentions = ({
 
     // 1. Draft has a saved agent → use it.
     const draft = getDraft();
-    if (draft?.agentMention) {
+    if (draft?.agentMention && draft.text?.trim()) {
       setSelectedSingleAgent(draft.agentMention);
       return;
     }
