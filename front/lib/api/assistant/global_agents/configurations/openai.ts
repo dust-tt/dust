@@ -334,11 +334,7 @@ export function _getGPT5NanoGlobalAgent({
   settings: GlobalAgentSettingsModel | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): AgentConfigurationType {
-  let status: AgentConfigurationStatus = "active";
-
-  if (settings) {
-    status = settings.status;
-  }
+  let status = settings?.status ?? "disabled_by_admin";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
   }
