@@ -167,6 +167,60 @@ final class ConversationListViewModel: ObservableObject {
         }
     }
 
+    func toggleReadStatus(for conversation: Conversation) async {
+        guard let workspaceId = workspace?.sId else { return }
+
+        // Optimistically update local state.
+        let wasUnread = conversation.unread || conversation.actionRequired
+        if let index = conversations.firstIndex(where: { $0.sId == conversation.sId }) {
+            conversations[index].unread = !wasUnread
+            conversations[index].actionRequired = false
+        }
+
+        do {
+            if wasUnread {
+                try await ConversationService.markAsRead(
+                    workspaceId: workspaceId,
+                    conversationId: conversation.sId,
+                    tokenProvider: tokenProvider
+                )
+            } else {
+                try await ConversationService.markAsUnread(
+                    workspaceId: workspaceId,
+                    conversationId: conversation.sId,
+                    tokenProvider: tokenProvider
+                )
+            }
+        } catch {
+            // Revert on failure.
+            logger.error("Failed to toggle read status: \(error)")
+            if let index = conversations.firstIndex(where: { $0.sId == conversation.sId }) {
+                conversations[index].unread = conversation.unread
+                conversations[index].actionRequired = conversation.actionRequired
+            }
+        }
+    }
+
+    func deleteConversation(_ conversation: Conversation) async {
+        guard let workspaceId = workspace?.sId else { return }
+
+        // Optimistically remove from local state.
+        let snapshot = conversations
+        conversations.removeAll { $0.sId == conversation.sId }
+
+        do {
+            try await ConversationService.deleteConversation(
+                workspaceId: workspaceId,
+                conversationId: conversation.sId,
+                tokenProvider: tokenProvider
+            )
+        } catch {
+            // Revert on failure.
+            logger.error("Failed to delete conversation: \(error)")
+            conversations = snapshot
+        }
+    }
+
     var unreadConversations: [Conversation] {
         conversations.filter { $0.unread || $0.actionRequired }
     }

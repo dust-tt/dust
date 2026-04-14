@@ -909,24 +909,6 @@ struct ErrorCardView: View {
     }
 }
 
-// MARK: - Pulsing Dot
-
-struct PulsingDot: View {
-    @State private var isAnimating = false
-
-    var body: some View {
-        Circle()
-            .fill(Color.dustFaint)
-            .frame(width: 6, height: 6)
-            .opacity(isAnimating ? 0.3 : 1.0)
-            .animation(
-                .easeInOut(duration: 0.8).repeatForever(autoreverses: true),
-                value: isAnimating
-            )
-            .onAppear { isAnimating = true }
-    }
-}
-
 // MARK: - Helpers
 
 private extension View {

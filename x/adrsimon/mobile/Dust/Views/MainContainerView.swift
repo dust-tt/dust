@@ -62,6 +62,12 @@ struct MainContainerView: View {
                     navigationPath = NavigationPath()
                     Task { await viewModel.switchWorkspace(workspace) }
                 },
+                onToggleReadStatus: { conversation in
+                    Task { await viewModel.toggleReadStatus(for: conversation) }
+                },
+                onDelete: { conversation in
+                    Task { await viewModel.deleteConversation(conversation) }
+                },
                 onLogout: onLogout,
                 onCatchUp: viewModel.unreadConversations.isEmpty ? nil : {
                     showCatchUp = true
