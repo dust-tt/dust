@@ -14,11 +14,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  Input,
   Spinner,
   TrashIcon,
 } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useCallback, useState } from "react";
+import { type ChangeEvent, useCallback, useState } from "react";
 
 interface DeleteSpaceDialogProps {
   owner: LightWorkspaceType;
@@ -28,6 +28,7 @@ interface DeleteSpaceDialogProps {
 export function DeleteSpaceDialog({ owner, space }: DeleteSpaceDialogProps) {
   const router = useAppRouter();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
   const doDelete = useDeleteSpace({ owner, force: true });
   const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
     workspaceId: owner.sId,
@@ -45,15 +46,21 @@ export function DeleteSpaceDialog({ owner, space }: DeleteSpaceDialogProps) {
   }, [doDelete, space, mutateSpaceSummary, owner.sId, router]);
 
   return (
-    <Dialog>
+    <Dialog
+      onOpenChange={(open) => {
+        if (!open) {
+          setConfirmText("");
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <div className="flex w-full flex-col items-start">
           <Button icon={TrashIcon} variant="warning" label="Delete project" />
         </div>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>{`Delete ${getSpaceName(space)}`}</DialogTitle>
+          <DialogTitle>{`Delete ${getSpaceName(space)}?`}</DialogTitle>
         </DialogHeader>
         {isDeleting ? (
           <div className="flex justify-center py-8">
@@ -61,14 +68,20 @@ export function DeleteSpaceDialog({ owner, space }: DeleteSpaceDialogProps) {
           </div>
         ) : (
           <>
-            <DialogContainer className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Are you sure you want to permanently delete project{" "}
-                  <strong>{getSpaceName(space)}</strong>? This action cannot be
-                  undone.
-                </p>
-              </div>
+            <DialogContainer className="flex flex-col gap-4">
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                Type <strong>delete</strong> below to confirm. This permanently
+                removes all project content and cannot be undone.
+              </p>
+              <Input
+                name="delete-confirm"
+                value={confirmText}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setConfirmText(e.target.value)
+                }
+                placeholder="Type delete to confirm"
+                containerClassName="w-full"
+              />
             </DialogContainer>
             <DialogFooter
               leftButtonProps={{
@@ -76,8 +89,9 @@ export function DeleteSpaceDialog({ owner, space }: DeleteSpaceDialogProps) {
                 variant: "outline",
               }}
               rightButtonProps={{
-                label: "Delete",
+                label: "Delete permanently",
                 variant: "warning",
+                disabled: confirmText.trim().toLowerCase() !== "delete",
                 onClick: async () => {
                   void onDelete();
                 },

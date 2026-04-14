@@ -10,21 +10,20 @@ import {
   useUpdateProjectMetadata,
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type { PatchProjectMetadataBodyType } from "@app/types/api/internal/spaces";
 import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  ArchiveIcon,
+  ArrowUpOnSquareIcon,
   Button,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EmptyCTA,
-  EmptyCTAButton,
-  EyeIcon,
-  EyeSlashIcon,
   Input,
   MoreIcon,
   ScrollArea,
@@ -218,46 +217,39 @@ export function SpaceAboutTab({
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 py-8">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 py-8">
         <div className="flex gap-2">
           <h2 className="heading-2xl flex-1 text-foreground dark:text-foreground-night">
             Settings
           </h2>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" icon={MoreIcon} />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem
-                icon={projectMetadata?.archivedAt ? EyeIcon : EyeSlashIcon}
-                label={
-                  projectMetadata?.archivedAt
-                    ? "Unarchive project"
-                    : "Archive project"
-                }
-                variant="warning"
-                onClick={handleArchiveToggle}
-              />
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {isProjectEditor && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" icon={MoreIcon} />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {projectMetadata?.archivedAt ? (
+                  <DropdownMenuItem
+                    icon={ArrowUpOnSquareIcon}
+                    label="Unarchive project"
+                    onClick={handleArchiveToggle}
+                  />
+                ) : (
+                  <DropdownMenuItem
+                    icon={ArchiveIcon}
+                    label="Archive project"
+                    variant="warning"
+                    onClick={handleArchiveToggle}
+                  />
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
         {space.archivedAt && (
-          <EmptyCTA
-            action={
-              <EmptyCTAButton
-                icon={EyeIcon}
-                label="Unarchive"
-                onClick={handleArchiveToggle}
-                disabled={!isProjectEditor}
-                tooltip={
-                  !isProjectEditor
-                    ? "You need to be an editor to unarchive this project."
-                    : undefined
-                }
-              />
-            }
-            message="This project has been archived. Unarchive it to continue creating new conversations."
-          />
+          <ContentMessage variant="info" size="lg">
+            This project has been archived.
+          </ContentMessage>
         )}
         <div className="flex w-full flex-col gap-2">
           <div className="heading-lg">Name</div>
@@ -360,55 +352,88 @@ export function SpaceAboutTab({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <h3 className="heading-lg flex-1">Members</h3>
-          {isProjectEditor && onOpenMembersPanel && (
-            <Button
-              label="Manage"
-              variant="outline"
-              icon={UserGroupIcon}
-              onClick={onOpenMembersPanel}
-            />
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <h3 className="heading-lg flex-1">Members</h3>
+            {isProjectEditor && onOpenMembersPanel && (
+              <Button
+                label="Manage"
+                variant="outline"
+                icon={UserGroupIcon}
+                onClick={onOpenMembersPanel}
+              />
+            )}
+          </div>
+          {projectMembers.length > 0 && (
+            <>
+              <SearchInput
+                name="search"
+                placeholder="Search (email)"
+                value={searchSelectedMembers}
+                onChange={setSearchSelectedMembers}
+              />
+              <ScrollArea className="h-full" orientation="horizontal">
+                <MembersTable
+                  owner={owner}
+                  space={space}
+                  selectedMembers={projectMembers}
+                  searchSelectedMembers={searchSelectedMembers}
+                  isEditor={isProjectEditor}
+                  mutateSpaceInfo={() =>
+                    mutateSpaceInfoRegardlessOfQueryParams()
+                  }
+                />
+              </ScrollArea>
+            </>
           )}
         </div>
-        {projectMembers.length > 0 && (
-          <>
-            <SearchInput
-              name="search"
-              placeholder="Search (email)"
-              value={searchSelectedMembers}
-              onChange={setSearchSelectedMembers}
-            />
-            <ScrollArea className="h-full" orientation="horizontal">
-              <MembersTable
-                owner={owner}
-                space={space}
-                selectedMembers={projectMembers}
-                searchSelectedMembers={searchSelectedMembers}
-                isEditor={isProjectEditor}
-                mutateSpaceInfo={() => mutateSpaceInfoRegardlessOfQueryParams()}
-              />
-            </ScrollArea>
-          </>
-        )}
 
         {isProjectEditor && (
-          <div className="flex w-full flex-col items-center gap-y-4 border-t pt-8">
-            <ContentMessage
-              variant="warning"
-              title="Danger Zone"
-              className="flex w-full"
-            >
-              <div className="flex flex-col gap-y-4">
+          <div className="flex w-full flex-col gap-3 border-t border-border pt-8 dark:border-border-night">
+            <h3 className="heading-lg">Danger Zone</h3>
+            <h4 className="heading-base">Archive</h4>
+            {projectMetadata?.archivedAt ? (
+              <div className="flex flex-col gap-3">
                 <p className="text-sm text-foreground dark:text-foreground-night">
-                  Deleting this project will permanently remove all its content,
-                  including conversations, folders, websites, and data sources.
-                  This action cannot be undone. All assistants using tools that
-                  depend on this project will be impacted.
+                  Archived on{" "}
+                  <span className="font-medium">
+                    {formatTimestampToFriendlyDate(
+                      projectMetadata.archivedAt,
+                      "short"
+                    )}
+                  </span>
+                  .
                 </p>
-                <DeleteSpaceDialog owner={owner} space={space} />
+                <Button
+                  icon={ArrowUpOnSquareIcon}
+                  variant="outline"
+                  label="Unarchive"
+                  onClick={handleArchiveToggle}
+                  className="w-fit"
+                />
               </div>
-            </ContentMessage>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  This project will be removed from the sidebar. Its data stays
+                  intact and can still be used as a data source.
+                </p>
+                <Button
+                  icon={ArchiveIcon}
+                  variant="warning-secondary"
+                  label="Archive"
+                  onClick={handleArchiveToggle}
+                  className="w-fit"
+                />
+              </>
+            )}
+            <h4 className="heading-base">Delete</h4>
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              This permanently removes all content—conversations, folders,
+              websites, and data sources. Assistants using this project's tools
+              will be impacted. This cannot be undone.
+            </p>
+            <DeleteSpaceDialog owner={owner} space={space} />
           </div>
         )}
       </div>
