@@ -30,40 +30,63 @@ function getMemoryMb(): number | null {
 }
 
 const JANK_WINDOW_MS = 5_000;
+const NET_WINDOW_MS = 5_000;
 
-// Global network request timestamps — patched once, shared across hook instances.
-const netTimestamps: number[] = [];
-let netPatched = false;
+// Network interceptor state — ref-counted so multiple hook instances share one patch.
+let originalFetch: typeof window.fetch | null = null;
+let originalXhrOpen: typeof XMLHttpRequest.prototype.open | null = null;
+let netTimestamps: number[] = [];
+let netPatchRefCount = 0;
 
 function patchNetworkInterceptors() {
-  if (netPatched) {
+  netPatchRefCount++;
+  if (netPatchRefCount > 1) {
     return;
   }
-  netPatched = true;
 
-  // Intercept fetch.
-  const originalFetch = window.fetch;
+  originalFetch = window.fetch;
   window.fetch = function (...args: Parameters<typeof fetch>) {
     netTimestamps.push(performance.now());
-    return originalFetch.apply(this, args);
+    return originalFetch!.apply(this, args);
   };
 
-  // Intercept XMLHttpRequest.
-  const originalOpen = XMLHttpRequest.prototype.open;
+  originalXhrOpen = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function (
-    ...args: Parameters<typeof XMLHttpRequest.prototype.open>
+    method: string,
+    url: string | URL,
+    async_?: boolean,
+    username?: string | null,
+    password?: string | null
   ) {
     netTimestamps.push(performance.now());
-    return originalOpen.apply(this, args);
+    return originalXhrOpen!.call(this, method, url, async_ ?? true, username, password);
   };
 }
 
-const NET_WINDOW_MS = 5_000;
+function unpatchNetworkInterceptors() {
+  netPatchRefCount--;
+  if (netPatchRefCount > 0) {
+    return;
+  }
+  if (originalFetch) {
+    window.fetch = originalFetch;
+    originalFetch = null;
+  }
+  if (originalXhrOpen) {
+    XMLHttpRequest.prototype.open = originalXhrOpen;
+    originalXhrOpen = null;
+  }
+  netTimestamps = [];
+}
 
 function getNetRequestsInWindow(): number {
   const cutoff = performance.now() - NET_WINDOW_MS;
-  while (netTimestamps.length > 0 && netTimestamps[0] < cutoff) {
-    netTimestamps.shift();
+  let startIdx = 0;
+  while (startIdx < netTimestamps.length && netTimestamps[startIdx] < cutoff) {
+    startIdx++;
+  }
+  if (startIdx > 0) {
+    netTimestamps = netTimestamps.slice(startIdx);
   }
   return netTimestamps.length;
 }
@@ -113,8 +136,12 @@ export function useDevPerf(): PerfMetrics {
     const interval = setInterval(() => {
       const now = performance.now();
       const cutoff = now - JANK_WINDOW_MS;
-      while (jankEntries.length > 0 && jankEntries[0].time < cutoff) {
-        jankEntries.shift();
+      let startIdx = 0;
+      while (startIdx < jankEntries.length && jankEntries[startIdx].time < cutoff) {
+        startIdx++;
+      }
+      if (startIdx > 0) {
+        jankEntries.splice(0, startIdx);
       }
 
       let totalBlockedMs = 0;
@@ -134,6 +161,7 @@ export function useDevPerf(): PerfMetrics {
       clearInterval(interval);
       cancelAnimationFrame(rafId);
       longTaskObserver?.disconnect();
+      unpatchNetworkInterceptors();
     };
   }, []);
 
