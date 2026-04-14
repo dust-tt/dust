@@ -10,6 +10,7 @@ import {
   isToolExecutionStatusBlocked,
   TOOL_EXECUTION_BLOCKED_STATUSES,
 } from "@app/lib/actions/statuses";
+import { getApprovalArgsLabel } from "@app/lib/actions/tool_approval_labels";
 import {
   getToolDisplayLabels,
   getToolNameFromFunctionCallName,
@@ -391,6 +392,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         BlockedToolExecution,
         "status" | "authorizationInfo"
       > = {
+        // Compute approval labels from persisted configuration + stored inputs.
+        // This keeps resumed conversations consistent with streamed events.
         messageId: agentMessage.message.sId,
         userId: parentUserMessage.userMessage?.user?.sId,
         conversationId: conversation.sId,
@@ -410,6 +413,19 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         },
         argumentsRequiringApproval:
           action.toolConfiguration.argumentsRequiringApproval,
+        approvalArgsLabel: await getApprovalArgsLabel({
+          auth,
+          internalMCPServerName: action.toolConfiguration.toolServerId
+            ? getInternalMCPServerNameFromSId(
+                action.toolConfiguration.toolServerId
+              )
+            : null,
+          toolName: action.toolConfiguration.originalName,
+          agentName: agentConfiguration.name,
+          inputs: action.augmentedInputs,
+          argumentsRequiringApproval:
+            action.toolConfiguration.argumentsRequiringApproval ?? [],
+        }),
       };
 
       if (action.status === "blocked_authentication_required") {

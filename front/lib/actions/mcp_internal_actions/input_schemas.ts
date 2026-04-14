@@ -202,6 +202,9 @@ export type DustProjectConfigurationType = z.infer<
   (typeof ConfigurableToolInputSchemas)[typeof INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT]
 >;
 
+export const DustProjectConfigurationSchema =
+  ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT];
+
 /**
  * Mapping between the mime types we used to identify a configurable resource
  * and the JSON schema resulting from the Zod schema defined above.

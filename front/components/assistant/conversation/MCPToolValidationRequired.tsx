@@ -133,6 +133,10 @@ export function MCPToolValidationRequired({
         blockedAction.inputs
       );
     }
+
+    if (blockedAction.approvalArgsLabel) {
+      return blockedAction.approvalArgsLabel;
+    }
     const args = blockedAction.argumentsRequiringApproval ?? [];
     const argValues = args
       .filter((arg) => blockedAction.inputs[arg] != null)

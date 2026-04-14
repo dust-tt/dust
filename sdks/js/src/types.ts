@@ -1359,6 +1359,8 @@ const ToolExecutionMetadataSchema = z.object({
     mcpServerDisplayName: z.string().optional(),
     mcpServerId: z.string().optional(),
   }),
+  argumentsRequiringApproval: z.array(z.string()).optional(),
+  approvalArgsLabel: z.string().optional(),
 });
 
 const BlockedActionExecutionSchema = ToolExecutionMetadataSchema.extend({
