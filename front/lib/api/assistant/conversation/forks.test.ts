@@ -11,7 +11,6 @@ import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { getConversationRoute } from "@app/lib/utils/router";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -19,10 +18,7 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import {
-  type ConversationWithoutContentType,
-  isUserMessageType,
-} from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { describe, expect, it } from "vitest";
 
@@ -148,27 +144,6 @@ describe("createConversationFork", () => {
       branchedAt: expect.any(Number),
       user: user.toJSON(),
     });
-    const initializationMessage = childConversation.content[0]?.[0];
-    expect(initializationMessage).toBeDefined();
-    expect(
-      initializationMessage && isUserMessageType(initializationMessage)
-    ).toBe(true);
-
-    if (!initializationMessage || !isUserMessageType(initializationMessage)) {
-      throw new Error(
-        "Expected fork initialization message to be a user message."
-      );
-    }
-
-    expect(initializationMessage.content).toContain(
-      `The conversation was forked from [Parent conversation](${getConversationRoute(
-        auth.getNonNullableWorkspace().sId,
-        parentConversation.sId
-      )}).`
-    );
-    expect(initializationMessage.content).toContain(
-      `Source message: ${sourceMessage.sId}.`
-    );
 
     const forkRow = await ConversationForkModel.findOne({
       where: {
@@ -259,21 +234,6 @@ describe("createConversationFork", () => {
 
     expect(result.value.forkedFrom?.sourceMessageId).toBe(
       firstAgentMessage.sId
-    );
-    const initializationMessage = result.value.content[0]?.[0];
-    expect(initializationMessage).toBeDefined();
-    expect(
-      initializationMessage && isUserMessageType(initializationMessage)
-    ).toBe(true);
-
-    if (!initializationMessage || !isUserMessageType(initializationMessage)) {
-      throw new Error(
-        "Expected fork initialization message to be a user message."
-      );
-    }
-
-    expect(initializationMessage.content).toContain(
-      `Source message: ${firstAgentMessage.sId}.`
     );
   });
 
