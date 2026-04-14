@@ -42,11 +42,11 @@ const CASE_STUDIES: Record<string, string> = {
 const LOGO_SETS = {
   default: {
     us: [
-      { name: "decagon", src: "/static/landing/logos/gray/decagon.svg" },
+      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
       //  { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
       { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
-      { name: "evenup", src: "/static/landing/logos/gray/evenup.svg" },
+      { name: "decagon", src: "/static/landing/logos/gray/decagon.svg" },
       { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
       { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
       { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
@@ -66,18 +66,18 @@ const LOGO_SETS = {
       { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
       { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
       { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
-      { name: "decagon", src: "/static/landing/logos/gray/decagon.svg" },
+      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
       { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
       { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
     ],
   },
   landing: {
     us: [
-      { name: "decagon", src: "/static/landing/logos/gray/decagon.svg" },
+      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
       // { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
       { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
-      { name: "evenup", src: "/static/landing/logos/gray/evenup.svg" },
+      { name: "decagon", src: "/static/landing/logos/gray/decagon.svg" },
       { name: "laurel", src: "/static/landing/logos/gray/laurel.svg" },
       { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
       { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
@@ -97,7 +97,7 @@ const LOGO_SETS = {
       { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
       { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
       { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
-      { name: "decagon", src: "/static/landing/logos/gray/decagon.svg" },
+      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
       { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
       { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
     ],
