@@ -168,7 +168,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
     case GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU:
       return {
         sId: GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU,
-        name: "claude-4.5-haiku",
+        name: "claude-haiku",
         description: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.description,
         pictureUrl:
           "https://dust.tt/static/systemavatar/claude_avatar_full.png",
