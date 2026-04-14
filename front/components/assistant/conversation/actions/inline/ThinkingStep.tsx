@@ -50,7 +50,8 @@ export function ThinkingStep({
   const needsTruncation =
     isMessageDone && collapsedTextContent.length > MAX_THINKING_DISPLAY_LENGTH;
 
-  const collapsedPreviewContent = collapsedTextContent.slice(0, MAX_THINKING_DISPLAY_LENGTH) + "…";
+  const collapsedPreviewContent =
+    collapsedTextContent.slice(0, MAX_THINKING_DISPLAY_LENGTH) + "…";
 
   return (
     <div
