@@ -460,7 +460,7 @@ function getRateCards(): RateCardDef[] {
       name: "Legacy Enterprise MAU USD",
       description:
         "Enterprise plan. Per-MAU billing + programmatic usage at cost with 30% markup.",
-      aliases: [{ name: "legacy-enterprise-mau-usd" }],
+      aliases: [{ name: "legacy-enterprise" }],
       fiat_credit_type_id: CREDIT_TYPE_USD_ID,
       credit_type_conversions: [
         {
@@ -606,7 +606,7 @@ function getRateCards(): RateCardDef[] {
       name: "Legacy Enterprise MAU EUR",
       description:
         "Enterprise plan (EUR). Per-MAU billing + programmatic usage at cost with 30% markup.",
-      aliases: [{ name: "legacy-enterprise-mau-eur" }],
+      aliases: [{ name: "legacy-enterprise-eur" }],
       fiat_credit_type_id: CREDIT_TYPE_EUR_ID,
       credit_type_conversions: [
         {
