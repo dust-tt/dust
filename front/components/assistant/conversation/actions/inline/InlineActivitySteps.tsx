@@ -8,6 +8,7 @@ import type {
 } from "@app/components/assistant/conversation/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import { getInternalMCPServerIconByName } from "@app/lib/actions/mcp_internal_actions/constants";
+import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import { getToolCallDisplayLabel } from "@app/lib/actions/tool_display_labels";
 import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
 import { formatDurationString } from "@app/lib/utils/timestamps";
@@ -309,9 +310,10 @@ export function InlineActivitySteps({
               </div>
             ) : null}
 
-            {/* Active action (tool in progress) */}
+            {/* Active action (tool in progress) — skip blocked actions, handled by BlockedAction */}
             {isActing &&
               activeAction &&
+              !isToolExecutionStatusBlocked(activeAction.status) &&
               renderRunningToolRow({
                 isLast: false,
                 label: getActionOneLineLabel(activeAction, "running"),
