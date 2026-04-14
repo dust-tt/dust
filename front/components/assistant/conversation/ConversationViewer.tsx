@@ -22,7 +22,6 @@ import {
   isAgentMessageWithStreaming,
   isCompactionMessage,
   isUserMessage,
-  makeCompactionVirtuosoMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
 import {
@@ -565,9 +564,7 @@ export const ConversationViewer = ({
             break;
           case "compaction_message_new":
             if (ref.current) {
-              const compactionMessage = makeCompactionVirtuosoMessage(
-                event.message
-              );
+              const compactionMessage = event.message;
               const predicate =
                 getPredicateForRankAndBranch(compactionMessage);
               const exists = ref.current.data.find(predicate);
@@ -589,7 +586,7 @@ export const ConversationViewer = ({
 
           case "compaction_message_done":
             if (ref.current) {
-              const doneMessage = makeCompactionVirtuosoMessage(event.message);
+              const doneMessage = event.message;
               ref.current.data.map((m) =>
                 isCompactionMessage(m) && m.sId === event.messageId
                   ? doneMessage

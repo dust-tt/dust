@@ -247,8 +247,11 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return null;
     }
 
-    if (isCompactionMessage(data) && data.status !== "failed") {
+    if (isCompactionMessage(data)) {
       // TODO(compaction): handle failed compaction display
+      if (data.status === "failed") {
+        return null;
+      }
       return (
         <div
           ref={ref}
