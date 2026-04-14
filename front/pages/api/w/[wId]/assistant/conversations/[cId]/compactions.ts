@@ -61,6 +61,7 @@ import { compactConversation } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { isProviderWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import { isSupportedModel } from "@app/types/assistant/assistant";
@@ -126,6 +127,16 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message: `Unsupported model: ${model.providerId}/${model.modelId}.`,
+          },
+        });
+      }
+
+      if (!isProviderWhitelisted(auth, model.providerId)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "model_disabled",
+            message: `The model provider ${model.providerId} has been disabled by your workspace admin.`,
           },
         });
       }
