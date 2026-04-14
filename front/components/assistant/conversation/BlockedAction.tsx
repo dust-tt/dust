@@ -84,6 +84,7 @@ export function BlockedAction({
         />
       );
 
+    // Flattened into child actions by BlockedActionsProvider — never reached here.
     case "blocked_child_action_input_required":
       return null;
 
