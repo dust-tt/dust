@@ -456,7 +456,7 @@ async function updateTodoIfChanged(
 
 // ── Blob helpers ─────────────────────────────────────────────────────────────
 
-function actionItemBlob(item: TodoVersionedActionItem): TodoBlob {
+export function actionItemBlob(item: TodoVersionedActionItem): TodoBlob {
   const isDone = item.status === "done";
   return {
     category: "follow_ups",
@@ -467,7 +467,7 @@ function actionItemBlob(item: TodoVersionedActionItem): TodoBlob {
   };
 }
 
-function keyDecisionBlob(item: TodoVersionedKeyDecision): TodoBlob {
+export function keyDecisionBlob(item: TodoVersionedKeyDecision): TodoBlob {
   return {
     category: "key_decisions",
     text: item.text,
@@ -476,7 +476,7 @@ function keyDecisionBlob(item: TodoVersionedKeyDecision): TodoBlob {
   };
 }
 
-function notableFactBlob(item: TodoVersionedNotableFact): TodoBlob {
+export function notableFactBlob(item: TodoVersionedNotableFact): TodoBlob {
   return {
     category: "notable_updates",
     text: item.text,
