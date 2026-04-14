@@ -122,7 +122,6 @@ import {
   UserModel,
   UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
-import { UserProjectDigestModel } from "@app/lib/resources/storage/models/user_project_digest";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
@@ -226,7 +225,6 @@ export function loadAllModels() {
     SkillSuggestionModel,
     WorkspaceVerificationAttemptModel,
     AgentSuggestionModel,
-    UserProjectDigestModel,
     AcademyQuizAttemptModel,
     AcademyChapterVisitModel,
     SandboxModel,

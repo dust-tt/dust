@@ -35,8 +35,6 @@ import type {
   GetProjectMetadataResponseBody,
   PatchProjectMetadataResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_metadata";
-import type { GetUserProjectDigestsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/user_project_digests";
-import type { GetDigestGenerationStatusResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/user_project_digests/generate/status";
 import type { SpacesLookupResponseBody } from "@app/pages/api/w/[wId]/spaces/projects-lookup";
 import type { PatchProjectMetadataBodyType } from "@app/types/api/internal/spaces";
 import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
@@ -1038,104 +1036,6 @@ export function useUpdateProjectMetadata({
     const response: PatchProjectMetadataResponseBody = await res.json();
     return response.projectMetadata;
   };
-}
-
-export function useUserProjectDigests({
-  workspaceId,
-  spaceId,
-  limit = 1,
-  disabled = false,
-}: {
-  workspaceId: string;
-  spaceId: string | null;
-  limit?: number;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const digestsFetcher: Fetcher<GetUserProjectDigestsResponseBody> = fetcher;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/spaces/${spaceId}/user_project_digests?limit=${limit}`,
-    digestsFetcher,
-    { disabled: disabled || spaceId === null }
-  );
-
-  return {
-    digests: data?.digests ?? emptyArray(),
-    latestDigest: data?.digests?.[0] ?? null,
-    isDigestsLoading: !error && !data && !disabled,
-    isDigestsError: error,
-    mutateDigests: mutate,
-  };
-}
-
-const DIGEST_GENERATION_STATUS_POLL_INTERVAL_MS = 2_000;
-
-export function useDigestGenerationStatus({
-  workspaceId,
-  spaceId,
-}: {
-  workspaceId: string;
-  spaceId: string;
-}) {
-  const { fetcher } = useFetcher();
-  const statusFetcher: Fetcher<GetDigestGenerationStatusResponseBody> = fetcher;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/spaces/${spaceId}/user_project_digests/generate/status`,
-    statusFetcher,
-    {
-      refreshInterval: (
-        data: GetDigestGenerationStatusResponseBody | undefined
-      ) =>
-        data?.status === "running"
-          ? DIGEST_GENERATION_STATUS_POLL_INTERVAL_MS
-          : // 0 means disabled
-            0,
-    }
-  );
-
-  return {
-    generationStatus: data?.status ?? null,
-    isStatusLoading: !error && !data,
-    mutateGenerationStatus: mutate,
-  };
-}
-
-export function useGenerateUserProjectDigest({
-  owner,
-  spaceId,
-}: {
-  owner: LightWorkspaceType;
-  spaceId: string;
-}) {
-  const sendNotification = useSendNotification();
-
-  const doGenerate = async () => {
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/spaces/${spaceId}/user_project_digests/generate`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    if (res.ok) {
-      return true;
-    } else {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Error generating project digest",
-        description: `Error: ${errorData.message}`,
-      });
-      return false;
-    }
-  };
-
-  return doGenerate;
 }
 
 export function useLeaveProject({

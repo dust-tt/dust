@@ -11,7 +11,6 @@ import { runMentionsQueueWorker } from "@app/temporal/mentions_queue/worker";
 import { runNotificationsQueueWorker } from "@app/temporal/notifications_queue/worker";
 import { runProductionChecksWorker } from "@app/temporal/production_checks/worker";
 import { runProjectTodoWorker } from "@app/temporal/project_todo/worker";
-import { runUserProjectDigestQueueWorker } from "@app/temporal/project_user_digest_queue/worker";
 import { runReinforcedAgentWorker } from "@app/temporal/reinforced_agent/worker";
 import { runReinforcementWorker } from "@app/temporal/reinforcement/worker";
 import { runRelocationWorker } from "@app/temporal/relocation/worker";
@@ -43,7 +42,6 @@ export type WorkerName =
   | "production_checks"
   | "reinforced_agent"
   | "reinforcement"
-  | "project_user_digest_queue"
   | "relocation"
   | "sandbox_reaper"
   | "remote_tools_sync"
@@ -69,7 +67,6 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   production_checks: runProductionChecksWorker,
   reinforced_agent: runReinforcedAgentWorker,
   reinforcement: runReinforcementWorker,
-  project_user_digest_queue: runUserProjectDigestQueueWorker,
   project_todo: runProjectTodoWorker,
   relocation: runRelocationWorker,
   sandbox_reaper: runSandboxReaperWorker,
