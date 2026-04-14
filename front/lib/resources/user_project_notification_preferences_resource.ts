@@ -1,19 +1,16 @@
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import type {
-  NotificationCondition,
-  UserProjectNotificationPreference,
-} from "@app/types/notification_preferences";
+import type { NotificationCondition } from "@app/types/notification_preferences";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes } from "sequelize";
 import { Op } from "sequelize";
 import { SpaceResource } from "./space_resource";
-import type { UserModel } from "./storage/models/user";
 import { UserProjectNotificationPreferenceModel } from "./storage/models/user_project_notification_preferences";
 import { makeSId } from "./string_ids";
+import type { UserResource } from "./user_resource";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface UserProjectNotificationPreferenceResource
@@ -24,12 +21,12 @@ export class UserProjectNotificationPreferenceResource extends BaseResource<User
   static model: typeof UserProjectNotificationPreferenceModel =
     UserProjectNotificationPreferenceModel;
 
-  readonly user: Attributes<UserModel>;
+  readonly user: UserResource;
 
   constructor(
     model: typeof UserProjectNotificationPreferenceModel,
     blob: Attributes<UserProjectNotificationPreferenceModel>,
-    { user }: { user: Attributes<UserModel> }
+    { user }: { user: UserResource }
   ) {
     super(UserProjectNotificationPreferenceModel, blob);
 
@@ -178,8 +175,9 @@ export class UserProjectNotificationPreferenceResource extends BaseResource<User
     }
   }
 
-  toJSON(): UserProjectNotificationPreference {
+  toJSON() {
     return {
+      id: this.id,
       sId: this.sId,
       spaceId: SpaceResource.modelIdToSId({
         id: this.spaceId,
