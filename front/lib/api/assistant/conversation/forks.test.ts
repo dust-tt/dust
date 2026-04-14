@@ -1,7 +1,6 @@
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { createConversationFork } from "@app/lib/api/assistant/conversation/forks";
 import { Authenticator } from "@app/lib/auth";
-import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageModel,
   ConversationModel,
@@ -75,14 +74,12 @@ async function createAgentMessage(
     rank,
     parentId,
     status,
-    content = null,
     branchId = null,
   }: {
     conversation: ConversationWithoutContentType;
     rank: number;
     parentId: ModelId;
     status: "created" | "succeeded";
-    content?: string | null;
     branchId?: ModelId | null;
   }
 ): Promise<MessageModel> {
@@ -96,21 +93,6 @@ async function createAgentMessage(
     skipToolsValidation: false,
     completedAt: status === "created" ? null : new Date(),
   });
-
-  if (content !== null) {
-    await AgentStepContentModel.create({
-      workspaceId: workspace.id,
-      agentMessageId: agentMessage.id,
-      step: 0,
-      index: 0,
-      version: 0,
-      type: "text_content",
-      value: {
-        type: "text_content",
-        value: content,
-      },
-    });
-  }
 
   return MessageModel.create({
     workspaceId: workspace.id,
@@ -143,7 +125,6 @@ describe("createConversationFork", () => {
       rank: 1,
       parentId: userMessage.id,
       status: "succeeded",
-      content: "Here is the branching source message.",
     });
 
     const result = await createConversationFork(auth, {
@@ -186,10 +167,7 @@ describe("createConversationFork", () => {
       )}).`
     );
     expect(initializationMessage.content).toContain(
-      "This branch starts from the following source message:"
-    );
-    expect(initializationMessage.content).toContain(
-      "Here is the branching source message."
+      `Source message: ${sourceMessage.sId}.`
     );
 
     const forkRow = await ConversationForkModel.findOne({
@@ -235,7 +213,6 @@ describe("createConversationFork", () => {
       rank: 1,
       parentId: firstUserMessage.id,
       status: "succeeded",
-      content: "This is the latest completed main-thread answer.",
     });
 
     const secondUserMessage = await createUserMessage(auth, {
@@ -296,7 +273,7 @@ describe("createConversationFork", () => {
     }
 
     expect(initializationMessage.content).toContain(
-      "This is the latest completed main-thread answer."
+      `Source message: ${firstAgentMessage.sId}.`
     );
   });
 

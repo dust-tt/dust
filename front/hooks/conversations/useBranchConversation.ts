@@ -1,13 +1,16 @@
-import { useMutateConversations } from "@app/hooks/conversations/useConversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { getConversationRoute } from "@app/lib/utils/router";
+import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type { PostConversationForkResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/forks";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
+import { useSWRConfig } from "swr";
+import { unstable_serialize } from "swr/infinite";
+
+const SIDEBAR_CONVERSATIONS_LIMIT = 100;
 
 export function useBranchConversation({
   owner,
@@ -18,9 +21,7 @@ export function useBranchConversation({
 }) {
   const sendNotification = useSendNotification();
   const router = useAppRouter();
-  const { mutateConversations } = useMutateConversations({
-    workspaceId: owner.sId,
-  });
+  const { mutate } = useSWRConfig();
 
   const [isBranching, setIsBranching] = useState(false);
 
@@ -69,24 +70,26 @@ export function useBranchConversation({
           }
         );
 
-        if (!conversation.spaceId) {
-          void mutateConversations(
-            (
-              currentConversations: ConversationWithoutContentType[] | undefined
-            ) =>
-              currentConversations
-                ? [
-                    conversation,
-                    ...currentConversations.filter(
-                      (currentConversation) =>
-                        currentConversation.sId !== conversation.sId
-                    ),
-                  ]
-                : currentConversations
-          );
-        } else {
-          void mutateConversations();
-        }
+        const conversationsKey = unstable_serialize(
+          (
+            _pageIndex: number,
+            previousPageData: GetConversationsResponseBody | null
+          ) => {
+            if (previousPageData && !previousPageData.hasMore) {
+              return null;
+            }
+
+            const baseUrl = `/api/w/${owner.sId}/assistant/conversations?limit=${SIDEBAR_CONVERSATIONS_LIMIT}`;
+
+            if (previousPageData === null) {
+              return baseUrl;
+            }
+
+            return `${baseUrl}&lastValue=${previousPageData.lastValue}`;
+          }
+        );
+
+        void mutate(conversationsKey);
 
         return true;
       } catch {
@@ -100,7 +103,7 @@ export function useBranchConversation({
         setIsBranching(false);
       }
     },
-    [conversationId, mutateConversations, owner.sId, router, sendNotification]
+    [conversationId, mutate, owner.sId, router, sendNotification]
   );
 
   return {

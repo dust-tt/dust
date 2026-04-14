@@ -7,11 +7,7 @@ import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assist
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
-import { useSWRConfig } from "swr";
-import {
-  type SWRInfiniteMutatorOptions,
-  unstable_serialize,
-} from "swr/infinite";
+import type { SWRInfiniteMutatorOptions } from "swr/infinite";
 
 const DEFAULT_LIMIT = 100;
 
@@ -22,51 +18,6 @@ type ConversationsUpdater = (
 type MutateOptions = {
   revalidate?: boolean;
 };
-
-function getConversationsKey(
-  workspaceId: string,
-  limit: number,
-  previousPageData: GetConversationsResponseBody | null
-) {
-  if (previousPageData && !previousPageData.hasMore) {
-    return null;
-  }
-
-  const baseUrl = `/api/w/${workspaceId}/assistant/conversations?limit=${limit}`;
-
-  if (previousPageData === null) {
-    return baseUrl;
-  }
-
-  return `${baseUrl}&lastValue=${previousPageData.lastValue}`;
-}
-
-function updateConversationPages(
-  prevPages: GetConversationsResponseBody[] | undefined,
-  updater: ConversationsUpdater
-) {
-  if (!prevPages) {
-    return prevPages;
-  }
-
-  const allConversations = prevPages.flatMap((page) => page.conversations);
-  const updatedConversations = updater(allConversations);
-
-  if (!updatedConversations) {
-    return prevPages;
-  }
-
-  let offset = 0;
-  return prevPages.map((page, index) => {
-    const isLastPage = index === prevPages.length - 1;
-    const conversations = updatedConversations.slice(
-      offset,
-      isLastPage ? undefined : offset + page.conversations.length
-    );
-    offset += page.conversations.length;
-    return { ...page, conversations };
-  });
-}
 
 export function useConversations({
   workspaceId,
@@ -83,7 +34,19 @@ export function useConversations({
       (
         _pageIndex: number,
         previousPageData: GetConversationsResponseBody | null
-      ) => getConversationsKey(workspaceId, limit, previousPageData),
+      ) => {
+        if (previousPageData && !previousPageData.hasMore) {
+          return null;
+        }
+
+        const baseUrl = `/api/w/${workspaceId}/assistant/conversations?limit=${limit}`;
+
+        if (previousPageData === null) {
+          return baseUrl;
+        }
+
+        return `${baseUrl}&lastValue=${previousPageData.lastValue}`;
+      },
       conversationsFetcher,
       {
         revalidateAll: false,
@@ -120,10 +83,31 @@ export function useConversations({
         revalidate: options?.revalidate ?? true,
       };
 
-      return mutate(
-        (prevPages) => updateConversationPages(prevPages, updater),
-        swrOptions
-      );
+      return mutate((prevPages) => {
+        if (!prevPages) {
+          return prevPages;
+        }
+
+        const allConversations = prevPages.flatMap(
+          (page) => page.conversations
+        );
+        const updatedConversations = updater(allConversations);
+
+        if (!updatedConversations) {
+          return prevPages;
+        }
+
+        let offset = 0;
+        return prevPages.map((page, index) => {
+          const isLastPage = index === prevPages.length - 1;
+          const conversations = updatedConversations.slice(
+            offset,
+            isLastPage ? undefined : offset + page.conversations.length
+          );
+          offset += page.conversations.length;
+          return { ...page, conversations };
+        });
+      }, swrOptions);
     },
     [mutate]
   );
@@ -136,42 +120,5 @@ export function useConversations({
     hasMore,
     loadMore,
     isLoadingMore: isValidating && size > 1,
-  };
-}
-
-export function useMutateConversations({
-  workspaceId,
-  limit = DEFAULT_LIMIT,
-}: {
-  workspaceId: string;
-  limit?: number;
-}) {
-  const { mutate } = useSWRConfig();
-
-  const mutateConversations = useCallback(
-    (updater?: ConversationsUpdater, options?: MutateOptions) => {
-      const key = unstable_serialize((pageIndex, previousPageData) =>
-        getConversationsKey(workspaceId, limit, previousPageData)
-      );
-
-      if (!updater) {
-        return mutate(key);
-      }
-
-      const mutateOptions = {
-        revalidate: options?.revalidate ?? true,
-      };
-
-      return mutate<GetConversationsResponseBody[]>(
-        key,
-        (prevPages) => updateConversationPages(prevPages, updater),
-        mutateOptions
-      );
-    },
-    [limit, mutate, workspaceId]
-  );
-
-  return {
-    mutateConversations,
   };
 }
