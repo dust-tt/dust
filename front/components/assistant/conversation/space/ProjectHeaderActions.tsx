@@ -92,12 +92,7 @@ export function ProjectHeaderActions({
                 tooltip="Project options"
               />
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <ProjectNotificationMenu
-                activeSpaceId={spaceId}
-                owner={owner}
-                shouldWaitBeforeFetching={false}
-              />
+            <DropdownMenuContent collisionPadding={8}>
               {!canLeaveProject ? (
                 <DropdownTooltipTrigger
                   description="You are the last editor of this project and cannot leave it."
@@ -116,6 +111,11 @@ export function ProjectHeaderActions({
                   onClick={openLeaveDialog}
                 />
               )}
+              <ProjectNotificationMenu
+                activeSpaceId={spaceId}
+                owner={owner}
+                shouldWaitBeforeFetching={false}
+              />
             </DropdownMenuContent>
           </DropdownMenu>
         )}

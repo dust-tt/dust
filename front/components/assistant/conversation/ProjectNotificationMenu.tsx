@@ -22,7 +22,7 @@ import {
 import { useEffect, useState } from "react";
 
 const NOTIFICATION_CONDITION_LABELS: Record<NotificationCondition, string> = {
-  all_messages: "All messages",
+  all_messages: "All activity",
   only_mentions: "Only when mentioned",
   never: "Don't notify me",
 };
