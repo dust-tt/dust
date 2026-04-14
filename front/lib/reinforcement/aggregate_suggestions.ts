@@ -11,6 +11,7 @@ import { buildReinforcedSkillsLLMParams } from "@app/lib/reinforcement/run_reinf
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -335,12 +336,15 @@ export async function createSkillSuggestionsConversations(
     return;
   }
 
-  for (const editor of editors) {
-    await ConversationResource.upsertParticipation(auth, {
-      conversation,
-      action: "posted",
-      user: editor,
-      lastReadAt: null,
-    });
-  }
+  await concurrentExecutor(
+    editors,
+    (editor) =>
+      ConversationResource.upsertParticipation(auth, {
+        conversation,
+        action: "posted",
+        user: editor,
+        lastReadAt: null,
+      }),
+    { concurrency: 8 }
+  );
 }
