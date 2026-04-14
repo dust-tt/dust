@@ -56,6 +56,7 @@ import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
 import { hasCredits } from "@app/lib/metronome/credit_balance";
+import { isLegacyPlan } from "@app/lib/metronome/plan_type";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
@@ -2241,23 +2242,28 @@ async function checkMessagesLimit(
   const owner = auth.getNonNullableWorkspace();
   const featureFlags = await getFeatureFlags(auth);
   if (featureFlags.includes("metronome_billing") && owner.metronomeCustomerId) {
-    const user = auth.user();
-    if (user) {
-      const userId = user.sId;
-      const hasCreds = await hasCredits(
-        owner.sId,
-        userId,
-        owner.metronomeCustomerId
-      );
-      if (!hasCreds) {
-        return new Err({
-          status_code: 403,
-          api_error: {
-            type: "credits_exhausted",
-            message:
-              "Your workspace has run out of credits. Please purchase more credits to continue.",
-          },
-        });
+    const onLegacyPlan = await isLegacyPlan(
+      owner.sId,
+      owner.metronomeCustomerId
+    );
+    if (!onLegacyPlan) {
+      const user = auth.user();
+      if (user) {
+        const hasCreds = await hasCredits(
+          owner.sId,
+          user.sId,
+          owner.metronomeCustomerId
+        );
+        if (!hasCreds) {
+          return new Err({
+            status_code: 403,
+            api_error: {
+              type: "credits_exhausted",
+              message:
+                "Your workspace has run out of credits. Please purchase more credits to continue.",
+            },
+          });
+        }
       }
     }
   }

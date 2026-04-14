@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 import apiConfig from "@app/lib/api/config";
 import { getMetronomeClient } from "@app/lib/metronome/client";
+import { invalidateLegacyPlanCache } from "@app/lib/metronome/plan_type";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -19,8 +20,8 @@ type ResponseBody = {
   message?: string;
 };
 
-const ContractEndEventSchema = z.object({
-  type: z.literal("contract.end"),
+const ContractEventSchema = z.object({
+  type: z.union([z.literal("contract.start"), z.literal("contract.end")]),
   contract_id: z.string(),
   customer_id: z.string(),
 });
@@ -120,12 +121,30 @@ async function handler(
           );
           break;
 
-        case "contract.start":
+        case "contract.start": {
+          const parsed = ContractEventSchema.safeParse(event);
+          if (!parsed.success) {
+            logger.error(
+              { event, error: parsed.error.message },
+              "[Metronome Webhook] Invalid contract.start event"
+            );
+            break;
+          }
+          const workspace = await WorkspaceResource.fetchByMetronomeCustomerId(
+            parsed.data.customer_id
+          );
+          if (workspace) {
+            await invalidateLegacyPlanCache(
+              workspace.sId,
+              parsed.data.customer_id
+            );
+          }
           logger.info({ event }, "[Metronome Webhook] Contract started");
           break;
+        }
 
         case "contract.end": {
-          const parsed = ContractEndEventSchema.safeParse(event);
+          const parsed = ContractEventSchema.safeParse(event);
           if (!parsed.success) {
             logger.error(
               { event, error: parsed.error.message },
