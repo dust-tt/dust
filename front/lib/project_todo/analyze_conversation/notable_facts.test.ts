@@ -11,25 +11,38 @@ describe("buildNotableFacts", () => {
     const raw = [
       { sId: knownSId, text: "Launch date is Q3", source_message_rank: 3 },
     ];
-    const result = buildNotableFacts(raw, new Set([knownSId]));
+    const result = buildNotableFacts(raw, new Set([knownSId]), new Set());
     expect(result[0].sId).toBe(knownSId);
   });
 
-  it("initializes relevantUserIds as empty array", () => {
+  it("returns empty relevantUserIds when no user ids provided", () => {
     const raw = [{ text: "Some fact", source_message_rank: 1 }];
-    const result = buildNotableFacts(raw, new Set());
+    const result = buildNotableFacts(raw, new Set(), new Set());
     expect(result[0].relevantUserIds).toEqual([]);
+  });
+
+  it("resolves relevantUserIds from valid participant ids", () => {
+    const raw = [
+      {
+        text: "Budget is 100k",
+        source_message_rank: 1,
+        relevant_user_ids: ["user-abc", "user-def", "unknown-id"],
+      },
+    ];
+    const participants = new Set(["user-abc", "user-def"]);
+    const result = buildNotableFacts(raw, new Set(), participants);
+    expect(result[0].relevantUserIds).toEqual(["user-abc", "user-def"]);
   });
 
   it("preserves text and sourceMessageRank", () => {
     const raw = [{ text: "Deadline is Friday", source_message_rank: 7 }];
-    const result = buildNotableFacts(raw, new Set());
+    const result = buildNotableFacts(raw, new Set(), new Set());
     expect(result[0].text).toBe("Deadline is Friday");
     expect(result[0].sourceMessageRank).toBe(7);
   });
 
   it("returns an empty array for empty input", () => {
-    expect(buildNotableFacts([], new Set())).toEqual([]);
+    expect(buildNotableFacts([], new Set(), new Set())).toEqual([]);
   });
 });
 

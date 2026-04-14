@@ -5,7 +5,8 @@ import type { z } from "zod";
 
 export function buildActionItems(
   rawItems: z.infer<typeof ActionItemSchema>[],
-  previousSIds: Set<string>
+  previousSIds: Set<string>,
+  participantSIds: Set<string>
 ): TodoVersionedActionItem[] {
   const now = new Date().toISOString();
   return rawItems.map((item) => ({
@@ -14,7 +15,10 @@ export function buildActionItems(
         ? item.sId
         : uuidv4(),
     text: item.text,
-    assigneeUserId: null,
+    assigneeUserId:
+      item.assignee_user_id && participantSIds.has(item.assignee_user_id)
+        ? item.assignee_user_id
+        : null,
     assigneeName: item.assignee_name ?? null,
     sourceMessageRank: item.source_message_rank,
     status: item.status,
@@ -33,6 +37,7 @@ export function buildPromptActionItems(
     "- Use the exact message rank where the action item was first mentioned as source_message_rank.\n" +
     "- If an action item was explicitly completed or resolved in the conversation, set status to 'done'.\n" +
     "- Include an assignee_name only when clearly stated in the conversation.\n" +
+    "- Include an assignee_user_id (from the participant list) when the assignee matches a known participant.\n" +
     "- Be concise: one action item per distinct task.\n" +
     "- Do not include vague or aspirational items — only concrete commitments.\n\n";
   if (previousActionItems.length > 0) {
@@ -44,7 +49,11 @@ export function buildPromptActionItems(
     for (const item of previousActionItems) {
       prompt += `- sId: ${item.sId} | ${item.status === "done" ? "[done]" : "[open]"} ${item.text}`;
       if (item.assigneeName) {
-        prompt += ` (assigned: ${item.assigneeName})`;
+        prompt += ` (assigned: ${item.assigneeName}`;
+        if (item.assigneeUserId) {
+          prompt += `, id: ${item.assigneeUserId}`;
+        }
+        prompt += ")";
       }
       prompt += "\n";
     }

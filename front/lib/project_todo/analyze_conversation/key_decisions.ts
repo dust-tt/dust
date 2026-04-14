@@ -5,7 +5,8 @@ import type { z } from "zod";
 
 export function buildKeyDecisions(
   rawDecisions: z.infer<typeof KeyDecisionSchema>[],
-  previousSIds: Set<string>
+  previousSIds: Set<string>,
+  participantSIds: Set<string>
 ): TodoVersionedKeyDecision[] {
   return rawDecisions.map((decision) => ({
     sId:
@@ -13,7 +14,9 @@ export function buildKeyDecisions(
         ? decision.sId
         : uuidv4(),
     text: decision.text,
-    relevantUserIds: [],
+    relevantUserIds: (decision.relevant_user_ids ?? []).filter((id) =>
+      participantSIds.has(id)
+    ),
     sourceMessageRank: decision.source_message_rank,
     status: decision.status,
   }));
@@ -28,7 +31,8 @@ export function buildPromptKeyDecisions(
     "(e.g., a technical approach chosen, a scope change agreed upon, a trade-off accepted).\n" +
     "- Use the exact message rank where the decision was first reached as source_message_rank.\n" +
     "- Set status to 'decided' if the decision is finalized, 'open' if it is still being deliberated.\n" +
-    "- Do not include minor preferences or passing comments — only significant, consequential decisions.\n\n";
+    "- Do not include minor preferences or passing comments — only significant, consequential decisions.\n" +
+    "- Include relevant_user_ids (from the participant list) for people involved in making this decision.\n\n";
   if (previousKeyDecisions.length > 0) {
     prompt +=
       "The following key decisions were detected in a previous analysis of this conversation. " +
