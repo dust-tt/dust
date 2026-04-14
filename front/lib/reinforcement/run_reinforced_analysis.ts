@@ -10,6 +10,7 @@ import { getLargeWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import {
   ALL_TOOLS,
+  DESCRIBE_MCP_TOOL_NAME,
   type ExploratoryToolCallInfo,
   getReinforcedSkillsMetadata,
   isExploratoryToolName,
@@ -44,6 +45,13 @@ const REINFORCED_SKILLS_TOOL_DEFINITIONS: Record<
     description:
       "Get the list of available tools (MCP servers) that can be added to skills.",
     schema: {},
+  },
+  [DESCRIBE_MCP_TOOL_NAME]: {
+    description:
+      "Get detailed information about a specific MCP server: its description, and each tool's name, description, and input parameters. Use this to understand what a tool can do before suggesting instruction changes that reference it.",
+    schema: {
+      mcpId: z.string().describe("The sId of the MCP server to describe"),
+    },
   },
   edit_skill: {
     description:

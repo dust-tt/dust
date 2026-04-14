@@ -33,6 +33,7 @@ Propose configuration changes only when <analysis_workflow> yields concrete evid
 
 ## Exploration tools (optional — use these if you need more context)
 - get_available_tools: Lists all tools (MCP servers) available in the workspace. Use this to discover tools you could suggest adding or to verify that suggested tools exist.
+- describe_mcp: Returns detailed information about a specific MCP server: its tools, each tool's description, and input parameters. ALWAYS call this before suggesting instruction changes that reference specific tool names or workflows for a given MCP — you need to know the exact tool names and their inputs to write accurate instructions.
 `,
 
   skill_usage_analysis: `In <skill_context>, you have received all custom skills that were enabled in the conversation.
@@ -99,7 +100,8 @@ ONLY make suggestions that will affect the skill behavior. NEVER suggest cosmeti
 - Discover available tools by calling get_available_tools.
 - Only suggest adding a tool if there is clear evidence from the conversation that the skill needed a capability it did not have.
 - Only suggest removing a tool if there is clear evidence the tool is causing confusion or is unused and cluttering the skill configuration.
-- When suggesting a tool addition, ensure the tool exists in the workspace by checking available tools first.`,
+- When suggesting a tool addition, ensure the tool exists in the workspace by checking available tools first.
+- When the conversation involves a tool call that failed or produced unexpected results, call describe_mcp for the relevant MCP to understand the full list of available tools and their correct usage before suggesting instruction changes.`,
 };
 
 export function buildSkillAnalysisSystemPrompt(): string {

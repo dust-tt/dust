@@ -4,7 +4,7 @@ import {
   getMcpServerViewDisplayName,
   isToolWithKnowledge,
 } from "@app/lib/actions/mcp_helper";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import { filterCustomAvailableAndWhitelistedModels } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -104,4 +104,16 @@ export async function listAvailableSkills(
     icon: skill.icon,
     toolIds: skill.mcpServerViews.map((v) => v.sId),
   }));
+}
+
+/**
+ * Fetch detailed information about a specific MCP server by its sId.
+ * Returns the MCPServerType (including its tools list) or null if not found.
+ */
+export async function describeMcpServer(
+  auth: Authenticator,
+  mcpId: string
+): Promise<MCPServerType | null> {
+  const [view] = await MCPServerViewResource.fetchByIds(auth, [mcpId]);
+  return view?.toJSON()?.server ?? null;
 }

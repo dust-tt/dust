@@ -157,6 +157,13 @@ describe.skipIf(!RUN_REINFORCEMENT_EVAL)(
                 JUDGE_RUNS
               );
 
+              if (VERBOSE) {
+                console.log(
+                  `[${scenarioId}] Judge Result:`,
+                  JSON.stringify(judgeResult, null, 2)
+                );
+              }
+
               const passedJudge = judgeResult.finalScore >= PASS_THRESHOLD;
               const toolCallsSummary = formatToolCalls(toolCalls);
 
