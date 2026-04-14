@@ -101,12 +101,18 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
   },
   list_messages: {
     description:
-      "List all messages (and their replies) in a specific channel. Returns thread messages with their replies. Supports pagination to retrieve all results and filtering by date range.",
+      "List messages in a specific channel. Without messageId, returns top-level messages only (thread starters, where replyToId is null) — thread replies are NOT included. To read a full thread, call this tool again with the messageId of the top-level message to fetch its replies via the /replies endpoint. Supports pagination to retrieve all results and filtering by date range.",
     schema: {
       teamId: z.string().describe("The ID of the team containing the channel."),
       channelId: z
         .string()
-        .describe("The ID of the channel to list threads from."),
+        .describe("The ID of the channel to list messages from."),
+      messageId: z
+        .string()
+        .optional()
+        .describe(
+          "When provided, fetches replies to this top-level message instead of listing channel messages. Use the ID of a top-level message obtained from a previous call to list_messages (without messageId)."
+        ),
       fromDate: z
         .string()
         .optional()
