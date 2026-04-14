@@ -3,6 +3,7 @@ import { cn, Markdown } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 const MAX_THINKING_DISPLAY_LENGTH = 250;
+const COLLAPSED_THINKING_MAX_HEIGHT_CLASS = "max-h-20";
 
 interface ThinkingStepProps {
   content: string;
@@ -60,8 +61,24 @@ export function ThinkingStep({
       }
     >
       <TimelineRow icon="circle" isLast={isLast}>
-        <div className={cn("min-w-0 flex-1", isCollapsed && "line-clamp-3")}>
-          {markdown}
+        <div className="relative min-w-0 flex-1">
+          <div
+            className={cn(
+              "min-w-0",
+              isCollapsed && [
+                COLLAPSED_THINKING_MAX_HEIGHT_CLASS,
+                "overflow-hidden",
+              ]
+            )}
+          >
+            {markdown}
+          </div>
+
+          {isCollapsed ? (
+            <div className={cn("pointer-events-none absolute inset-x-0 bottom-0 h-10",
+              "bg-gradient-to-t from-background via-background/80 to-transparent",
+              "dark:from-background-night dark:via-background-night/80")} />
+          ) : null}
         </div>
       </TimelineRow>
     </div>
