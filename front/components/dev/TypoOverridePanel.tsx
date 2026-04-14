@@ -513,55 +513,6 @@ export function TypoOverridePanel({ onClose }: TypoOverridePanelProps) {
       </div>
 
       <div style={{ ...S.list, padding: 0 }}>
-        <button
-          onClick={() => toggleGroup("__fonts")}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            width: "100%",
-            padding: "8px 12px",
-            background: "none",
-            border: "none",
-            borderBottom: "1px solid #2a2a4a",
-            cursor: "pointer",
-            gap: 6,
-          }}
-        >
-          <span
-            style={{
-              fontSize: 10,
-              color: "#666",
-              width: 12,
-              textAlign: "center" as const,
-            }}
-          >
-            {collapsed["__fonts"] ? "\u25B6" : "\u25BC"}
-          </span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "#e0e0e0" }}>
-            Font Family
-          </span>
-          {fontOverrideCount > 0 && (
-            <span
-              style={{
-                fontSize: 9,
-                background: "#7fdbca33",
-                color: "#7fdbca",
-                borderRadius: 8,
-                padding: "1px 6px",
-                marginLeft: "auto",
-              }}
-            >
-              {fontOverrideCount} modified
-            </span>
-          )}
-        </button>
-        {!collapsed["__fonts"] && (
-          <FontFamilySection
-            fontOverrides={fontOverrides}
-            onUpdate={updateFontOverrides}
-          />
-        )}
-
         {TYPO_GROUPS.map((group) => {
           const groupOverrideCount = group.tokens.filter(
             (t) =>
@@ -640,6 +591,55 @@ export function TypoOverridePanel({ onClose }: TypoOverridePanelProps) {
             </div>
           );
         })}
+
+        <button
+          onClick={() => toggleGroup("__fonts")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            width: "100%",
+            padding: "8px 12px",
+            background: "none",
+            border: "none",
+            borderBottom: "1px solid #2a2a4a",
+            cursor: "pointer",
+            gap: 6,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 10,
+              color: "#666",
+              width: 12,
+              textAlign: "center" as const,
+            }}
+          >
+            {collapsed["__fonts"] ? "\u25B6" : "\u25BC"}
+          </span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#e0e0e0" }}>
+            Font Family
+          </span>
+          {fontOverrideCount > 0 && (
+            <span
+              style={{
+                fontSize: 9,
+                background: "#7fdbca33",
+                color: "#7fdbca",
+                borderRadius: 8,
+                padding: "1px 6px",
+                marginLeft: "auto",
+              }}
+            >
+              {fontOverrideCount} modified
+            </span>
+          )}
+        </button>
+        {!collapsed["__fonts"] && (
+          <FontFamilySection
+            fontOverrides={fontOverrides}
+            onUpdate={updateFontOverrides}
+          />
+        )}
       </div>
 
       <div style={S.footer}>
