@@ -410,7 +410,6 @@ async function createOrLinkTodos(
         markedAsDoneByType: null,
         markedAsDoneByUserId: null,
         markedAsDoneByAgentConfigurationId: null,
-        version: 1,
       });
 
       await todo.addSource(auth, {
@@ -446,7 +445,7 @@ async function updateTodoIfChanged(
     todo.doneAt?.toISOString() !== blob.doneAt?.toISOString();
 
   if (textChanged || statusChanged || doneAtChanged) {
-    await todo.createVersion(auth, {
+    await todo.updateWithVersion(auth, {
       text: blob.text,
       status: blob.status,
       doneAt: blob.doneAt,

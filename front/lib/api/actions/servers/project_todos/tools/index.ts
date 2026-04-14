@@ -142,7 +142,6 @@ export function createProjectTodosTools(
           category: category ?? "follow_ups",
           text,
           status: "todo",
-          version: 1,
           doneAt: null,
           actorRationale: null,
         });
@@ -185,7 +184,6 @@ export function createProjectTodosTools(
             category: item.category ?? "follow_ups",
             text: item.text,
             status: "todo",
-            version: 1,
             doneAt: null,
             actorRationale: null,
           });
@@ -235,7 +233,7 @@ export function createProjectTodosTools(
           ]);
         }
 
-        await todo.createVersion(auth, {
+        await todo.updateWithVersion(auth, {
           status: "done",
           doneAt: new Date(),
           markedAsDoneByType: "agent",
@@ -289,7 +287,7 @@ export function createProjectTodosTools(
           ]);
         }
 
-        await todo.createVersion(auth, {
+        await todo.updateWithVersion(auth, {
           status: "todo",
           doneAt: null,
           markedAsDoneByType: null,

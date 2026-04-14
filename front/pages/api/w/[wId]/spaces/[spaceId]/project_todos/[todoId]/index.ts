@@ -81,7 +81,7 @@ async function handler(
       const { text, status } = parseResult.data;
       const user = auth.getNonNullableUser();
 
-      const updates: Parameters<typeof todo.createVersion>[1] = {};
+      const updates: Parameters<typeof todo.updateWithVersion>[1] = {};
 
       if (text !== undefined) {
         updates.text = text;
@@ -103,7 +103,7 @@ async function handler(
         }
       }
 
-      const updatedTodo = await todo.createVersion(auth, updates);
+      const updatedTodo = await todo.updateWithVersion(auth, updates);
 
       return res.status(200).json({ todo: updatedTodo.toJSON() });
     }

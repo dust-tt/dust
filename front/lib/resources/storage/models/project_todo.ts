@@ -12,7 +12,54 @@ import type {
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
+// ── Shared mutable-state attributes ─────────────────────────────────────────
+// Used by both the main table and the version snapshot table.
+
+const PROJECT_TODO_MUTABLE_ATTRIBUTES = {
+  markedAsDoneByType: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: "Actor type that completed this todo: user or agent.",
+  },
+  markedAsDoneByUserId: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+    comment: "Set when markedAsDoneByType is user.",
+  },
+  markedAsDoneByAgentConfigurationId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: "sId of the agent configuration when markedAsDoneByType is agent.",
+  },
+  category: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    comment:
+      "Category of the todo: need_attention, key_decisions, follow_ups, notable_updates.",
+  },
+  text: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+  status: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: "todo",
+  },
+  doneAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  actorRationale: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: "Explanation for why the actor made a change.",
+  },
+} as const;
+
 // ── Main model ──────────────────────────────────────────────────────────────
+// One row per logical todo. The row's `id` is the stable identity used as a
+// foreign key in ProjectTodoVersionModel and all join tables.
 
 export class ProjectTodoModel extends WorkspaceAwareModel<ProjectTodoModel> {
   declare createdAt: CreationOptional<Date>;
@@ -33,12 +80,8 @@ export class ProjectTodoModel extends WorkspaceAwareModel<ProjectTodoModel> {
   declare markedAsDoneByUserId: ForeignKey<UserModel["id"]> | null;
   declare markedAsDoneByAgentConfigurationId: string | null;
 
-  // Stable identity: same sId across all version rows of one logical todo.
-  declare sId: string;
-
   declare category: ProjectTodoCategory;
   declare text: string;
-  declare version: number;
   declare status: ProjectTodoStatus;
   declare doneAt: Date | null;
   declare actorRationale: string | null;
@@ -85,79 +128,12 @@ ProjectTodoModel.init(
       allowNull: true,
       comment: "sId of the agent configuration when createdByType is agent.",
     },
-    markedAsDoneByType: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      comment: "Actor type that completed this todo: user or agent.",
-    },
-    markedAsDoneByUserId: {
-      type: DataTypes.BIGINT,
-      allowNull: true,
-      comment: "Set when markedAsDoneByType is user.",
-    },
-    markedAsDoneByAgentConfigurationId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      comment:
-        "sId of the agent configuration when markedAsDoneByType is agent.",
-    },
-    sId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      comment:
-        "Stable identifier shared across all version rows of the same logical todo.",
-    },
-    category: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      comment:
-        "Category of the todo: need_attention, key_decisions, follow_ups, notable_updates.",
-    },
-    text: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    version: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 1,
-      comment: "Version number for diff handling.",
-    },
-    status: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "todo",
-    },
-    doneAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    actorRationale: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-      comment: "Explanation for why the actor made a change.",
-    },
+    ...PROJECT_TODO_MUTABLE_ATTRIBUTES,
   },
   {
     modelName: "project_todo",
     sequelize: frontSequelize,
     indexes: [
-      {
-        name: "project_todos_sId_version_unique_idx",
-        fields: ["workspaceId", "sId", "version"],
-        unique: true,
-        concurrently: true,
-      },
-      {
-        name: "project_todos_sId_idx",
-        fields: ["sId"],
-        concurrently: true,
-      },
-      {
-        name: "project_todos_ws_space_user_version_idx",
-        fields: ["workspaceId", "spaceId", "userId", "version"],
-        concurrently: true,
-      },
       {
         name: "project_todos_ws_space_user_idx",
         fields: ["workspaceId", "spaceId", "userId"],
@@ -224,6 +200,77 @@ ProjectTodoModel.init(
     },
   }
 );
+
+// ── Version model ────────────────────────────────────────────────────────────
+// Each save of a logical todo appends a new row here before overwriting the
+// main row, preserving the full history. The `projectTodoId` FK is the stable
+// reference back to the logical todo's identity.
+
+export class ProjectTodoVersionModel extends WorkspaceAwareModel<ProjectTodoVersionModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare projectTodoId: ForeignKey<ProjectTodoModel["id"]>;
+  declare version: number;
+
+  // Snapshot of mutable state at the time of this version.
+  declare markedAsDoneByType: ProjectTodoActorType | null;
+  declare markedAsDoneByUserId: ForeignKey<UserModel["id"]> | null;
+  declare markedAsDoneByAgentConfigurationId: string | null;
+  declare category: ProjectTodoCategory;
+  declare text: string;
+  declare status: ProjectTodoStatus;
+  declare doneAt: Date | null;
+  declare actorRationale: string | null;
+}
+
+ProjectTodoVersionModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    projectTodoId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+    },
+    version: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      comment: "Monotonically increasing per projectTodoId.",
+    },
+    ...PROJECT_TODO_MUTABLE_ATTRIBUTES,
+  },
+  {
+    modelName: "project_todo_version",
+    sequelize: frontSequelize,
+    indexes: [
+      {
+        name: "project_todo_versions_ws_todo_version_unique_idx",
+        fields: ["workspaceId", "projectTodoId", "version"],
+        unique: true,
+        concurrently: true,
+      },
+    ],
+  }
+);
+
+ProjectTodoVersionModel.belongsTo(ProjectTodoModel, {
+  foreignKey: { name: "projectTodoId", allowNull: false },
+  onDelete: "RESTRICT",
+  as: "projectTodo",
+});
+
+ProjectTodoModel.hasMany(ProjectTodoVersionModel, {
+  foreignKey: { name: "projectTodoId", allowNull: false },
+  as: "versions",
+});
 
 ProjectTodoModel.belongsTo(SpaceModel, {
   foreignKey: { name: "spaceId", allowNull: false },
