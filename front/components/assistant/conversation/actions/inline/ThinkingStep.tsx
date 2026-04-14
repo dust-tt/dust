@@ -59,12 +59,7 @@ export function ThinkingStep({
       }
     >
       <TimelineRow icon="circle" isLast={isLast}>
-        <div
-          className={cn(
-            "min-w-0 flex-1",
-            isCollapsed && "line-clamp-3"
-          )}
-        >
+        <div className={cn("min-w-0 flex-1", isCollapsed && "line-clamp-3")}>
           {markdown}
         </div>
       </TimelineRow>
