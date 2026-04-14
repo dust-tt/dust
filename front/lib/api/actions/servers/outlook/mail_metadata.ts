@@ -44,6 +44,22 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       done: "Fetch messages",
     },
   },
+  get_attachments: {
+    description:
+      "Get all attachments from an Outlook message. Lists attachments and downloads their content, making them available in the conversation.",
+    schema: {
+      messageId: z
+        .string()
+        .describe(
+          "The ID of the message to get attachments from (from the get_messages response)"
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Getting Outlook attachments",
+      done: "Get Outlook attachments",
+    },
+  },
   get_drafts: {
     description:
       "Get draft emails from Outlook. Returns a limited number of drafts by default to avoid overwhelming responses.",

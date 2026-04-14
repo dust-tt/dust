@@ -423,6 +423,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "create_draft": "medium",
     "create_reply_draft": "medium",
     "delete_draft": "low",
+    "get_attachments": "never_ask",
     "get_contacts": "never_ask",
     "get_drafts": "never_ask",
     "get_messages": "never_ask",

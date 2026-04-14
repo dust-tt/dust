@@ -121,7 +121,7 @@ export async function processAttachment({
         blob: buffer.toString("base64"),
         _meta: { text: `Attachment: ${sanitizeFilename(filename)}` },
         mimeType,
-        uri: "",
+        uri: sanitizeFilename(filename),
       },
     },
   ]);

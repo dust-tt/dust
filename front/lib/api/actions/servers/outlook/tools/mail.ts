@@ -1,9 +1,15 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import {
+  extractTextFromBuffer,
+  processAttachment,
+} from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
+import { sanitizeFilename } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { OUTLOOK_TOOLS_METADATA } from "@app/lib/api/actions/servers/outlook/mail_metadata";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types/shared/result";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import sanitizeHtml from "sanitize-html";
 
 const fetchFromOutlook = async (
@@ -91,6 +97,16 @@ interface OutlookContact {
   companyName?: string;
   department?: string;
   officeLocation?: string;
+}
+
+interface OutlookFileAttachment {
+  "@odata.type": string;
+  id: string;
+  name: string;
+  contentType: string;
+  size: number;
+  isInline?: boolean;
+  contentBytes?: string; // Standard base64-encoded content
 }
 
 interface OutlookFolder {
@@ -205,6 +221,123 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
         ),
       },
     ]);
+  },
+
+  get_attachments: async ({ messageId }, { authInfo }) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const encodedMessageId = encodeURIComponent(messageId);
+
+    // List all attachments for the message
+    const listResponse = await fetchFromOutlook(
+      `/me/messages/${encodedMessageId}/attachments`,
+      accessToken,
+      { method: "GET" }
+    );
+
+    if (!listResponse.ok) {
+      const errorText = await getErrorText(listResponse);
+      if (listResponse.status === 404) {
+        return new Err(
+          new MCPError(`Message not found: ${messageId}`, { tracked: false })
+        );
+      }
+      return new Err(
+        new MCPError(
+          `Failed to list attachments: ${listResponse.status} ${listResponse.statusText} - ${errorText}`
+        )
+      );
+    }
+
+    const listResult = await listResponse.json();
+    const attachments = (listResult.value ?? []) as OutlookFileAttachment[];
+
+    // Filter to file attachments only (skip itemAttachment, referenceAttachment)
+    const fileAttachments = attachments.filter(
+      (a) => a["@odata.type"] === "#microsoft.graph.fileAttachment"
+    );
+
+    if (fileAttachments.length === 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: "No file attachments found on this message.",
+        },
+      ]);
+    }
+
+    // Process each file attachment concurrently
+    const results = await concurrentExecutor(
+      fileAttachments,
+      async (
+        attachment
+      ): Promise<{
+        filename: string;
+        content: CallToolResult["content"];
+        error?: string;
+      }> => {
+        const filename = attachment.name || "unnamed";
+        const mimeType = attachment.contentType || "application/octet-stream";
+
+        if (!attachment.contentBytes) {
+          return { filename, content: [], error: "No content available" };
+        }
+
+        const buffer = Buffer.from(attachment.contentBytes, "base64");
+
+        const result = await processAttachment({
+          mimeType,
+          filename,
+          extractText: async () => extractTextFromBuffer(buffer, mimeType),
+          downloadContent: async () => new Ok(buffer),
+        });
+
+        if (result.isErr()) {
+          return { filename, content: [], error: result.error.message };
+        }
+
+        // Ensure a resource block is included so the file can be used by other tools
+        const hasResource = result.value.some((c) => c.type === "resource");
+        if (!hasResource) {
+          result.value.push({
+            type: "resource" as const,
+            resource: {
+              blob: attachment.contentBytes,
+              _meta: { text: `Attachment: ${sanitizeFilename(filename)}` },
+              mimeType,
+              uri: sanitizeFilename(filename),
+            },
+          });
+        }
+
+        return { filename, content: result.value };
+      },
+      { concurrency: 5 }
+    );
+
+    // Aggregate all content blocks
+    const allContent: CallToolResult["content"] = [
+      {
+        type: "text" as const,
+        text: `Found ${fileAttachments.length} attachment(s).`,
+      },
+    ];
+
+    for (const r of results) {
+      if (r.error) {
+        allContent.push({
+          type: "text" as const,
+          text: `Failed to process "${r.filename}": ${r.error}`,
+        });
+      } else {
+        allContent.push(...r.content);
+      }
+    }
+
+    return new Ok(allContent);
   },
 
   get_drafts: async ({ search, top = 10, skip = 0 }, { authInfo }) => {
