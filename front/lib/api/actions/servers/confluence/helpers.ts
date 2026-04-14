@@ -89,6 +89,7 @@ async function confluenceApiCall<T extends z.ZodTypeAny>(
 
 export async function withAuth<T>(
   accessToken: string | undefined,
+  cloudId: string | undefined,
   action: (baseUrl: string, accessToken: string) => Promise<T>
 ): Promise<
   | { success: true; result: T }
@@ -101,20 +102,44 @@ export async function withAuth<T>(
     };
   }
 
-  try {
-    const baseUrl = await getConfluenceBaseUrl(accessToken);
-    if (!baseUrl) {
+  let baseUrl: string;
+
+  if (cloudId) {
+    // cloud_id explicitly provided — use directly, no API call.
+    baseUrl = `https://api.atlassian.com/ex/confluence/${cloudId}`;
+  } else {
+    const resources = await getAllConfluenceResources(accessToken);
+    if (!resources || resources.length === 0) {
       return {
         success: false,
         error: [
           {
             type: "text" as const,
-            text: "Failed to determine Confluence instance URL. Please check your connection.",
+            text: "No Confluence instance found. Please reconnect.",
           },
         ],
       };
     }
+    if (resources.length > 1) {
+      return {
+        success: false,
+        error: [
+          {
+            type: "text" as const,
+            text:
+              "Multiple Confluence instances are accessible with this connection. " +
+              "A cloud_id parameter is required to identify which instance to use. " +
+              "Please call the get_connection_info tool to retrieve the list of available " +
+              "instances (with their cloud IDs, names, and URLs), present the options to the " +
+              "user, ask which instance they want to use, then retry with the chosen cloud_id.",
+          },
+        ],
+      };
+    }
+    baseUrl = `https://api.atlassian.com/ex/confluence/${resources[0].id}`;
+  }
 
+  try {
     const result = await action(baseUrl, accessToken);
     return { success: true, result };
   } catch (error) {
@@ -131,19 +156,9 @@ export async function withAuth<T>(
   }
 }
 
-async function getConfluenceBaseUrl(
+export async function getAllConfluenceResources(
   accessToken: string
-): Promise<string | null> {
-  const resourceInfo = await getConfluenceResourceInfo(accessToken);
-  if (resourceInfo?.id) {
-    return `https://api.atlassian.com/ex/confluence/${resourceInfo.id}`;
-  }
-  return null;
-}
-
-async function getConfluenceResourceInfo(
-  accessToken: string
-): Promise<{ id: string; name: string; url: string } | null> {
+): Promise<{ id: string; name: string; url: string }[] | null> {
   const result = await confluenceApiCall(
     {
       endpoint: "/oauth/token/accessible-resources",
@@ -160,17 +175,7 @@ async function getConfluenceResourceInfo(
     return null;
   }
 
-  const resources = result.value;
-  if (!resources || resources.length === 0) {
-    logger.error("No accessible resources found");
-    return null;
-  }
-  const resource = resources[0];
-  return {
-    id: resource.id,
-    name: resource.name,
-    url: resource.url,
-  };
+  return result.value ?? null;
 }
 
 export async function getCurrentUser(

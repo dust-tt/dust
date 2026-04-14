@@ -246,7 +246,7 @@ export async function getIssue({
     return new Ok(null);
   }
 
-  const resourceInfo = await getJiraResourceInfo(accessToken);
+  const resourceInfo = (await getAllJiraResources(accessToken))?.[0] ?? null;
   if (resourceInfo) {
     handledResult.value = {
       ...handledResult.value,
@@ -332,11 +332,9 @@ export async function getTransitions(
 }
 
 // Jira resource and URL utilities
-async function getJiraResourceInfo(accessToken: string): Promise<{
-  id: string;
-  url: string;
-  name: string;
-} | null> {
+async function getAllJiraResources(
+  accessToken: string
+): Promise<{ id: string; url: string; name: string }[] | null> {
   const result = await jiraApiCall(
     {
       endpoint: "/oauth/token/accessible-resources",
@@ -352,25 +350,14 @@ async function getJiraResourceInfo(accessToken: string): Promise<{
     return null;
   }
 
-  const resources = result.value;
-  if (resources && resources.length > 0) {
-    const resource = resources[0];
-    return {
-      id: resource.id,
-      url: resource.url,
-      name: resource.name,
-    };
-  }
-
-  return null;
+  return result.value ?? null;
 }
 
 export async function getJiraBaseUrl(
   accessToken: string
 ): Promise<string | null> {
-  const resourceInfo = await getJiraResourceInfo(accessToken);
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const cloudId = resourceInfo?.id || null;
+  const resources = await getAllJiraResources(accessToken);
+  const cloudId = resources?.[0]?.id ?? null;
   if (cloudId) {
     return `https://api.atlassian.com/ex/jira/${cloudId}`;
   }
@@ -520,7 +507,7 @@ export async function searchIssues(
     return result;
   }
 
-  const resourceInfo = await getJiraResourceInfo(accessToken);
+  const resourceInfo = (await getAllJiraResources(accessToken))?.[0] ?? null;
   if (resourceInfo && result.value.issues) {
     result.value.issues = result.value.issues.map((issue) => ({
       ...issue,
@@ -581,7 +568,7 @@ export async function searchJiraIssuesUsingJql(
     return result;
   }
 
-  const resourceInfo = await getJiraResourceInfo(accessToken);
+  const resourceInfo = (await getAllJiraResources(accessToken))?.[0] ?? null;
   if (resourceInfo && result.value.issues) {
     result.value.issues = result.value.issues.map((issue) => ({
       ...issue,
@@ -659,31 +646,31 @@ async function getUserInfo(
 export async function getConnectionInfo(
   accessToken: string
 ): Promise<Result<z.infer<typeof JiraConnectionInfoSchema>, JiraErrorResult>> {
-  const resourceInfo = await getJiraResourceInfo(accessToken);
-  if (!resourceInfo) {
+  const resources = await getAllJiraResources(accessToken);
+  if (!resources || resources.length === 0) {
     return new Err("Failed to retrieve JIRA resource information");
   }
 
-  const baseUrl = `https://api.atlassian.com/ex/jira/${resourceInfo.id}`;
-  const userResult = await getUserInfo(baseUrl, accessToken);
+  // Fetch user info using the first instance (arbitrary but consistent).
+  const primaryBaseUrl = `https://api.atlassian.com/ex/jira/${resources[0].id}`;
+  const userResult = await getUserInfo(primaryBaseUrl, accessToken);
   if (userResult.isErr()) {
     return userResult;
   }
 
-  const connectionInfo = {
+  return new Ok({
     user: {
       account_id: userResult.value.accountId,
       name: userResult.value.displayName,
       nickname: userResult.value.displayName,
     },
-    instance: {
-      cloud_id: resourceInfo.id,
-      site_url: resourceInfo.url,
-      site_name: resourceInfo.name,
-      api_base_url: baseUrl,
-    },
-  };
-  return new Ok(connectionInfo);
+    instances: resources.map((r) => ({
+      cloud_id: r.id,
+      site_url: r.url,
+      site_name: r.name,
+      api_base_url: `https://api.atlassian.com/ex/jira/${r.id}`,
+    })),
+  });
 }
 
 export async function transitionIssue(
@@ -851,7 +838,7 @@ export async function createIssue(
     return result;
   }
 
-  const resourceInfo = await getJiraResourceInfo(accessToken);
+  const resourceInfo = (await getAllJiraResources(accessToken))?.[0] ?? null;
   if (resourceInfo && result.value) {
     result.value.browseUrl = `${resourceInfo.url}/browse/${result.value.key}`;
   }
@@ -893,7 +880,7 @@ export async function updateIssue(
 
   const responseData = { issueKey };
 
-  const resourceInfo = await getJiraResourceInfo(accessToken);
+  const resourceInfo = (await getAllJiraResources(accessToken))?.[0] ?? null;
   if (resourceInfo) {
     return new Ok({
       ...responseData,
@@ -904,13 +891,6 @@ export async function updateIssue(
   return new Ok(responseData);
 }
 
-type WithAuthParams = {
-  authInfo?: AuthInfo;
-  action: (
-    baseUrl: string,
-    accessToken: string
-  ) => Promise<Result<CallToolResult["content"], MCPError>>;
-};
 
 export async function createIssueLink(
   baseUrl: string,
@@ -1048,23 +1028,45 @@ export async function searchUsersByEmailExact(
   return new Ok({ users: matches, nextStartAt: cursor });
 }
 
-export const withAuth = async ({
-  authInfo,
-  action,
-}: WithAuthParams): Promise<Result<CallToolResult["content"], MCPError>> => {
+export async function withAuth(
+  authInfo: AuthInfo | undefined,
+  cloudId: string | undefined,
+  action: (
+    baseUrl: string,
+    accessToken: string
+  ) => Promise<Result<CallToolResult["content"], MCPError>>
+): Promise<Result<CallToolResult["content"], MCPError>> {
   const accessToken = authInfo?.token;
 
   if (!accessToken) {
     return new Err(new MCPError("No access token found"));
   }
 
-  try {
-    // Get the base URL from accessible resources
-    const baseUrl = await getJiraBaseUrl(accessToken);
-    if (!baseUrl) {
-      return new Err(new MCPError("No base url found"));
-    }
+  let baseUrl: string;
 
+  if (cloudId) {
+    // cloud_id explicitly provided — use directly, no API call.
+    baseUrl = `https://api.atlassian.com/ex/jira/${cloudId}`;
+  } else {
+    const resources = await getAllJiraResources(accessToken);
+    if (!resources || resources.length === 0) {
+      return new Err(new MCPError("No Jira instance found. Please reconnect."));
+    }
+    if (resources.length > 1) {
+      return new Err(
+        new MCPError(
+          "Multiple Jira instances are accessible with this connection. " +
+            "A cloud_id parameter is required to identify which instance to use. " +
+            "Please call the get_connection_info tool to retrieve the list of available " +
+            "instances (with their cloud IDs, names, and URLs), present the options to the " +
+            "user, ask which instance they want to use, then retry with the chosen cloud_id."
+        )
+      );
+    }
+    baseUrl = `https://api.atlassian.com/ex/jira/${resources[0].id}`;
+  }
+
+  try {
     return await action(baseUrl, accessToken);
   } catch (error: unknown) {
     return logAndReturnError({
@@ -1072,7 +1074,7 @@ export const withAuth = async ({
       message: "Operation failed",
     });
   }
-};
+}
 
 function logAndReturnError({
   error,

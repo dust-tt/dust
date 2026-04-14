@@ -7,6 +7,7 @@ import type {
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   createPage,
+  getAllConfluenceResources,
   getCurrentUser,
   getPage,
   listPages,
@@ -24,9 +25,27 @@ import { Ok } from "@app/types/shared/result";
 
 export function createConfluenceTools(): ToolDefinition[] {
   const handlers: ToolHandlers<typeof CONFLUENCE_TOOLS_METADATA> = {
-    get_current_user: async (_params, { authInfo }: ToolHandlerExtra) => {
+    get_connection_info: async (_params, { authInfo }: ToolHandlerExtra) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Ok([{ type: "text" as const, text: "No access token found." }]);
+      }
+      const resources = await getAllConfluenceResources(accessToken);
+      if (!resources) {
+        return new Ok([
+          { type: "text" as const, text: "Failed to retrieve connection information." },
+        ]);
+      }
+      return new Ok([
+        { type: "text" as const, text: "Connection information retrieved successfully" },
+        { type: "text" as const, text: JSON.stringify(resources, null, 2) },
+      ]);
+    },
+
+    get_current_user: async ({ cloud_id }, { authInfo }: ToolHandlerExtra) => {
       const authResult = await withAuth(
         authInfo?.token,
+        cloud_id,
         async (baseUrl, accessToken) => {
           const result = await getCurrentUser(baseUrl, accessToken);
           if (result.isErr()) {
@@ -52,9 +71,10 @@ export function createConfluenceTools(): ToolDefinition[] {
       ]);
     },
 
-    get_spaces: async (_params, { authInfo }: ToolHandlerExtra) => {
+    get_spaces: async ({ cloud_id }, { authInfo }: ToolHandlerExtra) => {
       const authResult = await withAuth(
         authInfo?.token,
+        cloud_id,
         async (baseUrl, accessToken) => {
           const result = await listSpaces(baseUrl, accessToken);
           if (result.isErr()) {
@@ -82,11 +102,12 @@ export function createConfluenceTools(): ToolDefinition[] {
       ]);
     },
 
-    get_pages: async (params, { authInfo }: ToolHandlerExtra) => {
+    get_pages: async ({ cloud_id, ...pageParams }, { authInfo }: ToolHandlerExtra) => {
       const authResult = await withAuth(
         authInfo?.token,
+        cloud_id,
         async (baseUrl, accessToken) => {
-          const result = await listPages(baseUrl, accessToken, params);
+          const result = await listPages(baseUrl, accessToken, pageParams);
           if (result.isErr()) {
             throw new MCPError(`Error listing pages: ${result.error}`);
           }
@@ -115,6 +136,7 @@ export function createConfluenceTools(): ToolDefinition[] {
     get_page: async (params, { authInfo }: ToolHandlerExtra) => {
       const authResult = await withAuth(
         authInfo?.token,
+        params.cloud_id,
         async (baseUrl, accessToken) => {
           const result = await getPage(
             baseUrl,
@@ -153,11 +175,12 @@ export function createConfluenceTools(): ToolDefinition[] {
       ]);
     },
 
-    create_page: async (params, { authInfo }: ToolHandlerExtra) => {
+    create_page: async ({ cloud_id, ...pageParams }, { authInfo }: ToolHandlerExtra) => {
       const authResult = await withAuth(
         authInfo?.token,
+        cloud_id,
         async (baseUrl, accessToken) => {
-          const result = await createPage(baseUrl, accessToken, params);
+          const result = await createPage(baseUrl, accessToken, pageParams);
           if (result.isErr()) {
             throw new MCPError(`Error creating page: ${result.error}`);
           }
@@ -178,11 +201,12 @@ export function createConfluenceTools(): ToolDefinition[] {
       ]);
     },
 
-    update_page: async (params, { authInfo }: ToolHandlerExtra) => {
+    update_page: async ({ cloud_id, ...pageParams }, { authInfo }: ToolHandlerExtra) => {
       const authResult = await withAuth(
         authInfo?.token,
+        cloud_id,
         async (baseUrl, accessToken) => {
-          const result = await updatePage(baseUrl, accessToken, params);
+          const result = await updatePage(baseUrl, accessToken, pageParams);
           if (result.isErr()) {
             throw new MCPError(`Error updating page: ${result.error}`);
           }
