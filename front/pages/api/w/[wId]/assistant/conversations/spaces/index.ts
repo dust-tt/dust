@@ -1,9 +1,8 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -44,18 +43,8 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      const allSpaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
-      const metadatas = await ProjectMetadataResource.fetchBySpaceIds(
-        auth,
-        allSpaces.map((s) => s.id)
-      );
-      const metadataMap = new Map<number, ProjectMetadataResource>(
-        metadatas.map((m) => [m.spaceId, m])
-      );
-
-      const nonArchivedSpaces = allSpaces.filter(
-        (s) => metadataMap.get(s.id)?.archivedAt === null
-      );
+      const { nonArchivedSpaces, metadataMap } =
+        await listNonArchivedMemberSpacesWithMetadata(auth);
 
       // Fetch all unread conversations for the user in one query
       const {

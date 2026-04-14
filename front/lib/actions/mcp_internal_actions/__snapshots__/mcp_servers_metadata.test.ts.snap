@@ -482,6 +482,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "attach_to_conversation": "never_ask",
     "edit_description": "low",
     "get_information": "never_ask",
+    "list_projects": "never_ask",
     "retrieve_recent_documents": "never_ask",
     "semantic_search": "never_ask",
     "update_file": "medium",

@@ -145,6 +145,16 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
       done: "Get project information",
     },
   },
+  list_projects: {
+    description:
+      "List non-archived projects where you are a space member (same scope as the workspace project sidebar source). Each entry includes spaceId, name, and dustProject (uri + mimeType) to pass as the dustProject argument to other project_manager tools.",
+    schema: {},
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing projects",
+      done: "List projects",
+    },
+  },
   retrieve_recent_documents: {
     description:
       "Fetch the most recent documents from this project's knowledge data source and from any content nodes linked in the project context, in reverse chronological order up to the retrieval limit. Respects optional time window. Optionally restrict to subtrees using nodeIds.",
@@ -203,6 +213,7 @@ const PROJECT_MANAGER_INSTRUCTIONS =
   "Only text-based files are supported for adding/updating. " +
   "You can add/update files by providing text content directly, or by copying from existing files (like those you've generated). " +
   "You can also attach an existing project context file to the current conversation without recreating it. " +
+  "Use list_projects to discover projects you can access and obtain the dustProject uri for other tools. " +
   "Use semantic_search to find relevant chunks in project knowledge and/or conversations (scope: knowledge, conversations, or all). " +
   "Use retrieve_recent_documents to load recent content from the project data source and from knowledge nodes in the project context. " +
   "Requires write permissions on the project space. " +

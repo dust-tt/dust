@@ -1,5 +1,5 @@
 import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
-import * as projectsApi from "@app/lib/api/projects";
+import * as projectsApi from "@app/lib/api/projects/context";
 import { Authenticator } from "@app/lib/auth";
 import type { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -33,7 +33,9 @@ describe("/api/w/[wId]/spaces/[spaceId]/project_context", () => {
     );
     addContentNodeToProjectSpy.mockImplementation(async (...args) =>
       (
-        await vi.importActual<typeof projectsApi>("@app/lib/api/projects")
+        await vi.importActual<typeof projectsApi>(
+          "@app/lib/api/projects/context"
+        )
       ).addContentNodeToProject(...args)
     );
   });

@@ -1,6 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getDataSourceURI } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { makeProjectConfigurationURI } from "@app/lib/actions/mcp_internal_actions/project_configuration_uri";
 import type {
   ToolDefinition,
   ToolHandlers,
@@ -26,9 +27,10 @@ import config from "@app/lib/api/config";
 import {
   addFileToProject,
   fetchLatestProjectContextFileContentFragment,
-  fetchProjectDataSourceView,
   listProjectContextAttachments,
-} from "@app/lib/api/projects";
+} from "@app/lib/api/projects/context";
+import { fetchProjectDataSourceView } from "@app/lib/api/projects/data_sources";
+import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
@@ -507,6 +509,41 @@ export function createProjectManagerTools(
           })
         );
       }, "Failed to get project information");
+    },
+
+    list_projects: async () => {
+      return withErrorHandling(async () => {
+        const owner = auth.getNonNullableWorkspace();
+        const workspaceSId = owner.sId;
+        const { nonArchivedSpaces } =
+          await listNonArchivedMemberSpacesWithMetadata(auth);
+        const memberProjects = nonArchivedSpaces
+          .filter((space) => space.isProject())
+          .sort((a, b) =>
+            a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+          );
+
+        const projects = memberProjects.map((space) => ({
+          spaceId: space.sId,
+          name: space.name,
+          dustProject: {
+            uri: makeProjectConfigurationURI(workspaceSId, space.sId),
+            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT,
+          },
+        }));
+
+        return new Ok(
+          makeSuccessResponse({
+            success: true,
+            count: projects.length,
+            projects,
+            message:
+              projects.length === 0
+                ? "No non-archived projects found where you are a space member."
+                : `Found ${projects.length} project(s). Use each entry's dustProject as the dustProject argument for other project_manager tools.`,
+          })
+        );
+      }, "Failed to list projects");
     },
 
     retrieve_recent_documents: async (params) => {

@@ -6,7 +6,7 @@ vi.mock("@app/lib/lock", () => ({
   }),
 }));
 
-import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects";
+import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects/connector";
 import { Authenticator, getOrCreateSystemApiKey } from "@app/lib/auth";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import type { GroupFactory } from "@app/tests/utils/GroupFactory";

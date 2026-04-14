@@ -5,7 +5,7 @@ import type {
 import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { isMultiSheetSpreadsheetContentType } from "@app/lib/api/assistant/conversation/content_types";
 import config from "@app/lib/api/config";
-import { fetchProjectDataSourceView } from "@app/lib/api/projects";
+import { fetchProjectDataSourceView } from "@app/lib/api/projects/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
