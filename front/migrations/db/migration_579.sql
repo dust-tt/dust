@@ -8,10 +8,7 @@ BEGIN;
 
 -- ── project_todos: clear data and dependent tables ────────────────────────
 -- Truncate in FK dependency order: join tables first, then parent tables.
-TRUNCATE "project_todo_takeaway_sources";
-TRUNCATE "project_todo_conversations";
-TRUNCATE "project_todo_sources";
-TRUNCATE "project_todos";
+TRUNCATE "project_todo_takeaway_sources", "project_todo_conversations", "project_todos", "project_todo_sources";
 
 -- ── project_todo_versions: new version snapshot table ─────────────────────
 CREATE TABLE IF NOT EXISTS "project_todo_versions"
@@ -39,8 +36,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS "project_todo_versions_ws_todo_version_unique_
 -- takeaway_sources used a plain string reference in the old schema (no proper
 -- FK to takeaways), so it is truncated separately from takeaways.
 -- project_todo_takeaway_sources was already cleared above.
-TRUNCATE "takeaway_sources";
-TRUNCATE "takeaways";
+TRUNCATE "takeaway_sources", "takeaways", "project_todo_takeaway_sources";
 
 -- ── takeaway_sources: replace string reference with integer FK ─────────────
 ALTER TABLE "takeaway_sources"
