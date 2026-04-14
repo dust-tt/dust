@@ -326,18 +326,18 @@ const PRODUCTS: ProductDef[] = [
   },
   // MAU products — USAGE on MAX gauge, billed once at end of period.
   {
-    name: "MAU Billing (1+)",
-    type: "USAGE",
+    name: "Workspace MAU 1",
+    type: "SUBSCRIPTION",
     billable_metric_name: "MAU (1+ messages)",
   },
   {
-    name: "MAU Billing (5+)",
-    type: "USAGE",
+    name: "Workspace MAU 5",
+    type: "SUBSCRIPTION",
     billable_metric_name: "MAU (5+ messages)",
   },
   {
-    name: "MAU Billing (10+)",
-    type: "USAGE",
+    name: "Workspace MAU 10",
+    type: "SUBSCRIPTION",
     billable_metric_name: "MAU (10+ messages)",
   },
   // FIXED products for credit grants — separate products for distinct invoice line items.
@@ -457,10 +457,10 @@ function getRateCards(): RateCardDef[] {
     // on the rate card so they can be enabled per contract via overrides.
     // Programmatic usage at $1 = $1 (30% markup baked into product).
     {
-      name: "Legacy Enterprise USD",
+      name: "Legacy Enterprise MAU USD",
       description:
         "Enterprise plan. Per-MAU billing + programmatic usage at cost with 30% markup.",
-      aliases: [{ name: "legacy-enterprise" }],
+      aliases: [{ name: "legacy-enterprise-mau-usd" }],
       fiat_credit_type_id: CREDIT_TYPE_USD_ID,
       credit_type_conversions: [
         {
@@ -470,7 +470,7 @@ function getRateCards(): RateCardDef[] {
       ],
       rates: [
         {
-          product_name: "MAU Billing (1+)",
+          product_name: "Workspace MAU 1",
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -478,14 +478,14 @@ function getRateCards(): RateCardDef[] {
         },
         // MAU-5 and MAU-10 not entitled by default — enabled per contract via overrides.
         {
-          product_name: "MAU Billing (5+)",
+          product_name: "Workspace MAU 5",
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: false,
           rate_type: "FLAT",
           price: 0,
         },
         {
-          product_name: "MAU Billing (10+)",
+          product_name: "Workspace MAU 10",
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: false,
           rate_type: "FLAT",
@@ -603,10 +603,10 @@ function getRateCards(): RateCardDef[] {
       ],
     },
     {
-      name: "Legacy Enterprise EUR",
+      name: "Legacy Enterprise MAU EUR",
       description:
         "Enterprise plan (EUR). Per-MAU billing + programmatic usage at cost with 30% markup.",
-      aliases: [{ name: "legacy-enterprise-eur" }],
+      aliases: [{ name: "legacy-enterprise-mau-eur" }],
       fiat_credit_type_id: CREDIT_TYPE_EUR_ID,
       credit_type_conversions: [
         {
@@ -616,7 +616,7 @@ function getRateCards(): RateCardDef[] {
       ],
       rates: [
         {
-          product_name: "MAU Billing (1+)",
+          product_name: "Workspace MAU 1",
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -624,7 +624,7 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
         {
-          product_name: "MAU Billing (5+)",
+          product_name: "Workspace MAU 5",
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: false,
           rate_type: "FLAT",
@@ -632,7 +632,7 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
         {
-          product_name: "MAU Billing (10+)",
+          product_name: "Workspace MAU 10",
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: false,
           rate_type: "FLAT",
