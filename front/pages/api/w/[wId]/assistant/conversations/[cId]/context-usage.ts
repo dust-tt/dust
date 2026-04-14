@@ -36,7 +36,6 @@ async function handler(
   switch (req.method) {
     case "GET": {
       const conversation = await ConversationResource.fetchById(auth, cId);
-
       if (!conversation) {
         return apiError(req, res, {
           status_code: 404,
