@@ -9,9 +9,8 @@ import { ingestMetronomeEvents } from "@app/lib/metronome/client";
 import {
   buildLlmUsageEvents,
   buildToolUseEvents,
-  buildWorkspaceGaugeEvent,
 } from "@app/lib/metronome/events";
-import type { MetronomeEvent } from "@app/lib/metronome/types";
+import { syncMauCount } from "@app/lib/metronome/mau_sync";
 import {
   AgentMessageModel,
   MessageModel,
@@ -21,10 +20,8 @@ import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { reportUsageForSubscriptionItems } from "@app/lib/plans/usage";
-import { countActiveUsersForPeriodInWorkspace } from "@app/lib/plans/usage/mau";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -36,7 +33,6 @@ import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
-import { isDevelopment } from "@app/types/shared/env";
 import { createHash } from "crypto";
 
 export async function recordUsageActivity(workspaceId: string) {
@@ -383,146 +379,52 @@ export async function emitMetronomeUsageEventsActivity(
 }
 
 /**
- * Emit a single workspace_gauge event for each Metronome-enabled workspace.
- * Collects all events first, then ingests in batches.
- * Called daily by the Metronome gauge schedule.
+ * Daily sync of the MAU count to Metronome for all workspaces.
  */
-export async function emitMetronomeGaugeEventsForAllWorkspacesActivity(): Promise<void> {
+export async function syncMauCountToMetronomeForAllWorkspacesActivity(): Promise<void> {
   // Only workspaces with a metronomeCustomerId.
   const allWorkspaces = await WorkspaceResource.listAll();
-  const metronomeWorkspaces = allWorkspaces.filter(
+  const workspaces = allWorkspaces.filter(
     (w) => w.metronomeCustomerId !== null
   );
 
-  const now = new Date();
-  // In dev (hourly schedule), include the hour so re-runs aren't deduplicated.
-  // In prod (daily), use YYYY-MM-DD only.
-  const dateKey = isDevelopment()
-    ? now.toISOString().slice(0, 13) // YYYY-MM-DDTHH
-    : now.toISOString().slice(0, 10); // YYYY-MM-DD
-  const timestamp = now.toISOString();
-
-  // In production, only emit gauge events for workspaces whose billing cycle
-  // ends within the next 24h. In dev, emit for all workspaces (hourly schedule).
-  let workspaces: WorkspaceResource[];
-  if (isDevelopment()) {
-    workspaces = metronomeWorkspaces;
-  } else {
-    // Batch-fetch active subscriptions for all Metronome-enabled workspaces.
-    const subscriptionsByWorkspaceId =
-      await SubscriptionResource.fetchActiveByWorkspacesModelId(
-        metronomeWorkspaces.map((w) => w.id)
-      );
-
-    // The cron runs at 2am UTC. We check for cycles ending between 3am today
-    // and 3am tomorrow to cover the full day with a 1h buffer after launch.
-    const todayAt3am = new Date(now);
-    todayAt3am.setUTCHours(3, 0, 0, 0);
-    const tomorrowAt3am = new Date(todayAt3am.getTime() + 24 * 60 * 60 * 1000);
-    const results = await concurrentExecutor(
-      metronomeWorkspaces,
-      async (workspace): Promise<WorkspaceResource | null> => {
-        const subscription = subscriptionsByWorkspaceId[workspace.id];
-        if (!subscription?.stripeSubscriptionId) {
-          return null;
-        }
-        const stripeSubscription = await getStripeSubscription(
-          subscription.stripeSubscriptionId
-        );
-        if (!stripeSubscription) {
-          return null;
-        }
-        const periodEnd = new Date(
-          stripeSubscription.current_period_end * 1000
-        );
-        return periodEnd >= todayAt3am && periodEnd <= tomorrowAt3am
-          ? workspace
-          : null;
-      },
-      { concurrency: 10 }
+  // Batch-fetch subscriptions for the filtered workspaces to get contract IDs.
+  const subscriptionsByWorkspaceId =
+    await SubscriptionResource.fetchActiveByWorkspacesModelId(
+      workspaces.map((w) => w.id)
     );
-    workspaces = results.filter((w): w is WorkspaceResource => w !== null);
-  }
 
   logger.info(
     {
-      totalMetronomeWorkspaces: metronomeWorkspaces.length,
       workspaceCount: workspaces.length,
-      dateKey,
     },
-    "[Metronome] Emitting gauge events for workspaces with billing cycle ending today"
+    "[Metronome] Syncing MAU counts for all workspaces"
   );
 
-  // Process workspaces in chunks: build events concurrently, then ingest
-  // each chunk before moving to the next. Avoids holding all events in memory.
-  const CHUNK_SIZE = 100;
-  for (let i = 0; i < workspaces.length; i += CHUNK_SIZE) {
-    const chunk = workspaces.slice(i, i + CHUNK_SIZE);
-    const events: MetronomeEvent[] = [];
+  await concurrentExecutor(
+    workspaces,
+    async (workspace) => {
+      const subscription = subscriptionsByWorkspaceId[workspace.id];
+      if (
+        !workspace.metronomeCustomerId ||
+        !subscription?.metronomeContractId
+      ) {
+        return;
+      }
 
-    await concurrentExecutor(
-      chunk,
-      async (workspace) => {
-        try {
-          const event = await buildGaugeEventForWorkspace(
-            workspace,
-            timestamp,
-            dateKey
-          );
-          events.push(event);
-        } catch (err) {
-          logger.error(
-            { workspaceId: workspace.sId, error: err },
-            "[Metronome] Failed to build gauge event for workspace"
-          );
-        }
-      },
-      { concurrency: 10 }
-    );
-
-    await ingestMetronomeEvents(events);
-  }
-}
-
-async function buildGaugeEventForWorkspace(
-  workspace: WorkspaceResource,
-  timestamp: string,
-  dateKey: string
-): Promise<MetronomeEvent> {
-  const lightWorkspace = renderLightWorkspaceType({ workspace });
-
-  // Active member count.
-  const memberCount = await MembershipResource.countActiveMembersForWorkspace({
-    workspace: lightWorkspace,
-  });
-
-  // MAU counts — rolling 30-day window with different message thresholds.
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const [mau1Count, mau5Count, mau10Count] = await Promise.all([
-    countActiveUsersForPeriodInWorkspace({
-      messagesPerMonthForMau: 1,
-      since: thirtyDaysAgo,
-      workspace: lightWorkspace,
-    }),
-    countActiveUsersForPeriodInWorkspace({
-      messagesPerMonthForMau: 5,
-      since: thirtyDaysAgo,
-      workspace: lightWorkspace,
-    }),
-    countActiveUsersForPeriodInWorkspace({
-      messagesPerMonthForMau: 10,
-      since: thirtyDaysAgo,
-      workspace: lightWorkspace,
-    }),
-  ]);
-
-  return buildWorkspaceGaugeEvent({
-    workspaceId: workspace.sId,
-    memberCount,
-    mau1Count,
-    mau5Count,
-    mau10Count,
-    timestamp,
-    dateKey,
-  });
+      try {
+        await syncMauCount({
+          metronomeCustomerId: workspace.metronomeCustomerId,
+          contractId: subscription.metronomeContractId,
+          workspace: renderLightWorkspaceType({ workspace }),
+        });
+      } catch (err) {
+        logger.error(
+          { workspaceId: workspace.sId, error: err },
+          "[Metronome] Failed to sync MAU count for workspace"
+        );
+      }
+    },
+    { concurrency: 10 }
+  );
 }

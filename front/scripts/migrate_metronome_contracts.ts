@@ -19,10 +19,10 @@
 import { getMetronomeClient } from "@app/lib/metronome/client";
 import {
   CURRENCY_TO_CREDIT_TYPE_ID,
-  getProductMauBilling1Id,
-  getProductMauBilling5Id,
-  getProductMauBilling10Id,
   getProductPrepaidCommitId,
+  getProductWorkspaceMau1Id,
+  getProductWorkspaceMau5Id,
+  getProductWorkspaceMau10Id,
 } from "@app/lib/metronome/constants";
 import { syncSeatCount } from "@app/lib/metronome/seats";
 import {
@@ -87,11 +87,11 @@ interface EnterprisePricingCents {
 function getMauProductId(threshold: MauThreshold): string {
   switch (threshold) {
     case "MAU_1":
-      return getProductMauBilling1Id();
+      return getProductWorkspaceMau1Id();
     case "MAU_5":
-      return getProductMauBilling5Id();
+      return getProductWorkspaceMau5Id();
     case "MAU_10":
-      return getProductMauBilling10Id();
+      return getProductWorkspaceMau10Id();
   }
 }
 
@@ -219,7 +219,7 @@ async function applyEnterpriseOverrides({
   if (pricing.mauThreshold !== "MAU_1") {
     // Disable the default MAU-1 product (base package includes it at $45).
     overrides.push({
-      product_id: getProductMauBilling1Id(),
+      product_id: getProductWorkspaceMau1Id(),
       starting_at: startDate,
       type: "OVERWRITE" as const,
       entitled: false,

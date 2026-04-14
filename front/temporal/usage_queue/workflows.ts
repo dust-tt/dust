@@ -20,7 +20,7 @@ const { emitMetronomeUsageEventsActivity } = proxyActivities<typeof activities>(
   }
 );
 
-const { emitMetronomeGaugeEventsForAllWorkspacesActivity } = proxyActivities<
+const { syncMauCountToMetronomeForAllWorkspacesActivity } = proxyActivities<
   typeof activities
 >({
   startToCloseTimeout: "30 minutes",
@@ -46,8 +46,8 @@ export async function trackProgrammaticUsageWorkflow(
   });
 }
 
-export async function emitMetronomeGaugeEventsWorkflow(): Promise<void> {
-  await emitMetronomeGaugeEventsForAllWorkspacesActivity();
+export async function syncMauCountToMetronomeWorkflow(): Promise<void> {
+  await syncMauCountToMetronomeForAllWorkspacesActivity();
 }
 
 export async function emitMetronomeUsageEventsWorkflow(
