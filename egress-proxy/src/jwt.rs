@@ -30,8 +30,6 @@ pub enum JwtValidationError {
 struct Claims {
     #[serde(rename = "sbId")]
     sb_id: String,
-    iss: String,
-    aud: String,
     exp: usize,
 }
 
@@ -67,11 +65,7 @@ fn claims_to_validated_token(
 ) -> Result<ValidatedSandboxToken, JwtValidationError> {
     let claims = token.claims;
     let now_seconds = current_unix_timestamp_seconds()?;
-    if claims.sb_id.trim().is_empty()
-        || claims.iss != EXPECTED_ISSUER
-        || claims.aud != EXPECTED_AUDIENCE
-        || claims.exp == 0
-    {
+    if claims.sb_id.trim().is_empty() || claims.exp == 0 {
         return Err(JwtValidationError::InvalidClaims);
     }
 
