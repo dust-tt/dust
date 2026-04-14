@@ -308,7 +308,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
               blob: attachment.contentBytes,
               _meta: { text: `Attachment: ${sanitizeFilename(filename)}` },
               mimeType,
-              uri: "",
+              uri: sanitizeFilename(filename),
             },
           });
         }
