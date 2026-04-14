@@ -16,10 +16,7 @@ interface CircleProgressProps {
   size?: number;
 }
 
-function CircleProgress({
-  percentage,
-  size = 16,
-}: CircleProgressProps) {
+function CircleProgress({ percentage, size = 16 }: CircleProgressProps) {
   const strokeWidth = size * 0.12;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
