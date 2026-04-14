@@ -129,12 +129,15 @@ async function copyConversationSkills(
     return new Ok(undefined);
   }
 
-  const upsertResult = await SkillResource.upsertConversationSkills(auth, {
-    conversationId: childConversation.id,
-    skills: parentSkills,
-    enabled: true,
-    transaction,
-  });
+  const upsertResult = await SkillResource.upsertConversationSkills(
+    auth,
+    {
+      conversationId: childConversation.id,
+      skills: parentSkills,
+      enabled: true,
+    },
+    { transaction }
+  );
 
   if (upsertResult.isErr()) {
     return new Err(
