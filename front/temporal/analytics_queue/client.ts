@@ -42,7 +42,7 @@ export async function launchStoreAgentAnalyticsWorkflow({
       workflowId,
       searchAttributes: {
         conversationId: [conversationId],
-        workspaceId: authType.workspaceId ? [authType.workspaceId] : undefined,
+        workspaceId: [workspaceId],
       },
       memo: {
         agentMessageId,

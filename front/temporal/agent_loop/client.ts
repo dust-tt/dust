@@ -13,7 +13,6 @@ import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
-import assert from "assert";
 
 import { QUEUE_NAME } from "./config";
 import { agentLoopWorkflow, compactionWorkflow } from "./workflows";
@@ -32,6 +31,7 @@ export async function launchAgentLoopWorkflow({
   Result<undefined, Error | DustError<"agent_loop_already_running">>
 > {
   const authType = auth.toJSON();
+  const { workspaceId } = authType;
 
   // Capture initial start time and log total execution start.
   const initialStartTime = Date.now();
@@ -44,9 +44,8 @@ export async function launchAgentLoopWorkflow({
 
   const client = await getTemporalClientForAgentNamespace();
 
-  assert(authType.workspaceId, "Workspace ID is required");
   const workflowId = makeAgentLoopWorkflowId({
-    workspaceId: authType.workspaceId,
+    workspaceId,
     conversationId,
     agentMessageId,
   });
@@ -82,11 +81,11 @@ export async function launchAgentLoopWorkflow({
       workflowId,
       searchAttributes: {
         conversationId: [conversationId],
-        workspaceId: authType.workspaceId ? [authType.workspaceId] : undefined,
+        workspaceId: [workspaceId],
       },
       memo: {
         conversationId,
-        workspaceId: authType.workspaceId,
+        workspaceId,
       },
     });
   } catch (error) {
@@ -98,7 +97,7 @@ export async function launchAgentLoopWorkflow({
       {
         workflowId,
         error,
-        workspaceId: authType.workspaceId,
+        workspaceId,
       },
       "Attempting to launch an agent loop workflow when there's already one running."
     );
@@ -130,11 +129,11 @@ export async function launchCompactionWorkflow({
   Result<undefined, Error | DustError<"compaction_already_running">>
 > {
   const authType = auth.toJSON();
+  const { workspaceId } = authType;
   const client = await getTemporalClientForAgentNamespace();
 
-  assert(authType.workspaceId, "Workspace ID is required");
   const workflowId = makeCompactionWorkflowId({
-    workspaceId: authType.workspaceId,
+    workspaceId,
     conversationId,
   });
 
@@ -153,11 +152,11 @@ export async function launchCompactionWorkflow({
       workflowId,
       searchAttributes: {
         conversationId: [conversationId],
-        workspaceId: authType.workspaceId ? [authType.workspaceId] : undefined,
+        workspaceId: [workspaceId],
       },
       memo: {
         conversationId,
-        workspaceId: authType.workspaceId,
+        workspaceId,
       },
     });
   } catch (error) {
@@ -166,7 +165,7 @@ export async function launchCompactionWorkflow({
     }
 
     logger.warn(
-      { workflowId, workspaceId: authType.workspaceId },
+      { workflowId, workspaceId },
       "Compaction workflow already running for this conversation."
     );
 
