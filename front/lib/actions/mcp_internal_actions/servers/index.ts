@@ -49,7 +49,6 @@ import { default as outlookMailServer } from "@app/lib/api/actions/servers/outlo
 import { default as pokeServer } from "@app/lib/api/actions/servers/poke";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
 import { default as productboardServer } from "@app/lib/api/actions/servers/productboard";
-import { default as projectConversationServer } from "@app/lib/api/actions/servers/project_conversation";
 import { default as projectManagerServer } from "@app/lib/api/actions/servers/project_manager";
 import { default as projectTodosServer } from "@app/lib/api/actions/servers/project_todos";
 import { default as tablesQueryServerV2 } from "@app/lib/api/actions/servers/query_tables_v2";
@@ -249,8 +248,6 @@ export async function getInternalMCPServer(
       return projectTodosServer(auth, agentLoopContext);
     case "poke":
       return pokeServer(auth, agentLoopContext);
-    case "project_conversation":
-      return projectConversationServer(auth, agentLoopContext);
     case "ask_user_question":
       return askUserQuestionServer(auth, agentLoopContext);
     case "ukg_ready":

@@ -208,7 +208,6 @@ describe("getJITServers", () => {
         return json.name ?? json.server.name;
       });
       expect(viewNames).toContain("project_manager");
-      expect(viewNames).toContain("project_conversation");
     });
 
     it("should not enable projects skill in listForAgentLoop when feature flag is disabled", async () => {

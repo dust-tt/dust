@@ -51,7 +51,6 @@ import { OUTLOOK_MAIL_SERVER } from "@app/lib/api/actions/servers/outlook/mail_m
 import { POKE_SERVER } from "@app/lib/api/actions/servers/poke/metadata";
 import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/primitive_types_debugger/metadata";
 import { PRODUCTBOARD_SERVER } from "@app/lib/api/actions/servers/productboard/metadata";
-import { PROJECT_CONVERSATION_SERVER } from "@app/lib/api/actions/servers/project_conversation/metadata";
 import { PROJECT_MANAGER_SERVER } from "@app/lib/api/actions/servers/project_manager/metadata";
 import { PROJECT_TODOS_SERVER } from "@app/lib/api/actions/servers/project_todos/metadata";
 import {
@@ -206,7 +205,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "project_manager",
   "project_todos",
   "poke",
-  "project_conversation",
   "sandbox",
   "ask_user_question",
 ] as const;
@@ -1010,7 +1008,10 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("projects");
     },
-    tools_arguments_requiring_approval: undefined,
+    tools_arguments_requiring_approval: {
+      create_conversation: ["dustProject"],
+      add_message_to_conversation: ["dustProject"],
+    },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: PROJECT_MANAGER_SERVER,
@@ -1062,22 +1063,6 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: 120000, // 2 minutes for command execution
-  },
-  project_conversation: {
-    id: 1025,
-    availability: "auto_hidden_builder",
-    allowMultipleInstances: false,
-    isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("projects");
-    },
-    tools_arguments_requiring_approval: {
-      create_conversation: ["dustProject"],
-      add_message_to_conversation: ["dustProject"],
-    },
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: PROJECT_CONVERSATION_SERVER,
   },
   user_mentions: {
     id: 1026,

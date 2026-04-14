@@ -1,3 +1,4 @@
+/*
 import chunk from "lodash/chunk";
 import fs from "fs";
 import type { Logger } from "pino";
@@ -28,6 +29,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType } from "@app/types/user";
+
 
 const CHUNK_SIZE = 5000;
 
@@ -466,3 +468,4 @@ makeScript(
     }
   }
 );
+*/
