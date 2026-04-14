@@ -309,7 +309,7 @@ export class AgentYAMLConverter {
   ): Promise<
     Result<
       | (PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] & {
-          action?: string | null;
+          name?: string | null;
           description?: string | null;
         })
       | null,
