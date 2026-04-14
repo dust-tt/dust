@@ -25,6 +25,7 @@ import {
 } from "@app/components/assistant/conversation/types";
 import {
   useConversation,
+  useConversationContextUsage,
   useConversationFeedbacks,
   useConversationMarkAsRead,
   useConversationMessages,
@@ -239,6 +240,11 @@ export const ConversationViewer = ({
     conversationId,
     workspaceId: owner.sId,
     options: { disabled: true }, // We don't need the participants, only the mutator.
+  });
+
+  const { mutateContextUsage } = useConversationContextUsage({
+    conversationId,
+    workspaceId: owner.sId,
   });
 
   const submitMessage = useSubmitMessage({
@@ -547,6 +553,9 @@ export const ConversationViewer = ({
             // Debounce the call as we might receive multiple events for the same conversation (as we replay the events).
             void debouncedMarkAsRead(event.conversationId);
 
+            // Re-fetch context usage after the agent finishes so the indicator is up-to-date.
+            void mutateContextUsage();
+
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(
               (currentData: ConversationWithoutContentType[] | undefined) =>
@@ -575,6 +584,7 @@ export const ConversationViewer = ({
     [
       conversationId,
       debouncedMarkAsRead,
+      mutateContextUsage,
       mutateConversation,
       mutateConversationAttachments,
       mutateConversationParticipants,
