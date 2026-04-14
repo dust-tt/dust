@@ -69,25 +69,31 @@ const ClariTranscriptTurnSchema = z
   })
   .passthrough();
 
-const ClariTopicSchema = z.object({
-  name: z.string().optional(),
-  start_timestamp: z.number().optional(),
-  end_timestamp: z.number().optional(),
-  summary: z.string().optional(),
-});
+const ClariTopicSchema = z
+  .object({
+    name: z.string().optional(),
+    start_timestamp: z.number().optional(),
+    end_timestamp: z.number().optional(),
+    summary: z.string().optional(),
+  })
+  .passthrough();
 
-const ClariActionItemSchema = z.object({
-  action_item: z.string().optional(),
-  speaker_name: z.string().optional(),
-  start_timestamp: z.number().optional(),
-  end_timestamp: z.number().optional(),
-});
+const ClariActionItemSchema = z
+  .object({
+    action_item: z.string().optional(),
+    speaker_name: z.string().optional(),
+    start_timestamp: z.number().optional(),
+    end_timestamp: z.number().optional(),
+  })
+  .passthrough();
 
-const ClariSummarySchema = z.object({
-  full_summary: z.string().optional(),
-  topics_discussed: z.array(ClariTopicSchema).optional(),
-  key_action_items: z.array(ClariActionItemSchema).optional(),
-});
+const ClariSummarySchema = z
+  .object({
+    full_summary: z.string().optional(),
+    topics_discussed: z.array(ClariTopicSchema).optional(),
+    key_action_items: z.array(ClariActionItemSchema).optional(),
+  })
+  .passthrough();
 
 const ClariCompetitorSentimentSchema = z
   .object({
