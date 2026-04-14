@@ -3,9 +3,9 @@ import type {
   ClariCallDetails,
 } from "@app/lib/api/actions/servers/clari_copilot/types";
 
-function formatDurationSeconds(seconds: number): string {
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
+function formatDurationSeconds(durationSeconds: number): string {
+  const minutes = Math.floor(durationSeconds / 60);
+  const remainingSeconds = durationSeconds % 60;
   return `${minutes}m${remainingSeconds > 0 ? `${remainingSeconds}s` : ""}`;
 }
 
@@ -27,34 +27,33 @@ export function renderCallList(calls: ClariCall[]): string {
   for (const call of calls) {
     const parts: string[] = [];
     parts.push(`**${call.title ?? "Untitled call"}**`);
-    parts.push(`ID: ${call.id}`);
+    parts.push(`- ID: ${call.id}`);
 
     if (call.time) {
-      parts.push(`Date: ${formatTimestamp(call.time)}`);
+      parts.push(`- Date: ${formatTimestamp(call.time)}`);
     }
     if (call.account_name) {
-      parts.push(`Account: ${call.account_name}`);
+      parts.push(`- Account: ${call.account_name}`);
     }
     if (call.contact_names && call.contact_names.length > 0) {
-      parts.push(`Contacts: ${call.contact_names.join(", ")}`);
+      parts.push(`- Contacts: ${call.contact_names.join(", ")}`);
     }
     if (call.users && call.users.length > 0) {
       const emails = call.users.map((u) => u.userEmail).filter(Boolean);
       if (emails.length > 0) {
-        parts.push(`Internal participants: ${emails.join(", ")}`);
+        parts.push(`- Internal participants: ${emails.join(", ")}`);
       }
     }
     if (call.metrics?.call_duration) {
       parts.push(
-        `Duration: ${formatDurationSeconds(call.metrics.call_duration)}`
+        `- Duration: ${formatDurationSeconds(call.metrics.call_duration)}`
       );
     }
     if (call.call_review_page_url) {
-      parts.push(`Review: ${call.call_review_page_url}`);
+      parts.push(`- Review: ${call.call_review_page_url}`);
     }
 
     lines.push(parts.join("\n"));
-    lines.push("---");
   }
 
   return lines.join("\n");
@@ -64,23 +63,21 @@ export function renderCallDetails(call: ClariCallDetails): string {
   const sections: string[] = [];
 
   // Header
-  const headerParts: string[] = [
-    `# ${call.title ?? "Untitled call"}`,
-    `**ID:** ${call.id}`,
-  ];
+  const headerParts: string[] = [`**${call.title ?? "Untitled call"}**`];
+  headerParts.push(`- ID: ${call.id}`);
   if (call.time) {
-    headerParts.push(`**Date:** ${formatTimestamp(call.time)}`);
+    headerParts.push(`- Date: ${formatTimestamp(call.time)}`);
   }
   if (call.account_name) {
-    headerParts.push(`**Account:** ${call.account_name}`);
+    headerParts.push(`- Account: ${call.account_name}`);
   }
   if (call.metrics?.call_duration) {
     headerParts.push(
-      `**Duration:** ${formatDurationSeconds(call.metrics.call_duration)}`
+      `- Duration: ${formatDurationSeconds(call.metrics.call_duration)}`
     );
   }
   if (call.call_review_page_url) {
-    headerParts.push(`**Review URL:** ${call.call_review_page_url}`);
+    headerParts.push(`- Review URL: ${call.call_review_page_url}`);
   }
   sections.push(headerParts.join("\n"));
 
@@ -96,7 +93,7 @@ export function renderCallDetails(call: ClariCallDetails): string {
   ) {
     const topicLines = call.summary.topics_discussed
       .map((t) => {
-        const header = t.name ? `### ${t.name}` : "### Topic";
+        const header = t.name ? `**${t.name}**` : "**Topic**";
         return t.summary ? `${header}\n${t.summary}` : header;
       })
       .join("\n\n");
@@ -110,7 +107,7 @@ export function renderCallDetails(call: ClariCallDetails): string {
   ) {
     const actionLines = call.summary.key_action_items
       .map((a) => {
-        const speaker = a.speaker_name ? `**${a.speaker_name}:** ` : "";
+        const speaker = a.speaker_name ? `${a.speaker_name}: ` : "";
         return `- ${speaker}${a.action_item ?? ""}`;
       })
       .join("\n");
@@ -121,7 +118,7 @@ export function renderCallDetails(call: ClariCallDetails): string {
   if (call.competitor_sentiments && call.competitor_sentiments.length > 0) {
     const competitorLines = call.competitor_sentiments
       .map((c) => {
-        const parts = [`- **${c.competitor_name ?? "Unknown"}**`];
+        const parts = [`- ${c.competitor_name ?? "Unknown"}`];
         if (c.sentiment) {
           parts.push(`sentiment: ${c.sentiment}`);
         }

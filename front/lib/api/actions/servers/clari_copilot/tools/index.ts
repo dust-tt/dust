@@ -1,7 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { getClariClient } from "@app/lib/api/actions/servers/clari_copilot/client";
+import {
+  ClariCallNotFoundError,
+  getClariClient,
+} from "@app/lib/api/actions/servers/clari_copilot/client";
 import { CLARI_COPILOT_TOOLS_METADATA } from "@app/lib/api/actions/servers/clari_copilot/metadata";
 import {
   renderCallDetails,
@@ -38,9 +41,7 @@ const handlers: ToolHandlers<typeof CLARI_COPILOT_TOOLS_METADATA> = {
     if (result.isErr()) {
       return new Err(
         new MCPError(`Failed to fetch call details: ${result.error.message}`, {
-          tracked: result.error.message.startsWith("Call not found")
-            ? false
-            : true,
+          tracked: !(result.error instanceof ClariCallNotFoundError),
         })
       );
     }

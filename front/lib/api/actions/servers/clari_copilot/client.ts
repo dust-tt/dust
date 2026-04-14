@@ -16,6 +16,13 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const CLARI_COPILOT_BASE_URL = "https://rest-api.copilot.clari.com";
 
+export class ClariCallNotFoundError extends Error {
+  constructor(callId: string) {
+    super(`Call not found: ${callId}`);
+    this.name = "ClariCallNotFoundError";
+  }
+}
+
 function isCustomHeaders(value: unknown): value is Record<string, string> {
   return (
     typeof value === "object" &&
@@ -30,6 +37,7 @@ export interface SearchCallsParams {
   to_date?: string;
   account_name?: string;
   user_email?: string;
+  attendee_email?: string;
   limit?: number;
 }
 
@@ -77,7 +85,7 @@ export class ClariCopilotClient {
       filterStatus: "POST_PROCESSING_DONE",
       includePrivate: "false",
       includePagination: "false",
-      limit: String(Math.min(params.limit ?? 25, 100)),
+      limit: String(params.limit ?? 25),
     });
 
     if (params.from_date) {
@@ -88,6 +96,9 @@ export class ClariCopilotClient {
     }
     if (params.user_email) {
       query.set("filterUser", params.user_email);
+    }
+    if (params.attendee_email) {
+      query.set("filterAttendees", params.attendee_email);
     }
 
     try {
@@ -145,7 +156,7 @@ export class ClariCopilotClient {
 
       if (!response.ok) {
         if (response.status === 404) {
-          return new Err(new Error(`Call not found: ${callId}`));
+          return new Err(new ClariCallNotFoundError(callId));
         }
         const errorText = await response.text();
         return new Err(
