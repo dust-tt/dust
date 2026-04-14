@@ -52,15 +52,16 @@ describe("sandbox access tokens", () => {
   it("round-trip: generate → verify → check claims", async () => {
     const { auth, agentConfig, conversation, sandbox } = await setupTest();
 
-    const token = generateSandboxExecToken(auth, {
+    const token = await generateSandboxExecToken(auth, {
       agentConfiguration: agentConfig,
       conversation,
       sandbox,
+      execId: "test-exec-id",
     });
 
     expect(token.startsWith(SANDBOX_TOKEN_PREFIX)).toBe(true);
 
-    const payload = verifySandboxExecToken(token);
+    const payload = await verifySandboxExecToken(token);
 
     expect(payload).not.toBeNull();
     expect(payload!.wId).toBe(auth.getNonNullableWorkspace().sId);
@@ -73,10 +74,11 @@ describe("sandbox access tokens", () => {
   it("tampered token is rejected", async () => {
     const { auth, agentConfig, conversation, sandbox } = await setupTest();
 
-    const token = generateSandboxExecToken(auth, {
+    const token = await generateSandboxExecToken(auth, {
       agentConfiguration: agentConfig,
       conversation,
       sandbox,
+      execId: "test-exec-id",
     });
 
     // Decode, modify, re-sign with a wrong secret.
@@ -88,20 +90,21 @@ describe("sandbox access tokens", () => {
         algorithm: "HS256",
       });
 
-    const payload = verifySandboxExecToken(tampered);
+    const payload = await verifySandboxExecToken(tampered);
     expect(payload).toBeNull();
   });
 
   it("token without sbt- prefix is rejected", async () => {
     const { auth, agentConfig, conversation, sandbox } = await setupTest();
 
-    const token = generateSandboxExecToken(auth, {
+    const token = await generateSandboxExecToken(auth, {
       agentConfiguration: agentConfig,
       conversation,
       sandbox,
+      execId: "test-exec-id",
     });
     const raw = token.slice(SANDBOX_TOKEN_PREFIX.length);
 
-    expect(verifySandboxExecToken(raw)).toBeNull();
+    expect(await verifySandboxExecToken(raw)).toBeNull();
   });
 });

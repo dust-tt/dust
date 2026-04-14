@@ -47,7 +47,7 @@ async function handler(
       }
 
       const claims: SandboxExecTokenPayload | null =
-        verifySandboxExecToken(token);
+        await verifySandboxExecToken(token);
       if (!claims) {
         return apiError(req, res, {
           status_code: 401,

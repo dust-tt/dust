@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import { getSandboxProvider } from "@app/lib/api/sandbox";
+import { revokeAllExecTokensForSandbox } from "@app/lib/api/sandbox/access_tokens";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import {
   recordLifecycleOperation,
@@ -556,6 +557,14 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
       await sandbox.updateStatus("deleted", { ctx });
       recordLifecycleOperation("destroy", ctx);
+
+      void revokeAllExecTokensForSandbox(sandbox.sId).catch((err) =>
+        logger.error(
+          { error: err },
+          "Failed to revoke exec tokens on sandbox destroy"
+        )
+      );
+
       logger.info({ sandbox: sandbox.toLogJSON() }, "Sandbox destroyed.");
       return new Ok(undefined);
     });
