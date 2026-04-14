@@ -13,7 +13,7 @@ const pushMock = vi.fn();
 const sendNotificationMock = vi.fn();
 
 vi.mock("@app/hooks/conversations/useConversations", () => ({
-  useConversations: () => ({
+  useMutateConversations: () => ({
     mutateConversations: mutateConversationsMock,
   }),
 }));

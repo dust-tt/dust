@@ -1,4 +1,4 @@
-import { useConversations } from "@app/hooks/conversations/useConversations";
+import { useMutateConversations } from "@app/hooks/conversations/useConversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
@@ -18,7 +18,9 @@ export function useBranchConversation({
 }) {
   const sendNotification = useSendNotification();
   const router = useAppRouter();
-  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
+  const { mutateConversations } = useMutateConversations({
+    workspaceId: owner.sId,
+  });
 
   const [isBranching, setIsBranching] = useState(false);
 
