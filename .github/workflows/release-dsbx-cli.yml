@@ -45,7 +45,7 @@ jobs:
           sha256sum dsbx-linux-x86_64 > checksums-sha256.txt
 
       - name: Create Release
-        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
+        uses: softprops/action-gh-release@v3.0.0
         with:
           tag_name: dsbx-v${{ steps.version.outputs.version }}
           name: dsbx v${{ steps.version.outputs.version }}

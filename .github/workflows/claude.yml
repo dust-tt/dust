@@ -36,7 +36,7 @@ jobs:
 
       # Setup Node.js for JS/TS projects
       - name: Setup Node.js
-        uses: actions/setup-node@v4.4.0
+        uses: actions/setup-node@v6.3.0
         with:
           node-version: 22.22.0
 
@@ -60,7 +60,7 @@ jobs:
 
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@v1.0.94
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 

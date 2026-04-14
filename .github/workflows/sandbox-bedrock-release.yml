@@ -26,7 +26,7 @@ jobs:
     steps:
       - name: Generate GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@v2.2.2
+        uses: actions/create-github-app-token@v3.1.1
         with:
           app-id: ${{ secrets.SPARKLE_RELEASE_BOT_APP_ID }}
           private-key: ${{ secrets.SPARKLE_RELEASE_BOT_PRIVATE_KEY }}
@@ -58,7 +58,7 @@ jobs:
           echo "version=$NEXT_VERSION" >> $GITHUB_OUTPUT
 
       - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2.1.13
+        uses: google-github-actions/auth@v3.0.0
         with:
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
           service_account: "github-build-invoker@or1g1n-186209.iam.gserviceaccount.com"

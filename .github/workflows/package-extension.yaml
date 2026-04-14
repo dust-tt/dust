@@ -65,7 +65,7 @@ jobs:
         run: echo "name=$(basename *.zip .zip)-${{ steps.short_sha.outputs.short_sha }}" >> $GITHUB_OUTPUT
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: ${{ steps.artifact.outputs.name }}
           path: extension/platforms/${{ contains(inputs.target, 'chrome') && 'chrome' || contains(inputs.target, 'firefox') && 'firefox' || 'front' }}/build/

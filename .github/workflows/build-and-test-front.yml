@@ -61,7 +61,7 @@ jobs:
         run: npx tsx admin/db.ts && npm run test:ci -- --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --outputFile=junit-shard-${{ matrix.shardIndex }}.xml
       - name: Build Tests Report
         if: always()
-        uses: mikepenz/action-junit-report@v5.6.2
+        uses: mikepenz/action-junit-report@v6.4.0
         with:
           report_paths: "front/junit-shard-${{ matrix.shardIndex }}.xml"
           detailed_summary: true
