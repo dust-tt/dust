@@ -82,9 +82,7 @@ type AuditAction =
   | "datasource.deleted_admin"
   // Audit Logs.
   | "audit_log.viewed"
-  | "audit_log.export_configured"
-  // Credits
-  | "credit.granted";
+  | "audit_log.export_configured";
 
 export type EmitAuditLogEventParams = {
   auth: Authenticator;

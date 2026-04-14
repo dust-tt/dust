@@ -218,10 +218,9 @@ async function handler(
           break;
         }
 
-        case "invoice.finalized": {
+        case "invoice.finalized":
           logger.info({ event }, "[Metronome Webhook] Invoice finalized");
           break;
-        }
 
         case "invoice.billing_provider_error":
           logger.error(
