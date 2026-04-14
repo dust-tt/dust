@@ -38,6 +38,7 @@ import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotific
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitMessage } from "@app/hooks/useSubmitMessage";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
@@ -170,6 +171,8 @@ export const ConversationViewer = ({
       VirtuosoMessageListMethods<VirtuosoMessage, VirtuosoMessageListContext>
     >(null);
   const sendNotification = useSendNotification();
+  const { hasFeature } = useFeatureFlags();
+  const isCompactionEnabled = hasFeature("enable_compaction");
 
   const { mutateConversationAttachments } = useConversationAttachments({
     conversationId,
@@ -243,7 +246,7 @@ export const ConversationViewer = ({
   });
 
   const { mutateContextUsage } = useConversationContextUsage({
-    conversationId,
+    conversationId: isCompactionEnabled ? conversationId : null,
     workspaceId: owner.sId,
   });
 
