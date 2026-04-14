@@ -65,8 +65,8 @@ export const agentYAMLProjectConfigurationSchema = z.object({
 });
 
 export const agentYAMLMCPActionSchema = z.object({
-  name: z.string().nullish(),
-  description: z.string().nullish(),
+  name: z.string(),
+  description: z.string(),
   type: z.literal("MCP"),
   configuration: z.object({
     mcp_server_name: z.string(),
