@@ -211,7 +211,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
   },
 
   list_messages: async (
-    { teamId, channelId, fromDate, toDate },
+    { teamId, channelId, messageId, fromDate, toDate },
     { authInfo }
   ) => {
     const client = await getGraphClient(authInfo);
@@ -248,11 +248,12 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
         );
       };
 
+      const baseEndpoint = messageId
+        ? `/teams/${teamId}/channels/${channelId}/messages/${messageId}/replies`
+        : `/teams/${teamId}/channels/${channelId}/messages`;
+
       // First page
-      let response = await client
-        .api(`/teams/${teamId}/channels/${channelId}/messages`)
-        .top(50)
-        .get();
+      let response = await client.api(baseEndpoint).top(50).get();
 
       let shouldContinue = processMessages(response.value);
 
