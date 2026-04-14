@@ -1,8 +1,8 @@
 import {
   Button,
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 
 interface ContextUsageIndicatorProps {
@@ -61,34 +61,34 @@ export function ContextUsageIndicator({
     contextSize > 0 ? Math.round((contextUsage / contextSize) * 100) : 0;
 
   return (
-    <PopoverRoot>
-      <PopoverTrigger asChild>
-        <div className="hidden md:block">
+    <div className="hidden md:block">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
           <Button
             variant="ghost-secondary"
             size={buttonSize}
             icon={() => <CircleProgress percentage={percentage} size={16} />}
           />
-        </div>
-      </PopoverTrigger>
-      <PopoverContent side="top" align="end">
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-semibold text-foreground">
-              Context
-            </span>
-            <span className="text-sm text-muted-foreground">
-              The current context of this conversation is {percentage}%
-            </span>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="top" align="end" className="w-64">
+          <div className="flex flex-col items-start gap-3 p-3">
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                Context
+              </span>
+              <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                The current context usage is at {percentage}%
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="xs"
+              label="Compact now"
+              disabled={true}
+            />
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            label="Compact now"
-            disabled={true}
-          />
-        </div>
-      </PopoverContent>
-    </PopoverRoot>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }
