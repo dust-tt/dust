@@ -253,6 +253,19 @@ export type UserTypeWithWorkspaces = UserType & {
 };
 ```
 
+### [BACK15] Use of Type interfaces vs. Resource classes, serialization
+
+Some objects have both a back-end (Resource class) and a front-end representation (Type interface).
+The back-end representation is a Resource class that wraps a Sequelize model.
+The front-end representation is a Type interface that is the result of serializing the back-end Resource, extracting the
+relevant fields for the front-end.
+
+The Resource class should have a `toJSON` method that serializes it, i.e. returns a plain object with the same shape as
+the front-end Type interface. This method should only be called at the interface with the front-end, ideally only in 
+endpoint handlers.
+
+The Type interface is not to be used in the backend.
+
 ## AUDIT LOGGING
 
 ### [AUDIT1] Every state-changing operation on a security-sensitive resource MUST emit an audit log event
