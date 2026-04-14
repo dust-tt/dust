@@ -101,6 +101,15 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
       authUrl.searchParams.set("resource", resource);
     }
 
+    // Google OAuth requires `access_type=offline` to issue a refresh token and
+    // `prompt=consent` to ensure it is returned on subsequent authorizations.
+    // Without these, Google only issues a short-lived access token (~1 hour)
+    // causing MCP connections to drop when the token expires.
+    if (authUrl.hostname === "accounts.google.com") {
+      authUrl.searchParams.set("access_type", "offline");
+      authUrl.searchParams.set("prompt", "consent");
+    }
+
     return authUrl.toString();
   }
 
