@@ -7,7 +7,6 @@ import type {
   PendingToolCall,
 } from "@app/components/assistant/conversation/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
-import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getInternalMCPServerIconByName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getToolCallDisplayLabel } from "@app/lib/actions/tool_display_labels";
 import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
@@ -27,14 +26,12 @@ import {
   ChevronRightIcon,
   cn,
   Icon,
-  LockIcon,
   ToolsIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 interface InlineActivityStepsProps {
   agentMessage: LightAgentMessageType | LightAgentMessageWithActionsType;
-  blockedAction: BlockedToolExecution | null;
   lastAgentStateClassification: AgentStateClassification;
   completedSteps: InlineActivityStep[];
   pendingToolCalls: PendingToolCall[];
@@ -76,7 +73,6 @@ function getCollapseAnimationStyle(isCollapsed: boolean): React.CSSProperties {
  */
 export function InlineActivitySteps({
   agentMessage,
-  blockedAction,
   lastAgentStateClassification,
   completedSteps,
   pendingToolCalls,
@@ -152,8 +148,7 @@ export function InlineActivitySteps({
     showActiveThinking ||
     showActiveWriting ||
     activeAction ||
-    showPendingToolCalls ||
-    blockedAction;
+    showPendingToolCalls;
 
   if (!hasContent) {
     return null;
@@ -317,19 +312,10 @@ export function InlineActivitySteps({
             {/* Active action (tool in progress) */}
             {isActing &&
               activeAction &&
-              !blockedAction &&
               renderRunningToolRow({
                 isLast: false,
                 label: getActionOneLineLabel(activeAction, "running"),
                 onClick: () => openBreakdownPanel(activeAction.sId),
-              })}
-
-            {/* Blocked action — waiting on user, not the system */}
-            {blockedAction &&
-              renderRunningToolRow({
-                isLast: true,
-                label: "Waiting for user to continue",
-                icon: LockIcon,
               })}
 
             {latestPendingToolCall &&

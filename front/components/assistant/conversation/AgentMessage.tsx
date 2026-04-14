@@ -1281,7 +1281,6 @@ function AgentMessageContent({
             onOpenDetails={onOpenDetails}
             owner={owner}
             isLastMessage={isLastMessage}
-            blockedAction={blockedAction ?? null}
           />
         ) : (
           <AgentMessageActions
