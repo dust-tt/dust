@@ -16,19 +16,19 @@ PR).
 
 ### [GEN2] Simple but good is better than perfect but complex
 
-Favor simple and easy to understand approaches vs overly optimized but complex ones.
+Favor simple and easy to understand approaches vs. overly optimized but complex ones.
 
 Reviewer: If you detect an overly optimized or complex solution that can be simplified (at the cost
 of a bit of performance loss or extra code), ask the author to consider the simpler approach.
 
-### [GEN3] Favor types over typescript enums
+### [GEN3] Favor types over TypeScript enums
 
-We do not use typescript enums, we use types instead, eg: `type Color = "red" | "blue";`.
+We do not use TypeScript enums, we use types instead, e.g.: `type Color = "red" | "blue";`.
 
 ### [GEN4] Non type-safe use of `as` is prohibited
 
-The non type-safe uses of `as` are prohibited in the codebase. Use typeguards or other type-safe
-methods instead. There are few exceptions where `as` is type-safe to use (eg, `as const`) and
+The non-type-safe uses of `as` are prohibited in the codebase. Use type guards or other type-safe
+methods instead. There are few exceptions where `as` is type-safe to use (e.g., `as const`) and
 therefore acceptable.
 
 ### [GEN5] No mutation of function parameters
@@ -111,7 +111,7 @@ function handleStreamEvent(event: AgentMessageEvent): State {
 
 ### [GEN7] Avoid loops with quadratic or worse complexity
 
-Loops with quadratic O(n²) or worse cubic O(n³) complexity can severely hurt performance as data
+Loops with quadratic O(n²) or worse, cubic O(n³) complexity can severely hurt performance as data
 sizes grow. Common quadratic patterns include nested loops over related datasets, repeated searches
 within loops, and chained array operations that each iterate over the data.
 
@@ -200,7 +200,7 @@ logger.error({ err: error }, "Failed to fetch data");
 ### [GEN9] Use unit suffixes for money and time variables
 
 Variables representing monetary amounts or time durations must include a unit suffix in their name.
-This prevents conversion errors (e.g., cents vs dollars, milliseconds vs seconds) such as the one
+This prevents conversion errors (e.g., cents vs. dollars, milliseconds vs. seconds) such as the one
 that caused [this incident](https://dust4ai.slack.com/archives/C05B529FHV1/p1764835038528229).
 
 Common suffixes:
@@ -289,12 +289,12 @@ Example:
 Never catch your own errors. `catch` is authorized around external libraries (whose error handling
 we don't control), but otherwise errors that may alter the execution upstream should be returned
 using our `Result<>` pattern. It is OK to throw errors, since we can't catch them these are
-guaranteed to trigger a internal error (and return a 500).
+guaranteed to trigger an internal error (and return a 500).
 
 ### [ERR2] Do not rely on `err as Error`
 
 Never catch and cast what was caught as `Error`. JS allows throwing anything (string, number,
-random object, ...) so the cast may be invalid and hides errors from the logs. Use `normalizeError`
+random object, ...), so the cast may be invalid and hides errors from the logs. Use `normalizeError`
 instead, this function properly checks the content of the caught object and always returns a valid
 `Error` object.
 
