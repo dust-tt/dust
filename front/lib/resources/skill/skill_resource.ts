@@ -1294,9 +1294,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       conversationId,
       enabled,
+      transaction,
     }: {
       conversationId: ModelId;
       enabled: boolean;
+      transaction?: Transaction;
     }
   ): Promise<Result<undefined, Error>> {
     const user = auth.user();
@@ -1313,22 +1315,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         conversationId,
         agentConfigurationId: null,
       },
+      transaction,
     });
 
     if (existingConversationSkill && !enabled) {
-      await existingConversationSkill.destroy();
+      await existingConversationSkill.destroy({ transaction });
       return new Ok(undefined);
     }
 
     if (!existingConversationSkill && enabled) {
-      await ConversationSkillModel.create({
-        ...this.skillReference,
-        conversationId,
-        workspaceId: workspace.id,
-        agentConfigurationId: null,
-        source: "conversation",
-        addedByUserId: user.id,
-      } satisfies ConversationSkillCreationAttributes);
+      await ConversationSkillModel.create(
+        {
+          ...this.skillReference,
+          conversationId,
+          workspaceId: workspace.id,
+          agentConfigurationId: null,
+          source: "conversation",
+          addedByUserId: user.id,
+        } satisfies ConversationSkillCreationAttributes,
+        { transaction }
+      );
       return new Ok(undefined);
     }
 
@@ -1341,16 +1347,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       conversationId,
       skills,
       enabled,
+      transaction,
     }: {
       conversationId: ModelId;
       skills: SkillResource[];
       enabled: boolean;
+      transaction?: Transaction;
     }
   ): Promise<Result<undefined, Error>> {
     for (const skill of skills) {
       const result = await skill.upsertToConversation(auth, {
         conversationId,
         enabled,
+        transaction,
       });
 
       if (result.isErr()) {

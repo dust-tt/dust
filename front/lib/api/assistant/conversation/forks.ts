@@ -5,6 +5,7 @@ import { DustError } from "@app/lib/error";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -101,6 +102,45 @@ async function copyConversationMCPServerViews(
       new DustError(
         "internal_error",
         "Failed to copy MCP server views into the forked conversation."
+      )
+    );
+  }
+
+  return new Ok(undefined);
+}
+
+async function copyConversationSkills(
+  auth: Authenticator,
+  {
+    parentConversation,
+    childConversation,
+    transaction,
+  }: {
+    parentConversation: ConversationWithoutContentType;
+    childConversation: ConversationWithoutContentType;
+    transaction: Transaction;
+  }
+): Promise<Result<undefined, DustError<CreateConversationForkErrorCode>>> {
+  const parentSkills = await SkillResource.listEnabledByConversation(auth, {
+    conversation: parentConversation,
+  });
+
+  if (parentSkills.length === 0) {
+    return new Ok(undefined);
+  }
+
+  const upsertResult = await SkillResource.upsertConversationSkills(auth, {
+    conversationId: childConversation.id,
+    skills: parentSkills,
+    enabled: true,
+    transaction,
+  });
+
+  if (upsertResult.isErr()) {
+    return new Err(
+      new DustError(
+        "internal_error",
+        "Failed to copy conversation skills into the forked conversation."
       )
     );
   }
@@ -215,6 +255,16 @@ export async function createConversationFork(
 
     if (copyMCPServerViewsResult.isErr()) {
       return copyMCPServerViewsResult;
+    }
+
+    const copySkillsResult = await copyConversationSkills(auth, {
+      parentConversation: parentConversation.toJSON(),
+      childConversation: childConversation.toJSON(),
+      transaction,
+    });
+
+    if (copySkillsResult.isErr()) {
+      return copySkillsResult;
     }
 
     await createForkInitializationMessage(auth, {
