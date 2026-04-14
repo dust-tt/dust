@@ -184,6 +184,10 @@
       }
     },
     {
+      "includes": ["front/lib/api/models/**"],
+      "plugins": ["./.grit/patterns/noAppImportsInModels.grit"]
+    },
+    {
       "includes": [
         "front/migrations/**",
         "front/mailing/**",
