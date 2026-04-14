@@ -128,7 +128,6 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { DUST_HAS_SESSION } from "@app/lib/cookies";
 import { fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getClientIp } from "@app/lib/utils/request";
@@ -419,25 +418,6 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
 
     if (!sealedSession) {
       throw new Error("Sealed session not found");
-    }
-
-    // If login was via SSO, verify the workspace's plan still allows SSO.
-    if (authenticationMethod?.toLowerCase() === "sso" && organizationId) {
-      const workspace =
-        await WorkspaceResource.fetchByWorkOSOrganizationId(organizationId);
-      if (workspace) {
-        const subscription =
-          await SubscriptionResource.fetchActiveByWorkspaceModelId(
-            workspace.id
-          );
-        if (!subscription?.getPlan().limits.users.isSSOAllowed) {
-          logger.warn(
-            { workspaceId: workspace.sId, organizationId },
-            "SSO login blocked: workspace plan does not allow SSO"
-          );
-          return redirectTo(res, "/login-error?reason=sso-not-allowed");
-        }
-      }
     }
 
     // Decode and inspect JWT content
