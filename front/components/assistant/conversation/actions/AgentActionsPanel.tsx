@@ -409,8 +409,7 @@ function AgentSingleActionPanel({
   // Extract streaming progress for the action from the Virtuoso message state.
   const lastNotification =
     action && virtuosoMsg?.sId === messageId && virtuosoMsg.status === "created"
-      ? (virtuosoMsg.streaming.actionProgress.get(action.id)?.progress ??
-          null)
+      ? (virtuosoMsg.streaming.actionProgress.get(action.id)?.progress ?? null)
       : null;
 
   if (isActionLoading) {
