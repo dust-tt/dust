@@ -72,7 +72,7 @@ export function buildSkillInstructionsExtensions(
       },
     }),
     HeadingExtension.configure({
-      levels: [1, 2, 3],
+      levels: [1, 2, 3, 4, 5, 6],
       HTMLAttributes: {
         class: "mt-4 mb-3",
       },

@@ -18,7 +18,6 @@ import {
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { unescape } from "html-escaper";
 import { Op } from "sequelize";
@@ -41,6 +40,9 @@ function normalizeForComparison(s: string): string {
 
   const normalized = unescape(withPlaceholders)
     .replace(new RegExp(ZWS, "g"), "")
+    // Normalize non-breaking spaces to nothing — they are cosmetically
+    // equivalent to regular spaces and are not meaningful in instructions.
+    .replace(/\u00A0/g, "")
     // Normalize italic: _text_ → *text* (cosmetically equivalent)
     .replace(/(?<!\w)_([^_\n]+?)_(?!\w)/g, "*$1*")
     // Normalize bold: __text__ → **text** (cosmetically equivalent)
@@ -50,8 +52,14 @@ function normalizeForComparison(s: string): string {
     // content is preserved, so treat the difference as acceptable.
     .replace(/^- \[[ xX]\] /gm, "- ")
     // Normalize null link titles injected by TipTap's MarkdownManager:
-    // [text](url "null") → [text](url)
-    .replace(/(\[[^\]]*\]\([^)\s]+) "null"\)/g, "$1)")
+    // [text](url "null") → [text](url). Use non-greedy [^)]*? to handle
+    // URLs that contain spaces or other whitespace before the title.
+    .replace(/(\[[^\]]*\]\([^)]*?) "null"\)/g, "$1)")
+    // Normalize auto-linked bare URLs: [url](url) → url. marked.js
+    // auto-links plain URLs/emails even when the original is plain text.
+    .replace(/\[([^\]]+)\]\(\1(?:\s+"[^"]*")?\)/g, "$1")
+    // Normalize auto-linked emails: [addr](mailto:addr) → addr.
+    .replace(/\[([^\]]+)\]\(mailto:[^)]+\)/g, "$1")
     // Collapse all whitespace (including newlines) to a single space so that
     // cosmetic differences in spacing, indentation, and blank lines are ignored.
     .replace(/\s+/g, "")
@@ -66,19 +74,49 @@ function normalizeForComparison(s: string): string {
   );
 }
 
-type ConversionError = { kind: "conversion-failed"; message: string };
+const ROUND_TRIP_DIFF_CONTEXT_CHARS = 40;
+
+type RoundTripMismatchDiff = {
+  position: number;
+  normalizedOriginalWindow: string;
+  normalizedRoundTripWindow: string;
+};
+
+function roundTripMismatchDiff(
+  normalizedOriginal: string,
+  normalizedRoundTrip: string
+): RoundTripMismatchDiff {
+  let i = 0;
+  const minLen = Math.min(
+    normalizedOriginal.length,
+    normalizedRoundTrip.length
+  );
+  while (i < minLen && normalizedOriginal[i] === normalizedRoundTrip[i]) {
+    i++;
+  }
+
+  const ctx = ROUND_TRIP_DIFF_CONTEXT_CHARS;
+  const start = Math.max(0, i - ctx);
+  const end = i + ctx;
+
+  return {
+    position: i,
+    normalizedOriginalWindow: normalizedOriginal.slice(start, end),
+    normalizedRoundTripWindow: normalizedRoundTrip.slice(start, end),
+  };
+}
+
 type RoundTripError = {
   kind: "round-trip-mismatch";
-  diff: string;
+  diff: RoundTripMismatchDiff;
 };
-type SkillError = ConversionError | RoundTripError;
+type SkillError = RoundTripError;
 
 interface SkillResult {
   skillId: number;
   skillName: string;
   workspaceSId: string;
   error: SkillError | null;
-  /** The generated HTML, present only when conversion succeeded. */
   html: string | null;
 }
 
@@ -88,49 +126,22 @@ function convertSkill(
 ): SkillResult {
   const { instructions } = skill;
 
-  let html: string;
-  try {
-    html = convertMarkdownToBlockHtml(instructions);
-  } catch (err) {
-    const error = normalizeError(err);
-    return {
-      skillId: skill.id,
-      skillName: skill.name,
-      workspaceSId,
-      error: { kind: "conversion-failed", message: error.message },
-      html: null,
-    };
-  }
+  const html = convertMarkdownToBlockHtml(instructions);
 
   // Round-trip check: html → markdown, compare against original instructions.
-  let roundTripMarkdown: string;
-  try {
-    roundTripMarkdown = convertBlockHtmlToMarkdown(html);
-  } catch (err) {
-    const error = normalizeError(err);
-    return {
-      skillId: skill.id,
-      skillName: skill.name,
-      workspaceSId,
-      error: {
-        kind: "conversion-failed",
-        message: `round-trip threw: ${error.message}`,
-      },
-      html: null,
-    };
-  }
+  const roundTripMarkdown = convertBlockHtmlToMarkdown(html);
 
-  if (
-    normalizeForComparison(instructions) !==
-    normalizeForComparison(roundTripMarkdown)
-  ) {
+  const normalizedOriginal = normalizeForComparison(instructions);
+  const normalizedRoundTrip = normalizeForComparison(roundTripMarkdown);
+
+  if (normalizedOriginal !== normalizedRoundTrip) {
     return {
       skillId: skill.id,
       skillName: skill.name,
       workspaceSId,
       error: {
         kind: "round-trip-mismatch",
-        diff: `original: "${instructions.slice(0, 300)}" | round-tripped: "${roundTripMarkdown.slice(0, 300)}"`,
+        diff: roundTripMismatchDiff(normalizedOriginal, normalizedRoundTrip),
       },
       html,
     };
@@ -164,11 +175,7 @@ async function processSkillsForWorkspace(
     const result = convertSkill(skill, workspace.sId);
     results.push(result);
 
-    if (
-      execute &&
-      result.error?.kind !== "conversion-failed" &&
-      result.html !== null
-    ) {
+    if (execute && result.error === null && result.html !== null) {
       await skill.update({ instructionsHtml: result.html });
     }
   }
@@ -229,9 +236,7 @@ makeScript(
             workspaceSId: r.workspaceSId,
             error: r.error,
           },
-          r.error?.kind === "round-trip-mismatch"
-            ? "Skill instructions round-trip mismatch"
-            : "Skill instructions conversion failed"
+          "Skill instructions round-trip mismatch"
         );
       }
     }
