@@ -65,24 +65,24 @@ export const agentYAMLProjectConfigurationSchema = z.object({
 });
 
 export const agentYAMLMCPActionSchema = z.object({
-  name: z.string().min(1, "Action name is required"),
-  description: z.string().min(1, "Action description is required"),
+  name: z.string(),
+  description: z.string(),
   type: z.literal("MCP"),
   configuration: z.object({
     mcp_server_name: z.string(),
     data_sources: z
       .record(z.string(), agentYAMLDataSourceConfigurationSchema)
       .optional(),
-    tables: z.array(agentYAMLTableConfigurationSchema).nullable().optional(),
-    child_agent_id: z.string().nullable().optional(),
+    tables: z.array(agentYAMLTableConfigurationSchema).nullish(),
+    child_agent_id: z.string().nullish(),
     time_frame: agentYAMLTimeFrameSchema.optional(),
-    json_schema: z.object({}).nullable().optional(),
+    json_schema: z.object({}).nullish(),
     additional_configuration: additionalConfigurationSchema.optional(),
     dust_app_configuration: agentYAMLDustAppConfigurationSchema
       .nullable()
       .optional(),
-    secret_name: z.string().nullable().optional(),
-    dust_project: agentYAMLProjectConfigurationSchema.nullable().optional(),
+    secret_name: z.string().nullish(),
+    dust_project: agentYAMLProjectConfigurationSchema.nullish(),
   }),
 });
 

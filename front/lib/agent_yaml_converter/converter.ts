@@ -352,8 +352,8 @@ export class AgentYAMLConverter {
       return new Ok({
         type: "mcp_server_configuration",
         mcpServerViewId: mcpServerView.sId,
-        name: action.name,
-        description: action.description,
+        name: action.name ?? "",
+        description: action.description ?? null,
         dataSources: configuration.data_sources
           ? this.convertDataSources(configuration.data_sources, workspaceId)
           : null,
