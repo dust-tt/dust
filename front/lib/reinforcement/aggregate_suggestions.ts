@@ -1,13 +1,23 @@
+import {
+  createConversation,
+  postNewContentFragment,
+  postUserMessage,
+} from "@app/lib/api/assistant/conversation";
+import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { formatSkillContext } from "@app/lib/reinforcement/format_skill_context";
 import { buildReinforcedSkillsLLMParams } from "@app/lib/reinforcement/run_reinforced_analysis";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
-import { escapeXml } from "@app/types/shared/utils/string_utils";
+import { escapeXml, pluralize } from "@app/types/shared/utils/string_utils";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
+import type { UserType } from "@app/types/user";
 
 const AGGREGATION_ASSEMBLY_ORDER = [
   "primary",
@@ -210,4 +220,131 @@ export async function buildSkillAggregationBatchMap(
   }
 
   return new Map([["aggregation", buildReinforcedSkillsLLMParams(ctx.prompt)]]);
+}
+
+/**
+ * Create a conversation with the pending suggestions for the skill editors.
+ */
+export async function createSkillSuggestionsConversations(
+  auth: Authenticator,
+  skill: SkillResource,
+  editors: UserType[]
+): Promise<void> {
+  if (editors.length === 0) {
+    return;
+  }
+
+  const skillType = skill.toJSON(auth);
+
+  const pendingSuggestions =
+    await SkillSuggestionResource.listBySkillConfigurationId(
+      auth,
+      skillType.sId,
+      { sources: ["reinforcement"], states: ["pending"] }
+    );
+
+  if (pendingSuggestions.length === 0) {
+    return;
+  }
+
+  const formattedSuggestions = formatSuggestions(
+    pendingSuggestions.map((s) => s.toJSON())
+  );
+
+  const conversationTitle = `Reinforced suggestions for ${skillType.name} skill`;
+  const conversation = await createConversation(auth, {
+    title: conversationTitle,
+    visibility: "unlisted",
+    spaceId: null,
+    metadata: {
+      reinforcedSkillNotification: {
+        skillName: skillType.name,
+        skillId: skillType.sId,
+      },
+    },
+  });
+
+  const contentFragmentRes = await toFileContentFragment(auth, {
+    contentFragment: {
+      title: `${pendingSuggestions.length} pending suggestions for ${skillType.name} skill`,
+      content: formattedSuggestions,
+      contentType: "text/plain",
+      url: null,
+    },
+    fileName: "suggestions.txt",
+  });
+
+  if (contentFragmentRes.isErr()) {
+    logger.error(
+      {
+        skillId: skillType.sId,
+        error: contentFragmentRes.error.message,
+      },
+      "ReinforcedSkills: failed to create content fragment for suggestions conversation"
+    );
+    return;
+  }
+
+  const author = editors[0];
+
+  const contentFragmentPostRes = await postNewContentFragment(
+    auth,
+    conversation,
+    contentFragmentRes.value,
+    {
+      username: author.username,
+      fullName: author.fullName,
+      email: author.email,
+      profilePictureUrl: author.image,
+    }
+  );
+
+  if (contentFragmentPostRes.isErr()) {
+    logger.error(
+      {
+        skillId: skillType.sId,
+        error: contentFragmentPostRes.error.message,
+      },
+      "ReinforcedSkills: failed to post content fragment for suggestions conversation"
+    );
+    return;
+  }
+
+  const messageRes = await postUserMessage(auth, {
+    conversation,
+    content: `Here are ${pendingSuggestions.length} pending improvement${pluralize(pendingSuggestions.length)} suggestions for the ${skillType.name} skill.`,
+    mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
+    context: {
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+      username: author.username,
+      fullName: author.fullName,
+      email: author.email,
+      profilePictureUrl: author.image,
+      origin: "reinforced_skill_notification",
+    },
+    skipToolsValidation: true,
+  });
+
+  if (messageRes.isErr()) {
+    logger.error(
+      {
+        skillId: skillType.sId,
+        error: messageRes.error.api_error.message,
+      },
+      "ReinforcedSkills: failed to post user message for suggestions conversation"
+    );
+    return;
+  }
+
+  await concurrentExecutor(
+    editors,
+    (editor) =>
+      ConversationResource.upsertParticipation(auth, {
+        conversation,
+        action: "posted",
+        user: editor,
+        lastReadAt: null,
+      }),
+    { concurrency: 8 }
+  );
 }

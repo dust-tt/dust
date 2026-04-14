@@ -10,7 +10,8 @@ import {
 import type { BatchStatus } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { notifySkillSuggestionsReady } from "@app/lib/notifications/workflows/skill-suggestions-ready";
 import {
   prepareReinforcedToolActions,
   type ReinforcedToolActionInfo,
@@ -23,6 +24,7 @@ import {
 import {
   buildSkillAggregationBatchMap,
   buildSkillAggregationSystemPrompt,
+  createSkillSuggestionsConversations,
   loadSkillAggregationContext,
 } from "@app/lib/reinforcement/aggregate_suggestions";
 import {
@@ -490,6 +492,22 @@ export async function finalizeSkillAggregationActivity({
     throw new Error(`Skill not found: ${skillId}`);
   }
   await skill.recordReinforcementAnalysisCompletion();
+
+  const hasReinforcementUi = await hasFeatureFlag(auth, "reinforcement_ui");
+
+  if (suggestionsCreated > 0 && !disableNotifications && hasReinforcementUi) {
+    const skillType = skill.toJSON(auth);
+    const editors = (await skill.listEditors(auth)) ?? [];
+    const editorTypes = editors.map((e) => e.toJSON());
+
+    notifySkillSuggestionsReady(auth, {
+      skillId: skillType.sId,
+      skillName: skillType.name,
+      editors: editorTypes,
+      suggestionCount: suggestionsCreated,
+    });
+    await createSkillSuggestionsConversations(auth, skill, editorTypes);
+  }
 
   logger.info(
     {

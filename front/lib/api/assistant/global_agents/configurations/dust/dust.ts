@@ -38,7 +38,10 @@ import {
 import type { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import { getAgentBuilderRoute } from "@app/lib/utils/router";
+import {
+  getAgentBuilderRoute,
+  getSkillBuilderRoute,
+} from "@app/lib/utils/router";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
@@ -314,6 +317,19 @@ function buildReinforcedAgentStaticResponse(
   ].join("\n");
 }
 
+function buildReinforcedSkillStaticResponse(
+  workspaceId: string,
+  skillName: string,
+  skillId: string
+): string {
+  const builderUrl = getSkillBuilderRoute(workspaceId, skillId);
+  return [
+    `Dust has analysed your workspace conversations using the ${skillName} skill and found suggestions to improve it.`,
+    `You can view and apply these suggestions by going to the [skill builder](${builderUrl}).`,
+    "Let me know if you have further questions.",
+  ].join("\n");
+}
+
 function _getDustLikeGlobalAgent(
   auth: Authenticator,
   {
@@ -358,11 +374,16 @@ function _getDustLikeGlobalAgent(
     globalAgentContext.userMessageRank <= 1;
   const isReinforcedAgentNotificationFirstTurn =
     isFirstUserMessage && globalAgentContext?.reinforcedAgentNotification;
+  const isReinforcedSkillNotificationFirstTurn =
+    isFirstUserMessage && globalAgentContext?.reinforcedSkillNotification;
+  const isReinforcedNotificationFirstTurn =
+    isReinforcedAgentNotificationFirstTurn ||
+    isReinforcedSkillNotificationFirstTurn;
 
   let isPreferredModel = false;
 
   const modelConfiguration = (() => {
-    if (isReinforcedAgentNotificationFirstTurn) {
+    if (isReinforcedNotificationFirstTurn) {
       return NOOP_MODEL_CONFIG;
     }
 
@@ -382,6 +403,30 @@ function _getDustLikeGlobalAgent(
     return getLargeWhitelistedModel(auth, excludeProviders);
   })();
 
+  const reinforcedStaticResponse = (() => {
+    if (
+      isReinforcedAgentNotificationFirstTurn &&
+      globalAgentContext?.reinforcedAgentNotification
+    ) {
+      return buildReinforcedAgentStaticResponse(
+        owner.sId,
+        globalAgentContext.reinforcedAgentNotification.agentName,
+        globalAgentContext.reinforcedAgentNotification.agentConfigurationId
+      );
+    }
+    if (
+      isReinforcedSkillNotificationFirstTurn &&
+      globalAgentContext?.reinforcedSkillNotification
+    ) {
+      return buildReinforcedSkillStaticResponse(
+        owner.sId,
+        globalAgentContext.reinforcedSkillNotification.skillName,
+        globalAgentContext.reinforcedSkillNotification.skillId
+      );
+    }
+    return undefined;
+  })();
+
   const model: AgentModelConfigurationType = modelConfiguration
     ? {
         providerId: modelConfiguration.providerId,
@@ -391,17 +436,11 @@ function _getDustLikeGlobalAgent(
           isPreferredModel && preferredReasoningEffort
             ? preferredReasoningEffort
             : modelConfiguration.defaultReasoningEffort,
-        ...(isReinforcedAgentNotificationFirstTurn &&
-          globalAgentContext?.reinforcedAgentNotification && {
-            metaData: {
-              staticResponse: buildReinforcedAgentStaticResponse(
-                owner.sId,
-                globalAgentContext.reinforcedAgentNotification.agentName,
-                globalAgentContext.reinforcedAgentNotification
-                  .agentConfigurationId
-              ),
-            },
-          }),
+        ...(reinforcedStaticResponse && {
+          metaData: {
+            staticResponse: reinforcedStaticResponse,
+          },
+        }),
       }
     : dummyModelConfiguration;
 
