@@ -3,7 +3,10 @@ import {
   overwriteLLMParameters,
 } from "@app/lib/api/llm/clients/anthropic/types";
 import { LLM } from "@app/lib/api/llm/llm";
-import { handleGenericError } from "@app/lib/api/llm/types/errors";
+import {
+  handleGenericError,
+  type LLMErrorType,
+} from "@app/lib/api/llm/types/errors";
 import type {
   LLMEvent,
   LLMOutputItem,
@@ -26,6 +29,7 @@ import { getModel, type LargeLanguageModel } from "@app/lib/api/models";
 import type { AnthropicModel } from "@app/lib/api/models/clients/anthropic/anthropicClient";
 import type { ToolSpecification } from "@app/lib/api/models/types/config";
 import type {
+  ErrorType,
   LargeLanguageModelResponseEvent,
   ReasoningEvent as NewReasoningEvent,
   TextEvent as NewTextEvent,
@@ -201,6 +205,43 @@ function convertAggregatedItem(
 }
 
 /**
+ * Maps new model ErrorType to old LLMErrorType with correct retryability.
+ */
+function mapErrorType(errorType: ErrorType): {
+  type: LLMErrorType;
+  isRetryable: boolean;
+} {
+  switch (errorType) {
+    case "input_configuration_error":
+      return { type: "invalid_request_error", isRetryable: false };
+    case "rate_limit_error":
+      return { type: "rate_limit_error", isRetryable: true };
+    case "overloaded_error":
+      return { type: "overloaded_error", isRetryable: true };
+    case "invalid_request_error":
+      return { type: "invalid_request_error", isRetryable: false };
+    case "authentication_error":
+      return { type: "authentication_error", isRetryable: false };
+    case "permission_error":
+      return { type: "permission_error", isRetryable: false };
+    case "not_found_error":
+      return { type: "not_found_error", isRetryable: false };
+    case "network_error":
+      return { type: "network_error", isRetryable: true };
+    case "timeout_error":
+      return { type: "timeout_error", isRetryable: true };
+    case "server_error":
+      return { type: "server_error", isRetryable: true };
+    case "stream_error":
+      return { type: "stream_error", isRetryable: true };
+    case "unknown_error":
+      return { type: "unknown_error", isRetryable: false };
+    default:
+      assertNever(errorType);
+  }
+}
+
+/**
  * Converts new model events to old LLM events.
  */
 async function* convertToOldEvents(
@@ -316,16 +357,21 @@ async function* convertToOldEvents(
         break;
       }
 
-      case "error":
+      case "error": {
+        const { type: errorType, isRetryable } = mapErrorType(
+          event.content.type
+        );
         yield new EventError(
           {
-            type: "stream_error",
+            type: errorType,
             message: event.content.message,
-            isRetryable: true,
+            isRetryable,
+            originalError: event.content.originalError,
           },
           metadata
         );
         break;
+      }
 
       default:
         assertNever(event);

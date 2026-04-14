@@ -395,7 +395,7 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
           return {
             type: "error",
             content: {
-              type: "stream",
+              type: "stream_error",
               message: `Stop reason: ${stopReason}`,
             },
             metadata: this.model,
@@ -404,7 +404,7 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
           return {
             type: "error",
             content: {
-              type: "stream",
+              type: "stream_error",
               message:
                 "Claude safety filters prevented this response. Try starting a new conversation or rephrasing your request.",
             },
