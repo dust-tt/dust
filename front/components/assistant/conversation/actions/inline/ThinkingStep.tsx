@@ -30,6 +30,7 @@ export function ThinkingStep({
       forcedTextSize="text-sm"
       textColor="text-muted-foreground dark:text-muted-foreground-night"
       isLastMessage={false}
+      compactSpacing
     />
   ) : null;
 
