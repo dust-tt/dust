@@ -54,11 +54,6 @@ export function untrustedFetch(
  * Used by MCP transports: the MCP SDK does NOT forward `requestInit.dispatcher`
  * to its internal EventSource/GET connections. Passing this as `opts.fetch`
  * ensures ALL fetch calls (SSE GET + POST) go through the proxy.
- *
- * Node.js 22+ global fetch IS undici under the hood and reads `dispatcher`
- * from the init object at runtime, even though the DOM TS types don't
- * declare it. Using globalThis.fetch keeps the types in DOM-land, which
- * is compatible with the MCP SDK's FetchLike type.
  */
 export function createProxyFetch(
   agent: ProxyAgent
@@ -66,10 +61,12 @@ export function createProxyFetch(
   input: string | URL,
   init?: globalThis.RequestInit
 ) => Promise<globalThis.Response> {
-  // Capture dispatcher in a plain object so it can be spread into init
-  // without triggering excess-property checks.
   const proxyInit = { dispatcher: agent };
-  return (input, init) => globalThis.fetch(input, { ...init, ...proxyInit });
+  // @ts-expect-error The return type uses DOM types (globalThis.Response/RequestInit) because
+  // Next.js exports DOM typings and the MCP SDK's FetchLike expects them. undici's fetch is
+  // structurally compatible at runtime; the mismatch is only that DOM RequestInit lacks
+  // `dispatcher` and undici.Response is a distinct (but equivalent) class.
+  return (input, init) => undiciFetch(input, { ...init, ...proxyInit });
 }
 
 // Fetch helper for trusted, first‑party egress or intra‑VPC calls.
