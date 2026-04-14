@@ -1,7 +1,12 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { createUserMessage } from "@app/lib/api/assistant/conversation/messages";
+import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import {
+  AgentMessageModel,
+  MessageModel,
+} from "@app/lib/models/agent/conversation";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -9,6 +14,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
+  AgentMessageType,
   ConversationType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
@@ -43,7 +49,8 @@ function escapeMarkdownLinkText(text: string): string {
 
 function getForkInitializationMessageContent(
   workspaceId: string,
-  parentConversation: ConversationWithoutContentType
+  parentConversation: ConversationWithoutContentType,
+  sourceMessageContent: string
 ): string {
   const parentConversationTitle = escapeMarkdownLinkText(
     parentConversation.title ?? UNTITLED_CONVERSATION_TITLE
@@ -53,7 +60,13 @@ function getForkInitializationMessageContent(
     parentConversation.sId
   );
 
-  return `The conversation was forked from [${parentConversationTitle}](${parentConversationUrl}).`;
+  return [
+    `The conversation was forked from [${parentConversationTitle}](${parentConversationUrl}).`,
+    "",
+    "This branch starts from the following source message:",
+    "",
+    sourceMessageContent,
+  ].join("\n");
 }
 
 async function copyConversationMCPServerViews(
@@ -113,10 +126,12 @@ async function createForkInitializationMessage(
   {
     parentConversation,
     childConversation,
+    sourceMessageContent,
     transaction,
   }: {
     parentConversation: ConversationWithoutContentType;
     childConversation: ConversationWithoutContentType;
+    sourceMessageContent: string;
     transaction: Transaction;
   }
 ) {
@@ -128,7 +143,8 @@ async function createForkInitializationMessage(
     conversation: childConversation,
     content: getForkInitializationMessageContent(
       auth.getNonNullableWorkspace().sId,
-      parentConversation
+      parentConversation,
+      sourceMessageContent
     ),
     metadata: {
       type: "create",
@@ -145,6 +161,69 @@ async function createForkInitializationMessage(
     },
     transaction,
   });
+}
+
+async function renderForkSourceMessageContent(
+  auth: Authenticator,
+  {
+    parentConversation,
+    sourceMessage,
+  }: {
+    parentConversation: ConversationResource;
+    sourceMessage: MessageModel;
+  }
+): Promise<Result<string, DustError<CreateConversationForkErrorCode>>> {
+  const sourceMessageWithAgent = await MessageModel.findOne({
+    where: {
+      id: sourceMessage.id,
+      workspaceId: auth.getNonNullableWorkspace().id,
+      conversationId: parentConversation.id,
+    },
+    include: [
+      {
+        model: AgentMessageModel,
+        as: "agentMessage",
+        required: true,
+      },
+    ],
+  });
+
+  if (!sourceMessageWithAgent) {
+    return new Err(
+      new DustError("internal_error", "Failed to load the fork source message.")
+    );
+  }
+
+  const renderedMessages = await batchRenderMessages(
+    auth,
+    parentConversation,
+    [sourceMessageWithAgent],
+    "full"
+  );
+
+  if (renderedMessages.isErr()) {
+    return new Err(
+      new DustError(
+        "internal_error",
+        "Failed to render the fork source message."
+      )
+    );
+  }
+
+  const renderedSourceMessage = renderedMessages.value.find(
+    (message): message is AgentMessageType => message.type === "agent_message"
+  );
+
+  if (!renderedSourceMessage) {
+    return new Err(
+      new DustError(
+        "internal_error",
+        "Failed to resolve the fork source message."
+      )
+    );
+  }
+
+  return new Ok(renderedSourceMessage.content ?? "");
 }
 
 export async function createConversationFork(
@@ -188,6 +267,15 @@ export async function createConversationFork(
       );
     }
 
+    const sourceMessageContent = await renderForkSourceMessageContent(auth, {
+      parentConversation,
+      sourceMessage: sourceMessage.value,
+    });
+
+    if (sourceMessageContent.isErr()) {
+      return sourceMessageContent;
+    }
+
     const childConversation = await ConversationResource.makeNew(
       auth,
       {
@@ -220,6 +308,7 @@ export async function createConversationFork(
     await createForkInitializationMessage(auth, {
       parentConversation: parentConversation.toJSON(),
       childConversation: childConversation.toJSON(),
+      sourceMessageContent: sourceMessageContent.value,
       transaction,
     });
 

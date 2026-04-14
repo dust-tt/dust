@@ -1,6 +1,7 @@
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { createConversationFork } from "@app/lib/api/assistant/conversation/forks";
 import { Authenticator } from "@app/lib/auth";
+import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageModel,
   ConversationModel,
@@ -11,6 +12,7 @@ import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { getConversationRoute } from "@app/lib/utils/router";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -18,7 +20,10 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import {
+  type ConversationWithoutContentType,
+  isUserMessageType,
+} from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { describe, expect, it } from "vitest";
 
@@ -70,12 +75,14 @@ async function createAgentMessage(
     rank,
     parentId,
     status,
+    content = null,
     branchId = null,
   }: {
     conversation: ConversationWithoutContentType;
     rank: number;
     parentId: ModelId;
     status: "created" | "succeeded";
+    content?: string | null;
     branchId?: ModelId | null;
   }
 ): Promise<MessageModel> {
@@ -89,6 +96,21 @@ async function createAgentMessage(
     skipToolsValidation: false,
     completedAt: status === "created" ? null : new Date(),
   });
+
+  if (content !== null) {
+    await AgentStepContentModel.create({
+      workspaceId: workspace.id,
+      agentMessageId: agentMessage.id,
+      step: 0,
+      index: 0,
+      version: 0,
+      type: "text_content",
+      value: {
+        type: "text_content",
+        value: content,
+      },
+    });
+  }
 
   return MessageModel.create({
     workspaceId: workspace.id,
@@ -121,6 +143,7 @@ describe("createConversationFork", () => {
       rank: 1,
       parentId: userMessage.id,
       status: "succeeded",
+      content: "Here is the branching source message.",
     });
 
     const result = await createConversationFork(auth, {
@@ -144,6 +167,30 @@ describe("createConversationFork", () => {
       branchedAt: expect.any(Number),
       user: user.toJSON(),
     });
+    const initializationMessage = childConversation.content[0]?.[0];
+    expect(initializationMessage).toBeDefined();
+    expect(
+      initializationMessage && isUserMessageType(initializationMessage)
+    ).toBe(true);
+
+    if (!initializationMessage || !isUserMessageType(initializationMessage)) {
+      throw new Error(
+        "Expected fork initialization message to be a user message."
+      );
+    }
+
+    expect(initializationMessage.content).toContain(
+      `The conversation was forked from [Parent conversation](${getConversationRoute(
+        auth.getNonNullableWorkspace().sId,
+        parentConversation.sId
+      )}).`
+    );
+    expect(initializationMessage.content).toContain(
+      "This branch starts from the following source message:"
+    );
+    expect(initializationMessage.content).toContain(
+      "Here is the branching source message."
+    );
 
     const forkRow = await ConversationForkModel.findOne({
       where: {
@@ -188,6 +235,7 @@ describe("createConversationFork", () => {
       rank: 1,
       parentId: firstUserMessage.id,
       status: "succeeded",
+      content: "This is the latest completed main-thread answer.",
     });
 
     const secondUserMessage = await createUserMessage(auth, {
@@ -234,6 +282,21 @@ describe("createConversationFork", () => {
 
     expect(result.value.forkedFrom?.sourceMessageId).toBe(
       firstAgentMessage.sId
+    );
+    const initializationMessage = result.value.content[0]?.[0];
+    expect(initializationMessage).toBeDefined();
+    expect(
+      initializationMessage && isUserMessageType(initializationMessage)
+    ).toBe(true);
+
+    if (!initializationMessage || !isUserMessageType(initializationMessage)) {
+      throw new Error(
+        "Expected fork initialization message to be a user message."
+      );
+    }
+
+    expect(initializationMessage.content).toContain(
+      "This is the latest completed main-thread answer."
     );
   });
 
