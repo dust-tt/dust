@@ -182,7 +182,9 @@ export function UserAnswerRequired({
               className={cn(
                 "h-auto w-full rounded-none border-transparent bg-transparent",
                 "px-0 py-0 text-sm shadow-none",
-                "focus-visible:border-transparent focus-visible:ring-0"
+                "dark:border-transparent dark:bg-transparent",
+                "focus-visible:border-transparent focus-visible:ring-0",
+                "dark:focus-visible:border-transparent dark:focus-visible:ring-0"
               )}
               placeholder="Type something else"
               value={customResponse}
