@@ -247,6 +247,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable reinforcement: background analysis of conversations to suggest improvements to skills.",
     stage: "dust_only",
   },
+  reinforcement_ui: {
+    description:
+      "Enable the reinforcement suggestions UI panel in the Skills Builder.",
+    stage: "dust_only",
+  },
   collapsible_messages: {
     description: "Enable collapsible messages in conversations",
     stage: "dust_only",
