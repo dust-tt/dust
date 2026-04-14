@@ -81,7 +81,8 @@ export type ClientMessageOrigin =
   | "project_kickoff"
   | "extension"
   | "agent_sidekick"
-  | "reinforced_agent_notification";
+  | "reinforced_agent_notification"
+  | "reinforced_skill_notification";
 
 export type UserMessageOrigin =
   // "api" is Custom API usage, while e.g. extension, gsheets and many other origins

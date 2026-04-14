@@ -42,6 +42,20 @@ function isReinforcedAgentNotificationMetadata(
   );
 }
 
+function isReinforcedSkillNotificationMetadata(
+  value: unknown
+): value is { skillName: string; skillId: string } {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  return (
+    "skillName" in value &&
+    typeof value.skillName === "string" &&
+    "skillId" in value &&
+    typeof value.skillId === "string"
+  );
+}
+
 /**
  * Error types for getAgentLoopData that indicate soft-deleted resources.
  * These are safe to ignore in callers since the resource was intentionally deleted.
@@ -328,12 +342,21 @@ export async function getAgentLoopDataWithAuth(
     ? reinforcedMeta
     : undefined;
 
+  const reinforcedSkillMeta =
+    conversation.metadata?.reinforcedSkillNotification;
+  const reinforcedSkillNotification = isReinforcedSkillNotificationMetadata(
+    reinforcedSkillMeta
+  )
+    ? reinforcedSkillMeta
+    : undefined;
+
   const globalAgentContext: GlobalAgentContext = {
     userMessageRank: userMessage.rank,
     sidekickIsNewAgentFromScratch:
       conversation.metadata?.sidekickIsNewAgentFromScratch === true ||
       undefined,
     reinforcedAgentNotification,
+    reinforcedSkillNotification,
   };
 
   // As the agent configuration is never supposed to change during a loop, we can cache it for a long time.

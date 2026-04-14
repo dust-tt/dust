@@ -167,6 +167,10 @@ export type GlobalAgentContext = {
     agentName: string;
     agentConfigurationId: string;
   };
+  reinforcedSkillNotification?: {
+    skillName: string;
+    skillId: string;
+  };
 };
 
 export const LightAgentConfigurationSchema = z.object({

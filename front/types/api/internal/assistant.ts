@@ -16,6 +16,7 @@ const UserMessageOriginSchema = t.union([
   t.literal("project_kickoff"),
   t.literal("extension"),
   t.literal("reinforced_agent_notification"),
+  t.literal("reinforced_skill_notification"),
 ]);
 
 export const MessageBaseSchema = t.type({
