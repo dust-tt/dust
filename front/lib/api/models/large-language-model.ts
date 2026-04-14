@@ -2,6 +2,7 @@ import type { inputConfigSchema } from "@app/lib/api/models/types/config";
 import type { Credentials } from "@app/lib/api/models/types/credentials";
 
 import type {
+  ErrorEvent,
   LargeLanguageModelResponseEvent,
   TokenUsageContent,
 } from "@app/lib/api/models/types/events";
@@ -10,8 +11,6 @@ import type { TokenPricing } from "@app/lib/api/models/types/pricing";
 import type { Model } from "@app/lib/api/models/types/providers";
 import { computeUsageCost } from "@app/lib/api/models/utils/computeUsageCost";
 import { getIdFromModel } from "@app/lib/api/models/utils/getIdFromModel";
-// biome-ignore lint/plugin/noAppImportsInModels: monorepo-global utility with no domain meaning
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { z } from "zod";
 
 export abstract class LargeLanguageModel<I = unknown, O = unknown> {
@@ -35,6 +34,7 @@ export abstract class LargeLanguageModel<I = unknown, O = unknown> {
   abstract rawOutputToEvents(
     raw: AsyncGenerator<O>
   ): AsyncGenerator<LargeLanguageModelResponseEvent>;
+  abstract streamErrorToEvent(error: unknown): ErrorEvent;
 
   isConfigValid(
     config: z.infer<typeof inputConfigSchema>
@@ -52,7 +52,7 @@ export abstract class LargeLanguageModel<I = unknown, O = unknown> {
       yield {
         type: "error",
         content: {
-          type: "input_configuration",
+          type: "input_configuration_error",
           message: "Configuration is invalid.",
           originalError: configValidationResult.error.format(),
         },
@@ -70,15 +70,7 @@ export abstract class LargeLanguageModel<I = unknown, O = unknown> {
       const events = await this.streamRaw(payload);
       yield* this.rawOutputToEvents(events);
     } catch (e) {
-      yield {
-        type: "error" as const,
-        content: {
-          type: "stream" as const,
-          message: normalizeError(e).message,
-          originalError: e,
-        },
-        metadata: this.model,
-      };
+      yield this.streamErrorToEvent(e);
     }
 
     return;
