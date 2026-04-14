@@ -1,0 +1,27 @@
+engine biome(1.0)
+language js
+
+// Prevents files in front/lib/api/models/ from importing anything from @app/*
+// except from @app/lib/api/models/* itself.
+// This ensures the models directory stays self-contained with no coupling to the rest of the app.
+pattern app_import_source() {
+    or {
+        `import $_ from $source`,
+        `import { $_ } from $source`,
+        `import type $_ from $source`,
+        `import type { $_ } from $source`,
+        `import * as $_ from $source`,
+    } where {
+        $source <: r"\"@app/.*\"",
+        $source <: not r"\"@app/lib/api/models.*\""
+    }
+}
+
+app_import_source() as $import where {
+    $filename <: r".*/front/lib/api/models/.*",
+    register_diagnostic(
+        span = $import,
+        message = "Imports from '@app/*' are not allowed in 'front/lib/api/models/'. This directory must remain self-contained.",
+        severity = "error"
+    )
+}
