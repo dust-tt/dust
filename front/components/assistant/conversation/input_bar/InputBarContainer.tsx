@@ -1245,7 +1245,7 @@ const InputBarContainer = ({
           className={cn("absolute bottom-2 right-2 flex items-center gap-2")}
         >
           <div className="flex items-center">
-            {isCompactionEnabled && (
+            {isCompactionEnabled && conversation && (
               <ContextUsageIndicator
                 contextUsage={contextUsage?.contextUsage ?? 0}
                 contextSize={contextUsage?.contextSize ?? 0}
