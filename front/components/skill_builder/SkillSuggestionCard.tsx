@@ -1,3 +1,5 @@
+import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
+import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type {
@@ -5,7 +7,8 @@ import type {
   SkillSuggestionType,
   SkillToolEditItemType,
 } from "@app/types/suggestions/skill_suggestion";
-import { Button, Card, Chip } from "@dust-tt/sparkle";
+import { Button, Card, Chip, DiffBlock } from "@dust-tt/sparkle";
+import { EditorContent, useEditor } from "@tiptap/react";
 import { useMemo } from "react";
 
 function useToolDisplayNames(
@@ -76,29 +79,69 @@ function ToolEditsSection({ toolEdits }: ToolEditsSectionProps) {
   );
 }
 
-interface InstructionEditBlockProps {
+interface InstructionEditDiffBlockProps {
   edit: SkillInstructionEditItemType;
+  getSkillInstructionsHtml: () => string;
 }
 
-function InstructionEditBlock({ edit }: InstructionEditBlockProps) {
-  // TODO(reinforced-skills): This is a placeholder for the actual implementation (Issue #7388)
-  return (
-    <p className="whitespace-pre-wrap text-sm text-foreground dark:text-foreground-night">
-      {edit.content}
-    </p>
+function InstructionEditDiffBlock({
+  edit,
+  getSkillInstructionsHtml,
+}: InstructionEditDiffBlockProps) {
+  const { targetBlockId, content } = edit;
+
+  const blockHtml = useMemo(() => {
+    const instructionsHtml = getSkillInstructionsHtml();
+    if (!instructionsHtml) {
+      return "";
+    }
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(instructionsHtml, "text/html");
+    const targetElement = doc.querySelector(
+      `[data-block-id="${targetBlockId}"]`
+    );
+    return targetElement ? targetElement.outerHTML : "";
+  }, [targetBlockId, getSkillInstructionsHtml]);
+
+  const editor = useEditor(
+    {
+      extensions: [
+        ...buildAgentInstructionsReadOnlyExtensions(),
+        InstructionSuggestionExtension.configure({ showBlockHighlight: false }),
+      ],
+      editable: false,
+      content: blockHtml,
+      immediatelyRender: false,
+      onCreate: ({ editor: e }) => {
+        if (!content) {
+          return;
+        }
+        e.commands.applySuggestion({
+          id: targetBlockId,
+          targetBlockId,
+          content,
+        });
+        e.commands.setHighlightedSuggestion(targetBlockId);
+      },
+    },
+    [blockHtml]
   );
+
+  return <DiffBlock>{editor && <EditorContent editor={editor} />}</DiffBlock>;
 }
 
 interface SkillSuggestionCardProps {
   suggestion: SkillSuggestionType;
   onAccept: (suggestion: SkillSuggestionType) => void;
   onDecline: (suggestion: SkillSuggestionType) => void;
+  getSkillInstructionsHtml: () => string;
 }
 
 export function SkillSuggestionCard({
   suggestion,
   onAccept,
   onDecline,
+  getSkillInstructionsHtml,
 }: SkillSuggestionCardProps) {
   const { instructionEdits, toolEdits } = suggestion.suggestion;
 
@@ -140,7 +183,11 @@ export function SkillSuggestionCard({
             Instruction changes
           </span>
           {instructionEdits.map((edit, index) => (
-            <InstructionEditBlock key={index} edit={edit} />
+            <InstructionEditDiffBlock
+              key={index}
+              edit={edit}
+              getSkillInstructionsHtml={getSkillInstructionsHtml}
+            />
           ))}
         </div>
       )}

@@ -15,6 +15,11 @@ import { useFormContext } from "react-hook-form";
 export function SkillBuilderSuggestionsPanel() {
   const { owner, skillId } = useSkillBuilderContext();
   const { getValues, setValue } = useFormContext<SkillBuilderFormData>();
+
+  const getSkillInstructionsHtml = useCallback(
+    () => getValues("instructionsHtml") ?? "",
+    [getValues]
+  );
   const { mcpServerViews } = useMCPServerViewsContext();
 
   const { suggestions, isSuggestionsLoading, mutateSuggestions } =
@@ -135,6 +140,7 @@ export function SkillBuilderSuggestionsPanel() {
                 suggestion={suggestion}
                 onAccept={handleAccept}
                 onDecline={handleDecline}
+                getSkillInstructionsHtml={getSkillInstructionsHtml}
               />
             ))
           )}
