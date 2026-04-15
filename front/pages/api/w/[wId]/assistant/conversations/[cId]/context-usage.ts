@@ -46,13 +46,13 @@ async function handler(
         });
       }
 
-      const run = await conversation.getLatestCompletedAgentMessageRun(auth);
+      const run = await conversation.getLatestAgentMessageRun(auth);
       if (!run) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
             type: "conversation_context_usage_not_found",
-            message: "No completed agent message found in this conversation.",
+            message: "Latest agent message has no run data.",
           },
         });
       }

@@ -2011,11 +2011,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return pendingMessages;
   }
 
-  async getLatestCompletedAgentMessageRun(
+  async getLatestAgentMessageRun(
     auth: Authenticator
   ): Promise<RunResource | null> {
     const owner = auth.getNonNullableWorkspace();
 
+    // Include in-progress ("created") agent messages so that context usage is available even while
+    // the agent is still running (it accumulates runIds step by step).
     const message = await MessageModel.findOne({
       where: {
         conversationId: this.id,
@@ -2027,7 +2029,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           as: "agentMessage",
           required: true,
           where: {
-            status: ["succeeded", "gracefully_stopped"],
+            status: ["succeeded", "gracefully_stopped", "created"],
           },
         },
       ],
