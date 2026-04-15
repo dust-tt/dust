@@ -96,6 +96,10 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
     >,
     transaction?: Transaction
   ): Promise<TakeawaysResource> {
+    if (this.workspaceId !== auth.getNonNullableWorkspace().id) {
+      throw new Error("Workspace mismatch in updateWithVersion.");
+    }
+
     return withTransaction(async (t) => {
       await this.saveVersion(t);
       await this.update(updates, t);

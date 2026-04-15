@@ -107,6 +107,10 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     >,
     transaction?: Transaction
   ): Promise<ProjectTodoResource> {
+    if (this.workspaceId !== auth.getNonNullableWorkspace().id) {
+      throw new Error("Workspace mismatch in updateWithVersion.");
+    }
+
     return withTransaction(async (t) => {
       await this.saveVersion(t);
       await this.update(updates, t);

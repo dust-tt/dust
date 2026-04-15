@@ -152,6 +152,25 @@ describe("ProjectTodoResource", () => {
       expect(v2.sId).toBe(todo.sId);
     });
 
+    it("should throw when called with a different workspace's auth", async () => {
+      const todo = await ProjectTodoResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id, { text: "Original" })
+      );
+
+      const otherSetup = await createResourceTest({ role: "user" });
+
+      await expect(
+        todo.updateWithVersion(otherSetup.authenticator, {
+          text: "Cross-tenant",
+        })
+      ).rejects.toThrow("Workspace mismatch");
+
+      // Confirm the database row is unchanged.
+      const fetched = await ProjectTodoResource.fetchBySId(auth, todo.sId);
+      expect(fetched?.text).toBe("Original");
+    });
+
     it("should support marking a todo as done", async () => {
       const todo = await ProjectTodoResource.makeNew(
         auth,
