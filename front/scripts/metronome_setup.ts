@@ -151,6 +151,8 @@ interface PackageDef {
     frequency: "MONTHLY" | "QUARTERLY" | "ANNUAL" | "WEEKLY";
     day?: "CONTRACT_START" | "FIRST_OF_MONTH";
   };
+  // Consolidate scheduled/commit charges onto the usage invoice instead of separate invoices.
+  scheduled_charges_on_usage_invoices?: "ALL";
 }
 
 // ---------------------------------------------------------------------------
@@ -734,6 +736,7 @@ const PACKAGES: PackageDef[] = [
     name: "Legacy Enterprise USD",
     aliases: [{ name: "legacy-enterprise" }],
     rate_card_name: "Legacy Enterprise MAU USD",
+    scheduled_charges_on_usage_invoices: "ALL",
     ...BILLING_CYCLE_CONFIG,
   },
   // EUR variants
@@ -762,6 +765,7 @@ const PACKAGES: PackageDef[] = [
     name: "Legacy Enterprise EUR",
     aliases: [{ name: "legacy-enterprise-eur" }],
     rate_card_name: "Legacy Enterprise MAU EUR",
+    scheduled_charges_on_usage_invoices: "ALL",
     ...BILLING_CYCLE_CONFIG,
   },
 ];
@@ -1338,6 +1342,7 @@ interface ExistingPackage {
   contract_name?: string;
   aliases?: Array<{ name: string }>;
   rate_card_id?: string;
+  scheduled_charges_on_usage_invoices?: "ALL";
   subscriptions?: Array<{
     collection_schedule: string;
     proration: {
@@ -1414,6 +1419,14 @@ function packageMatches(ex: ExistingPackage, desired: PackageDef): boolean {
     ) {
       return false;
     }
+  }
+
+  // Check scheduled_charges_on_usage_invoices
+  if (
+    (desired.scheduled_charges_on_usage_invoices ?? undefined) !==
+    (ex.scheduled_charges_on_usage_invoices ?? undefined)
+  ) {
+    return false;
   }
 
   return true;
@@ -1532,6 +1545,12 @@ async function syncPackages(): Promise<void> {
             ? { usage_statement_schedule: desired.usage_statement_schedule }
             : {}),
           ...(subscriptions.length > 0 ? { subscriptions } : {}),
+          ...(desired.scheduled_charges_on_usage_invoices
+            ? {
+                scheduled_charges_on_usage_invoices:
+                  desired.scheduled_charges_on_usage_invoices,
+              }
+            : {}),
         } as Parameters<typeof client.v1.packages.create>[0]);
         const id = (created as { data: { id: string } }).data.id;
         console.log(`    → ${id}`);

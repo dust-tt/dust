@@ -298,6 +298,7 @@ export async function createMetronomeContract({
       customer_id: metronomeCustomerId,
       package_alias: packageAlias,
       starting_at: startingAt,
+      scheduled_charges_on_usage_invoices: "ALL",
       ...(uniquenessKey ? { uniqueness_key: uniquenessKey } : {}),
     });
 
