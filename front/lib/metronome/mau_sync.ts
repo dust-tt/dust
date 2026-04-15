@@ -142,10 +142,9 @@ type MauInfo = SimpleMauInfo | TieredMauInfo;
  * - MAU_THRESHOLD custom field controls the threshold (default 1).
  */
 async function getContractMauInfo(
-  metronomeCustomerId: string,
-  contractId: string
+  workspaceId: string
 ): Promise<MauInfo | undefined> {
-  const contract = await getActiveContract(metronomeCustomerId, contractId);
+  const contract = await getActiveContract(workspaceId);
   if (!contract?.subscriptions?.length) {
     return undefined;
   }
@@ -185,7 +184,12 @@ async function getContractMauInfo(
       const subInfo = subscriptionByProductId.get(tierProductIds[i]);
       if (!subInfo) {
         logger.warn(
-          { contractId, tierIndex: i, productId: tierProductIds[i] },
+          {
+            workspaceId,
+            contractId: contract.id,
+            tierIndex: i,
+            productId: tierProductIds[i],
+          },
           "[Metronome] MAU tier subscription not found"
         );
         return undefined;
@@ -237,7 +241,7 @@ export async function syncMauCount({
   workspace: LightWorkspaceType;
   startingAt?: string;
 }): Promise<Result<void, Error>> {
-  const mauInfo = await getContractMauInfo(metronomeCustomerId, contractId);
+  const mauInfo = await getContractMauInfo(workspace.sId);
   if (!mauInfo) {
     logger.warn(
       { workspaceId: workspace.sId, contractId },

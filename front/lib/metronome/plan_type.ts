@@ -1,5 +1,7 @@
 import { getMetronomeClient } from "@app/lib/metronome/client";
 import { getProductAiUsageUserId } from "@app/lib/metronome/constants";
+import { SubscriptionModel } from "@app/lib/models/plan";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { ContractV2 } from "@metronome/sdk/resources";
@@ -9,49 +11,49 @@ import type { ContractV2 } from "@metronome/sdk/resources";
 // Null values are NOT cached: when no contract is found we want a fresh fetch next time.
 
 /**
- * Fetch a Metronome contract.
- * When contractId is provided, fetches that specific contract via retrieve (cached by contractId).
- * Otherwise, lists all contracts and returns the first one (cached by metronomeCustomerId).
- * Returns null (uncached) when no contract exists or when the API call fails.
+ * Fetch the active Metronome contract for a workspace.
+ * Resolves metronomeCustomerId from the workspace table and contractId from
+ * the active subscription. Returns null when either is missing or on failure.
  */
 async function fetchActiveContract(
-  metronomeCustomerId: string,
-  contractId?: string
+  workspaceId: string
 ): Promise<ContractV2 | null> {
   try {
-    const client = getMetronomeClient();
-
-    if (contractId) {
-      const response = await client.v2.contracts.retrieve({
-        customer_id: metronomeCustomerId,
-        contract_id: contractId,
-      });
-
-      logger.info(
-        { metronomeCustomerId, contractId },
-        "[Metronome Contract] Contract fetched by ID"
-      );
-
-      return response.data ?? null;
-    }
-
-    const response = await client.v2.contracts.list({
-      customer_id: metronomeCustomerId,
+    const workspace = await WorkspaceModel.findOne({
+      attributes: ["id", "metronomeCustomerId"],
+      where: { sId: workspaceId },
     });
-
-    if (response.data.length === 0) {
+    if (!workspace?.metronomeCustomerId) {
       return null;
     }
 
+    const subscription = await SubscriptionModel.findOne({
+      attributes: ["metronomeContractId"],
+      where: { workspaceId: workspace.id, status: "active" },
+    });
+    if (!subscription?.metronomeContractId) {
+      return null;
+    }
+
+    const client = getMetronomeClient();
+    const response = await client.v2.contracts.retrieve({
+      customer_id: workspace.metronomeCustomerId,
+      contract_id: subscription.metronomeContractId,
+    });
+
     logger.info(
-      { metronomeCustomerId },
-      "[Metronome Contract] Active contract fetched"
+      {
+        workspaceId,
+        metronomeCustomerId: workspace.metronomeCustomerId,
+        contractId: subscription.metronomeContractId,
+      },
+      "[Metronome Contract] Contract fetched"
     );
 
-    return response.data[0];
+    return response.data ?? null;
   } catch (err) {
     logger.warn(
-      { metronomeCustomerId, contractId, err },
+      { workspaceId, err },
       "[Metronome Contract] Failed to fetch — treating as legacy (fail-open)"
     );
     return null;
@@ -60,21 +62,18 @@ async function fetchActiveContract(
 
 const getCachedActiveContract = cacheWithRedis(
   fetchActiveContract,
-  (metronomeCustomerId, contractId) => contractId ?? metronomeCustomerId,
+  (workspaceId) => workspaceId,
   { cacheNullValues: false }
 );
 
 /**
- * Returns a Metronome contract.
- * When contractId is provided, fetches that specific contract (cached by contractId).
- * Otherwise, returns the first active contract (cached by metronomeCustomerId).
- * Returns null when not found, Redis is unavailable, or the fetch fails.
+ * Returns the active Metronome contract for a workspace.
+ * Cached by workspaceId. Returns null when not found or on failure.
  */
 export async function getActiveContract(
-  metronomeCustomerId: string,
-  contractId?: string
+  workspaceId: string
 ): Promise<ContractV2 | null> {
-  return await getCachedActiveContract(metronomeCustomerId, contractId);
+  return await getCachedActiveContract(workspaceId);
 }
 
 /**
@@ -82,10 +81,8 @@ export async function getActiveContract(
  * Legacy plans are billed by seat and do not enforce AWU credit limits.
  * Fails open (returns true) when the plan cannot be determined.
  */
-export async function isLegacyPlan(
-  metronomeCustomerId: string
-): Promise<boolean> {
-  const contract = await getActiveContract(metronomeCustomerId);
+export async function isLegacyPlan(workspaceId: string): Promise<boolean> {
+  const contract = await getActiveContract(workspaceId);
   if (!contract) {
     return true;
   }
@@ -102,5 +99,5 @@ export async function isLegacyPlan(
  */
 export const invalidateContractCache = invalidateCacheWithRedis(
   fetchActiveContract,
-  (metronomeCustomerId: string) => metronomeCustomerId
+  (workspaceId: string) => workspaceId
 );

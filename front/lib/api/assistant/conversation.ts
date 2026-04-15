@@ -2242,7 +2242,7 @@ async function checkMessagesLimit(
   const owner = auth.getNonNullableWorkspace();
   const featureFlags = await getFeatureFlags(auth);
   if (featureFlags.includes("metronome_billing") && owner.metronomeCustomerId) {
-    const onLegacyPlan = await isLegacyPlan(owner.metronomeCustomerId);
+    const onLegacyPlan = await isLegacyPlan(owner.sId);
     if (!onLegacyPlan) {
       const user = auth.user();
       if (user) {

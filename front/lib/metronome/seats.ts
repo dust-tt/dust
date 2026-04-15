@@ -11,12 +11,11 @@ import type { LightWorkspaceType } from "@app/types/user";
  * Find the seat subscription ID on a contract by matching the Workspace Seat product ID.
  */
 async function getSeatSubscriptionId(
-  metronomeCustomerId: string,
-  contractId: string
+  workspaceId: string
 ): Promise<string | undefined> {
   const seatProductId = getProductWorkspaceSeatId();
 
-  const contract = await getActiveContract(metronomeCustomerId, contractId);
+  const contract = await getActiveContract(workspaceId);
   if (!contract?.subscriptions?.length) {
     return undefined;
   }
@@ -47,10 +46,7 @@ export async function syncSeatCount({
   workspace: LightWorkspaceType;
   startingAt?: string;
 }): Promise<Result<void, Error>> {
-  const subscriptionId = await getSeatSubscriptionId(
-    metronomeCustomerId,
-    contractId
-  );
+  const subscriptionId = await getSeatSubscriptionId(workspace.sId);
   if (!subscriptionId) {
     logger.warn(
       { workspaceId: workspace.sId, contractId },

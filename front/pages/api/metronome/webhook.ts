@@ -134,7 +134,7 @@ async function handler(
             parsed.data.customer_id
           );
           if (workspace) {
-            await invalidateContractCache(parsed.data.customer_id);
+            await invalidateContractCache(workspace.sId);
           }
           logger.info({ event }, "[Metronome Webhook] Contract started");
           break;
