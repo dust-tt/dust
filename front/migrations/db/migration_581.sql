@@ -9,14 +9,16 @@ TRUNCATE "project_todo_takeaway_sources",
     "project_todos",
     "project_todo_sources",
     "takeaway_sources",
-    "takeaways"
+    "takeaways",
+    "project_todo_versions",
+    "takeaway_versions";
 
 -- ── project_todo_versions ──────────────────────────────────
 ALTER TABLE "project_todo_versions"
-    ADD COLUMN IF NOT EXISTS "spaceId" BIGINT NOT NULL,
-    ADD COLUMN IF NOT EXISTS "userId" BIGINT NOT NULL,
-    ADD COLUMN IF NOT EXISTS "createdByType" VARCHAR(255) NOT NULL,
-    ADD COLUMN IF NOT EXISTS "createdByUserId" BIGINT,
+    ADD COLUMN IF NOT EXISTS "spaceId"                       BIGINT       NOT NULL,
+    ADD COLUMN IF NOT EXISTS "userId"                        BIGINT       NOT NULL,
+    ADD COLUMN IF NOT EXISTS "createdByType"                 VARCHAR(255) NOT NULL,
+    ADD COLUMN IF NOT EXISTS "createdByUserId"               BIGINT,
     ADD COLUMN IF NOT EXISTS "createdByAgentConfigurationId" VARCHAR(255);
 
 -- ── takeaway_versions ──────────────────────────────────────
