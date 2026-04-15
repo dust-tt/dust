@@ -129,9 +129,11 @@ export function CreateMCPServerDialog({
     [needsCustomName, internalMCPServer, existingViewNames]
   );
 
-  const predefinedHeaders = internalMCPServer
-    ? getTokenFieldLabel(internalMCPServer.name).predefinedHeaders
+  const tokenLabel = internalMCPServer
+    ? getTokenFieldLabel(internalMCPServer.name)
     : undefined;
+  const predefinedHeaders = tokenLabel?.predefinedHeaders;
+  const showBearerTokenSection = tokenLabel?.showBearerTokenSection ?? true;
 
   const defaultValues = useMemo<CreateMCPServerDialogFormValues>(() => {
     return {
@@ -533,7 +535,7 @@ export function CreateMCPServerDialog({
 
               {internalMCPServer &&
                 requiresBearerTokenConfiguration(internalMCPServer) &&
-                !predefinedHeaders && (
+                showBearerTokenSection && (
                   <InternalBearerTokenSection
                     serverName={internalMCPServer.name}
                   />

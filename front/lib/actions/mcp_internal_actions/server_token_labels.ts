@@ -3,6 +3,7 @@ interface TokenFieldLabel {
   placeholder: string;
   tooltip: string;
   predefinedHeaders?: string[];
+  showBearerTokenSection?: boolean;
 }
 
 const SERVER_TOKEN_LABELS: Record<string, TokenFieldLabel> = {
@@ -24,6 +25,7 @@ const SERVER_TOKEN_LABELS: Record<string, TokenFieldLabel> = {
     tooltip:
       "You can find your credentials in Clari Copilot under Workspace Settings > Integrations > Clari Copilot API.",
     predefinedHeaders: ["X-Api-Key", "X-Api-Password"],
+    showBearerTokenSection: false,
   },
   front: {
     label: "Front API Token",

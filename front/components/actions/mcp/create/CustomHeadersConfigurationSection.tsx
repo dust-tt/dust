@@ -31,12 +31,9 @@ export function CustomHeadersConfigurationSection({
 
   const useCustomHeaders = useCustomHeadersField.value;
 
-  if (predefinedHeaders) {
-    return <MCPServerHeaders />;
-  }
-
   const showToggle =
     !defaultServerConfig &&
+    !predefinedHeaders &&
     (!internalMCPServer || requiresBearerTokenConfiguration(internalMCPServer));
 
   return (
@@ -66,7 +63,9 @@ export function CustomHeadersConfigurationSection({
         </div>
       )}
 
-      {useCustomHeaders && <MCPServerHeaders />}
+      {useCustomHeaders && (
+        <MCPServerHeaders predefinedHeaderKeys={predefinedHeaders} />
+      )}
     </>
   );
 }
