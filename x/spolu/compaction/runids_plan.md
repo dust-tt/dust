@@ -113,7 +113,7 @@ Notes:
 - No index is needed on `runIds`, matching `AgentMessageModel`.
 - Lookup pattern remains: load message row, read `runIds`, resolve runs from `runs.dustRunId`.
 
-### - [ ] 2. Initialize compaction rows with `runIds: null`
+### - [x] 2. Initialize compaction rows with `runIds: null`
 
 File:
 - `front/lib/api/assistant/conversation/messages.ts`
