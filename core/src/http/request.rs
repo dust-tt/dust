@@ -159,11 +159,16 @@ impl HttpRequest {
                 Err(_) => Value::String(response_body),
             },
             body_base64: {
-                let is_text = headers
+                let is_textual = headers
                     .get(reqwest::header::CONTENT_TYPE)
                     .and_then(|v| v.to_str().ok())
-                    .is_some_and(|ct| !ct.starts_with("text/"));
-                (!is_text).then(|| general_purpose::STANDARD.encode(&b))
+                    .is_some_and(|ct| {
+                        ct.starts_with("text/")
+                            || ct.starts_with("application/json")
+                            || ct.starts_with("application/xml")
+                            || ct.starts_with("application/javascript")
+                    });
+                (!is_textual).then(|| general_purpose::STANDARD.encode(&b))
             },
         })
     }
