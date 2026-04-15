@@ -75,7 +75,13 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
 
   const isDebouncing = searchQuery.trim() !== debouncedQuery;
 
-  const filteredAgents = useMemo(
+  // Cap the number of rendered items to avoid slow DOM rendering on large workspaces.
+  // This is a temporary measure until the command palette moves to Sparkle with
+  // proper list virtualization (@tanstack/react-virtual).
+  const MAX_DISPLAYED_AGENTS = 25;
+  const MAX_DISPLAYED_SKILLS = 15;
+
+  const allFilteredAgents = useMemo(
     () =>
       debouncedQuery
         ? filterAndSortAgents(agentConfigurations, debouncedQuery)
@@ -83,13 +89,18 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     [agentConfigurations, debouncedQuery]
   );
 
-  const filteredSkills = useMemo(() => {
+  const allFilteredSkills = useMemo(() => {
     if (!debouncedQuery) {
       return skills;
     }
     const lowerQuery = debouncedQuery.toLowerCase();
     return skills.filter((s) => subFilter(lowerQuery, s.name.toLowerCase()));
   }, [skills, debouncedQuery]);
+
+  const filteredAgents = allFilteredAgents.slice(0, MAX_DISPLAYED_AGENTS);
+  const filteredSkills = allFilteredSkills.slice(0, MAX_DISPLAYED_SKILLS);
+  const hasMoreAgents = allFilteredAgents.length > MAX_DISPLAYED_AGENTS;
+  const hasMoreSkills = allFilteredSkills.length > MAX_DISPLAYED_SKILLS;
 
   const isLoading =
     isAgentConfigurationsLoading || isSkillsLoading || isDebouncing;
@@ -182,6 +193,8 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
               onSearchQueryChange={setSearchQuery}
               agents={filteredAgents}
               skills={filteredSkills}
+              hasMoreAgents={hasMoreAgents}
+              hasMoreSkills={hasMoreSkills}
               isLoading={isLoading}
               selectedIndex={selectedIndex}
               onSelectedIndexChange={setSelectedIndex}
