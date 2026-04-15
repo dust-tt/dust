@@ -120,6 +120,11 @@ export function InlineActivitySteps({
         ? "Completed"
         : null;
 
+  // Writing-only: no prior steps, just streaming text. Show "Writing..."
+  // without the collapse toggle so it doesn't look like a "Thinking" section.
+  const isWritingOnly =
+    isWriting && completedSteps.length === 0 && !showPendingToolCalls;
+
   const toggleCollapse = () => setIsCollapsed((c) => !c);
 
   // Done with no steps: show a static line — no toggle, not clickable.
@@ -190,24 +195,30 @@ export function InlineActivitySteps({
 
   return (
     <div className="flex flex-col text-sm">
-      <button
-        className="self-start text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors duration-200 flex gap-1 items-center"
-        onClick={toggleCollapse}
-      >
-        {headerLabel ?? <AnimatedText>Thinking…</AnimatedText>}
-        <span
-          className={cn(
-            "transition-transform duration-200 ease-out",
-            isCollapsed ? "rotate-0" : "rotate-90"
-          )}
-        >
-          <Icon size="xs" visual={ChevronRightIcon} />
+      {isWritingOnly ? (
+        <span className="self-start text-muted-foreground dark:text-muted-foreground-night flex gap-1 items-center">
+          <AnimatedText>Writing…</AnimatedText>
         </span>
-      </button>
+      ) : (
+        <button
+          className="self-start text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors duration-200 flex gap-1 items-center"
+          onClick={toggleCollapse}
+        >
+          {headerLabel ?? <AnimatedText>Thinking…</AnimatedText>}
+          <span
+            className={cn(
+              "transition-transform duration-200 ease-out",
+              isCollapsed ? "rotate-0" : "rotate-90"
+            )}
+          >
+            <Icon size="xs" visual={ChevronRightIcon} />
+          </span>
+        </button>
+      )}
 
       <div
         className="grid ease-out"
-        style={getCollapseAnimationStyle(isCollapsed)}
+        style={getCollapseAnimationStyle(isWritingOnly ? false : isCollapsed)}
       >
         <div className="overflow-hidden">
           <div className="mt-3 flex flex-col gap-3">
