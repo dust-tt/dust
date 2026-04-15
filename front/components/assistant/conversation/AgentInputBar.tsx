@@ -28,6 +28,7 @@ import {
   Button,
   ContentMessageAction,
   ContentMessageInline,
+  EmptyCTA,
   IconButton,
   InformationCircleIcon,
   StopIcon,
@@ -328,6 +329,17 @@ export const AgentInputBar = ({
     );
     void mutateConversation();
   };
+
+  if (context.projectId && context.isProjectArchived) {
+    return (
+      <div className="mx-auto flex flex-col w-full py-4 sm:max-w-conversation">
+        <EmptyCTA
+          message="This conversation belongs to an archived project. No new messages can be sent."
+          action={null}
+        />
+      </div>
+    );
+  }
 
   return (
     <div

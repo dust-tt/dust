@@ -23,6 +23,7 @@ import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Button,
   cn,
+  EmptyCTA,
   ListGroup,
   ListItemSection,
   LoadingBlock,
@@ -144,7 +145,14 @@ export function SpaceConversationsTab({
                 Start a first conversation!
               </h3>
             )}
-            {spaceInfo.isMember ? (
+            {spaceInfo.archivedAt ? (
+              <div className="mx-auto flex flex-col w-full py-4 sm:max-w-conversation">
+                <EmptyCTA
+                  message="This project is archived. You can view past conversations, but you cannot start new ones."
+                  action={null}
+                />
+              </div>
+            ) : spaceInfo.isMember ? (
               <InputBar
                 owner={owner}
                 user={user}

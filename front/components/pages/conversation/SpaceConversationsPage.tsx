@@ -327,20 +327,16 @@ export function SpaceConversationsPage() {
       >
         <div className="flex items-start justify-between border-b border-separator pl-14 pr-6 lg:px-6 dark:border-separator-night">
           <TabsList border={false}>
-            {!spaceInfo.archivedAt && (
-              <>
-                <TabsTrigger
-                  value="conversations"
-                  label="Conversations"
-                  icon={ChatBubbleLeftRightIcon}
-                />
-                <TabsTrigger
-                  value="knowledge"
-                  label="Knowledge"
-                  icon={BookOpenIcon}
-                />
-              </>
-            )}
+            <TabsTrigger
+              value="conversations"
+              label="Conversations"
+              icon={ChatBubbleLeftRightIcon}
+            />
+            <TabsTrigger
+              value="knowledge"
+              label="Knowledge"
+              icon={BookOpenIcon}
+            />
             {hasFeature("project_todo") && (
               <TabsTrigger value="todo" label="Todo" icon={ListCheckIcon} />
             )}

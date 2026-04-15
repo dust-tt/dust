@@ -303,6 +303,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               message={data}
               owner={context.owner}
               onReactionToggle={(emoji: string) => onReactionToggle({ emoji })}
+              isProjectArchived={context.isProjectArchived}
             />
           )}
           {isAgentMessageWithStreaming(data) && (
@@ -323,6 +324,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 context.additionalMarkdownComponents
               }
               additionalMarkdownPlugins={context.additionalMarkdownPlugins}
+              isProjectArchived={context.isProjectArchived}
             />
           )}
           {data.visibility !== "deleted" &&

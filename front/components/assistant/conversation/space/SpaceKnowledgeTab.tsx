@@ -22,7 +22,7 @@ import {
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { getSupportedFileExtensions } from "@app/types/files";
-import type { SpaceType } from "@app/types/space";
+import type { ProjectType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -51,7 +51,7 @@ import { InputBarAttachmentsPicker } from "../input_bar/InputBarAttachmentsPicke
 
 interface SpaceKnowledgeTabProps {
   owner: WorkspaceType;
-  space: SpaceType;
+  space: ProjectType;
 }
 
 type MenuItem = {
@@ -103,6 +103,12 @@ function compareKnowledgeRowsByKindThenTitle(
 }
 
 export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
+  const isArchived = !!space.archivedAt;
+
+  if (isArchived) {
+    return <SpaceKnowledgeTabContent owner={owner} space={space} />;
+  }
+
   return (
     <FileDropProvider>
       <DropzoneContainer
@@ -130,6 +136,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     projectId?: string | null;
   } | null>(null);
   const [showPreviewSheet, setShowPreviewSheet] = useState(false);
+  const isArchived = !!space.archivedAt;
   const confirm = useContext(ConfirmContext);
 
   const { spaces } = useSpaces({
@@ -371,22 +378,26 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
           );
         },
       },
-      {
-        id: "actions",
-        header: "",
-        meta: {
-          className: "w-12",
-        },
-        cell: (info: CellContext<ProjectKnowledgeRow, unknown>) => {
-          const items = info.row.original.menuItems;
-          if (items.length === 0) {
-            return null;
-          }
-          return <DataTable.MoreButton menuItems={items} />;
-        },
-      },
+      ...(!isArchived
+        ? [
+            {
+              id: "actions",
+              header: "",
+              meta: {
+                className: "w-12",
+              },
+              cell: (info: CellContext<ProjectKnowledgeRow, unknown>) => {
+                const items = info.row.original.menuItems;
+                if (items.length === 0) {
+                  return null;
+                }
+                return <DataTable.MoreButton menuItems={items} />;
+              },
+            },
+          ]
+        : []),
     ],
-    []
+    [isArchived]
   );
 
   const handleRenameClick = (item: ContextAttachmentItem) => {
@@ -512,26 +523,32 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
         onOpenChange={setShowPreviewSheet}
       />
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept={getSupportedFileExtensions().join(",")}
-        multiple
-        style={{ display: "none" }}
-        onChange={handleFileChange}
-      />
+      {!isArchived && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={getSupportedFileExtensions().join(",")}
+          multiple
+          style={{ display: "none" }}
+          onChange={handleFileChange}
+        />
+      )}
 
       <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 py-8">
           <div className="flex gap-2">
             <h3 className="heading-2xl flex-1 items-center">Knowledge</h3>
-            {hasFiles && attachButton}
+            {hasFiles && !isArchived && attachButton}
           </div>
 
           {!hasFiles ? (
             <EmptyCTA
-              message="No knowledge added to this project yet."
-              action={attachButton}
+              message={
+                isArchived
+                  ? "This project is archived. No knowledge has been added."
+                  : "No knowledge added to this project yet."
+              }
+              action={isArchived ? null : attachButton}
             />
           ) : (
             <>

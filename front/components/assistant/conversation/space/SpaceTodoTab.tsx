@@ -12,7 +12,11 @@ export function SpaceTodoTab({ owner, spaceInfo }: SpaceTodoTabProps) {
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 py-8">
-        <ProjectTodosPanel owner={owner} spaceId={spaceInfo.sId} />
+        <ProjectTodosPanel
+          owner={owner}
+          spaceId={spaceInfo.sId}
+          isArchived={!!spaceInfo.archivedAt}
+        />
       </div>
     </div>
   );
