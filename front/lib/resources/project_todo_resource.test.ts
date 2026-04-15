@@ -1,9 +1,11 @@
 import { Authenticator } from "@app/lib/auth";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import type { ProjectTodoModel } from "@app/lib/resources/storage/models/project_todo";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { CreationAttributes } from "sequelize";
 import { beforeEach, describe, expect, it } from "vitest";
 
 // Minimal creation blob — all nullable fields set explicitly so TypeScript is
@@ -12,19 +14,19 @@ function makeTodoBlob(
   spaceId: number,
   userId: number,
   overrides: { text?: string } = {}
-) {
+): Omit<CreationAttributes<ProjectTodoModel>, "workspaceId"> {
   return {
     spaceId,
     userId,
-    createdByType: "user" as const,
+    createdByType: "user",
     createdByUserId: userId,
     createdByAgentConfigurationId: null,
     markedAsDoneByType: null,
     markedAsDoneByUserId: null,
     markedAsDoneByAgentConfigurationId: null,
-    category: "follow_ups" as const,
+    category: "follow_ups",
     text: overrides.text ?? "Test todo",
-    status: "todo" as const,
+    status: "todo",
     doneAt: null,
     actorRationale: null,
   };

@@ -12,10 +12,46 @@ import type {
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-// ── Shared mutable-state attributes ─────────────────────────────────────────
-// Used by both the main table and the version snapshot table.
+// ── Shared attributes ───────────────────────────────────────────────────────
+// Used by both the main table and the version snapshot table so that
+// ProjectTodoVersionModel can extend ProjectTodoModel without duplicating
+// column definitions (same pattern as SkillVersionModel).
 
-const PROJECT_TODO_MUTABLE_ATTRIBUTES = {
+const PROJECT_TODO_MODEL_ATTRIBUTES = {
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  spaceId: {
+    type: DataTypes.BIGINT,
+    allowNull: false,
+  },
+  userId: {
+    type: DataTypes.BIGINT,
+    allowNull: false,
+    comment: "Owner of the todo — a todo is always assigned to a user.",
+  },
+  createdByUserId: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+    comment: "Set when createdByType is user.",
+  },
+  createdByType: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    comment: "Actor type that created this todo: user or agent.",
+  },
+  createdByAgentConfigurationId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: "sId of the agent configuration when createdByType is agent.",
+  },
   markedAsDoneByType: {
     type: DataTypes.STRING,
     allowNull: true,
@@ -94,41 +130,7 @@ export class ProjectTodoModel extends WorkspaceAwareModel<ProjectTodoModel> {
 
 ProjectTodoModel.init(
   {
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    spaceId: {
-      type: DataTypes.BIGINT,
-      allowNull: false,
-    },
-    userId: {
-      type: DataTypes.BIGINT,
-      allowNull: false,
-      comment: "Owner of the todo — a todo is always assigned to a user.",
-    },
-    createdByUserId: {
-      type: DataTypes.BIGINT,
-      allowNull: true,
-      comment: "Set when createdByType is user.",
-    },
-    createdByType: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      comment: "Actor type that created this todo: user or agent.",
-    },
-    createdByAgentConfigurationId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      comment: "sId of the agent configuration when createdByType is agent.",
-    },
-    ...PROJECT_TODO_MUTABLE_ATTRIBUTES,
+    ...PROJECT_TODO_MODEL_ATTRIBUTES,
   },
   {
     modelName: "project_todo",
@@ -206,36 +208,14 @@ ProjectTodoModel.init(
 // main row, preserving the full history. The `projectTodoId` FK is the stable
 // reference back to the logical todo's identity.
 
-export class ProjectTodoVersionModel extends WorkspaceAwareModel<ProjectTodoVersionModel> {
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-
+export class ProjectTodoVersionModel extends ProjectTodoModel {
   declare projectTodoId: ForeignKey<ProjectTodoModel["id"]>;
   declare version: number;
-
-  // Snapshot of mutable state at the time of this version.
-  declare markedAsDoneByType: ProjectTodoActorType | null;
-  declare markedAsDoneByUserId: ForeignKey<UserModel["id"]> | null;
-  declare markedAsDoneByAgentConfigurationId: string | null;
-  declare category: ProjectTodoCategory;
-  declare text: string;
-  declare status: ProjectTodoStatus;
-  declare doneAt: Date | null;
-  declare actorRationale: string | null;
 }
 
 ProjectTodoVersionModel.init(
   {
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
+    ...PROJECT_TODO_MODEL_ATTRIBUTES,
     projectTodoId: {
       type: DataTypes.BIGINT,
       allowNull: false,
@@ -245,7 +225,6 @@ ProjectTodoVersionModel.init(
       allowNull: false,
       comment: "Monotonically increasing per projectTodoId.",
     },
-    ...PROJECT_TODO_MUTABLE_ATTRIBUTES,
   },
   {
     modelName: "project_todo_version",

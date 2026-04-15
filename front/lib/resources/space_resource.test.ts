@@ -1593,11 +1593,13 @@ const KNOWN_SPACE_RELATED_MODELS = [
   "data_source_view",
   "group_vaults",
   "mcp_server_view",
-  "project_todo",
   "project_metadata",
-  "webhook_sources_view",
+  "project_todo",
   "project_todo_state",
+  "project_todo_version",
   "takeaways",
+  "takeaways_version",
+  "webhook_sources_view",
 ];
 
 describe("SpaceResource cleanup on delete", () => {
