@@ -13,3 +13,11 @@ export class AgentMessageCompletedEvent extends CustomEvent<void> {
     super(AGENT_MESSAGE_COMPLETED_EVENT);
   }
 }
+
+export const COMPACTION_COMPLETED_EVENT = "compaction-completed";
+
+export class CompactionCompletedEvent extends CustomEvent<void> {
+  constructor() {
+    super(COMPACTION_COMPLETED_EVENT);
+  }
+}

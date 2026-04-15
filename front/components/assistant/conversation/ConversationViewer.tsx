@@ -44,7 +44,10 @@ import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types"
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
 import type { DustError } from "@app/lib/error";
-import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
+import {
+  AgentMessageCompletedEvent,
+  CompactionCompletedEvent,
+} from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import logger from "@app/logger/logger";
 import {
@@ -604,6 +607,7 @@ export const ConversationViewer = ({
                   : m
               );
             }
+            window.dispatchEvent(new CompactionCompletedEvent());
             break;
           default:
             ((t: never) => {

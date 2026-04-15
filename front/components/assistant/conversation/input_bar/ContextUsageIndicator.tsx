@@ -1,4 +1,9 @@
 import {
+  useCompactConversation,
+  useConversationContextUsage,
+} from "@app/hooks/conversations";
+import type { LightWorkspaceType } from "@app/types/user";
+import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -6,9 +11,9 @@ import {
 } from "@dust-tt/sparkle";
 
 interface ContextUsageIndicatorProps {
-  contextUsage: number;
-  contextSize: number;
   buttonSize: "xs" | "sm";
+  owner: LightWorkspaceType;
+  conversationId?: string | null;
 }
 
 interface CircleProgressProps {
@@ -17,7 +22,7 @@ interface CircleProgressProps {
 }
 
 function CircleProgress({ percentage, size = 16 }: CircleProgressProps) {
-  const strokeWidth = size * 0.12;
+  const strokeWidth = size * 0.14;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const clampedPct = Math.min(100, Math.max(0, percentage));
@@ -52,12 +57,24 @@ function CircleProgress({ percentage, size = 16 }: CircleProgressProps) {
 }
 
 export function ContextUsageIndicator({
-  contextUsage,
-  contextSize,
   buttonSize,
+  owner,
+  conversationId,
 }: ContextUsageIndicatorProps) {
+  const { contextUsage } = useConversationContextUsage({
+    conversationId,
+    workspaceId: owner.sId,
+  });
+
+  const { compact, isCompacting } = useCompactConversation({
+    owner,
+    conversationId,
+  });
+
   const percentage =
-    contextSize > 0 ? Math.round((contextUsage / contextSize) * 100) : 0;
+    contextUsage && contextUsage.contextSize > 0
+      ? Math.round((contextUsage.contextUsage / contextUsage.contextSize) * 100)
+      : 0;
 
   return (
     <div className="hidden md:block">
@@ -83,7 +100,13 @@ export function ContextUsageIndicator({
               variant="outline"
               size="xs"
               label="Compact now"
-              disabled={true}
+              onClick={() => {
+                if (contextUsage?.model) {
+                  void compact(contextUsage.model);
+                }
+              }}
+              disabled={isCompacting || !contextUsage?.model}
+              isLoading={isCompacting}
             />
           </div>
         </DropdownMenuContent>
