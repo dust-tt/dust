@@ -1,4 +1,5 @@
 import type { CursorPaginationParams } from "@app/lib/api/pagination";
+import { createUseInfiniteContentNodes } from "@app/lib/swr/data_source_views";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   DataSourceViewWithUsage,
@@ -120,3 +121,9 @@ export function usePokeDataSourceViewContentNodes({
     nextPageCursor: data?.nextPageCursor || null,
   };
 }
+
+export const usePokeInfiniteDataSourceViewContentNodes =
+  createUseInfiniteContentNodes(
+    ({ owner, dataSourceView }, searchParams) =>
+      `/api/poke/workspaces/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${searchParams}`
+  );
