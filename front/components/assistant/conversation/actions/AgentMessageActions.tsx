@@ -87,7 +87,9 @@ export function AgentMessageActions({
     : null;
 
   const showMessageBreakdownButton =
-    lastAgentStateClassification === "done" || agentMessage.status === "failed";
+    lastAgentStateClassification === "done" ||
+    agentMessage.status === "failed" ||
+    agentMessage.status === "cancelled";
   const showPendingToolCalls =
     lastAgentStateClassification !== "acting" && pendingToolCalls.length > 0;
   const latestPendingToolCall = showPendingToolCalls

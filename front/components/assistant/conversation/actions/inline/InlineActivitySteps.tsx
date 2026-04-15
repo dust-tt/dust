@@ -89,7 +89,9 @@ export function InlineActivitySteps({
   const { openPanel } = useConversationSidePanelContext();
 
   const isDone =
-    lastAgentStateClassification === "done" || agentMessage.status === "failed";
+    lastAgentStateClassification === "done" ||
+    agentMessage.status === "failed" ||
+    agentMessage.status === "cancelled";
 
   const [isCollapsed, setIsCollapsed] = useState(isDone && !isLastMessage);
 
@@ -108,7 +110,7 @@ export function InlineActivitySteps({
   const isThinking = lastAgentStateClassification === "thinking";
   const isWriting = lastAgentStateClassification === "writing";
   const isActing = lastAgentStateClassification === "acting";
-  const showPendingToolCalls = pendingToolCalls.length > 0;
+  const showPendingToolCalls = !isDone && pendingToolCalls.length > 0;
 
   const headerLabel =
     agentMessage.completionDurationMs !== null
@@ -138,8 +140,8 @@ export function InlineActivitySteps({
 
   // Show active thinking whenever the agent is thinking.
   // Dedup in appendThinkingStep handles duplicate content at capture time.
-  const showActiveThinking = isThinking;
-  const showActiveWriting = isWriting;
+  const showActiveThinking = !isDone && isThinking;
+  const showActiveWriting = !isDone && isWriting;
   const latestPendingToolCall = showPendingToolCalls
     ? pendingToolCalls[pendingToolCalls.length - 1]
     : null;
@@ -147,7 +149,9 @@ export function InlineActivitySteps({
     (showActiveThinking && !chainOfThought) ||
     (showActiveWriting && !agentMessage.content);
   const activeAction =
-    isActing && isAgentMessageWithActions ? actions[actions.length - 1] : null;
+    !isDone && isActing && isAgentMessageWithActions
+      ? actions[actions.length - 1]
+      : null;
 
   const hasContent =
     completedSteps.length > 0 ||
