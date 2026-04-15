@@ -47,9 +47,10 @@ vi.mock("@app/lib/api/assistant/observability/context_origin", async () => ({
 }));
 
 vi.mock("@app/lib/api/analytics/agents_export", async () => ({
-  AGENT_EXPORT_HEADERS: ["name", "messages"],
+  AGENT_EXPORT_HEADERS: ["agentId", "name", "messages"],
   fetchAgentExportRows: vi.fn(
-    async () => new Ok([{ name: "TestAgent", messages: 5 }])
+    async () =>
+      new Ok([{ agentId: "agent-123", name: "TestAgent", messages: 5 }])
   ),
 }));
 
@@ -236,7 +237,7 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const csv = res._getData();
-    expect(csv).toContain("name,messages");
+    expect(csv).toContain("agentId,name,messages");
   });
 
   it("returns CSV for users table", async () => {
