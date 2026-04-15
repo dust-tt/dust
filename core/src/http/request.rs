@@ -162,8 +162,7 @@ impl HttpRequest {
                 let is_text = headers
                     .get(reqwest::header::CONTENT_TYPE)
                     .and_then(|v| v.to_str().ok())
-                    .map(|ct| ct.starts_with("text/"))
-                    .unwrap_or(false);
+                    .is_some_and(|ct| ct.starts_with("text/"));
                 (!is_text).then(|| general_purpose::STANDARD.encode(&b))
             },
         })
