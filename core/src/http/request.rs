@@ -164,11 +164,7 @@ impl HttpRequest {
                     .and_then(|v| v.to_str().ok())
                     .map(|ct| ct.starts_with("text/"))
                     .unwrap_or(false);
-                if is_text {
-                    None
-                } else {
-                    Some(general_purpose::STANDARD.encode(&b))
-                }
+                (!is_text).then(|| general_purpose::STANDARD.encode(&b))
             },
         })
     }
