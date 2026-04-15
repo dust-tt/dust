@@ -7,6 +7,7 @@ import type { ProjectType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
+  Chip,
   Icon,
   LoadingBlock,
   MoreIcon,
@@ -58,7 +59,12 @@ function ProjectBrowseItem({ space, onClick }: ProjectBrowseItemProps) {
         className="mt-0.5 shrink-0"
       />
       <div className="min-w-0 flex-1">
-        <div className="truncate font-medium">{space.name}</div>
+        <div className="flex flex-row items-center justify-between gap-1.5">
+          <div className="truncate font-medium">{space.name}</div>
+          {space.archivedAt && (
+            <Chip size="mini" color="primary" label="Archived" />
+          )}
+        </div>
         {space.description && (
           <Tooltip
             label={space.description}
@@ -89,7 +95,9 @@ export function ProjectsBrowsePopover({ owner }: ProjectsBrowsePopoverProps) {
     });
 
   const filteredProjects = useMemo(() => {
-    return projects.filter(({ isMember }) => !isMember);
+    return projects.filter(
+      ({ isMember, archivedAt }) => (!isMember && !archivedAt) || archivedAt
+    );
   }, [projects]);
 
   return (
