@@ -2577,13 +2577,19 @@ export async function compactConversation(
       (m): m is CompactionMessageType =>
         isCompactionMessageType(m) && m.status === "created"
     );
-  if (runningAgentMessage || runningCompaction) {
+  const lastConversationMessage = conversation.content.at(-1)?.at(-1);
+
+  if (
+    runningAgentMessage ||
+    runningCompaction ||
+    (lastConversationMessage && isCompactionMessageType(lastConversationMessage))
+  ) {
     return new Err({
       status_code: 409,
       api_error: {
         type: "invalid_request_error",
         message:
-          "Cannot compact while another compaction or an agent message is running.",
+          "Cannot compact while another compaction or an agent message is running, or when the last message is already a compaction message.",
       },
     });
   }
