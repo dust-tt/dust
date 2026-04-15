@@ -6,6 +6,7 @@ import type {
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
 import { isAgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
+import { useConversationContextUsage } from "@app/hooks/conversations";
 import { useEventSource } from "@app/hooks/useEventSource";
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import {
@@ -293,6 +294,10 @@ export function useAgentMessageStream({
   streamId,
 }: UseAgentMessageStreamParams) {
   const sId = agentMessage.sId;
+  const { mutateContextUsage } = useConversationContextUsage({
+    conversationId,
+    workspaceId: owner.sId,
+  });
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
     VirtuosoMessageListContext
@@ -479,6 +484,7 @@ export function useAgentMessageStream({
             };
           });
 
+          void mutateContextUsage();
           break;
 
         case "tool_params":
