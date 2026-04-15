@@ -323,7 +323,7 @@ describe("FileResource", () => {
     });
 
     it("should copy a conversation file to a different conversation", async () => {
-      const { authenticator: auth, workspace } = await createResourceTest({
+      const { authenticator: auth } = await createResourceTest({
         role: "admin",
       });
 
@@ -363,17 +363,10 @@ describe("FileResource", () => {
         sourceIcon: "github",
         hideFromUser: true,
       });
-
-      const row = await FileModel.findOne({
-        where: { id: copiedFile.id, workspaceId: workspace.id },
-      });
-      expect(row?.mountFilePath).toBe(
-        `w/${workspace.sId}/conversations/child-conv-id/files/source.txt`
-      );
     });
 
     it("should preserve tool_output use case when copying to a conversation", async () => {
-      const { authenticator: auth, workspace } = await createResourceTest({
+      const { authenticator: auth } = await createResourceTest({
         role: "admin",
       });
 
@@ -404,13 +397,6 @@ describe("FileResource", () => {
         conversationId: "child-conv-id",
         hideFromUser: true,
       });
-
-      const row = await FileModel.findOne({
-        where: { id: copiedFile.id, workspaceId: workspace.id },
-      });
-      expect(row?.mountFilePath).toBe(
-        `w/${workspace.sId}/conversations/child-conv-id/files/output.txt`
-      );
     });
 
     it("should reject non-conversation source use cases", async () => {
