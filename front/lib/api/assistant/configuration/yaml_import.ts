@@ -96,6 +96,7 @@ async function importAgentConfiguration(
   const missingTags = tagNames.filter(
     (name) => !resolvedTags.some((t) => t.name === name)
   );
+
   if (missingTags.length > 0) {
     return new Err({
       status_code: 400,
