@@ -100,7 +100,7 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "The message to post, using standard Markdown formatting. Do NOT use Slack-specific markup — the system converts Markdown to Slack format automatically. " +
+          "The message to post, using standard Markdown formatting. Do NOT use Slack-specific markup. " +
             "To mention a user, use <@user_id> (use the user's id field, not name). " +
             "To mention a user group, use <!subteam^user_group_id> (use the user group's id field, not handle)."
         ),
@@ -134,7 +134,7 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "The message to post, using standard Markdown formatting. Do NOT use Slack-specific markup — the system converts Markdown to Slack format automatically. " +
+          "The message to post, using standard Markdown formatting. Do NOT use Slack-specific markup. " +
             "To mention a user, use <@user_id> (use the user's id field, not name). " +
             "To mention a user group, use <!subteam^user_group_id> (use the user group's id field, not handle)."
         ),

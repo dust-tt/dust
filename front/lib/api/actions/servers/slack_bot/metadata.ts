@@ -17,7 +17,7 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "The message to post, using standard Markdown formatting. Do NOT use Slack-specific markup — the system converts Markdown to Slack format automatically."
+          "The message to post, using standard Markdown formatting. Do NOT use Slack-specific markup."
         ),
       threadTs: z
         .string()
