@@ -404,6 +404,60 @@ describe("createConversationFork", () => {
     expect(childSkills[0].sId).toBe(enabledSkill.sId);
   });
 
+  it("does not copy archived conversation skills into the child conversation", async () => {
+    const { auth, globalSpace } = await createPrivateApiMockRequest();
+
+    const parentConversation = await createConversation(auth, {
+      title: "Parent conversation",
+      visibility: "unlisted",
+      spaceId: globalSpace.id,
+    });
+
+    const enabledSkill = await SkillFactory.create(auth, {
+      name: "Enabled skill",
+    });
+    const archivedSkill = await SkillFactory.create(auth, {
+      name: "Archived skill",
+      status: "archived",
+    });
+
+    const upsertResult = await SkillResource.upsertConversationSkills(auth, {
+      conversationId: parentConversation.id,
+      skills: [enabledSkill, archivedSkill],
+      enabled: true,
+    });
+    expect(upsertResult.isOk()).toBe(true);
+
+    const userMessage = await createUserMessage(auth, {
+      conversation: parentConversation,
+      rank: 0,
+      content: "Continue with readable skills only.",
+    });
+    const sourceMessage = await createAgentMessage(auth, {
+      conversation: parentConversation,
+      rank: 1,
+      parentId: userMessage.id,
+      status: "succeeded",
+    });
+
+    const result = await createConversationFork(auth, {
+      conversationId: parentConversation.sId,
+      sourceMessageId: sourceMessage.sId,
+    });
+
+    expect(result.isErr()).toBe(false);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    const childSkills = await SkillResource.listEnabledByConversation(auth, {
+      conversation: result.value,
+    });
+
+    expect(childSkills).toHaveLength(1);
+    expect(childSkills[0].sId).toBe(enabledSkill.sId);
+  });
+
   it("inherits the parent's requested spaces so the fork does not broaden visibility", async () => {
     const {
       auth: initialAuth,

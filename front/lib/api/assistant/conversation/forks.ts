@@ -122,23 +122,11 @@ async function copyConversationSkills(
     transaction: Transaction;
   }
 ): Promise<Result<undefined, DustError<CreateConversationForkErrorCode>>> {
-  const parentSkills = await SkillResource.listEnabledByConversation(auth, {
-    conversation: parentConversation,
+  const upsertResult = await SkillResource.copyEnabledConversationSkills(auth, {
+    parentConversation,
+    childConversationId: childConversation.id,
+    transaction,
   });
-
-  if (parentSkills.length === 0) {
-    return new Ok(undefined);
-  }
-
-  const upsertResult = await SkillResource.upsertConversationSkills(
-    auth,
-    {
-      conversationId: childConversation.id,
-      skills: parentSkills,
-      enabled: true,
-    },
-    { transaction }
-  );
 
   if (upsertResult.isErr()) {
     return new Err(

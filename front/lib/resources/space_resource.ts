@@ -460,7 +460,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   static async fetchByModelIds(
     auth: Authenticator,
     ids: ModelId[],
-    { includeDeleted }: { includeDeleted?: boolean } = {}
+    {
+      includeDeleted,
+      transaction,
+    }: { includeDeleted?: boolean; transaction?: Transaction } = {}
   ) {
     if (ids.length === 0) {
       return [];
@@ -473,7 +476,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         },
       },
       includeDeleted,
-    });
+    }, transaction);
 
     return spaces ?? [];
   }

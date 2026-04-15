@@ -1176,6 +1176,193 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
+  private static async listEnabledConversationSkillReferences(
+    auth: Authenticator,
+    {
+      conversation,
+      transaction,
+    }: {
+      conversation: ConversationWithoutContentType;
+      transaction: Transaction;
+    }
+  ): Promise<
+    {
+      customSkillId: ModelId | null;
+      globalSkillId: GlobalSkillId | null;
+    }[]
+  > {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const conversationSkills = await ConversationSkillModel.findAll({
+      attributes: ["customSkillId", "globalSkillId"],
+      where: {
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        agentConfigurationId: null,
+      },
+      transaction,
+    });
+
+    if (conversationSkills.length === 0) {
+      return [];
+    }
+
+    const customSkillIds = uniq(
+      removeNulls(conversationSkills.map((skill) => skill.customSkillId))
+    );
+    const allowedCustomSkillIds = new Set<ModelId>();
+
+    if (customSkillIds.length > 0) {
+      const customSkills = await this.model.findAll({
+        attributes: ["id", "requestedSpaceIds"],
+        where: {
+          id: {
+            [Op.in]: customSkillIds,
+          },
+          status: "active",
+          workspaceId: workspace.id,
+        },
+        transaction,
+      });
+
+      const uniqueRequestedSpaceIds = uniq(
+        customSkills.flatMap((skill) => skill.requestedSpaceIds)
+      );
+      const spaces =
+        uniqueRequestedSpaceIds.length > 0
+          ? await SpaceResource.fetchByModelIds(auth, uniqueRequestedSpaceIds, {
+              transaction,
+            })
+          : [];
+      const foundSpaceIds = new Set(spaces.map((space) => space.id));
+      const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
+
+      for (const skill of customSkills) {
+        if (!skill.requestedSpaceIds.every((id) => foundSpaceIds.has(id))) {
+          continue;
+        }
+
+        if (
+          !auth.canRead(
+            createResourcePermissionsFromSpacesWithMap(
+              spaceIdToGroupsMap,
+              skill.requestedSpaceIds
+            )
+          )
+        ) {
+          continue;
+        }
+
+        allowedCustomSkillIds.add(skill.id);
+      }
+    }
+
+    const globalSkillIds = uniq(
+      removeNulls(conversationSkills.map((skill) => skill.globalSkillId))
+    );
+    const allowedGlobalSkillIds = new Set<GlobalSkillId>();
+
+    if (globalSkillIds.length > 0) {
+      const globalSkills = await GlobalSkillsRegistry.findAll(auth, {
+        sId: globalSkillIds,
+      });
+
+      for (const skill of globalSkills) {
+        allowedGlobalSkillIds.add(skill.sId as GlobalSkillId);
+      }
+    }
+
+    const seenReferences = new Set<string>();
+    const validatedReferences: {
+      customSkillId: ModelId | null;
+      globalSkillId: GlobalSkillId | null;
+    }[] = [];
+
+    for (const skill of conversationSkills) {
+      if (skill.customSkillId !== null) {
+        if (!allowedCustomSkillIds.has(skill.customSkillId)) {
+          continue;
+        }
+
+        const key = `custom:${skill.customSkillId}`;
+        if (seenReferences.has(key)) {
+          continue;
+        }
+
+        seenReferences.add(key);
+        validatedReferences.push({
+          customSkillId: skill.customSkillId,
+          globalSkillId: null,
+        });
+        continue;
+      }
+
+      if (skill.globalSkillId !== null) {
+        if (!allowedGlobalSkillIds.has(skill.globalSkillId)) {
+          continue;
+        }
+
+        const key = `global:${skill.globalSkillId}`;
+        if (seenReferences.has(key)) {
+          continue;
+        }
+
+        seenReferences.add(key);
+        validatedReferences.push({
+          customSkillId: null,
+          globalSkillId: skill.globalSkillId,
+        });
+      }
+    }
+
+    return validatedReferences;
+  }
+
+  static async copyEnabledConversationSkills(
+    auth: Authenticator,
+    {
+      parentConversation,
+      childConversationId,
+      transaction,
+    }: {
+      parentConversation: ConversationWithoutContentType;
+      childConversationId: ModelId;
+      transaction: Transaction;
+    }
+  ): Promise<Result<undefined, Error>> {
+    const workspace = auth.getNonNullableWorkspace();
+    const user = auth.getNonNullableUser();
+
+    const parentSkillReferences =
+      await this.listEnabledConversationSkillReferences(auth, {
+        conversation: parentConversation,
+        transaction,
+      });
+
+    if (parentSkillReferences.length === 0) {
+      return new Ok(undefined);
+    }
+
+    // Copy only validated skill references so the fork stays on the current
+    // transaction without hydrating every linked skill and its related records.
+    await ConversationSkillModel.bulkCreate(
+      parentSkillReferences.map(
+        (reference) =>
+          ({
+            ...reference,
+            workspaceId: workspace.id,
+            conversationId: childConversationId,
+            addedByUserId: user.id,
+            source: "conversation",
+            agentConfigurationId: null,
+          }) satisfies ConversationSkillCreationAttributes
+      ),
+      { transaction }
+    );
+
+    return new Ok(undefined);
+  }
+
   /**
    * List skills for the agent loop, returning both (extended) enabled skills and equipped skills.
    */
