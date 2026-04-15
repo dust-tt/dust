@@ -1,16 +1,20 @@
 import {
-  launchAllReinforcedSkillsWorkspaceCrons,
+  ensureReinforcementWorkspaceCrons,
+  launchEnsureReinforcementCronsWorkflow,
   launchReinforcementWorkspaceCron,
   startReinforcementWorkspaceWorkflow,
-  stopAllReinforcedSkillsWorkspaceCrons,
+  stopAllReinforcementWorkspaceCrons,
+  stopEnsureReinforcementCronsWorkflow,
   stopReinforcementWorkspaceCron,
 } from "@app/temporal/reinforcement/client";
 import parseArgs from "minimist";
 
 function usage() {
   console.error(`Usage:
-  start                                                                          Start cron workflows for all flagged workspaces
-  stop                                                                           Stop cron workflows for all flagged workspaces
+  start                                                                          Ensure all workspace crons match feature flags (start missing, stop extra)
+  stop                                                                           Stop all running workspace cron workflows
+  start-ensure                                                                   Start the daily ensure-crons workflow (11pm local)
+  stop-ensure                                                                    Stop the daily ensure-crons workflow
   start-workspace --workspace-id <sId>                                          Start the cron workflow for a specific workspace
   stop-workspace --workspace-id <sId>                                           Stop the cron workflow for a specific workspace
   run-workspace --workspace-id <sId> [--batch] [--skill-id <sId>] [--days <n>] Run once for a specific workspace
@@ -28,10 +32,16 @@ const main = async () => {
 
   switch (command) {
     case "start":
-      await launchAllReinforcedSkillsWorkspaceCrons();
+      await ensureReinforcementWorkspaceCrons();
       return;
     case "stop":
-      await stopAllReinforcedSkillsWorkspaceCrons();
+      await stopAllReinforcementWorkspaceCrons();
+      return;
+    case "start-ensure":
+      await launchEnsureReinforcementCronsWorkflow();
+      return;
+    case "stop-ensure":
+      await stopEnsureReinforcementCronsWorkflow();
       return;
     case "start-workspace": {
       const workspaceId = argv["workspace-id"];
