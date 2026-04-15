@@ -14,11 +14,16 @@ import {
   getProductMauTierIds,
   MAX_MAU_TIERS,
 } from "@app/lib/metronome/constants";
-import { syncMauCount } from "@app/lib/metronome/mau_sync";
+import {
+  computeTierQuantity,
+  parseMauTiers,
+  syncMauCount,
+} from "@app/lib/metronome/mau_sync";
 import { syncSeatCount } from "@app/lib/metronome/seats";
 import { LEGACY_ENTERPRISE_PACKAGE_ALIAS } from "@app/lib/metronome/types";
 import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
 import { getStripeClient } from "@app/lib/plans/stripe";
+import { countActiveUsersForPeriodInWorkspace } from "@app/lib/plans/usage/mau";
 import {
   isEnterpriseReportUsage,
   type SupportedEnterpriseReportUsage,
@@ -196,6 +201,34 @@ export interface EnterprisePricingCents {
   tiers: StripeTierCents[];
   /** Monthly floor amount in cents (flat_amount on first tier, or unit_amount for FIXED). */
   floorCents: number;
+}
+
+/** Extract the MAU threshold number from a billing mode (MAU_1→1, MAU_5→5, MAU_10→10). */
+function billingModeToMauThreshold(
+  billingMode: SupportedEnterpriseReportUsage
+): number {
+  switch (billingMode) {
+    case "MAU_5":
+      return 5;
+    case "MAU_10":
+      return 10;
+    default:
+      return 1;
+  }
+}
+
+/** Count MAUs for a workspace using the given billing mode's threshold. */
+export async function countMauForWorkspace(
+  workspace: LightWorkspaceType,
+  billingMode: SupportedEnterpriseReportUsage
+): Promise<number> {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const count = await countActiveUsersForPeriodInWorkspace({
+    messagesPerMonthForMau: billingModeToMauThreshold(billingMode),
+    since: thirtyDaysAgo,
+    workspace,
+  });
+  return Math.max(count, 1);
 }
 
 /**
@@ -432,9 +465,11 @@ function deriveTierPrices(
 export function buildEnterpriseOverrides({
   pricing,
   startDate,
+  initialMauCount,
 }: {
   pricing: EnterprisePricingCents;
   startDate: string;
+  initialMauCount: number;
 }): EnterpriseOverridesPayload {
   const creditTypeId = CURRENCY_TO_CREDIT_TYPE_ID[pricing.currency];
   if (!creditTypeId) {
@@ -475,12 +510,7 @@ export function buildEnterpriseOverrides({
 
   const tierPrices = deriveTierPrices(pricing.tiers, pricing.currency);
   const tierProductIds = getProductMauTierIds();
-  const mauThreshold =
-    pricing.billingMode === "MAU_5"
-      ? "5"
-      : pricing.billingMode === "MAU_10"
-        ? "10"
-        : "1";
+  const mauThreshold = String(billingModeToMauThreshold(pricing.billingMode));
 
   // If all tiers have the same effective price, use the simple MAU product
   // instead of tier products. The floor (if any) is still handled by a commit.
@@ -550,9 +580,9 @@ export function buildEnterpriseOverrides({
             product_id: getProductMauId(),
           },
           quantity_management_mode: "QUANTITY_ONLY" as const,
-          initial_quantity: 0,
+          initial_quantity: initialMauCount,
           proration: {
-            is_prorated: true,
+            is_prorated: false,
             invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE" as const,
           },
         },
@@ -628,8 +658,15 @@ export function buildEnterpriseOverrides({
       : undefined;
 
   // Add subscriptions for each enabled tier (so syncMauCount can set quantities).
+  // Distribute initialMauCount across tiers for the first invoice.
+  const mauTiersField = buildMauTiersField(pricing.tiers);
+  const tierBoundaries = parseMauTiers(mauTiersField) ?? [];
   const addSubscriptions: SubscriptionEntry[] = [];
   for (let i = 0; i < pricing.tiers.length; i++) {
+    const tierQuantity = tierBoundaries[i]
+      ? computeTierQuantity(initialMauCount, tierBoundaries[i])
+      : 0;
+
     addSubscriptions.push({
       collection_schedule: "ADVANCE" as const,
       subscription_rate: {
@@ -637,16 +674,13 @@ export function buildEnterpriseOverrides({
         product_id: tierProductIds[i],
       },
       quantity_management_mode: "QUANTITY_ONLY" as const,
-      initial_quantity: 0,
+      initial_quantity: tierQuantity,
       proration: {
-        is_prorated: true,
+        is_prorated: false,
         invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE" as const,
       },
     });
   }
-
-  // Build custom fields for syncMauCount.
-  const mauTiersField = buildMauTiersField(pricing.tiers);
 
   return {
     overrides,
@@ -670,6 +704,7 @@ export async function applyEnterpriseOverrides({
   startDate,
   overrideLogger,
   workspaceId,
+  initialMauCount,
 }: {
   metronomeCustomerId: string;
   contractId: string;
@@ -677,8 +712,13 @@ export async function applyEnterpriseOverrides({
   startDate: string;
   overrideLogger: Logger;
   workspaceId: string;
+  initialMauCount: number;
 }): Promise<void> {
-  const payload = buildEnterpriseOverrides({ pricing, startDate });
+  const payload = buildEnterpriseOverrides({
+    pricing,
+    startDate,
+    initialMauCount,
+  });
 
   overrideLogger.info(
     { workspaceId, contractId, ...payload },
@@ -687,15 +727,52 @@ export async function applyEnterpriseOverrides({
 
   const client = getMetronomeClient();
 
+  // Check existing contract state to avoid adding duplicate subscriptions/commits on re-runs.
+  let subscriptionsToAdd = payload.add_subscriptions;
+  let commitsToAdd = payload.recurring_commits;
+
+  if (
+    (subscriptionsToAdd && subscriptionsToAdd.length > 0) ||
+    (commitsToAdd && commitsToAdd.length > 0)
+  ) {
+    const contractResponse = await client.v2.contracts.retrieve({
+      customer_id: metronomeCustomerId,
+      contract_id: contractId,
+    });
+    const contractData = contractResponse.data;
+
+    // Filter out subscriptions that already exist.
+    if (subscriptionsToAdd && subscriptionsToAdd.length > 0) {
+      const existingSubProductIds = new Set(
+        (contractData.subscriptions ?? []).map(
+          (s) => s.subscription_rate.product.id
+        )
+      );
+      subscriptionsToAdd = subscriptionsToAdd.filter(
+        (s) => !existingSubProductIds.has(s.subscription_rate.product_id)
+      );
+    }
+
+    // Filter out recurring commits whose product already has one.
+    if (commitsToAdd && commitsToAdd.length > 0) {
+      const existingCommitProductIds = new Set(
+        (contractData.recurring_commits ?? []).map((c) => c.product.id)
+      );
+      commitsToAdd = commitsToAdd.filter(
+        (c) => !existingCommitProductIds.has(c.product_id)
+      );
+    }
+  }
+
   await client.v2.contracts.edit({
     customer_id: metronomeCustomerId,
     contract_id: contractId,
     add_overrides: payload.overrides,
-    ...(payload.add_subscriptions
-      ? { add_subscriptions: payload.add_subscriptions }
+    ...(subscriptionsToAdd && subscriptionsToAdd.length > 0
+      ? { add_subscriptions: subscriptionsToAdd }
       : {}),
-    ...(payload.recurring_commits
-      ? { add_recurring_commits: payload.recurring_commits }
+    ...(commitsToAdd && commitsToAdd.length > 0
+      ? { add_recurring_commits: commitsToAdd }
       : {}),
   });
 
@@ -777,6 +854,12 @@ export async function provisionEnterpriseMetronomeContract({
     stripeSubscription.current_period_start
   );
 
+  // Count MAUs for initial subscription quantities on the first invoice.
+  const initialMauCount = await countMauForWorkspace(
+    workspace,
+    enterprisePricing.billingMode
+  );
+
   // Apply MAU rate overrides + floor commit.
   await applyEnterpriseOverrides({
     metronomeCustomerId,
@@ -785,6 +868,7 @@ export async function provisionEnterpriseMetronomeContract({
     startDate,
     overrideLogger: logger,
     workspaceId: workspace.sId,
+    initialMauCount,
   });
 
   return new Ok({ metronomeCustomerId, metronomeContractId });

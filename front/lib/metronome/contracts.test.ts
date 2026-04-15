@@ -292,7 +292,11 @@ describe("buildEnterpriseOverrides", () => {
       floorCents: 500000,
     };
 
-    const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
+    const result = buildEnterpriseOverrides({
+      pricing,
+      startDate: START_DATE,
+      initialMauCount: 0,
+    });
 
     // 1 MAU + 6 tier products = 7 disabled.
     expect(result.overrides).toHaveLength(7);
@@ -315,7 +319,11 @@ describe("buildEnterpriseOverrides", () => {
       floorCents: 450000,
     };
 
-    const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
+    const result = buildEnterpriseOverrides({
+      pricing,
+      startDate: START_DATE,
+      initialMauCount: 0,
+    });
 
     // Simple mode: MAU product enabled.
     const mauOverride = findOverride(result.overrides, "mau-product");
@@ -354,7 +362,11 @@ describe("buildEnterpriseOverrides", () => {
       floorCents: 0,
     };
 
-    const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
+    const result = buildEnterpriseOverrides({
+      pricing,
+      startDate: START_DATE,
+      initialMauCount: 0,
+    });
 
     const tier1 = findOverride(result.overrides, "tier1-product");
     expect(tier1?.overwrite_rate.price).toBe(0);
@@ -377,7 +389,11 @@ describe("buildEnterpriseOverrides", () => {
       floorCents: 0,
     };
 
-    const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
+    const result = buildEnterpriseOverrides({
+      pricing,
+      startDate: START_DATE,
+      initialMauCount: 0,
+    });
 
     const tier1 = findOverride(result.overrides, "tier1-product");
     expect(tier1?.overwrite_rate.price).toBe(4000);
@@ -403,7 +419,11 @@ describe("buildEnterpriseOverrides", () => {
       floorCents: 315000,
     };
 
-    const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
+    const result = buildEnterpriseOverrides({
+      pricing,
+      startDate: START_DATE,
+      initialMauCount: 0,
+    });
 
     // 5 tier products enabled with correct prices.
     const enabledTiers = result.overrides.filter((o) => o.entitled);
@@ -433,7 +453,11 @@ describe("buildEnterpriseOverrides", () => {
       floorCents: 0,
     };
 
-    const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
+    const result = buildEnterpriseOverrides({
+      pricing,
+      startDate: START_DATE,
+      initialMauCount: 0,
+    });
 
     // Single tier → simple mode: MAU product enabled.
     const mauOverride = findOverride(result.overrides, "mau-product");
@@ -461,7 +485,11 @@ describe("buildEnterpriseOverrides", () => {
       floorCents: 225000,
     };
 
-    const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
+    const result = buildEnterpriseOverrides({
+      pricing,
+      startDate: START_DATE,
+      initialMauCount: 0,
+    });
 
     // Simple mode: MAU product enabled (same price across tiers).
     expect(findOverride(result.overrides, "mau-product")?.entitled).toBe(true);
@@ -486,7 +514,11 @@ describe("buildEnterpriseOverrides", () => {
       floorCents: 120000,
     };
 
-    const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
+    const result = buildEnterpriseOverrides({
+      pricing,
+      startDate: START_DATE,
+      initialMauCount: 0,
+    });
 
     // Simple mode: MAU product with EUR credit type and price in euros.
     const mauOverride = findOverride(result.overrides, "mau-product");
@@ -512,7 +544,11 @@ describe("buildEnterpriseOverrides", () => {
       floorCents: 325000,
     };
 
-    const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
+    const result = buildEnterpriseOverrides({
+      pricing,
+      startDate: START_DATE,
+      initialMauCount: 0,
+    });
 
     const tier1 = findOverride(result.overrides, "tier1-product");
     expect(tier1?.overwrite_rate.price).toBe(3250); // 325000 / 100
