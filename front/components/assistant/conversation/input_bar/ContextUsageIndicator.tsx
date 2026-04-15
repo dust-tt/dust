@@ -73,9 +73,7 @@ export function ContextUsageIndicator({
 
   const percentage =
     contextUsage && contextUsage.contextSize > 0
-      ? Math.round(
-          (contextUsage.contextUsage / contextUsage.contextSize) * 100
-        )
+      ? Math.round((contextUsage.contextUsage / contextUsage.contextSize) * 100)
       : 0;
 
   return (
