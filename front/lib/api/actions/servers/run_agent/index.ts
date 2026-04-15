@@ -214,7 +214,7 @@ const runAgent = async (
   );
 
   if (convRes.isErr()) {
-    return finalizeAndReturn(new Err(convRes.error));
+    return finalizeAndReturn(convRes);
   }
 
   if (isHandoff) {
