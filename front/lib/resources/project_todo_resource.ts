@@ -17,6 +17,7 @@ import type {
 } from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Ok, type Result } from "@app/types/shared/result";
+import type { WhereOptions } from "sequelize";
 import {
   type Attributes,
   type CreationAttributes,
@@ -24,6 +25,12 @@ import {
   Op,
   type Transaction,
 } from "sequelize";
+
+type ProjectTodoVersionCreationAttributes =
+  CreationAttributes<ProjectTodoModel> & {
+    projectTodoId: ModelId;
+    version: number;
+  };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -102,51 +109,45 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
   ): Promise<ProjectTodoResource> {
     return withTransaction(async (t) => {
       await this.saveVersion(t);
+      await this.update(updates, t);
 
-      const [, [updated]] = await ProjectTodoModel.update(
-        { ...updates },
-        {
-          where: {
-            id: this.id,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          },
-          returning: true,
-          transaction: t,
-        }
-      );
-
-      return new ProjectTodoResource(ProjectTodoModel, updated.get());
+      return this;
     }, transaction);
   }
 
   // Saves the current mutable state as a version snapshot. Called before every
   // in-place update of the main row.
   private async saveVersion(transaction?: Transaction): Promise<void> {
+    const where: WhereOptions<ProjectTodoVersionModel> = {
+      workspaceId: this.workspaceId,
+      projectTodoId: this.id,
+    };
+
     const existingCount = await ProjectTodoVersionModel.count({
-      where: {
-        workspaceId: this.workspaceId,
-        projectTodoId: this.id,
-      },
+      where,
       transaction,
     });
 
-    await ProjectTodoVersionModel.create(
-      {
-        workspaceId: this.workspaceId,
-        projectTodoId: this.id,
-        version: existingCount + 1,
-        category: this.category,
-        text: this.text,
-        status: this.status,
-        doneAt: this.doneAt ?? null,
-        actorRationale: this.actorRationale ?? null,
-        markedAsDoneByType: this.markedAsDoneByType ?? null,
-        markedAsDoneByUserId: this.markedAsDoneByUserId ?? null,
-        markedAsDoneByAgentConfigurationId:
-          this.markedAsDoneByAgentConfigurationId ?? null,
-      },
-      { transaction }
-    );
+    const versionData: ProjectTodoVersionCreationAttributes = {
+      workspaceId: this.workspaceId,
+      projectTodoId: this.id,
+      version: existingCount + 1,
+      spaceId: this.spaceId,
+      userId: this.userId,
+      createdByType: this.createdByType,
+      createdByUserId: this.createdByUserId ?? null,
+      createdByAgentConfigurationId: this.createdByAgentConfigurationId ?? null,
+      category: this.category,
+      text: this.text,
+      status: this.status,
+      doneAt: this.doneAt ?? null,
+      actorRationale: this.actorRationale ?? null,
+      markedAsDoneByType: this.markedAsDoneByType ?? null,
+      markedAsDoneByUserId: this.markedAsDoneByUserId ?? null,
+      markedAsDoneByAgentConfigurationId:
+        this.markedAsDoneByAgentConfigurationId ?? null,
+    };
+    await ProjectTodoVersionModel.create(versionData, { transaction });
   }
 
   // ── Fetching ─────────────────────────────────────────────────────────────────
@@ -393,10 +394,11 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       transaction,
     });
 
-    await ProjectTodoVersionModel.destroy({
-      where: { workspaceId, projectTodoId: this.id },
-      transaction,
-    });
+    const versionWhere: WhereOptions<ProjectTodoVersionModel> = {
+      workspaceId,
+      projectTodoId: this.id,
+    };
+    await ProjectTodoVersionModel.destroy({ where: versionWhere, transaction });
 
     await this.model.destroy({
       where: { workspaceId, id: this.id },

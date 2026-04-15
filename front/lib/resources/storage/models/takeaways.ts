@@ -10,10 +10,27 @@ import type {
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
-// ── Shared content attributes ─────────────────────────────────────────────────
-// Used by both the main takeaway row and its version snapshots.
+// ── Shared attributes ────────────────────────────────────────────────────────
+// Used by both the main table and the version snapshot table so that
+// TakeawaysVersionModel can extend TakeawaysModel without duplicating
+// column definitions (same pattern as SkillVersionModel).
 
-const TAKEAWAY_CONTENT_ATTRIBUTES = {
+const TAKEAWAY_MODEL_ATTRIBUTES = {
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  spaceId: {
+    type: DataTypes.BIGINT,
+    allowNull: false,
+    comment: "The space (project) this takeaway belongs to.",
+  },
   actionItems: {
     type: DataTypes.JSONB,
     allowNull: false,
@@ -55,23 +72,7 @@ export class TakeawaysModel extends WorkspaceAwareModel<TakeawaysModel> {
 
 TakeawaysModel.init(
   {
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    spaceId: {
-      type: DataTypes.BIGINT,
-      allowNull: false,
-      references: { model: "vaults", key: "id" },
-      comment: "The space (project) this takeaway belongs to.",
-    },
-    ...TAKEAWAY_CONTENT_ATTRIBUTES,
+    ...TAKEAWAY_MODEL_ATTRIBUTES,
   },
   {
     modelName: "takeaways",
@@ -96,33 +97,16 @@ TakeawaysModel.belongsTo(SpaceModel, {
 // Each butler run appends a new row here before overwriting the main row,
 // preserving the full history. `takeawaysId` is the FK back to the stable
 // TakeawaysModel row.
-export class TakeawaysVersionModel extends WorkspaceAwareModel<TakeawaysVersionModel> {
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-
+export class TakeawaysVersionModel extends TakeawaysModel {
   declare takeawaysId: ForeignKey<TakeawaysModel["id"]>;
 
   // Monotonically increasing per takeawaysId, starting at 1.
   declare version: number;
-
-  // Full content snapshot at the time this version was created.
-  declare actionItems: TodoVersionedActionItem[];
-  declare notableFacts: TodoVersionedNotableFact[];
-  declare keyDecisions: TodoVersionedKeyDecision[];
 }
 
 TakeawaysVersionModel.init(
   {
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
+    ...TAKEAWAY_MODEL_ATTRIBUTES,
     takeawaysId: {
       type: DataTypes.BIGINT,
       allowNull: false,
@@ -133,7 +117,6 @@ TakeawaysVersionModel.init(
       comment:
         "Monotonically increasing per takeawaysId. Each butler run inserts a new row rather than overwriting.",
     },
-    ...TAKEAWAY_CONTENT_ATTRIBUTES,
   },
   {
     modelName: "takeaways_version",

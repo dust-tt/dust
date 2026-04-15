@@ -22,8 +22,14 @@ import type {
   CreationAttributes,
   ModelStatic,
   Transaction,
+  WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
+
+type TakeawaysVersionCreationAttributes = CreationAttributes<TakeawaysModel> & {
+  takeawaysId: ModelId;
+  version: number;
+};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -92,45 +98,35 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
   ): Promise<TakeawaysResource> {
     return withTransaction(async (t) => {
       await this.saveVersion(t);
+      await this.update(updates, t);
 
-      const [, [updated]] = await TakeawaysModel.update(
-        { ...updates },
-        {
-          where: {
-            id: this.id,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          },
-          returning: true,
-          transaction: t,
-        }
-      );
-
-      return new TakeawaysResource(TakeawaysModel, updated.get());
+      return this;
     }, transaction);
   }
 
   // Appends a snapshot of the current content to the version table.
   // Called before every in-place update of the main row.
   private async saveVersion(transaction?: Transaction): Promise<void> {
+    const where: WhereOptions<TakeawaysVersionModel> = {
+      workspaceId: this.workspaceId,
+      takeawaysId: this.id,
+    };
+
     const existingCount = await TakeawaysVersionModel.count({
-      where: {
-        workspaceId: this.workspaceId,
-        takeawaysId: this.id,
-      },
+      where,
       transaction,
     });
 
-    await TakeawaysVersionModel.create(
-      {
-        workspaceId: this.workspaceId,
-        takeawaysId: this.id,
-        version: existingCount + 1,
-        actionItems: this.actionItems,
-        notableFacts: this.notableFacts,
-        keyDecisions: this.keyDecisions,
-      },
-      { transaction }
-    );
+    const versionData: TakeawaysVersionCreationAttributes = {
+      workspaceId: this.workspaceId,
+      takeawaysId: this.id,
+      version: existingCount + 1,
+      spaceId: this.spaceId,
+      actionItems: this.actionItems,
+      notableFacts: this.notableFacts,
+      keyDecisions: this.keyDecisions,
+    };
+    await TakeawaysVersionModel.create(versionData, { transaction });
   }
 
   // ── Fetching ─────────────────────────────────────────────────────────────────
@@ -191,9 +187,11 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
         where: { workspaceId, takeawaysId: { [Op.in]: takeawayIds } },
       });
 
-      await TakeawaysVersionModel.destroy({
-        where: { workspaceId, takeawaysId: { [Op.in]: takeawayIds } },
-      });
+      const versionWhere: WhereOptions<TakeawaysVersionModel> = {
+        workspaceId,
+        takeawaysId: { [Op.in]: takeawayIds },
+      };
+      await TakeawaysVersionModel.destroy({ where: versionWhere });
     }
 
     await TakeawaysModel.destroy({
@@ -252,10 +250,11 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
       transaction,
     });
 
-    await TakeawaysVersionModel.destroy({
-      where: { workspaceId, takeawaysId: this.id },
-      transaction,
-    });
+    const versionWhere: WhereOptions<TakeawaysVersionModel> = {
+      workspaceId,
+      takeawaysId: this.id,
+    };
+    await TakeawaysVersionModel.destroy({ where: versionWhere, transaction });
 
     await this.model.destroy({
       where: { workspaceId, id: this.id },
