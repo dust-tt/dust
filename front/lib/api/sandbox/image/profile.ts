@@ -23,3 +23,38 @@ export function wrapCommand(
   const escapedCmd = cmd.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   return `source ${PROFILE_DIR}/${profile} && shell "${escapedCmd}" ${timeoutSec}`;
 }
+
+export function wrapCommandWithCapture(
+  cmd: string,
+  execId: string,
+  providerId: ModelProviderIdType,
+  opts?: WrapCommandOptions
+): string {
+  const baseCommand = wrapCommand(cmd, providerId, opts);
+  const outFile = `/tmp/dust_exec_${execId}.out`;
+  const exitFile = `/tmp/dust_exec_${execId}.exit`;
+
+  return [
+    `exec > >(tee ${outFile}) 2>&1`,
+    baseCommand,
+    `_EXIT=$?`,
+    `echo $_EXIT > ${exitFile}`,
+    `exit $_EXIT`,
+  ].join("\n");
+}
+
+export function buildWaitAndCollectCommand(execId: string): string {
+  const pidFile = `/tmp/dust_wac_${execId}.pid`;
+  const outFile = `/tmp/dust_exec_${execId}.out`;
+  const exitFile = `/tmp/dust_exec_${execId}.exit`;
+
+  return [
+    `if [ -f ${pidFile} ]; then`,
+    `  kill $(cat ${pidFile}) 2>/dev/null`,
+    `fi`,
+    `echo $$ > ${pidFile}`,
+    `while [ ! -f ${exitFile} ]; do sleep 0.5; done`,
+    `cat ${outFile}`,
+    `exit $(cat ${exitFile})`,
+  ].join("\n");
+}
