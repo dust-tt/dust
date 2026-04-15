@@ -28,6 +28,7 @@ import {
   cn,
   Icon,
   ToolsIcon,
+  XCircleIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -117,7 +118,9 @@ export function InlineActivitySteps({
           agentMessage.completionDurationMs
         )
       : isDone
-        ? "Completed"
+        ? agentMessage.status === "cancelled"
+          ? "Cancelled"
+          : "Completed"
         : null;
 
   // Writing-only: no prior steps, just streaming text. Show "Writing..."
@@ -349,9 +352,16 @@ export function InlineActivitySteps({
             {isDone &&
               completedSteps.length > 0 &&
               agentMessage.status !== "gracefully_stopped" && (
-                <TimelineRow icon={CheckIcon} isLast>
+                <TimelineRow
+                  icon={
+                    agentMessage.status === "cancelled"
+                      ? XCircleIcon
+                      : CheckIcon
+                  }
+                  isLast
+                >
                   <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Done
+                    {agentMessage.status === "cancelled" ? "Cancelled" : "Done"}
                   </span>
                 </TimelineRow>
               )}
