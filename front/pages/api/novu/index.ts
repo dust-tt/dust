@@ -3,7 +3,6 @@ import { agentMessageFeedbackWorkflow } from "@app/lib/notifications/workflows/a
 import { agentSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/agent-suggestions-ready";
 import { conversationUnreadWorkflow } from "@app/lib/notifications/workflows/conversation-unread";
 import { projectAddedAsMemberWorkflow } from "@app/lib/notifications/workflows/project-added-as-member";
-import { projectNewConversationWorkflow } from "@app/lib/notifications/workflows/project-new-conversation";
 import { providerCredentialsHealthUpdatedWorkflow } from "@app/lib/notifications/workflows/provider-credential-updated";
 import { skillSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/skill-suggestions-ready";
 import { serve } from "@novu/framework/next";
@@ -20,7 +19,6 @@ export default serve({
     agentSuggestionsReadyWorkflow,
     skillSuggestionsReadyWorkflow,
     projectAddedAsMemberWorkflow,
-    projectNewConversationWorkflow,
     providerCredentialsHealthUpdatedWorkflow,
   ],
 });

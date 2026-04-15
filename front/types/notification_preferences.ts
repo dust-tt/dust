@@ -72,6 +72,9 @@ export const NOTIFICATION_CONDITION_OPTIONS = [
 export type NotificationCondition =
   (typeof NOTIFICATION_CONDITION_OPTIONS)[number];
 
+export const DEFAULT_NOTIFICATION_CONDITION: NotificationCondition =
+  "all_messages";
+
 const PROJECT_NEW_CONVERSATION_NOTIFICATION_CONDITION_OPTIONS = [
   "all_projects",
   "never",

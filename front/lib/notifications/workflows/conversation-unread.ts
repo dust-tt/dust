@@ -22,6 +22,7 @@ import {
 } from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/conversations-unread";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -30,6 +31,7 @@ import {
   ConversationError,
   isCompactionMessageType,
   isLightAgentMessageType,
+  isProjectConversation,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import { isRichUserMention } from "@app/types/assistant/mentions";
@@ -38,6 +40,7 @@ import type { NotificationCondition } from "@app/types/notification_preferences"
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
   CONVERSATION_UNREAD_TRIGGER_ID,
+  DEFAULT_NOTIFICATION_CONDITION,
   isNotificationCondition,
   NOTIFICATION_DELAY_OPTIONS,
   NOTIFICATION_PREFERENCES_DELAYS,
@@ -47,21 +50,23 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { stripMarkdown } from "@app/types/shared/utils/string_utils";
+import { pluralize, stripMarkdown } from "@app/types/shared/utils/string_utils";
 import type { UserType } from "@app/types/user";
 import { workflow } from "@novu/framework";
 import assert from "assert";
-import uniqBy from "lodash/uniqBy";
 import { Op } from "sequelize";
 import z from "zod";
 
+// When isNewProjectConversation is true, messageId is not required (the first
+// message is resolved from conversation content). Otherwise messageId is required.
 const ConversationUnreadPayloadSchema = z.object({
   workspaceId: z.string(),
   conversationId: z.string(),
-  messageId: z.string(),
+  messageId: z.string().optional(),
+  isNewProjectConversation: z.boolean().optional(),
 });
 
-type ConversationUnreadPayloadType = z.infer<
+export type ConversationUnreadPayloadType = z.infer<
   typeof ConversationUnreadPayloadSchema
 >;
 
@@ -120,9 +125,12 @@ const ConversationDetailsSchema = z.object({
   hasConversationRetentionPolicy: z.boolean(),
   hasAgentRetentionPolicies: z.boolean(),
   newMessageContent: z.string().nullable(),
+  // Fields for new project conversation notifications.
+  isNewProjectConversation: z.boolean().optional(),
+  projectName: z.string().optional(),
 });
 
-type ConversationDetailsType = z.infer<typeof ConversationDetailsSchema>;
+export type ConversationDetailsType = z.infer<typeof ConversationDetailsSchema>;
 
 // Wrapper for workflow step that may fail when conversation is deleted.
 const ConversationDetailsResultSchema = z.discriminatedUnion("success", [
@@ -147,6 +155,12 @@ const getConversationDetails = async ({
   | { auth: Authenticator; subscriberId?: never }
   | { auth?: never; subscriberId: string }
 )): Promise<Result<ConversationDetailsType, ConversationError>> => {
+  if (!payload.isNewProjectConversation && !payload.messageId) {
+    throw new Error(
+      "messageId is required when isNewProjectConversation is false"
+    );
+  }
+
   // Get or create auth from the discriminated union.
   let auth: Authenticator;
   if (providedAuth) {
@@ -168,6 +182,7 @@ const getConversationDetails = async ({
         hasConversationRetentionPolicy: false,
         hasAgentRetentionPolicies: false,
         newMessageContent: null,
+        isNewProjectConversation: false,
       });
     }
     auth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -202,9 +217,10 @@ const getConversationDetails = async ({
   const isFromTrigger = !!conversation.triggerId;
 
   // Retrieve the message that triggered the notification.
-  const message = conversation.content
-    .flat()
-    .find((msg) => msg.sId === payload.messageId);
+  // For new project conversations, use the first message
+  const message = !payload.isNewProjectConversation
+    ? conversation.content.find((msg) => msg.sId === payload.messageId)
+    : conversation.content[0];
   if (!message) {
     // Message doesn't exist at all - could be true if it's in a branch.
     return new Err(new ConversationError("message_not_found"));
@@ -259,9 +275,9 @@ const getConversationDetails = async ({
     assertNever(message);
   }
 
-  const unreadMessages = conversation.content
-    .flat()
-    .filter((msg) => isMessageUnread(msg, conversation.lastReadMs));
+  const unreadMessages = conversation.content.filter((msg) =>
+    isMessageUnread(msg, conversation.lastReadMs)
+  );
 
   const hasUnreadMessages = unreadMessages.length > 0;
 
@@ -278,13 +294,24 @@ const getConversationDetails = async ({
   const hasConversationRetentionPolicy = conversationsRetention !== null;
 
   const agentsRetention = await getAgentsDataRetention(auth);
-  const hasAgentRetentionPolicies = conversation.content.flat().some((msg) => {
+  const hasAgentRetentionPolicies = conversation.content.some((msg) => {
     if (msg.type !== "agent_message") {
       return false;
     }
 
     return msg.configuration.sId in agentsRetention;
   });
+
+  // Fetch project-specific details when this is a new project conversation notification.
+  let projectName: string | undefined;
+  const isNewProjectConversation = !!payload.isNewProjectConversation;
+
+  if (isNewProjectConversation && isProjectConversation(conversation)) {
+    const project = await SpaceResource.fetchById(auth, conversation.spaceId);
+    if (project) {
+      projectName = project.name;
+    }
+  }
 
   return new Ok({
     subject,
@@ -300,7 +327,118 @@ const getConversationDetails = async ({
     hasConversationRetentionPolicy,
     hasAgentRetentionPolicies,
     newMessageContent: messageContent,
+    isNewProjectConversation,
+    projectName,
   });
+};
+
+const shouldSkipUnreadConversation = async ({
+  subscriberId,
+  payload,
+  triggerShouldSkip,
+  hasUnreadMessages,
+}: {
+  subscriberId: string;
+  payload: ConversationUnreadPayloadType;
+  triggerShouldSkip: boolean;
+  hasUnreadMessages: boolean;
+}): Promise<boolean> => {
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    subscriberId,
+    payload.workspaceId
+  );
+
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    payload.conversationId
+  );
+
+  if (!conversation) {
+    return true;
+  }
+
+  if (triggerShouldSkip && conversation.triggerSId) {
+    return true;
+  }
+
+  const { actionRequired, lastReadAt } =
+    await ConversationResource.getActionRequiredAndLastReadAtForUser(
+      auth,
+      conversation.id
+    );
+
+  const unread =
+    (lastReadAt === null || conversation.updatedAt > lastReadAt) &&
+    hasUnreadMessages;
+
+  if (!actionRequired && !unread) {
+    return true;
+  }
+
+  return false;
+};
+
+export const shouldSkipNewProjectConversation = async ({
+  subscriberId,
+  payload,
+}: {
+  subscriberId: string;
+  payload: ConversationUnreadPayloadType;
+}): Promise<boolean> => {
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    subscriberId,
+    payload.workspaceId
+  );
+
+  const conversationResource = await ConversationResource.fetchById(
+    auth,
+    payload.conversationId
+  );
+
+  if (!conversationResource) {
+    return true;
+  }
+
+  const { lastReadAt } =
+    await ConversationResource.getActionRequiredAndLastReadAtForUser(
+      auth,
+      conversationResource.id
+    );
+
+  const hasBeenOpened = !!lastReadAt;
+
+  if (hasBeenOpened) {
+    return true;
+  }
+
+  const conversationParticipants =
+    await conversationResource.listParticipants(auth);
+
+  const isConversationParticipant = conversationParticipants.some(
+    (participant) => participant.sId === subscriberId
+  );
+
+  if (isConversationParticipant) {
+    return true;
+  }
+
+  const conversation = conversationResource.toJSON();
+
+  if (!isProjectConversation(conversation)) {
+    return true;
+  }
+
+  const project = await SpaceResource.fetchById(auth, conversation.spaceId);
+
+  if (!project) {
+    return true;
+  }
+
+  if (!project.isMember(auth)) {
+    return true;
+  }
+
+  return false;
 };
 
 export const shouldSkipConversation = async ({
@@ -314,41 +452,20 @@ export const shouldSkipConversation = async ({
   triggerShouldSkip: boolean;
   hasUnreadMessages: boolean;
 }): Promise<boolean> => {
-  if (subscriberId) {
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      subscriberId,
-      payload.workspaceId
-    );
-
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      payload.conversationId
-    );
-
-    if (!conversation) {
-      return true;
-    }
-
-    if (triggerShouldSkip && conversation.triggerSId) {
-      return true;
-    }
-
-    const { actionRequired, lastReadAt } =
-      await ConversationResource.getActionRequiredAndLastReadAtForUser(
-        auth,
-        conversation.id
-      );
-
-    const unread =
-      (lastReadAt === null || conversation.updatedAt > lastReadAt) &&
-      hasUnreadMessages;
-
-    if (!actionRequired && !unread) {
-      return true;
-    }
+  if (!subscriberId) {
+    return true;
   }
 
-  return false;
+  if (payload.isNewProjectConversation) {
+    return shouldSkipNewProjectConversation({ subscriberId, payload });
+  }
+
+  return shouldSkipUnreadConversation({
+    subscriberId,
+    payload,
+    triggerShouldSkip,
+    hasUnreadMessages,
+  });
 };
 
 const FUNCTION_NAME = "write_summary";
@@ -588,26 +705,59 @@ export const getEmailSummary = async ({
   return summaryResult.value;
 };
 
-export const getMessagePreview = (
+const getEmailSubject = (
+  conversations: {
+    title: string;
+    projectName?: string;
+    isNewProjectConversation?: boolean;
+  }[]
+): string => {
+  const isAllNewProjectConversations = conversations.every(
+    (c) => c.isNewProjectConversation
+  );
+  if (isAllNewProjectConversations) {
+    const uniqueProjectNames = Array.from(
+      new Set(conversations.map((c) => c.projectName).filter(Boolean))
+    );
+    if (uniqueProjectNames.length === 1) {
+      return `[Dust] New conversation${pluralize(conversations.length)} in '${uniqueProjectNames[0]}'`;
+    }
+    return `[Dust] New conversations in your projects`;
+  }
+  if (conversations.length === 1) {
+    return `[Dust] ${conversations[0]?.title ?? "New unread message(s) in conversation"}`;
+  }
+  return `[Dust] New unread messages in ${conversations.length} conversations`;
+};
+
+export const getMessagePreviewText = (
   details: ConversationDetailsType
 ): string | undefined => {
   if (details.hasConversationRetentionPolicy) {
-    return "> Preview not available due to data retention policy on conversations in this workspace.";
+    return "Preview not available due to data retention policy on conversations in this workspace.";
   }
   if (details.hasAgentRetentionPolicies) {
-    return "> Preview not available due to data retention policy on agents in this conversation.";
+    return "Preview not available due to data retention policy on agents in this conversation.";
   }
   if (details.newMessageContent) {
     const stripped = stripMarkdown(details.newMessageContent);
     const trimmed = stripped.trim();
-    const truncated =
-      trimmed.substring(0, 300) + (trimmed.length > 300 ? "..." : "");
-    // Replace newlines with "> \n" to maintain blockquote formatting on each line
-    return truncated
-      .split("\n")
-      .map((line) => `> ${line}`)
-      .join("\n");
+    return trimmed.substring(0, 300) + (trimmed.length > 300 ? "..." : "");
   }
+};
+
+export const getMessagePreviewSlack = (
+  details: ConversationDetailsType
+): string | undefined => {
+  const preview = getMessagePreviewText(details);
+  if (!preview) {
+    return undefined;
+  }
+  // Replace newlines with "> \n" to maintain blockquote formatting on each line
+  return preview
+    .split("\n")
+    .map((line) => `> ${line}`)
+    .join("\n");
 };
 
 export const conversationUnreadWorkflow = workflow(
@@ -645,11 +795,20 @@ export const conversationUnreadWorkflow = workflow(
       async () => {
         // details is guaranteed non-null here because skip prevents execution otherwise.
         const d = details!;
-        return {
-          subject: `New message from ${d.author}`,
-          body: d.authorIsAgent
+
+        const isProjectNewConversation = d.isNewProjectConversation;
+        const subject = isProjectNewConversation
+          ? `New conversation in ${d.projectName}`
+          : `New message from ${d.author}`;
+        const body = isProjectNewConversation
+          ? `${d.author} created "${d.subject}"`
+          : d.authorIsAgent
             ? `${d.author} replied in the conversation "${d.subject}".`
-            : `You have a new message from ${d.author} in the conversation "${d.subject}".`,
+            : `You have a new message from ${d.author} in the conversation "${d.subject}".`;
+
+        return {
+          subject,
+          body,
           primaryAction: {
             label: "View",
             redirect: {
@@ -692,11 +851,14 @@ export const conversationUnreadWorkflow = workflow(
         );
 
         // Create message preview
-        const messagePreview = getMessagePreview(d);
+        const messagePreview = getMessagePreviewSlack(d);
 
-        const baseMessage = d.authorIsAgent
-          ? `${d.author} replied in "${d.subject}"`
-          : `New message from ${d.author} in "${d.subject}"`;
+        const isProjectNewConversation = d.isNewProjectConversation;
+        const baseMessage = isProjectNewConversation
+          ? `There is a new conversation in "${d.projectName}": ${d.author} started "${d.subject}"`
+          : d.authorIsAgent
+            ? `${d.author} replied in "${d.subject}"`
+            : `New message from ${d.author} in "${d.subject}"`;
 
         const message = messagePreview
           ? `${baseMessage}\n${messagePreview}\n<${conversationUrl}|View conversation>`
@@ -759,15 +921,11 @@ export const conversationUnreadWorkflow = workflow(
         };
       },
       {
-        // No email from trigger until we give more control over the notification to the users.
-        skip: async () =>
-          !details ||
-          shouldSkipConversation({
-            subscriberId: subscriber.subscriberId,
-            payload,
-            triggerShouldSkip: true,
-            hasUnreadMessages: details.hasUnreadMessages,
-          }),
+        // NOTE: We only check `details` here because `subscriber.subscriberId` is null
+        // when the digest step's skip condition is evaluated (Novu framework bug).
+        // All subscriber-based filtering (shouldSkipConversation) is handled in the
+        // email step below, where subscriber context is properly available.
+        skip: async () => !details,
       }
     );
 
@@ -778,9 +936,24 @@ export const conversationUnreadWorkflow = workflow(
           typeof renderEmail
         >[0]["conversations"] = [];
 
-        const uniqEventsPerConversation = uniqBy(
-          events,
-          (event) => event.payload.conversationId
+        // Deduplicate events per conversation, prioritizing non-newProjectConversation events
+        // so that participants get the richer unread content (AI summary, mention badge)
+        // over the simpler "new project conversation" content.
+        const eventsByConversation = new Map<string, (typeof events)[number]>();
+        for (const event of events) {
+          const convId = (event.payload as ConversationUnreadPayloadType)
+            .conversationId;
+          const existing = eventsByConversation.get(convId);
+          if (
+            !existing ||
+            !!(existing.payload as ConversationUnreadPayloadType)
+              .isNewProjectConversation
+          ) {
+            eventsByConversation.set(convId, event);
+          }
+        }
+        const uniqEventsPerConversation = Array.from(
+          eventsByConversation.values()
         );
 
         await concurrentExecutor(
@@ -803,7 +976,7 @@ export const conversationUnreadWorkflow = workflow(
 
             const shouldSkip = await shouldSkipConversation({
               subscriberId: subscriber.subscriberId,
-              payload: event.payload as ConversationUnreadPayloadType,
+              payload,
               triggerShouldSkip: true,
               hasUnreadMessages: detailsResult.value.hasUnreadMessages,
             });
@@ -811,17 +984,30 @@ export const conversationUnreadWorkflow = workflow(
               return;
             }
 
-            const summary = await getEmailSummary({
-              details: detailsResult.value,
-              subscriberId: subscriber.subscriberId ?? "",
-              payload,
-            });
-            conversations.push({
-              id: payload.conversationId,
-              title: detailsResult.value.subject,
-              hasUnreadMentions: detailsResult.value.hasUnreadMentions,
-              summary,
-            });
+            if (detailsResult.value.isNewProjectConversation) {
+              conversations.push({
+                id: payload.conversationId,
+                title: detailsResult.value.subject,
+                hasUnreadMentions: false,
+                summary: null,
+                isNewProjectConversation: true,
+                projectName: detailsResult.value.projectName,
+                createdByFullName: detailsResult.value.author,
+                messagePreview: getMessagePreviewText(detailsResult.value),
+              });
+            } else {
+              const summary = await getEmailSummary({
+                details: detailsResult.value,
+                subscriberId: subscriber.subscriberId ?? "",
+                payload,
+              });
+              conversations.push({
+                id: payload.conversationId,
+                title: detailsResult.value.subject,
+                hasUnreadMentions: detailsResult.value.hasUnreadMentions,
+                summary,
+              });
+            }
           },
           { concurrency: 8 }
         );
@@ -835,10 +1021,8 @@ export const conversationUnreadWorkflow = workflow(
           },
           conversations,
         });
-        const subject =
-          conversations.length > 1
-            ? `[Dust] New unread message(s) in ${conversations.length} conversations`
-            : `[Dust] ${conversations[0]?.title ?? "New unread message(s) in conversation"}`;
+
+        const subject = getEmailSubject(conversations);
         return {
           subject,
           body,
@@ -880,8 +1064,6 @@ export const conversationUnreadWorkflow = workflow(
     tags: ["conversations"] as NotificationAllowedTags,
   }
 );
-
-const DEFAULT_NOTIFICATION_CONDITION: NotificationCondition = "all_messages";
 
 /**
  * Filters participants based on their notification condition preference.
