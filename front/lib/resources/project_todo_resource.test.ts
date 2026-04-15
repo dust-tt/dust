@@ -24,7 +24,7 @@ function makeTodoBlob(
     markedAsDoneByType: null,
     markedAsDoneByUserId: null,
     markedAsDoneByAgentConfigurationId: null,
-    category: "follow_ups",
+    category: "to_do",
     text: overrides.text ?? "Test todo",
     status: "todo",
     doneAt: null,

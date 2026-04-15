@@ -70,8 +70,7 @@ const PROJECT_TODO_MODEL_ATTRIBUTES = {
   category: {
     type: DataTypes.STRING,
     allowNull: false,
-    comment:
-      "Category of the todo: need_attention, key_decisions, follow_ups, notable_updates.",
+    comment: "Category of the todo: to_do, to_know.",
   },
   text: {
     type: DataTypes.TEXT,
