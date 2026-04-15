@@ -2,8 +2,7 @@
  * Migration script for the skill instructionsHtml column.
  *
  * By default (dry-run), runs convertMarkdownToBlockHtml against every skill in
- * the database that has non-empty markdown instructions and a null
- * instructionsHtml column, then checks the output for content loss by
+ * the database, then checks the output for content loss by
  * converting HTML back to markdown and string-comparing against the original.
  * Any content dropped or mutated by the pipeline shows up as a diff.
  *
@@ -106,81 +105,67 @@ function roundTripMismatchDiff(
   };
 }
 
-type RoundTripError = {
-  kind: "round-trip-mismatch";
-  diff: RoundTripMismatchDiff;
+type WorkspaceStats = {
+  total: number;
+  errorCount: number;
+  migratedCount: number;
 };
-type SkillError = RoundTripError;
-
-interface SkillResult {
-  skillId: number;
-  skillName: string;
-  workspaceSId: string;
-  error: SkillError | null;
-  html: string | null;
-}
-
-function convertSkill(
-  skill: SkillConfigurationModel,
-  workspaceSId: string
-): SkillResult {
-  const { instructions } = skill;
-
-  const html = convertMarkdownToBlockHtml(instructions);
-
-  // Round-trip check: html → markdown, compare against original instructions.
-  const roundTripMarkdown = convertBlockHtmlToMarkdown(html);
-
-  const normalizedOriginal = normalizeForComparison(instructions);
-  const normalizedRoundTrip = normalizeForComparison(roundTripMarkdown);
-
-  if (normalizedOriginal !== normalizedRoundTrip) {
-    return {
-      skillId: skill.id,
-      skillName: skill.name,
-      workspaceSId,
-      error: {
-        kind: "round-trip-mismatch",
-        diff: roundTripMismatchDiff(normalizedOriginal, normalizedRoundTrip),
-      },
-      html,
-    };
-  }
-
-  return {
-    skillId: skill.id,
-    skillName: skill.name,
-    workspaceSId,
-    error: null,
-    html,
-  };
-}
 
 async function processSkillsForWorkspace(
   workspace: LightWorkspaceType,
-  execute: boolean
-): Promise<SkillResult[]> {
+  execute: boolean,
+  logger: { info: (obj: object, msg: string) => void }
+): Promise<WorkspaceStats> {
   const skills = await SkillConfigurationModel.findAll({
     where: {
       workspaceId: workspace.id,
+      status: { [Op.ne]: "archived" },
       instructions: { [Op.ne]: "" },
-      instructionsHtml: { [Op.is]: null },
     },
     attributes: ["id", "name", "instructions"],
   });
 
-  const results: SkillResult[] = [];
+  let errorCount = 0;
+  let migratedCount = 0;
 
   for (const skill of skills) {
-    const result = convertSkill(skill, workspace.sId);
-    results.push(result);
+    const { instructions } = skill;
+    const html = convertMarkdownToBlockHtml(instructions);
 
-    if (execute && result.error === null && result.html !== null) {
-      await skill.update({ instructionsHtml: result.html });
+    if (!execute) {
+      const roundTripMarkdown = convertBlockHtmlToMarkdown(html);
+      const normalizedOriginal = normalizeForComparison(instructions);
+      const normalizedRoundTrip = normalizeForComparison(roundTripMarkdown);
+
+      const hasRoundTripError = normalizedOriginal !== normalizedRoundTrip;
+
+      if (hasRoundTripError) {
+        errorCount++;
+        logger.info(
+          {
+            skillId: skill.id,
+            skillName: skill.name,
+            workspaceSId: workspace.sId,
+            error: {
+              kind: "round-trip-mismatch",
+              diff: roundTripMismatchDiff(
+                normalizedOriginal,
+                normalizedRoundTrip
+              ),
+            },
+          },
+          "Skill instructions round-trip mismatch"
+        );
+      }
+    }
+
+    if (execute) {
+      await skill.update({ instructionsHtml: html });
+      migratedCount++;
     }
   }
 
-  return results;
+  return { total: skills.length, errorCount, migratedCount };
 }
 
 makeScript(
@@ -199,46 +184,36 @@ makeScript(
         : "Starting skill instructions HTML migration (dry-run)"
     );
 
-    const allResults: SkillResult[] = [];
+    let grandTotal = 0;
+    let grandErrorCount = 0;
+    let grandMigratedCount = 0;
 
     await runOnAllWorkspaces(
       async (workspace) => {
-        const results = await processSkillsForWorkspace(workspace, execute);
-        allResults.push(...results);
+        const stats = await processSkillsForWorkspace(
+          workspace,
+          execute,
+          logger
+        );
+        grandTotal += stats.total;
+        grandErrorCount += stats.errorCount;
+        grandMigratedCount += stats.migratedCount;
       },
-      { wId: workspaceId }
+      { wId: workspaceId, concurrency: 8 }
     );
-
-    const grandTotal = allResults.length;
-    const errors = allResults.filter((r) => r.error !== null);
-    const cleanCount = allResults.length - errors.length;
 
     logger.info(
       {
         workspaceId: workspaceId ?? "all",
         execute,
         totalSkillsProcessed: grandTotal,
-        cleanConversions: cleanCount,
-        errorCount: errors.length,
-        ...(execute ? { migratedCount: cleanCount } : {}),
+        ...(execute
+          ? { migratedCount: grandMigratedCount }
+          : { roundTripErrors: grandErrorCount }),
       },
       execute
         ? "Skill instructions HTML migration complete"
         : "Skill instructions HTML migration dry-run complete"
     );
-
-    if (!execute) {
-      for (const r of errors) {
-        logger.info(
-          {
-            skillId: r.skillId,
-            skillName: r.skillName,
-            workspaceSId: r.workspaceSId,
-            error: r.error,
-          },
-          "Skill instructions round-trip mismatch"
-        );
-      }
-    }
   }
 );
