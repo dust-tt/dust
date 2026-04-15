@@ -5,6 +5,7 @@
 import type { Step } from "@app/lib/api/assistant/conversation_rendering/helpers";
 import {
   getSteps,
+  renderCompactionMessage,
   renderContentFragment,
   renderOtherAgentMessageAsUserMessage,
   renderUserMessage,
@@ -204,8 +205,10 @@ export async function renderAllMessages(
         }
       }
     } else if (isCompactionMessageType(m)) {
-      // TODO(compaction): rendering
-      continue;
+      const rendered = renderCompactionMessage(m);
+      if (rendered) {
+        messages.push(rendered);
+      }
     } else {
       assertNever(m);
     }

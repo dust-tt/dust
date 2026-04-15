@@ -153,6 +153,12 @@ export function toInput(
       case "function":
         inputs.push(toToolCallOutputItem(message));
         break;
+      case "compaction":
+        inputs.push({
+          role: "user",
+          content: message.content,
+        });
+        break;
       default:
         assertNever(message);
     }
