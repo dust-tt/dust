@@ -8,7 +8,7 @@ import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDeta
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useSkills } from "@app/lib/swr/skill_configurations";
-import { filterAndSortAgents } from "@app/lib/utils";
+import { filterAndSortAgents, subFilter } from "@app/lib/utils";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
@@ -88,7 +88,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
       return skills;
     }
     const lowerQuery = debouncedQuery.toLowerCase();
-    return skills.filter((s) => s.name.toLowerCase().includes(lowerQuery));
+    return skills.filter((s) => subFilter(lowerQuery, s.name.toLowerCase()));
   }, [skills, debouncedQuery]);
 
   const isLoading =

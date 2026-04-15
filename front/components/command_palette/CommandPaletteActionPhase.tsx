@@ -172,7 +172,7 @@ export function CommandPaletteActionPhase({
         hints={[
           { keys: ["↑", "↓"], label: "Navigate" },
           { keys: ["↵"], label: "Select" },
-          { keys: ["←"], label: "Back" },
+          { keys: ["⌫"], label: "Back", textSize: "text-base" },
           { keys: ["Esc"], label: "Close" },
         ]}
       />

@@ -56,6 +56,7 @@ export function ItemEmptyState({ children }: ItemEmptyStateProps) {
 interface KeyboardHint {
   keys: string[];
   label: string;
+  textSize?: "text-xs" | "text-sm" | "text-base";
 }
 
 export function KeyboardHints({ hints }: { hints: KeyboardHint[] }) {
@@ -73,9 +74,9 @@ export function KeyboardHints({ hints }: { hints: KeyboardHint[] }) {
             <kbd
               key={key}
               className={cn(
-                "inline-flex h-5 min-w-5 items-center justify-center rounded border px-1",
-                "border-separator",
-                "dark:border-separator-night"
+                "inline-flex h-6 min-w-6 items-center justify-center rounded border px-1",
+                "border-separator dark:border-separator-night",
+                hint.textSize ?? "text-xs"
               )}
             >
               {key}

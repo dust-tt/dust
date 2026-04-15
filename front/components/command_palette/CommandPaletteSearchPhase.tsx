@@ -116,7 +116,7 @@ export function CommandPaletteSearchPhase({
           isLoading={isLoading}
         />
       </div>
-      <div className="flex max-h-[480px] flex-col gap-2 overflow-y-auto p-1.5">
+      <div className="flex max-h-125 flex-col gap-2 overflow-y-auto p-1.5">
         {isLoading && flatItems.length === 0 && (
           <div className="flex flex-col gap-1 p-1">
             {Array.from({ length: 9 }, (_, i) => (
