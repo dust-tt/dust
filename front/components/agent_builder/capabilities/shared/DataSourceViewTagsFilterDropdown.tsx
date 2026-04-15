@@ -184,20 +184,28 @@ export function DataSourceViewTagsFilterDropdown() {
     );
   }, [sources.in]);
 
+  if (isExploratorySearchEnabled) {
+    return (
+      <div className="flex flex-row items-center space-x-2">
+        <SliderToggle
+          selected={mode === "auto"}
+          onClick={() =>
+            toggleInConversationFiltering(
+              mode === "custom" ? "auto" : "custom"
+            )
+          }
+        />
+        <span className="text-sm font-medium">
+          In-conversation filtering
+        </span>
+      </div>
+    );
+  }
+
   return (
     <PopoverRoot>
       <PopoverTrigger asChild>
-        <Button
-          label="Filters"
-          variant="outline"
-          isSelect
-          disabled={isExploratorySearchEnabled}
-          tooltip={
-            isExploratorySearchEnabled
-              ? "Exploratory search mode doesn't support filtering data sources yet"
-              : undefined
-          }
-        />
+        <Button label="Filters" variant="outline" isSelect />
       </PopoverTrigger>
 
       <PopoverContent
