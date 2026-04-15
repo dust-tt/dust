@@ -2,6 +2,7 @@ import { renderAllMessages } from "@app/lib/api/assistant/conversation_rendering
 import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentMessageType,
+  CompactionMessageType,
   ConversationType,
   ConversationWithoutContentType,
   UserMessageType,
@@ -57,10 +58,22 @@ describe("renderAllMessages", () => {
   });
 
   function createConversation(
-    messages: Array<{
-      type: "user" | "agent";
-      visibility: "visible" | "deleted";
-    }>
+    messages: Array<
+      | {
+          type: "user";
+          visibility: "visible" | "deleted";
+        }
+      | {
+          type: "agent";
+          visibility: "visible" | "deleted";
+        }
+      | {
+          type: "compaction";
+          visibility: "visible" | "deleted";
+          status: CompactionMessageType["status"];
+          content: string | null;
+        }
+    >
   ): ConversationType {
     const content = messages.map((msg, idx) => {
       if (msg.type === "user") {
@@ -89,7 +102,9 @@ describe("renderAllMessages", () => {
             reactions: [],
           } satisfies UserMessageType,
         ];
-      } else {
+      }
+
+      if (msg.type === "agent") {
         return [
           {
             id: idx + 1,
@@ -125,6 +140,22 @@ describe("renderAllMessages", () => {
           } satisfies AgentMessageType,
         ];
       }
+
+      return [
+        {
+          id: idx + 1,
+          compactionMessageId: idx + 1,
+          created: Date.now(),
+          type: "compaction_message" as const,
+          sId: `compaction_msg_${idx}`,
+          visibility: msg.visibility,
+          version: 1,
+          rank: idx * 2 + 1,
+          branchId: null,
+          status: msg.status,
+          content: msg.content,
+        } satisfies CompactionMessageType,
+      ];
     });
 
     return {
@@ -262,6 +293,48 @@ describe("renderAllMessages", () => {
     });
 
     expect(result).toHaveLength(0);
+  });
+
+  it("should skip messages before the last succeeded compaction boundary", async () => {
+    const conversation = createConversation([
+      { type: "user", visibility: "visible" },
+      { type: "agent", visibility: "visible" },
+      {
+        type: "compaction",
+        visibility: "visible",
+        status: "succeeded",
+        content: "Old summary",
+      },
+      { type: "user", visibility: "visible" },
+      { type: "agent", visibility: "visible" },
+      {
+        type: "compaction",
+        visibility: "visible",
+        status: "failed",
+        content: null,
+      },
+      {
+        type: "compaction",
+        visibility: "visible",
+        status: "succeeded",
+        content: "Latest summary",
+      },
+      { type: "user", visibility: "visible" },
+      { type: "agent", visibility: "visible" },
+    ]);
+
+    const result = await renderAllMessages(auth, {
+      conversation,
+      model,
+      onMissingAction: "skip",
+    });
+
+    expect(result).toHaveLength(3);
+    expect(result.map((m) => m.role)).toEqual(["compaction", "user", "assistant"]);
+    expect(renderUserMessage).toHaveBeenCalledTimes(1);
+    expect(getSteps).toHaveBeenCalledTimes(1);
+    expect((result[0] as { content: string }).content).toContain("Latest summary");
+    expect((result[0] as { content: string }).content).not.toContain("Old summary");
   });
 
   describe("excludeActions", () => {
