@@ -91,19 +91,19 @@ async function importAgentConfiguration(
   const { configurations: mcpConfigurations, skipped: skippedActions } =
     mcpConfigurationsResult.value;
 
-  const resolvedTags: TagResource[] = [];
-  for (const tag of yamlConfig.tags) {
-    const tagResource = await TagResource.findByName(auth, tag.name);
-    if (!tagResource) {
-      return new Err({
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `Tag not found: "${tag.name}".`,
-        },
-      });
-    }
-    resolvedTags.push(tagResource);
+  const tagNames = yamlConfig.tags.map((t) => t.name);
+  const resolvedTags = await TagResource.findByNames(auth, tagNames);
+  const missingTags = tagNames.filter(
+    (name) => !resolvedTags.some((t) => t.name === name)
+  );
+  if (missingTags.length > 0) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Tags not found: ${missingTags.map((t) => `"${t}"`).join(", ")}.`,
+      },
+    });
   }
 
   const assistant = {
