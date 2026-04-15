@@ -8,7 +8,7 @@ import type {
  */
 
 export interface ModelMessageType {
-  role: "action" | "agent" | "user" | "content_fragment";
+  role: "action" | "agent" | "user" | "content_fragment" | "compaction";
   name: string;
   content: string;
 }
@@ -85,11 +85,18 @@ export interface FunctionMessageTypeModel {
   content: string | Content[];
 }
 
+// Compaction summary rendered as a history boundary for the model.
+export interface CompactionMessageTypeModel {
+  role: "compaction";
+  content: string;
+}
+
 export type ModelMessageTypeMultiActionsWithoutContentFragment =
   | UserMessageTypeModel
   | AssistantFunctionCallMessageTypeModel
   | AssistantContentMessageTypeModel
-  | FunctionMessageTypeModel;
+  | FunctionMessageTypeModel
+  | CompactionMessageTypeModel;
 
 export type ModelMessageTypeMultiActions =
   | ModelMessageTypeMultiActionsWithoutContentFragment

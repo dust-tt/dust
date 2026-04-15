@@ -173,6 +173,12 @@ export function toMessage(
     case "assistant": {
       return toAssistantMessage(message);
     }
+    case "compaction": {
+      return {
+        role: "user" as const,
+        content: message.content,
+      };
+    }
     default:
       assertNever(message);
   }

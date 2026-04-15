@@ -348,6 +348,8 @@ async function countTokensForMessages(
         }
       }
       text += textContents.join("\n");
+    } else if (m.role === "compaction") {
+      text += m.content;
     } else {
       assertNever(m);
     }

@@ -211,6 +211,11 @@ export function toMessage(
       return functionMessage(message);
     case "assistant":
       return assistantMessage(message, omittedThinking);
+    case "compaction":
+      return {
+        role: "user",
+        content: message.content,
+      };
     default:
       assertNever(message);
   }

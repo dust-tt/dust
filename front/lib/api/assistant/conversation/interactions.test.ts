@@ -129,6 +129,35 @@ describe("groupMessagesIntoInteractions", () => {
     expect(interactions[0].messages.map((m) => m.tag)).toEqual(["c1"]);
   });
 
+  it("handles compaction as the first message", () => {
+    const interactions = groupMessagesIntoInteractions([
+      msg("compaction", "c1"),
+      msg("user", "u1"),
+      msg("assistant", "a1"),
+    ]);
+    expect(interactions).toHaveLength(1);
+    expect(interactions[0].messages.map((m) => m.tag)).toEqual([
+      "c1",
+      "u1",
+      "a1",
+    ]);
+  });
+
+  it("handles compaction mid-interaction (discards partial in-progress interaction)", () => {
+    const interactions = groupMessagesIntoInteractions([
+      msg("user", "u1"),
+      msg("compaction", "c1"),
+      msg("user", "u2"),
+      msg("assistant", "a2"),
+    ]);
+    expect(interactions).toHaveLength(1);
+    expect(interactions[0].messages.map((m) => m.tag)).toEqual([
+      "c1",
+      "u2",
+      "a2",
+    ]);
+  });
+
   it("handles compaction followed by multiple interactions", () => {
     const interactions = groupMessagesIntoInteractions([
       msg("user", "u1"),
