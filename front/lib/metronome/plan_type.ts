@@ -2,26 +2,20 @@ import { getMetronomeClient } from "@app/lib/metronome/client";
 import { getProductAiUsageUserId } from "@app/lib/metronome/constants";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
+import type { ContractV2 } from "@metronome/sdk/resources";
 
-// No TTL — contract subscriptions only change when a contract starts/ends.
-// Invalidated explicitly via invalidateContractSubscriptionsCache on contract.start/end webhooks.
-
-export type ContractSubscription = {
-  id: string;
-  productId: string;
-};
+// No TTL — active contract only changes when a contract starts/ends.
+// Invalidated explicitly via invalidateContractCache on contract.start/end webhooks.
+// Null values are NOT cached: when no contract is found we want a fresh fetch next time.
 
 /**
- * Fetch the subscriptions from the active contract.
- * Returns an empty array if there is no active contract or no subscriptions.
- *
- * Fails open: returns [] if the contract cannot be determined,
- * so that credit enforcement is skipped rather than blocking the user.
+ * Fetch the active Metronome contract for a workspace.
+ * Returns null (uncached) when no contract exists or when the API call fails.
  */
-async function fetchContractSubscriptions(
+async function fetchActiveContract(
   workspaceId: string,
   metronomeCustomerId: string
-): Promise<ContractSubscription[]> {
+): Promise<ContractV2 | null> {
   try {
     const client = getMetronomeClient();
     const response = await client.v2.contracts.list({
@@ -29,58 +23,39 @@ async function fetchContractSubscriptions(
     });
 
     if (response.data.length === 0) {
-      return [];
+      return null;
     }
 
-    const contract = response.data[0];
-    const subscriptions = contract.subscriptions ?? [];
-
-    const result = subscriptions
-      .filter((s) => s.id !== undefined)
-      .map((s) => ({
-        id: s.id as string,
-        productId: s.subscription_rate.product.id,
-      }));
-
     logger.info(
-      {
-        workspaceId,
-        metronomeCustomerId,
-        subscriptionCount: result.length,
-      },
-      "[Metronome ContractSubscriptions] Contract subscriptions fetched"
+      { workspaceId, metronomeCustomerId },
+      "[Metronome Contract] Active contract fetched"
     );
 
-    return result;
+    return response.data[0];
   } catch (err) {
     logger.warn(
       { workspaceId, metronomeCustomerId, err },
-      "[Metronome ContractSubscriptions] Failed to fetch contract — treating as legacy (fail-open)"
+      "[Metronome Contract] Failed to fetch — treating as legacy (fail-open)"
     );
-    return [];
+    return null;
   }
 }
 
-const getCachedContractSubscriptions = cacheWithRedis(
-  fetchContractSubscriptions,
+const getCachedActiveContract = cacheWithRedis(
+  fetchActiveContract,
   (workspaceId) => workspaceId,
-  {}
+  { cacheNullValues: false }
 );
 
 /**
- * Returns the subscriptions from the active contract.
- * Returns an empty array if there is no active contract or the contract cannot be determined.
+ * Returns the active Metronome contract for a workspace.
+ * Returns null when no contract exists, Redis is unavailable, or the fetch fails.
  */
-export async function getContractSubscriptions(
+export async function getActiveContract(
   workspaceId: string,
   metronomeCustomerId: string
-): Promise<ContractSubscription[]> {
-  const cached = await getCachedContractSubscriptions(
-    workspaceId,
-    metronomeCustomerId
-  );
-  // null means Redis was unavailable — fail-open (treat as no subscriptions).
-  return cached ?? [];
+): Promise<ContractV2 | null> {
+  return await getCachedActiveContract(workspaceId, metronomeCustomerId);
 }
 
 /**
@@ -92,19 +67,22 @@ export async function isLegacyPlan(
   workspaceId: string,
   metronomeCustomerId: string
 ): Promise<boolean> {
-  const subscriptions = await getContractSubscriptions(
-    workspaceId,
-    metronomeCustomerId
-  );
+  const contract = await getActiveContract(workspaceId, metronomeCustomerId);
+  if (!contract) {
+    return true;
+  }
+  const subscriptions = contract.subscriptions ?? [];
   const aiUsageUserId = getProductAiUsageUserId();
-  return !subscriptions.some((s) => s.productId === aiUsageUserId);
+  return !subscriptions.some(
+    (s) => s.subscription_rate.product.id === aiUsageUserId
+  );
 }
 
 /**
- * Invalidate the cached contract subscriptions for a workspace.
+ * Invalidate the cached contract for a workspace.
  * Call this whenever a customer's contract is changed (e.g. plan upgrade/migration).
  */
-export const invalidateContractSubscriptionsCache = invalidateCacheWithRedis(
-  fetchContractSubscriptions,
+export const invalidateContractCache = invalidateCacheWithRedis(
+  fetchActiveContract,
   (workspaceId: string) => workspaceId
 );

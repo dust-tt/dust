@@ -1,7 +1,7 @@
 /** @ignoreswagger */
 import apiConfig from "@app/lib/api/config";
 import { getMetronomeClient } from "@app/lib/metronome/client";
-import { invalidateContractSubscriptionsCache } from "@app/lib/metronome/plan_type";
+import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -134,7 +134,7 @@ async function handler(
             parsed.data.customer_id
           );
           if (workspace) {
-            await invalidateContractSubscriptionsCache(
+            await invalidateContractCache(
               workspace.sId,
               parsed.data.customer_id
             );
