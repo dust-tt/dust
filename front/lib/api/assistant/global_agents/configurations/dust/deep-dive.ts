@@ -409,7 +409,6 @@ export function _getDeepDiveGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
-    hasSandbox,
     excludeProviders,
   }: {
     settings: GlobalAgentSettingsModel | null;
@@ -419,6 +418,9 @@ export function _getDeepDiveGlobalAgent(
     excludeProviders: ReadonlySet<ModelProviderIdType>;
   }
 ): AgentConfigurationType | null {
+  // TODO(2026-04-15 sandbox): re-enable sandbox for deep-dive once fully ready.
+  const hasSandbox = false;
+
   const {
     run_agent: runAgentMCPServerView,
     ask_user_question: askUserQuestionMCPServerView,
