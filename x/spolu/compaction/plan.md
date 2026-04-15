@@ -159,7 +159,7 @@ Make compaction actually affect what the model sees.
 
 ## Phase 5: Client-Side & Triggering (pending design)
 
-### - [ ] PR 5.1 — Context usage indicator in conversation UI
+### - [x] PR 5.1 — Context usage indicator in conversation UI
 
 - Use the context-usage endpoint (from PR 2.2) to get `promptTokens` and `modelContextWindow`,
   compute usage percentage on the client.
@@ -176,7 +176,7 @@ Make compaction actually affect what the model sees.
 
 - Add support for steering (creating pending message) while compaction is running.
 
-### - [ ] PR 5.4 — Manual compaction trigger
+### - [x] PR 5.4 — Manual compaction trigger
 
 - Add a UI affordance (button in the context usage indicator, or a `/compact` command) that calls
   `compaction`.
