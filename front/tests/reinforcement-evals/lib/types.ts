@@ -214,6 +214,7 @@ export type ToolCallAssertion =
   | { type: "editSkillWithInstructions"; skillId: string }
   | { type: "editSkillWithTool"; skillId: string; toolId: string }
   | { type: "editSkill"; skillId: string }
+  | { type: "editSkillCallCount"; count: number }
   | { type: "noSuggestion" }
   | { type: "calledDescribeMcp"; mcpId: string };
 
@@ -237,6 +238,11 @@ export function editSkill(skillId: string): ToolCallAssertion {
 
 export function noSuggestion(): ToolCallAssertion {
   return { type: "noSuggestion" };
+}
+
+/** Expects exactly `count` edit_skill calls. */
+export function editSkillCallCount(count: number): ToolCallAssertion {
+  return { type: "editSkillCallCount", count };
 }
 
 /** Expects describe_mcp to have been called with the given mcpId. */

@@ -43,10 +43,10 @@ You will call suggestion tools to create each of the final suggestions. You MUST
 `,
 
   aggregation_rules: `
-Start by grouping suggestions by type:
-- For instruction edits, group by the target skill.
-- For tool changes, group by the target tool within each skill.
-NEVER create more than one suggestion per target.
+Start by grouping suggestions by skill, then within each skill group by topic:
+- For instruction edits, group by coherent theme within the skill (e.g. tone, tool usage, formatting). Suggestions that address different topics MUST be kept as separate suggestions — do NOT merge unrelated topics into one suggestion.
+- For tool changes, group by the target tool within each skill. NEVER create more than one suggestion per tool.
+NEVER create more than one suggestion per (skill, topic) pair.
 
 Rank the groups based on impact to the skill. Use these heuristics in priority order to determine highest impact:
 - The number of conversations that exhibited the issue
