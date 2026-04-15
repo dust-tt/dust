@@ -167,14 +167,14 @@ export function getBranchedInsertIndex(
 }
 
 function makeConversationForkNoticeMessage(
-  rank: number,
+  sourceMessage: VirtuosoMessage,
   forkedChild: ConversationForkedChildType
 ): ConversationForkNoticeMessage {
   return {
     type: "conversation_fork_notice",
     sId: `conversation-fork-notice-${forkedChild.childConversationId}`,
-    created: forkedChild.branchedAt,
-    rank,
+    created: sourceMessage.created,
+    rank: sourceMessage.rank,
     branchId: null,
     visibility: "visible",
     reactions: [],
@@ -186,11 +186,13 @@ function makeConversationForkNoticeMessage(
   };
 }
 
-export function addConversationForkNotices(
-  messages: LightMessageType[],
+function mergeConversationForkNotices(
+  messages: VirtuosoMessage[],
   forkedChildren: ConversationForkedChildType[] = []
 ): VirtuosoMessage[] {
-  const renderedMessages = convertLightMessageTypeToVirtuosoMessages(messages);
+  const renderedMessages = messages.filter(
+    (message) => !isConversationForkNotice(message)
+  );
 
   if (forkedChildren.length === 0) {
     return renderedMessages;
@@ -226,12 +228,22 @@ export function addConversationForkNotices(
 
     mergedMessages.push(
       ...forkedChildrenForMessage.map((forkedChild) =>
-        makeConversationForkNoticeMessage(message.rank, forkedChild)
+        makeConversationForkNoticeMessage(message, forkedChild)
       )
     );
   }
 
   return mergedMessages;
+}
+
+export function addConversationForkNotices(
+  messages: LightMessageType[],
+  forkedChildren: ConversationForkedChildType[] = []
+): VirtuosoMessage[] {
+  return mergeConversationForkNotices(
+    convertLightMessageTypeToVirtuosoMessages(messages),
+    forkedChildren
+  );
 }
 
 export const ConversationViewer = ({
@@ -487,6 +499,42 @@ export const ConversationViewer = ({
       );
     }
   }, [conversation?.forkedChildren, messages]);
+
+  useEffect(() => {
+    if (!ref.current || !ref.current.data.get().length) {
+      return;
+    }
+
+    const currentData = ref.current.data.get();
+    const reconciledData = mergeConversationForkNotices(
+      currentData,
+      conversation?.forkedChildren
+    );
+
+    if (
+      currentData.length === reconciledData.length &&
+      currentData.every(
+        (message, index) => message.sId === reconciledData[index]?.sId
+      )
+    ) {
+      return;
+    }
+
+    while (ref.current.data.get().some(isConversationForkNotice)) {
+      ref.current.data.findAndDelete((message) =>
+        isConversationForkNotice(message)
+      );
+    }
+
+    let index = 0;
+
+    for (const message of reconciledData) {
+      if (isConversationForkNotice(message)) {
+        ref.current.data.insert([message], index);
+      }
+      index += 1;
+    }
+  }, [conversation?.forkedChildren]);
 
   const { feedbacks } = useConversationFeedbacks({
     conversationId: conversationId ?? "",

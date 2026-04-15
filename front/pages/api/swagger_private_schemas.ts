@@ -147,6 +147,50 @@
  *           type: array
  *           items:
  *             type: string
+ *         forkedChildren:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               childConversationId:
+ *                 type: string
+ *               childConversationTitle:
+ *                 type: string
+ *                 nullable: true
+ *               sourceMessageId:
+ *                 type: string
+ *               branchedAt:
+ *                 type: integer
+ *               user:
+ *                 type: object
+ *                 properties:
+ *                   sId:
+ *                     type: string
+ *                   id:
+ *                     type: integer
+ *                   createdAt:
+ *                     type: integer
+ *                   provider:
+ *                     type: string
+ *                     nullable: true
+ *                     enum: [auth0, github, google, okta, samlp, waad]
+ *                   username:
+ *                     type: string
+ *                   email:
+ *                     type: string
+ *                   firstName:
+ *                     type: string
+ *                   lastName:
+ *                     type: string
+ *                     nullable: true
+ *                   fullName:
+ *                     type: string
+ *                   image:
+ *                     type: string
+ *                     nullable: true
+ *                   lastLoginAt:
+ *                     type: integer
+ *                     nullable: true
  *     PrivateFullConversation:
  *       type: object
  *       description: Full conversation including content, owner, and visibility.

@@ -280,14 +280,23 @@ describe("addConversationForkNotices", () => {
       addConversationForkNotices(messages, forkedChildren).map((message) => ({
         type: message.type,
         sId: message.sId,
+        created: message.created,
       }))
     ).toEqual([
-      { type: "user_message", sId: "usr_0" },
-      { type: "agent_message", sId: "agt_1" },
-      { type: "user_message", sId: "usr_2" },
-      { type: "agent_message", sId: "agt_3" },
-      { type: "conversation_fork_notice", sId: "conversation-fork-notice-c_1" },
-      { type: "conversation_fork_notice", sId: "conversation-fork-notice-c_2" },
+      { type: "user_message", sId: "usr_0", created: 0 },
+      { type: "agent_message", sId: "agt_1", created: 1 },
+      { type: "user_message", sId: "usr_2", created: 2 },
+      { type: "agent_message", sId: "agt_3", created: 3 },
+      {
+        type: "conversation_fork_notice",
+        sId: "conversation-fork-notice-c_1",
+        created: 3,
+      },
+      {
+        type: "conversation_fork_notice",
+        sId: "conversation-fork-notice-c_2",
+        created: 3,
+      },
     ]);
   });
 });
