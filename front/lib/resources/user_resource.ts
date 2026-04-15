@@ -660,26 +660,41 @@ export class UserResource extends BaseResource<UserModel> {
     return;
   }
 
-  async getToolValidations(): Promise<
-    { mcpServerId: string; toolNames: string[] }[]
-  > {
-    const metadata = await UserMetadataModel.findAll({
+  async getUserToolApprovals(
+    auth: Authenticator
+  ): Promise<{ mcpServerId: string; toolNames: string[] }[]> {
+    const rows = await UserToolApprovalModel.findAll({
       where: {
         userId: this.id,
-        key: {
-          [Op.like]: "toolsValidations:%",
-        },
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
+      attributes: ["mcpServerId", "toolName"],
     });
 
-    return metadata.map((m) => {
-      const mcpServerId = m.key.replace("toolsValidations:", "");
-      const toolNames = m.value
-        .split(USER_METADATA_COMMA_SEPARATOR)
-        .map((v) => v.replaceAll(USER_METADATA_COMMA_REPLACEMENT, ","))
-        .filter((name) => name.length > 0);
+    const map = new Map<string, Set<string>>();
+    for (const row of rows) {
+      if (!map.has(row.mcpServerId)) {
+        map.set(row.mcpServerId, new Set());
+      }
+      map.get(row.mcpServerId)!.add(row.toolName);
+    }
 
-      return { mcpServerId, toolNames };
+    return Array.from(map.entries()).map(([mcpServerId, toolNames]) => ({
+      mcpServerId,
+      toolNames: Array.from(toolNames),
+    }));
+  }
+
+  async deleteToolApprovals(
+    auth: Authenticator,
+    { mcpServerId }: { mcpServerId: string }
+  ): Promise<void> {
+    await UserToolApprovalModel.destroy({
+      where: {
+        userId: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        mcpServerId,
+      },
     });
   }
 

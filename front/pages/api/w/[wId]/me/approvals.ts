@@ -8,6 +8,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface GetUserApprovalsResponseBody {
@@ -18,75 +19,101 @@ export interface GetUserApprovalsResponseBody {
   }[];
 }
 
+export interface DeleteUserApprovalsResponseBody {
+  success: boolean;
+}
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetUserApprovalsResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      GetUserApprovalsResponseBody | DeleteUserApprovalsResponseBody
+    >
+  >,
   auth: Authenticator
 ): Promise<void> {
-  if (req.method !== "GET") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, GET is expected.",
-      },
-    });
-  }
-
   const user = auth.getNonNullableUser();
   const userResource = new UserResource(UserResource.model, user);
-  const toolValidations = await userResource.getToolValidations();
 
-  const approvals: {
-    mcpServerId: string;
-    toolNames: string[];
-    serverName: string;
-  }[] = [];
+  switch (req.method) {
+    case "GET": {
+      const toolValidations = await userResource.getUserToolApprovals(auth);
 
-  for (const validation of toolValidations) {
-    if (validation.toolNames.length > 0) {
-      let serverName = "Unknown Server";
+      const approvals: {
+        mcpServerId: string;
+        toolNames: string[];
+        serverName: string;
+      }[] = [];
 
-      try {
-        const { serverType } = getServerTypeAndIdFromSId(
-          validation.mcpServerId
-        );
+      for (const validation of toolValidations) {
+        if (validation.toolNames.length > 0) {
+          let serverName = "Unknown Server";
 
-        if (serverType === "internal") {
-          const systemSpace =
-            await SpaceResource.fetchWorkspaceSystemSpace(auth);
-          const server = await InternalMCPServerInMemoryResource.fetchById(
-            auth,
-            validation.mcpServerId,
-            systemSpace
-          );
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          serverName = server?.toJSON().name || "Unknown Internal Server";
-        } else if (serverType === "remote") {
-          const server = await RemoteMCPServerResource.fetchById(
-            auth,
-            validation.mcpServerId
-          );
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          serverName = server?.toJSON().name || "Unknown Remote Server";
+          try {
+            const { serverType } = getServerTypeAndIdFromSId(
+              validation.mcpServerId
+            );
+
+            if (serverType === "internal") {
+              const systemSpace =
+                await SpaceResource.fetchWorkspaceSystemSpace(auth);
+              const server = await InternalMCPServerInMemoryResource.fetchById(
+                auth,
+                validation.mcpServerId,
+                systemSpace
+              );
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+              serverName = server?.toJSON().name || "Unknown Internal Server";
+            } else if (serverType === "remote") {
+              const server = await RemoteMCPServerResource.fetchById(
+                auth,
+                validation.mcpServerId
+              );
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+              serverName = server?.toJSON().name || "Unknown Remote Server";
+            }
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
+          } catch (error) {
+            // If we can't parse the server ID or fetch the server, use default name
+          }
+
+          approvals.push({
+            mcpServerId: validation.mcpServerId,
+            toolNames: validation.toolNames,
+            serverName,
+          });
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
-        // If we can't parse the server ID or fetch the server, use default name
       }
 
-      approvals.push({
-        mcpServerId: validation.mcpServerId,
-        toolNames: validation.toolNames,
-        serverName,
-      });
+      return res.status(200).json({ approvals });
     }
-  }
 
-  return res.status(200).json({
-    approvals,
-  });
+    case "DELETE": {
+      const { mcpServerId } = req.query;
+      if (!isString(mcpServerId)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "mcpServerId query parameter is required.",
+          },
+        });
+      }
+      await userResource.deleteToolApprovals(auth, { mcpServerId });
+      return res.status(200).json({ success: true });
+    }
+
+    default:
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message:
+            "The method passed is not supported, GET or DELETE is expected.",
+        },
+      });
+  }
 }
 
 export default withLogging(withSessionAuthenticationForWorkspace(handler));
