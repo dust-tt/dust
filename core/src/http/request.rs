@@ -158,7 +158,18 @@ impl HttpRequest {
                 Ok(body) => body,
                 Err(_) => Value::String(response_body),
             },
-            body_base64: Some(general_purpose::STANDARD.encode(&b)),
+            body_base64: {
+                let is_text = headers
+                    .get(reqwest::header::CONTENT_TYPE)
+                    .and_then(|v| v.to_str().ok())
+                    .map(|ct| ct.starts_with("text/"))
+                    .unwrap_or(false);
+                if is_text {
+                    None
+                } else {
+                    Some(general_purpose::STANDARD.encode(&b))
+                }
+            },
         })
     }
 
