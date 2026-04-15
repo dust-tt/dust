@@ -1,24 +1,26 @@
 #!/usr/bin/env bash
 
-# Run type checking, linting, and formatting in parallel with logs under out/.
+# Run front type checking and Biome checks in parallel with logs under out/.
 
 set -u
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUT_DIR="$ROOT_DIR/out"
+FRONT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$(cd "$FRONT_DIR/.." && pwd)"
+OUT_DIR="$FRONT_DIR/out"
 
 mkdir -p "$OUT_DIR"
 
-COMMANDS=("npx tsgo --noEmit" "npm run lint" "npm run format")
-NAMES=("TypeScript (tsgo --noEmit)" "Lint" "Format")
-LOGS=("$OUT_DIR/tsgo.log" "$OUT_DIR/lint.log" "$OUT_DIR/format.log")
+COMMANDS=("npx tsgo --noEmit" "npx biome check --error-on-warnings front")
+DIRS=("$FRONT_DIR" "$REPO_ROOT")
+NAMES=("TypeScript (tsgo --noEmit)" "Biome check")
+LOGS=("$OUT_DIR/tsgo.log" "$OUT_DIR/biome.log")
 PIDS=()
 
 for i in "${!COMMANDS[@]}"; do
   log_path="${LOGS[$i]}"
   : >"$log_path"
   (
-    cd "$ROOT_DIR" || exit 1
+    cd "${DIRS[$i]}" || exit 1
     ${COMMANDS[$i]}
   ) >"$log_path" 2>&1 &
   PIDS[$i]=$!

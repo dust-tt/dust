@@ -33,12 +33,17 @@ front/
 
 # Development setup
 
-- You can use `./admin/check.ts` to run all checks (lint, type-check, format) concurrently.
-    - Use `npx tsgo --noEmit` to type-check the front project.
-    - Use `npm run lint` to run ESLint
+- From `front/`, use `npx tsgo --noEmit` to type-check the front project.
+- From the repo root, use `npx biome lint --error-on-warnings front` to lint front files.
+- From the repo root, use `npx biome format --write front` to format front files.
+  - add the `--changed` flag to only format changed front files, e.g.
+    `npx biome format --write front --changed`.
+  - similarly, add the `--staged` flag to only format staged front files.
+- Use `./admin/checks.sh` to run the full front type-check and Biome check concurrently.
 - Read `runbooks/TEST.md` for all things related to testing.
 
 # Running tests
+
 - Use `npm run test -- filetotest
 
 # Runbooks
