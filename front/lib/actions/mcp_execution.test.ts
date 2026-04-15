@@ -93,7 +93,7 @@ describe("processToolResults", () => {
     // Generate text that exceeds FILE_OFFLOAD_TEXT_SIZE_BYTES (20KB).
     const largeText = "x".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES + 1);
 
-    const { outputItems } = await processToolResults(auth, {
+    const { outputItems, generatedFiles } = await processToolResults(auth, {
       action,
       conversation,
       localLogger: logger.child({ test: true }),
@@ -112,6 +112,10 @@ describe("processToolResults", () => {
       );
       expect(stored.resource.text).toContain("... (truncated)");
     }
+
+    // Offloaded files must not be indexed in Qdrant. Models read them directly.
+    expect(generatedFiles).toHaveLength(1);
+    expect(generatedFiles[0].skipDataSourceIndexing).toBe(true);
   });
 
   it("should store snippet for large resource text", async () => {
@@ -120,7 +124,7 @@ describe("processToolResults", () => {
     // Generate resource text that exceeds FILE_OFFLOAD_RESOURCE_SIZE_BYTES (20MB).
     const largeResourceText = "y".repeat(FILE_OFFLOAD_RESOURCE_SIZE_BYTES + 1);
 
-    const { outputItems } = await processToolResults(auth, {
+    const { outputItems, generatedFiles } = await processToolResults(auth, {
       action,
       conversation,
       localLogger: logger.child({ test: true }),
@@ -143,6 +147,10 @@ describe("processToolResults", () => {
       );
       expect(stored.resource.text).toContain("... (truncated)");
     }
+
+    // Offloaded files must not be indexed in Qdrant. Models read them directly.
+    expect(generatedFiles).toHaveLength(1);
+    expect(generatedFiles[0].skipDataSourceIndexing).toBe(true);
   });
 
   it("should keep small text content as-is", async () => {

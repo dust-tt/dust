@@ -85,6 +85,35 @@ describe("processAndUpsertToDataSource", () => {
     vi.clearAllMocks();
   });
 
+  it("should skip all processing for tool_output files with skipDataSourceIndexing", async () => {
+    const file = await FileFactory.create(auth, null, {
+      contentType: "text/plain",
+      fileName: "offloaded_tool_output.txt",
+      fileSize: 1000,
+      status: "ready",
+      useCase: "tool_output",
+      useCaseMetadata: {
+        conversationId: "test-conversation-id",
+        hideFromUser: true,
+        skipDataSourceIndexing: true,
+      },
+    });
+
+    const space = await SpaceFactory.global(workspace);
+    const datasourceView = await DataSourceViewFactory.folder(workspace, space);
+
+    const result = await processAndUpsertToDataSource(
+      auth,
+      datasourceView.dataSource,
+      { file }
+    );
+
+    expect(result.isOk()).toBe(true);
+    // No Qdrant indexing should have happened.
+    expect(upsertTable).not.toHaveBeenCalled();
+    expect(createDataSourceFolder).not.toHaveBeenCalled();
+  });
+
   it("should call upsertTable with the right parameters for a CSV file", async () => {
     // Create a file
     const file = await FileFactory.csv(auth, null, {
