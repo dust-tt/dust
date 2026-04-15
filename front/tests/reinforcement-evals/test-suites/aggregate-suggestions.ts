@@ -312,9 +312,9 @@ Score 3 if no suggestion is created.`,
             "User found the responses cold and transactional. The skill should adopt a warmer, more empathetic tone to make customers feel heard.",
           instructionEdits: [
             {
-              old_string: "Be professional.",
-              new_string:
-                "Be professional and empathetic. Acknowledge the customer's feelings before moving to solutions.",
+              targetBlockId: "block-professional",
+              content:
+                "<p>Be professional and empathetic. Acknowledge the customer's feelings before moving to solutions.</p>",
             },
           ],
         }),
@@ -324,9 +324,9 @@ Score 3 if no suggestion is created.`,
             "User felt the skill's language was overly formal and robotic. Instructions should encourage a more natural, conversational style.",
           instructionEdits: [
             {
-              old_string: "Be professional.",
-              new_string:
-                "Be professional but approachable. Use natural, conversational language instead of formal or robotic phrasing.",
+              targetBlockId: "block-professional",
+              content:
+                "<p>Be professional but approachable. Use natural, conversational language instead of formal or robotic phrasing.</p>",
             },
           ],
         }),
@@ -336,9 +336,9 @@ Score 3 if no suggestion is created.`,
             "User asked to update their account email but the skill looked up the wrong account because it searched by name instead of account ID. Instructions should require using the account ID when calling the CRM tool.",
           instructionEdits: [
             {
-              old_string: "Use the CRM tool to look up customer accounts.",
-              new_string:
-                "Use the CRM tool to look up customer accounts. Always search by account ID rather than customer name to avoid fetching the wrong record.",
+              targetBlockId: "block-crm",
+              content:
+                "<p>Use the CRM tool to look up customer accounts. Always search by account ID rather than customer name to avoid fetching the wrong record.</p>",
             },
           ],
         }),
@@ -348,9 +348,9 @@ Score 3 if no suggestion is created.`,
             "User reported the skill retrieved outdated account data. The CRM tool must be called with the refresh flag so the skill always works with the latest information.",
           instructionEdits: [
             {
-              old_string: "Use the CRM tool to look up customer accounts.",
-              new_string:
-                "Use the CRM tool to look up customer accounts. Pass the refresh flag when calling the CRM tool to ensure account data is up to date.",
+              targetBlockId: "block-crm",
+              content:
+                "<p>Use the CRM tool to look up customer accounts. Pass the refresh flag when calling the CRM tool to ensure account data is up to date.</p>",
             },
           ],
         }),
