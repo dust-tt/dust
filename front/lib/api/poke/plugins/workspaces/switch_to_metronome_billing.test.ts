@@ -1,7 +1,10 @@
 import { switchToMetronomeBillingPlugin } from "@app/lib/api/poke/plugins/workspaces/switch_to_metronome_billing";
 import { Authenticator } from "@app/lib/auth";
 import { addStripeMetronomeBillingConfig } from "@app/lib/metronome/client";
-import { getStripeSubscription } from "@app/lib/plans/stripe";
+import {
+  cancelSubscriptionAtPeriodEnd,
+  getStripeSubscription,
+} from "@app/lib/plans/stripe";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -177,6 +180,41 @@ describe("switchToMetronomeBillingPlugin", () => {
       }
     });
 
+    it("returns Ok with a warning and keeps DB changes when Stripe cancellation fails", async () => {
+      const { workspace, auth } = await setupWorkspaceWithMetronomeAndStripe();
+      vi.mocked(getStripeSubscription).mockResolvedValue(
+        makeMockStripeSubscription()
+      );
+      vi.mocked(addStripeMetronomeBillingConfig).mockResolvedValue(
+        new Ok(undefined)
+      );
+      vi.mocked(cancelSubscriptionAtPeriodEnd).mockRejectedValue(
+        new Error("Stripe API error")
+      );
+
+      const result = await switchToMetronomeBillingPlugin.execute(
+        auth,
+        null,
+        {}
+      );
+
+      // Returns Ok (not Err) so the operator knows the DB is already migrated.
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.value).toContain("WARNING");
+        expect(result.value.value).toContain(STRIPE_SUBSCRIPTION_ID);
+        expect(result.value.value).toContain("Stripe API error");
+      }
+
+      // DB changes are committed despite the Stripe failure.
+      const newSub = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+        workspace.id
+      );
+      expect(newSub).not.toBeNull();
+      expect(newSub!.stripeSubscriptionId).toBeNull();
+      expect(newSub!.metronomeContractId).toBe(METRONOME_CONTRACT_ID);
+    });
+
     it("marks old subscription as ended_backend_only, creates new one without Stripe, and returns success message", async () => {
       const { workspace, auth } = await setupWorkspaceWithMetronomeAndStripe();
       vi.mocked(getStripeSubscription).mockResolvedValue(
@@ -185,6 +223,7 @@ describe("switchToMetronomeBillingPlugin", () => {
       vi.mocked(addStripeMetronomeBillingConfig).mockResolvedValue(
         new Ok(undefined)
       );
+      vi.mocked(cancelSubscriptionAtPeriodEnd).mockResolvedValue(true);
 
       const result = await switchToMetronomeBillingPlugin.execute(
         auth,
