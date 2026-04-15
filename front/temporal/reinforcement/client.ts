@@ -14,7 +14,7 @@ import {
 } from "@temporalio/client";
 import moment from "moment-timezone";
 import { QUEUE_NAME } from "./config";
-import { reinforcedSkillsWorkspaceWorkflow } from "./workflows";
+import { reinforcementWorkspaceWorkflow } from "./workflows";
 
 /**
  * Returns the UTC hour corresponding to midnight in the given timezone.
@@ -24,7 +24,7 @@ function getMidnightUtcHour(timezone: string): number {
   return midnightInTz.utc().hour();
 }
 
-function makeWorkspaceCronWorkflowId(workspaceId: string): string {
+export function makeWorkspaceCronWorkflowId(workspaceId: string): string {
   return `reinforcement-workspace-${workspaceId}`;
 }
 
@@ -73,7 +73,7 @@ export async function launchReinforcementWorkspaceCron({
   const workflowId = makeWorkspaceCronWorkflowId(workspaceId);
 
   try {
-    await client.workflow.start(reinforcedSkillsWorkspaceWorkflow, {
+    await client.workflow.start(reinforcementWorkspaceWorkflow, {
       args: [{ workspaceId, useBatchMode: true, skipDelay: false }],
       taskQueue: QUEUE_NAME,
       workflowId,
@@ -112,7 +112,7 @@ export async function stopReinforcementWorkspaceCron({
   const workflowId = makeWorkspaceCronWorkflowId(workspaceId);
 
   try {
-    const handle: WorkflowHandle<typeof reinforcedSkillsWorkspaceWorkflow> =
+    const handle: WorkflowHandle<typeof reinforcementWorkspaceWorkflow> =
       client.workflow.getHandle(workflowId);
     await handle.terminate(stopReason);
   } catch (e) {
@@ -192,7 +192,7 @@ export async function startReinforcementWorkspaceWorkflow({
   const client = await getTemporalClientForFrontNamespace();
   const workflowId = `reinforcement-workspace-${workspaceId}-manual-${Date.now()}`;
 
-  await client.workflow.start(reinforcedSkillsWorkspaceWorkflow, {
+  await client.workflow.start(reinforcementWorkspaceWorkflow, {
     args: [
       {
         workspaceId,
