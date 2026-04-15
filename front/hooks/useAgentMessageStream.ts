@@ -677,7 +677,13 @@ export function useAgentMessageStream({
         customOnEventCallback(eventPayload);
       }
     },
-    [customOnEventCallback, isInlineActivityEnabled, methods, sId]
+    [
+      customOnEventCallback,
+      isInlineActivityEnabled,
+      methods,
+      sId,
+      mutateContextUsage,
+    ]
   );
 
   const { isError } = useEventSource(
