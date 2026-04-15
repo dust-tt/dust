@@ -330,11 +330,19 @@ describe("renderAllMessages", () => {
     });
 
     expect(result).toHaveLength(3);
-    expect(result.map((m) => m.role)).toEqual(["compaction", "user", "assistant"]);
+    expect(result.map((m) => m.role)).toEqual([
+      "compaction",
+      "user",
+      "assistant",
+    ]);
     expect(renderUserMessage).toHaveBeenCalledTimes(1);
     expect(getSteps).toHaveBeenCalledTimes(1);
-    expect((result[0] as { content: string }).content).toContain("Latest summary");
-    expect((result[0] as { content: string }).content).not.toContain("Old summary");
+    expect((result[0] as { content: string }).content).toContain(
+      "Latest summary"
+    );
+    expect((result[0] as { content: string }).content).not.toContain(
+      "Old summary"
+    );
   });
 
   describe("excludeActions", () => {
