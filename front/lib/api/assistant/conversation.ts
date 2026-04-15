@@ -2577,12 +2577,12 @@ export async function compactConversation(
       (m): m is CompactionMessageType =>
         isCompactionMessageType(m) && m.status === "created"
     );
-  const lastConversationMessage = conversation.content.at(-1)?.at(-1);
+  const lastMessage = conversation.content.at(-1)?.at(-1);
 
   if (
     runningAgentMessage ||
     runningCompaction ||
-    (lastConversationMessage && isCompactionMessageType(lastConversationMessage))
+    (lastMessage && isCompactionMessageType(lastMessage))
   ) {
     return new Err({
       status_code: 409,
