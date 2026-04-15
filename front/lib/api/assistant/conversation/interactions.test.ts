@@ -84,7 +84,7 @@ describe("groupMessagesIntoInteractions", () => {
     expect(interactions[1].messages.map((m) => m.tag)).toEqual(["u2"]);
   });
 
-  it("discards all interactions before a compaction message", () => {
+  it("creates a new interaction boundary at a compaction message", () => {
     const interactions = groupMessagesIntoInteractions([
       msg("user", "u1"),
       msg("assistant", "a1"),
@@ -92,15 +92,13 @@ describe("groupMessagesIntoInteractions", () => {
       msg("user", "u2"),
       msg("assistant", "a2"),
     ]);
-    expect(interactions).toHaveLength(1);
-    expect(interactions[0].messages.map((m) => m.tag)).toEqual([
-      "c1",
-      "u2",
-      "a2",
-    ]);
+    expect(interactions).toHaveLength(3);
+    expect(interactions[0].messages.map((m) => m.tag)).toEqual(["u1", "a1"]);
+    expect(interactions[1].messages.map((m) => m.tag)).toEqual(["c1"]);
+    expect(interactions[2].messages.map((m) => m.tag)).toEqual(["u2", "a2"]);
   });
 
-  it("uses the last compaction message when multiple exist", () => {
+  it("creates a boundary at each compaction message", () => {
     const interactions = groupMessagesIntoInteractions([
       msg("user", "u1"),
       msg("assistant", "a1"),
@@ -111,12 +109,12 @@ describe("groupMessagesIntoInteractions", () => {
       msg("user", "u3"),
       msg("assistant", "a3"),
     ]);
-    expect(interactions).toHaveLength(1);
-    expect(interactions[0].messages.map((m) => m.tag)).toEqual([
-      "c2",
-      "u3",
-      "a3",
-    ]);
+    expect(interactions).toHaveLength(5);
+    expect(interactions[0].messages.map((m) => m.tag)).toEqual(["u1", "a1"]);
+    expect(interactions[1].messages.map((m) => m.tag)).toEqual(["c1"]);
+    expect(interactions[2].messages.map((m) => m.tag)).toEqual(["u2", "a2"]);
+    expect(interactions[3].messages.map((m) => m.tag)).toEqual(["c2"]);
+    expect(interactions[4].messages.map((m) => m.tag)).toEqual(["u3", "a3"]);
   });
 
   it("handles compaction as the last message", () => {
@@ -125,8 +123,9 @@ describe("groupMessagesIntoInteractions", () => {
       msg("assistant", "a1"),
       msg("compaction", "c1"),
     ]);
-    expect(interactions).toHaveLength(1);
-    expect(interactions[0].messages.map((m) => m.tag)).toEqual(["c1"]);
+    expect(interactions).toHaveLength(2);
+    expect(interactions[0].messages.map((m) => m.tag)).toEqual(["u1", "a1"]);
+    expect(interactions[1].messages.map((m) => m.tag)).toEqual(["c1"]);
   });
 
   it("handles compaction as the first message", () => {
@@ -135,27 +134,22 @@ describe("groupMessagesIntoInteractions", () => {
       msg("user", "u1"),
       msg("assistant", "a1"),
     ]);
-    expect(interactions).toHaveLength(1);
-    expect(interactions[0].messages.map((m) => m.tag)).toEqual([
-      "c1",
-      "u1",
-      "a1",
-    ]);
+    expect(interactions).toHaveLength(2);
+    expect(interactions[0].messages.map((m) => m.tag)).toEqual(["c1"]);
+    expect(interactions[1].messages.map((m) => m.tag)).toEqual(["u1", "a1"]);
   });
 
-  it("handles compaction mid-interaction (discards partial in-progress interaction)", () => {
+  it("handles compaction mid-interaction (closes partial interaction)", () => {
     const interactions = groupMessagesIntoInteractions([
       msg("user", "u1"),
       msg("compaction", "c1"),
       msg("user", "u2"),
       msg("assistant", "a2"),
     ]);
-    expect(interactions).toHaveLength(1);
-    expect(interactions[0].messages.map((m) => m.tag)).toEqual([
-      "c1",
-      "u2",
-      "a2",
-    ]);
+    expect(interactions).toHaveLength(3);
+    expect(interactions[0].messages.map((m) => m.tag)).toEqual(["u1"]);
+    expect(interactions[1].messages.map((m) => m.tag)).toEqual(["c1"]);
+    expect(interactions[2].messages.map((m) => m.tag)).toEqual(["u2", "a2"]);
   });
 
   it("handles compaction followed by multiple interactions", () => {
@@ -168,12 +162,10 @@ describe("groupMessagesIntoInteractions", () => {
       msg("user", "u3"),
       msg("assistant", "a3"),
     ]);
-    expect(interactions).toHaveLength(2);
-    expect(interactions[0].messages.map((m) => m.tag)).toEqual([
-      "c1",
-      "u2",
-      "a2",
-    ]);
-    expect(interactions[1].messages.map((m) => m.tag)).toEqual(["u3", "a3"]);
+    expect(interactions).toHaveLength(4);
+    expect(interactions[0].messages.map((m) => m.tag)).toEqual(["u1", "a1"]);
+    expect(interactions[1].messages.map((m) => m.tag)).toEqual(["c1"]);
+    expect(interactions[2].messages.map((m) => m.tag)).toEqual(["u2", "a2"]);
+    expect(interactions[3].messages.map((m) => m.tag)).toEqual(["u3", "a3"]);
   });
 });
