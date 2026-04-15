@@ -21,9 +21,7 @@ export function DisableProviderDialog({
   onConfirm,
   onCancel,
 }: DisableProviderDialogProps) {
-  const providerName = providerId
-    ? PRETTIFIED_PROVIDER_NAMES[providerId]
-    : "";
+  const providerName = providerId ? PRETTIFIED_PROVIDER_NAMES[providerId] : "";
 
   return (
     <Dialog open={providerId !== null} onOpenChange={() => onCancel()}>
