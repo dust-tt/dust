@@ -1,5 +1,6 @@
 import { config, REGION_TIMEZONES } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
+import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { hasReinforcementEnabled } from "@app/lib/reinforced_agent/workspace_check";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
@@ -32,23 +33,32 @@ export function makeWorkspaceCronWorkflowId(workspaceId: string): string {
   return `${WORKSPACE_WORKFLOW_ID_PREFIX}${workspaceId}`;
 }
 
+const EXCLUDED_PLAN_CODES = new Set([FREE_TRIAL_PHONE_PLAN_CODE]);
+
 /**
- * List workspace sIds that have the reinforced_agents feature flag.
+ * List workspace sIds that have the reinforced_agents feature flag,
+ * excluding workspaces on free upgraded or free trial phone plans.
  */
-async function getFlaggedWorkspaceIds(): Promise<string[]> {
+async function getReinforcementWorkspaceIds(): Promise<string[]> {
   const allWorkspaces = await WorkspaceResource.listAll();
   const flaggedIds: string[] = [];
 
   for (const workspace of allWorkspaces) {
     try {
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+      const planCode = auth.plan()?.code;
+      if (planCode && EXCLUDED_PLAN_CODES.has(planCode)) {
+        continue;
+      }
+
       if (await hasReinforcementEnabled(auth)) {
         flaggedIds.push(workspace.sId);
       }
     } catch (e) {
       logger.error(
         { error: e, workspaceId: workspace.sId },
-        "[ReinforcedSkills] Error checking feature flags for workspace."
+        "[Reinforcement] Error checking feature flags for workspace."
       );
     }
   }
@@ -86,13 +96,13 @@ export async function launchReinforcementWorkspaceCron({
 
     logger.info(
       { region, timezone, utcHour, workflowId, workspaceId },
-      "[ReinforcedSkills] Launched workspace cron workflow."
+      "[Reinforcement] Launched workspace cron workflow."
     );
   } catch (e) {
     if (e instanceof WorkflowExecutionAlreadyStartedError) {
       logger.info(
         { workflowId, workspaceId },
-        "[ReinforcedSkills] Workspace cron workflow already running, skipping."
+        "[Reinforcement] Workspace cron workflow already running, skipping."
       );
     } else {
       throw e;
@@ -123,12 +133,12 @@ export async function stopReinforcementWorkspaceCron({
     if (e instanceof WorkflowNotFoundError) {
       logger.info(
         { workflowId, workspaceId },
-        "[ReinforcedSkills] Workspace cron workflow not running, skipping."
+        "[Reinforcement] Workspace cron workflow not running, skipping."
       );
     } else {
       logger.error(
         { error: e, workflowId, workspaceId },
-        "[ReinforcedSkills] Failed stopping workspace cron workflow."
+        "[Reinforcement] Failed stopping workspace cron workflow."
       );
     }
   }
@@ -149,7 +159,7 @@ export async function ensureReinforcementWorkspaceCrons(): Promise<{
   stopped: string[];
 }> {
   const client = await getTemporalClientForFrontNamespace();
-  const flaggedWorkspaceIds = new Set(await getFlaggedWorkspaceIds());
+  const flaggedWorkspaceIds = new Set(await getReinforcementWorkspaceIds());
 
   // Find currently running cron workflows by workflow type.
   const runningWorkspaceIds = new Set<string>();
@@ -184,7 +194,7 @@ export async function ensureReinforcementWorkspaceCrons(): Promise<{
 
   logger.info(
     { startedCount: started.length, stoppedCount: stopped.length },
-    "[ReinforcedSkills] Ensured reinforcement workspace crons."
+    "[Reinforcement] Ensured reinforcement workspace crons."
   );
 
   return { started, stopped };
@@ -216,7 +226,7 @@ export async function stopAllReinforcementWorkspaceCrons(): Promise<void> {
 
   logger.info(
     { workspaceCount: runningWorkspaceIds.length },
-    "[ReinforcedSkills] Stopped cron workflows for all workspaces."
+    "[Reinforcement] Stopped cron workflows for all workspaces."
   );
 }
 
@@ -239,13 +249,13 @@ export async function launchEnsureReinforcementCronsWorkflow(): Promise<
 
     logger.info(
       { region, timezone, utcHour, workflowId: ENSURE_CRONS_WORKFLOW_ID },
-      "[ReinforcedSkills] Launched ensure-crons workflow."
+      "[Reinforcement] Launched ensure-crons workflow."
     );
   } catch (e) {
     if (e instanceof WorkflowExecutionAlreadyStartedError) {
       logger.info(
         { workflowId: ENSURE_CRONS_WORKFLOW_ID },
-        "[ReinforcedSkills] Ensure-crons workflow already running, skipping."
+        "[Reinforcement] Ensure-crons workflow already running, skipping."
       );
     } else {
       throw e;
@@ -265,12 +275,12 @@ export async function stopEnsureReinforcementCronsWorkflow(): Promise<void> {
     if (e instanceof WorkflowNotFoundError) {
       logger.info(
         { workflowId: ENSURE_CRONS_WORKFLOW_ID },
-        "[ReinforcedSkills] Ensure-crons workflow not running, skipping."
+        "[Reinforcement] Ensure-crons workflow not running, skipping."
       );
     } else {
       logger.error(
         { error: e, workflowId: ENSURE_CRONS_WORKFLOW_ID },
-        "[ReinforcedSkills] Failed stopping ensure-crons workflow."
+        "[Reinforcement] Failed stopping ensure-crons workflow."
       );
     }
   }
@@ -313,7 +323,7 @@ export async function startReinforcementWorkspaceWorkflow({
 
   logger.info(
     { workflowId, workspaceId, skillId },
-    "[ReinforcedSkills] Started workspace workflow."
+    "[Reinforcement] Started workspace workflow."
   );
   return new Ok(workflowId);
 }
