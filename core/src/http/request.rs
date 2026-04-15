@@ -2,6 +2,7 @@ use crate::stores::store::Store;
 use crate::utils;
 use crate::{cached_request::CachedRequest, project::Project};
 use anyhow::{anyhow, Result};
+use base64::{engine::general_purpose, Engine as _};
 use hyper::body::Buf;
 use reqwest::redirect::Policy;
 use reqwest::{header, Method};
@@ -28,6 +29,7 @@ pub struct HttpResponse {
     pub status: u16,
     pub headers: Value,
     pub body: Value,
+    pub body_base64: Option<String>,
 }
 
 impl CachedRequest for HttpRequest {
@@ -68,8 +70,9 @@ impl HttpRequest {
             "POST" => Method::POST,
             "PUT" => Method::PUT,
             "PATCH" => Method::PATCH,
+            "DELETE" => Method::DELETE,
             _ => Err(anyhow!(
-                "Invalid method {}, supported methods are GET, POST, PUT.",
+                "Invalid method {}, supported methods are GET, POST, PUT, PATCH, DELETE.",
                 self.method
             ))?,
         };
@@ -154,6 +157,13 @@ impl HttpRequest {
             body: match serde_json::from_str::<serde_json::Value>(&response_body) {
                 Ok(body) => body,
                 Err(_) => Value::String(response_body),
+            },
+            body_base64: {
+                let is_text = headers
+                    .get(reqwest::header::CONTENT_TYPE)
+                    .and_then(|v| v.to_str().ok())
+                    .is_some_and(|ct| ct.starts_with("text/"));
+                (!is_text).then(|| general_purpose::STANDARD.encode(&b))
             },
         })
     }
