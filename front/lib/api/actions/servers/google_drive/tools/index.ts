@@ -80,6 +80,14 @@ export async function handleFileAccessError(
 
     // Handle general 403 errors with OAuth re-auth
     if (status === "403") {
+      if (authInfo?.extra?.connectionType === "workspace") {
+        return new Err(
+          new MCPError(
+            "The workspace Google Drive credentials are invalid or expired. A workspace admin needs to re-authenticate the Google Drive connection.",
+            { tracked: false }
+          )
+        );
+      }
       return new Ok(
         makePersonalAuthenticationError(
           "google_drive",
@@ -137,12 +145,23 @@ export async function handleFileAccessError(
  * Uses GAxios error typing for cleaner error handling.
  * Returns OAuth re-auth prompt for 403 errors, or generic error for others.
  */
-function handleDriveAccessError(err: unknown): ToolHandlerResult {
+function handleDriveAccessError(
+  err: unknown,
+  authInfo?: Pick<ToolHandlerExtra, "authInfo">["authInfo"]
+): ToolHandlerResult {
   if (err instanceof Common.GaxiosError) {
     const status = normalizeCode(err.code);
 
     // Handle 403 errors with OAuth re-auth
     if (status === "403") {
+      if (authInfo?.extra?.connectionType === "workspace") {
+        return new Err(
+          new MCPError(
+            "The workspace Google Drive credentials are invalid or expired. A workspace admin needs to re-authenticate the Google Drive connection.",
+            { tracked: false }
+          )
+        );
+      }
       return new Ok(
         makePersonalAuthenticationError(
           "google_drive",
@@ -435,7 +454,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handleDriveAccessError(err);
+      return handleDriveAccessError(err, authInfo);
     }
   },
 
@@ -454,7 +473,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
       ]);
     } catch (err) {
-      return handleDriveAccessError(err);
+      return handleDriveAccessError(err, authInfo);
     }
   },
 
@@ -484,7 +503,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
       ]);
     } catch (err) {
-      return handleDriveAccessError(err);
+      return handleDriveAccessError(err, authInfo);
     }
   },
   list_comments: async (
@@ -513,7 +532,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handleDriveAccessError(err);
+      return handleDriveAccessError(err, authInfo);
     }
   },
   get_document_structure: async (
@@ -535,7 +554,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
 
       return new Ok([{ type: "text" as const, text: markdown }]);
     } catch (err) {
-      return handleDriveAccessError(err);
+      return handleDriveAccessError(err, authInfo);
     }
   },
   get_presentation_structure: async (
@@ -557,7 +576,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
 
       return new Ok([{ type: "text" as const, text: markdown }]);
     } catch (err) {
-      return handleDriveAccessError(err);
+      return handleDriveAccessError(err, authInfo);
     }
   },
 
@@ -600,7 +619,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handleDriveAccessError(err);
+      return handleDriveAccessError(err, authInfo);
     }
   },
 };
@@ -638,7 +657,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handleDriveAccessError(err);
+      return handleDriveAccessError(err, authInfo);
     }
   },
 
@@ -672,7 +691,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handleDriveAccessError(err);
+      return handleDriveAccessError(err, authInfo);
     }
   },
 
@@ -706,7 +725,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handleDriveAccessError(err);
+      return handleDriveAccessError(err, authInfo);
     }
   },
 
@@ -742,7 +761,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         fields: "id,name,mimeType,webViewLink",
       });
     } catch (err) {
-      return handleDriveAccessError(err);
+      return handleDriveAccessError(err, authInfo);
     }
 
     // Construct appropriate URL based on file type
