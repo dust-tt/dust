@@ -38,14 +38,13 @@ export function groupMessagesIntoInteractions<T extends MinimalMessageType>(
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i];
 
-    // A compaction message closes the current interaction (if any) and forms its own
-    // single-message interaction.
+    // A compaction message closes the current interaction (if any) and starts a new one. The
+    // compaction summary is the first message of the next interaction.
     if (turnTypeForMessage(message) === "compaction") {
       if (currentInteraction.length > 0) {
         interactions.push({ messages: currentInteraction });
       }
-      interactions.push({ messages: [message] });
-      currentInteraction = [];
+      currentInteraction = [message];
       continue;
     }
 
@@ -73,6 +72,11 @@ export function groupMessagesIntoInteractions<T extends MinimalMessageType>(
       interactions.push({ messages: currentInteraction });
       currentInteraction = [];
     }
+  }
+
+  // Flush any remaining messages (e.g. a trailing compaction message).
+  if (currentInteraction.length > 0) {
+    interactions.push({ messages: currentInteraction });
   }
 
   return interactions;
