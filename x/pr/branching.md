@@ -39,7 +39,7 @@ At fork time:
 - we persist an explicit lineage row between parent and child
 - we seed the child with the parent's conversation-level setup that the forking user can read
 - we deep-copy the parent conversation files / filesystem into the child
-- we initialize the child with a compaction message at the top of the child
+- we initialize the child with a placeholder message today, then switch to a compaction message
 - we leave the parent unchanged
 
 For the first version, lineage is surfaced as a parent link in the forked
@@ -59,7 +59,7 @@ fragments would start the child from an incomplete state.
 
 ### Multiple Streams
 
-Changes naturally split into 4 streams.
+Changes naturally split into 5 streams.
 
 #### 1. Fork Lineage and Creation
 
@@ -73,7 +73,8 @@ existing intra-conversation branch feature.
 #### 2. Fork Checkpoint / Compaction Integration
 
 This stream is responsible for the message injected at the top of the child
-conversation.
+conversation. Compaction messages now render in the main conversation UI, but
+fork creation still uses a temporary placeholder user message today.
 
 The target design uses the compaction flow from the parallel compaction proposal:
 
@@ -85,18 +86,16 @@ The target design uses the compaction flow from the parallel compaction proposal
 - the child remains blocked for posting while the initial compaction is in the
   `created` state
 
-Until compaction ships, the fork flow can use an artificial compaction
-placeholder internally. That placeholder reuses the rendered
-conversation-for-model view at the resolved source message of the parent
-conversation and stores it as the initial message in the child, explicitly
-stating that it is a forked starting point.
+The current placeholder path simply posts a visible user message in the child
+linking back to the parent conversation. This keeps the flow user-visible while
+the fork-specific compaction entry point is still pending.
 
 Compaction happens after the fork is created. We never compact the
 parent conversation as part of the fork action.
 
 This placeholder path exists only to unblock internal development and
-integration work while compaction is still in flight. Before release, fork
-initialization switches to the shipped compaction flow.
+integration work. Before release, fork initialization should switch to the
+shipped compaction flow.
 
 #### 3. Filesystem and File Seeding
 
@@ -113,10 +112,15 @@ filesystem / MCP version without rewriting the fork flow.
 
 #### 4. UI Surfaces
 
-This stream adds:
+This stream now mostly covers the remaining lineage surfaces.
+
+Already shipped:
 
 - the `Branch conversation` action in the conversation menu
 - the `Branch conversation` action in the per-message menu
+
+Remaining:
+
 - the lightweight lineage surface in the child conversation
 - the lightweight lineage surface in the parent conversation
 
@@ -158,7 +162,7 @@ The fork flow is:
 2. resolve the source message if the UI did not specify one, and validate that
    it is an agent message
 3. create the child conversation in the same space/project
-4. copy readable conversation-level setup from the parent and recompute child access requirements from what was actually copied
+4. copy readable conversation-level setup from the parent
 5. persist the lineage row with `branchedAt`
 6. seed the child files / filesystem
 7. create the initial compaction message in the child
@@ -171,9 +175,9 @@ In the target design, step 7 uses the real compaction shape:
 - the child remains blocked for posting until the compaction status leaves
   `created`
 
-Until compaction ships, step 7 uses an artificial placeholder with the same
-product role: the placeholder reuses the conversation rendering for model at
-the resolved source message and explicitly states that it is a forked message.
+Current behavior uses a temporary user message that links back to the parent
+conversation. The target design still switches this to a real compaction
+message.
 
 The child carries forward:
 
@@ -183,14 +187,18 @@ The child carries forward:
 - the parent's conversation skills that the forking user can read
 - the copied files / filesystem state that the forking user can read
 
-The child access model is derived from the setup, tools, skills, and data that
-were actually copied into the child.
+The target child access model is derived from the setup, tools, skills, and
+data that were actually copied into the child.
 
-That means:
+Current implementation is simpler:
 
-- we do not blindly copy the parent's `requestedSpaceIds`
-- we recompute child access requirements from the copied setup and files
-- the child inherits access rights from the resources it is actually given
+- we currently preserve the parent's `requestedSpaceIds`
+- we do not yet recompute child access requirements from copied setup or files
+
+Target behavior remains:
+
+- recompute child access requirements from the copied setup and files
+- have the child inherit access rights from the resources it is actually given
 
 The child does not inherit:
 
@@ -252,8 +260,18 @@ Scope:
 - respect compaction blocking semantics in the child when real compaction is
   available
 
-Until compaction is shipped, this uses the artificial
-placeholder behind the same fork initialization seam.
+Current implementation has shipped in a flagged internal form with:
+
+- the private fork endpoint
+- parent source-message resolution
+- child conversation creation
+- MCP server view copy
+- skill copy
+- title suffixing
+- the temporary initialization message
+
+Until the compaction switch lands, this keeps using the placeholder behind the
+same fork initialization seam.
 
 This lands before filesystem seeding is complete as long as the feature
 remains internal / flagged. That gives us a usable backend slice for text-only
@@ -263,8 +281,10 @@ conversations and lets compaction work proceed in parallel.
 
 Scope:
 
+- add a `FileResource.copyToConversation(...)` hard-copy primitive
 - implement hard-copy seeding of conversation files into the child
 - remap child file metadata
+- seed the child conversation datasource from the copied child files
 - ensure child mount paths / filesystem state are isolated
 
 This is the part most exposed to the ongoing filesystem rework.
@@ -273,11 +293,10 @@ This is the part most exposed to the ongoing filesystem rework.
 
 Scope:
 
-- add `Branch conversation` to the conversation menu
-- add `Branch conversation` to the per-message menu
 - add the lightweight "Branched from ..." UI in the child conversation
 - add the lightweight "XXX branched this conversation: " UI in the parent conversation
-- wire the UI to the backend endpoint
+
+The menu and per-message actions are already shipped.
 
 #### 5: Switch Fork Initialization to Shipped Compaction
 
@@ -290,8 +309,8 @@ Scope:
 Why separate:
 
 - compaction is already being developed independently
-- this keeps the forking work moving internally without blocking on compaction
-  shipping
+- compaction rendering is now shipped, but the fork flow still needs to switch
+  off the placeholder path
 - this is the release gate for broad exposure of the feature
 
 ### Non-Goals for the First Version
