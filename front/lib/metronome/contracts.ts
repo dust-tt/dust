@@ -9,10 +9,10 @@ import {
 } from "@app/lib/metronome/client";
 import {
   CURRENCY_TO_CREDIT_TYPE_ID,
-  getProductPrepaidCommitId,
-  getProductWorkspaceMau1Id,
-  getProductWorkspaceMau5Id,
-  getProductWorkspaceMau10Id,
+  getProductMauCommitId,
+  getProductMauId,
+  getProductMauTierIds,
+  MAX_MAU_TIERS,
 } from "@app/lib/metronome/constants";
 import { syncMauCount } from "@app/lib/metronome/mau_sync";
 import { syncSeatCount } from "@app/lib/metronome/seats";
@@ -198,17 +198,6 @@ export interface EnterprisePricingCents {
   floorCents: number;
 }
 
-function getMauProductId(mode: "MAU_1" | "MAU_5" | "MAU_10"): string {
-  switch (mode) {
-    case "MAU_1":
-      return getProductWorkspaceMau1Id();
-    case "MAU_5":
-      return getProductWorkspaceMau5Id();
-    case "MAU_10":
-      return getProductWorkspaceMau10Id();
-  }
-}
-
 /**
  * Extract enterprise pricing from a Stripe subscription.
  *
@@ -290,27 +279,39 @@ export async function extractEnterprisePricing(
   return undefined;
 }
 
-/** Metronome tiered rate tier: price per unit, size = number of units in tier (omit for last). */
-interface MetronomeTier {
-  price: number;
-  size?: number;
-}
-
 interface OverrideEntry {
-  product_id: string;
   starting_at: string;
   type: "OVERWRITE";
   entitled: boolean;
+  product_id?: string;
+  override_specifiers?: Array<{
+    product_id: string;
+    billing_frequency: "MONTHLY";
+  }>;
   overwrite_rate: {
-    rate_type: "FLAT" | "TIERED";
-    price?: number;
+    rate_type: "FLAT";
+    price: number;
     credit_type_id?: string;
-    tiers?: MetronomeTier[];
+  };
+}
+
+interface SubscriptionEntry {
+  collection_schedule: "ADVANCE";
+  subscription_rate: {
+    billing_frequency: "MONTHLY";
+    product_id: string;
+  };
+  quantity_management_mode: "QUANTITY_ONLY";
+  initial_quantity: number;
+  proration: {
+    is_prorated: boolean;
+    invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE";
   };
 }
 
 export interface EnterpriseOverridesPayload {
   overrides: OverrideEntry[];
+  add_subscriptions?: SubscriptionEntry[];
   recurring_commits?: Array<{
     product_id: string;
     name: string;
@@ -322,47 +323,97 @@ export interface EnterpriseOverridesPayload {
       unit_price: number;
       quantity: number;
     };
+    invoice_amount: {
+      credit_type_id: string;
+      unit_price: number;
+      quantity: number;
+    };
     commit_duration: { value: number; unit: "PERIODS" };
     recurrence_frequency: "MONTHLY";
     applicable_product_ids: string[];
   }>;
+  /** Custom fields to set on the contract (MAU_TIERS, MAU_THRESHOLD). */
+  custom_fields?: Record<string, string>;
 }
 
 /**
- * Convert Stripe graduated tiers to Metronome TIERED rate tiers.
+ * Build the MAU_TIERS custom field value from Stripe tiers.
  *
- * Stripe tiers are graduated (each tier has up_to, unit_amount, flat_amount).
- * Metronome tiers use { price, size? } where size = number of units in that tier.
+ * Format: "FLOOR-{start2}-{start3}-..." if there's a floor (flat_amount > 0 on first tier),
+ *         "{start1}-{start2}-..." otherwise.
+ * Numbers are the start of each tier (up_to of previous tier + 1, or 0 for first).
  *
- * The first tier's unit_amount in Stripe is typically $0 (included in the floor).
- * In Metronome, we set the first tier's price to flat_amount / up_to so that
- * the recurring commit draws down at this rate and covers exactly the included units.
- *
- * Example — Stripe:
- *   [{ up_to: 100, unit: 0, flat: 325000 }, { up_to: 200, unit: 3000 }, { up_to: inf, unit: 2500 }]
- * Metronome tiers:
- *   [{ price: 3250, size: 100 }, { price: 3000, size: 100 }, { price: 2500 }]
- * + recurring commit of 325000 (draws down at list rate = 3250/MAU → covers 100 MAUs)
+ * Examples:
+ *   Stripe [{up_to:100, flat:3250}, {up_to:200}, {up_to:inf}] → "FLOOR-101-201"
+ *   Stripe [{up_to:100, flat:0}, {up_to:inf}] → "1-101"
+ *   Stripe [{up_to:inf}] → "1"
  */
-function stripeTiersToMetronomeTiers(
-  tiers: StripeTierCents[]
-): MetronomeTier[] {
+function buildMauTiersField(tiers: StripeTierCents[]): string {
+  if (tiers.length === 0) {
+    return "1";
+  }
+
+  const hasFloor = tiers[0].flatAmountCents > 0;
+  const parts: string[] = [];
+
+  if (hasFloor) {
+    parts.push("FLOOR");
+  } else {
+    parts.push("1");
+  }
+
+  // Add start of each subsequent tier (previous tier's up_to + 1).
+  for (let i = 1; i < tiers.length; i++) {
+    const prevUpTo = tiers[i - 1].upTo;
+    if (prevUpTo !== undefined) {
+      parts.push(String(prevUpTo + 1));
+    }
+  }
+
+  return parts.join("-");
+}
+
+/**
+ * Convert Stripe cents to Metronome pricing units.
+ * USD: Metronome uses cents (same as Stripe) → no conversion.
+ * EUR: Metronome uses whole euros → divide by 100.
+ */
+function stripeCentsToMetronomePrice(cents: number, currency: string): number {
+  if (currency === "eur") {
+    return Math.round(cents / 100);
+  }
+  return cents;
+}
+
+/**
+ * Derive per-tier prices from Stripe tiers for Metronome FLAT rate overrides.
+ *
+ * Returns one price per tier in Metronome pricing units (cents for USD, euros for EUR).
+ * - Floor tier: flat_amount / tier_size (so the commit covers exactly the included units)
+ * - Other tiers: unit_amount directly from Stripe
+ *
+ * For EUR, converts to whole euros first, then divides — avoids precision loss
+ * from rounding cents then dividing by 100.
+ */
+function deriveTierPrices(
+  tiers: StripeTierCents[],
+  currency: string
+): number[] {
   let previousUpTo = 0;
   return tiers.map((tier, index) => {
     const tierSize = tier.upTo ? tier.upTo - previousUpTo : undefined;
     previousUpTo = tier.upTo ?? previousUpTo;
 
-    // First tier: derive per-unit price from flat_amount / tier size.
-    // This ensures the recurring commit covers exactly the included units.
-    let price = tier.unitAmountCents;
+    // First tier with floor: derive price from flat_amount / size.
     if (index === 0 && tier.flatAmountCents > 0 && tierSize) {
-      price = Math.round(tier.flatAmountCents / tierSize);
+      // Convert floor to Metronome units first, then divide by tier size.
+      const floorMetronome = stripeCentsToMetronomePrice(
+        tier.flatAmountCents,
+        currency
+      );
+      return Math.round(floorMetronome / tierSize);
     }
-
-    return {
-      price,
-      ...(tierSize !== undefined ? { size: tierSize } : {}),
-    };
+    return stripeCentsToMetronomePrice(tier.unitAmountCents, currency);
   });
 }
 
@@ -370,9 +421,10 @@ function stripeTiersToMetronomeTiers(
  * Build the Metronome contract edit payload for enterprise pricing overrides.
  *
  * For MAU-based plans (MAU_1/5/10):
- * - TIERED rate override matching Stripe's graduated tiers.
- * - Recurring prepaid commit for the floor (if any).
- * - Disables MAU-1 if using MAU-5 or MAU-10.
+ * - Uses MAU Tier products (one per Stripe tier) with FLAT rate overrides.
+ * - Disables the default MAU product.
+ * - Sets MAU_TIERS and MAU_THRESHOLD custom fields for syncMauCount.
+ * - Recurring prepaid commit for the floor (if any), applicable to MAU Tier 1.
  *
  * For FIXED plans:
  * - Disables all MAU products (billing is a flat Stripe fee).
@@ -384,28 +436,6 @@ export function buildEnterpriseOverrides({
   pricing: EnterprisePricingCents;
   startDate: string;
 }): EnterpriseOverridesPayload {
-  const disableOverride = (productId: string): OverrideEntry => ({
-    product_id: productId,
-    starting_at: startDate,
-    type: "OVERWRITE" as const,
-    entitled: false,
-    overwrite_rate: { rate_type: "FLAT" as const, price: 0 },
-  });
-
-  // FIXED: disable all MAU products — billing is a flat Stripe fee.
-  if (pricing.billingMode === "FIXED") {
-    return {
-      overrides: [
-        disableOverride(getProductWorkspaceMau1Id()),
-        disableOverride(getProductWorkspaceMau5Id()),
-        disableOverride(getProductWorkspaceMau10Id()),
-      ],
-    };
-  }
-
-  // MAU-based: apply tiered rate override + floor commit.
-  const targetProductId = getMauProductId(pricing.billingMode);
-
   const creditTypeId = CURRENCY_TO_CREDIT_TYPE_ID[pricing.currency];
   if (!creditTypeId) {
     throw new Error(
@@ -413,52 +443,219 @@ export function buildEnterpriseOverrides({
     );
   }
 
-  const overrides: OverrideEntry[] = [];
-
-  if (pricing.billingMode !== "MAU_1") {
-    overrides.push(disableOverride(getProductWorkspaceMau1Id()));
-  }
-
-  // Convert Stripe graduated tiers to Metronome tiered rate.
-  const metronomeTiers = stripeTiersToMetronomeTiers(pricing.tiers);
-
-  overrides.push({
-    product_id: targetProductId,
+  const disableOverride = (productId: string): OverrideEntry => ({
     starting_at: startDate,
     type: "OVERWRITE" as const,
-    entitled: true,
+    entitled: false,
+    override_specifiers: [
+      { product_id: productId, billing_frequency: "MONTHLY" as const },
+    ],
     overwrite_rate: {
-      rate_type: "TIERED" as const,
+      rate_type: "FLAT" as const,
+      price: 0,
       credit_type_id: creditTypeId,
-      tiers: metronomeTiers,
     },
   });
 
+  // FIXED: disable all MAU products — billing is a flat Stripe fee.
+  if (pricing.billingMode === "FIXED") {
+    return {
+      overrides: [
+        disableOverride(getProductMauId()),
+        ...getProductMauTierIds().map(disableOverride),
+      ],
+    };
+  }
+
+  if (pricing.tiers.length > MAX_MAU_TIERS) {
+    throw new Error(
+      `Too many tiers (${pricing.tiers.length}) — max ${MAX_MAU_TIERS} supported`
+    );
+  }
+
+  const tierPrices = deriveTierPrices(pricing.tiers, pricing.currency);
+  const tierProductIds = getProductMauTierIds();
+  const mauThreshold =
+    pricing.billingMode === "MAU_5"
+      ? "5"
+      : pricing.billingMode === "MAU_10"
+        ? "10"
+        : "1";
+
+  // If all tiers have the same effective price, use the simple MAU product
+  // instead of tier products. The floor (if any) is still handled by a commit.
+  const allSamePrice =
+    tierPrices.length > 0 && tierPrices.every((p) => p === tierPrices[0]);
+
+  if (allSamePrice) {
+    const overrides: OverrideEntry[] = [
+      // Set the MAU product price.
+      {
+        starting_at: startDate,
+        type: "OVERWRITE" as const,
+        entitled: true,
+        override_specifiers: [
+          {
+            product_id: getProductMauId(),
+            billing_frequency: "MONTHLY" as const,
+          },
+        ],
+        overwrite_rate: {
+          rate_type: "FLAT" as const,
+          price: tierPrices[0],
+          credit_type_id: creditTypeId,
+        },
+      },
+      // Disable all tier products.
+      ...tierProductIds.map(disableOverride),
+    ];
+
+    const floorMetronome = stripeCentsToMetronomePrice(
+      pricing.floorCents,
+      pricing.currency
+    );
+    const recurringCommits =
+      pricing.floorCents > 0
+        ? [
+            {
+              product_id: getProductMauCommitId(),
+              name: "MAU Commit",
+              starting_at: startDate,
+              rate_type: "LIST_RATE" as const,
+              priority: 100,
+              access_amount: {
+                credit_type_id: creditTypeId,
+                unit_price: floorMetronome,
+                quantity: 1,
+              },
+              invoice_amount: {
+                credit_type_id: creditTypeId,
+                unit_price: floorMetronome,
+                quantity: 1,
+              },
+              commit_duration: { value: 1, unit: "PERIODS" as const },
+              recurrence_frequency: "MONTHLY" as const,
+              applicable_product_ids: [getProductMauId()],
+            },
+          ]
+        : undefined;
+
+    return {
+      overrides,
+      add_subscriptions: [
+        {
+          collection_schedule: "ADVANCE" as const,
+          subscription_rate: {
+            billing_frequency: "MONTHLY" as const,
+            product_id: getProductMauId(),
+          },
+          quantity_management_mode: "QUANTITY_ONLY" as const,
+          initial_quantity: 0,
+          proration: {
+            is_prorated: true,
+            invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE" as const,
+          },
+        },
+      ],
+      ...(recurringCommits ? { recurring_commits: recurringCommits } : {}),
+      custom_fields: {
+        MAU_THRESHOLD: mauThreshold,
+      },
+    };
+  }
+
+  // Multi-tier: use MAU Tier products with per-tier FLAT prices.
+  const overrides: OverrideEntry[] = [];
+
+  // Disable the default MAU product (tiered contracts use MAU Tier products instead).
+  overrides.push(disableOverride(getProductMauId()));
+
+  // Enable MAU Tier products with per-tier FLAT prices.
+  for (let i = 0; i < pricing.tiers.length; i++) {
+    overrides.push({
+      starting_at: startDate,
+      type: "OVERWRITE" as const,
+      entitled: true,
+      override_specifiers: [
+        {
+          product_id: tierProductIds[i],
+          billing_frequency: "MONTHLY" as const,
+        },
+      ],
+      overwrite_rate: {
+        rate_type: "FLAT" as const,
+        price: tierPrices[i],
+        credit_type_id: creditTypeId,
+      },
+    });
+  }
+
+  // Disable unused tier products.
+  for (let i = pricing.tiers.length; i < MAX_MAU_TIERS; i++) {
+    overrides.push(disableOverride(tierProductIds[i]));
+  }
+
   // Recurring commit for the floor (flat_amount on first tier).
+  // Applicable to MAU Tier 1 so the commit draws down at tier 1's rate.
+  const floorMetronome = stripeCentsToMetronomePrice(
+    pricing.floorCents,
+    pricing.currency
+  );
   const recurringCommits =
     pricing.floorCents > 0
       ? [
           {
-            product_id: getProductPrepaidCommitId(),
-            name: "MAU Floor (monthly minimum)",
+            product_id: getProductMauCommitId(),
+            name: "MAU Commit",
             starting_at: startDate,
             rate_type: "LIST_RATE" as const,
             priority: 100,
             access_amount: {
               credit_type_id: creditTypeId,
-              unit_price: pricing.floorCents,
+              unit_price: floorMetronome,
+              quantity: 1,
+            },
+            invoice_amount: {
+              credit_type_id: creditTypeId,
+              unit_price: floorMetronome,
               quantity: 1,
             },
             commit_duration: { value: 1, unit: "PERIODS" as const },
             recurrence_frequency: "MONTHLY" as const,
-            applicable_product_ids: [targetProductId],
+            applicable_product_ids: [tierProductIds[0]],
           },
         ]
       : undefined;
 
+  // Add subscriptions for each enabled tier (so syncMauCount can set quantities).
+  const addSubscriptions: SubscriptionEntry[] = [];
+  for (let i = 0; i < pricing.tiers.length; i++) {
+    addSubscriptions.push({
+      collection_schedule: "ADVANCE" as const,
+      subscription_rate: {
+        billing_frequency: "MONTHLY" as const,
+        product_id: tierProductIds[i],
+      },
+      quantity_management_mode: "QUANTITY_ONLY" as const,
+      initial_quantity: 0,
+      proration: {
+        is_prorated: true,
+        invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE" as const,
+      },
+    });
+  }
+
+  // Build custom fields for syncMauCount.
+  const mauTiersField = buildMauTiersField(pricing.tiers);
+
   return {
     overrides,
+    add_subscriptions: addSubscriptions,
     ...(recurringCommits ? { recurring_commits: recurringCommits } : {}),
+    custom_fields: {
+      MAU_TIERS: mauTiersField,
+      MAU_THRESHOLD: mauThreshold,
+    },
   };
 }
 
@@ -488,14 +685,28 @@ export async function applyEnterpriseOverrides({
     `Applying enterprise overrides (${pricing.billingMode})`
   );
 
-  await getMetronomeClient().v2.contracts.edit({
+  const client = getMetronomeClient();
+
+  await client.v2.contracts.edit({
     customer_id: metronomeCustomerId,
     contract_id: contractId,
     add_overrides: payload.overrides,
+    ...(payload.add_subscriptions
+      ? { add_subscriptions: payload.add_subscriptions }
+      : {}),
     ...(payload.recurring_commits
       ? { add_recurring_commits: payload.recurring_commits }
       : {}),
   });
+
+  // Set custom fields (MAU_TIERS, MAU_THRESHOLD) on the contract.
+  if (payload.custom_fields) {
+    await client.v1.customFields.setValues({
+      entity: "contract",
+      entity_id: contractId,
+      custom_fields: payload.custom_fields,
+    });
+  }
 
   overrideLogger.info(
     { workspaceId, contractId, billingMode: pricing.billingMode },

@@ -942,12 +942,12 @@ export function assertStripeSubscriptionItemIsValid({
         });
       }
 
-      if (item.price.recurring.aggregate_usage !== "last_during_period") {
-        return new Err({
-          invalidity_message:
-            "Subscription recurring price with usage_type 'metered' has invalid aggregate_usage, should be last during period",
-        });
-      }
+      // if (item.price.recurring.aggregate_usage !== "last_during_period") {
+      //   return new Err({
+      //     invalidity_message:
+      //       "Subscription recurring price with usage_type 'metered' has invalid aggregate_usage, should be last during period",
+      //   });
+      // }
     }
 
     if (

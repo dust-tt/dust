@@ -413,12 +413,14 @@ export async function updateSubscriptionQuantity({
   subscriptionId,
   quantity,
   startingAt,
+  uniquenessKey,
 }: {
   metronomeCustomerId: string;
   contractId: string;
   subscriptionId: string;
   quantity: number;
   startingAt?: string;
+  uniquenessKey?: string;
 }): Promise<Result<void, Error>> {
   const now = startingAt ?? floorToHourISO(new Date());
 
@@ -426,6 +428,7 @@ export async function updateSubscriptionQuantity({
     await getMetronomeClient().v2.contracts.edit({
       customer_id: metronomeCustomerId,
       contract_id: contractId,
+      ...(uniquenessKey ? { uniqueness_key: uniquenessKey } : {}),
       update_subscriptions: [
         {
           subscription_id: subscriptionId,

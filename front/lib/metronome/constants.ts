@@ -23,12 +23,18 @@ const DEV_PRODUCT_TOOL_USAGE_PROGRAMMATIC =
   "586fb8d8-2b83-4d99-9223-4a0904f29548";
 const DEV_PRODUCT_TOOL_USAGE_USER = "886b8088-8524-4426-a13b-08c47f1fea36";
 const DEV_PRODUCT_WORKSPACE_SEAT = "e1532e1d-4964-4656-b6db-070fafafc44c";
-const DEV_PRODUCT_WORKSPACE_MAU_1 = "c1dc843e-965f-4099-a9e4-fcd93fa022f2";
-const DEV_PRODUCT_WORKSPACE_MAU_5 = "7ceb9489-1ed5-4797-8389-5b0a0b886e3d";
-const DEV_PRODUCT_WORKSPACE_MAU_10 = "408bb82a-039f-426d-95dc-2f71e1cd2cbe";
+const DEV_PRODUCT_MAU = "43db7690-939d-4a70-b4a4-b8ade43431f9";
+const DEV_PRODUCT_MAU_COMMIT = "ababd7de-376d-41c6-a7da-40088af94433";
 const DEV_PRODUCT_FREE_MONTHLY_CREDITS = "04f41dd1-ba27-42e3-93d5-6121712a4b67";
 const DEV_PRODUCT_PREPAID_COMMIT = "5f4331b7-4bf6-488b-9a0c-51bd139ac91c";
 const DEV_PRODUCT_PAYG_OVERAGE = "f4583c77-d226-48bb-97a3-46a8087b97fe";
+// MAU tier products
+const DEV_PRODUCT_MAU_TIER_1 = "efe2988a-4f84-4857-a716-0185c28f3e92";
+const DEV_PRODUCT_MAU_TIER_2 = "a3ca48b5-8187-43ec-a692-eb45bb3f932e";
+const DEV_PRODUCT_MAU_TIER_3 = "291e1da9-dc34-485c-af82-0b4ceb55ad38";
+const DEV_PRODUCT_MAU_TIER_4 = "259e1c57-db52-4c58-aa13-c720f6894456";
+const DEV_PRODUCT_MAU_TIER_5 = "05c1195a-a482-4101-a060-7579ba704936";
+const DEV_PRODUCT_MAU_TIER_6 = "d617ee64-c74a-4a25-88ab-8be1bb6c780a";
 
 // --- PROD (production) — TODO: update after running setup script in production ---
 
@@ -51,12 +57,18 @@ const PROD_PRODUCT_TOOL_USAGE_PROGRAMMATIC =
   "636973f9-0a6b-46bc-86e9-3a74eeb824d3";
 const PROD_PRODUCT_TOOL_USAGE_USER = "d3ca5edf-c766-4815-adb1-7bb411140d88";
 const PROD_PRODUCT_WORKSPACE_SEAT = "5c2e2986-1305-4406-96a2-2296e66b5a25";
-const PROD_PRODUCT_WORKSPACE_MAU_1 = "a7ae2755-7524-4e24-9fc2-f3ce4667167c";
-const PROD_PRODUCT_WORKSPACE_MAU_5 = "c4a451b6-7bc4-44c2-98cd-e1a0fd6cf9d6";
-const PROD_PRODUCT_WORKSPACE_MAU_10 = "161b98b9-bfca-49b2-8ff9-1be7ff14bfcd";
+const PROD_PRODUCT_MAU = "TODO"; // TODO: update after running setup script
+const PROD_PRODUCT_MAU_COMMIT = "TODO"; // TODO: update after running setup script
 const PROD_PRODUCT_FREE_MONTHLY_CREDITS =
   "7379999c-5492-4e68-968f-345a26f6da63";
 const PROD_PRODUCT_PREPAID_COMMIT = "1408c9fc-dea1-4269-bd6d-1bc0aa1f1218";
+// MAU tier products — TODO: update after running setup script in production
+const PROD_PRODUCT_MAU_TIER_1 = "TODO";
+const PROD_PRODUCT_MAU_TIER_2 = "TODO";
+const PROD_PRODUCT_MAU_TIER_3 = "TODO";
+const PROD_PRODUCT_MAU_TIER_4 = "TODO";
+const PROD_PRODUCT_MAU_TIER_5 = "TODO";
+const PROD_PRODUCT_MAU_TIER_6 = "TODO";
 const PROD_PRODUCT_PAYG_OVERAGE = "f6b27a6e-86fc-4964-8076-371a912cee09";
 
 // --- Credit type IDs (stable across envs unless noted) ---
@@ -134,12 +146,10 @@ export const getProductToolUsageUserId = () =>
   devOrProd(DEV_PRODUCT_TOOL_USAGE_USER, PROD_PRODUCT_TOOL_USAGE_USER);
 export const getProductWorkspaceSeatId = () =>
   devOrProd(DEV_PRODUCT_WORKSPACE_SEAT, PROD_PRODUCT_WORKSPACE_SEAT);
-export const getProductWorkspaceMau1Id = () =>
-  devOrProd(DEV_PRODUCT_WORKSPACE_MAU_1, PROD_PRODUCT_WORKSPACE_MAU_1);
-export const getProductWorkspaceMau5Id = () =>
-  devOrProd(DEV_PRODUCT_WORKSPACE_MAU_5, PROD_PRODUCT_WORKSPACE_MAU_5);
-export const getProductWorkspaceMau10Id = () =>
-  devOrProd(DEV_PRODUCT_WORKSPACE_MAU_10, PROD_PRODUCT_WORKSPACE_MAU_10);
+export const getProductMauId = () =>
+  devOrProd(DEV_PRODUCT_MAU, PROD_PRODUCT_MAU);
+export const getProductMauCommitId = () =>
+  devOrProd(DEV_PRODUCT_MAU_COMMIT, PROD_PRODUCT_MAU_COMMIT);
 export const getProductFreeMonthlyCreditId = () =>
   devOrProd(
     DEV_PRODUCT_FREE_MONTHLY_CREDITS,
@@ -149,3 +159,14 @@ export const getProductPrepaidCommitId = () =>
   devOrProd(DEV_PRODUCT_PREPAID_COMMIT, PROD_PRODUCT_PREPAID_COMMIT);
 export const getProductPaygOverageId = () =>
   devOrProd(DEV_PRODUCT_PAYG_OVERAGE, PROD_PRODUCT_PAYG_OVERAGE);
+
+// MAU tier product accessors — ordered array for indexed access.
+export const MAX_MAU_TIERS = 6;
+export const getProductMauTierIds = (): string[] => [
+  devOrProd(DEV_PRODUCT_MAU_TIER_1, PROD_PRODUCT_MAU_TIER_1),
+  devOrProd(DEV_PRODUCT_MAU_TIER_2, PROD_PRODUCT_MAU_TIER_2),
+  devOrProd(DEV_PRODUCT_MAU_TIER_3, PROD_PRODUCT_MAU_TIER_3),
+  devOrProd(DEV_PRODUCT_MAU_TIER_4, PROD_PRODUCT_MAU_TIER_4),
+  devOrProd(DEV_PRODUCT_MAU_TIER_5, PROD_PRODUCT_MAU_TIER_5),
+  devOrProd(DEV_PRODUCT_MAU_TIER_6, PROD_PRODUCT_MAU_TIER_6),
+];
