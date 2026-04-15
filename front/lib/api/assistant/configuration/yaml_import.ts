@@ -15,7 +15,6 @@ import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import type { TagType } from "@app/types/tag";
 
 interface SkippedAction {
   name: string;
@@ -92,12 +91,19 @@ async function importAgentConfiguration(
   const { configurations: mcpConfigurations, skipped: skippedActions } =
     mcpConfigurationsResult.value;
 
-  const resolvedTags: TagType[] = [];
+  const resolvedTags: TagResource[] = [];
   for (const tag of yamlConfig.tags) {
     const tagResource = await TagResource.findByName(auth, tag.name);
-    if (tagResource) {
-      resolvedTags.push(tagResource.toJSON());
+    if (!tagResource) {
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Tag not found: "${tag.name}".`,
+        },
+      });
     }
+    resolvedTags.push(tagResource);
   }
 
   const assistant = {
@@ -117,7 +123,7 @@ async function importAgentConfiguration(
     maxStepsPerRun: yamlConfig.agent.max_steps_per_run,
     actions: mcpConfigurations,
     templateId: null,
-    tags: resolvedTags,
+    tags: resolvedTags.map((t) => t.toJSON()),
     editors: editorUsers.map((user) => ({
       sId: user.sId,
     })),
