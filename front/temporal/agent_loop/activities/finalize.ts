@@ -2,12 +2,7 @@ import {
   sendEmailReplyOnCompletion,
   sendEmailReplyOnError,
 } from "@app/lib/api/assistant/email/email_reply";
-import {
-  Authenticator,
-  type AuthenticatorType,
-  getFeatureFlags,
-} from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { Authenticator, type AuthenticatorType } from "@app/lib/auth";
 import { launchAgentMessageAnalytics } from "@app/temporal/agent_loop/activities/analytics";
 import {
   finalizeCancellation,
@@ -21,7 +16,6 @@ import {
   launchEmitMetronomeUsageEvents,
   launchTrackProgrammaticUsage,
 } from "@app/temporal/agent_loop/activities/usage_tracking";
-import { signalProjectTodoComplete } from "@app/temporal/project_todo/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
 export async function finalizeSuccessfulAgentLoopActivity(
@@ -33,18 +27,6 @@ export async function finalizeSuccessfulAgentLoopActivity(
     return;
   }
 
-  const auth = authResult.value;
-  const featureFlags = await getFeatureFlags(auth);
-
-  let shouldSignalTodo = false;
-  if (featureFlags.includes("project_todo")) {
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      agentLoopArgs.conversationId
-    );
-    shouldSignalTodo = conversation?.spaceId !== null;
-  }
-
   await Promise.all([
     snapshotAgentMessageSkills(authType, agentLoopArgs),
     launchAgentMessageAnalytics(authType, agentLoopArgs),
@@ -53,13 +35,6 @@ export async function finalizeSuccessfulAgentLoopActivity(
     conversationUnreadNotificationActivity(authType, agentLoopArgs),
     handleMentions(authType, agentLoopArgs),
     sendEmailReplyOnCompletion(authType, agentLoopArgs),
-    shouldSignalTodo
-      ? signalProjectTodoComplete({
-          authType,
-          conversationId: agentLoopArgs.conversationId,
-          messageId: agentLoopArgs.agentMessageId,
-        })
-      : Promise.resolve(),
   ]);
 }
 

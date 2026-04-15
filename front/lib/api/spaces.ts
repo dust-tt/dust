@@ -2,7 +2,7 @@ import { hardDeleteApp } from "@app/lib/api/apps";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects/connector";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -24,6 +24,10 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
+import {
+  launchOrSignalProjectTodoWorkflow,
+  stopProjectTodoWorkflow,
+} from "@app/temporal/project_todo/client";
 import type { AgentsUsageType } from "@app/types/data_source";
 import {
   PROJECT_EDITOR_GROUP_PREFIX,
@@ -267,6 +271,17 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     await launchScrubSpaceWorkflow(auth, space);
   });
 
+  if (space.isProject()) {
+    const featureFlags = await getFeatureFlags(auth);
+    if (featureFlags.includes("project_todo")) {
+      void stopProjectTodoWorkflow({
+        authType: auth.toJSON(),
+        spaceId: space.sId,
+        stopReason: "project deleted",
+      });
+    }
+  }
+
   return new Ok(undefined);
 }
 
@@ -351,6 +366,17 @@ export async function hardDeleteSpace(
       throw res.error;
     }
   });
+
+  if (space.isProject()) {
+    const featureFlags = await getFeatureFlags(auth);
+    if (featureFlags.includes("project_todo")) {
+      void stopProjectTodoWorkflow({
+        authType: auth.toJSON(),
+        spaceId: space.sId,
+        stopReason: "project hard deleted",
+      });
+    }
+  }
 
   return new Ok(undefined);
 }
@@ -601,6 +627,14 @@ export async function createSpaceAndGroup(
         );
         // Don't fail space creation if connector creation fails
         // The connector can be created later if needed
+      }
+
+      const featureFlags = await getFeatureFlags(auth);
+      if (featureFlags.includes("project_todo")) {
+        void launchOrSignalProjectTodoWorkflow({
+          authType: auth.toJSON(),
+          spaceId: space.sId,
+        });
       }
     }
   }
