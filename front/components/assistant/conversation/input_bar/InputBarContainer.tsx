@@ -1,3 +1,4 @@
+import { ContextUsageIndicator } from "@app/components/assistant/conversation/input_bar/ContextUsageIndicator";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarButtons } from "@app/components/assistant/conversation/input_bar/InputBarButtons";
 import {
@@ -11,6 +12,7 @@ import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
 import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
 import { getIcon } from "@app/components/resources/resources_icons";
+import { useConversationContextUsage } from "@app/hooks/conversations";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
@@ -200,8 +202,14 @@ const InputBarContainer = ({
   const isMobile = useIsMobile();
   const { hasFeature } = useFeatureFlags();
   const singleAgentInput = hasFeature("enable_steering");
+  const isCompactionEnabled = hasFeature("enable_compaction");
   const { selectedSingleAgent, setSelectedSingleAgent } =
     useContext(InputBarContext);
+
+  const { contextUsage } = useConversationContextUsage({
+    conversationId: isCompactionEnabled ? conversation?.sId : null,
+    workspaceId: owner.sId,
+  });
   const [hasUserMention, setHasUserMention] = useState(false);
   const canSubmitEmpty = singleAgentInput && !!selectedSingleAgent;
 
@@ -1234,24 +1242,31 @@ const InputBarContainer = ({
           </div>
         </div>
         <div
-          className={cn(
-            "absolute bottom-2 right-2 flex items-center gap-2 md:gap-1"
-          )}
+          className={cn("absolute bottom-2 right-2 flex items-center gap-2")}
         >
-          {!subscription.plan.isByok &&
-            owner.metadata?.allowVoiceTranscription !== false &&
-            actions.includes("voice") && (
-              <VoicePicker
-                status={voiceTranscriberService.status}
-                level={voiceTranscriberService.level}
-                elapsedSeconds={voiceTranscriberService.elapsedSeconds}
-                onRecordStart={voiceTranscriberService.startRecording}
-                onRecordStop={voiceTranscriberService.stopRecording}
-                disabled={disableInput}
-                size={buttonSize}
-                showStopLabel={!isMobile}
+          <div className="flex items-center">
+            {isCompactionEnabled && conversation && (
+              <ContextUsageIndicator
+                contextUsage={contextUsage?.contextUsage ?? 0}
+                contextSize={contextUsage?.contextSize ?? 0}
+                buttonSize={buttonSize}
               />
             )}
+            {!subscription.plan.isByok &&
+              owner.metadata?.allowVoiceTranscription !== false &&
+              actions.includes("voice") && (
+                <VoicePicker
+                  status={voiceTranscriberService.status}
+                  level={voiceTranscriberService.level}
+                  elapsedSeconds={voiceTranscriberService.elapsedSeconds}
+                  onRecordStart={voiceTranscriberService.startRecording}
+                  onRecordStop={voiceTranscriberService.stopRecording}
+                  disabled={disableInput}
+                  size={buttonSize}
+                  showStopLabel={!isMobile}
+                />
+              )}
+          </div>
           <Button
             size={buttonSize}
             isLoading={
