@@ -438,6 +438,25 @@ impl SearchStore for ElasticsearchSearchStore {
             }
             false => {
                 let error = response.json::<serde_json::Value>().await?;
+
+                // Detect cursor/sort mismatches whether we catch them locally before the
+                // request or Elasticsearch rejects the `search_after` payload itself.
+                if error
+                    .pointer("/error/caused_by/type")
+                    .and_then(serde_json::Value::as_str)
+                    == Some("illegal_argument_exception")
+                {
+                    if let Some(reason) = error
+                        .pointer("/error/caused_by/reason")
+                        .and_then(serde_json::Value::as_str)
+                        .filter(|reason| {
+                            reason.contains("search_after has") && reason.contains("sort has")
+                        })
+                    {
+                        return Err(SearchNodesError::CursorSortMismatch(reason.to_string()).into());
+                    }
+                }
+
                 return Err(anyhow::anyhow!("Failed to search nodes: {}", error));
             }
         };
