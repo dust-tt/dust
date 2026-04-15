@@ -137,23 +137,32 @@ PR #24111. The LLM call that produces the summary.
 
 Make compaction actually affect what the model sees.
 
-### - [ ] PR 4.1 — Use compaction as history boundary in `renderConversationForModel`
+### - [x] PR 4.1 — Use compaction as history boundary in `renderConversationForModel`
+
+PR #24293 (combined with 4.2).
 
 - In `renderAllMessages()` (`front/lib/api/assistant/conversation_rendering/message_rendering.ts`):
   - Find the last `CompactionMessage` with `status: "succeeded"` in the conversation content.
-  - Skip all messages before it.
-  - Render the compaction summary as a system/user message (the history preamble).
+  - Skip all messages before it (history boundary).
+  - Render the compaction summary via `renderCompactionMessage` (in `helpers.ts`) as a
+    `CompactionMessageTypeModel` with `role: "compaction"` and content wrapped in
+    `<compaction_summary>` tags.
   - Render all messages after it normally.
-- Update `renderConversationForModel` (`conversation_rendering/index.ts`) to account for the
-  compaction boundary when computing token budgets.
+- Added `CompactionMessageTypeModel` (with `role: "compaction"`) to `generation.ts` type unions.
+- All LLM provider converters (Anthropic, OpenAI chat/responses, Google, Mistral) handle
+  `role: "compaction"` by converting to a user message.
+- Tokenization in `conversation_rendering/index.ts` handles the new role.
 
-### - [ ] PR 4.2 — Update interactions and pruning for compacted conversations
+### - [x] PR 4.2 — Update interactions and pruning for compacted conversations
+
+PR #24293 (combined with 4.1).
 
 - In `groupMessagesIntoInteractions` (`front/lib/api/assistant/conversation/interactions.ts`):
-  a compaction message starts a new "era" — interactions before it are not grouped.
-- In `prunePreviousInteractions`: only prune interactions after the compaction boundary (everything
-  before is already hidden by the compaction).
-- Add tests in `interactions.test.ts`.
+  a compaction message acts as an interaction boundary — it closes the current interaction and
+  becomes the first message of the next interaction (grouped with the messages that follow it).
+- Pre-compaction messages are already excluded by the history boundary in `renderAllMessages`,
+  so pruning naturally only operates on post-compaction interactions.
+- 12 tests in `interactions.test.ts` covering boundary behavior.
 
 ---
 
@@ -161,7 +170,7 @@ Make compaction actually affect what the model sees.
 
 ### - [x] PR 5.1 — Context usage indicator in conversation UI
 
-- Use the context-usage endpoint (from PR 2.2) to get `promptTokens` and `modelContextWindow`,
+- Use the context-usage endpoint (from PR 2.1) to get `contextUsage` and `contextSize`,
   compute usage percentage on the client.
 - Display a progress bar or indicator showing context fullness.
 - Show a warning when approaching the compaction threshold.
@@ -179,15 +188,15 @@ Make compaction actually affect what the model sees.
 ### - [x] PR 5.4 — Manual compaction trigger
 
 - Add a UI affordance (button in the context usage indicator, or a `/compact` command) that calls
-  `compaction`.
+  the compaction API.
 - Initially, compaction is user-triggered only — block the input bar once context usage reaches a
   high threshold, prompting the user to compact.
-- API endpoint: `POST /api/w/[wId]/assistant/conversations/[cId]/compact`.
+- API endpoint: `POST /api/w/[wId]/assistant/conversations/[cId]/compactions`.
 
 ### Future: Automatic compaction trigger from agent loop finalization
 
 - In `finalizeSuccessfulAgentLoopActivity` / `finalizeGracefullyStoppedAgentLoopActivity`: after
   storing `promptTokens`, check against `compactionThreshold`. If exceeded, call
-  `launchCompactConversationWorkflow`.
+  `launchCompactionWorkflow`.
 - Requires careful handling of the steering interaction (see "Interaction with Steering" in the
   proposal): steering goes first, compaction runs after. Pruning remains as safety net.
