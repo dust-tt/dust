@@ -1,4 +1,5 @@
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
+import { stripHtmlAttributes } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
@@ -42,14 +43,36 @@ export function SkillBuilderSuggestionsPanel() {
         return;
       }
 
-      let html = getValues("instructionsHtml");
-
-      for (const edit of instructionEdits) {
-        // TODO(reinforced-skills): Implement the actual decoration logic (Issue #7388)
-        html = edit.content;
+      const currentHtml = getValues("instructionsHtml");
+      if (!currentHtml) {
+        return;
       }
 
-      setValue("instructionsHtml", html, { shouldDirty: true });
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(currentHtml, "text/html");
+
+      for (const edit of instructionEdits) {
+        const targetElement = doc.querySelector(
+          `[data-block-id="${edit.targetBlockId}"]`
+        );
+        if (!targetElement) {
+          continue;
+        }
+
+        const temp = doc.createElement("div");
+        temp.innerHTML = edit.content;
+        targetElement.replaceWith(...Array.from(temp.childNodes));
+      }
+
+      const root = doc.querySelector('[data-type="instructions-root"]');
+      if (!root) {
+        return;
+      }
+
+      const newHtml = stripHtmlAttributes(root.outerHTML);
+      setValue("instructionsHtml", newHtml, {
+        shouldDirty: true,
+      });
     },
     [getValues, setValue]
   );
