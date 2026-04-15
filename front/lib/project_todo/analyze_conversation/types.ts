@@ -9,6 +9,7 @@ export const ActionItemSchema = z.object({
   sId: z.string().optional(),
   text: z.string(),
   assignee_name: z.string().optional(),
+  assignee_user_id: z.string().optional(),
   source_message_rank: z.number().int(),
   status: z.enum(["open", "done"]),
   detected_done_rationale: z.string().optional(),
@@ -19,6 +20,7 @@ export const NotableFactSchema = z.object({
   // should copy the sId verbatim from the list provided in the prompt.
   sId: z.string().optional(),
   text: z.string(),
+  relevant_user_ids: z.array(z.string()).optional(),
   source_message_rank: z.number().int(),
 });
 
@@ -27,6 +29,7 @@ export const KeyDecisionSchema = z.object({
   // should copy the sId verbatim from the list provided in the prompt.
   sId: z.string().optional(),
   text: z.string(),
+  relevant_user_ids: z.array(z.string()).optional(),
   source_message_rank: z.number().int(),
   status: z.enum(["decided", "open"]),
 });

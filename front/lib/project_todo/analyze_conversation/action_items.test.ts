@@ -16,7 +16,7 @@ describe("buildActionItems", () => {
         status: "open" as const,
       },
     ];
-    const result = buildActionItems(raw, new Set([knownSId]));
+    const result = buildActionItems(raw, new Set([knownSId]), new Set());
     expect(result[0].sId).toBe(knownSId);
   });
 
@@ -28,7 +28,7 @@ describe("buildActionItems", () => {
         status: "open" as const,
       },
     ];
-    const result = buildActionItems(raw, new Set());
+    const result = buildActionItems(raw, new Set(), new Set());
     expect(result[0].status).toBe("open");
     expect(result[0].detectedDoneAt).toBeNull();
     expect(result[0].detectedDoneRationale).toBeNull();
@@ -44,7 +44,7 @@ describe("buildActionItems", () => {
         detected_done_rationale: "User confirmed it was sent",
       },
     ];
-    const result = buildActionItems(raw, new Set());
+    const result = buildActionItems(raw, new Set(), new Set());
     const after = new Date().toISOString();
 
     expect(result[0].status).toBe("done");
@@ -68,24 +68,56 @@ describe("buildActionItems", () => {
         status: "open" as const,
       },
     ];
-    const result = buildActionItems(raw, new Set());
+    const result = buildActionItems(raw, new Set(), new Set());
     expect(result[0].assigneeName).toBe("Alice");
     expect(result[1].assigneeName).toBeNull();
   });
 
-  it("sets assigneeUserId to null (populated downstream)", () => {
+  it("sets assigneeUserId to null when no participants match", () => {
     const raw = [
       { text: "Task", source_message_rank: 1, status: "open" as const },
     ];
-    const result = buildActionItems(raw, new Set());
+    const result = buildActionItems(raw, new Set(), new Set());
     expect(result[0].assigneeUserId).toBeNull();
+  });
+
+  it("resolves assigneeUserId when assignee_user_id matches a participant", () => {
+    const raw = [
+      {
+        text: "Review PR",
+        source_message_rank: 1,
+        status: "open" as const,
+        assignee_name: "Alice",
+        assignee_user_id: "user-abc",
+      },
+    ];
+    const participants = new Set(["user-abc", "user-def"]);
+    const result = buildActionItems(raw, new Set(), participants);
+    expect(result[0].assigneeUserId).toBe("user-abc");
+    expect(result[0].assigneeName).toBe("Alice");
+  });
+
+  it("discards assigneeUserId when it does not match any participant", () => {
+    const raw = [
+      {
+        text: "Review PR",
+        source_message_rank: 1,
+        status: "open" as const,
+        assignee_name: "Alice",
+        assignee_user_id: "unknown-id",
+      },
+    ];
+    const participants = new Set(["user-abc"]);
+    const result = buildActionItems(raw, new Set(), participants);
+    expect(result[0].assigneeUserId).toBeNull();
+    expect(result[0].assigneeName).toBe("Alice");
   });
 
   it("preserves sourceMessageRank", () => {
     const raw = [
       { text: "Task", source_message_rank: 42, status: "open" as const },
     ];
-    const result = buildActionItems(raw, new Set());
+    const result = buildActionItems(raw, new Set(), new Set());
     expect(result[0].sourceMessageRank).toBe(42);
   });
 });

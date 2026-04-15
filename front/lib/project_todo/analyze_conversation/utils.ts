@@ -40,6 +40,11 @@ export function buildSpec(): AgentActionSpecification {
                 description:
                   "Name of the person assigned, if clearly stated in the conversation.",
               },
+              assignee_user_id: {
+                type: "string",
+                description:
+                  "The participant id of the assigned person. Must be one of the participant ids listed in the prompt. Only set when an assignee is clearly identified.",
+              },
               source_message_rank: {
                 type: "number",
                 description:
@@ -75,6 +80,12 @@ export function buildSpec(): AgentActionSpecification {
                 type: "string",
                 description: "Short description of the notable fact.",
               },
+              relevant_user_ids: {
+                type: "array",
+                items: { type: "string" },
+                description:
+                  "Participant ids of people this fact is relevant to or was stated by. Must be ids from the participant list in the prompt.",
+              },
               source_message_rank: {
                 type: "number",
                 description:
@@ -98,6 +109,12 @@ export function buildSpec(): AgentActionSpecification {
               text: {
                 type: "string",
                 description: "Short description of the key decision.",
+              },
+              relevant_user_ids: {
+                type: "array",
+                items: { type: "string" },
+                description:
+                  "Participant ids of people involved in making this decision. Must be ids from the participant list in the prompt.",
               },
               source_message_rank: {
                 type: "number",

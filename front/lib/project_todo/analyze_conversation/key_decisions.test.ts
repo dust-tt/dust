@@ -16,7 +16,7 @@ describe("buildKeyDecisions", () => {
         status: "decided" as const,
       },
     ];
-    const result = buildKeyDecisions(raw, new Set([knownSId]));
+    const result = buildKeyDecisions(raw, new Set([knownSId]), new Set());
     expect(result[0].sId).toBe(knownSId);
   });
 
@@ -28,7 +28,7 @@ describe("buildKeyDecisions", () => {
         status: "decided" as const,
       },
     ];
-    const result = buildKeyDecisions(raw, new Set());
+    const result = buildKeyDecisions(raw, new Set(), new Set());
     expect(result[0].status).toBe("decided");
   });
 
@@ -40,11 +40,11 @@ describe("buildKeyDecisions", () => {
         status: "open" as const,
       },
     ];
-    const result = buildKeyDecisions(raw, new Set());
+    const result = buildKeyDecisions(raw, new Set(), new Set());
     expect(result[0].status).toBe("open");
   });
 
-  it("initializes relevantUserIds as empty array", () => {
+  it("returns empty relevantUserIds when no user ids provided", () => {
     const raw = [
       {
         text: "Use Redis",
@@ -52,8 +52,22 @@ describe("buildKeyDecisions", () => {
         status: "decided" as const,
       },
     ];
-    const result = buildKeyDecisions(raw, new Set());
+    const result = buildKeyDecisions(raw, new Set(), new Set());
     expect(result[0].relevantUserIds).toEqual([]);
+  });
+
+  it("resolves relevantUserIds from valid participant ids", () => {
+    const raw = [
+      {
+        text: "Use Redis",
+        source_message_rank: 1,
+        status: "decided" as const,
+        relevant_user_ids: ["user-abc", "unknown-id"],
+      },
+    ];
+    const participants = new Set(["user-abc", "user-def"]);
+    const result = buildKeyDecisions(raw, new Set(), participants);
+    expect(result[0].relevantUserIds).toEqual(["user-abc"]);
   });
 
   it("preserves text and sourceMessageRank", () => {
@@ -64,13 +78,13 @@ describe("buildKeyDecisions", () => {
         status: "decided" as const,
       },
     ];
-    const result = buildKeyDecisions(raw, new Set());
+    const result = buildKeyDecisions(raw, new Set(), new Set());
     expect(result[0].text).toBe("Launch in Europe first");
     expect(result[0].sourceMessageRank).toBe(10);
   });
 
   it("returns an empty array for empty input", () => {
-    expect(buildKeyDecisions([], new Set())).toEqual([]);
+    expect(buildKeyDecisions([], new Set(), new Set())).toEqual([]);
   });
 });
 
