@@ -117,6 +117,7 @@ const ConversationDetailsSchema = z.object({
   subject: z.string(),
   author: z.string(),
   authorIsAgent: z.boolean(),
+  authorUserId: z.string().optional(),
   avatarUrl: z.string().optional(),
   isFromTrigger: z.boolean(),
   isFromEmailAgentConversation: z.boolean(),
@@ -234,6 +235,7 @@ const getConversationDetails = async ({
 
   let author: string;
   let authorIsAgent: boolean;
+  let authorUserId: string | undefined;
   let avatarUrl: string | undefined;
   let mentionedUserIds: string[] = [];
   const messageContent =
@@ -260,6 +262,7 @@ const getConversationDetails = async ({
     authorIsAgent = false;
   } else if (isUserMessageType(message)) {
     author = message.user?.fullName ?? "Someone else";
+    authorUserId = message.user?.sId ?? undefined;
     avatarUrl = message.user?.image ?? undefined;
     authorIsAgent = false;
 
@@ -319,6 +322,7 @@ const getConversationDetails = async ({
     subject,
     author,
     authorIsAgent,
+    authorUserId,
     avatarUrl,
     isFromTrigger,
     isFromEmailAgentConversation,
@@ -1161,19 +1165,6 @@ export const triggerConversationUnreadNotifications = async (
     return new Ok(undefined);
   }
 
-  // Get all participants to determine total count (for single-participant exception).
-  const totalParticipants = await conversation.listParticipants(auth);
-  const allParticipants = totalParticipants.filter((p) => {
-    if (userToNotifyId && p.sId !== userToNotifyId) {
-      return false;
-    }
-    return p.lastReadAt === null || conversation.updatedAt > p.lastReadAt;
-  });
-
-  if (allParticipants.length === 0) {
-    return new Ok(undefined);
-  }
-
   // Get conversation details including mentioned user IDs.
   const detailsResult = await getConversationDetails({
     auth,
@@ -1188,6 +1179,24 @@ export const triggerConversationUnreadNotifications = async (
     return new Ok(undefined);
   }
   if (detailsResult.value.isFromEmailAgentConversation) {
+    return new Ok(undefined);
+  }
+  const { authorUserId } = detailsResult.value;
+  // Get all participants to determine total count (for single-participant exception).
+  const totalParticipants = await conversation.listParticipants(auth);
+  const allParticipants = totalParticipants.filter((p) => {
+    if (userToNotifyId && p.sId !== userToNotifyId) {
+      return false;
+    }
+    // Exclude the message author from notifications (they don't need to be
+    // notified about their own message).
+    if (authorUserId && p.sId === authorUserId) {
+      return false;
+    }
+    return p.lastReadAt === null || conversation.updatedAt > p.lastReadAt;
+  });
+
+  if (allParticipants.length === 0) {
     return new Ok(undefined);
   }
 
