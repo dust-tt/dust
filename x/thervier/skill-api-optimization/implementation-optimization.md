@@ -10,7 +10,7 @@ The bottleneck was traced to `SkillResource.baseFetch` in
 const allMCPServerViews = await MCPServerViewResource.fetchByModelIds(
   auth,
   removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId)),
-  { includeMetadata: false }
+  { includeMetadata: false },
 );
 ```
 
@@ -32,8 +32,8 @@ which calls `InternalMCPServerInMemoryResource.fetchByIds`
 ```ts
 const resources = await concurrentExecutor(
   validIds,
-  (id) => InternalMCPServerInMemoryResource.init(auth, id),  // called once per ID
-  { concurrency: 10 }
+  (id) => InternalMCPServerInMemoryResource.init(auth, id), // called once per ID
+  { concurrency: 10 },
 );
 ```
 
@@ -44,7 +44,7 @@ Each `init` call fires `fetchDecryptedCredentials` → `InternalMCPServerCredent
 const credential = await InternalMCPServerCredentialModel.findOne({
   where: {
     workspaceId: auth.getNonNullableWorkspace().id,
-    internalMCPServerId,   // one query per server
+    internalMCPServerId, // one query per server
   },
 });
 ```
@@ -144,8 +144,9 @@ quadratic in the number of editor group associations × number of groups:
 
 ```ts
 for (const editorGroupSkill of editorGroupSkills) {
-  const group = editorGroups.find(   // O(G) per iteration
-    (g) => g.id === editorGroupSkill.groupId
+  const group = editorGroups.find(
+    // O(G) per iteration
+    (g) => g.id === editorGroupSkill.groupId,
   );
   if (group) {
     skillEditorGroupsMap.set(editorGroupSkill.skillConfigurationId, group);
@@ -203,10 +204,88 @@ calls out of `fromGlobalSkill` and batch them at the `baseFetch` level, similar 
 
 ---
 
+## Issue 5 — Sequential DB queries in `baseFetch` custom skills block
+
+**Severity: Medium**
+
+### What happens
+
+Inside `if (allowedCustomSkills.length > 0)` in `skill_resource.ts`, seven DB calls are issued
+sequentially even though most of them are independent:
+
+```ts
+const mcpServerConfigurations   = await SkillMCPServerConfigurationModel.findAll(...)
+const dataSourceConfigurations  = await SkillDataSourceConfigurationModel.findAll(...)
+const fileAttachmentModels      = await SkillFileAttachmentModel.findAll(...)
+const allFileResources          = await FileResource.fetchByModelIdsWithAuth(...)   // needs fileAttachmentModels
+const editorGroupSkills         = await GroupSkillModel.findAll(...)
+const editorGroups              = await GroupResource.fetchByModelIds(...)           // needs editorGroupSkills
+const allMCPServerViews         = await MCPServerViewResource.fetchByModelIds(...)  // needs mcpServerConfigurations
+```
+
+Each awaits the previous call even when there is no data dependency.
+
+### Fix
+
+Reorganise into three rounds using `Promise.all` (each round has ≤ 8 known promises, satisfying BACK7):
+
+**Round 1 — fully independent:**
+
+```ts
+const [
+  mcpServerConfigurations,
+  dataSourceConfigurations,
+  fileAttachmentModels,
+  editorGroupSkills,
+] = await Promise.all([
+  SkillMCPServerConfigurationModel.findAll(...),
+  SkillDataSourceConfigurationModel.findAll(...),
+  SkillFileAttachmentModel.findAll(...),
+  GroupSkillModel.findAll(...),
+]);
+```
+
+**Round 2 — depends on Round 1 results, independent of each other:**
+
+```ts
+const uniqueGroupIds = Array.from(
+  new Set(editorGroupSkills.map((eg) => eg.groupId)),
+);
+
+const [allFileResources, editorGroups] = await Promise.all([
+  FileResource.fetchByModelIdsWithAuth(
+    auth,
+    fileAttachmentModels.map((a) => a.fileId),
+  ),
+  uniqueGroupIds.length > 0
+    ? GroupResource.fetchByModelIds(auth, uniqueGroupIds)
+    : Promise.resolve([]),
+]);
+```
+
+**Round 3 — isolated (depends on `mcpServerConfigurations` from Round 1):**
+
+```ts
+const allMCPServerViews = await MCPServerViewResource.fetchByModelIds(
+  auth,
+  removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId)),
+  { includeMetadata: false },
+);
+```
+
+`MCPServerViewResource.fetchByModelIds` is kept in its own round because it triggers the
+credential-batch cascade (Issue 1) and may be more expensive than the other Round 2 fetches;
+isolating it makes profiling and future refactoring easier.
+
+**Expected impact**: reduces 7 sequential async calls to 3 rounds of parallel calls.
+
+---
+
 ## Tasks
 
 - [x] **[Issue 1]** Batch-fetch credentials in `InternalMCPServerInMemoryResource.fetchByIds` — single `WHERE internalMCPServerId IN (...)` instead of K individual `findOne` calls.
 - [x] **[Issue 2]** Build `mcpServerViewById: Map<id, MCPServerViewResource>` before the `allowedCustomSkills.map` loop and replace `.filter`+`.includes` with direct `Map.get` lookups.
 - [x] **[Issue 3]** Build `editorGroupsById: Map<id, Group>` before the `editorGroupSkills` loop and replace `.find` with `Map.get`.
+- [x] **[Issue 5]** Parallelize the 7 sequential DB calls in the custom skills block into 3 rounds using `Promise.all`.
 
 **Issue 4 — Global skills `baseFetch` cascade (won't fix for now):** we currently have very few global skills, so the G × M `baseFetch` cascade has negligible real-world impact. Revisit if the number of global skills grows significantly.

@@ -543,95 +543,94 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     let allowedCustomSkillsRes: SkillResource[] = [];
     if (allowedCustomSkills.length > 0) {
-      const mcpServerConfigurations =
-        await SkillMCPServerConfigurationModel.findAll({
+      // Round 1: all four queries are independent — run in parallel.
+      const [
+        mcpServerConfigurations,
+        dataSourceConfigurations,
+        fileAttachmentModels,
+        editorGroupSkills,
+      ] = await Promise.all([
+        SkillMCPServerConfigurationModel.findAll({
           where: {
             workspaceId: workspace.id,
             skillConfigurationId: {
               [Op.in]: allowedCustomSkillIds,
             },
           },
-        });
-
-      const skillMCPServerConfigsBySkillId = groupBy(
-        mcpServerConfigurations,
-        "skillConfigurationId"
-      );
-
-      const dataSourceConfigurations =
-        await SkillDataSourceConfigurationModel.findAll({
+        }),
+        SkillDataSourceConfigurationModel.findAll({
           where: {
             workspaceId: workspace.id,
             skillConfigurationId: {
               [Op.in]: customSkills.map((c) => c.id),
             },
           },
-        });
+        }),
+        SkillFileAttachmentModel.findAll({
+          where: {
+            workspaceId: workspace.id,
+            skillConfigurationId: {
+              [Op.in]: allowedCustomSkillIds,
+            },
+          },
+        }),
+        // TODO(SKILLS 2025-12-11): Ensure all skills have ONE group.
+        GroupSkillModel.findAll({
+          where: {
+            skillConfigurationId: {
+              [Op.in]: allowedCustomSkillIds,
+            },
+            workspaceId: workspace.id,
+          },
+          attributes: ["groupId", "skillConfigurationId"],
+        }),
+      ]);
 
+      const skillMCPServerConfigsBySkillId = groupBy(
+        mcpServerConfigurations,
+        "skillConfigurationId"
+      );
       const dataSourceConfigsBySkillId = groupBy(
         dataSourceConfigurations,
         "skillConfigurationId"
       );
-
-      const fileAttachmentModels = await SkillFileAttachmentModel.findAll({
-        where: {
-          workspaceId: workspace.id,
-          skillConfigurationId: {
-            [Op.in]: allowedCustomSkillIds,
-          },
-        },
-      });
-
-      const allFileResources = await FileResource.fetchByModelIdsWithAuth(
-        auth,
-        fileAttachmentModels.map((a) => a.fileId)
-      );
-
-      const fileResourceById = new Map(allFileResources.map((f) => [f.id, f]));
-
       const fileAttachmentsBySkillId = groupBy(
         fileAttachmentModels,
         "skillConfigurationId"
       );
 
-      // Fetch editor groups for all skills.
-      const skillEditorGroupsMap = new Map<number, GroupResource>();
-
-      // Batch fetch all editor groups for all skills.
-      const editorGroupSkills = await GroupSkillModel.findAll({
-        where: {
-          skillConfigurationId: {
-            [Op.in]: allowedCustomSkillIds,
-          },
-          workspaceId: workspace.id,
-        },
-        attributes: ["groupId", "skillConfigurationId"],
-      });
-
-      // TODO(SKILLS 2025-12-11): Ensure all skills have ONE group.
-
-      if (editorGroupSkills.length > 0) {
-        const uniqueGroupIds = Array.from(
-          new Set(editorGroupSkills.map((eg) => eg.groupId))
-        );
-        const editorGroups = await GroupResource.fetchByModelIds(
+      // Round 2: file resources and editor groups depend on Round 1 but are
+      // independent of each other — run in parallel.
+      const uniqueGroupIds = Array.from(
+        new Set(editorGroupSkills.map((eg) => eg.groupId))
+      );
+      const [allFileResources, editorGroups] = await Promise.all([
+        FileResource.fetchByModelIdsWithAuth(
           auth,
-          uniqueGroupIds
-        );
+          fileAttachmentModels.map((a) => a.fileId)
+        ),
+        uniqueGroupIds.length > 0
+          ? GroupResource.fetchByModelIds(auth, uniqueGroupIds)
+          : Promise.resolve([]),
+      ]);
 
-        // Build a map from a skill's ID to its editor group.
-        const editorGroupsById = new Map(editorGroups.map((g) => [g.id, g]));
-        for (const editorGroupSkill of editorGroupSkills) {
-          const group = editorGroupsById.get(editorGroupSkill.groupId);
-          if (group) {
-            skillEditorGroupsMap.set(
-              editorGroupSkill.skillConfigurationId,
-              group
-            );
-          }
+      const fileResourceById = new Map(allFileResources.map((f) => [f.id, f]));
+
+      // Build a map from a skill's ID to its editor group.
+      const skillEditorGroupsMap = new Map<number, GroupResource>();
+      const editorGroupsById = new Map(editorGroups.map((g) => [g.id, g]));
+      for (const editorGroupSkill of editorGroupSkills) {
+        const group = editorGroupsById.get(editorGroupSkill.groupId);
+        if (group) {
+          skillEditorGroupsMap.set(
+            editorGroupSkill.skillConfigurationId,
+            group
+          );
         }
       }
 
+      // Round 3: isolated — MCPServerViewResource triggers a credential-batch
+      // cascade and is kept separate to simplify profiling and future refactoring.
       const allMCPServerViews = await MCPServerViewResource.fetchByModelIds(
         auth,
         removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId)),
