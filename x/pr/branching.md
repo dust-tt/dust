@@ -113,6 +113,8 @@ filesystem / MCP version without rewriting the fork flow.
 
 #### 4. UI Surfaces
 
+This stream adds:
+
 - the `Branch conversation` action in the conversation menu
 - the `Branch conversation` action in the per-message menu
 - the lightweight lineage surface in the child conversation
@@ -275,6 +277,7 @@ Scope:
 - add `Branch conversation` to the per-message menu
 - add the lightweight "Branched from ..." UI in the child conversation
 - add the lightweight "XXX branched this conversation: " UI in the parent conversation
+- wire the UI to the backend endpoint
 
 #### 5: Switch Fork Initialization to Shipped Compaction
 
