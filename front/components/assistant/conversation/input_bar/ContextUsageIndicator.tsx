@@ -1,3 +1,6 @@
+import { useCompactConversation } from "@app/hooks/conversations";
+import type { SupportedModel } from "@app/types/assistant/models/types";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -8,7 +11,10 @@ import {
 interface ContextUsageIndicatorProps {
   contextUsage: number;
   contextSize: number;
+  model: SupportedModel | null;
   buttonSize: "xs" | "sm";
+  owner: LightWorkspaceType;
+  conversationId?: string | null;
 }
 
 interface CircleProgressProps {
@@ -54,10 +60,18 @@ function CircleProgress({ percentage, size = 16 }: CircleProgressProps) {
 export function ContextUsageIndicator({
   contextUsage,
   contextSize,
+  model,
   buttonSize,
+  owner,
+  conversationId,
 }: ContextUsageIndicatorProps) {
   const percentage =
     contextSize > 0 ? Math.round((contextUsage / contextSize) * 100) : 0;
+
+  const { compact, isCompacting } = useCompactConversation({
+    owner,
+    conversationId,
+  });
 
   return (
     <div className="hidden md:block">
@@ -83,7 +97,13 @@ export function ContextUsageIndicator({
               variant="outline"
               size="xs"
               label="Compact now"
-              disabled={true}
+              onClick={() => {
+                if (model) {
+                  void compact(model);
+                }
+              }}
+              disabled={isCompacting || !model}
+              isLoading={isCompacting}
             />
           </div>
         </DropdownMenuContent>

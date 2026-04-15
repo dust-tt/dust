@@ -1249,7 +1249,10 @@ const InputBarContainer = ({
               <ContextUsageIndicator
                 contextUsage={contextUsage?.contextUsage ?? 0}
                 contextSize={contextUsage?.contextSize ?? 0}
+                model={contextUsage?.model ?? null}
                 buttonSize={buttonSize}
+                owner={owner}
+                conversationId={conversation?.sId}
               />
             )}
             {!subscription.plan.isByok &&
