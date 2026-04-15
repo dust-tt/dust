@@ -14,10 +14,7 @@ const SO_ORIGINAL_DST: libc::c_int = 80;
 
 #[cfg(target_os = "linux")]
 pub fn resolve_original_dst(stream: &TcpStream) -> io::Result<SocketAddr> {
-    match resolve_original_dst_linux(stream) {
-        Ok(addr) => Ok(addr),
-        Err(_) => stream.local_addr(),
-    }
+    resolve_original_dst_linux(stream)
 }
 
 #[cfg(not(target_os = "linux"))]

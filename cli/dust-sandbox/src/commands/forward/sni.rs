@@ -20,7 +20,10 @@ pub fn parse_client_hello_sni(bytes: &[u8]) -> DomainParseResult {
         return DomainParseResult::NotFound;
     }
 
-    let hello_len = read_u24(&record_payload[1..4]) as usize;
+    let hello_len = match record_payload.get(1..4) {
+        Some(hello_len_bytes) => read_u24(hello_len_bytes) as usize,
+        None => return DomainParseResult::Incomplete,
+    };
     let client_hello = match record_payload.get(4..4 + hello_len) {
         Some(hello) => hello,
         None => return DomainParseResult::Incomplete,
@@ -143,6 +146,14 @@ mod tests {
         let truncated = &hello[..10];
         assert_eq!(
             parse_client_hello_sni(truncated),
+            DomainParseResult::Incomplete
+        );
+    }
+
+    #[test]
+    fn returns_incomplete_for_truncated_tls_record_with_missing_hello_length() {
+        assert_eq!(
+            parse_client_hello_sni(&[0x16, 0x03, 0x01, 0x00, 0x01, 0x01]),
             DomainParseResult::Incomplete
         );
     }

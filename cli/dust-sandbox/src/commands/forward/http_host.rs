@@ -15,6 +15,9 @@ pub fn parse_http_host(bytes: &[u8]) -> DomainParseResult {
         }
         if let Some((name, value)) = line.split_once(':') {
             if name.eq_ignore_ascii_case("host") {
+                if header_end.is_none() {
+                    return DomainParseResult::Incomplete;
+                }
                 let host = strip_port(value.trim());
                 return if host.is_empty() {
                     DomainParseResult::NotFound
@@ -99,6 +102,12 @@ mod tests {
     #[test]
     fn returns_incomplete_for_partial_headers() {
         let request = b"GET / HTTP/1.1\r\nUser-Agent: curl\r\n";
+        assert_eq!(parse_http_host(request), DomainParseResult::Incomplete);
+    }
+
+    #[test]
+    fn returns_incomplete_for_partial_host_header_line() {
+        let request = b"GET / HTTP/1.1\r\nHost: api.op";
         assert_eq!(parse_http_host(request), DomainParseResult::Incomplete);
     }
 }
