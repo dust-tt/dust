@@ -1,10 +1,10 @@
 import { config, REGION_TIMEZONES } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
-import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { hasReinforcementEnabled } from "@app/lib/reinforced_agent/workspace_check";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
+import { EXCLUDED_PLAN_CODES } from "@app/temporal/utils";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { WorkflowHandle } from "@temporalio/client";
@@ -32,8 +32,6 @@ const WORKSPACE_WORKFLOW_ID_PREFIX = "reinforcement-workspace-";
 export function makeWorkspaceCronWorkflowId(workspaceId: string): string {
   return `${WORKSPACE_WORKFLOW_ID_PREFIX}${workspaceId}`;
 }
-
-const EXCLUDED_PLAN_CODES = new Set([FREE_TRIAL_PHONE_PLAN_CODE]);
 
 /**
  * List workspace sIds that have the reinforced_agents feature flag,
