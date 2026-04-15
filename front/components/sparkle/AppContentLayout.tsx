@@ -1,3 +1,4 @@
+import { CommandPalette } from "@app/components/command_palette/CommandPalette";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { Navigation } from "@app/components/navigation/Navigation";
 import { SubscriptionEndBanner } from "@app/components/navigation/TrialBanner";
@@ -16,7 +17,7 @@ interface AppContentLayoutProps {
 
 export function AppContentLayout({ children }: AppContentLayoutProps) {
   const owner = useWorkspace();
-  const { subscription } = useAuth();
+  const { subscription, user } = useAuth();
   const {
     contentClassName,
     contentWidth,
@@ -124,6 +125,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
           </div>
         )}
       </div>
+      <CommandPalette owner={owner} user={user} />
     </div>
   );
 }

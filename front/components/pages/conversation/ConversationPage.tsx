@@ -1,12 +1,10 @@
 import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
+import { useAgentFromSearchParam } from "@app/hooks/useAgentFromSearchParam";
 import { useOnboardingConversation } from "@app/hooks/useOnboardingConversation";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
-import { useAgentConfiguration } from "@app/lib/swr/assistants";
-import { toRichAgentMentionType } from "@app/types/assistant/mentions";
-import { useContext, useEffect } from "react";
+import { useEffect } from "react";
 
 export function ConversationPage() {
   const router = useAppRouter();
@@ -37,19 +35,8 @@ export function ConversationPage() {
     conversationId: activeConversationId,
   });
 
-  const { setSelectedAgent } = useContext(InputBarContext);
-
-  const { agentConfiguration: selectedAgentConfiguration } =
-    useAgentConfiguration({
-      workspaceId: owner.sId,
-      agentConfigurationId: agent,
-    });
-
-  useEffect(() => {
-    if (selectedAgentConfiguration) {
-      setSelectedAgent(toRichAgentMentionType(selectedAgentConfiguration));
-    }
-  }, [selectedAgentConfiguration, setSelectedAgent]);
+  // Consume ?agent= param: fetch agent, set it in input bar, clean up URL.
+  useAgentFromSearchParam(owner.sId);
 
   return (
     <ConversationContainerVirtuoso

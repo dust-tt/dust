@@ -14,11 +14,6 @@ export function SidebarSearch({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        e.stopPropagation();
-        searchInputRef.current?.focus();
-      }
       if (
         e.key === "Escape" &&
         document.activeElement === searchInputRef.current

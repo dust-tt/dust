@@ -1,3 +1,4 @@
+import { useCommandPalette } from "@app/components/command_palette/CommandPaletteContext";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -6,6 +7,7 @@ import { useEffect } from "react";
 
 export function useAppKeyboardShortcuts(owner: LightWorkspaceType) {
   const { toggleNavigationBar } = useDesktopNavigation();
+  const { open: openCommandPalette } = useCommandPalette();
 
   const router = useAppRouter();
 
@@ -29,11 +31,15 @@ export function useAppKeyboardShortcuts(owner: LightWorkspaceType) {
               shallow: true,
             });
             break;
+          case "k":
+            event.preventDefault();
+            openCommandPalette();
+            break;
         }
       }
     }
 
     window.addEventListener("keydown", handleKeyboardShortcuts);
     return () => window.removeEventListener("keydown", handleKeyboardShortcuts);
-  }, [owner.sId, router, toggleNavigationBar]);
+  }, [owner.sId, router, toggleNavigationBar, openCommandPalette]);
 }
