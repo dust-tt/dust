@@ -126,12 +126,14 @@ interface SimpleMauInfo {
   type: "simple";
   subscription: SubscriptionInfo;
   threshold: number;
+  currentPeriodStart: string | undefined;
 }
 
 interface TieredMauInfo {
   type: "tiered";
   subscriptions: SubscriptionInfo[];
   threshold: number;
+  currentPeriodStart: string | undefined;
 }
 
 type MauInfo = SimpleMauInfo | TieredMauInfo;
@@ -165,7 +167,12 @@ async function getContractMauInfo(
   // Build product → subscription info mapping.
   const subscriptionByProductId = new Map<
     string,
-    { id: string; currentQuantity: number; nextPeriodStart: string | undefined }
+    {
+      id: string;
+      currentQuantity: number;
+      nextPeriodStart: string | undefined;
+      currentPeriodStart: string | undefined;
+    }
   >();
   for (const sub of contract.subscriptions) {
     const productId = sub.subscription_rate.product.id;
@@ -173,11 +180,13 @@ async function getContractMauInfo(
     const currentQuantity =
       qSchedule.length > 0 ? qSchedule[qSchedule.length - 1].quantity : 0;
     const nextPeriodStart = sub.billing_periods?.next?.starting_at;
+    const currentPeriodStart = sub.billing_periods?.current?.starting_at;
     if (sub.id) {
       subscriptionByProductId.set(productId, {
         id: sub.id,
         currentQuantity,
         nextPeriodStart,
+        currentPeriodStart,
       });
     }
   }
@@ -205,6 +214,8 @@ async function getContractMauInfo(
       type: "tiered",
       subscriptions,
       threshold: safeThreshold,
+      currentPeriodStart: subscriptionByProductId.get(tierProductIds[0])
+        ?.currentPeriodStart,
     };
   }
 
@@ -221,6 +232,7 @@ async function getContractMauInfo(
       tier: { start: 1, end: undefined, isFloor: false },
     },
     threshold: safeThreshold,
+    currentPeriodStart: mauSubInfo.currentPeriodStart,
   };
 }
 
@@ -254,10 +266,14 @@ export async function syncMauCount({
     return new Err(new Error("No MAU subscription found on contract"));
   }
 
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  // Count MAUs since the start of the current billing period (contract anniversary).
+  // Falls back to 30 days if the billing period is not yet available (e.g. new contract).
+  const since = mauInfo.currentPeriodStart
+    ? new Date(mauInfo.currentPeriodStart)
+    : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const mauCount = await countActiveUsersForPeriodInWorkspace({
     messagesPerMonthForMau: mauInfo.threshold,
-    since: thirtyDaysAgo,
+    since,
     workspace,
   });
 
