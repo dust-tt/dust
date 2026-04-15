@@ -2,6 +2,10 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
+  extractTextFromBuffer,
+  processAttachment,
+} from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
+import {
   getFileFromConversationAttachment,
   sanitizeFilename,
 } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
@@ -194,54 +198,95 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
 
       const downloadUrl = response["@microsoft.graph.downloadUrl"];
       const mimeType = response.file.mimeType;
+      const fileName = response.name;
 
-      let content: string = "";
-      try {
-        content = await downloadAndProcessMicrosoftFile({
-          downloadUrl,
-          mimeType,
-          fileName: response.name,
-          extractAsXml: getAsXml,
-        });
-      } catch (error) {
+      // For XML extraction (e.g. reading Word document XML before updating it),
+      // use the specialized path with pagination support.
+      if (getAsXml) {
+        let content: string = "";
+        try {
+          content = await downloadAndProcessMicrosoftFile({
+            downloadUrl,
+            mimeType,
+            fileName,
+            extractAsXml: true,
+          });
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Failed to process file: ${normalizeError(error).message}`
+            )
+          );
+        }
+
+        const totalContentLength = content.length;
+        const startIndex = Math.max(0, offset);
+        const endIndex = Math.min(content.length, startIndex + limit);
+        const truncatedContent = content.slice(startIndex, endIndex);
+        const hasMore = endIndex < content.length;
+        const nextOffset = hasMore ? endIndex : undefined;
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                itemId,
+                driveId,
+                siteId,
+                fileName,
+                mimeType,
+                content: truncatedContent,
+                returnedContentLength: truncatedContent.length,
+                totalContentLength,
+                offset: startIndex,
+                nextOffset,
+                hasMore,
+              },
+              null,
+              2
+            ),
+          },
+        ]);
+      }
+
+      // Download the file as a buffer and attach it to the conversation.
+      const fileResponse = await untrustedFetch(downloadUrl);
+      if (!fileResponse.ok) {
         return new Err(
           new MCPError(
-            `Failed to process file: ${normalizeError(error).message}`
+            `Failed to download file: ${fileResponse.status} ${fileResponse.statusText}`
           )
         );
       }
+      const buffer = Buffer.from(await fileResponse.arrayBuffer());
 
-      // Apply offset and limit
-      const totalContentLength = content.length;
-      const startIndex = Math.max(0, offset);
-      const endIndex = Math.min(content.length, startIndex + limit);
-      const truncatedContent = content.slice(startIndex, endIndex);
+      const result = await processAttachment({
+        mimeType,
+        filename: fileName,
+        extractText: async () => extractTextFromBuffer(buffer, mimeType),
+        downloadContent: async () => new Ok(buffer),
+      });
 
-      const hasMore = endIndex < content.length;
-      const nextOffset = hasMore ? endIndex : undefined;
+      if (result.isErr()) {
+        return new Err(result.error);
+      }
 
-      return new Ok([
-        {
-          type: "text" as const,
-          text: JSON.stringify(
-            {
-              itemId,
-              driveId,
-              siteId,
-              fileName: response.name,
-              mimeType: mimeType,
-              content: truncatedContent,
-              returnedContentLength: truncatedContent.length,
-              totalContentLength,
-              offset: startIndex,
-              nextOffset,
-              hasMore,
-            },
-            null,
-            2
-          ),
-        },
-      ]);
+      // Ensure a resource block is included so the file can be used by other tools.
+      const hasResource = result.value.some((c) => c.type === "resource");
+      if (!hasResource) {
+        result.value.push({
+          type: "resource" as const,
+          resource: {
+            blob: buffer.toString("base64"),
+            _meta: { text: `File: ${sanitizeFilename(fileName)}` },
+            mimeType,
+            uri: sanitizeFilename(fileName),
+          },
+        });
+      }
+
+      return new Ok(result.value);
     } catch (err) {
       return new Err(
         new MCPError(
