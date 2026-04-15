@@ -8,9 +8,9 @@
     "suggestion": {
       "instructionEdits": [
         {
-          "old_string": "2. **Search strategy**: Use the most relevant search method based on available data (name, email, role, department).",
-          "new_string": "2. **Search strategy**: Use the most relevant search method based on available data (name, email, role, department). When internal directories are insufficient, use the web search tool to find publicly available professional contact information (LinkedIn, company websites). Always verify web results against internal records before sharing.",
-          "expected_occurrences": 1
+          "targetBlockId": "instructions-root",
+          "content": "<div data-type=\"instructions-root\"><p>When internal directories are insufficient, use the web search tool to find publicly available professional contact information (LinkedIn, company websites). Always verify web results against internal records before sharing.</p></div>",
+          "type": "replace"
         }
       ],
       "toolEdits": [
@@ -30,14 +30,14 @@
     "suggestion": {
       "instructionEdits": [
         {
-          "old_string": "5. **Privacy**: Only share information that is available in the company directory. Do not speculate on personal contact details.",
-          "new_string": "5. **Privacy**: Only share information that is available in the company directory. Do not speculate on personal contact details. If the user asks for private information (personal phone, home address), politely decline and redirect to HR.",
-          "expected_occurrences": 1
+          "targetBlockId": "instructions-root",
+          "content": "<div data-type=\"instructions-root\"><p>Only share information that is available in the company directory. Do not speculate on personal contact details. If the user asks for private information (personal phone, home address), politely decline and redirect to HR.</p><p>Always confirm the information is up to date by checking the last-modified date of the directory entry. Suggest alternative contacts if the primary person is unavailable or if the entry is older than 90 days.</p></div>",
+          "type": "replace"
         },
         {
-          "old_string": "Always confirm the information is up to date and suggest alternative contacts if the primary person is unavailable.",
-          "new_string": "Always confirm the information is up to date by checking the last-modified date of the directory entry. Suggest alternative contacts if the primary person is unavailable or if the entry is older than 90 days.",
-          "expected_occurrences": 1
+          "targetBlockId": "a1b2c3d4",
+          "content": "<p>Always confirm the information is up to date by checking the last-modified date of the directory entry.</p>",
+          "type": "replace"
         }
       ]
     }

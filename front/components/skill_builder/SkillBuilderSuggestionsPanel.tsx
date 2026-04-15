@@ -37,16 +37,14 @@ export function SkillBuilderSuggestionsPanel() {
         return;
       }
 
-      let instructions = getValues("instructions");
+      let html = getValues("instructionsHtml");
 
       for (const edit of instructionEdits) {
-        instructions = instructions.replaceAll(
-          edit.old_string,
-          edit.new_string
-        );
+        // TODO(reinforced-skills): Implement the actual decoration logic (Issue #7388)
+        html = edit.content;
       }
 
-      setValue("instructions", instructions, { shouldDirty: true });
+      setValue("instructionsHtml", html, { shouldDirty: true });
     },
     [getValues, setValue]
   );

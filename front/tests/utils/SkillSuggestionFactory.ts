@@ -26,9 +26,9 @@ export class SkillSuggestionFactory {
       suggestion: overrides.suggestion ?? {
         instructionEdits: [
           {
-            old_string: "original text",
-            new_string: "updated skill instructions",
-            expected_occurrences: 1,
+            targetBlockId: "abc12345",
+            content: "<p>Updated skill instructions</p>",
+            type: "replace",
           },
         ],
       },
@@ -44,9 +44,9 @@ export class SkillSuggestionFactory {
     overrides: Partial<{
       suggestion: {
         instructionEdits?: {
-          old_string: string;
-          new_string: string;
-          expected_occurrences: number;
+          targetBlockId: string;
+          content: string;
+          type: "replace";
         }[];
         toolEdits?: { action: "add" | "remove"; toolId: string }[];
       };
@@ -60,9 +60,9 @@ export class SkillSuggestionFactory {
       suggestion: overrides.suggestion ?? {
         instructionEdits: [
           {
-            old_string: "original text",
-            new_string: "updated skill instructions",
-            expected_occurrences: 1,
+            targetBlockId: "abc12345",
+            content: "<p>Updated skill instructions</p>",
+            type: "replace",
           },
         ],
       },

@@ -15,9 +15,9 @@ function makeInstructionSuggestion(input: {
   sId: string;
   analysis: string;
   instructionEdits: Array<{
-    old_string: string;
-    new_string: string;
-    expected_occurrences?: number;
+    targetBlockId: string;
+    content: string;
+    type?: "replace";
   }>;
   skillConfigurationId?: string;
   source?: "reinforcement" | "synthetic";
@@ -34,8 +34,9 @@ function makeInstructionSuggestion(input: {
     kind: "edit",
     suggestion: {
       instructionEdits: input.instructionEdits.map((e) => ({
-        ...e,
-        expected_occurrences: e.expected_occurrences ?? 1,
+        targetBlockId: e.targetBlockId,
+        content: e.content,
+        type: "replace" as const,
       })),
     },
   };
@@ -99,9 +100,9 @@ export const aggregateSuggestionsSuite: TestSuite = {
             "User complained that the skill's responses were too blunt and impersonal. The instructions should emphasize a warmer, more empathetic tone.",
           instructionEdits: [
             {
-              old_string: "Be professional.",
-              new_string:
-                "Be professional, warm, and empathetic. Acknowledge the customer's situation before providing solutions.",
+              targetBlockId: "block-professional",
+              content:
+                "<p>Be professional, warm, and empathetic. Acknowledge the customer's situation before providing solutions.</p>",
             },
           ],
         }),
@@ -111,9 +112,9 @@ export const aggregateSuggestionsSuite: TestSuite = {
             "User found the skill's language too robotic. The instructions should guide the skill to use more natural, conversational language.",
           instructionEdits: [
             {
-              old_string: "Be professional.",
-              new_string:
-                "Be professional and use natural, conversational language. Avoid formulaic or robotic phrasing.",
+              targetBlockId: "block-professional",
+              content:
+                "<p>Be professional and use natural, conversational language. Avoid formulaic or robotic phrasing.</p>",
             },
           ],
         }),
@@ -123,9 +124,9 @@ export const aggregateSuggestionsSuite: TestSuite = {
             "User reported the skill jumped straight to solutions without acknowledging the problem. Instructions should include empathy-first guidance.",
           instructionEdits: [
             {
-              old_string: "Be professional.",
-              new_string:
-                "Be professional. Always acknowledge the customer's frustration before jumping to a solution.",
+              targetBlockId: "block-professional",
+              content:
+                "<p>Be professional. Always acknowledge the customer's frustration before jumping to a solution.</p>",
             },
           ],
         }),
@@ -210,9 +211,9 @@ Score 3 if well-merged with clear analysis covering all use cases and conversati
             "User complained about the skill's tone being too cold. The skill should adopt a warmer communication style with more empathy.",
           instructionEdits: [
             {
-              old_string: "Be professional.",
-              new_string:
-                "Be professional, warm, and empathetic. Show care for the customer's needs.",
+              targetBlockId: "block-professional",
+              content:
+                "<p>Be professional, warm, and empathetic. Show care for the customer's needs.</p>",
             },
           ],
         }),
@@ -226,9 +227,9 @@ Score 3 if well-merged with clear analysis covering all use cases and conversati
               "Multiple users found responses impersonal. Adding warmth and a friendlier tone would improve satisfaction.",
             instructionEdits: [
               {
-                old_string: "Be professional.",
-                new_string:
-                  "Be professional. Use a warm, conversational tone. Be friendly and approachable. Show genuine care for the user's needs.",
+                targetBlockId: "block-professional",
+                content:
+                  "<p>Be professional. Use a warm, conversational tone. Be friendly and approachable. Show genuine care for the user's needs.</p>",
               },
             ],
           }),
@@ -260,9 +261,9 @@ Score 3 if no suggestion is created.`,
             "User was frustrated that the skill didn't acknowledge their problem before jumping to solutions. The skill should show empathy first.",
           instructionEdits: [
             {
-              old_string: "Be professional.",
-              new_string:
-                "Be professional. When users report issues, always acknowledge their frustration and show understanding before providing a solution.",
+              targetBlockId: "block-professional",
+              content:
+                "<p>Be professional. When users report issues, always acknowledge their frustration and show understanding before providing a solution.</p>",
             },
           ],
         }),
@@ -277,9 +278,9 @@ Score 3 if no suggestion is created.`,
               "Users wanted more empathetic responses. The skill should acknowledge frustration and show understanding before jumping to solutions.",
             instructionEdits: [
               {
-                old_string: "Be professional.",
-                new_string:
-                  "Be professional. When users report problems, first acknowledge their frustration. Show understanding and empathy before providing solutions.",
+                targetBlockId: "block-professional",
+                content:
+                  "<p>Be professional. When users report problems, first acknowledge their frustration. Show understanding and empathy before providing solutions.</p>",
               },
             ],
           }),
@@ -385,9 +386,9 @@ tool usage (account ID + refresh flag), each with well-written merged instructio
             "User found responses slightly long. The skill tends to include one or two unnecessary filler sentences at the end.",
           instructionEdits: [
             {
-              old_string: "Focus on clarity and correctness.",
-              new_string:
-                "Focus on clarity and correctness. Keep responses concise. Avoid unnecessary filler sentences.",
+              targetBlockId: "block-clarity",
+              content:
+                "<p>Focus on clarity and correctness. Keep responses concise. Avoid unnecessary filler sentences.</p>",
             },
           ],
         }),

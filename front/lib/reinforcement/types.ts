@@ -32,21 +32,17 @@ export function isExploratoryToolName(
 }
 
 const SkillInstructionEditArgSchema = z.object({
-  old_string: z
+  targetBlockId: z
     .string()
-    .min(1)
-    .describe("Exact text to find in the current skill instructions."),
-  new_string: z
-    .string()
-    .describe("Replacement text. Empty string deletes the matched span."),
-  expected_occurrences: z
-    .number()
-    .int()
-    .min(1)
-    .default(1)
     .describe(
-      "How many times old_string is expected to appear. Used to validate the edit is still applicable."
+      'The data-block-id of the block to replace. Use "instructions-root" to replace all instructions.'
     ),
+  content: z
+    .string()
+    .describe(
+      "Full replacement content for the block, including its wrapping tag. Must be a single-line string with no literal newlines."
+    ),
+  type: z.literal("replace"),
 });
 
 export const TOOL_SCHEMAS: Record<
@@ -59,7 +55,7 @@ export const TOOL_SCHEMAS: Record<
       .array(SkillInstructionEditArgSchema)
       .optional()
       .describe(
-        "Sequential search-and-replace operations applied to the skill instructions."
+        "Block-targeted edits to the skill instructions. Each item targets one block by its data-block-id."
       ),
     toolEdits: z
       .array(

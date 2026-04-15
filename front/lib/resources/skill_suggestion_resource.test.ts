@@ -66,9 +66,9 @@ describe("SkillSuggestionResource", () => {
           suggestion: {
             instructionEdits: [
               {
-                old_string: "original",
-                new_string: "Be more detailed",
-                expected_occurrences: 1,
+                targetBlockId: "abc12345",
+                content: "<p>Be more detailed</p>",
+                type: "replace",
               },
             ],
           },
@@ -221,9 +221,9 @@ describe("SkillSuggestionResource", () => {
             suggestion: {
               instructionEdits: [
                 {
-                  old_string: "old",
-                  new_string: `instruction-${i}`,
-                  expected_occurrences: 1,
+                  targetBlockId: "abc12345",
+                  content: `<p>instruction-${i}</p>`,
+                  type: "replace",
                 },
               ],
             },
@@ -543,9 +543,9 @@ describe("SkillSuggestionResource", () => {
           suggestion: {
             instructionEdits: [
               {
-                old_string: "old text",
-                new_string: "New instructions",
-                expected_occurrences: 1,
+                targetBlockId: "abc12345",
+                content: "<p>New instructions</p>",
+                type: "replace",
               },
             ],
           },
@@ -560,9 +560,9 @@ describe("SkillSuggestionResource", () => {
       expect(json.suggestion).toMatchObject({
         instructionEdits: [
           {
-            old_string: "old text",
-            new_string: "New instructions",
-            expected_occurrences: 1,
+            targetBlockId: "abc12345",
+            content: "<p>New instructions</p>",
+            type: "replace",
           },
         ],
       });
