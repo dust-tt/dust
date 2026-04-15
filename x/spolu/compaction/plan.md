@@ -170,7 +170,7 @@ PR #24293 (combined with 4.1).
 
 ### - [x] PR 5.1 — Context usage indicator in conversation UI
 
-- Use the context-usage endpoint (from PR 2.2) to get `promptTokens` and `modelContextWindow`,
+- Use the context-usage endpoint (from PR 2.1) to get `contextUsage` and `contextSize`,
   compute usage percentage on the client.
 - Display a progress bar or indicator showing context fullness.
 - Show a warning when approaching the compaction threshold.
@@ -188,15 +188,15 @@ PR #24293 (combined with 4.1).
 ### - [x] PR 5.4 — Manual compaction trigger
 
 - Add a UI affordance (button in the context usage indicator, or a `/compact` command) that calls
-  `compaction`.
+  the compaction API.
 - Initially, compaction is user-triggered only — block the input bar once context usage reaches a
   high threshold, prompting the user to compact.
-- API endpoint: `POST /api/w/[wId]/assistant/conversations/[cId]/compact`.
+- API endpoint: `POST /api/w/[wId]/assistant/conversations/[cId]/compactions`.
 
 ### Future: Automatic compaction trigger from agent loop finalization
 
 - In `finalizeSuccessfulAgentLoopActivity` / `finalizeGracefullyStoppedAgentLoopActivity`: after
   storing `promptTokens`, check against `compactionThreshold`. If exceeded, call
-  `launchCompactConversationWorkflow`.
+  `launchCompactionWorkflow`.
 - Requires careful handling of the steering interaction (see "Interaction with Steering" in the
   proposal): steering goes first, compaction runs after. Pruning remains as safety net.
