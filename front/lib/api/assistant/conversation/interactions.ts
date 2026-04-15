@@ -7,6 +7,10 @@ import type {
  * Group messages into interactions (user turn + agent responses),
  * using turn type (user/content_fragment vs assistant/function) as the delimiter.
  *
+ * A compaction message acts as an era boundary: all interactions before it are discarded and the
+ * compaction summary starts a fresh era. This mirrors the fact that all messages before a succeeded
+ * compaction are already summarized in its content.
+ *
  * Example: [content_fragment, user, content_fragment, user, assistant, function, function]
  * results in a single interaction.
  */
@@ -19,16 +23,35 @@ export function groupMessagesIntoInteractions<T extends MinimalMessageType>(
   // Determine the high-level turn type for a message.
   // - "user": user messages and content fragments
   // - "agent": assistant messages and tool/function results
-  const turnTypeForMessage = (message: T): "user" | "agent" => {
+  // - "compaction": compaction summary boundary
+  const turnTypeForMessage = (message: T): "user" | "agent" | "compaction" => {
+    if (message.role === "compaction") {
+      return "compaction";
+    }
     if (message.role === "user" || message.role === "content_fragment") {
       return "user";
     }
-    // Includes "assistant" and "function" roles
+    // Includes "assistant" and "function" roles.
     return "agent";
   };
 
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i];
+
+    // A compaction message starts a new era: discard all previous interactions and the current
+    // in-progress interaction. The compaction summary becomes the first message of a new era.
+    if (turnTypeForMessage(message) === "compaction") {
+      interactions.length = 0;
+      currentInteraction = [message];
+
+      // If this is the last message, flush the interaction.
+      if (i === messages.length - 1) {
+        interactions.push({ messages: currentInteraction });
+        currentInteraction = [];
+      }
+      continue;
+    }
+
     currentInteraction.push(message);
 
     const isLastMessage = i === messages.length - 1;
