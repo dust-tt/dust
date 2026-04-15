@@ -359,7 +359,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       return new Ok(nRes.value);
     }
 
-    const client = await getMicrosoftClient(connector.connectionId);
     const nodes = [];
 
     const selectedResources = (
@@ -376,6 +375,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     const { nodeType } = typeAndPathFromInternalId(parentInternalId);
 
     try {
+      const client = await getMicrosoftClient(connector.connectionId);
       switch (nodeType) {
         case "sites-root": {
           const config =
