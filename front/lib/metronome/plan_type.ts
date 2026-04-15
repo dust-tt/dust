@@ -6,6 +6,10 @@ import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { ContractV2 } from "@metronome/sdk/resources";
 
+// Commits and credits are stripped before caching — their balances/ledgers change
+// every billing cycle and are never read here.
+export type CachedContract = Omit<ContractV2, "commits" | "credits">;
+
 // No TTL — contracts only change when a contract starts/ends.
 // Invalidated explicitly via invalidateContractCache on contract.start/end webhooks.
 // Null values are NOT cached: when no contract is found we want a fresh fetch next time.
@@ -17,7 +21,7 @@ import type { ContractV2 } from "@metronome/sdk/resources";
  */
 async function fetchActiveContract(
   workspaceId: string
-): Promise<ContractV2 | null> {
+): Promise<CachedContract | null> {
   try {
     const workspace = await WorkspaceModel.findOne({
       attributes: ["id", "metronomeCustomerId"],
@@ -50,7 +54,11 @@ async function fetchActiveContract(
       "[Metronome Contract] Contract fetched"
     );
 
-    return response.data ?? null;
+    if (!response.data) {
+      return null;
+    }
+    const { commits: _commits, credits: _credits, ...contract } = response.data;
+    return contract;
   } catch (err) {
     logger.warn(
       { workspaceId, err },
@@ -72,7 +80,7 @@ const getCachedActiveContract = cacheWithRedis(
  */
 export async function getActiveContract(
   workspaceId: string
-): Promise<ContractV2 | null> {
+): Promise<CachedContract | null> {
   return await getCachedActiveContract(workspaceId);
 }
 
