@@ -20,8 +20,8 @@ type ResponseBody = {
   message?: string;
 };
 
-const ContractEventSchema = z.object({
-  type: z.union([z.literal("contract.start"), z.literal("contract.end")]),
+const ContractEndEventSchema = z.object({
+  type: z.literal("contract.end"),
   contract_id: z.string(),
   customer_id: z.string(),
 });
@@ -121,13 +121,12 @@ async function handler(
           );
           break;
 
-        case "contract.start": {
+        case "contract.start":
           logger.info({ event }, "[Metronome Webhook] Contract started");
           break;
-        }
 
         case "contract.end": {
-          const parsed = ContractEventSchema.safeParse(event);
+          const parsed = ContractEndEventSchema.safeParse(event);
           if (!parsed.success) {
             logger.error(
               { event, error: parsed.error.message },
