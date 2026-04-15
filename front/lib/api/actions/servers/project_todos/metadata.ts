@@ -56,11 +56,9 @@ export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
         .enum(PROJECT_TODO_CATEGORIES)
         .optional()
         .describe(
-          "Category. Defaults to 'follow_ups'. " +
-            "need_attention: urgent items requiring immediate action; " +
-            "key_decisions: decisions to track or make; " +
-            "follow_ups: action items to follow up on; " +
-            "notable_updates: things to note or remember."
+          "Category. Defaults to 'to_do'. " +
+            "to_do: action items and follow-ups; " +
+            "to_know: key decisions, notable updates, and things to remember."
         ),
       dustProject: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
@@ -88,7 +86,7 @@ export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
             category: z
               .enum(PROJECT_TODO_CATEGORIES)
               .optional()
-              .describe("Category. Defaults to 'follow_ups'."),
+              .describe("Category. Defaults to 'to_do'."),
           })
         )
         .min(1)

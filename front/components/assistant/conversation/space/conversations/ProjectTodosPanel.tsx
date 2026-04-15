@@ -21,7 +21,6 @@ import {
   PlusIcon,
   Spinner,
   SquareIcon,
-  TriangleIcon,
   WindIcon,
 } from "@dust-tt/sparkle";
 import type React from "react";
@@ -36,25 +35,15 @@ type CategoryConfig = {
 };
 
 const CATEGORY_CONFIG: Record<ProjectTodoCategory, CategoryConfig> = {
-  need_attention: {
-    label: "Need attention",
-    icon: TriangleIcon,
-    iconClassName: "text-warning-300 dark:text-warning-300-night",
-  },
-  key_decisions: {
-    label: "Key decisions",
-    icon: SquareIcon,
-    iconClassName: "text-golden-300 dark:text-golden-300-night",
-  },
-  follow_ups: {
-    label: "Follow-ups",
+  to_do: {
+    label: "To do",
     icon: CircleIcon,
     iconClassName: "text-blue-300 dark:text-blue-300-night",
   },
-  notable_updates: {
-    label: "Notable updates",
-    icon: CircleIcon,
-    iconClassName: "text-green-300 dark:text-green-300-night",
+  to_know: {
+    label: "To know",
+    icon: SquareIcon,
+    iconClassName: "text-golden-300 dark:text-golden-300-night",
   },
 };
 
@@ -232,7 +221,7 @@ interface AddTodoFormProps {
 }
 
 function AddTodoForm({
-  defaultCategory = "follow_ups",
+  defaultCategory = "to_do",
   onSubmit,
   onCancel,
   isBusy,

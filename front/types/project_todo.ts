@@ -1,11 +1,6 @@
 import type { ModelId } from "@app/types/shared/model_id";
 
-export const PROJECT_TODO_CATEGORIES = [
-  "need_attention",
-  "key_decisions",
-  "follow_ups",
-  "notable_updates",
-] as const;
+export const PROJECT_TODO_CATEGORIES = ["to_do", "to_know"] as const;
 
 export type ProjectTodoCategory = (typeof PROJECT_TODO_CATEGORIES)[number];
 

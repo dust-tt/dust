@@ -56,9 +56,9 @@ function makeNotableFact(
 // ── actionItemBlob ────────────────────────────────────────────────────────────
 
 describe("actionItemBlob", () => {
-  it("maps to follow_ups category", () => {
+  it("maps to to_do category", () => {
     const blob = actionItemBlob(makeActionItem());
-    expect(blob.category).toBe("follow_ups");
+    expect(blob.category).toBe("to_do");
   });
 
   it("maps open status to todo", () => {
@@ -93,9 +93,9 @@ describe("actionItemBlob", () => {
 // ── keyDecisionBlob ───────────────────────────────────────────────────────────
 
 describe("keyDecisionBlob", () => {
-  it("maps to key_decisions category", () => {
+  it("maps to to_know category", () => {
     const blob = keyDecisionBlob(makeKeyDecision());
-    expect(blob.category).toBe("key_decisions");
+    expect(blob.category).toBe("to_know");
   });
 
   it("maps decided status to done", () => {
@@ -122,9 +122,9 @@ describe("keyDecisionBlob", () => {
 // ── notableFactBlob ───────────────────────────────────────────────────────────
 
 describe("notableFactBlob", () => {
-  it("maps to notable_updates category", () => {
+  it("maps to to_know category", () => {
     const blob = notableFactBlob(makeNotableFact());
-    expect(blob.category).toBe("notable_updates");
+    expect(blob.category).toBe("to_know");
   });
 
   it("always sets status to todo", () => {
