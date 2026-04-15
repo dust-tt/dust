@@ -72,6 +72,11 @@ export async function syncSeatCount({
   });
   const memberCount = memberships.length;
 
+  logger.info(
+    { workspaceId: workspace.sId, contractId, memberCount },
+    "[Metronome] Updating seat quantities"
+  );
+
   return await updateSubscriptionQuantity({
     metronomeCustomerId,
     contractId,
