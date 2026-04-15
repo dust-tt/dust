@@ -24,7 +24,7 @@ function getMidnightUtcHour(timezone: string): number {
   return midnightInTz.utc().hour();
 }
 
-function makeWorkspaceCronWorkflowId(workspaceId: string): string {
+export function makeWorkspaceCronWorkflowId(workspaceId: string): string {
   return `reinforcement-workspace-${workspaceId}`;
 }
 

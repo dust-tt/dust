@@ -2,12 +2,9 @@ import { Authenticator } from "@app/lib/auth";
 import { hasReinforcementEnabled } from "@app/lib/reinforced_agent/workspace_check";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
+import { makeWorkspaceCronWorkflowId } from "@app/temporal/reinforcement/client";
 import type { CheckFunction } from "@app/types/production_checks";
 import type { Client, WorkflowHandle } from "@temporalio/client";
-
-function makeWorkspaceCronWorkflowId(workspaceId: string): string {
-  return `reinforcement-workspace-${workspaceId}`;
-}
 
 async function getFlaggedWorkspaceIds(): Promise<string[]> {
   const allWorkspaces = await WorkspaceResource.listAll();
