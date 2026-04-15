@@ -255,11 +255,12 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       isPreviousAgentMessageSteered,
     });
 
+    // No message without a conversation
+    if (!context.conversation) {
+      return null;
+    }
+
     if (isCompactionMessage(data)) {
-      // TODO(compaction): handle failed compaction display
-      if (data.status === "failed") {
-        return null;
-      }
       return (
         <div
           ref={ref}
@@ -272,11 +273,6 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           <CompactionMessage message={data} />
         </div>
       );
-    }
-
-    // No message without a conversation
-    if (!context.conversation) {
-      return null;
     }
 
     return (
