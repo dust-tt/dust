@@ -620,10 +620,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         );
 
         // Build a map from a skill's ID to its editor group.
+        const editorGroupsById = new Map(editorGroups.map((g) => [g.id, g]));
         for (const editorGroupSkill of editorGroupSkills) {
-          const group = editorGroups.find(
-            (g) => g.id === editorGroupSkill.groupId
-          );
+          const group = editorGroupsById.get(editorGroupSkill.groupId);
           if (group) {
             skillEditorGroupsMap.set(
               editorGroupSkill.skillConfigurationId,
