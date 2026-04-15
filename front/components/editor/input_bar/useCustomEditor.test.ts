@@ -1,7 +1,23 @@
 import { buildEditorExtensions } from "@app/components/editor/input_bar/useCustomEditor";
+import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
+import { inputBarSkillSuggestionPluginKey } from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionExtension";
 import type { WorkspaceType } from "@app/types/user";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { Editor } from "@tiptap/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const OWNER = {
+  id: 0,
+  sId: "wId",
+  name: "MeMeMe AlwaysMe",
+  role: "user",
+  segmentation: null,
+  whiteListedProviders: null,
+  defaultEmbeddingProvider: null,
+  metadata: null,
+  metronomeCustomerId: null,
+  sharingPolicy: "all_scopes",
+} satisfies WorkspaceType;
 
 describe("buildEditorExtensions", () => {
   let editor: Editor;
@@ -9,18 +25,7 @@ describe("buildEditorExtensions", () => {
   beforeEach(() => {
     editor = new Editor({
       extensions: buildEditorExtensions({
-        owner: {
-          id: 0,
-          sId: "wId",
-          name: "MeMeMe AlwaysMe",
-          role: "user",
-          segmentation: null,
-          whiteListedProviders: null,
-          defaultEmbeddingProvider: null,
-          metadata: null,
-          metronomeCustomerId: null,
-          sharingPolicy: "all_scopes",
-        } satisfies WorkspaceType,
+        owner: OWNER,
         conversationId: "cId",
         onInlineText: () => {},
         onUrlDetected: () => {},
@@ -185,5 +190,144 @@ describe("buildEditorExtensions", () => {
 - world
 
 &nbsp;`);
+  });
+});
+
+describe("useCustomEditor", () => {
+  it("opens the skill picker instead of submitting when Enter is pressed on a slash trigger", async () => {
+    const onEnterKeyDown = vi.fn();
+    const onOpenSkillPicker = vi.fn();
+
+    const { result, unmount } = renderHook(() =>
+      useCustomEditor({
+        onEnterKeyDown,
+        disableAutoFocus: true,
+        owner: OWNER,
+        onOpenSkillPicker,
+      })
+    );
+
+    await waitFor(() =>
+      expect(result.current.editor?.view.props.handleKeyDown).toBeDefined()
+    );
+
+    const editor = result.current.editor;
+    expect(editor).not.toBeNull();
+
+    act(() => {
+      editor?.commands.setContent("/git", { contentType: "markdown" });
+      editor?.commands.focus("end");
+    });
+
+    vi.spyOn(editor!.view, "coordsAtPos").mockReturnValue({
+      left: 12,
+      right: 12,
+      top: 34,
+      bottom: 50,
+    });
+
+    const event = new KeyboardEvent("keydown", {
+      key: "Enter",
+      cancelable: true,
+    });
+
+    let handled = false;
+    act(() => {
+      handled = editor?.view.props.handleKeyDown?.(editor.view, event) ?? false;
+    });
+
+    expect(handled).toBe(true);
+    expect(event.defaultPrevented).toBe(true);
+    expect(onEnterKeyDown).not.toHaveBeenCalled();
+    expect(onOpenSkillPicker).toHaveBeenCalledTimes(1);
+    expect(onOpenSkillPicker.mock.calls[0]?.[1]).toBe("git");
+
+    unmount();
+  });
+
+  it("lets the active slash suggestion handle Enter", async () => {
+    const onEnterKeyDown = vi.fn();
+    const onOpenSkillPicker = vi.fn();
+
+    const { result, unmount } = renderHook(() =>
+      useCustomEditor({
+        onEnterKeyDown,
+        disableAutoFocus: true,
+        owner: OWNER,
+        onOpenSkillPicker,
+      })
+    );
+
+    await waitFor(() =>
+      expect(result.current.editor?.view.props.handleKeyDown).toBeDefined()
+    );
+
+    const editor = result.current.editor;
+    expect(editor).not.toBeNull();
+
+    act(() => {
+      editor?.commands.setContent("/git", { contentType: "markdown" });
+      editor?.commands.focus("end");
+    });
+
+    const slashSuggestionStateSpy = vi
+      .spyOn(inputBarSkillSuggestionPluginKey, "getState")
+      .mockReturnValue({ active: true } as never);
+
+    const event = new KeyboardEvent("keydown", {
+      key: "Enter",
+      cancelable: true,
+    });
+
+    let handled = false;
+    act(() => {
+      handled = editor?.view.props.handleKeyDown?.(editor.view, event) ?? false;
+    });
+
+    expect(handled).toBe(false);
+    expect(event.defaultPrevented).toBe(false);
+    expect(onEnterKeyDown).not.toHaveBeenCalled();
+    expect(onOpenSkillPicker).not.toHaveBeenCalled();
+
+    slashSuggestionStateSpy.mockRestore();
+    unmount();
+  });
+
+  it("lets the open skill picker handle arrow navigation", async () => {
+    const onEnterKeyDown = vi.fn();
+    const onSkillPickerKeyDown = vi.fn(() => true);
+
+    const { result, unmount } = renderHook(() =>
+      useCustomEditor({
+        onEnterKeyDown,
+        disableAutoFocus: true,
+        owner: OWNER,
+        onSkillPickerKeyDown,
+      })
+    );
+
+    await waitFor(() =>
+      expect(result.current.editor?.view.props.handleKeyDown).toBeDefined()
+    );
+
+    const editor = result.current.editor;
+    expect(editor).not.toBeNull();
+
+    const event = new KeyboardEvent("keydown", {
+      key: "ArrowDown",
+      cancelable: true,
+    });
+
+    let handled = false;
+    act(() => {
+      handled = editor?.view.props.handleKeyDown?.(editor.view, event) ?? false;
+    });
+
+    expect(handled).toBe(true);
+    expect(onSkillPickerKeyDown).toHaveBeenCalledTimes(1);
+    expect(onSkillPickerKeyDown).toHaveBeenCalledWith(event);
+    expect(onEnterKeyDown).not.toHaveBeenCalled();
+
+    unmount();
   });
 });

@@ -1,6 +1,16 @@
 import { ContextUsageIndicator } from "@app/components/assistant/conversation/input_bar/ContextUsageIndicator";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarButtons } from "@app/components/assistant/conversation/input_bar/InputBarButtons";
+import { InputBarSkillChip } from "@app/components/assistant/conversation/input_bar/InputBarSkillChip";
+import {
+  filterInputBarSkills,
+  InputBarSkillSuggestionDropdown,
+} from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionDropdown";
+import {
+  getEditorViewRangeRect,
+  getInputBarSkillSlashTrigger,
+} from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionExtension";
+import type { SlashCommandDropdownRef } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
@@ -21,11 +31,10 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
-import { getSkillIcon } from "@app/lib/skill";
+import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
-import { getManageSkillsRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
@@ -42,7 +51,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
 import {
   ArrowUpIcon,
   AttachmentIcon,
@@ -77,6 +85,37 @@ import { InputBarContext } from "./InputBarContext";
 const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
 const FADE_OUT_TRANSITION = "50ms ease-out";
 const FADE_IN_TRANSITION = "150ms ease-out";
+
+type SkillPickerState = {
+  anchorRect: DOMRect;
+  query: string;
+};
+
+function getSkillPickerStateFromEditor(editor: Editor): SkillPickerState | null {
+  const trigger = getInputBarSkillSlashTrigger(editor.state);
+
+  if (!trigger) {
+    return null;
+  }
+
+  return {
+    anchorRect: getEditorViewRangeRect(editor.view, trigger.range.from),
+    query: trigger.query,
+  };
+}
+
+function isSameSkillPickerState(
+  currentState: SkillPickerState,
+  nextState: SkillPickerState
+) {
+  return (
+    currentState.query === nextState.query &&
+    currentState.anchorRect.left === nextState.anchorRect.left &&
+    currentState.anchorRect.top === nextState.anchorRect.top &&
+    currentState.anchorRect.width === nextState.anchorRect.width &&
+    currentState.anchorRect.height === nextState.anchorRect.height
+  );
+}
 
 function getButtonsTransitionStyle(
   singleAgentInput: boolean,
@@ -238,15 +277,98 @@ const InputBarContainer = ({
   >(undefined);
   const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
+  const [skillPickerState, setSkillPickerState] =
+    useState<SkillPickerState | null>(null);
   const plusButtonRef = useRef<HTMLDivElement>(null);
+  const shouldAllowSkillSlashRef = useRef(true);
   const clientType = useClientType();
+  const shouldEnableSkillSelection = actions.includes("capabilities");
+
+  shouldAllowSkillSlashRef.current = skillPickerState === null;
 
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
 
   // Create a ref to hold the editor instance
   const editorRef = useRef<Editor | null>(null);
+  const skillPickerDropdownRef = useRef<SlashCommandDropdownRef | null>(null);
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
+
+  const { skills: availableSkills } = useSkills({
+    owner,
+    status: "active",
+    globalSpaceOnly: true,
+    disabled: !shouldEnableSkillSelection,
+  });
+
+  const selectedSkillIds = useMemo(
+    () => new Set(selectedSkills.map((skill) => skill.sId)),
+    [selectedSkills]
+  );
+  const filteredSkillPickerSkills = useMemo(
+    () =>
+      filterInputBarSkills({
+        query: skillPickerState?.query ?? "",
+        selectedSkillIds,
+        skills: availableSkills,
+      }),
+    [availableSkills, selectedSkillIds, skillPickerState?.query]
+  );
+
+  const handleOpenSkillPicker = useCallback(
+    (anchorRect: DOMRect | null, query: string) => {
+      if (!anchorRect) {
+        return;
+      }
+
+      setSkillPickerState({ anchorRect, query });
+    },
+    []
+  );
+
+  const handleSkillPickerClose = useCallback(() => {
+    setSkillPickerState(null);
+  }, []);
+
+  const handleSkillPickerSelection = useCallback(
+    (skill: SkillType) => {
+      const editorInstance = editorRef.current;
+      const trigger = editorInstance
+        ? getInputBarSkillSlashTrigger(editorInstance.state)
+        : null;
+
+      if (editorInstance && trigger) {
+        editorInstance.chain().focus().deleteRange(trigger.range).run();
+      }
+
+      onSkillSelect(skill);
+      setSkillPickerState(null);
+      queueMicrotask(() => editorRef.current?.commands.focus("end"));
+    },
+    [onSkillSelect]
+  );
+
+  const handleSelectFirstSkillFromPicker = useCallback(() => {
+    const firstSkill = filteredSkillPickerSkills[0];
+
+    if (!skillPickerState || !firstSkill) {
+      return false;
+    }
+
+    handleSkillPickerSelection(firstSkill);
+    return true;
+  }, [filteredSkillPickerSkills, handleSkillPickerSelection, skillPickerState]);
+
+  const handleSkillPickerKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      if (!skillPickerState) {
+        return false;
+      }
+
+      return skillPickerDropdownRef.current?.onKeyDown({ event }) ?? false;
+    },
+    [skillPickerState]
+  );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const removePastedAttachmentChip = useCallback(
@@ -473,6 +595,18 @@ const InputBarContainer = ({
     shouldSuggestAgentRef: singleAgentInput ? shouldSuggestAgentRef : undefined,
     onFirstAgentMentionPasteRef,
     onAgentMentionsStrippedRef,
+    onOpenSkillPicker: shouldEnableSkillSelection
+      ? handleOpenSkillPicker
+      : undefined,
+    shouldAllowSkillSlashRef: shouldEnableSkillSelection
+      ? shouldAllowSkillSlashRef
+      : undefined,
+    onSkillPickerKeyDown: shouldEnableSkillSelection
+      ? handleSkillPickerKeyDown
+      : undefined,
+    onSelectFirstSkillFromPicker: shouldEnableSkillSelection
+      ? handleSelectFirstSkillFromPicker
+      : undefined,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
       let inserted = false;
@@ -641,6 +775,22 @@ const InputBarContainer = ({
       const userMentioned = mentions.some((m) => m.type === "user");
       setHasUserMention(userMentioned);
       onEditorMentionsChangedRef.current(userMentioned);
+
+      if (editor) {
+        setSkillPickerState((prev) => {
+          if (!prev) {
+            return prev;
+          }
+
+          const nextState = getSkillPickerStateFromEditor(editor);
+
+          if (!nextState) {
+            return null;
+          }
+
+          return isSameSkillPickerState(prev, nextState) ? prev : nextState;
+        });
+      }
     };
 
     if (editorRef.current) {
@@ -944,17 +1094,20 @@ const InputBarContainer = ({
   );
 
   return (
-    <div
-      id="InputBarContainer"
-      className="relative flex flex-1 cursor-text flex-row sm:pt-0"
-      onClick={(e) => {
-        // If e.target is not a child of a div with class "tiptap", then focus on the editor
-        if (!(e.target instanceof HTMLElement && e.target.closest(".tiptap"))) {
-          editorService.focusEnd();
-        }
-      }}
-    >
-      <div className="flex w-0 flex-grow flex-col">
+    <>
+      <div
+        id="InputBarContainer"
+        className="relative flex flex-1 cursor-text flex-row sm:pt-0"
+        onClick={(e) => {
+          // If e.target is not a child of a div with class "tiptap", then focus on the editor
+          if (
+            !(e.target instanceof HTMLElement && e.target.closest(".tiptap"))
+          ) {
+            editorService.focusEnd();
+          }
+        }}
+      >
+        <div className="flex w-0 flex-grow flex-col">
         <div className="relative">
           <EditorContent
             disabled={disableInput}
@@ -999,18 +1152,10 @@ const InputBarContainer = ({
           >
             {selectedSkills.map((skill) => (
               <React.Fragment key={skill.sId}>
-                {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
-                <Chip
-                  size="xs"
-                  label={skill.name}
-                  icon={getSkillIcon(skill.icon)}
-                  href={
-                    isBuilder(owner)
-                      ? getManageSkillsRoute(owner.sId, skill.sId)
-                      : undefined
-                  }
-                  target="_blank"
-                  className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:flex"
+                <InputBarSkillChip
+                  owner={owner}
+                  skill={skill}
+                  className="m-0.5 hidden xs:flex"
                   onRemove={
                     disableInput
                       ? undefined
@@ -1019,16 +1164,11 @@ const InputBarContainer = ({
                         }
                   }
                 />
-                <Chip
-                  size="xs"
-                  icon={getSkillIcon(skill.icon)}
-                  href={
-                    isBuilder(owner)
-                      ? getManageSkillsRoute(owner.sId, skill.sId)
-                      : undefined
-                  }
-                  target="_blank"
-                  className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:hidden"
+                <InputBarSkillChip
+                  owner={owner}
+                  skill={skill}
+                  compact
+                  className="m-0.5 flex xs:hidden"
                   onRemove={
                     disableInput
                       ? undefined
@@ -1296,7 +1436,18 @@ const InputBarContainer = ({
           />
         </div>
       </div>
-    </div>
+      </div>
+
+      {skillPickerState && (
+        <InputBarSkillSuggestionDropdown
+          ref={skillPickerDropdownRef}
+          anchorRect={skillPickerState.anchorRect}
+          onClose={handleSkillPickerClose}
+          onSkillSelect={handleSkillPickerSelection}
+          skills={filteredSkillPickerSkills}
+        />
+      )}
+    </>
   );
 };
 

@@ -239,15 +239,45 @@ export const InputBar = React.memo(function InputBar({
     void deleteTool(serverView.sId);
   };
 
-  const handleSkillSelect = (skill: SkillType) => {
-    setSelectedSkills((prev) => [...prev, skill]);
-    void addSkill(skill.sId);
-  };
+  const handleSkillSelect = useCallback(
+    (skill: SkillType) => {
+      let shouldAdd = false;
 
-  const handleSkillDeselect = (skill: SkillType) => {
-    setSelectedSkills((prev) => prev.filter((s) => s.sId !== skill.sId));
-    void deleteSkill(skill.sId);
-  };
+      setSelectedSkills((prev) => {
+        if (prev.some((s) => s.sId === skill.sId)) {
+          return prev;
+        }
+
+        shouldAdd = true;
+        return [...prev, skill];
+      });
+
+      if (shouldAdd) {
+        void addSkill(skill.sId);
+      }
+    },
+    [addSkill]
+  );
+
+  const handleSkillDeselect = useCallback(
+    (skill: SkillType) => {
+      let shouldDelete = false;
+
+      setSelectedSkills((prev) => {
+        if (!prev.some((s) => s.sId === skill.sId)) {
+          return prev;
+        }
+
+        shouldDelete = true;
+        return prev.filter((s) => s.sId !== skill.sId);
+      });
+
+      if (shouldDelete) {
+        void deleteSkill(skill.sId);
+      }
+    },
+    [deleteSkill]
+  );
 
   const activeAgents = useMemo(() => {
     const agents = agentConfigurations.filter((a) => a.status === "active");
