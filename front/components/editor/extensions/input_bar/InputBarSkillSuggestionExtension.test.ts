@@ -1,9 +1,9 @@
+import { filterInputBarSkills } from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionDropdown";
 import {
   filterInputBarSlashCommands,
   getInputBarSkillSlashTrigger,
   shouldAllowInputBarSkillSlash,
 } from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionExtension";
-import { filterInputBarSkills } from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionDropdown";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { Editor } from "@tiptap/react";

@@ -1,6 +1,7 @@
-import { buildEditorExtensions } from "@app/components/editor/input_bar/useCustomEditor";
-import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import { inputBarSkillSuggestionPluginKey } from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionExtension";
+import useCustomEditor, {
+  buildEditorExtensions,
+} from "@app/components/editor/input_bar/useCustomEditor";
 import type { WorkspaceType } from "@app/types/user";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { Editor } from "@tiptap/react";

@@ -6,10 +6,10 @@ import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_bu
 import { SKILL_ICON } from "@app/lib/skill";
 import type { Range } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
-import type { Editor } from "@tiptap/react";
-import { PluginKey } from "@tiptap/pm/state";
 import type { EditorState } from "@tiptap/pm/state";
+import { PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
+import type { Editor } from "@tiptap/react";
 import { ReactRenderer } from "@tiptap/react";
 import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
 import { exitSuggestion, Suggestion } from "@tiptap/suggestion";
