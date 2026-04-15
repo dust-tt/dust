@@ -12,7 +12,7 @@ import {
   useMCPServerConnections,
 } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { useDeleteMetadata, useUserApprovals } from "@app/lib/swr/user";
+import { useDeleteToolApproval, useUserApprovals } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Chip, DataTable, SearchInput, Spinner } from "@dust-tt/sparkle";
@@ -50,11 +50,11 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
   });
   const { approvals, isApprovalsLoading, mutateApprovals } =
     useUserApprovals(owner);
-  const { deleteMetadata } = useDeleteMetadata();
+  const { deleteToolApproval } = useDeleteToolApproval();
 
   const handleDeleteToolMetadata = useCallback(
     async (mcpServerId: string) => {
-      const response = await deleteMetadata(`toolsValidations:${mcpServerId}`);
+      const response = await deleteToolApproval(owner, mcpServerId);
       if (response && !response.ok) {
         sendNotification({
           title: "Error",
@@ -71,7 +71,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         type: "success",
       });
     },
-    [sendNotification, deleteMetadata, mutateApprovals]
+    [sendNotification, deleteToolApproval, mutateApprovals, owner]
   );
 
   const { deleteMCPServerConnection } = useDeleteMCPServerConnection({

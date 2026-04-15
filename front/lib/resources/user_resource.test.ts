@@ -613,5 +613,65 @@ describe("UserResource", () => {
         expect(hasApproval).toBe(true);
       });
     });
+
+    describe("getUserToolApprovals", () => {
+      it("should return empty array when no approvals exist", async () => {
+        const approvals = await user.getUserToolApprovals(auth);
+        expect(approvals).toEqual([]);
+      });
+
+      it("should group tool names by mcpServerId", async () => {
+        await user.createToolApproval(auth, {
+          mcpServerId: "server-a",
+          toolName: "tool-1",
+        });
+        await user.createToolApproval(auth, {
+          mcpServerId: "server-a",
+          toolName: "tool-2",
+        });
+        await user.createToolApproval(auth, {
+          mcpServerId: "server-b",
+          toolName: "tool-3",
+        });
+
+        const approvals = await user.getUserToolApprovals(auth);
+
+        expect(approvals).toHaveLength(2);
+
+        const serverA = approvals.find((a) => a.mcpServerId === "server-a");
+        const serverB = approvals.find((a) => a.mcpServerId === "server-b");
+
+        expect(serverA).toBeDefined();
+        expect(serverA!.toolNames).toHaveLength(2);
+        expect(serverA!.toolNames).toContain("tool-1");
+        expect(serverA!.toolNames).toContain("tool-2");
+
+        expect(serverB).toBeDefined();
+        expect(serverB!.toolNames).toEqual(["tool-3"]);
+      });
+    });
+
+    describe("deleteToolApprovals", () => {
+      it("should delete approvals for the given mcpServerId only", async () => {
+        await user.createToolApproval(auth, {
+          mcpServerId: "server-x",
+          toolName: "tool-1",
+        });
+        await user.createToolApproval(auth, {
+          mcpServerId: "server-x",
+          toolName: "tool-2",
+        });
+        await user.createToolApproval(auth, {
+          mcpServerId: "server-y",
+          toolName: "tool-3",
+        });
+
+        await user.deleteToolApprovals(auth, { mcpServerId: "server-x" });
+
+        const approvals = await user.getUserToolApprovals(auth);
+        expect(approvals).toHaveLength(1);
+        expect(approvals[0].mcpServerId).toBe("server-y");
+      });
+    });
   });
 });

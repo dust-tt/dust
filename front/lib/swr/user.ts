@@ -97,6 +97,20 @@ export function useDeleteMetadata() {
   return { deleteMetadata };
 }
 
+export function useDeleteToolApproval() {
+  const deleteToolApproval = async (
+    owner: LightWorkspaceType,
+    mcpServerId: string
+  ) => {
+    return clientFetch(
+      `/api/w/${owner.sId}/me/approvals?mcpServerId=${encodeURIComponent(mcpServerId)}`,
+      { method: "DELETE" }
+    );
+  };
+
+  return { deleteToolApproval };
+}
+
 export function useIsOnboardingConversation(
   conversationId: string | null,
   workspaceId: string

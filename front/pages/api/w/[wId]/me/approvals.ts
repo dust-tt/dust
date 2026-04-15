@@ -18,24 +18,49 @@ export interface GetUserApprovalsResponseBody {
   }[];
 }
 
+export interface DeleteUserApprovalsResponseBody {
+  success: boolean;
+}
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetUserApprovalsResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      GetUserApprovalsResponseBody | DeleteUserApprovalsResponseBody
+    >
+  >,
   auth: Authenticator
 ): Promise<void> {
+  const user = auth.getNonNullableUser();
+  const userResource = new UserResource(UserResource.model, user);
+
+  if (req.method === "DELETE") {
+    const mcpServerId = req.query.mcpServerId;
+    if (typeof mcpServerId !== "string") {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "mcpServerId query parameter is required.",
+        },
+      });
+    }
+    await userResource.deleteToolApprovals(auth, { mcpServerId });
+    return res.status(200).json({ success: true });
+  }
+
   if (req.method !== "GET") {
     return apiError(req, res, {
       status_code: 405,
       api_error: {
         type: "method_not_supported_error",
-        message: "The method passed is not supported, GET is expected.",
+        message:
+          "The method passed is not supported, GET or DELETE is expected.",
       },
     });
   }
 
-  const user = auth.getNonNullableUser();
-  const userResource = new UserResource(UserResource.model, user);
-  const toolValidations = await userResource.getToolValidations();
+  const toolValidations = await userResource.getUserToolApprovals(auth);
 
   const approvals: {
     mcpServerId: string;
