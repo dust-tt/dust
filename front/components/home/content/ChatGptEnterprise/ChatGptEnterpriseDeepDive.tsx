@@ -26,11 +26,11 @@ interface ChatGptEnterpriseDeepDiveProps {
   testimonials: HeroTestimonial[];
 }
 
-function TestimonialSlider({
-  testimonials,
-}: {
+interface TestimonialSliderProps {
   testimonials: HeroTestimonial[];
-}) {
+}
+
+function TestimonialSlider({ testimonials }: TestimonialSliderProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const next = () =>
