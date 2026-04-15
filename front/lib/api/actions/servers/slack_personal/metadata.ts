@@ -100,7 +100,7 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "The message to post, must follow the Slack message formatting rules. " +
+          "The message to post, using standard Markdown formatting. Do NOT use Slack-specific markup. " +
             "To mention a user, use <@user_id> (use the user's id field, not name). " +
             "To mention a user group, use <!subteam^user_group_id> (use the user group's id field, not handle)."
         ),
@@ -134,7 +134,7 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "The message to post, must follow the Slack message formatting rules. " +
+          "The message to post, using standard Markdown formatting. Do NOT use Slack-specific markup. " +
             "To mention a user, use <@user_id> (use the user's id field, not name). " +
             "To mention a user group, use <!subteam^user_group_id> (use the user group's id field, not handle)."
         ),
@@ -479,7 +479,8 @@ export const SLACK_PERSONAL_SERVER = {
     icon: "SlackLogo",
     documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
     instructions:
-      "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message. " +
+      "When posting a message on Slack, you MUST use standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*, `code`). " +
+      "Do NOT use Slack-specific markup like <url|text> for links — the system converts Markdown to Slack format automatically. " +
       "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
       "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
   },
