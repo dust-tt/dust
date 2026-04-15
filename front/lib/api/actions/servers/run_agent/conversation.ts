@@ -34,6 +34,7 @@ import type {
  */
 function isUserSideError(error: APIError): boolean {
   return (
+    error.type === "agent_inaccessible" ||
     error.type === "invalid_request_error" ||
     error.type === "plan_message_limit_exceeded" ||
     error.type === "rate_limit_error"

@@ -1657,6 +1657,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "action_failed"
   | "action_unknown_error"
   | "agent_configuration_not_found"
+  | "agent_inaccessible"
   | "agent_message_error"
   | "app_auth_error"
   | "app_not_found"
