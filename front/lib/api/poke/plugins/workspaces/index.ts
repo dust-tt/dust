@@ -27,6 +27,7 @@ export * from "./revoke_users";
 export * from "./run_reinforcement_workflow";
 export * from "./send_onboarding_conversation";
 export * from "./soft_delete_conversation";
+export * from "./switch_to_metronome_billing";
 export * from "./sync_missing_transcripts_date_range";
 export * from "./toggle_auto_create_space";
 export * from "./toggle_disable_manual_invitations";
