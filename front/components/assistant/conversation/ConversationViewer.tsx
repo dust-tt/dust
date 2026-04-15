@@ -38,9 +38,9 @@ import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotific
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitMessage } from "@app/hooks/useSubmitMessage";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
 import type { DustError } from "@app/lib/error";
 import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
