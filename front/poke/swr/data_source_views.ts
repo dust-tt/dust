@@ -1,15 +1,26 @@
 import type { CursorPaginationParams } from "@app/lib/api/pagination";
-import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type {
+  FetchDataSourceViewContentNodesOptions,
+  InfiniteContentNodesResult,
+} from "@app/lib/swr/data_source_views";
+import { processInfiniteContentNodesData } from "@app/lib/swr/data_source_views";
+import {
+  emptyArray,
+  useFetcher,
+  useSWRInfiniteWithDefaults,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import type {
   DataSourceViewWithUsage,
   PokeListDataSourceViews,
 } from "@app/pages/api/poke/workspaces/[wId]/data_source_views";
 import type { PokeGetDataSourceViewContentNodes } from "@app/pages/api/poke/workspaces/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
+import type { GetContentNodesOrChildrenRequestBodyType } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
 
 export function usePokeDataSourceViews({
@@ -119,4 +130,86 @@ export function usePokeDataSourceViewContentNodes({
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     nextPageCursor: data?.nextPageCursor || null,
   };
+}
+
+const makePokeURLDataSourceViewContentNodes = (
+  {
+    owner,
+    dataSourceView,
+  }: Required<
+    Pick<FetchDataSourceViewContentNodesOptions, "owner" | "dataSourceView">
+  >,
+  searchParams: URLSearchParams
+): string => {
+  return `/api/poke/workspaces/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${searchParams}`;
+};
+
+export function usePokeInfiniteDataSourceViewContentNodes({
+  owner,
+  dataSourceView,
+  pagination,
+  internalIds,
+  parentId,
+  viewType,
+  sorting,
+  swrOptions,
+}: FetchDataSourceViewContentNodesOptions): InfiniteContentNodesResult {
+  const { fetcherWithBody } = useFetcher();
+  const { data, error, isLoading, size, setSize, mutate, isValidating } =
+    useSWRInfiniteWithDefaults<
+      [string, GetContentNodesOrChildrenRequestBodyType] | null,
+      PokeGetDataSourceViewContentNodes
+    >(
+      (_pageIndex, previousPageData) => {
+        if (
+          (previousPageData && !previousPageData.nextPageCursor) ||
+          !dataSourceView
+        ) {
+          return null;
+        }
+
+        const params = new URLSearchParams();
+        if (previousPageData?.nextPageCursor) {
+          params.append("cursor", previousPageData.nextPageCursor);
+        }
+
+        if (pagination?.limit) {
+          params.append("limit", pagination.limit.toString());
+        }
+
+        const body: GetContentNodesOrChildrenRequestBodyType = {
+          internalIds,
+          parentId,
+          viewType: viewType ?? "all",
+          sorting,
+        };
+
+        return [
+          makePokeURLDataSourceViewContentNodes(
+            { owner, dataSourceView },
+            params
+          ),
+          body,
+        ];
+      },
+      async ([url, body]) => {
+        return fetcherWithBody([url, body, "POST"]);
+      },
+      {
+        revalidateAll: false,
+        revalidateFirstPage: false,
+        ...swrOptions,
+      }
+    );
+
+  const loadMore = useCallback(() => setSize((s) => s + 1), [setSize]);
+  const processed = processInfiniteContentNodesData({
+    data,
+    error,
+    isLoading,
+    size,
+    isValidating,
+  });
+
+  return { ...processed, loadMore, mutate };
 }

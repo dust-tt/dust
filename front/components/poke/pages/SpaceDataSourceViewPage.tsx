@@ -5,6 +5,7 @@ import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeDataSourceViewDetails } from "@app/poke/swr/data_source_view_details";
+import { usePokeInfiniteDataSourceViewContentNodes } from "@app/poke/swr/data_source_views";
 import { defaultSelectionConfiguration } from "@app/types/data_source_view";
 import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
@@ -83,6 +84,7 @@ export function SpaceDataSourceViewPage() {
               setSelectionConfigurations={() => {}}
               viewType="all"
               isRootSelectable={true}
+              useContentNodes={usePokeInfiniteDataSourceViewContentNodes}
             />
           </div>
         </div>

@@ -22,6 +22,7 @@ import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
+import type { SWRInfiniteKeyedMutator } from "swr/infinite";
 
 type DataSourceViewsAndInternalIds = {
   dataSourceView: DataSourceViewType;
@@ -201,7 +202,7 @@ export function useMultipleDataSourceViewsContentNodes({
   );
 }
 
-type FetchDataSourceViewContentNodesOptions = {
+export type FetchDataSourceViewContentNodesOptions = {
   owner: LightWorkspaceType;
   dataSourceView?: DataSourceViewType;
   internalIds?: string[];
@@ -212,6 +213,59 @@ type FetchDataSourceViewContentNodesOptions = {
   disabled?: boolean;
   swrOptions?: SWRConfiguration;
 };
+
+export interface InfiniteContentNodesResult {
+  isNodesLoading: boolean;
+  isNodesValidating: boolean;
+  nodesError: unknown;
+  nodes: GetDataSourceViewContentNodes["nodes"];
+  nextPageCursor: string | null;
+  hasNextPage: boolean;
+  loadMore: () => void;
+  mutate: SWRInfiniteKeyedMutator<GetDataSourceViewContentNodes[]>;
+  totalNodesCount: number;
+  totalNodesCountIsAccurate: boolean;
+  isLoadingMore: boolean | undefined;
+}
+
+export type UseInfiniteContentNodes = (
+  opts: FetchDataSourceViewContentNodesOptions
+) => InfiniteContentNodesResult;
+
+export function processInfiniteContentNodesData({
+  data,
+  error,
+  isLoading,
+  size,
+  isValidating,
+}: {
+  data: GetDataSourceViewContentNodes[] | undefined;
+  error: unknown;
+  isLoading: boolean;
+  size: number;
+  isValidating: boolean;
+}): Omit<InfiniteContentNodesResult, "loadMore" | "mutate"> {
+  const nodes = data?.flatMap((page) => page.nodes) ?? emptyArray();
+  const lastPage = data?.[data.length - 1];
+  const hasNextPage =
+    lastPage?.nextPageCursor !== null && lastPage?.nextPageCursor !== undefined;
+
+  return {
+    isNodesLoading: isLoading && !data,
+    isNodesValidating: isValidating,
+    nodesError: error,
+    nodes,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    nextPageCursor: lastPage?.nextPageCursor || null,
+    hasNextPage,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    totalNodesCount: lastPage?.total || 0,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    totalNodesCountIsAccurate: lastPage?.totalIsAccurate || true,
+    isLoadingMore:
+      isLoading || (size > 0 && data && typeof data[size - 1] === "undefined"),
+  };
+}
 
 const makeURLDataSourceViewContentNodes = (
   {
@@ -311,7 +365,7 @@ export function useInfiniteDataSourceViewContentNodes({
   viewType,
   sorting,
   swrOptions,
-}: FetchDataSourceViewContentNodesOptions) {
+}: FetchDataSourceViewContentNodesOptions): InfiniteContentNodesResult {
   const { fetcherWithBody } = useFetcher();
   const { data, error, isLoading, size, setSize, mutate, isValidating } =
     useSWRInfiniteWithDefaults<
@@ -319,7 +373,6 @@ export function useInfiniteDataSourceViewContentNodes({
       GetDataSourceViewContentNodes
     >(
       (_pageIndex, previousPageData) => {
-        // If we reached the end, stop fetching
         if (
           (previousPageData && !previousPageData.nextPageCursor) ||
           !dataSourceView
@@ -358,30 +411,16 @@ export function useInfiniteDataSourceViewContentNodes({
       }
     );
 
-  const nodes = data?.flatMap((page) => page.nodes) ?? emptyArray();
-  const lastPage = data?.[data.length - 1];
-  const hasNextPage =
-    lastPage?.nextPageCursor !== null && lastPage?.nextPageCursor !== undefined;
-
   const loadMore = useCallback(() => setSize((s) => s + 1), [setSize]);
+  const processed = processInfiniteContentNodesData({
+    data,
+    error,
+    isLoading,
+    size,
+    isValidating,
+  });
 
-  return {
-    isNodesLoading: isLoading && !data,
-    isNodesValidating: isValidating,
-    nodesError: error,
-    nodes,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    nextPageCursor: lastPage?.nextPageCursor || null,
-    hasNextPage,
-    loadMore,
-    mutate,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    totalNodesCount: lastPage?.total || 0,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    totalNodesCountIsAccurate: lastPage?.totalIsAccurate || true,
-    isLoadingMore:
-      isLoading || (size > 0 && data && typeof data[size - 1] === "undefined"),
-  };
+  return { ...processed, loadMore, mutate };
 }
 
 export function useDataSourceViewConnectorConfiguration({

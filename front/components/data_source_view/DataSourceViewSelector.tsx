@@ -28,6 +28,7 @@ import {
   isRemoteDatabase,
   isWebsite,
 } from "@app/lib/data_sources";
+import type { UseInfiniteContentNodes } from "@app/lib/swr/data_source_views";
 import { useInfiniteDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpacesSearch } from "@app/lib/swr/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
@@ -70,7 +71,8 @@ const getUseResourceHook =
   (
     owner: LightWorkspaceType,
     dataSourceView: DataSourceViewType,
-    viewType: ContentNodesViewType
+    viewType: ContentNodesViewType,
+    useContentNodes: UseInfiniteContentNodes
   ) =>
   (parentId: string | null) => {
     const {
@@ -83,7 +85,7 @@ const getUseResourceHook =
       totalNodesCountIsAccurate,
       isLoadingMore,
       nextPageCursor,
-    } = useInfiniteDataSourceViewContentNodes({
+    } = useContentNodes({
       owner,
       dataSourceView,
       parentId: parentId ?? undefined,
@@ -112,26 +114,25 @@ interface UseLazyLoadAllNodesOptions {
   owner: LightWorkspaceType;
   dataSourceView: DataSourceViewType;
   viewType: ContentNodesViewType;
-  onComplete: (
-    nodes: ReturnType<typeof useInfiniteDataSourceViewContentNodes>["nodes"]
-  ) => void;
+  useContentNodes: UseInfiniteContentNodes;
+  onComplete: (nodes: ReturnType<UseInfiniteContentNodes>["nodes"]) => void;
 }
 
 function useLazyLoadAllNodes({
   owner,
   dataSourceView,
   viewType,
+  useContentNodes,
   onComplete,
 }: UseLazyLoadAllNodesOptions) {
   const [triggered, setTriggered] = useState(false);
 
-  const { nodes, hasNextPage, isLoadingMore, loadMore } =
-    useInfiniteDataSourceViewContentNodes({
-      owner,
-      dataSourceView: triggered ? dataSourceView : undefined,
-      viewType,
-      pagination: { cursor: null, limit: ITEMS_PER_PAGE },
-    });
+  const { nodes, hasNextPage, isLoadingMore, loadMore } = useContentNodes({
+    owner,
+    dataSourceView: triggered ? dataSourceView : undefined,
+    viewType,
+    pagination: { cursor: null, limit: ITEMS_PER_PAGE },
+  });
 
   useEffect(() => {
     if (!triggered) {
@@ -296,6 +297,7 @@ interface DataSourceViewsSelectorProps {
   space: SpaceType;
   selectionMode?: "checkbox" | "radio";
   allowAdminSearch?: boolean;
+  useContentNodes?: UseInfiniteContentNodes;
 }
 
 export function DataSourceViewsSelector({
@@ -309,6 +311,7 @@ export function DataSourceViewsSelector({
   space,
   selectionMode = "checkbox",
   allowAdminSearch = false,
+  useContentNodes,
 }: DataSourceViewsSelectorProps) {
   const [searchResult, setSearchResult] = useState<
     DataSourceViewContentNode | undefined
@@ -619,6 +622,7 @@ export function DataSourceViewsSelector({
                 useCase={useCase}
                 searchResult={searchResult}
                 selectionMode={selectionMode}
+                useContentNodes={useContentNodes}
               />
             ))}
           </Tree.Item>
@@ -640,6 +644,7 @@ export function DataSourceViewsSelector({
               useCase={useCase}
               searchResult={searchResult}
               selectionMode={selectionMode}
+              useContentNodes={useContentNodes}
             />
           ))}
         {filteredGroups.folders.length > 0 && (
@@ -667,6 +672,7 @@ export function DataSourceViewsSelector({
                 useCase={useCase}
                 searchResult={searchResult}
                 selectionMode={selectionMode}
+                useContentNodes={useContentNodes}
               />
             ))}
           </Tree.Item>
@@ -698,6 +704,7 @@ export function DataSourceViewsSelector({
                   useCase={useCase}
                   searchResult={searchResult}
                   selectionMode={selectionMode}
+                  useContentNodes={useContentNodes}
                 />
               ))}
             </Tree.Item>
@@ -740,6 +747,7 @@ interface DataSourceViewSelectorProps {
   useCase?: DataSourceViewsSelectorProps["useCase"];
   searchResult?: DataSourceViewContentNode;
   selectionMode?: "checkbox" | "radio";
+  useContentNodes?: UseInfiniteContentNodes;
 }
 
 // When `isRootSelectable` is false, you cannot select the entire data source and automatically sync new nodes
@@ -758,6 +766,7 @@ export function DataSourceViewSelector({
   useCase,
   searchResult,
   selectionMode = "checkbox",
+  useContentNodes = useInfiniteDataSourceViewContentNodes,
 }: DataSourceViewSelectorProps) {
   const { isDark } = useTheme();
   const dataSourceView = selectionConfiguration.dataSourceView;
@@ -796,6 +805,7 @@ export function DataSourceViewSelector({
     owner,
     dataSourceView,
     viewType,
+    useContentNodes,
     onComplete: useCallback(
       (nodes: DataSourceViewContentNode[]) => {
         setSelectionConfigurations((prevState) =>
@@ -926,8 +936,13 @@ export function DataSourceViewSelector({
 
   const useResourcesHook = useCallback(
     (parentId: string | null) =>
-      getUseResourceHook(owner, dataSourceView, viewType)(parentId),
-    [owner, dataSourceView, viewType]
+      getUseResourceHook(
+        owner,
+        dataSourceView,
+        viewType,
+        useContentNodes
+      )(parentId),
+    [owner, dataSourceView, viewType, useContentNodes]
   );
 
   const isExpanded = searchResult
