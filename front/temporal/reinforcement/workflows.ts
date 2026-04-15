@@ -284,7 +284,7 @@ async function aggregateSkillWithMultiStepBatch({
  * 6. Aggregate per-skill concurrently via multi-step loop
  * 7. Finalize per skill
  */
-export async function reinforcedSkillsWorkspaceWorkflow({
+export async function reinforcementWorkspaceWorkflow({
   workspaceId,
   useBatchMode,
   skipDelay = false,
