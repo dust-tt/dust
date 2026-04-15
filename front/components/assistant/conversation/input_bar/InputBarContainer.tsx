@@ -597,9 +597,6 @@ const InputBarContainer = ({
     onOpenSkillPicker: shouldEnableSkillSelection
       ? handleOpenSkillPicker
       : undefined,
-    shouldAllowSkillSlashRef: shouldEnableSkillSelection
-      ? shouldAllowSkillSlashRef
-      : undefined,
     onSkillPickerKeyDown: shouldEnableSkillSelection
       ? handleSkillPickerKeyDown
       : undefined,
@@ -775,21 +772,21 @@ const InputBarContainer = ({
       setHasUserMention(userMentioned);
       onEditorMentionsChangedRef.current(userMentioned);
 
-      if (editor) {
-        setSkillPickerState((prev) => {
-          if (!prev) {
-            return prev;
-          }
+      setSkillPickerState((prev) => {
+        if (!editor || !shouldEnableSkillSelection || !editor.isFocused) {
+          return null;
+        }
 
-          const nextState = getSkillPickerStateFromEditor(editor);
+        const nextState = getSkillPickerStateFromEditor(editor);
 
-          if (!nextState) {
-            return null;
-          }
+        if (!nextState) {
+          return null;
+        }
 
-          return isSameSkillPickerState(prev, nextState) ? prev : nextState;
-        });
-      }
+        return prev && isSameSkillPickerState(prev, nextState)
+          ? prev
+          : nextState;
+      });
     };
 
     if (editorRef.current) {
@@ -806,7 +803,7 @@ const InputBarContainer = ({
         editor.off("update", handleUpdate);
       }
     };
-  }, [editor, editorService, saveDraft]);
+  }, [editor, editorService, saveDraft, shouldEnableSkillSelection]);
 
   // Disable the editor when disableInput is true.
   useEffect(() => {
