@@ -41,30 +41,32 @@ async function purgeWorkspace(
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
 
-  let offset = 0;
+  let cursorId = 0;
   let totalProcessed = 0;
   let totalDeleted = 0;
   let totalSkipped = 0;
 
   while (true) {
     // Step 1: find output items that reference a file. Content filtering is done in JS below
-    // because the content JSONB column has no GIN index. The indexed filters (workspaceId,
-    // fileId IS NOT NULL) are the selective ones.
+    // because the content JSONB column has no GIN index. The indexed filters (workspaceId, id)
+    // are the selective ones and map to the (workspaceId, id) composite index.
+    // Cursor-based pagination (id > cursorId) avoids the O(offset) cost of OFFSET pagination.
     const outputItems = await AgentMCPActionOutputItemModel.findAll({
-      attributes: ["fileId", "content"],
+      attributes: ["id", "fileId", "content"],
       where: {
         workspaceId: workspace.id,
         fileId: { [Op.not]: null },
+        id: { [Op.gt]: cursorId },
       },
+      order: [["id", "ASC"]],
       limit: BATCH_SIZE,
-      offset,
     });
 
     if (outputItems.length === 0) {
       break;
     }
 
-    offset += outputItems.length;
+    cursorId = outputItems[outputItems.length - 1].id;
 
     // Keep only items whose content is a plain-text resource block. Web browser files use
     // INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE as their mimeType and must be excluded.
