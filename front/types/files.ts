@@ -41,6 +41,7 @@ export type FileUseCaseMetadata = {
   sourceProvider?: string;
   sourceIcon?: string;
   hideFromUser?: boolean;
+  skipDataSourceIndexing?: boolean;
 };
 
 export function isConversationFileUseCase(

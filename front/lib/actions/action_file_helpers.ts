@@ -20,12 +20,14 @@ export async function generatePlainTextFile(
     content,
     snippet,
     hideFromUser,
+    skipDataSourceIndexing,
   }: {
     title: string;
     conversationId: string;
     content: string;
     snippet?: string;
     hideFromUser?: boolean;
+    skipDataSourceIndexing?: boolean;
   }
 ): Promise<FileResource> {
   const workspace = auth.getNonNullableWorkspace();
@@ -41,6 +43,7 @@ export async function generatePlainTextFile(
     useCaseMetadata: {
       conversationId,
       ...(hideFromUser ? { hideFromUser: true } : {}),
+      ...(skipDataSourceIndexing ? { skipDataSourceIndexing: true } : {}),
     },
     snippet,
   });
