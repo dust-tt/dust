@@ -68,7 +68,11 @@ export class InternalMCPServerInMemoryResource {
 
   private static async init(
     auth: Authenticator,
-    id: string
+    id: string,
+    prefetchedCredential?: {
+      sharedSecret: string | null;
+      customHeaders: Record<string, string> | null;
+    } | null
   ): Promise<InternalMCPServerInMemoryResource | null> {
     const r = getInternalMCPServerNameAndWorkspaceId(id);
     if (r.isErr()) {
@@ -101,7 +105,9 @@ export class InternalMCPServerInMemoryResource {
       tools: serverMetadata.tools,
     };
     server.internalServerCredential =
-      await server.fetchInternalServerCredential(auth);
+      prefetchedCredential !== undefined
+        ? prefetchedCredential
+        : await server.fetchInternalServerCredential(auth);
 
     return server;
   }
@@ -307,9 +313,56 @@ export class InternalMCPServerInMemoryResource {
     });
     validIds.push(...removeNulls(servers.map((s) => s.internalMCPServerId)));
 
+    // Batch-fetch all credentials in a single query to avoid an N+1 (one findOne per server).
+    const workspace = auth.getNonNullableWorkspace();
+    const idsRequiringCredentials = validIds.filter(
+      doesInternalMCPServerRequireBearerToken
+    );
+    const credentialModels =
+      idsRequiringCredentials.length > 0
+        ? await InternalMCPServerCredentialModel.findAll({
+            where: {
+              workspaceId: workspace.id,
+              internalMCPServerId: { [Op.in]: idsRequiringCredentials },
+            },
+          })
+        : [];
+    const credentialModelById = new Map(
+      credentialModels.map((c) => [c.internalMCPServerId, c])
+    );
+    const credentialByServerId = new Map(
+      validIds.map((id) => {
+        if (!doesInternalMCPServerRequireBearerToken(id)) {
+          return [id, null] as const;
+        }
+        const credModel = credentialModelById.get(id);
+        if (!credModel) {
+          return [id, null] as const;
+        }
+        return [
+          id,
+          {
+            sharedSecret: credModel.encryptedKey
+              ? decrypt({
+                  encrypted: credModel.encryptedKey,
+                  key: workspace.sId,
+                  useCase: "mcp_server_credentials",
+                })
+              : null,
+            customHeaders: credModel.customHeaders,
+          },
+        ] as const;
+      })
+    );
+
     const resources = await concurrentExecutor(
       validIds,
-      (id) => InternalMCPServerInMemoryResource.init(auth, id),
+      (id) =>
+        InternalMCPServerInMemoryResource.init(
+          auth,
+          id,
+          credentialByServerId.get(id)
+        ),
       { concurrency: 10 }
     );
 
