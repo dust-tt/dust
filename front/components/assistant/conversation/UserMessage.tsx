@@ -30,6 +30,7 @@ import {
   isAgentMention,
   isRichAgentMention,
 } from "@app/types/assistant/mentions";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ActionTimeIcon,
@@ -230,6 +231,14 @@ export function UserMessage({
   const methods = useVirtuosoMethods<VirtuosoMessage>();
 
   const isDeleted = message.visibility === "deleted";
+  const isPending = message.visibility === "pending";
+  const pendingMessageCount = useMemo(
+    () =>
+      methods.data
+        .get()
+        .filter((m) => isUserMessage(m) && m.visibility === "pending").length,
+    [methods.data]
+  );
   const isEmpty = !message.content && message.contentFragments.length === 0;
   const isCurrentUser = message.user?.sId === currentUserId;
   const canDelete =
@@ -381,13 +390,22 @@ export function UserMessage({
               <ConversationMessageContent
                 citations={citations}
                 type="user"
-                className={cn(
-                  shouldShowBiggerUserMessage && "@sm:min-w-100",
-                  message.visibility === "pending" && "opacity-70"
-                )}
+                className={cn(shouldShowBiggerUserMessage && "@sm:min-w-100")}
                 reversed={isCurrentUser}
               >
-                <div className="flex items-center gap-2">
+                <div
+                  className={cn(
+                    "flex gap-2",
+                    isPending ? "items-start" : "items-center"
+                  )}
+                >
+                  {isPending && (
+                    <Icon
+                      visual={ActionTimeIcon}
+                      size="xs"
+                      className="mt-1 shrink-0 text-faint dark:text-faint-night"
+                    />
+                  )}
                   {isDeleted ? (
                     <DeletedMessage />
                   ) : isEmpty ? (
@@ -395,11 +413,18 @@ export function UserMessage({
                       (no message)
                     </div>
                   ) : (
-                    <UserMessageMarkdown
-                      owner={owner}
-                      message={message}
-                      isLastMessage={isLastMessage}
-                    />
+                    <div
+                      className={cn(
+                        isPending &&
+                          "text-muted-foreground dark:text-muted-foreground-night"
+                      )}
+                    >
+                      <UserMessageMarkdown
+                        owner={owner}
+                        message={message}
+                        isLastMessage={isLastMessage}
+                      />
+                    </div>
                   )}
                 </div>
               </ConversationMessageContent>
@@ -441,7 +466,7 @@ export function UserMessage({
           </ConversationMessageContainer>
         </div>
       )}
-      {message.visibility === "pending" && isLastMessage && (
+      {isLastMessage && pendingMessageCount > 0 && (
         <div
           className={cn(
             "mt-1 mr-3 flex items-center gap-1 text-xs text-muted-foreground dark:text-muted-foreground-night",
@@ -449,7 +474,7 @@ export function UserMessage({
           )}
         >
           <Icon visual={ActionTimeIcon} size="xs" />
-          Waiting for the current step to finish
+          {`Message${pluralize(pendingMessageCount)} queued`}
         </div>
       )}
     </>
