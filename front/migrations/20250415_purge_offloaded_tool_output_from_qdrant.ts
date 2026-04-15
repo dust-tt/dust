@@ -118,8 +118,10 @@ async function purgeWorkspace(
         }
 
         // Resolve the conversation data source so we can delete the document from Qdrant.
-        const dsRes =
-          await getOrCreateConversationDataSourceFromFile(auth, file);
+        const dsRes = await getOrCreateConversationDataSourceFromFile(
+          auth,
+          file
+        );
         if (dsRes.isErr()) {
           localLogger.error(
             {
@@ -219,7 +221,10 @@ makeScript(
         manifest ||
         `purge_manifest_${new Date().toISOString().replace(/[:.]/g, "-")}.ndjson`;
       manifestFd = fs.openSync(manifestPath, "a");
-      scriptLogger.info({ manifestPath }, "Writing deleted documents to manifest");
+      scriptLogger.info(
+        { manifestPath },
+        "Writing deleted documents to manifest"
+      );
     }
 
     try {
