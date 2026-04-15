@@ -64,8 +64,8 @@ function b64url(input: string | Buffer): string {
 function mintJwt(overrides: JwtOverrides = {}): string {
   const secret = overrides.secret ?? requiredEnv("EGRESS_PROXY_JWT_SECRET");
   const sbId = process.env.EGRESS_PROXY_SB_ID ?? `smoke-${Date.now()}`;
-  const ttl = Number(process.env.EGRESS_PROXY_JWT_TTL_SECONDS ?? "300");
-  const expOffset = overrides.expOffsetSeconds ?? ttl;
+  const ttlSeconds = Number(process.env.EGRESS_PROXY_JWT_TTL_SECONDS ?? "300");
+  const expOffset = overrides.expOffsetSeconds ?? ttlSeconds;
   const exp = Math.floor(Date.now() / 1000) + expOffset;
   const header = { alg: "HS256", typ: "JWT" };
   const payload = {
