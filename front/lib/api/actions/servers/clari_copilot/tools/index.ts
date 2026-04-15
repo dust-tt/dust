@@ -1,4 +1,8 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  CLARI_CALL_DETAILS_MIME_TYPE,
+  CLARI_CALL_LIST_MIME_TYPE,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
@@ -6,10 +10,6 @@ import {
   getClariClient,
 } from "@app/lib/api/actions/servers/clari_copilot/client";
 import { CLARI_COPILOT_TOOLS_METADATA } from "@app/lib/api/actions/servers/clari_copilot/metadata";
-import {
-  renderCallDetails,
-  renderCallList,
-} from "@app/lib/api/actions/servers/clari_copilot/rendering";
 import { Err, Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof CLARI_COPILOT_TOOLS_METADATA> = {
@@ -26,8 +26,17 @@ const handlers: ToolHandlers<typeof CLARI_COPILOT_TOOLS_METADATA> = {
       );
     }
 
+    const calls = result.value;
     return new Ok([
-      { type: "text" as const, text: renderCallList(result.value) },
+      {
+        type: "resource" as const,
+        resource: {
+          mimeType: CLARI_CALL_LIST_MIME_TYPE,
+          uri: "",
+          text: JSON.stringify(calls),
+          calls,
+        },
+      },
     ]);
   },
 
@@ -46,8 +55,17 @@ const handlers: ToolHandlers<typeof CLARI_COPILOT_TOOLS_METADATA> = {
       );
     }
 
+    const call = result.value;
     return new Ok([
-      { type: "text" as const, text: renderCallDetails(result.value) },
+      {
+        type: "resource" as const,
+        resource: {
+          mimeType: CLARI_CALL_DETAILS_MIME_TYPE,
+          uri: call.call_review_page_url ?? "",
+          text: JSON.stringify(call),
+          call,
+        },
+      },
     ]);
   },
 };
