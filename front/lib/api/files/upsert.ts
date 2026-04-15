@@ -526,6 +526,12 @@ const maybeApplyProcessing: ProcessingFunction = async (
   auth,
   { file, dataSource, upsertArgs }
 ) => {
+  // Files offloaded to disk because their tool output was too large must not be indexed in Qdrant.
+  // Models access them directly via file reads.
+  if (file.useCaseMetadata?.skipDataSourceIndexing) {
+    return new Ok(undefined);
+  }
+
   const processing = getProcessingFunction(file);
 
   if (processing) {

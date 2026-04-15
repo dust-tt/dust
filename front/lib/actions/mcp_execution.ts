@@ -180,6 +180,9 @@ export async function processToolResults(
       switch (block.type) {
         case "text": {
           // If the text is too large we create a file and return a resource block that references the file.
+          // These files are offloaded purely for size reasons. the model reads them directly via the
+          // "cat" approach and never uses semantic search on them. `skipDataSourceIndexing` prevents
+          // them from being indexed in Qdrant, which would bloat the vector store for no benefit.
           if (
             computeTextByteSize(block.text) > FILE_OFFLOAD_TEXT_SIZE_BYTES &&
             toolConfiguration.mcpServerName !== "conversation_files"
@@ -195,6 +198,7 @@ export async function processToolResults(
               content: block.text,
               snippet,
               hideFromUser: true,
+              skipDataSourceIndexing: true,
             });
             return {
               content: {
@@ -337,6 +341,7 @@ export async function processToolResults(
             const sanitizedResource = sanitizeStringsDeep(block.resource);
 
             // If the resource text is too large, we create a file and return a resource block that references the file.
+            // Same as the text block case above: offloaded for size, not for search. Skip Qdrant indexing.
             if (
               text &&
               computeTextByteSize(text) > FILE_OFFLOAD_RESOURCE_SIZE_BYTES
@@ -354,6 +359,7 @@ export async function processToolResults(
                 content: text,
                 snippet,
                 hideFromUser: true,
+                skipDataSourceIndexing: true,
               });
               return {
                 content: {
@@ -416,6 +422,8 @@ export async function processToolResults(
         updatedAt: c.file.updatedAt.getTime(),
         isInProjectContext: c.file.useCase === "project_context",
         hidden: c.file.useCaseMetadata?.hideFromUser ?? false,
+        skipDataSourceIndexing:
+          c.file.useCaseMetadata?.skipDataSourceIndexing ?? false,
       } satisfies ActionGeneratedFileType;
     })
   );
