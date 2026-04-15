@@ -9,6 +9,7 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import { getAcademyUser } from "@app/lib/api/academy";
 import {
   buildPreviewQueryString,
+  getAcademyLocaleFromCookies,
   getLessonBySlug,
   getSearchableItems,
 } from "@app/lib/contentful/client";
@@ -43,8 +44,9 @@ export const getServerSideProps: GetServerSideProps<LessonPageProps> = async (
   }
 
   const resolvedUrl = buildPreviewQueryString(context.preview ?? false);
+  const locale = getAcademyLocaleFromCookies(context.req.headers.cookie);
 
-  const lessonResult = await getLessonBySlug(slug, resolvedUrl);
+  const lessonResult = await getLessonBySlug(slug, resolvedUrl, locale);
 
   if (lessonResult.isErr()) {
     logger.error(
@@ -60,7 +62,7 @@ export const getServerSideProps: GetServerSideProps<LessonPageProps> = async (
     return { notFound: true };
   }
 
-  const searchableResult = await getSearchableItems(resolvedUrl);
+  const searchableResult = await getSearchableItems(resolvedUrl, locale);
 
   return {
     props: {
@@ -69,6 +71,7 @@ export const getServerSideProps: GetServerSideProps<LessonPageProps> = async (
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       academyUser: user ? { firstName: user.firstName, sId: user.sId } : null,
       preview: context.preview ?? false,
+      locale,
     },
   };
 };

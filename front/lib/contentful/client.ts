@@ -25,6 +25,12 @@ import type {
   LessonSkeleton,
   SearchableItem,
 } from "@app/lib/contentful/types";
+import {
+  ACADEMY_LOCALE_COOKIE,
+  type AcademyLocale,
+  DEFAULT_ACADEMY_LOCALE,
+  isAcademyLocale,
+} from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -93,6 +99,23 @@ export function buildPreviewQueryString(isPreview: boolean): string {
   return isPreview
     ? `?preview=true&secret=${config.getContentfulPreviewSecret()}`
     : "";
+}
+
+export function getAcademyLocaleFromCookies(
+  cookieHeader: string | undefined
+): AcademyLocale {
+  if (!cookieHeader) {
+    return DEFAULT_ACADEMY_LOCALE;
+  }
+  const match = cookieHeader
+    .split(";")
+    .map((c) => c.trim())
+    .find((c) => c.startsWith(`${ACADEMY_LOCALE_COOKIE}=`));
+  if (!match) {
+    return DEFAULT_ACADEMY_LOCALE;
+  }
+  const value = match.split("=")[1];
+  return isAcademyLocale(value) ? value : DEFAULT_ACADEMY_LOCALE;
 }
 
 export function isPreviewMode(resolvedUrl: string): boolean {
@@ -1071,7 +1094,8 @@ function contentfulEntryToCourse(entry: Entry<CourseSkeleton>): Course | null {
 }
 
 export async function getAllCourses(
-  resolvedUrl: string = ""
+  resolvedUrl: string = "",
+  locale?: string
 ): Promise<Result<CourseSummary[], Error>> {
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
@@ -1079,6 +1103,7 @@ export async function getAllCourses(
     const response = await contentfulClient.getEntries<CourseSkeleton>({
       content_type: "course",
       limit: 1000,
+      ...(locale ? { locale } : {}),
     });
 
     const courses = response.items
@@ -1113,7 +1138,8 @@ export async function getAllCourses(
 
 export async function getCourseBySlug(
   slug: string,
-  resolvedUrl: string
+  resolvedUrl: string,
+  locale?: string
 ): Promise<Result<Course | null, Error>> {
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
@@ -1123,6 +1149,7 @@ export async function getCourseBySlug(
       "fields.slug": slug,
       limit: 1,
       include: 1 as const, // Allow one level for embedded entries/assets in rich text, but prevent deep circular references
+      ...(locale ? { locale } : {}),
     };
 
     const response =
@@ -1220,7 +1247,8 @@ function contentfulEntryToChapter(
 
 export async function getChaptersByCourseSlug(
   courseSlug: string,
-  resolvedUrl: string = ""
+  resolvedUrl: string = "",
+  locale?: string
 ): Promise<Result<ChapterSummary[], Error>> {
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
@@ -1232,6 +1260,7 @@ export async function getChaptersByCourseSlug(
       "fields.slug": courseSlug,
       limit: 1,
       include: 1 as const,
+      ...(locale ? { locale } : {}),
     };
 
     const response =
@@ -1269,7 +1298,8 @@ export async function getChaptersByCourseSlug(
 
 export async function getChapterBySlug(
   slug: string,
-  resolvedUrl: string
+  resolvedUrl: string,
+  locale?: string
 ): Promise<Result<Chapter | null, Error>> {
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
@@ -1279,6 +1309,7 @@ export async function getChapterBySlug(
       "fields.slug": slug,
       limit: 1,
       include: 1 as const,
+      ...(locale ? { locale } : {}),
     };
 
     const response =
@@ -1297,10 +1328,13 @@ export async function getChapterBySlug(
 }
 
 export async function getSearchableItems(
-  resolvedUrl: string = ""
+  resolvedUrl: string = "",
+  locale?: string
 ): Promise<Result<SearchableItem[], Error>> {
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
+
+    const localeParam = locale ? { locale } : {};
 
     const [coursesResponse, lessonsResponse, chaptersResponse] =
       await Promise.all([
@@ -1308,16 +1342,19 @@ export async function getSearchableItems(
           content_type: "course",
           limit: 1000,
           include: 1 as const,
+          ...localeParam,
         }),
         contentfulClient.getEntries<LessonSkeleton>({
           content_type: "lesson",
           limit: 1000,
           include: 1 as const,
+          ...localeParam,
         }),
         contentfulClient.getEntries<ChapterSkeleton>({
           content_type: "chapter",
           limit: 1000,
           include: 1 as const,
+          ...localeParam,
         }),
       ]);
 
@@ -1609,7 +1646,8 @@ function contentfulEntryToLesson(entry: Entry<LessonSkeleton>): Lesson | null {
 
 export async function getLessonBySlug(
   slug: string,
-  resolvedUrl: string
+  resolvedUrl: string,
+  locale?: string
 ): Promise<Result<Lesson | null, Error>> {
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
@@ -1619,6 +1657,7 @@ export async function getLessonBySlug(
       "fields.slug": slug,
       limit: 1,
       include: 1 as const, // Allow one level for embedded entries/assets in rich text, but prevent deep circular references
+      ...(locale ? { locale } : {}),
     };
 
     const response =

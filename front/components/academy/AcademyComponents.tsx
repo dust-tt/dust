@@ -3,7 +3,16 @@
 
 import { Grid, H2, P } from "@app/components/home/ContentComponents";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
-import type { CourseSummary, SearchableItem } from "@app/lib/contentful/types";
+import type {
+  AcademyLocale,
+  CourseSummary,
+  SearchableItem,
+} from "@app/lib/contentful/types";
+import {
+  ACADEMY_LOCALE_COOKIE,
+  ACADEMY_LOCALE_LABELS,
+  ACADEMY_LOCALES,
+} from "@app/lib/contentful/types";
 import { LinkWrapper, useAppRouter } from "@app/lib/platform";
 import { Button, cn, EyeIcon, SearchInput, Tooltip } from "@dust-tt/sparkle";
 import Image from "next/image";
@@ -305,6 +314,41 @@ export function AcademySearch({
         </div>
       )}
     </>
+  );
+}
+
+interface LocaleToggleProps {
+  locale: AcademyLocale;
+}
+
+export function LocaleToggle({ locale }: LocaleToggleProps) {
+  const router = useAppRouter();
+
+  const handleLocaleChange = useCallback(
+    (newLocale: AcademyLocale) => {
+      document.cookie = `${ACADEMY_LOCALE_COOKIE}=${newLocale};path=/academy;max-age=${365 * 24 * 60 * 60}`;
+      router.reload();
+    },
+    [router]
+  );
+
+  return (
+    <div className="flex items-center gap-0.5 rounded-lg border border-gray-200 bg-white p-0.5">
+      {ACADEMY_LOCALES.map((l) => (
+        <button
+          key={l}
+          onClick={() => handleLocaleChange(l)}
+          className={cn(
+            "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+            l === locale
+              ? "bg-primary text-white"
+              : "text-gray-500 hover:text-gray-700"
+          )}
+        >
+          {ACADEMY_LOCALE_LABELS[l]}
+        </button>
+      ))}
+    </div>
   );
 }
 

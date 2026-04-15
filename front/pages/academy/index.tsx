@@ -5,12 +5,17 @@ import {
   AcademySearch,
   ContinueLearningCard,
   CourseGrid,
+  LocaleToggle,
 } from "@app/components/academy/AcademyComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { Pagination } from "@app/components/shared/Pagination";
 import { getAcademyUser } from "@app/lib/api/academy";
-import { getAllCourses, getSearchableItems } from "@app/lib/contentful/client";
+import {
+  getAcademyLocaleFromCookies,
+  getAllCourses,
+  getSearchableItems,
+} from "@app/lib/contentful/client";
 import type { CourseListingPageProps } from "@app/lib/contentful/types";
 import {
   useAcademyBackfill,
@@ -29,10 +34,11 @@ export const getServerSideProps: GetServerSideProps<
   CourseListingPageProps
 > = async (context) => {
   const user = await getAcademyUser(context.req, context.res);
+  const locale = getAcademyLocaleFromCookies(context.req.headers.cookie);
 
   const [coursesResult, searchableResult] = await Promise.all([
-    getAllCourses(),
-    getSearchableItems(),
+    getAllCourses("", locale),
+    getSearchableItems("", locale),
   ]);
 
   if (coursesResult.isErr()) {
@@ -46,6 +52,7 @@ export const getServerSideProps: GetServerSideProps<
         searchableItems: [],
         gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
         academyUser: user ? { firstName: user.firstName, sId: user.sId } : null,
+        locale,
       },
     };
   }
@@ -56,6 +63,7 @@ export const getServerSideProps: GetServerSideProps<
       searchableItems: searchableResult.isOk() ? searchableResult.value : [],
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       academyUser: user ? { firstName: user.firstName, sId: user.sId } : null,
+      locale,
     },
   };
 };
@@ -65,6 +73,7 @@ export default function AcademyListing({
   courses,
   searchableItems,
   academyUser,
+  locale,
 }: CourseListingPageProps) {
   const router = useRouter();
   const browserId = useAcademyBrowserId();
@@ -121,7 +130,8 @@ export default function AcademyListing({
           <div className="flex flex-col gap-3">
             <AcademyHeader />
           </div>
-          <div className="mb-4 w-full sm:mb-0 sm:w-72">
+          <div className="mb-4 flex w-full items-center gap-2 sm:mb-0 sm:w-auto">
+            <LocaleToggle locale={locale} />
             <AcademySearch searchableItems={searchableItems} />
           </div>
         </div>

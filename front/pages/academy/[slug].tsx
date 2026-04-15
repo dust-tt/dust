@@ -13,6 +13,7 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import { getAcademyUser } from "@app/lib/api/academy";
 import {
   buildPreviewQueryString,
+  getAcademyLocaleFromCookies,
   getChaptersByCourseSlug,
   getCourseBySlug,
   getSearchableItems,
@@ -56,11 +57,12 @@ export const getServerSideProps: GetServerSideProps<CoursePageProps> = async (
   }
 
   const resolvedUrl = buildPreviewQueryString(context.preview ?? false);
+  const locale = getAcademyLocaleFromCookies(context.req.headers.cookie);
 
   const [courseResult, chaptersResult, searchableResult] = await Promise.all([
-    getCourseBySlug(slug, resolvedUrl),
-    getChaptersByCourseSlug(slug, resolvedUrl),
-    getSearchableItems(resolvedUrl),
+    getCourseBySlug(slug, resolvedUrl, locale),
+    getChaptersByCourseSlug(slug, resolvedUrl, locale),
+    getSearchableItems(resolvedUrl, locale),
   ]);
 
   if (courseResult.isErr()) {
@@ -89,6 +91,7 @@ export const getServerSideProps: GetServerSideProps<CoursePageProps> = async (
       academyUser: user ? { firstName: user.firstName, sId: user.sId } : null,
       fullWidth: true,
       preview: context.preview ?? false,
+      locale,
     },
   };
 };

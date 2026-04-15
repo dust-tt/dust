@@ -262,6 +262,23 @@ export interface SearchableItem {
   courseSlug?: string | null;
 }
 
+export type AcademyLocale = "en-US" | "fr";
+
+export const ACADEMY_LOCALES: AcademyLocale[] = ["en-US", "fr"];
+
+export const ACADEMY_LOCALE_LABELS: Record<AcademyLocale, string> = {
+  "en-US": "EN",
+  fr: "FR",
+};
+
+export const DEFAULT_ACADEMY_LOCALE: AcademyLocale = "en-US";
+
+export const ACADEMY_LOCALE_COOKIE = "academy_locale";
+
+export function isAcademyLocale(value: string): value is AcademyLocale {
+  return ACADEMY_LOCALES.includes(value as AcademyLocale);
+}
+
 export interface AcademyUser {
   firstName: string;
   sId: string;
@@ -272,6 +289,7 @@ export interface CourseListingPageProps {
   searchableItems: SearchableItem[];
   gtmTrackingId: string | null;
   academyUser?: AcademyUser | null;
+  locale: AcademyLocale;
 }
 
 export interface CoursePageProps {
@@ -283,6 +301,7 @@ export interface CoursePageProps {
   academyUser?: AcademyUser | null;
   fullWidth?: boolean;
   preview?: boolean;
+  locale: AcademyLocale;
 }
 
 // Chapter types
@@ -337,6 +356,7 @@ export interface ChapterPageProps {
   academyUser?: AcademyUser | null;
   fullWidth?: boolean;
   preview?: boolean;
+  locale: AcademyLocale;
 }
 
 // Lesson types
@@ -413,4 +433,5 @@ export interface LessonPageProps {
   gtmTrackingId: string | null;
   academyUser?: AcademyUser | null;
   preview?: boolean;
+  locale: AcademyLocale;
 }
