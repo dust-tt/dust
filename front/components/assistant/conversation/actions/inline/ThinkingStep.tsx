@@ -77,8 +77,8 @@ export function ThinkingStep({
             <div
               className={cn(
                 "pointer-events-none absolute inset-x-0 bottom-0 h-6",
-                "bg-gradient-to-t from-background via-background/90 via-10% to-transparent",
-                "dark:from-background-night dark:via-background-night/90"
+                "bg-gradient-to-t from-background via-background/70 via-10% to-transparent",
+                "dark:from-background-night dark:via-background-night/70"
               )}
             />
           ) : null}
