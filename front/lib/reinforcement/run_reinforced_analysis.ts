@@ -8,6 +8,10 @@ import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { getLargeWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import {
+  hasSuggestionSelfConflict,
+  pruneConflictingSkillEditSuggestions,
+} from "@app/lib/reinforcement/skill_suggestion_pruning";
+import {
   ALL_TOOLS,
   DESCRIBE_MCP_TOOL_NAME,
   type ExploratoryToolCallInfo,
@@ -68,7 +72,7 @@ const REINFORCED_SKILLS_TOOL_DEFINITIONS: Record<
             content: z
               .string()
               .describe(
-                "Full replacement content for the block, including its wrapping tag. Must be a single-line string with no literal newlines."
+                "Full HTML replacement content for the block, including its wrapping tag. Must be a single-line string with no literal newlines."
               ),
             type: z.literal("replace"),
           })
@@ -405,55 +409,37 @@ async function createSkillSuggestionsFromToolCall({
         };
       }
 
-      if (hasInstructionEdits && parsed.data.instructionEdits) {
-        const edits = parsed.data.instructionEdits;
-
-        // Reject if multiple edits target the same block.
-        const blockIds = edits.map(
-          (e: { targetBlockId: string }) => e.targetBlockId
-        );
-        const uniqueBlockIds = new Set(blockIds);
-        if (uniqueBlockIds.size !== blockIds.length) {
-          return {
-            suggestionsCreated: 0,
-            error:
-              "Multiple edits target the same block ID. Use one edit per block.",
-          };
-        }
-      }
-
-      // Mark any existing pending edit suggestions for this skill as outdated.
-      // TODO(reinforced-skills): Allow multiple pending edit suggestions (Issue #7444)
-      const existingPending =
-        await SkillSuggestionResource.listBySkillConfigurationId(
-          auth,
-          skill.sId,
+      if (
+        hasSuggestionSelfConflict(
           {
-            states: ["pending"],
-            kind: "edit",
-            sources: ["reinforcement", "synthetic"],
-          }
-        );
-      if (existingPending.length > 0) {
-        await SkillSuggestionResource.bulkUpdateState(
-          auth,
-          existingPending,
-          "outdated"
-        );
+            instructionEdits: parsed.data.instructionEdits,
+            toolEdits: parsed.data.toolEdits,
+          },
+          skill.instructionsHtml
+        )
+      ) {
+        return {
+          suggestionsCreated: 0,
+          error:
+            "Suggestion has conflicting edits (overlapping block targets or duplicate tool IDs).",
+        };
       }
 
-      await SkillSuggestionResource.createSuggestionForSkill(auth, skill, {
-        kind: "edit",
-        suggestion: {
-          instructionEdits: parsed.data.instructionEdits,
-          toolEdits: parsed.data.toolEdits,
-        },
-        analysis: parsed.data.analysis ?? null,
-        state: "pending",
-        source,
-        sourceConversationId: conversation?.id ?? null,
-        groupId: null,
-      });
+      const newSuggestion =
+        await SkillSuggestionResource.createSuggestionForSkill(auth, skill, {
+          kind: "edit",
+          suggestion: {
+            instructionEdits: parsed.data.instructionEdits,
+            toolEdits: parsed.data.toolEdits,
+          },
+          analysis: parsed.data.analysis ?? null,
+          state: "pending",
+          source,
+          sourceConversationId: conversation?.id ?? null,
+          groupId: null,
+        });
+
+      await pruneConflictingSkillEditSuggestions(auth, skill, newSuggestion);
 
       return { suggestionsCreated: 1 };
     }
