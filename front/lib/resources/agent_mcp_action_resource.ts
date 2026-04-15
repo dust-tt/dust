@@ -989,6 +989,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
                   updatedAt: file.updatedAt.getTime(),
                   isInProjectContext: file.useCase === "project_context",
                   hidden: file.useCaseMetadata?.hideFromUser ?? false,
+                  skipDataSourceIndexing:
+                    file.useCaseMetadata?.skipDataSourceIndexing ?? false,
                 };
               })
             ),

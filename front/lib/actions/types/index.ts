@@ -93,6 +93,9 @@ export type ActionGeneratedFileType = {
   updatedAt?: number;
   isInProjectContext?: boolean;
   hidden?: boolean;
+  // True for files created by offloading oversized tool output to disk. These are never indexed in
+  // Qdrant and should not be flagged as searchable in the conversation render.
+  skipDataSourceIndexing?: boolean;
 };
 
 export type AgentLoopRunContextType = {

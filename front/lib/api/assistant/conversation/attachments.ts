@@ -243,6 +243,7 @@ export function makeFileAttachment({
   snippet,
   isInProjectContext,
   hideFromUser,
+  skipDataSourceIndexing = false,
   creator = null,
 }: {
   fileId: string;
@@ -254,12 +255,16 @@ export function makeFileAttachment({
   snippet: string | null;
   isInProjectContext: boolean;
   hideFromUser: boolean;
+  skipDataSourceIndexing?: boolean;
   creator?: AttachmentCreator | null;
 }): FileAttachmentType {
   const canDoJIT = snippet !== null;
   const isIncludable = isConversationIncludableFileContentType(contentType);
   const isQueryable = canDoJIT && isQueryableContentType(contentType);
-  const isSearchable = canDoJIT && isSearchableContentType(contentType);
+  // Files offloaded to disk because their tool output was too large are never indexed in Qdrant,
+  // so they must not be advertised as searchable to the model.
+  const isSearchable =
+    canDoJIT && isSearchableContentType(contentType) && !skipDataSourceIndexing;
 
   return {
     fileId,
