@@ -24,10 +24,17 @@ vi.mock("@app/lib/metronome/constants", () => ({
     usd: "usd-credit-type",
     eur: "eur-credit-type",
   },
-  getProductWorkspaceMau1Id: () => "mau1-product",
-  getProductWorkspaceMau5Id: () => "mau5-product",
-  getProductWorkspaceMau10Id: () => "mau10-product",
-  getProductPrepaidCommitId: () => "prepaid-commit-product",
+  MAX_MAU_TIERS: 6,
+  getProductMauId: () => "mau-product",
+  getProductMauCommitId: () => "mau-commit-product",
+  getProductMauTierIds: () => [
+    "tier1-product",
+    "tier2-product",
+    "tier3-product",
+    "tier4-product",
+    "tier5-product",
+    "tier6-product",
+  ],
 }));
 
 const noopLogger = {
@@ -63,6 +70,18 @@ function makeSubscription(
 }
 
 const START_DATE = "2026-04-01T00:00:00.000Z";
+
+/** Find an override by product_id (may be in override_specifiers or top-level). */
+function findOverride(
+  overrides: ReturnType<typeof buildEnterpriseOverrides>["overrides"],
+  productId: string
+) {
+  return overrides.find(
+    (o) =>
+      o.product_id === productId ||
+      o.override_specifiers?.some((s) => s.product_id === productId)
+  );
+}
 
 // ---------------------------------------------------------------------------
 // extractEnterprisePricing
@@ -265,7 +284,7 @@ describe("extractEnterprisePricing", () => {
 // ---------------------------------------------------------------------------
 
 describe("buildEnterpriseOverrides", () => {
-  it("FIXED: disables all MAU products", () => {
+  it("FIXED: disables all MAU and tier products", () => {
     const pricing: EnterprisePricingCents = {
       currency: "usd",
       billingMode: "FIXED",
@@ -275,22 +294,17 @@ describe("buildEnterpriseOverrides", () => {
 
     const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
 
-    expect(result.overrides).toHaveLength(3);
-    expect(result.overrides.map((o) => o.product_id)).toEqual([
-      "mau1-product",
-      "mau5-product",
-      "mau10-product",
-    ]);
+    // 1 MAU + 6 tier products = 7 disabled.
+    expect(result.overrides).toHaveLength(7);
     for (const o of result.overrides) {
       expect(o.entitled).toBe(false);
-      expect(o.overwrite_rate.rate_type).toBe("FLAT");
-      expect(o.overwrite_rate.price).toBe(0);
     }
     expect(result.recurring_commits).toBeUndefined();
+    expect(result.custom_fields).toBeUndefined();
   });
 
-  it("Pattern A: floor + overage (2-tier)", () => {
-    // Stripe: [{flat: 450000, unit: 0, up_to: 100}, {unit: 4500, up_to: null}]
+  it("Pattern A: floor + overage, same price → simple mode", () => {
+    // derived = 450000/100 = 4500, overage = 4500 → all same price → simple mode
     const pricing: EnterprisePricingCents = {
       currency: "usd",
       billingMode: "MAU_1",
@@ -303,24 +317,33 @@ describe("buildEnterpriseOverrides", () => {
 
     const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
 
-    // Single override: tiered rate on MAU_1 product.
-    const mauOverride = result.overrides.find(
-      (o) => o.product_id === "mau1-product"
-    );
+    // Simple mode: MAU product enabled.
+    const mauOverride = findOverride(result.overrides, "mau-product");
     expect(mauOverride?.entitled).toBe(true);
-    expect(mauOverride?.overwrite_rate.rate_type).toBe("TIERED");
-    expect(mauOverride?.overwrite_rate.tiers).toEqual([
-      { price: 4500, size: 100 }, // 450000 / 100 = 4500
-      { price: 4500 },
-    ]);
+    expect(mauOverride?.overwrite_rate.price).toBe(4500);
+
+    // All tier products disabled.
+    expect(findOverride(result.overrides, "tier1-product")?.entitled).toBe(
+      false
+    );
+
+    // MAU subscription added.
+    expect(result.add_subscriptions).toHaveLength(1);
 
     // Recurring commit for the floor.
     expect(result.recurring_commits).toHaveLength(1);
     expect(result.recurring_commits![0].access_amount.unit_price).toBe(450000);
+    expect(result.recurring_commits![0].applicable_product_ids).toEqual([
+      "mau-product",
+    ]);
+
+    // No MAU_TIERS (simple mode), only MAU_THRESHOLD.
+    expect(result.custom_fields).toEqual({
+      MAU_THRESHOLD: "1",
+    });
   });
 
   it("Pattern B: no floor, free included seats", () => {
-    // Stripe: [{flat: 0, unit: 0, up_to: 100}, {unit: 4500, up_to: null}]
     const pricing: EnterprisePricingCents = {
       currency: "usd",
       billingMode: "MAU_1",
@@ -333,19 +356,17 @@ describe("buildEnterpriseOverrides", () => {
 
     const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
 
-    const mauOverride = result.overrides.find(
-      (o) => o.product_id === "mau1-product"
-    );
-    expect(mauOverride?.overwrite_rate.tiers).toEqual([
-      { price: 0, size: 100 },
-      { price: 4500 },
-    ]);
-    // No floor → no recurring commit.
+    const tier1 = findOverride(result.overrides, "tier1-product");
+    expect(tier1?.overwrite_rate.price).toBe(0);
+
+    const tier2 = findOverride(result.overrides, "tier2-product");
+    expect(tier2?.overwrite_rate.price).toBe(4500);
+
     expect(result.recurring_commits).toBeUndefined();
+    expect(result.custom_fields?.MAU_TIERS).toBe("1-101");
   });
 
   it("Pattern C: no floor, paid from first seat", () => {
-    // Stripe: [{flat: null, unit: 4000, up_to: 120}, {unit: 4500, up_to: null}]
     const pricing: EnterprisePricingCents = {
       currency: "usd",
       billingMode: "MAU_1",
@@ -358,19 +379,17 @@ describe("buildEnterpriseOverrides", () => {
 
     const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
 
-    const mauOverride = result.overrides.find(
-      (o) => o.product_id === "mau1-product"
-    );
-    expect(mauOverride?.overwrite_rate.tiers).toEqual([
-      { price: 4000, size: 120 },
-      { price: 4500 },
-    ]);
+    const tier1 = findOverride(result.overrides, "tier1-product");
+    expect(tier1?.overwrite_rate.price).toBe(4000);
+
+    const tier2 = findOverride(result.overrides, "tier2-product");
+    expect(tier2?.overwrite_rate.price).toBe(4500);
+
     expect(result.recurring_commits).toBeUndefined();
+    expect(result.custom_fields?.MAU_TIERS).toBe("1-121");
   });
 
   it("Pattern D: multi-tier (5 tiers)", () => {
-    // Stripe: [{flat: 315000, up_to: 70}, {unit: 4500, up_to: 100}, {unit: 4200, up_to: 200},
-    //          {unit: 4000, up_to: 500}, {unit: 3700, up_to: null}]
     const pricing: EnterprisePricingCents = {
       currency: "usd",
       billingMode: "MAU_1",
@@ -386,23 +405,27 @@ describe("buildEnterpriseOverrides", () => {
 
     const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
 
-    const mauOverride = result.overrides.find(
-      (o) => o.product_id === "mau1-product"
-    );
-    expect(mauOverride?.overwrite_rate.tiers).toEqual([
-      { price: 4500, size: 70 }, // 315000 / 70 = 4500
-      { price: 4500, size: 30 }, // 100 - 70
-      { price: 4200, size: 100 }, // 200 - 100
-      { price: 4000, size: 300 }, // 500 - 200
-      { price: 3700 },
+    // 5 tier products enabled with correct prices.
+    const enabledTiers = result.overrides.filter((o) => o.entitled);
+    expect(enabledTiers).toHaveLength(5);
+    expect(enabledTiers.map((o) => o.overwrite_rate.price)).toEqual([
+      4500, // 315000/70
+      4500,
+      4200,
+      4000,
+      3700,
     ]);
+
+    // Tier 6 disabled.
+    const tier6 = findOverride(result.overrides, "tier6-product");
+    expect(tier6?.entitled).toBe(false);
 
     expect(result.recurring_commits).toHaveLength(1);
     expect(result.recurring_commits![0].access_amount.unit_price).toBe(315000);
+    expect(result.custom_fields?.MAU_TIERS).toBe("FLOOR-71-101-201-501");
   });
 
   it("Pattern E: single-tier flat rate", () => {
-    // Stripe: [{unit: 2000, up_to: null}]
     const pricing: EnterprisePricingCents = {
       currency: "usd",
       billingMode: "MAU_1",
@@ -412,14 +435,22 @@ describe("buildEnterpriseOverrides", () => {
 
     const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
 
-    const mauOverride = result.overrides.find(
-      (o) => o.product_id === "mau1-product"
+    // Single tier → simple mode: MAU product enabled.
+    const mauOverride = findOverride(result.overrides, "mau-product");
+    expect(mauOverride?.entitled).toBe(true);
+    expect(mauOverride?.overwrite_rate.price).toBe(2000);
+
+    // Tier products disabled.
+    expect(findOverride(result.overrides, "tier1-product")?.entitled).toBe(
+      false
     );
-    expect(mauOverride?.overwrite_rate.tiers).toEqual([{ price: 2000 }]);
+
     expect(result.recurring_commits).toBeUndefined();
+    expect(result.custom_fields?.MAU_TIERS).toBeUndefined();
   });
 
-  it("MAU_5: disables MAU_1 and enables MAU_5", () => {
+  it("MAU_5: sets MAU_THRESHOLD to 5 (simple mode)", () => {
+    // derived = 225000/50 = 4500, overage = 4500 → same price → simple mode
     const pricing: EnterprisePricingCents = {
       currency: "usd",
       billingMode: "MAU_5",
@@ -432,45 +463,19 @@ describe("buildEnterpriseOverrides", () => {
 
     const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
 
-    // MAU_1 disabled.
-    const mau1Override = result.overrides.find(
-      (o) => o.product_id === "mau1-product"
-    );
-    expect(mau1Override?.entitled).toBe(false);
+    // Simple mode: MAU product enabled (same price across tiers).
+    expect(findOverride(result.overrides, "mau-product")?.entitled).toBe(true);
 
-    // MAU_5 enabled with tiered rate.
-    const mau5Override = result.overrides.find(
-      (o) => o.product_id === "mau5-product"
+    // Tier products disabled.
+    expect(findOverride(result.overrides, "tier1-product")?.entitled).toBe(
+      false
     );
-    expect(mau5Override?.entitled).toBe(true);
-    expect(mau5Override?.overwrite_rate.rate_type).toBe("TIERED");
+
+    expect(result.custom_fields?.MAU_THRESHOLD).toBe("5");
   });
 
-  it("MAU_10: disables MAU_1 and enables MAU_10", () => {
-    const pricing: EnterprisePricingCents = {
-      currency: "usd",
-      billingMode: "MAU_10",
-      tiers: [
-        { upTo: 30, unitAmountCents: 0, flatAmountCents: 135000 },
-        { upTo: undefined, unitAmountCents: 4500, flatAmountCents: 0 },
-      ],
-      floorCents: 135000,
-    };
-
-    const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
-
-    const mau1Override = result.overrides.find(
-      (o) => o.product_id === "mau1-product"
-    );
-    expect(mau1Override?.entitled).toBe(false);
-
-    const mau10Override = result.overrides.find(
-      (o) => o.product_id === "mau10-product"
-    );
-    expect(mau10Override?.entitled).toBe(true);
-  });
-
-  it("EUR currency uses EUR credit type", () => {
+  it("EUR currency uses EUR credit type and converts to euros", () => {
+    // 120000 cents / 30 = 4000 cents = 40 EUR. Overage 4000 cents = 40 EUR. Same → simple mode.
     const pricing: EnterprisePricingCents = {
       currency: "eur",
       billingMode: "MAU_1",
@@ -483,17 +488,19 @@ describe("buildEnterpriseOverrides", () => {
 
     const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
 
-    const mauOverride = result.overrides.find(
-      (o) => o.product_id === "mau1-product"
-    );
+    // Simple mode: MAU product with EUR credit type and price in euros.
+    const mauOverride = findOverride(result.overrides, "mau-product");
     expect(mauOverride?.overwrite_rate.credit_type_id).toBe("eur-credit-type");
+    expect(mauOverride?.overwrite_rate.price).toBe(40); // 4000 cents → 40 EUR
+
+    // Commit in euros.
     expect(result.recurring_commits![0].access_amount.credit_type_id).toBe(
       "eur-credit-type"
     );
+    expect(result.recurring_commits![0].access_amount.unit_price).toBe(1200); // 120000 cents → 1200 EUR
   });
 
   it("3-tier with floor: floor + 2 overage tiers", () => {
-    // Stripe: [{flat: 325000, unit: 0, up_to: 100}, {unit: 3000, up_to: 200}, {unit: 2500, up_to: null}]
     const pricing: EnterprisePricingCents = {
       currency: "usd",
       billingMode: "MAU_1",
@@ -507,15 +514,16 @@ describe("buildEnterpriseOverrides", () => {
 
     const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
 
-    const mauOverride = result.overrides.find(
-      (o) => o.product_id === "mau1-product"
-    );
-    expect(mauOverride?.overwrite_rate.tiers).toEqual([
-      { price: 3250, size: 100 }, // 325000 / 100
-      { price: 3000, size: 100 }, // 200 - 100
-      { price: 2500 },
-    ]);
+    const tier1 = findOverride(result.overrides, "tier1-product");
+    expect(tier1?.overwrite_rate.price).toBe(3250); // 325000 / 100
+
+    const tier2 = findOverride(result.overrides, "tier2-product");
+    expect(tier2?.overwrite_rate.price).toBe(3000);
+
+    const tier3 = findOverride(result.overrides, "tier3-product");
+    expect(tier3?.overwrite_rate.price).toBe(2500);
 
     expect(result.recurring_commits![0].access_amount.unit_price).toBe(325000);
+    expect(result.custom_fields?.MAU_TIERS).toBe("FLOOR-101-201");
   });
 });
