@@ -33,9 +33,8 @@ front/
 
 # Development setup
 
-- You can use `./admin/check.ts` to run all checks (lint, type-check, format) concurrently.
-    - Use `npx tsgo --noEmit` to type-check the front project.
-    - Use `npm run lint` to run ESLint
+- Use `npx tsgo --noEmit` to type-check the front project.
+- Use `npm run format:changed` (from the repo root) to format and lint changed files.
 - Read `runbooks/TEST.md` for all things related to testing.
 
 # Running tests

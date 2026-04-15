@@ -204,6 +204,6 @@ export NOTION_SIGNING_SECRET="your-notion-signing-secret"
 ```bash
 npm install     # Install dependencies
 npm run build   # Build TypeScript
-npm run lint    # Run linter
+npm run format:changed  # Format and lint changed files (from repo root)
 npm run dev     # Start Firebase emulator
 ```

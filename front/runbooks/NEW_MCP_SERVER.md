@@ -640,7 +640,7 @@ Before marking implementation complete:
 - [ ] Temporary icon set (request final icon from designer)
 - [ ] Feature flag configured (if preview)
 - [ ] Type check passes (`npx tsgo --noEmit`)
-- [ ] Lint passes (`npm run lint`)
+- [ ] Format/lint passes (`npm run format:changed` from repo root)
 - [ ] Manual testing completed
 - [ ] Documentation URL added (if public)
 

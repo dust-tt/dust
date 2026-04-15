@@ -41,6 +41,6 @@ jobs:
       - name: Install Grit CLI
         run: npm install --location=global @getgrit/cli
       - name: Format Check
-        run: npm run biome
+        run: npm run format:ci
       - name: GritQL Plugin Tests
         run: npm run test:grit
