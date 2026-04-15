@@ -89,7 +89,7 @@ jobs:
       short_sha: ${{ steps.short_sha.outputs.short_sha }}
       long_sha: ${{ steps.short_sha.outputs.long_sha }}
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Get short sha
         id: short_sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
@@ -103,7 +103,7 @@ jobs:
     outputs:
       thread_ts: ${{ steps.build_message.outputs.thread_ts }}
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Notify Build And Deploy Start
         id: build_message
@@ -150,7 +150,7 @@ jobs:
       fail-fast: true
 
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 50 # Fetch last 50 commits for commit diff functionality
 
@@ -218,11 +218,11 @@ jobs:
     if: ${{ !failure() && !cancelled() && inputs.component != 'egress-proxy' && (needs.ensure-sandbox-images.result == 'success' || needs.ensure-sandbox-images.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Generate token
         id: generate-token
-        uses: actions/create-github-app-token@v3.1.1
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
         with:
           app-id: ${{ secrets.INFRA_DISPATCH_APP_ID }}
           private-key: ${{ secrets.INFRA_DISPATCH_APP_PRIVATE_KEY }}
@@ -230,7 +230,7 @@ jobs:
           repositories: dust-infra
 
       - name: Trigger dust-infra workflow
-        uses: actions/github-script@v9.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           OWNER: ${{ github.repository_owner }}
           COMPONENT: ${{ inputs.component }}
