@@ -206,7 +206,7 @@ calls out of `fromGlobalSkill` and batch them at the `baseFetch` level, similar 
 ## Tasks
 
 - [x] **[Issue 1]** Batch-fetch credentials in `InternalMCPServerInMemoryResource.fetchByIds` — single `WHERE internalMCPServerId IN (...)` instead of K individual `findOne` calls.
-- [ ] **[Issue 2]** Build `mcpServerViewById: Map<id, MCPServerViewResource>` before the `allowedCustomSkills.map` loop and replace `.filter`+`.includes` with direct `Map.get` lookups.
+- [x] **[Issue 2]** Build `mcpServerViewById: Map<id, MCPServerViewResource>` before the `allowedCustomSkills.map` loop and replace `.filter`+`.includes` with direct `Map.get` lookups.
 - [ ] **[Issue 3]** Build `editorGroupsById: Map<id, Group>` before the `editorGroupSkills` loop and replace `.find` with `Map.get`.
 
 **Issue 4 — Global skills `baseFetch` cascade (won't fix for now):** we currently have very few global skills, so the G × M `baseFetch` cascade has negligible real-world impact. Revisit if the number of global skills grows significantly.

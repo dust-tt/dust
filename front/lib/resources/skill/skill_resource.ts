@@ -639,16 +639,21 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         { includeMetadata: false }
       );
 
+      const mcpServerViewById = new Map(
+        allMCPServerViews.map((v) => [v.id, v])
+      );
+
       allowedCustomSkillsRes = allowedCustomSkills.map((customSkill) => {
-        const skillMCPServerViewIds = skillMCPServerConfigsBySkillId[
-          customSkill.id
-        ]?.map((skillConfig) => skillConfig.mcpServerViewId);
+        const skillMCPServerViewIds =
+          skillMCPServerConfigsBySkillId[customSkill.id]?.map(
+            (skillConfig) => skillConfig.mcpServerViewId
+          ) ?? [];
 
         const skillDataSourceConfigs =
           dataSourceConfigsBySkillId[customSkill.id] ?? [];
 
-        const skillMCPServerViews = allMCPServerViews.filter((view) =>
-          skillMCPServerViewIds?.includes(view.id)
+        const skillMCPServerViews = removeNulls(
+          skillMCPServerViewIds.map((id) => mcpServerViewById.get(id) ?? null)
         );
 
         return new this(this.model, customSkill.get(), {
