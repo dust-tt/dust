@@ -30,13 +30,13 @@
     "suggestion": {
       "instructionEdits": [
         {
-          "targetBlockId": "instructions-root",
-          "content": "<div data-type=\"instructions-root\"><p>Only share information that is available in the company directory. Do not speculate on personal contact details. If the user asks for private information (personal phone, home address), politely decline and redirect to HR.</p><p>Always confirm the information is up to date by checking the last-modified date of the directory entry. Suggest alternative contacts if the primary person is unavailable or if the entry is older than 90 days.</p></div>",
+          "targetBlockId": "ci08priv",
+          "content": "<li><strong>Privacy</strong>: Only share information that is available in the company directory. Do not speculate on personal contact details. If the user asks for private information (personal phone, home address), politely decline and redirect to HR.</li>",
           "type": "replace"
         },
         {
           "targetBlockId": "a1b2c3d4",
-          "content": "<p>Always confirm the information is up to date by checking the last-modified date of the directory entry.</p>",
+          "content": "<p>Always confirm the information is up to date by checking the last-modified date of the directory entry. Suggest alternative contacts if the primary person is unavailable or if the entry is older than 90 days.</p>",
           "type": "replace"
         }
       ]

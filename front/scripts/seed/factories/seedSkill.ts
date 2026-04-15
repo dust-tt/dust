@@ -28,6 +28,7 @@ export async function seedSkill(
       agentFacingDescription: skillAsset.agentFacingDescription,
       userFacingDescription: skillAsset.userFacingDescription,
       instructions: skillAsset.instructions,
+      instructionsHtml: skillAsset.instructionsHtml,
       status: "active",
     });
     logger.info({ sId: skill.sId }, "Skill created");
