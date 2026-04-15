@@ -10,9 +10,14 @@ export interface ToolInputContext {
   toolInputs: Record<string, unknown>;
 }
 
+type StakeCheckFields = Pick<
+  MCPToolConfigurationType,
+  "permission" | "toolServerId" | "name" | "argumentsRequiringApproval"
+>;
+
 export async function getExecutionStatusFromConfig(
   auth: Authenticator,
-  actionConfiguration: MCPToolConfigurationType,
+  actionConfiguration: StakeCheckFields,
   agentMessage: AgentMessageType,
   context?: ToolInputContext
 ): Promise<{
@@ -179,7 +184,7 @@ export function extractArgRequiringApprovalValues(
   return result;
 }
 
-function stableStringify(value: unknown): string | null {
+export function stableStringify(value: unknown): string | null {
   const normalizedValue = normalizeForStableStringify(value);
   if (normalizedValue === undefined) {
     return null;
