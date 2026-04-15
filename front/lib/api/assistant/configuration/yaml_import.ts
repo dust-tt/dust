@@ -10,11 +10,12 @@ import type { Authenticator } from "@app/lib/auth";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
+import { TagResource } from "@app/lib/resources/tags_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import uniqueId from "lodash/uniqueId";
+import type { TagType } from "@app/types/tag";
 
 interface SkippedAction {
   name: string;
@@ -91,6 +92,14 @@ async function importAgentConfiguration(
   const { configurations: mcpConfigurations, skipped: skippedActions } =
     mcpConfigurationsResult.value;
 
+  const resolvedTags: TagType[] = [];
+  for (const tag of yamlConfig.tags) {
+    const tagResource = await TagResource.findByName(auth, tag.name);
+    if (tagResource) {
+      resolvedTags.push(tagResource.toJSON());
+    }
+  }
+
   const assistant = {
     name: yamlConfig.agent.handle,
     description: yamlConfig.agent.description,
@@ -108,11 +117,7 @@ async function importAgentConfiguration(
     maxStepsPerRun: yamlConfig.agent.max_steps_per_run,
     actions: mcpConfigurations,
     templateId: null,
-    tags: yamlConfig.tags.map((tag) => ({
-      sId: uniqueId(),
-      name: tag.name,
-      kind: tag.kind,
-    })),
+    tags: resolvedTags,
     editors: editorUsers.map((user) => ({
       sId: user.sId,
     })),
