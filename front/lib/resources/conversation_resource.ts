@@ -10,7 +10,7 @@ import {
   UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import "@app/lib/models/agent/conversation_fork";
+import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { REINFORCEMENT_METADATA_KEYS } from "@app/lib/reinforced_agent/types";
 import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -24,6 +24,7 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -32,6 +33,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
+  ConversationForkedChildType,
   ConversationForkedFromType,
   ConversationMCPServerViewType,
   ConversationVisibility,
@@ -209,6 +211,106 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   get forkedFromInfo(): ConversationForkedFromType | undefined {
     return this.forkedFromData;
+  }
+
+  static async listReadableForkedChildren(
+    auth: Authenticator,
+    conversation: ConversationResource
+  ): Promise<ConversationForkedChildType[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const forks = await ConversationForkModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        parentConversationId: conversation.id,
+      },
+      order: [
+        ["branchedAt", "ASC"],
+        ["id", "ASC"],
+      ],
+      include: [
+        {
+          model: ConversationModel,
+          as: "childConversation",
+          required: true,
+          attributes: ["sId", "title"],
+        },
+        {
+          model: MessageModel,
+          as: "sourceMessage",
+          required: true,
+          attributes: ["sId"],
+        },
+        {
+          model: UserModel,
+          as: "createdByUser",
+          required: true,
+          attributes: [
+            "id",
+            "sId",
+            "createdAt",
+            "provider",
+            "username",
+            "email",
+            "firstName",
+            "lastName",
+            "imageUrl",
+            "lastLoginAt",
+          ],
+        },
+      ],
+    });
+
+    if (forks.length === 0) {
+      return [];
+    }
+
+    const childConversationIds = forks.flatMap((fork) => {
+      assert(
+        fork.childConversation,
+        "Forked child conversation must be loaded for parent lineage."
+      );
+
+      return [fork.childConversation.sId];
+    });
+
+    const readableChildConversationIds = new Set(
+      (await this.fetchByIds(auth, childConversationIds)).map(
+        (childConversation) => childConversation.sId
+      )
+    );
+
+    return forks.flatMap((fork) => {
+      assert(
+        fork.childConversation,
+        "Forked child conversation must be loaded for parent lineage."
+      );
+      assert(
+        fork.sourceMessage,
+        "Forked source message must be loaded for parent lineage."
+      );
+      assert(
+        fork.createdByUser,
+        "Forked creator must be loaded for parent lineage."
+      );
+
+      if (!readableChildConversationIds.has(fork.childConversation.sId)) {
+        return [];
+      }
+
+      return [
+        {
+          childConversationId: fork.childConversation.sId,
+          childConversationTitle: fork.childConversation.title,
+          sourceMessageId: fork.sourceMessage.sId,
+          branchedAt: fork.branchedAt.getTime(),
+          user: new UserResource(
+            UserResource.model,
+            fork.createdByUser.get()
+          ).toJSON(),
+        },
+      ];
+    });
   }
 
   get space(): SpaceResource | null {
@@ -1046,6 +1148,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         auth,
         conversation.id
       );
+    const forkedChildren =
+      await ConversationResource.listReadableForkedChildren(auth, conversation);
 
     return new Ok({
       id: conversation.id,
@@ -1067,6 +1171,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       ...(conversation.forkedFromInfo && {
         forkedFrom: conversation.forkedFromInfo,
       }),
+      ...(forkedChildren.length > 0 && { forkedChildren }),
     });
   }
 

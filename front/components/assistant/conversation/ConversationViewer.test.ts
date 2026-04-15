@@ -1,5 +1,13 @@
-import { getBranchedInsertIndex } from "@app/components/assistant/conversation/ConversationViewer";
+import {
+  addConversationForkNotices,
+  getBranchedInsertIndex,
+} from "@app/components/assistant/conversation/ConversationViewer";
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
+import type {
+  ConversationForkedChildType,
+  LightMessageType,
+} from "@app/types/assistant/conversation";
+import type { UserType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
 
 describe("getBranchedInsertIndex", () => {
@@ -165,5 +173,121 @@ describe("getBranchedInsertIndex", () => {
     const index = getBranchedInsertIndex(data, newMessage);
     // Pure rank-based behavior: before first rank > 2 (i.e. before rank 3)
     expect(index).toBe(2);
+  });
+});
+
+describe("addConversationForkNotices", () => {
+  const forkUser: UserType = {
+    sId: "usr_1",
+    id: 1,
+    createdAt: 0,
+    provider: null,
+    username: "clement",
+    email: "clement@dust.tt",
+    firstName: "Clement",
+    lastName: null,
+    fullName: "Clément",
+    image: null,
+    lastLoginAt: null,
+  };
+
+  const makeUserMessage = (sId: string, rank: number): LightMessageType =>
+    ({
+      type: "user_message",
+      sId,
+      id: `${rank}`,
+      created: rank,
+      rank,
+      branchId: null,
+      visibility: "visible",
+      version: 0,
+      user: forkUser,
+      mentions: [],
+      richMentions: [],
+      content: "",
+      context: {
+        username: forkUser.username,
+        fullName: forkUser.fullName,
+        email: forkUser.email,
+        profilePictureUrl: forkUser.image,
+        timezone: "UTC",
+        origin: "web",
+      },
+      reactions: [],
+      contentFragments: [],
+    }) as unknown as LightMessageType;
+
+  const makeAgentMessage = (sId: string, rank: number): LightMessageType =>
+    ({
+      type: "agent_message",
+      sId,
+      id: `${rank}`,
+      agentMessageId: `${rank}`,
+      version: 0,
+      rank,
+      branchId: null,
+      created: rank,
+      completedTs: rank,
+      parentMessageId: `usr_${rank}`,
+      parentAgentMessageId: null,
+      status: "succeeded",
+      content: "done",
+      chainOfThought: null,
+      error: null,
+      visibility: "visible",
+      richMentions: [],
+      completionDurationMs: null,
+      reactions: [],
+      configuration: {
+        sId: "agt_1",
+      },
+      skipToolsValidation: false,
+    }) as unknown as LightMessageType;
+
+  it("inserts fork notices after the source agent message in branch time order", () => {
+    const messages: LightMessageType[] = [
+      makeUserMessage("usr_0", 0),
+      makeAgentMessage("agt_1", 1),
+      makeUserMessage("usr_2", 2),
+      makeAgentMessage("agt_3", 3),
+    ];
+
+    const forkedChildren: ConversationForkedChildType[] = [
+      {
+        childConversationId: "c_2",
+        childConversationTitle: "Later fork",
+        sourceMessageId: "agt_3",
+        branchedAt: 20,
+        user: forkUser,
+      },
+      {
+        childConversationId: "c_1",
+        childConversationTitle: "Earlier fork",
+        sourceMessageId: "agt_3",
+        branchedAt: 10,
+        user: forkUser,
+      },
+      {
+        childConversationId: "c_missing",
+        childConversationTitle: "Missing source",
+        sourceMessageId: "agt_missing",
+        branchedAt: 30,
+        user: forkUser,
+      },
+    ];
+
+    expect(
+      addConversationForkNotices(messages, forkedChildren).map((message) => ({
+        type: message.type,
+        sId: message.sId,
+      }))
+    ).toEqual([
+      { type: "user_message", sId: "usr_0" },
+      { type: "agent_message", sId: "agt_1" },
+      { type: "user_message", sId: "usr_2" },
+      { type: "agent_message", sId: "agt_3" },
+      { type: "conversation_fork_notice", sId: "conversation-fork-notice-c_1" },
+      { type: "conversation_fork_notice", sId: "conversation-fork-notice-c_2" },
+    ]);
   });
 });

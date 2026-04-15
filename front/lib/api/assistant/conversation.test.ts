@@ -3688,4 +3688,117 @@ describe("conversation fetch forkedFrom", () => {
       });
     }
   });
+
+  it("includes forkedChildren in the without-content payload", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Fork Fetch Agent",
+      description: "Fork fetch agent",
+    });
+
+    const parentConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [new Date("2026-01-05T00:00:00.000Z")],
+    });
+    const firstChildConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+    const secondChildConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+
+    await ConversationModel.update(
+      { title: "Later fork" },
+      { where: { id: firstChildConversation.id, workspaceId: workspace.id } }
+    );
+    await ConversationModel.update(
+      { title: "Earlier fork" },
+      { where: { id: secondChildConversation.id, workspaceId: workspace.id } }
+    );
+
+    const parentConversationResource = await ConversationResource.fetchById(
+      auth,
+      parentConversation.sId
+    );
+    const firstChildConversationResource = await ConversationResource.fetchById(
+      auth,
+      firstChildConversation.sId
+    );
+    const secondChildConversationResource =
+      await ConversationResource.fetchById(auth, secondChildConversation.sId);
+
+    expect(parentConversationResource).not.toBeNull();
+    expect(firstChildConversationResource).not.toBeNull();
+    expect(secondChildConversationResource).not.toBeNull();
+
+    if (
+      !parentConversationResource ||
+      !firstChildConversationResource ||
+      !secondChildConversationResource
+    ) {
+      throw new Error("Failed to fetch fork conversations");
+    }
+
+    const sourceMessage = await MessageModel.findOne({
+      where: {
+        conversationId: parentConversation.id,
+        workspaceId: workspace.id,
+        rank: 1,
+      },
+    });
+    expect(sourceMessage).not.toBeNull();
+    if (!sourceMessage) {
+      throw new Error("Failed to fetch source message");
+    }
+
+    const laterBranchedAt = new Date("2026-01-06T11:00:00.000Z");
+    const earlierBranchedAt = new Date("2026-01-06T10:00:00.000Z");
+
+    await ConversationForkResource.makeNew(auth, {
+      parentConversation: parentConversationResource,
+      childConversation: firstChildConversationResource,
+      sourceMessageModelId: sourceMessage.id,
+      branchedAt: laterBranchedAt,
+    });
+    await ConversationForkResource.makeNew(auth, {
+      parentConversation: parentConversationResource,
+      childConversation: secondChildConversationResource,
+      sourceMessageModelId: sourceMessage.id,
+      branchedAt: earlierBranchedAt,
+    });
+
+    const expectedForkedChildren = [
+      {
+        childConversationId: secondChildConversation.sId,
+        childConversationTitle: "Earlier fork",
+        sourceMessageId: sourceMessage.sId,
+        branchedAt: earlierBranchedAt.getTime(),
+        user: auth.getNonNullableUser().toJSON(),
+      },
+      {
+        childConversationId: firstChildConversation.sId,
+        childConversationTitle: "Later fork",
+        sourceMessageId: sourceMessage.sId,
+        branchedAt: laterBranchedAt.getTime(),
+        user: auth.getNonNullableUser().toJSON(),
+      },
+    ];
+
+    const conversationWithoutContentResult =
+      await ConversationResource.fetchConversationWithoutContent(
+        auth,
+        parentConversation.sId
+      );
+    expect(conversationWithoutContentResult.isOk()).toBe(true);
+
+    if (conversationWithoutContentResult.isOk()) {
+      expect(conversationWithoutContentResult.value.forkedChildren).toEqual(
+        expectedForkedChildren
+      );
+    }
+  });
 });
