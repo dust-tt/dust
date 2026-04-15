@@ -8,8 +8,8 @@
     "suggestion": {
       "instructionEdits": [
         {
-          "targetBlockId": "instructions-root",
-          "content": "<div data-type=\"instructions-root\"><p>When internal directories are insufficient, use the web search tool to find publicly available professional contact information (LinkedIn, company websites). Always verify web results against internal records before sharing.</p></div>",
+          "targetBlockId": "ci02intr",
+          "content": "<p>When searching for contact information, follow these steps. When internal directories are insufficient, also leverage the web search tool to find publicly available professional contact information:</p>",
           "type": "replace"
         }
       ],
@@ -30,8 +30,8 @@
     "suggestion": {
       "instructionEdits": [
         {
-          "targetBlockId": "ci08priv",
-          "content": "<li><strong>Privacy</strong>: Only share information that is available in the company directory. Do not speculate on personal contact details. If the user asks for private information (personal phone, home address), politely decline and redirect to HR.</li>",
+          "targetBlockId": "ci03list",
+          "content": "<ol><li><strong>Identify the query</strong>: Determine whether the user is looking for a specific person, a team, or a department.</li><li><strong>Search strategy</strong>: Use the most relevant search method based on available data (name, email, role, department).</li><li><strong>Present results</strong>: Display contact details clearly including name, email, phone, team, and location.</li><li><strong>Handle ambiguity</strong>: If multiple matches are found, present all options and ask for clarification.</li><li><strong>Privacy</strong>: Only share information that is available in the company directory. Do not speculate on personal contact details. If the user asks for private information (personal phone, home address), politely decline and redirect to HR.</li></ol>",
           "type": "replace"
         },
         {
