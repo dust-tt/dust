@@ -267,7 +267,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           className={cn(
             "mx-auto max-w-conversation",
             topMargin,
-            !nextData && "mb-8"
+            !nextData && "mb-10"
           )}
         >
           <CompactionMessage message={data} />
@@ -284,7 +284,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           className={cn(
             "mx-auto max-w-conversation",
             topMargin,
-            !nextData && "mb-8"
+            !nextData && "mb-10"
           )}
         >
           {isUserMessage(data) && (

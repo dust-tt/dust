@@ -1140,105 +1140,102 @@ const InputBarContainer = ({
               <div
                 className="flex items-center gap-2 md:gap-1"
                 style={buttonsTransitionStyle}
-              >
-                {clientType === "extension" && (
-                  <>
-                    <div ref={plusButtonRef}>
-                      <DropdownMenu
-                        open={isCaptureDropdownOpen}
-                        onOpenChange={setIsCaptureDropdownOpen}
-                      >
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost-secondary"
-                            icon={PlusIcon}
-                            size={buttonSize}
-                            disabled={disableInput}
-                          />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {actions.includes("attachment") && (
-                            <DropdownMenuItem
-                              icon={AttachmentIcon}
-                              label="Attach knowledge"
-                              onClick={() => {
-                                setIsCaptureDropdownOpen(false);
-                                setShowKnowledgePicker(true);
-                              }}
-                            />
-                          )}
-                          {captureActions && (
-                            <>
-                              <DropdownMenuItem
-                                icon={GlobeAltIcon}
-                                label="Attach page content"
-                                disabled={
-                                  captureActions.isCapturing ||
-                                  fileUploaderService.isProcessingFiles
-                                }
-                                onClick={() => captureActions.onCapture("text")}
-                                endComponent={
-                                  <DropdownMenuShortcut
-                                    shortcut={pageShortcut}
-                                    className="text-xs text-faint dark:text-faint-night"
-                                  />
-                                }
-                              />
-                              <DropdownMenuItem
-                                icon={CameraIcon}
-                                label="Take screenshot"
-                                disabled={
-                                  captureActions.isCapturing ||
-                                  fileUploaderService.isProcessingFiles
-                                }
-                                onClick={() =>
-                                  captureActions.onCapture("screenshot")
-                                }
-                                endComponent={
-                                  <DropdownMenuShortcut
-                                    shortcut={screenshotShortcut}
-                                    className="text-xs text-faint dark:text-faint-night"
-                                  />
-                                }
-                              />
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    {actions.includes("attachment") && (
-                      <InputBarAttachmentsPicker
-                        fileUploaderService={fileUploaderService}
-                        owner={owner}
-                        isLoading={false}
-                        onNodeSelect={onNodeSelect}
-                        onNodeUnselect={onNodeUnselect}
-                        attachedNodes={attachedNodes}
-                        disabled={disableInput}
-                        buttonSize={buttonSize}
-                        toolFileUpload={{
-                          useCase: "conversation",
-                          useCaseMetadata: {
-                            conversationId: conversation?.sId,
-                          },
-                        }}
-                        spaceId={space?.sId}
-                        type="dropdown"
-                        onFileChange={() => setShowKnowledgePicker(false)}
-                        externalOpen={showKnowledgePicker}
-                        onExternalOpenChange={setShowKnowledgePicker}
-                        anchorRef={plusButtonRef}
-                      />
-                    )}
-                  </>
-                )}
-              </div>
+              />
             </div>
           </div>
         </div>
         <div
           className={cn("absolute bottom-2 right-2 flex items-center gap-2")}
         >
+          {clientType === "extension" && (
+            <>
+              <div ref={plusButtonRef}>
+                <DropdownMenu
+                  open={isCaptureDropdownOpen}
+                  onOpenChange={setIsCaptureDropdownOpen}
+                >
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost-secondary"
+                      icon={PlusIcon}
+                      size={buttonSize}
+                      disabled={disableInput}
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {actions.includes("attachment") && (
+                      <DropdownMenuItem
+                        icon={AttachmentIcon}
+                        label="Attach knowledge"
+                        onClick={() => {
+                          setIsCaptureDropdownOpen(false);
+                          setShowKnowledgePicker(true);
+                        }}
+                      />
+                    )}
+                    {captureActions && (
+                      <>
+                        <DropdownMenuItem
+                          icon={GlobeAltIcon}
+                          label="Attach page content"
+                          disabled={
+                            captureActions.isCapturing ||
+                            fileUploaderService.isProcessingFiles
+                          }
+                          onClick={() => captureActions.onCapture("text")}
+                          endComponent={
+                            <DropdownMenuShortcut
+                              shortcut={pageShortcut}
+                              className="text-xs text-faint dark:text-faint-night"
+                            />
+                          }
+                        />
+                        <DropdownMenuItem
+                          icon={CameraIcon}
+                          label="Take screenshot"
+                          disabled={
+                            captureActions.isCapturing ||
+                            fileUploaderService.isProcessingFiles
+                          }
+                          onClick={() => captureActions.onCapture("screenshot")}
+                          endComponent={
+                            <DropdownMenuShortcut
+                              shortcut={screenshotShortcut}
+                              className="text-xs text-faint dark:text-faint-night"
+                            />
+                          }
+                        />
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              {actions.includes("attachment") && (
+                <InputBarAttachmentsPicker
+                  fileUploaderService={fileUploaderService}
+                  owner={owner}
+                  isLoading={false}
+                  onNodeSelect={onNodeSelect}
+                  onNodeUnselect={onNodeUnselect}
+                  attachedNodes={attachedNodes}
+                  disabled={disableInput}
+                  buttonSize={buttonSize}
+                  toolFileUpload={{
+                    useCase: "conversation",
+                    useCaseMetadata: {
+                      conversationId: conversation?.sId,
+                    },
+                  }}
+                  spaceId={space?.sId}
+                  type="dropdown"
+                  onFileChange={() => setShowKnowledgePicker(false)}
+                  externalOpen={showKnowledgePicker}
+                  onExternalOpenChange={setShowKnowledgePicker}
+                  anchorRef={plusButtonRef}
+                />
+              )}
+            </>
+          )}
           <div className="flex items-center">
             {isCompactionEnabled && conversation && (
               <ContextUsageIndicator
