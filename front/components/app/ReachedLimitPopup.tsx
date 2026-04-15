@@ -21,7 +21,8 @@ export type WorkspaceLimit =
   | "cant_invite_no_seats_available"
   | "cant_invite_free_plan"
   | "cant_invite_payment_failure"
-  | "message_limit";
+  | "message_limit"
+  | "credits_exhausted";
 
 function getLimitPromptForCode(
   router: AppRouter,
@@ -170,6 +171,27 @@ function getLimitPromptForCode(
         };
       }
     }
+
+    case "credits_exhausted":
+      return {
+        title: "Out of credits",
+        validateLabel: isAdmin ? "Manage credits" : "Ok",
+        onValidate: isAdmin
+          ? () => {
+              void router.push(`/w/${owner.sId}/developers/credits-usage`);
+            }
+          : undefined,
+        children: (
+          <>
+            <Page.P>
+              You have run out of credits.
+              {isAdmin
+                ? "Please purchase more credits to continue using Dust."
+                : "Please contact your administrator to purchase more credits."}
+            </Page.P>
+          </>
+        ),
+      };
 
     default:
       assertNeverAndIgnore(code);

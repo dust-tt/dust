@@ -1,3 +1,4 @@
+import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { ConversationBranchApprovalModal } from "@app/components/assistant/conversation/ConversationBranchApprovalModal";
@@ -95,7 +96,7 @@ interface ConversationViewerProps {
   agentBuilderContext?: VirtuosoMessageListContext["agentBuilderContext"];
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
-  setPlanLimitReached?: (planLimitReached: boolean) => void;
+  setLimitReachedCode?: (code: WorkspaceLimit) => void;
   owner: WorkspaceType;
   user: UserType;
   clientSideMCPServerIds?: string[];
@@ -167,7 +168,7 @@ export const ConversationViewer = ({
   agentBuilderContext,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
-  setPlanLimitReached,
+  setLimitReachedCode,
   clientSideMCPServerIds,
 }: ConversationViewerProps) => {
   const ref =
@@ -753,7 +754,9 @@ export const ConversationViewer = ({
 
         if (result.isErr()) {
           if (result.error.type === "plan_limit_reached_error") {
-            setPlanLimitReached?.(true);
+            setLimitReachedCode?.("message_limit");
+          } else if (result.error.type === "credits_exhausted_error") {
+            setLimitReachedCode?.("credits_exhausted");
           } else {
             sendNotification({
               title: result.error.title,
@@ -819,7 +822,7 @@ export const ConversationViewer = ({
       conversationId,
       mutateConversations,
       sendNotification,
-      setPlanLimitReached,
+      setLimitReachedCode,
       submitMessage,
       user,
     ]

@@ -1,11 +1,9 @@
-import {
-  getMetronomeClient,
-  updateSubscriptionQuantity,
-} from "@app/lib/metronome/client";
+import { updateSubscriptionQuantity } from "@app/lib/metronome/client";
 import {
   getProductMauId,
   getProductMauTierIds,
 } from "@app/lib/metronome/constants";
+import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { countActiveUsersForPeriodInWorkspace } from "@app/lib/plans/usage/mau";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -144,16 +142,9 @@ type MauInfo = SimpleMauInfo | TieredMauInfo;
  * - MAU_THRESHOLD custom field controls the threshold (default 1).
  */
 async function getContractMauInfo(
-  metronomeCustomerId: string,
-  contractId: string
+  workspaceId: string
 ): Promise<MauInfo | undefined> {
-  const client = getMetronomeClient();
-
-  const response = await client.v2.contracts.retrieve({
-    customer_id: metronomeCustomerId,
-    contract_id: contractId,
-  });
-  const contract = response.data;
+  const contract = await getActiveContract(workspaceId);
   if (!contract?.subscriptions?.length) {
     return undefined;
   }
@@ -193,7 +184,12 @@ async function getContractMauInfo(
       const subInfo = subscriptionByProductId.get(tierProductIds[i]);
       if (!subInfo) {
         logger.warn(
-          { contractId, tierIndex: i, productId: tierProductIds[i] },
+          {
+            workspaceId,
+            contractId: contract.id,
+            tierIndex: i,
+            productId: tierProductIds[i],
+          },
           "[Metronome] MAU tier subscription not found"
         );
         return undefined;
@@ -245,7 +241,7 @@ export async function syncMauCount({
   workspace: LightWorkspaceType;
   startingAt?: string;
 }): Promise<Result<void, Error>> {
-  const mauInfo = await getContractMauInfo(metronomeCustomerId, contractId);
+  const mauInfo = await getContractMauInfo(workspace.sId);
   if (!mauInfo) {
     logger.warn(
       { workspaceId: workspace.sId, contractId },

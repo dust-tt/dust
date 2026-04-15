@@ -12,6 +12,7 @@ import {
   provisionEnterpriseMetronomeContract,
   switchMetronomeContractPackage,
 } from "@app/lib/metronome/contracts";
+import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import {
   LEGACY_BUSINESS_PACKAGE_ALIAS,
   LEGACY_PRO_ANNUAL_PACKAGE_ALIAS,
@@ -1102,6 +1103,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   ): Promise<void> {
     const subscription = await SubscriptionResource.model.findOne({
       where: { id: subscriptionModelId },
+      include: [WorkspaceModel],
       // subscription ID is already trusted.
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
@@ -1115,6 +1117,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     await SubscriptionResource.invalidateSubscriptionCache(
       subscription.workspaceId
     );
+    await invalidateContractCache(subscription.workspace.sId);
   }
 
   async getPerSeatPricing(): Promise<SubscriptionPerSeatPricing | null> {
