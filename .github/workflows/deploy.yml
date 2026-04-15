@@ -212,10 +212,7 @@ jobs:
 
   deploy:
     needs: [prepare, notify-start, build, deploy-app, deploy-poke, ensure-sandbox-images]
-    # egress-proxy has no dust-infra helm release yet; this workflow is used as a
-    # build-and-publish-only path until the chart lands. Drop this guard once the
-    # release exists.
-    if: ${{ !failure() && !cancelled() && inputs.component != 'egress-proxy' && (needs.ensure-sandbox-images.result == 'success' || needs.ensure-sandbox-images.result == 'skipped') }}
+    if: ${{ !failure() && !cancelled() && (needs.ensure-sandbox-images.result == 'success' || needs.ensure-sandbox-images.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
