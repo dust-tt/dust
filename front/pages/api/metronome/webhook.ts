@@ -122,20 +122,6 @@ async function handler(
           break;
 
         case "contract.start": {
-          const parsed = ContractEventSchema.safeParse(event);
-          if (!parsed.success) {
-            logger.error(
-              { event, error: parsed.error.message },
-              "[Metronome Webhook] Invalid contract.start event"
-            );
-            break;
-          }
-          const workspace = await WorkspaceResource.fetchByMetronomeCustomerId(
-            parsed.data.customer_id
-          );
-          if (workspace) {
-            await invalidateContractCache(workspace.sId);
-          }
           logger.info({ event }, "[Metronome Webhook] Contract started");
           break;
         }
@@ -162,6 +148,8 @@ async function handler(
             );
             break;
           }
+
+          await invalidateContractCache(workspace.sId);
 
           const subscription =
             await SubscriptionResource.fetchByMetronomeContractId(
