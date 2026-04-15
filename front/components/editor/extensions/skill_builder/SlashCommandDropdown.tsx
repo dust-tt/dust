@@ -31,7 +31,10 @@ export interface SlashCommand {
 }
 
 export interface SlashCommandDropdownProps
-  extends Pick<SuggestionProps<SlashCommand>, "clientRect" | "command" | "items"> {
+  extends Pick<
+    SuggestionProps<SlashCommand>,
+    "clientRect" | "command" | "items"
+  > {
   className?: string;
   emptyMessage?: string;
   onEscapeKeyDown?: () => void;
@@ -141,15 +144,22 @@ export const SlashCommandDropdown = forwardRef<
       }
     }, [updateTriggerPosition]);
 
+    // Force a remount when the anchor or result count changes so Radix
+    // recomputes collisions and flips the menu when needed.
+    const contentKey = `${virtualTriggerStyle.left ?? 0}-${virtualTriggerStyle.top ?? 0}-${items.length}`;
+
     return (
       <DropdownMenu open={true}>
         <DropdownMenuTrigger asChild>
           <div ref={triggerRef} style={virtualTriggerStyle} />
         </DropdownMenuTrigger>
         <DropdownMenuContent
+          key={contentKey}
           ref={containerRef}
           className={className}
           align="start"
+          avoidCollisions
+          collisionPadding={12}
           side="bottom"
           sideOffset={4}
           onEscapeKeyDown={onEscapeKeyDown}
@@ -173,7 +183,9 @@ export const SlashCommandDropdown = forwardRef<
                   onClick={() => selectItem(index)}
                   onMouseEnter={() => setSelectedIndex(index)}
                   className={
-                    index === selectedIndex ? "bg-gray-100 dark:bg-gray-800" : ""
+                    index === selectedIndex
+                      ? "bg-gray-100 dark:bg-gray-800"
+                      : ""
                   }
                 />
               );
