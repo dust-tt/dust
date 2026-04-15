@@ -24,6 +24,7 @@ import {
 import {
   applyEnterpriseOverrides,
   buildEnterpriseOverrides,
+  countMauForWorkspace,
   type EnterprisePricingCents,
   extractEnterprisePricing,
 } from "@app/lib/metronome/contracts";
@@ -305,12 +306,21 @@ async function migrateWorkspace(
     break;
   }
 
+  // Count MAUs for initial subscription quantities.
+  const initialMauCount = isEnterprise
+    ? await countMauForWorkspace(
+        workspace,
+        subInfo.enterprisePricing!.billingMode
+      )
+    : 0;
+
   // Build enterprise overrides for both logging and contract creation.
   const enterpriseOverrides =
     isEnterprise && subInfo.enterprisePricing
       ? buildEnterpriseOverrides({
           pricing: subInfo.enterprisePricing,
           startDate: subInfo.startDate,
+          initialMauCount,
         })
       : undefined;
 
@@ -376,6 +386,7 @@ async function migrateWorkspace(
       startDate: subInfo.startDate,
       overrideLogger: logger,
       workspaceId: workspace.sId,
+      initialMauCount,
     });
   }
 

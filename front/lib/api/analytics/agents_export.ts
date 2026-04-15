@@ -29,6 +29,7 @@ interface AgentMetadataRow {
 }
 
 export interface AgentExportRow {
+  agentId: string;
   name: string;
   description: string;
   settings: string;
@@ -42,6 +43,7 @@ export interface AgentExportRow {
 }
 
 export const AGENT_EXPORT_HEADERS: (keyof AgentExportRow)[] = [
+  "agentId",
   "name",
   "description",
   "settings",
@@ -137,6 +139,7 @@ export async function fetchAgentExportRows(
   const rows: AgentExportRow[] = agents.map((agent) => {
     const metrics = esMetrics.get(agent.sId);
     return {
+      agentId: agent.sId,
       name: agent.name,
       description: agent.description,
       settings: agent.settings,

@@ -62,90 +62,157 @@ describe("parseMauTiers", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Build SubscriptionInfo[] from tiers with all quantities at 0. */
+function makeSubscriptions(tiersField: string) {
+  const tiers = parseMauTiers(tiersField)!;
+  return tiers.map((tier, i) => ({
+    id: `sub-${i}`,
+    currentQuantity: 0,
+    nextPeriodStart: undefined,
+    tier,
+  }));
+}
+
+/** Extract just the new quantities from the result. */
+function quantities(
+  result: ReturnType<typeof distributeMauAcrossTiers>
+): number[] {
+  return result.map((s) => s.currentQuantity);
+}
+
+// ---------------------------------------------------------------------------
 // distributeMauAcrossTiers
 // ---------------------------------------------------------------------------
 
 describe("distributeMauAcrossTiers", () => {
-  it("FLOOR-4-6-8 with 15 MAUs → 3-2-2-8", () => {
-    const tiers = parseMauTiers("FLOOR-4-6-8")!;
-    expect(distributeMauAcrossTiers(15, tiers)).toEqual([3, 2, 2, 8]);
+  // Note: distributeMauAcrossTiers only returns entries whose quantity changed.
+  // Since makeSubscriptions starts at 0, tiers that compute to 0 are filtered out.
+
+  it("FLOOR-4-6-8 with 15 MAUs → all tiers change", () => {
+    const subs = makeSubscriptions("FLOOR-4-6-8");
+    expect(quantities(distributeMauAcrossTiers(15, subs))).toEqual([
+      3, 2, 2, 8,
+    ]);
   });
 
-  it("FLOOR-4-6-8 with 1 MAU → 1-0-0-0", () => {
-    const tiers = parseMauTiers("FLOOR-4-6-8")!;
-    expect(distributeMauAcrossTiers(1, tiers)).toEqual([1, 0, 0, 0]);
+  it("FLOOR-4-6-8 with 1 MAU → only tier 1 changes", () => {
+    const subs = makeSubscriptions("FLOOR-4-6-8");
+    const result = distributeMauAcrossTiers(1, subs);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("sub-0");
+    expect(result[0].currentQuantity).toBe(1);
   });
 
-  it("FLOOR-4-6-8 with 5 MAUs → 3-2-0-0", () => {
-    const tiers = parseMauTiers("FLOOR-4-6-8")!;
-    expect(distributeMauAcrossTiers(5, tiers)).toEqual([3, 2, 0, 0]);
+  it("FLOOR-4-6-8 with 5 MAUs → tiers 1-2 change", () => {
+    const subs = makeSubscriptions("FLOOR-4-6-8");
+    const result = distributeMauAcrossTiers(5, subs);
+    expect(result).toHaveLength(2);
+    expect(quantities(result)).toEqual([3, 2]);
   });
 
-  it("FLOOR-4-6-8 with 3 MAUs → 3-0-0-0", () => {
-    const tiers = parseMauTiers("FLOOR-4-6-8")!;
-    expect(distributeMauAcrossTiers(3, tiers)).toEqual([3, 0, 0, 0]);
+  it("FLOOR-4-6-8 with 3 MAUs → only tier 1 changes", () => {
+    const subs = makeSubscriptions("FLOOR-4-6-8");
+    const result = distributeMauAcrossTiers(3, subs);
+    expect(result).toHaveLength(1);
+    expect(result[0].currentQuantity).toBe(3);
   });
 
-  it("FLOOR-4-6-8 with 8 MAUs → 3-2-2-1", () => {
-    const tiers = parseMauTiers("FLOOR-4-6-8")!;
-    expect(distributeMauAcrossTiers(8, tiers)).toEqual([3, 2, 2, 1]);
+  it("FLOOR-4-6-8 with 8 MAUs → all tiers change", () => {
+    const subs = makeSubscriptions("FLOOR-4-6-8");
+    expect(quantities(distributeMauAcrossTiers(8, subs))).toEqual([3, 2, 2, 1]);
   });
 
-  it("FLOOR-101-201 with 150 MAUs → 100-50-0", () => {
-    const tiers = parseMauTiers("FLOOR-101-201")!;
-    expect(distributeMauAcrossTiers(150, tiers)).toEqual([100, 50, 0]);
+  it("FLOOR-101-201 with 150 MAUs → tiers 1-2 change", () => {
+    const subs = makeSubscriptions("FLOOR-101-201");
+    expect(quantities(distributeMauAcrossTiers(150, subs))).toEqual([100, 50]);
   });
 
-  it("FLOOR-101-201 with 250 MAUs → 100-100-50", () => {
-    const tiers = parseMauTiers("FLOOR-101-201")!;
-    expect(distributeMauAcrossTiers(250, tiers)).toEqual([100, 100, 50]);
+  it("FLOOR-101-201 with 250 MAUs → all tiers change", () => {
+    const subs = makeSubscriptions("FLOOR-101-201");
+    expect(quantities(distributeMauAcrossTiers(250, subs))).toEqual([
+      100, 100, 50,
+    ]);
   });
 
-  it("FLOOR-101-201 with 50 MAUs → 50-0-0", () => {
-    const tiers = parseMauTiers("FLOOR-101-201")!;
-    expect(distributeMauAcrossTiers(50, tiers)).toEqual([50, 0, 0]);
+  it("FLOOR-101-201 with 50 MAUs → only tier 1 changes", () => {
+    const subs = makeSubscriptions("FLOOR-101-201");
+    const result = distributeMauAcrossTiers(50, subs);
+    expect(result).toHaveLength(1);
+    expect(result[0].currentQuantity).toBe(50);
   });
 
-  it("1-101 with 150 MAUs (no floor) → 100-50", () => {
-    const tiers = parseMauTiers("1-101")!;
-    expect(distributeMauAcrossTiers(150, tiers)).toEqual([100, 50]);
+  it("1-101 with 150 MAUs (no floor) → both tiers change", () => {
+    const subs = makeSubscriptions("1-101");
+    expect(quantities(distributeMauAcrossTiers(150, subs))).toEqual([100, 50]);
   });
 
-  it("1-101 with 50 MAUs (no floor) → 50-0", () => {
-    const tiers = parseMauTiers("1-101")!;
-    expect(distributeMauAcrossTiers(50, tiers)).toEqual([50, 0]);
+  it("1-101 with 50 MAUs (no floor) → only tier 1 changes", () => {
+    const subs = makeSubscriptions("1-101");
+    const result = distributeMauAcrossTiers(50, subs);
+    expect(result).toHaveLength(1);
+    expect(result[0].currentQuantity).toBe(50);
   });
 
-  it("1 with 25 MAUs (single tier) → 25", () => {
-    const tiers = parseMauTiers("1")!;
-    expect(distributeMauAcrossTiers(25, tiers)).toEqual([25]);
+  it("1 with 25 MAUs (single tier) → changes", () => {
+    const subs = makeSubscriptions("1");
+    expect(quantities(distributeMauAcrossTiers(25, subs))).toEqual([25]);
   });
 
-  it("FLOOR-71-101-201-501 with 300 MAUs → 70-30-100-100-0", () => {
-    const tiers = parseMauTiers("FLOOR-71-101-201-501")!;
-    expect(distributeMauAcrossTiers(300, tiers)).toEqual([70, 30, 100, 100, 0]);
+  it("FLOOR-71-101-201-501 with 300 MAUs → tiers 1-4 change", () => {
+    const subs = makeSubscriptions("FLOOR-71-101-201-501");
+    expect(quantities(distributeMauAcrossTiers(300, subs))).toEqual([
+      70, 30, 100, 100,
+    ]);
   });
 
-  it("FLOOR-71-101-201-501 with 600 MAUs → 70-30-100-300-100", () => {
-    const tiers = parseMauTiers("FLOOR-71-101-201-501")!;
-    expect(distributeMauAcrossTiers(600, tiers)).toEqual([
+  it("FLOOR-71-101-201-501 with 600 MAUs → all tiers change", () => {
+    const subs = makeSubscriptions("FLOOR-71-101-201-501");
+    expect(quantities(distributeMauAcrossTiers(600, subs))).toEqual([
       70, 30, 100, 300, 100,
     ]);
   });
 
-  it("totals always sum to totalMau", () => {
+  it("returns empty when no quantities changed", () => {
     const tiers = parseMauTiers("FLOOR-4-6-8")!;
-    for (const total of [1, 3, 5, 8, 15, 100]) {
-      const distributed = distributeMauAcrossTiers(total, tiers);
-      expect(distributed.reduce((a, b) => a + b, 0)).toBe(total);
-    }
+    const subs = tiers.map((tier, i) => ({
+      id: `sub-${i}`,
+      currentQuantity: [3, 2, 2, 8][i],
+      nextPeriodStart: undefined,
+      tier,
+    }));
+    // Same total (15) → no changes needed.
+    expect(distributeMauAcrossTiers(15, subs)).toEqual([]);
   });
 
-  it("totals sum correctly for no-floor tiers", () => {
-    const tiers = parseMauTiers("1-101-201")!;
-    for (const total of [1, 50, 101, 150, 201, 300]) {
-      const distributed = distributeMauAcrossTiers(total, tiers);
-      expect(distributed.reduce((a, b) => a + b, 0)).toBe(total);
-    }
+  it("returns only changed tiers on partial update", () => {
+    const tiers = parseMauTiers("FLOOR-4-6-8")!;
+    // Current: 3-2-2-8 (15 MAUs). Update to 20 → 3-2-2-13. Only tier 4 changes.
+    const subs = tiers.map((tier, i) => ({
+      id: `sub-${i}`,
+      currentQuantity: [3, 2, 2, 8][i],
+      nextPeriodStart: undefined,
+      tier,
+    }));
+    const result = distributeMauAcrossTiers(20, subs);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("sub-3");
+    expect(result[0].currentQuantity).toBe(13);
+  });
+
+  it("total of changed entries matches expected non-zero tiers", () => {
+    // With 15 MAUs across FLOOR-4-6-8: all tiers get non-zero → sum = 15
+    const subs = makeSubscriptions("FLOOR-4-6-8");
+    const result = distributeMauAcrossTiers(15, subs);
+    expect(result.reduce((a, b) => a + b.currentQuantity, 0)).toBe(15);
+  });
+
+  it("total of changed entries for no-floor tiers", () => {
+    // With 150 MAUs across 1-101: both tiers non-zero → sum = 150
+    const subs = makeSubscriptions("1-101");
+    const result = distributeMauAcrossTiers(150, subs);
+    expect(result.reduce((a, b) => a + b.currentQuantity, 0)).toBe(150);
   });
 });

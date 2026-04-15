@@ -187,55 +187,49 @@ export function DataSourceViewTagsFilterDropdown() {
   return (
     <PopoverRoot>
       <PopoverTrigger asChild>
-        <Button
-          label="Filters"
-          variant="outline"
-          isSelect
-          disabled={isExploratorySearchEnabled}
-          tooltip={
-            isExploratorySearchEnabled
-              ? "Exploratory search mode doesn't support filtering data sources yet"
-              : undefined
-          }
-        />
+        <Button label="Filters" variant="outline" isSelect />
       </PopoverTrigger>
 
       <PopoverContent
         align="end"
-        className="max-h-[var(--radix-popper-available-height)] w-150 max-w-150 overflow-scroll"
+        className="max-h-[var(--radix-popper-available-height)] w-100 max-w-150 overflow-scroll"
         collisionPadding={20}
       >
         <div className="flex flex-col gap-8 p-2">
-          <div className="flex flex-col gap-2">
-            <Page.SectionHeader
-              title="Filtering"
-              description="Filter to only include content bearing must-have labels, and exclude content with must-not-have labels."
-            />
-          </div>
+          {!isExploratorySearchEnabled && (
+            <>
+              <div className="flex flex-col gap-2">
+                <Page.SectionHeader
+                  title="Filtering"
+                  description="Filter to only include content bearing must-have labels, and exclude content with must-not-have labels."
+                />
+              </div>
 
-          <TagSearchSection
-            label="Must-have labels"
-            dataSourceViews={dataSourceViews}
-            owner={owner}
-            selectedTagsIn={tagsIn}
-            selectedTagsNot={tagsNotIn}
-            onTagAdd={handleTagsOperation("in", "add")}
-            onTagRemove={handleTagsOperation("in", "remove")}
-            operation="in"
-            showChipIcons
-          />
+              <TagSearchSection
+                label="Must-have labels"
+                dataSourceViews={dataSourceViews}
+                owner={owner}
+                selectedTagsIn={tagsIn}
+                selectedTagsNot={tagsNotIn}
+                onTagAdd={handleTagsOperation("in", "add")}
+                onTagRemove={handleTagsOperation("in", "remove")}
+                operation="in"
+                showChipIcons
+              />
 
-          <TagSearchSection
-            label="Must-not-have labels"
-            dataSourceViews={dataSourceViews}
-            owner={owner}
-            selectedTagsIn={tagsIn}
-            selectedTagsNot={tagsNotIn}
-            onTagAdd={handleTagsOperation("not", "add")}
-            onTagRemove={handleTagsOperation("not", "remove")}
-            operation="not"
-            showChipIcons
-          />
+              <TagSearchSection
+                label="Must-not-have labels"
+                dataSourceViews={dataSourceViews}
+                owner={owner}
+                selectedTagsIn={tagsIn}
+                selectedTagsNot={tagsNotIn}
+                onTagAdd={handleTagsOperation("not", "add")}
+                onTagRemove={handleTagsOperation("not", "remove")}
+                operation="not"
+                showChipIcons
+              />
+            </>
+          )}
 
           <div className="text-sm">
             <div className="mb-1 font-semibold">In-conversation filtering</div>

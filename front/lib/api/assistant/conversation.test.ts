@@ -2555,6 +2555,37 @@ describe("compactConversation", () => {
     expect(compactionMessage.content).toBeNull();
   });
 
+  it("should reject compaction when the last message is already a compaction message", async () => {
+    const compactionMessageRow = await CompactionMessageModel.create({
+      status: "succeeded",
+      content: "compacted summary",
+      workspaceId: workspace.id,
+    });
+    await MessageModel.create({
+      sId: generateRandomModelSId(),
+      rank: 0,
+      conversationId: conversation.id,
+      compactionMessageId: compactionMessageRow.id,
+      workspaceId: workspace.id,
+    });
+
+    const fetched = await getConversation(auth, conversation.sId);
+    expect(fetched.isOk()).toBe(true);
+    if (fetched.isErr()) {
+      return;
+    }
+
+    const result = await compactConversation(auth, {
+      conversation: fetched.value,
+      model: { providerId: "anthropic", modelId: "claude-haiku-4-5-20251001" },
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status_code).toBe(409);
+    }
+  });
+
   it("should reject compaction when an agent message is running", async () => {
     // Insert a user message then an agent message with status "created" (running).
     const { messageRow: userMessageRow } =

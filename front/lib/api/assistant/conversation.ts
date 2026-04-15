@@ -469,6 +469,32 @@ async function getConversationRankVersionLock(
   );
 }
 
+async function getNextConversationMessageRank(
+  auth: Authenticator,
+  {
+    conversation,
+    transaction,
+  }: {
+    conversation: ConversationWithoutContentType;
+    transaction: Transaction;
+  }
+): Promise<number> {
+  const owner = auth.getNonNullableWorkspace();
+
+  return (
+    ((await MessageModel.max<number | null, MessageModel>("rank", {
+      where: {
+        workspaceId: owner.id,
+        conversationId: conversation.id,
+        branchId: conversation.branchId
+          ? getResourceIdFromSId(conversation.branchId)
+          : null,
+      },
+      transaction,
+    })) ?? -1) + 1
+  );
+}
+
 export function isUserMessageContextValid(
   auth: Authenticator,
   req: NextApiRequest,
@@ -846,17 +872,10 @@ export async function postUserMessage(
       );
     }
 
-    nextMessageRank ??=
-      ((await MessageModel.max<number | null, MessageModel>("rank", {
-        where: {
-          workspaceId: owner.id,
-          conversationId: conversation.id,
-          branchId: conversation.branchId
-            ? getResourceIdFromSId(conversation.branchId)
-            : null,
-        },
-        transaction: t,
-      })) ?? -1) + 1;
+    nextMessageRank ??= await getNextConversationMessageRank(auth, {
+      conversation,
+      transaction: t,
+    });
 
     // Enrich context with auth data for analytics tracking.
     const enrichedContext: UserMessageContext = {
@@ -1266,17 +1285,10 @@ export async function editUserMessage(
 
         // Only create agent messages if there are no agent messages after the edited user message
         if (!hasAgentMessagesAfter) {
-          const nextMessageRank =
-            ((await MessageModel.max<number | null, MessageModel>("rank", {
-              where: {
-                workspaceId: owner.id,
-                conversationId: conversation.id,
-                branchId: conversation.branchId
-                  ? getResourceIdFromSId(conversation.branchId)
-                  : null,
-              },
-              transaction: t,
-            })) ?? -1) + 1;
+          const nextMessageRank = await getNextConversationMessageRank(auth, {
+            conversation,
+            transaction: t,
+          });
 
           const {
             agentMessages: newAgentMessages,
@@ -1919,17 +1931,10 @@ export async function postNewContentFragment(
           await withTransaction(async (t) => {
             await getConversationRankVersionLock(auth, conversation, t);
 
-            const nextMessageRank =
-              ((await MessageModel.max<number | null, MessageModel>("rank", {
-                where: {
-                  workspaceId: owner.id,
-                  conversationId: conversation.id,
-                  branchId: conversation.branchId
-                    ? getResourceIdFromSId(conversation.branchId)
-                    : null,
-                },
-                transaction: t,
-              })) ?? -1) + 1;
+            const nextMessageRank = await getNextConversationMessageRank(auth, {
+              conversation,
+              transaction: t,
+            });
 
             await MessageModel.create(
               {
@@ -2018,17 +2023,10 @@ export async function postNewContentFragment(
       }
     })();
 
-    const nextMessageRank =
-      ((await MessageModel.max<number | null, MessageModel>("rank", {
-        where: {
-          workspaceId: owner.id,
-          conversationId: conversation.id,
-          branchId: conversation.branchId
-            ? getResourceIdFromSId(conversation.branchId)
-            : null,
-        },
-        transaction: t,
-      })) ?? -1) + 1;
+    const nextMessageRank = await getNextConversationMessageRank(auth, {
+      conversation,
+      transaction: t,
+    });
     const messageRow = await MessageModel.create(
       {
         sId: messageId,
@@ -2577,13 +2575,19 @@ export async function compactConversation(
       (m): m is CompactionMessageType =>
         isCompactionMessageType(m) && m.status === "created"
     );
-  if (runningAgentMessage || runningCompaction) {
+  const lastMessage = conversation.content.at(-1)?.at(-1);
+
+  if (
+    runningAgentMessage ||
+    runningCompaction ||
+    (lastMessage && isCompactionMessageType(lastMessage))
+  ) {
     return new Err({
       status_code: 409,
       api_error: {
         type: "invalid_request_error",
         message:
-          "Cannot compact while another compaction or an agent message is running.",
+          "Cannot compact while another compaction or an agent message is running, or when the last message is already a compaction message.",
       },
     });
   }
@@ -2631,17 +2635,10 @@ export async function compactConversation(
       return { compactionMessage: null };
     }
 
-    const nextMessageRank =
-      ((await MessageModel.max<number | null, MessageModel>("rank", {
-        where: {
-          workspaceId: owner.id,
-          conversationId: conversation.id,
-          branchId: conversation.branchId
-            ? getResourceIdFromSId(conversation.branchId)
-            : null,
-        },
-        transaction: t,
-      })) ?? -1) + 1;
+    const nextMessageRank = await getNextConversationMessageRank(auth, {
+      conversation,
+      transaction: t,
+    });
 
     const compactionMessage = await createCompactionMessage(auth, {
       conversation,
@@ -2818,19 +2815,6 @@ export async function updateAgentMessageWithFinalStatus(
       }
     );
 
-    const nextMessageRank =
-      ((await MessageModel.max<number | null, MessageModel>("rank", {
-        where: {
-          workspaceId: owner.id,
-          conversationId: conversation.id,
-          branchId: conversation.branchId
-            ? getResourceIdFromSId(conversation.branchId)
-            : null,
-        },
-        transaction: t,
-      })) ?? -1) + 1;
-
-    // Render all promoted user messages.
     const promotedUserMessages = await batchRenderUserMessagesWithoutMentions(
       auth,
       {
@@ -2857,6 +2841,11 @@ export async function updateAgentMessageWithFinalStatus(
     await ConversationResource.markAsUpdated(promotedAuth, {
       conversation,
       t,
+    });
+
+    const nextMessageRank = await getNextConversationMessageRank(auth, {
+      conversation,
+      transaction: t,
     });
 
     // Create a new agent message using the last promoted user message.
