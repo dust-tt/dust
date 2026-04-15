@@ -1,3 +1,4 @@
+import { AnthropicModelLLM } from "@app/lib/api/llm/AnthropicModelLLM";
 import { AnthropicLLM } from "@app/lib/api/llm/clients/anthropic";
 import { isAnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import { FireworksLLM } from "@app/lib/api/llm/clients/fireworks";
@@ -15,7 +16,9 @@ import { isXaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
+import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/types/assistant/models/anthropic";
 
 export async function getLLM(
   auth: Authenticator,
@@ -36,6 +39,21 @@ export async function getLLM(
   const modelConfig = getModelConfigByModelId(modelId);
   if (!modelConfig) {
     return null;
+  }
+
+  if (modelId === CLAUDE_SONNET_4_6_MODEL_ID) {
+    if (await hasFeatureFlag(auth, "use_new_llm_router")) {
+      return new AnthropicModelLLM(auth, {
+        modelId,
+        credentials,
+        getTraceInput,
+        getTraceOutput,
+        temperature,
+        reasoningEffort,
+        responseFormat,
+        bypassFeatureFlag,
+      });
+    }
   }
 
   if (isMistralWhitelistedModelId(modelId)) {

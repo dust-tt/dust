@@ -748,6 +748,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "use_dust_keys"
   | "enable_compaction"
   | "enable_steering"
+  | "use_new_llm_router"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

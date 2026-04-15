@@ -299,6 +299,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable steering: pending user messages + graceful stop of running agent loops",
     stage: "dust_only",
   },
+  use_new_llm_router: {
+    description: "Use the new LLM router for model selection and routing",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
