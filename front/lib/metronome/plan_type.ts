@@ -3,21 +3,25 @@ import { getProductAiUsageUserId } from "@app/lib/metronome/constants";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 
-// No TTL — plan type only changes when a contract starts/ends.
-// Invalidated explicitly via invalidateLegacyPlanCache on contract.start/end webhooks.
+// No TTL — contract subscriptions only change when a contract starts/ends.
+// Invalidated explicitly via invalidateContractSubscriptionsCache on contract.start/end webhooks.
+
+export type ContractSubscription = {
+  id: string;
+  productId: string;
+};
 
 /**
- * Fetch whether the workspace is on a legacy plan.
- * Legacy plans do NOT include the "AI Usage (User)" product in their subscriptions.
- * New (credit-based) plans DO include it.
+ * Fetch the subscriptions from the active contract.
+ * Returns an empty array if there is no active contract or no subscriptions.
  *
- * Fails open: returns `true` (legacy) if the contract cannot be determined,
+ * Fails open: returns [] if the contract cannot be determined,
  * so that credit enforcement is skipped rather than blocking the user.
  */
-async function fetchIsLegacyPlan(
+async function fetchContractSubscriptions(
   workspaceId: string,
   metronomeCustomerId: string
-): Promise<boolean> {
+): Promise<ContractSubscription[]> {
   try {
     const client = getMetronomeClient();
     const response = await client.v2.contracts.list({
@@ -25,40 +29,59 @@ async function fetchIsLegacyPlan(
     });
 
     if (response.data.length === 0) {
-      // No active contract — treat as legacy (skip credit check).
-      return true;
+      return [];
     }
 
     const contract = response.data[0];
-    const subscriptions: Array<{
-      subscription_rate: { product: { id: string } };
-    }> = contract.subscriptions ?? [];
+    const subscriptions = contract.subscriptions ?? [];
 
-    const aiUsageUserId = getProductAiUsageUserId();
-    const hasAiUsageUser = subscriptions.some(
-      (s) => s.subscription_rate.product.id === aiUsageUserId
-    );
+    const result = subscriptions
+      .filter((s) => s.id !== undefined)
+      .map((s) => ({
+        id: s.id as string,
+        productId: s.subscription_rate.product.id,
+      }));
 
     logger.info(
-      { workspaceId, metronomeCustomerId, isLegacy: !hasAiUsageUser },
-      "[Metronome PlanType] Plan type determined"
+      {
+        workspaceId,
+        metronomeCustomerId,
+        subscriptionCount: result.length,
+      },
+      "[Metronome ContractSubscriptions] Contract subscriptions fetched"
     );
 
-    return !hasAiUsageUser;
+    return result;
   } catch (err) {
     logger.warn(
       { workspaceId, metronomeCustomerId, err },
-      "[Metronome PlanType] Failed to fetch contract — treating as legacy (fail-open)"
+      "[Metronome ContractSubscriptions] Failed to fetch contract — treating as legacy (fail-open)"
     );
-    return true;
+    return [];
   }
 }
 
-const getCachedIsLegacyPlan = cacheWithRedis(
-  fetchIsLegacyPlan,
+const getCachedContractSubscriptions = cacheWithRedis(
+  fetchContractSubscriptions,
   (workspaceId) => workspaceId,
   {}
 );
+
+/**
+ * Returns the subscriptions from the active contract.
+ * Returns an empty array if there is no active contract or the contract cannot be determined.
+ */
+export async function getContractSubscriptions(
+  workspaceId: string,
+  metronomeCustomerId: string
+): Promise<ContractSubscription[]> {
+  const cached = await getCachedContractSubscriptions(
+    workspaceId,
+    metronomeCustomerId
+  );
+  // null means Redis was unavailable — fail-open (treat as no subscriptions).
+  return cached ?? [];
+}
 
 /**
  * Returns true if the workspace is on a legacy Metronome plan.
@@ -69,16 +92,19 @@ export async function isLegacyPlan(
   workspaceId: string,
   metronomeCustomerId: string
 ): Promise<boolean> {
-  const cached = await getCachedIsLegacyPlan(workspaceId, metronomeCustomerId);
-  // null means Redis was unavailable — fail-open (treat as legacy).
-  return cached ?? true;
+  const subscriptions = await getContractSubscriptions(
+    workspaceId,
+    metronomeCustomerId
+  );
+  const aiUsageUserId = getProductAiUsageUserId();
+  return !subscriptions.some((s) => s.productId === aiUsageUserId);
 }
 
 /**
- * Invalidate the cached plan type for a workspace.
+ * Invalidate the cached contract subscriptions for a workspace.
  * Call this whenever a customer's contract is changed (e.g. plan upgrade/migration).
  */
-export const invalidateLegacyPlanCache = invalidateCacheWithRedis(
-  fetchIsLegacyPlan,
+export const invalidateContractSubscriptionsCache = invalidateCacheWithRedis(
+  fetchContractSubscriptions,
   (workspaceId: string) => workspaceId
 );
