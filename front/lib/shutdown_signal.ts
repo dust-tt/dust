@@ -2,8 +2,9 @@
  * Global shutdown signal for coordinating graceful pod termination.
  *
  * This module tracks whether the pod is shutting down to coordinate between:
- * - The prestop hook
- * - The readiness probe
+ * - The prestop hook (which signals shutdown)
+ * - The readiness probe (which should fail when shutting down)
+ * - Connection draining (which needs the pod to stay alive)
  * - Worker shutdown handlers
  */
 
@@ -14,6 +15,10 @@ const shutdownController = new AbortController();
  * Marks the pod as shutting down.
  */
 export function markShuttingDown(): void {
+  if (isShuttingDown) {
+    return;
+  }
+
   isShuttingDown = true;
   shutdownController.abort();
 }
