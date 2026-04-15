@@ -267,15 +267,17 @@ export function processInfiniteContentNodesData({
   };
 }
 
-const makeURLDataSourceViewContentNodes = (
-  {
-    owner,
-    dataSourceView,
-  }: Required<
+export type ContentNodesURLBuilder = (
+  opts: Required<
     Pick<FetchDataSourceViewContentNodesOptions, "owner" | "dataSourceView">
   >,
   searchParams: URLSearchParams
-): string => {
+) => string;
+
+const makeURLDataSourceViewContentNodes: ContentNodesURLBuilder = (
+  { owner, dataSourceView },
+  searchParams
+) => {
   return `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${searchParams}`;
 };
 
@@ -356,72 +358,76 @@ export function useDataSourceViewContentNodes({
   };
 }
 
-export function useInfiniteDataSourceViewContentNodes({
-  owner,
-  dataSourceView,
-  pagination,
-  internalIds,
-  parentId,
-  viewType,
-  sorting,
-  swrOptions,
-}: FetchDataSourceViewContentNodesOptions): InfiniteContentNodesResult {
-  const { fetcherWithBody } = useFetcher();
-  const { data, error, isLoading, size, setSize, mutate, isValidating } =
-    useSWRInfiniteWithDefaults<
-      [string, GetContentNodesOrChildrenRequestBodyType] | null,
-      GetDataSourceViewContentNodes
-    >(
-      (_pageIndex, previousPageData) => {
-        if (
-          (previousPageData && !previousPageData.nextPageCursor) ||
-          !dataSourceView
-        ) {
-          return null;
+export function createUseInfiniteContentNodes(
+  makeURL: ContentNodesURLBuilder
+): UseInfiniteContentNodes {
+  return function useInfiniteContentNodes({
+    owner,
+    dataSourceView,
+    pagination,
+    internalIds,
+    parentId,
+    viewType,
+    sorting,
+    swrOptions,
+  }: FetchDataSourceViewContentNodesOptions): InfiniteContentNodesResult {
+    const { fetcherWithBody } = useFetcher();
+    const { data, error, isLoading, size, setSize, mutate, isValidating } =
+      useSWRInfiniteWithDefaults<
+        [string, GetContentNodesOrChildrenRequestBodyType] | null,
+        GetDataSourceViewContentNodes
+      >(
+        (_pageIndex, previousPageData) => {
+          if (
+            (previousPageData && !previousPageData.nextPageCursor) ||
+            !dataSourceView
+          ) {
+            return null;
+          }
+
+          const params = new URLSearchParams();
+          if (previousPageData?.nextPageCursor) {
+            params.append("cursor", previousPageData.nextPageCursor);
+          }
+
+          if (pagination?.limit) {
+            params.append("limit", pagination.limit.toString());
+          }
+
+          const body: GetContentNodesOrChildrenRequestBodyType = {
+            internalIds,
+            parentId,
+            viewType: viewType ?? "all",
+            sorting,
+          };
+
+          return [makeURL({ owner, dataSourceView }, params), body];
+        },
+        async ([url, body]) => {
+          return fetcherWithBody([url, body, "POST"]);
+        },
+        {
+          revalidateAll: false,
+          revalidateFirstPage: false,
+          ...swrOptions,
         }
+      );
 
-        const params = new URLSearchParams();
-        if (previousPageData?.nextPageCursor) {
-          params.append("cursor", previousPageData.nextPageCursor);
-        }
+    const loadMore = useCallback(() => setSize((s) => s + 1), [setSize]);
+    const processed = processInfiniteContentNodesData({
+      data,
+      error,
+      isLoading,
+      size,
+      isValidating,
+    });
 
-        if (pagination?.limit) {
-          params.append("limit", pagination.limit.toString());
-        }
-
-        const body: GetContentNodesOrChildrenRequestBodyType = {
-          internalIds,
-          parentId,
-          viewType: viewType ?? "all",
-          sorting,
-        };
-
-        return [
-          makeURLDataSourceViewContentNodes({ owner, dataSourceView }, params),
-          body,
-        ];
-      },
-      async ([url, body]) => {
-        return fetcherWithBody([url, body, "POST"]);
-      },
-      {
-        revalidateAll: false,
-        revalidateFirstPage: false,
-        ...swrOptions,
-      }
-    );
-
-  const loadMore = useCallback(() => setSize((s) => s + 1), [setSize]);
-  const processed = processInfiniteContentNodesData({
-    data,
-    error,
-    isLoading,
-    size,
-    isValidating,
-  });
-
-  return { ...processed, loadMore, mutate };
+    return { ...processed, loadMore, mutate };
+  };
 }
+
+export const useInfiniteDataSourceViewContentNodes =
+  createUseInfiniteContentNodes(makeURLDataSourceViewContentNodes);
 
 export function useDataSourceViewConnectorConfiguration({
   dataSourceView,
