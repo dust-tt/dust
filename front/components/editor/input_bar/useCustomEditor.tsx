@@ -4,8 +4,6 @@ import { DataSourceLinkExtension } from "@app/components/editor/extensions/input
 import {
   getEditorViewRangeRect,
   getInputBarSkillSlashTrigger,
-  InputBarSkillSuggestionExtension,
-  inputBarSkillSuggestionPluginKey,
 } from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
@@ -36,7 +34,6 @@ import type { EditorView } from "@tiptap/pm/view";
 import type { Editor } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
-import { exitSuggestion } from "@tiptap/suggestion";
 import { useEffect, useMemo, useRef } from "react";
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
@@ -59,7 +56,6 @@ function openSkillPickerFromTrigger(
   }
 
   event.preventDefault();
-  exitSuggestion(view, inputBarSkillSuggestionPluginKey);
   onOpenSkillPicker(
     getEditorViewRangeRect(view, trigger.range.from),
     trigger.query
@@ -250,7 +246,6 @@ export interface CustomEditorProps {
     ((payload: MentionsStrippedPayload) => void) | undefined
   >;
   onOpenSkillPicker?: (anchorRect: DOMRect | null, query: string) => void;
-  shouldAllowSkillSlashRef?: React.RefObject<boolean>;
   onSkillPickerKeyDown?: (event: KeyboardEvent) => boolean;
   onSelectFirstSkillFromPicker?: () => boolean;
 }
@@ -268,8 +263,6 @@ export const buildEditorExtensions = ({
   shouldSuggestAgentRef,
   onFirstAgentMentionPasteRef,
   onAgentMentionsStrippedRef,
-  onOpenSkillPicker,
-  shouldAllowSkillSlashRef,
 }: {
   owner: WorkspaceType;
   conversationId?: string | null;
@@ -287,8 +280,6 @@ export const buildEditorExtensions = ({
   onAgentMentionsStrippedRef?: React.RefObject<
     ((payload: MentionsStrippedPayload) => void) | undefined
   >;
-  onOpenSkillPicker?: (anchorRect: DOMRect | null, query: string) => void;
-  shouldAllowSkillSlashRef?: React.RefObject<boolean>;
 }) => {
   const extensions = [
     KeyboardShortcutsExtension,
@@ -388,15 +379,6 @@ export const buildEditorExtensions = ({
     URLStorageExtension,
   ];
 
-  if (onOpenSkillPicker) {
-    extensions.push(
-      InputBarSkillSuggestionExtension.configure({
-        onOpenSkillPicker,
-        shouldAllowSuggestionRef: shouldAllowSkillSlashRef,
-      })
-    );
-  }
-
   if (onUrlDetected) {
     extensions.push(
       URLDetectionExtension.configure({
@@ -426,7 +408,6 @@ const useCustomEditor = ({
   onFirstAgentMentionPasteRef,
   onAgentMentionsStrippedRef,
   onOpenSkillPicker,
-  shouldAllowSkillSlashRef,
   onSkillPickerKeyDown,
   onSelectFirstSkillFromPicker,
 }: CustomEditorProps) => {
@@ -446,8 +427,6 @@ const useCustomEditor = ({
         shouldSuggestAgentRef,
         onFirstAgentMentionPasteRef,
         onAgentMentionsStrippedRef,
-        onOpenSkillPicker,
-        shouldAllowSkillSlashRef,
       }),
       shouldRerenderOnTransaction: true, // necessary to update the editor state (and so the toolbar icons "activation") in real time
       editorProps: {
@@ -515,12 +494,6 @@ const useCustomEditor = ({
             if (onSelectFirstSkillFromPicker?.()) {
               event.preventDefault();
               return true;
-            }
-
-            const slashSkillPluginState =
-              inputBarSkillSuggestionPluginKey.getState(view.state);
-            if (slashSkillPluginState?.active) {
-              return false;
             }
 
             if (

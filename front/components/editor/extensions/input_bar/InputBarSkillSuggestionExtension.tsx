@@ -173,13 +173,27 @@ export const InputBarSkillSuggestionExtension =
           },
           render: () => {
             let component: ReactRenderer<SlashCommandDropdownRef> | null = null;
+            let activeEditorView: EditorView | null = null;
+
+            const closeSuggestionDropdown = () => {
+              if (!activeEditorView) {
+                return;
+              }
+
+              exitSuggestion(activeEditorView, inputBarSkillSuggestionPluginKey);
+            };
 
             return {
               onStart: (props: SuggestionProps<SlashCommand>) => {
                 latestClientRect = props.clientRect ?? null;
+                activeEditorView = props.editor.view;
 
                 component = new ReactRenderer(SlashCommandDropdown, {
-                  props,
+                  props: {
+                    ...props,
+                    onEscapeKeyDown: closeSuggestionDropdown,
+                    onInteractOutside: closeSuggestionDropdown,
+                  },
                   editor: props.editor,
                 });
 
@@ -192,14 +206,17 @@ export const InputBarSkillSuggestionExtension =
 
               onUpdate(props: SuggestionProps<SlashCommand>) {
                 latestClientRect = props.clientRect ?? null;
-                component?.updateProps(props);
+                activeEditorView = props.editor.view;
+                component?.updateProps({
+                  ...props,
+                  onEscapeKeyDown: closeSuggestionDropdown,
+                  onInteractOutside: closeSuggestionDropdown,
+                });
               },
 
               onKeyDown(props: { event: KeyboardEvent }) {
                 if (props.event.key === "Escape") {
-                  component?.element?.remove();
-                  component?.destroy();
-                  component = null;
+                  closeSuggestionDropdown();
                   return true;
                 }
 
@@ -208,6 +225,7 @@ export const InputBarSkillSuggestionExtension =
 
               onExit() {
                 latestClientRect = null;
+                activeEditorView = null;
                 component?.element?.remove();
                 component?.destroy();
                 component = null;

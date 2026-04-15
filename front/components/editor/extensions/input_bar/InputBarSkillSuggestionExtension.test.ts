@@ -1,6 +1,5 @@
 import { filterInputBarSkills } from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionDropdown";
 import {
-  filterInputBarSlashCommands,
   getInputBarSkillSlashTrigger,
   shouldAllowInputBarSkillSlash,
 } from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionExtension";
@@ -80,21 +79,6 @@ const SKILLS: SkillType[] = [
     isDefault: false,
   },
 ];
-
-describe("filterInputBarSlashCommands", () => {
-  it("returns the Skills slash command by default", () => {
-    const results = filterInputBarSlashCommands("");
-
-    expect(results.map((command) => command.label)).toEqual(["Skills"]);
-  });
-
-  it("keeps the Skills slash command visible while the user types a skill query", () => {
-    expect(filterInputBarSlashCommands("skill")).toHaveLength(1);
-    expect(filterInputBarSlashCommands("conversation")).toHaveLength(1);
-    expect(filterInputBarSlashCommands("unknown")).toHaveLength(1);
-    expect(filterInputBarSlashCommands("github")).toHaveLength(1);
-  });
-});
 
 describe("filterInputBarSkills", () => {
   it("filters selected skills and matches by name case-insensitively", () => {

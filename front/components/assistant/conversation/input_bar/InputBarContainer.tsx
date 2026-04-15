@@ -282,11 +282,8 @@ const InputBarContainer = ({
   const [skillPickerState, setSkillPickerState] =
     useState<SkillPickerState | null>(null);
   const plusButtonRef = useRef<HTMLDivElement>(null);
-  const shouldAllowSkillSlashRef = useRef(true);
   const clientType = useClientType();
   const shouldEnableSkillSelection = actions.includes("capabilities");
-
-  shouldAllowSkillSlashRef.current = skillPickerState === null;
 
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
