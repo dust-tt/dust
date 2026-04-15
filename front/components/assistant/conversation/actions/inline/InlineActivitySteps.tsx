@@ -27,6 +27,7 @@ import {
   ChevronRightIcon,
   cn,
   Icon,
+  StopIcon,
   ToolsIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -55,6 +56,15 @@ function getCompletionLabel(
   }
 }
 
+function getTerminalLabel(status: LightAgentMessageType["status"]): string {
+  switch (status) {
+    case "cancelled":
+      return "Cancelled";
+    default:
+      return "Completed";
+  }
+}
+
 function getCollapseAnimationStyle(isCollapsed: boolean): React.CSSProperties {
   return {
     gridTemplateRows: isCollapsed ? "0fr" : "1fr",
@@ -68,7 +78,7 @@ function getCollapseAnimationStyle(isCollapsed: boolean): React.CSSProperties {
 /**
  * Inline activity steps component.
  * Everything is wrapped in a single collapsible "Work" section
- * with a stepper timeline containing CoT, actions, and a "Done" marker.
+ * with a stepper timeline containing CoT, actions, and a terminal marker.
  *
  * Steps are accumulated by useAgentMessageStream — this component is a pure render.
  */
@@ -119,7 +129,7 @@ export function InlineActivitySteps({
           agentMessage.completionDurationMs
         )
       : isDone
-        ? "Completed"
+        ? getTerminalLabel(agentMessage.status)
         : null;
 
   // Writing-only: no prior steps, just streaming text. Show "Writing..."
@@ -353,9 +363,14 @@ export function InlineActivitySteps({
             {isDone &&
               completedSteps.length > 0 &&
               agentMessage.status !== "gracefully_stopped" && (
-                <TimelineRow icon={CheckIcon} isLast>
+                <TimelineRow
+                  icon={
+                    agentMessage.status === "cancelled" ? StopIcon : CheckIcon
+                  }
+                  isLast
+                >
                   <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Done
+                    {agentMessage.status === "cancelled" ? "Cancelled" : "Done"}
                   </span>
                 </TimelineRow>
               )}
