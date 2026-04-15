@@ -22,6 +22,12 @@ export const interceptors: WorkflowInterceptorsFactory = () => ({
   internals: [new OpenTelemetryInternalsInterceptor()],
 });
 
+const { ensureReinforcementWorkspaceCronsActivity } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "10 minutes",
+});
+
 const { getReinforcementSettingsActivity } = proxyActivities<typeof activities>(
   {
     startToCloseTimeout: "5 minutes",
@@ -267,6 +273,14 @@ async function aggregateSkillWithMultiStepBatch({
     suggestionsCreated: totalSuggestionsCreated,
     disableNotifications,
   });
+}
+
+/**
+ * Cron workflow that ensures all flagged workspaces have a running
+ * reinforcement cron and stops crons for workspaces that lost the flag.
+ */
+export async function ensureReinforcementWorkspaceCronsWorkflow(): Promise<void> {
+  await ensureReinforcementWorkspaceCronsActivity();
 }
 
 /**

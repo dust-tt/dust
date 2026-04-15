@@ -6,11 +6,19 @@ import { makeWorkspaceCronWorkflowId } from "@app/temporal/reinforcement/client"
 import type { CheckFunction } from "@app/types/production_checks";
 import type { Client, WorkflowHandle } from "@temporalio/client";
 
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+
 async function getFlaggedWorkspaceIds(): Promise<string[]> {
   const allWorkspaces = await WorkspaceResource.listAll();
   const flaggedIds: string[] = [];
+  const now = Date.now();
 
   for (const workspace of allWorkspaces) {
+    // Ignore workspaces created in the last 24h — the daily ensure-crons
+    // workflow hasn't had a chance to start their cron yet.
+    if (now - workspace.createdAt.getTime() < TWENTY_FOUR_HOURS_MS) {
+      continue;
+    }
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     if (await hasReinforcementEnabled(auth)) {
       flaggedIds.push(workspace.sId);
