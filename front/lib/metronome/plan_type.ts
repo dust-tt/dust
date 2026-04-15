@@ -4,20 +4,37 @@ import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { ContractV2 } from "@metronome/sdk/resources";
 
-// No TTL — active contract only changes when a contract starts/ends.
+// No TTL — contracts only change when a contract starts/ends.
 // Invalidated explicitly via invalidateContractCache on contract.start/end webhooks.
 // Null values are NOT cached: when no contract is found we want a fresh fetch next time.
 
 /**
- * Fetch the active Metronome contract for a workspace.
+ * Fetch a Metronome contract.
+ * When contractId is provided, fetches that specific contract via retrieve (cached by contractId).
+ * Otherwise, lists all contracts and returns the first one (cached by metronomeCustomerId).
  * Returns null (uncached) when no contract exists or when the API call fails.
  */
 async function fetchActiveContract(
-  workspaceId: string,
-  metronomeCustomerId: string
+  metronomeCustomerId: string,
+  contractId?: string
 ): Promise<ContractV2 | null> {
   try {
     const client = getMetronomeClient();
+
+    if (contractId) {
+      const response = await client.v2.contracts.retrieve({
+        customer_id: metronomeCustomerId,
+        contract_id: contractId,
+      });
+
+      logger.info(
+        { metronomeCustomerId, contractId },
+        "[Metronome Contract] Contract fetched by ID"
+      );
+
+      return response.data ?? null;
+    }
+
     const response = await client.v2.contracts.list({
       customer_id: metronomeCustomerId,
     });
@@ -27,14 +44,14 @@ async function fetchActiveContract(
     }
 
     logger.info(
-      { workspaceId, metronomeCustomerId },
+      { metronomeCustomerId },
       "[Metronome Contract] Active contract fetched"
     );
 
     return response.data[0];
   } catch (err) {
     logger.warn(
-      { workspaceId, metronomeCustomerId, err },
+      { metronomeCustomerId, contractId, err },
       "[Metronome Contract] Failed to fetch — treating as legacy (fail-open)"
     );
     return null;
@@ -43,19 +60,21 @@ async function fetchActiveContract(
 
 const getCachedActiveContract = cacheWithRedis(
   fetchActiveContract,
-  (workspaceId) => workspaceId,
+  (metronomeCustomerId, contractId) => contractId ?? metronomeCustomerId,
   { cacheNullValues: false }
 );
 
 /**
- * Returns the active Metronome contract for a workspace.
- * Returns null when no contract exists, Redis is unavailable, or the fetch fails.
+ * Returns a Metronome contract.
+ * When contractId is provided, fetches that specific contract (cached by contractId).
+ * Otherwise, returns the first active contract (cached by metronomeCustomerId).
+ * Returns null when not found, Redis is unavailable, or the fetch fails.
  */
 export async function getActiveContract(
-  workspaceId: string,
-  metronomeCustomerId: string
+  metronomeCustomerId: string,
+  contractId?: string
 ): Promise<ContractV2 | null> {
-  return await getCachedActiveContract(workspaceId, metronomeCustomerId);
+  return await getCachedActiveContract(metronomeCustomerId, contractId);
 }
 
 /**
@@ -64,10 +83,9 @@ export async function getActiveContract(
  * Fails open (returns true) when the plan cannot be determined.
  */
 export async function isLegacyPlan(
-  workspaceId: string,
   metronomeCustomerId: string
 ): Promise<boolean> {
-  const contract = await getActiveContract(workspaceId, metronomeCustomerId);
+  const contract = await getActiveContract(metronomeCustomerId);
   if (!contract) {
     return true;
   }
@@ -84,5 +102,5 @@ export async function isLegacyPlan(
  */
 export const invalidateContractCache = invalidateCacheWithRedis(
   fetchActiveContract,
-  (workspaceId: string) => workspaceId
+  (metronomeCustomerId: string) => metronomeCustomerId
 );

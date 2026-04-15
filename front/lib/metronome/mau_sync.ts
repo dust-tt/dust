@@ -1,11 +1,9 @@
-import {
-  getMetronomeClient,
-  updateSubscriptionQuantity,
-} from "@app/lib/metronome/client";
+import { updateSubscriptionQuantity } from "@app/lib/metronome/client";
 import {
   getProductMauId,
   getProductMauTierIds,
 } from "@app/lib/metronome/constants";
+import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { countActiveUsersForPeriodInWorkspace } from "@app/lib/plans/usage/mau";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -147,13 +145,7 @@ async function getContractMauInfo(
   metronomeCustomerId: string,
   contractId: string
 ): Promise<MauInfo | undefined> {
-  const client = getMetronomeClient();
-
-  const response = await client.v2.contracts.retrieve({
-    customer_id: metronomeCustomerId,
-    contract_id: contractId,
-  });
-  const contract = response.data;
+  const contract = await getActiveContract(metronomeCustomerId, contractId);
   if (!contract?.subscriptions?.length) {
     return undefined;
   }

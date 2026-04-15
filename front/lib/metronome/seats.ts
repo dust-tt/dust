@@ -1,8 +1,6 @@
-import {
-  getMetronomeClient,
-  updateSubscriptionQuantity,
-} from "@app/lib/metronome/client";
+import { updateSubscriptionQuantity } from "@app/lib/metronome/client";
 import { getProductWorkspaceSeatId } from "@app/lib/metronome/constants";
+import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -16,15 +14,9 @@ async function getSeatSubscriptionId(
   metronomeCustomerId: string,
   contractId: string
 ): Promise<string | undefined> {
-  const client = getMetronomeClient();
   const seatProductId = getProductWorkspaceSeatId();
 
-  const response = await client.v2.contracts.list({
-    customer_id: metronomeCustomerId,
-  });
-  const contract = response.data.find(
-    (c: { id: string }) => c.id === contractId
-  );
+  const contract = await getActiveContract(metronomeCustomerId, contractId);
   if (!contract?.subscriptions?.length) {
     return undefined;
   }
