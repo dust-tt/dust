@@ -388,6 +388,25 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         case "running":
           break;
 
+        case "pending_approval": {
+          // The sandbox was paused (betaPause) while waiting for tool approval.
+          // Wake it, but do NOT fall through to recreation on failure — the
+          // frozen process state and output files are unrecoverable.
+          const pendingWakeResult = await provider.wake(
+            existing.providerId,
+            tracingOpts
+          );
+          if (pendingWakeResult.isErr()) {
+            return new Err(
+              new Error(
+                `Failed to wake pending_approval sandbox: ${pendingWakeResult.error.message}`
+              )
+            );
+          }
+          wokeFromSleep = true;
+          break;
+        }
+
         case "sleeping": {
           const wakeResult = await provider.wake(
             existing.providerId,
@@ -516,6 +535,68 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       await sandbox.updateStatus("sleeping", { ctx });
       recordLifecycleOperation("sleep", ctx);
       logger.info({ sandbox: sandbox.toLogJSON() }, "Sandbox put to sleep.");
+      return new Ok(undefined);
+    });
+  }
+
+  /**
+   * Pause a running sandbox for tool approval. Calls sleep() on the
+   * provider and sets the status to `pending_approval`. Unlike sleep, this
+   * status prevents recreation on wake failure (frozen state is unrecoverable).
+   */
+  static async pauseForApproval(
+    auth: Authenticator,
+    conversationId: string
+  ): Promise<Result<void, Error>> {
+    return this.withLifecycleLock(conversationId, async (provider) => {
+      const sandbox = await SandboxResource.fetchByConversationId(
+        auth,
+        conversationId
+      );
+      if (!sandbox || sandbox.status !== "running") {
+        return new Ok(undefined);
+      }
+
+      const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
+
+      const result = await provider.sleep(sandbox.providerId, ctx);
+      if (result.isErr()) {
+        return result;
+      }
+
+      await sandbox.updateStatus("pending_approval", { ctx });
+      logger.info(
+        { sandbox: sandbox.toLogJSON() },
+        "Sandbox paused for tool approval."
+      );
+      return new Ok(undefined);
+    });
+  }
+
+  /**
+   * Transition a pending_approval sandbox to sleeping. The sandbox is already
+   * paused via betaPause(), so no provider call is needed — we just update the
+   * DB status so the regular destroy phase can reap it later.
+   *
+   * WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
+   */
+  static async dangerouslySleepIfPendingApproval(
+    auth: Authenticator,
+    conversationId: string
+  ): Promise<Result<void, Error>> {
+    return this.withLifecycleLock(conversationId, async () => {
+      const sandbox =
+        await SandboxResource.dangerouslyFetchByConversationId(conversationId);
+      if (!sandbox || sandbox.status !== "pending_approval") {
+        return new Ok(undefined);
+      }
+
+      const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
+      await sandbox.updateStatus("sleeping", { ctx });
+      logger.info(
+        { sandbox: sandbox.toLogJSON() },
+        "Pending-approval sandbox transitioned to sleeping."
+      );
       return new Ok(undefined);
     });
   }
