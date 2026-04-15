@@ -190,14 +190,10 @@ export function DataSourceViewTagsFilterDropdown() {
         <SliderToggle
           selected={mode === "auto"}
           onClick={() =>
-            toggleInConversationFiltering(
-              mode === "custom" ? "auto" : "custom"
-            )
+            toggleInConversationFiltering(mode === "custom" ? "auto" : "custom")
           }
         />
-        <span className="text-sm font-medium">
-          In-conversation filtering
-        </span>
+        <span className="text-sm font-medium">In-conversation filtering</span>
       </div>
     );
   }
