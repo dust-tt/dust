@@ -51,10 +51,6 @@ export const switchToMetronomeBillingPlugin = createPlugin({
       return new Err(billingConfigResult.error);
     }
 
-    await cancelSubscriptionAtPeriodEnd({
-      stripeSubscriptionId: subscription.stripeSubscriptionId,
-    });
-
     const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
 
     await withTransaction(async (t) => {
@@ -82,6 +78,10 @@ export const switchToMetronomeBillingPlugin = createPlugin({
         subscriptionResource.getPlan(),
         t
       );
+    });
+
+    await cancelSubscriptionAtPeriodEnd({
+      stripeSubscriptionId: subscription.stripeSubscriptionId,
     });
 
     return new Ok({
