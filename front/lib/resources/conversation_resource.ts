@@ -2040,12 +2040,19 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return null;
     }
 
-    // runIds is ordered chronologically (appended step by step in the agent loop), so the last
-    // element is the most recent run.
-    const lastRunId =
-      message.agentMessage.runIds[message.agentMessage.runIds.length - 1];
+    // The runIds array ordering is not guaranteed to be chronological. Fetch all runs and pick
+    // the most recently created one.
+    const runs = await RunResource.listByDustRunIds(auth, {
+      dustRunIds: message.agentMessage.runIds,
+    });
 
-    return RunResource.fetchByDustRunId(auth, { dustRunId: lastRunId });
+    if (runs.length === 0) {
+      return null;
+    }
+
+    return runs.reduce((latest, r) =>
+      r.createdAt > latest.createdAt ? r : latest
+    );
   }
 
   static async resolveForkSourceMessage(
