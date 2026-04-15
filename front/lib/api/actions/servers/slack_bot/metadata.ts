@@ -197,7 +197,7 @@ export const SLACK_BOT_SERVER = {
     instructions:
       "The Slack bot must be explicitly added to a channel before it can post messages or read history. " +
       "Direct messages and search operations are not supported. " +
-      "When posting a message on Slack, you MUST use standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*, `code`). " +
+      "When posting a message on Slack, you MUST use standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*). " +
       "Do NOT use Slack-specific markup like <url|text> for links — the system converts Markdown to Slack format automatically. " +
       "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
       "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
