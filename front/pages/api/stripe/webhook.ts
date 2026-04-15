@@ -1309,7 +1309,8 @@ async function handler(
             if (
               endDate &&
               subscription.metronomeContractId &&
-              workspace.metronomeCustomerId
+              workspace.metronomeCustomerId &&
+              subscription.status !== "ended_backend_only" // Don't sunset Metronome contract when gracefully ending Stripe subscription
             ) {
               void scheduleMetronomeContractEnd({
                 metronomeCustomerId: workspace.metronomeCustomerId,

@@ -181,6 +181,88 @@ export async function findMetronomeCustomerByAlias(
   }
 }
 
+/**
+ * Add Stripe billing configuration from the Metronome customer to the contract
+ * Idempotent: if Stripe billing is already configured, logs and returns Ok.
+ */
+export async function addStripeMetronomeBillingConfig({
+  metronomeCustomerId,
+  metronomeContractId,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+}): Promise<Result<void, Error>> {
+  let configs;
+
+  try {
+    configs =
+      await getMetronomeClient().v1.customers.retrieveBillingConfigurations({
+        customer_id: metronomeCustomerId,
+      });
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId },
+      "[Metronome] Failed to retrieve billing configurations"
+    );
+    return new Err(error);
+  }
+
+  const stripeConfig = configs.data.find(
+    (c) => c.billing_provider === "stripe" && !c.archived_at
+  );
+  if (!stripeConfig) {
+    return new Err(
+      new Error(
+        `No active Stripe billing configuration found for Metronome customer ${metronomeCustomerId}`
+      )
+    );
+  }
+
+  try {
+    await getMetronomeClient().v2.contracts.edit({
+      customer_id: metronomeCustomerId,
+      contract_id: metronomeContractId,
+      add_billing_provider_configuration_update: {
+        billing_provider_configuration: {
+          billing_provider_configuration_id: stripeConfig.id,
+        },
+        schedule: {
+          effective_at: "START_OF_CURRENT_PERIOD",
+        },
+      },
+    });
+
+    logger.info(
+      {
+        metronomeCustomerId,
+        metronomeContractId,
+        billingProviderConfigurationId: stripeConfig.id,
+      },
+      "[Metronome] Stripe billing provider linked to contract"
+    );
+
+    return new Ok(undefined);
+  } catch (err) {
+    if (err instanceof ConflictError) {
+      logger.info(
+        { metronomeCustomerId, metronomeContractId },
+        "[Metronome] Contract billing provider already configured, skipping"
+      );
+
+      return new Ok(undefined);
+    }
+
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, metronomeContractId },
+      "[Metronome] Failed to link Stripe billing provider to contract"
+    );
+
+    return new Err(error);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Contract management
 // ---------------------------------------------------------------------------
