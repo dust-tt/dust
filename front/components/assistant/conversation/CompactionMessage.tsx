@@ -30,7 +30,7 @@ export function CompactionMessage({ message }: CompactionMessageProps) {
     case "succeeded":
       return (
         <div className="flex items-center justify-center gap-1.5">
-          <span className="text-base text-muted-foreground">
+          <span className="text-sm text-muted-foreground">
             Context compacted · {formatTimestring(message.created)}
           </span>
         </div>
@@ -39,7 +39,7 @@ export function CompactionMessage({ message }: CompactionMessageProps) {
       return (
         <div className="flex items-center justify-center gap-1.5">
           <Spinner size="xs" />
-          <AnimatedText variant="muted" className="text-base">
+          <AnimatedText variant="muted" className="text-sm">
             Compacting context…
           </AnimatedText>
         </div>
