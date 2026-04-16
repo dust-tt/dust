@@ -1,6 +1,6 @@
 import { config, REGION_TIMEZONES } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
-import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { REINFORCEMENT_EXCLUDED_PLAN_CODES } from "@app/lib/plans/plan_codes";
 import { hasReinforcementEnabled } from "@app/lib/reinforced_agent/workspace_check";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
@@ -33,8 +33,6 @@ export function makeWorkspaceCronWorkflowId(workspaceId: string): string {
   return `${WORKSPACE_WORKFLOW_ID_PREFIX}${workspaceId}`;
 }
 
-const EXCLUDED_PLAN_CODES = new Set([FREE_TRIAL_PHONE_PLAN_CODE]);
-
 /**
  * List workspace sIds that have the reinforced_agents feature flag,
  * excluding workspaces on free upgraded or free trial phone plans.
@@ -48,7 +46,7 @@ async function getReinforcementWorkspaceIds(): Promise<string[]> {
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
       const planCode = auth.plan()?.code;
-      if (planCode && EXCLUDED_PLAN_CODES.has(planCode)) {
+      if (planCode && REINFORCEMENT_EXCLUDED_PLAN_CODES.has(planCode)) {
         continue;
       }
 

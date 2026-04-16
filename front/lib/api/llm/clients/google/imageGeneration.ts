@@ -9,7 +9,7 @@ import {
   type ImageGenerationOutput,
 } from "@app/lib/api/llm/imageGeneration";
 import type { Authenticator } from "@app/lib/auth";
-import { concurrentExecutor } from "@app/temporal/utils";
+import { concurrentExecutor } from "@app/temporal/workflow_utils";
 import type { ImageModelIdType } from "@app/types/assistant/models/models";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { Err, Ok, type Result } from "@app/types/shared/result";

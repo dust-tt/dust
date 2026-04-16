@@ -1,12 +1,11 @@
 // biome-ignore-all lint/plugin/noRawSql: hard delete activities require raw SQL for cascade deletions
 import { batchHardDeletePendingAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { REINFORCEMENT_EXCLUDED_PLAN_CODES } from "@app/lib/plans/plan_codes";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
-import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
+import { runOnAllWorkspacesInActivity } from "@app/temporal/activity_utils";
 import type {
   RunExecutionRow,
   RunsJoinsRow,
@@ -136,77 +135,41 @@ export async function purgeExpiredPendingAgentsActivity(
     `About to purge pending agents created before ${cutoffDate.toISOString()}.`
   );
 
-  const workspaces = await WorkspaceResource.listAll();
+  const results = await runOnAllWorkspacesInActivity(
+    async (_auth, workspace) => {
+      let deleted = 0;
+      let hasMore = true;
 
-  let totalDeleted = 0;
+      do {
+        const batch = await AgentConfigurationModel.findAll({
+          where: {
+            status: "pending",
+            createdAt: { [Op.lt]: cutoffDate },
+            workspaceId: workspace.id,
+          },
+          limit: batchSize,
+          order: [["createdAt", "ASC"]],
+        });
 
-  for (const workspace of workspaces) {
-    let hasMore = true;
-    do {
-      const batch = await AgentConfigurationModel.findAll({
-        where: {
-          status: "pending",
-          createdAt: { [Op.lt]: cutoffDate },
-          workspaceId: workspace.id,
-        },
-        limit: batchSize,
-        order: [["createdAt", "ASC"]],
-      });
+        hasMore = batch.length === batchSize;
 
-      hasMore = batch.length === batchSize;
+        if (batch.length > 0) {
+          await batchHardDeletePendingAgentConfigurations(batch, workspace.id);
+          deleted += batch.length;
+        }
 
-      if (batch.length > 0) {
-        await batchHardDeletePendingAgentConfigurations(batch, workspace.id);
-        totalDeleted += batch.length;
-      }
+        Context.current().heartbeat();
+      } while (hasMore);
 
-      Context.current().heartbeat();
-    } while (hasMore);
-  }
+      return deleted;
+    }
+  );
+
+  const totalDeleted = results.reduce((sum, count) => sum + count, 0);
 
   logger.info(
     { totalDeleted },
     "Done purging expired pending agent configurations."
-  );
-}
-
-export async function purgeExpiredSyntheticSuggestionsActivity(
-  batchSize: number = BATCH_SIZE
-) {
-  const cutoffDate = getSyntheticSuggestionsDeletionCutoffDate();
-
-  logger.info(
-    {},
-    `About to purge synthetic agent suggestions created before ${cutoffDate.toISOString()}.`
-  );
-
-  const workspaces = await WorkspaceResource.listAll();
-
-  let totalDeleted = 0;
-
-  for (const workspace of workspaces) {
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    let hasMore = true;
-
-    do {
-      const deletedCount = await AgentSuggestionResource.deleteExpiredSynthetic(
-        auth,
-        cutoffDate,
-        {
-          limit: batchSize,
-        }
-      );
-
-      totalDeleted += deletedCount;
-      hasMore = deletedCount === batchSize;
-
-      Context.current().heartbeat();
-    } while (hasMore);
-  }
-
-  logger.info(
-    { totalDeleted },
-    "Done purging expired synthetic agent suggestions."
   );
 }
 
@@ -220,29 +183,33 @@ export async function purgeExpiredSyntheticSkillSuggestionsActivity(
     `About to purge synthetic skill suggestions created before ${cutoffDate.toISOString()}.`
   );
 
-  const workspaces = await WorkspaceResource.listAll();
+  const results = await runOnAllWorkspacesInActivity(
+    async (auth) => {
+      let deleted = 0;
+      let hasMore = true;
 
-  let totalDeleted = 0;
+      do {
+        const deletedCount =
+          await SkillSuggestionResource.deleteExpiredSynthetic(
+            auth,
+            cutoffDate,
+            {
+              limit: batchSize,
+            }
+          );
 
-  for (const workspace of workspaces) {
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    let hasMore = true;
+        deleted += deletedCount;
+        hasMore = deletedCount === batchSize;
 
-    do {
-      const deletedCount = await SkillSuggestionResource.deleteExpiredSynthetic(
-        auth,
-        cutoffDate,
-        {
-          limit: batchSize,
-        }
-      );
+        Context.current().heartbeat();
+      } while (hasMore);
 
-      totalDeleted += deletedCount;
-      hasMore = deletedCount === batchSize;
+      return deleted;
+    },
+    { excludePlanCodes: REINFORCEMENT_EXCLUDED_PLAN_CODES }
+  );
 
-      Context.current().heartbeat();
-    } while (hasMore);
-  }
+  const totalDeleted = results.reduce((sum, count) => sum + count, 0);
 
   logger.info(
     { totalDeleted },
