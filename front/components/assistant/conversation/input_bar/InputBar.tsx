@@ -64,7 +64,6 @@ interface InputBarProps {
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
   isSubmitting?: boolean;
-  disable?: boolean;
   isAgentBuilder?: boolean;
   submitBlockMessage?: string | null;
 }
@@ -83,7 +82,6 @@ export const InputBar = React.memo(function InputBar({
   isAgentBuilder = false,
   isFloating = true,
   isSubmitting = false,
-  disable = false,
   submitBlockMessage = null,
 }: InputBarProps) {
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
@@ -422,7 +420,6 @@ export const InputBar = React.memo(function InputBar({
           "border-border-dark dark:border-border-dark/10",
           "sm:border-border-dark/50 sm:focus-within:border-border-dark",
           "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
-          disable && "cursor-not-allowed opacity-75",
           isFloating
             ? classNames(
                 "focus-within:ring-1 dark:focus-within:ring-1",
@@ -445,7 +442,6 @@ export const InputBar = React.memo(function InputBar({
               onRemove: handleNodesAttachmentRemove,
             }}
             conversationId={conversation?.sId}
-            disable={disable}
           />
           <InputBarContainer
             actions={actions}
@@ -463,7 +459,6 @@ export const InputBar = React.memo(function InputBar({
             isSubmitting={
               isLocalSubmitting || fileUploaderService.isProcessingFiles
             }
-            disableInput={disable || isLocalSubmitting}
             onNodeSelect={handleNodesAttachmentSelect}
             onNodeUnselect={handleNodesAttachmentRemove}
             selectedMCPServerViews={selectedMCPServerViews}

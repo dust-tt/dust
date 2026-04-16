@@ -30,7 +30,6 @@ interface InputBarButtonsProps {
   clientType: string;
   conversation?: ConversationWithoutContentType;
   disableAgentSelector: boolean;
-  disableInput: boolean;
   editorService: ReturnType<typeof useCustomEditor>["editorService"];
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
   fileUploaderService: FileUploaderService;
@@ -55,7 +54,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   clientType,
   conversation,
   disableAgentSelector,
-  disableInput,
   editorService,
   fileInputRef,
   fileUploaderService,
@@ -95,7 +93,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
         actions.includes("agents-list-with-actions") &&
         clientType !== "extension"
       }
-      disabled={disableInput}
       pickerButton={
         selectedAgent ? (
           <Button
@@ -129,7 +126,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       onSelect={onMCPServerViewSelect}
       selectedSkills={selectedSkills}
       onSkillSelect={onSkillSelect}
-      disabled={disableInput}
       buttonSize={buttonSize}
     />
   );
@@ -157,7 +153,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
           onNodeSelect={onNodeSelect}
           onNodeUnselect={onNodeUnselect}
           attachedNodes={attachedNodes}
-          disabled={disableInput}
           buttonSize={buttonSize}
           toolFileUpload={{
             useCase: "conversation",
