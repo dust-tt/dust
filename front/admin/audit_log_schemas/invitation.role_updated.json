@@ -11,6 +11,7 @@
   "metadata": {
     "invitedEmail": "string",
     "previousRole": "string",
-    "newRole": "string"
+    "newRole": "string",
+    "actor_type": "string"
   }
 }

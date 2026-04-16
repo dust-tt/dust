@@ -10,6 +10,7 @@
   ],
   "metadata": {
     "previousRole": "string",
-    "newRole": "string"
+    "newRole": "string",
+    "actor_type": "string"
   }
 }

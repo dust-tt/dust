@@ -11,6 +11,7 @@
   "metadata": {
     "dataSourceName": "string",
     "provider": "string",
-    "deletedBy": "string"
+    "deletedBy": "string",
+    "actor_type": "string"
   }
 }

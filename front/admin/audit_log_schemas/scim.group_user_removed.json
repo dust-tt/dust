@@ -15,6 +15,7 @@
     "groupName": "string",
     "userEmail": "string",
     "directoryId": "string",
-    "roleChange": "string"
+    "roleChange": "string",
+    "actor_type": "string"
   }
 }

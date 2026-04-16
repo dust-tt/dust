@@ -10,6 +10,7 @@
   ],
   "metadata": {
     "previousOrigin": "string",
-    "newOrigin": "string"
+    "newOrigin": "string",
+    "actor_type": "string"
   }
 }
