@@ -27,15 +27,17 @@ const NOTIFICATION_CONDITION_LABELS: Record<NotificationCondition, string> = {
   never: "Don't notify me",
 };
 
+interface ProjectNotificationMenuProps {
+  activeSpaceId: string | null;
+  owner: WorkspaceType;
+  shouldWaitBeforeFetching: boolean;
+}
+
 export function ProjectNotificationMenu({
   activeSpaceId,
   owner,
   shouldWaitBeforeFetching,
-}: {
-  activeSpaceId: string | null;
-  owner: WorkspaceType;
-  shouldWaitBeforeFetching: boolean;
-}) {
+}: ProjectNotificationMenuProps) {
   const {
     metadata: defaultNotificationCondition,
     isMetadataLoading: isDefaultNotificationConditionLoading,
