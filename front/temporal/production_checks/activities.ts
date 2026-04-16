@@ -8,7 +8,6 @@ import { checkExtraneousWorkflows } from "@app/lib/production_checks/checks/chec
 
 import { checkNotionActiveWorkflows } from "@app/lib/production_checks/checks/check_notion_active_workflows";
 import { checkPausedConnectors } from "@app/lib/production_checks/checks/check_paused_connectors";
-import { checkReinforcementWorkspaceWorkflows } from "@app/lib/production_checks/checks/check_reinforcement_workspace_workflows";
 import { checkWebcrawlerSchedulerActiveWorkflow } from "@app/lib/production_checks/checks/check_webcrawler_scheduler_active_workflow";
 import { managedDataSourceGCGdriveCheck } from "@app/lib/production_checks/checks/managed_data_source_gdrive_gc";
 import mainLogger from "@app/logger/logger";
@@ -76,11 +75,6 @@ export const REGISTERED_CHECKS: Check[] = [
   {
     name: "check_ended_backend_only_subscriptions",
     check: checkEndedBackendOnlySubscriptions,
-    everyHour: 24,
-  },
-  {
-    name: "check_reinforcement_workspace_workflows",
-    check: checkReinforcementWorkspaceWorkflows,
     everyHour: 24,
   },
 ];
