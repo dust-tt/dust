@@ -2872,6 +2872,17 @@ export async function updateAgentMessageWithFinalStatus(
       };
     }
 
+    if (!agentMessage.configuration) {
+      // Configuration is not available (e.g., workflow error path where the agent
+      // message is reconstructed without its configuration). Promote pending user
+      // messages but don't attempt to create a new agent message.
+      return {
+        promotedUserMessages,
+        promotedAuth,
+        agentMessage: null,
+      };
+    }
+
     const nextMessageRank = await getNextConversationMessageRank(auth, {
       conversation,
       transaction: t,
