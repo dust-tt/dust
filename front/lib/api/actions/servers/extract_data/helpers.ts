@@ -141,9 +141,7 @@ export async function getPromptForProcessDustApp({
       equippedSkills: [],
       agentsList: null,
       conversation,
-      disableNativeReasoningMetaPrompt: featureFlags.includes(
-        "disable_claude_native_reasoning_meta_prompt"
-      ),
+      narrateProgress: featureFlags.includes("narrate_progress"),
     })
   );
 }

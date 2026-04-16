@@ -290,9 +290,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable context compaction: summarize older messages to free up context window",
     stage: "dust_only",
   },
-  disable_claude_native_reasoning_meta_prompt: {
+  narrate_progress: {
     description:
-      "Remove the Claude 4 native reasoning meta prompt that instructs the model to only output text after all tool calls complete. Used to test letting the model decide based on inline activity.",
+      "Inject a meta prompt at medium/high reasoning effort asking the model to narrate what it's finding while using tools, rather than only speaking after all tools complete.",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

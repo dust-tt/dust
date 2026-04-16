@@ -1,3 +1,6 @@
+export const NARRATE_PROGRESS_META_PROMPT =
+  "Share what you're finding as you search: your progress is interesting, not just the final answer.";
+
 export const CHAIN_OF_THOUGHT_META_PROMPT =
   "You must structure ALL your output using `<thinking>` and `<response>` tags:\n\n" +
   "RULES:\n" +

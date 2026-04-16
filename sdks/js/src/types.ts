@@ -747,7 +747,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "collapsible_messages"
   | "use_dust_keys"
   | "enable_compaction"
-  | "disable_claude_native_reasoning_meta_prompt"
+  | "narrate_progress"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

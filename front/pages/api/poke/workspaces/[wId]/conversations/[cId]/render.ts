@@ -265,9 +265,7 @@ async function handler(
         serverToolsAndInstructions,
         enabledSkills,
         equippedSkills,
-        disableNativeReasoningMetaPrompt: featureFlags.includes(
-          "disable_claude_native_reasoning_meta_prompt"
-        ),
+        narrateProgress: featureFlags.includes("narrate_progress"),
       });
       const prompt = systemPromptToText(promptSections);
 

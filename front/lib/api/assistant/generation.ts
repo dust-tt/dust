@@ -32,7 +32,10 @@ import type {
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
+import {
+  CHAIN_OF_THOUGHT_META_PROMPT,
+  NARRATE_PROGRESS_META_PROMPT,
+} from "@app/types/assistant/chain_of_thought_meta_prompt";
 import type {
   ConversationWithoutContentType,
   UserMessageType,
@@ -87,13 +90,13 @@ function constructToolsSection({
   model,
   agentConfiguration,
   serverToolsAndInstructions,
-  disableNativeReasoningMetaPrompt,
+  narrateProgress,
 }: {
   hasAvailableActions: boolean;
   model: ModelConfigurationType;
   agentConfiguration: AgentConfigurationType;
   serverToolsAndInstructions?: ServerToolsAndInstructions[];
-  disableNativeReasoningMetaPrompt?: boolean;
+  narrateProgress?: boolean;
 }): string {
   let toolsSection = "# TOOLS\n";
 
@@ -108,12 +111,12 @@ function constructToolsSection({
   ) {
     toolUseDirectives += `${CHAIN_OF_THOUGHT_META_PROMPT}\n`;
   } else if (
-    model.nativeReasoningMetaPrompt &&
-    !disableNativeReasoningMetaPrompt &&
+    hasAvailableActions &&
+    narrateProgress &&
     (agentConfiguration.model.reasoningEffort === "medium" ||
       agentConfiguration.model.reasoningEffort === "high")
   ) {
-    toolUseDirectives += `${model.nativeReasoningMetaPrompt}\n`;
+    toolUseDirectives += `${NARRATE_PROGRESS_META_PROMPT}\n`;
   }
 
   toolUseDirectives +=
@@ -386,7 +389,7 @@ export function constructPromptMultiActions(
     toolsetsContext,
     userContext,
     workspaceContext,
-    disableNativeReasoningMetaPrompt,
+    narrateProgress,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -403,7 +406,7 @@ export function constructPromptMultiActions(
     toolsetsContext?: string;
     userContext?: string;
     workspaceContext?: string;
-    disableNativeReasoningMetaPrompt?: boolean;
+    narrateProgress?: boolean;
   }
 ): SystemPromptSections {
   const owner = auth.workspace();
@@ -436,7 +439,7 @@ export function constructPromptMultiActions(
     model,
     agentConfiguration,
     serverToolsAndInstructions,
-    disableNativeReasoningMetaPrompt,
+    narrateProgress,
   });
   const skillsSection = constructSkillsSection({
     enabledSkills,

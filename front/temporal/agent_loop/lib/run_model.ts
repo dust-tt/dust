@@ -383,9 +383,7 @@ export async function runModel(
     toolsetsContext,
     userContext,
     workspaceContext,
-    disableNativeReasoningMetaPrompt: featureFlags.includes(
-      "disable_claude_native_reasoning_meta_prompt"
-    ),
+    narrateProgress: featureFlags.includes("narrate_progress"),
   });
 
   const specifications: AgentActionSpecification[] = [];
