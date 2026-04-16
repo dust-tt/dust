@@ -353,7 +353,7 @@ export const AgentInputBar = ({
             className="flex items-center gap-1 rounded-xl border border-border bg-white p-1 dark:border-border-night dark:bg-muted-night"
             style={{
               position: "absolute",
-              top: "-2em",
+              top: "-2rem",
             }}
           >
             {showStopButton && (
