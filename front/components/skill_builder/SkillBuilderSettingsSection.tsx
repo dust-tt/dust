@@ -3,13 +3,13 @@ import { SkillBuilderIsDefaultSection } from "@app/components/skill_builder/Skil
 import { SkillBuilderNameSection } from "@app/components/skill_builder/SkillBuilderNameSection";
 import { SkillBuilderUserFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderUserFacingDescriptionSection";
 import { SkillEditorsSheet } from "@app/components/skill_builder/SkillEditorsSheet";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   Label,
 } from "@dust-tt/sparkle";
-import type {SkillType} from "@app/types/assistant/skill_configuration";
 
 interface SkillBuilderSettingsSectionProps {
   skill?: SkillType;
