@@ -395,11 +395,11 @@ export async function updateResourceAndPublishEvent(
   // All events go through the coalescer, which handles batching logic internally.
   const key = `${conversation.sId}-${event.messageId}-${step}`;
   const flushIntervalMs =
-    conversation.depth > 0
-      ? conversation.depth > 1
-        : DEEP_CONVERSATION_FLUSH_INTERVAL_MS
+    conversation.depth > 1
+      ? DEEP_CONVERSATION_FLUSH_INTERVAL_MS
+      : conversation.depth > 0
         ? SUB_AGENT_FLUSH_INTERVAL_MS
-      : undefined;
+        : undefined;
 
   await globalCoalescer.handleEvent({
     conversationId: conversation.sId,
