@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Dust",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Get more done, faster, with the power of your agents at your fingertips.",
   "icons": {
     "16": "images/dust16.png",
@@ -39,13 +39,7 @@
       "matches": ["<all_urls>"]
     }
   ],
-  "permissions": [
-    "identity",
-    "storage",
-    "tabs",
-    "scripting",
-    "contextMenus"
-  ],
-  "optional_permissions":["notifications"],
+  "permissions": ["identity", "storage", "tabs", "scripting", "contextMenus"],
+  "optional_permissions": ["notifications"],
   "host_permissions": ["<all_urls>"]
 }
