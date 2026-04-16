@@ -15,7 +15,7 @@ import {
   getSyntheticSuggestionsDeletionCutoffDate,
   isSequelizeForeignKeyConstraintError,
 } from "@app/temporal/hard_delete/utils";
-import { runOnAllWorkspacesInActivity } from "@app/temporal/utils";
+import { runOnAllWorkspacesInActivity } from "@app/temporal/activity_utils";
 import { Context } from "@temporalio/activity";
 import type { Sequelize } from "sequelize";
 import { Op, QueryTypes } from "sequelize";

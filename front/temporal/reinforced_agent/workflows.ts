@@ -15,7 +15,7 @@ import {
   proxyActivities,
   sleep,
 } from "@temporalio/workflow";
-import { concurrentExecutor } from "../utils";
+import { concurrentExecutor } from "../workflow_utils";
 
 // Export an interceptors variable to add OpenTelemetry interceptors to the workflow.
 export const interceptors: WorkflowInterceptorsFactory = () => ({
