@@ -261,9 +261,11 @@ const getConversationDetails = async ({
     author = "Someone else";
     authorIsAgent = false;
   } else if (isUserMessageType(message)) {
-    author = message.user?.fullName ?? "Someone else";
+    author =
+      message.user?.fullName ?? message.context.fullName ?? "Someone else";
     authorUserId = message.user?.sId ?? undefined;
-    avatarUrl = message.user?.image ?? undefined;
+    avatarUrl =
+      message.user?.image ?? message.context.profilePictureUrl ?? undefined;
     authorIsAgent = false;
 
     // Extract approved user mentions from the rendered message.
