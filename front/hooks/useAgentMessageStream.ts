@@ -292,6 +292,7 @@ export function useAgentMessageStream({
   const { mutateContextUsage } = useConversationContextUsage({
     conversationId,
     workspaceId: owner.sId,
+    options: { disabled: true },
   });
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
