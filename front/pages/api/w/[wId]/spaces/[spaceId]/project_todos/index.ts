@@ -65,7 +65,7 @@ async function handler(
       const allConversationSIds = new Set<string>();
       for (const sources of sourcesByTodoSId.values()) {
         for (const source of sources) {
-          if (source.sourceType === "conversation") {
+          if (source.sourceType === "project_conversation") {
             allConversationSIds.add(source.sourceId);
           }
         }
@@ -90,7 +90,7 @@ async function handler(
             sourceType: s.sourceType,
             sourceId: s.sourceId,
             title:
-              s.sourceType === "conversation"
+              s.sourceType === "project_conversation"
                 ? (titleByConversationSId.get(s.sourceId) ?? null)
                 : null,
           })),

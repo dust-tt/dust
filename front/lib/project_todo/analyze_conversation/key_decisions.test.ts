@@ -11,8 +11,7 @@ describe("buildKeyDecisions", () => {
     const raw = [
       {
         sId: knownSId,
-        text: "Use PostgreSQL",
-        source_message_rank: 3,
+        short_description: "Use PostgreSQL",
         status: "decided" as const,
       },
     ];
@@ -23,8 +22,7 @@ describe("buildKeyDecisions", () => {
   it("maps decided status", () => {
     const raw = [
       {
-        text: "Ship without feature flags",
-        source_message_rank: 1,
+        short_description: "Ship without feature flags",
         status: "decided" as const,
       },
     ];
@@ -35,8 +33,7 @@ describe("buildKeyDecisions", () => {
   it("maps open status", () => {
     const raw = [
       {
-        text: "Decide on caching strategy",
-        source_message_rank: 2,
+        short_description: "Decide on caching strategy",
         status: "open" as const,
       },
     ];
@@ -47,8 +44,7 @@ describe("buildKeyDecisions", () => {
   it("returns empty relevantUserIds when no user ids provided", () => {
     const raw = [
       {
-        text: "Use Redis",
-        source_message_rank: 1,
+        short_description: "Use Redis",
         status: "decided" as const,
       },
     ];
@@ -59,8 +55,7 @@ describe("buildKeyDecisions", () => {
   it("resolves relevantUserIds from valid participant ids", () => {
     const raw = [
       {
-        text: "Use Redis",
-        source_message_rank: 1,
+        short_description: "Use Redis",
         status: "decided" as const,
         relevant_user_ids: ["user-abc", "unknown-id"],
       },
@@ -70,17 +65,15 @@ describe("buildKeyDecisions", () => {
     expect(result[0].relevantUserIds).toEqual(["user-abc"]);
   });
 
-  it("preserves text and sourceMessageRank", () => {
+  it("preserves shortDescription", () => {
     const raw = [
       {
-        text: "Launch in Europe first",
-        source_message_rank: 10,
+        short_description: "Launch in Europe first",
         status: "decided" as const,
       },
     ];
     const result = buildKeyDecisions(raw, new Set(), new Set());
-    expect(result[0].text).toBe("Launch in Europe first");
-    expect(result[0].sourceMessageRank).toBe(10);
+    expect(result[0].shortDescription).toBe("Launch in Europe first");
   });
 
   it("returns an empty array for empty input", () => {
@@ -99,24 +92,24 @@ describe("buildPromptKeyDecisions", () => {
     const decisions: TodoVersionedKeyDecision[] = [
       {
         sId: "dec-1",
-        text: "Adopt monorepo",
+        shortDescription: "Adopt monorepo",
         relevantUserIds: [],
-        sourceMessageRank: 1,
         status: "decided",
       },
       {
         sId: "dec-2",
-        text: "Frontend framework TBD",
+        shortDescription: "Frontend framework TBD",
         relevantUserIds: [],
-        sourceMessageRank: 2,
         status: "open",
       },
     ];
     const prompt = buildPromptKeyDecisions(decisions);
     expect(prompt).toContain("Known key decisions:");
-    expect(prompt).toContain("sId: dec-1");
-    expect(prompt).toContain("[decided] Adopt monorepo");
-    expect(prompt).toContain("sId: dec-2");
-    expect(prompt).toContain("[open] Frontend framework TBD");
+    expect(prompt).toContain(
+      `<key_decision sId="dec-1" status="decided"><short_description>Adopt monorepo</short_description></key_decision>`
+    );
+    expect(prompt).toContain(
+      `<key_decision sId="dec-2" status="open"><short_description>Frontend framework TBD</short_description></key_decision>`
+    );
   });
 });

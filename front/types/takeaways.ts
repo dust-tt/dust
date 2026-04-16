@@ -2,10 +2,9 @@ export type TodoVersionedActionItemStatus = "open" | "done";
 
 export type TodoVersionedActionItem = {
   sId: string;
-  text: string;
+  shortDescription: string;
   assigneeUserId: string | null;
   assigneeName: string | null;
-  sourceMessageRank: number;
   status: TodoVersionedActionItemStatus;
   detectedDoneAt: string | null;
   detectedDoneRationale: string | null;
@@ -13,17 +12,15 @@ export type TodoVersionedActionItem = {
 
 export type TodoVersionedNotableFact = {
   sId: string;
-  text: string;
+  shortDescription: string;
   relevantUserIds: string[];
-  sourceMessageRank: number;
 };
 
 export type TodoVersionedKeyDecisionStatus = "decided" | "open";
 
 export type TodoVersionedKeyDecision = {
   sId: string;
-  text: string;
+  shortDescription: string;
   relevantUserIds: string[];
-  sourceMessageRank: number;
   status: TodoVersionedKeyDecisionStatus;
 };

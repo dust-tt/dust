@@ -352,6 +352,7 @@ export const IncludeResultResourceSchema = z.object({
   ref: z.string(),
   chunks: z.array(z.string()),
   source: z.object({
+    mimeType: z.string().optional(),
     name: z.string(),
     provider: z.string().optional(),
   }),

@@ -14,13 +14,12 @@ export function buildActionItems(
       item.sId !== undefined && previousSIds.has(item.sId)
         ? item.sId
         : uuidv4(),
-    text: item.text,
+    shortDescription: item.short_description,
     assigneeUserId:
       item.assignee_user_id && participantSIds.has(item.assignee_user_id)
         ? item.assignee_user_id
         : null,
     assigneeName: item.assignee_name ?? null,
-    sourceMessageRank: item.source_message_rank,
     status: item.status,
     detectedDoneAt: item.status === "done" ? now : null,
     detectedDoneRationale: item.detected_done_rationale ?? null,
@@ -31,30 +30,31 @@ export function buildPromptActionItems(
   previousActionItems: TodoVersionedActionItem[]
 ): string {
   let prompt =
-    "You are a conversation analyst. Your job is to extract action items from a conversation.\n\n" +
+    "You are a document analyst. Your job is to extract action items from a document.\n\n" +
     "Action item guidelines:\n" +
     "- An action item is a concrete task that someone committed to doing, or was asked to do.\n" +
-    "- Use the exact message rank where the action item was first mentioned as source_message_rank.\n" +
-    "- If an action item was explicitly completed or resolved in the conversation, set status to 'done'.\n" +
-    "- Include an assignee_name only when clearly stated in the conversation.\n" +
+    "- If an action item was explicitly completed or resolved in the document, set status to 'done'.\n" +
+    "- Include an assignee_name only when clearly stated in the document.\n" +
     "- Include an assignee_user_id (from the participant list) when the assignee matches a known participant.\n" +
     "- Be concise: one action item per distinct task.\n" +
     "- Do not include vague or aspirational items — only concrete commitments.\n\n";
   if (previousActionItems.length > 0) {
     prompt +=
-      "The following action items were detected in a previous analysis of this conversation. " +
-      "If you detect the same task again, copy its sId exactly into the output. " +
+      "The following action items were detected in a previous analysis of this document. " +
+      "If you detect the same task again, copy its sId exactly into the output and keep the other required fields the same. " +
       "Omit the sId field for brand-new tasks that were not previously tracked.\n\n" +
       "Known action items:\n";
     for (const item of previousActionItems) {
-      prompt += `- sId: ${item.sId} | ${item.status === "done" ? "[done]" : "[open]"} ${item.text}`;
+      prompt += `<action_item sId="${item.sId}" status="${item.status}">`;
+      prompt += `<short_description>${item.shortDescription}</short_description>`;
       if (item.assigneeName) {
-        prompt += ` (assigned: ${item.assigneeName}`;
+        prompt += `<assignee name="${item.assigneeName}"`;
         if (item.assigneeUserId) {
-          prompt += `, id: ${item.assigneeUserId}`;
+          prompt += ` user_id="${item.assigneeUserId}"`;
         }
-        prompt += ")";
+        prompt += ` />`;
       }
+      prompt += `</action_item>`;
       prompt += "\n";
     }
     prompt += "\n";

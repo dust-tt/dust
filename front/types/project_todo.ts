@@ -12,7 +12,13 @@ export const PROJECT_TODO_ACTOR_TYPES = ["user", "agent"] as const;
 
 export type ProjectTodoActorType = (typeof PROJECT_TODO_ACTOR_TYPES)[number];
 
-export const PROJECT_TODO_SOURCE_TYPES = ["conversation"] as const;
+export const PROJECT_TODO_SOURCE_TYPES = [
+  "project_conversation",
+  "project_knowledge",
+  "slack",
+  "notion",
+  "gdrive",
+] as const;
 
 export type ProjectTodoSourceType = (typeof PROJECT_TODO_SOURCE_TYPES)[number];
 

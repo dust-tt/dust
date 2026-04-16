@@ -78,7 +78,7 @@ makeScript(
 
         if (execute) {
           await launchOrSignalProjectTodoWorkflow({
-            authType: auth.toJSON(),
+            workspaceId: workspace.sId,
             spaceId: space.sId,
           });
         }
