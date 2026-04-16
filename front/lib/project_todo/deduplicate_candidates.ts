@@ -138,7 +138,7 @@ function buildDeduplicationPrompt(
 // existing TODO, or an empty map on failure (treat all candidates as new).
 // Precondition: all candidates must share the same category — batchDeduplicateCandidates
 // enforces this by grouping on makeDedupGroupKey before calling here.
-async function runDeduplicationLLMCall(
+export async function runDeduplicationLLMCall(
   auth: Authenticator,
   {
     model,
