@@ -1,9 +1,9 @@
 import { config, REGION_TIMEZONES } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import { REINFORCEMENT_EXCLUDED_PLAN_CODES } from "@app/lib/plans/plan_codes";
-import { hasReinforcementEnabled } from "@app/lib/reinforced_agent/workspace_check";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -50,9 +50,7 @@ async function getReinforcementWorkspaceIds(): Promise<string[]> {
         continue;
       }
 
-      if (await hasReinforcementEnabled(auth)) {
-        flaggedIds.push(workspace.sId);
-      }
+      flaggedIds.push(workspace.sId);
     } catch (e) {
       logger.error(
         { error: e, workspaceId: workspace.sId },
@@ -157,7 +155,7 @@ export async function ensureReinforcementWorkspaceCrons(): Promise<{
   stopped: string[];
 }> {
   const client = await getTemporalClientForFrontNamespace();
-  const flaggedWorkspaceIds = new Set(await getReinforcementWorkspaceIds());
+  const reinforcedWorkspaceIds = new Set(await getReinforcementWorkspaceIds());
 
   // Find currently running cron workflows by workflow type.
   const runningWorkspaceIds = new Set<string>();
@@ -169,26 +167,46 @@ export async function ensureReinforcementWorkspaceCrons(): Promise<{
     );
   }
 
+  // Workspaces that need a cron started / stopped.
+  const toStart = [...reinforcedWorkspaceIds].filter(
+    (id) => !runningWorkspaceIds.has(id)
+  );
+  const toStop = [...runningWorkspaceIds].filter(
+    (id) => !reinforcedWorkspaceIds.has(id)
+  );
+
+  const CONCURRENCY = 5;
+
   // Start crons for flagged workspaces that aren't running.
-  const started: string[] = [];
-  for (const workspaceId of flaggedWorkspaceIds) {
-    if (!runningWorkspaceIds.has(workspaceId)) {
+  const started = await concurrentExecutor(
+    toStart,
+    async (workspaceId) => {
+      logger.info(
+        { workspaceId },
+        "[Reinforcement] Starting cron for workspace."
+      );
       await launchReinforcementWorkspaceCron({ workspaceId });
-      started.push(workspaceId);
-    }
-  }
+      return workspaceId;
+    },
+    { concurrency: CONCURRENCY }
+  );
 
   // Stop crons for workspaces that are running but no longer flagged.
-  const stopped: string[] = [];
-  for (const workspaceId of runningWorkspaceIds) {
-    if (!flaggedWorkspaceIds.has(workspaceId)) {
+  const stopped = await concurrentExecutor(
+    toStop,
+    async (workspaceId) => {
+      logger.info(
+        { workspaceId },
+        "[Reinforcement] Stopping cron for workspace."
+      );
       await stopReinforcementWorkspaceCron({
         workspaceId,
         stopReason: "Workspace no longer flagged for reinforcement",
       });
-      stopped.push(workspaceId);
-    }
-  }
+      return workspaceId;
+    },
+    { concurrency: CONCURRENCY }
+  );
 
   logger.info(
     { startedCount: started.length, stoppedCount: stopped.length },
