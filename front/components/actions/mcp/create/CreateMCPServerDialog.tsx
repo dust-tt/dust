@@ -139,9 +139,11 @@ export function CreateMCPServerDialog({
     return {
       ...getCreateMCPServerDialogDefaultValues(defaultServerConfig),
       viewName: suggestedViewName,
+      // Pre-fill headers and store their keys so the form can lock them as non-removable.
       ...(predefinedHeaders && {
         useCustomHeaders: true,
         customHeaders: predefinedHeaders.map((key) => ({ key, value: "" })),
+        predefinedHeaderKeys: predefinedHeaders,
       }),
     };
   }, [defaultServerConfig, suggestedViewName, predefinedHeaders]);
@@ -544,7 +546,6 @@ export function CreateMCPServerDialog({
               <CustomHeadersConfigurationSection
                 defaultServerConfig={defaultServerConfig}
                 internalMCPServer={internalMCPServer}
-                predefinedHeaders={predefinedHeaders}
               />
             </div>
           </DialogContainer>

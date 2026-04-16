@@ -1,8 +1,9 @@
 interface TokenFieldLabel {
   label: string;
-  placeholder: string;
+  placeholder?: string;
   tooltip: string;
   predefinedHeaders?: string[];
+  // Set to false when the API uses custom headers instead of a bearer token.
   showBearerTokenSection?: boolean;
 }
 
@@ -21,7 +22,6 @@ const SERVER_TOKEN_LABELS: Record<string, TokenFieldLabel> = {
   },
   clari_copilot: {
     label: "Clari Copilot API Credentials",
-    placeholder: "",
     tooltip:
       "You can find your credentials in Clari Copilot under Workspace Settings > Integrations > Clari Copilot API.",
     predefinedHeaders: ["X-Api-Key", "X-Api-Password"],

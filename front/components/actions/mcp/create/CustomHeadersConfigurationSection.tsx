@@ -15,13 +15,11 @@ import { useController, useFormContext } from "react-hook-form";
 interface CustomHeadersConfigurationSectionProps {
   defaultServerConfig?: DefaultRemoteMCPServerConfig;
   internalMCPServer?: MCPServerType;
-  predefinedHeaders?: string[];
 }
 
 export function CustomHeadersConfigurationSection({
   defaultServerConfig,
   internalMCPServer,
-  predefinedHeaders,
 }: CustomHeadersConfigurationSectionProps) {
   const form = useFormContext<CreateMCPServerDialogFormValues>();
   const { field: useCustomHeadersField } = useController({
@@ -30,10 +28,11 @@ export function CustomHeadersConfigurationSection({
   });
 
   const useCustomHeaders = useCustomHeadersField.value;
+  const predefinedHeaderKeys = form.watch("predefinedHeaderKeys");
 
   const showToggle =
     !defaultServerConfig &&
-    !predefinedHeaders &&
+    !predefinedHeaderKeys?.length &&
     (!internalMCPServer || requiresBearerTokenConfiguration(internalMCPServer));
 
   return (
@@ -63,9 +62,7 @@ export function CustomHeadersConfigurationSection({
         </div>
       )}
 
-      {useCustomHeaders && (
-        <MCPServerHeaders predefinedHeaderKeys={predefinedHeaders} />
-      )}
+      {useCustomHeaders && <MCPServerHeaders />}
     </>
   );
 }

@@ -2,22 +2,18 @@ import { WebCrawlerHeaderRedactedValue } from "@app/types/connectors/webcrawler"
 import { Button, Input, XMarkIcon } from "@dust-tt/sparkle";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
-interface MCPServerHeadersProps {
-  predefinedHeaderKeys?: string[];
-}
-
 type FormWithCustomHeaders = {
   customHeaders: Array<{ key: string; value: string }>;
+  predefinedHeaderKeys?: string[];
 };
 
-export function MCPServerHeaders({
-  predefinedHeaderKeys,
-}: MCPServerHeadersProps) {
+export function MCPServerHeaders() {
   // `register` binds inputs via DOM refs so RHF tracks values natively without triggering React re-renders on each
   // keystroke. Using `update` instead would replace the field object (regenerating field.id), causing React to remount
   // the input on every keystroke and lose focus.
-  const { control, register, getValues } =
+  const { control, register, getValues, watch } =
     useFormContext<FormWithCustomHeaders>();
+  const predefinedHeaderKeys = watch("predefinedHeaderKeys");
   const { fields, append, remove } = useFieldArray<
     FormWithCustomHeaders,
     "customHeaders"
