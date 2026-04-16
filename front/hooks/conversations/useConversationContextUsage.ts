@@ -5,9 +5,11 @@ import type { Fetcher } from "swr";
 export function useConversationContextUsage({
   conversationId,
   workspaceId,
+  options,
 }: {
   conversationId?: string | null;
   workspaceId: string;
+  options?: { disabled: boolean };
 }) {
   const { fetcher } = useFetcher();
   const contextUsageFetcher: Fetcher<GetConversationContextUsageResponse> =
@@ -17,7 +19,8 @@ export function useConversationContextUsage({
     conversationId
       ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/context-usage`
       : null,
-    contextUsageFetcher
+    contextUsageFetcher,
+    options
   );
 
   return {
