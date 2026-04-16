@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dust Audit Log Event"
+  short_description: "Add a front audit log event"
+  default_prompt: "Add a new audit log event in front following Dust audit logging patterns."

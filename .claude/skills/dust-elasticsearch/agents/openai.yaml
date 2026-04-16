@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dust Elasticsearch"
+  short_description: "Add or migrate front Elasticsearch indices"
+  default_prompt: "Create or update a Dust front Elasticsearch index following repository patterns."

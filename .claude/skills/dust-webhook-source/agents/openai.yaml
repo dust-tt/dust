@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dust Webhook Source"
+  short_description: "Implement a built-in webhook provider in front"
+  default_prompt: "Implement a new built-in webhook source provider in front following Dust patterns."
