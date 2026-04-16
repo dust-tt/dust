@@ -6,9 +6,10 @@ import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_bu
 import { AttachmentIcon } from "@dust-tt/sparkle";
 import { Extension } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
+import type { EditorView } from "@tiptap/pm/view";
 import { ReactRenderer } from "@tiptap/react";
 import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
-import { Suggestion } from "@tiptap/suggestion";
+import { exitSuggestion, Suggestion } from "@tiptap/suggestion";
 
 const slashCommandPluginKey = new PluginKey("slashCommand");
 
@@ -99,11 +100,25 @@ export const SlashCommandExtension =
           },
           render: () => {
             let component: ReactRenderer<SlashCommandDropdownRef> | null = null;
+            let activeEditorView: EditorView | null = null;
+
+            const closeSuggestionDropdown = () => {
+              if (!activeEditorView) {
+                return;
+              }
+
+              exitSuggestion(activeEditorView, slashCommandPluginKey);
+            };
 
             return {
               onStart: (props: SuggestionProps) => {
+                activeEditorView = props.editor.view;
                 component = new ReactRenderer(SlashCommandDropdown, {
-                  props,
+                  props: {
+                    ...props,
+                    onEscapeKeyDown: closeSuggestionDropdown,
+                    onInteractOutside: closeSuggestionDropdown,
+                  },
                   editor: props.editor,
                 });
 
@@ -115,7 +130,12 @@ export const SlashCommandExtension =
               },
 
               onUpdate(props: SuggestionProps) {
-                component?.updateProps(props);
+                activeEditorView = props.editor.view;
+                component?.updateProps({
+                  ...props,
+                  onEscapeKeyDown: closeSuggestionDropdown,
+                  onInteractOutside: closeSuggestionDropdown,
+                });
 
                 if (!props.clientRect) {
                   return;
@@ -124,9 +144,7 @@ export const SlashCommandExtension =
 
               onKeyDown(props: { event: KeyboardEvent }) {
                 if (props.event.key === "Escape") {
-                  component?.element?.remove();
-                  component?.destroy();
-                  component = null;
+                  closeSuggestionDropdown();
                   return true;
                 }
 
@@ -134,6 +152,7 @@ export const SlashCommandExtension =
               },
 
               onExit() {
+                activeEditorView = null;
                 component?.element?.remove();
                 component?.destroy();
                 component = null;
