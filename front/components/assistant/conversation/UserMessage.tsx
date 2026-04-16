@@ -232,13 +232,9 @@ export function UserMessage({
 
   const isDeleted = message.visibility === "deleted";
   const isPending = message.visibility === "pending";
-  const pendingMessageCount = useMemo(
-    () =>
-      methods.data
-        .get()
-        .filter((m) => isUserMessage(m) && m.visibility === "pending").length,
-    [methods.data]
-  );
+  const pendingMessageCount = methods.data
+    .get()
+    .filter((m) => isUserMessage(m) && m.visibility === "pending").length;
   const isEmpty = !message.content && message.contentFragments.length === 0;
   const isCurrentUser = message.user?.sId === currentUserId;
   const canDelete =
