@@ -4,7 +4,7 @@ import { DataSourceLinkExtension } from "@app/components/editor/extensions/input
 import {
   getEditorViewRangeRect,
   getInputBarSkillSlashTrigger,
-} from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionExtension";
+} from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionUtils";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";

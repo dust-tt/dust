@@ -14,7 +14,7 @@ import {
 import {
   getEditorViewRangeRect,
   getInputBarSkillSlashTrigger,
-} from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionExtension";
+} from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionUtils";
 import type { MentionsStrippedPayload } from "@app/components/editor/extensions/MentionExtension";
 import type { SlashCommandDropdownRef } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
