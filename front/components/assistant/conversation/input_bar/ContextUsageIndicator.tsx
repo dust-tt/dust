@@ -26,6 +26,8 @@ interface CircleProgressProps {
   size?: number;
 }
 
+const CONTEXT_USAGE_PERCENT_THRESHOLD = 33;
+
 function CircleProgress({ percentage, size = 16 }: CircleProgressProps) {
   const strokeWidth = size * 0.14;
   const radius = (size - strokeWidth) / 2;
@@ -121,7 +123,7 @@ export function ContextUsageIndicator({
                 The current context usage is at {percentage}%
               </span>
             </div>
-            {percentage > 33 && (
+            {percentage > CONTEXT_USAGE_PERCENT_THRESHOLD && (
               <Button
                 variant="outline"
                 size="xs"
