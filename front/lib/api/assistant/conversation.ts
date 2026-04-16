@@ -2871,6 +2871,17 @@ export async function updateAgentMessageWithFinalStatus(
       t,
     });
 
+    if (status === "cancelled") {
+      // When the agent message is cancelled it means the user pushed the "stop" button so the
+      // intent is to interrupt all work. We promot user messages but don't trigger a new agent
+      // message.
+      return {
+        promotedUserMessages,
+        promotedAuth,
+        agentMessage: null,
+      };
+    }
+
     const nextMessageRank = await getNextConversationMessageRank(auth, {
       conversation,
       transaction: t,
