@@ -96,11 +96,11 @@ export function SkillBuilderIsDefaultSection() {
             leftButtonProps={{
               label: "Cancel",
               variant: "outline",
-              disabled: isDescriptionTooShort
             }}
             rightButtonProps={{
               label: "Confirm",
               variant: "warning",
+              disabled: isDescriptionTooShort,
               onClick: handleConfirm,
             }}
           />
