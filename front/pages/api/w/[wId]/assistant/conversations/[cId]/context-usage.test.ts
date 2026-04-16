@@ -1,247 +1,150 @@
-import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentMessageModel,
-  CompactionMessageModel,
-  MessageModel,
-} from "@app/lib/models/agent/conversation";
-import {
-  RunModel,
-  RunUsageModel,
-} from "@app/lib/resources/storage/models/runs";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { describe, expect, it } from "vitest";
+import type { SupportedModel } from "@app/types/assistant/models/types";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import handler from "./context-usage";
 
-async function setupTest() {
-  const { req, res, workspace, auth } = await createPrivateApiMockRequest({
-    role: "admin",
-    method: "GET",
-  });
+const MODEL: SupportedModel = {
+  providerId: "anthropic",
+  modelId: "claude-haiku-4-5-20251001",
+};
 
-  const agent = await AgentConfigurationFactory.createTestAgent(auth, {
-    name: "Test Agent",
-    description: "Test agent for context usage.",
-  });
-
-  const conversation = await ConversationFactory.create(auth, {
-    agentConfigurationId: agent.sId,
-    messagesCreatedAt: [],
-  });
-
-  req.query.wId = workspace.sId;
-  req.query.cId = conversation.sId;
-  req.url = `/api/w/${workspace.sId}/assistant/conversations/${conversation.sId}/context-usage`;
-
+function makeRunUsage({
+  promptTokens,
+  completionTokens,
+}: {
+  promptTokens: number;
+  completionTokens: number;
+}): RunUsageType {
   return {
-    req,
-    res,
-    auth,
-    workspace,
-    agent,
-    conversation,
-  };
-}
-
-async function createRunWithUsage(
-  auth: Authenticator,
-  {
-    dustRunId,
-    createdAt,
-    promptTokens,
-    completionTokens = 10,
-  }: {
-    dustRunId: string;
-    createdAt: Date;
-    promptTokens: number;
-    completionTokens?: number;
-  }
-) {
-  const workspace = auth.getNonNullableWorkspace();
-
-  const run = await RunModel.create({
-    dustRunId,
-    runType: "deploy",
-    useWorkspaceCredentials: false,
-    workspaceId: workspace.id,
-    createdAt,
-    updatedAt: createdAt,
-  });
-
-  await RunUsageModel.create({
-    runId: run.id,
-    providerId: "anthropic",
-    modelId: "claude-haiku-4-5-20251001",
+    providerId: MODEL.providerId,
+    modelId: MODEL.modelId,
     promptTokens,
     completionTokens,
     cachedTokens: null,
     cacheCreationTokens: null,
     costMicroUsd: 1,
     isBatch: false,
-    workspaceId: workspace.id,
-  });
+  };
 }
 
-async function createAgentMessage(
-  auth: Authenticator,
-  {
-    agent,
-    conversation,
-    rank,
-    runIds,
-  }: {
-    agent: LightAgentConfigurationType;
-    conversation: ConversationWithoutContentType;
+function makeRunWithUsages(usages: RunUsageType[]) {
+  return {
+    listRunUsages: vi.fn().mockResolvedValue(usages),
+  };
+}
+
+function makeConversationResource({
+  latestAgentMessageRun,
+  latestCompactionMessageRun,
+}: {
+  latestAgentMessageRun: {
     rank: number;
-    runIds: string[] | null;
-  }
-) {
-  const workspace = auth.getNonNullableWorkspace();
-
-  const agentMessage = await AgentMessageModel.create({
-    status: "succeeded",
-    agentConfigurationId: agent.sId,
-    agentConfigurationVersion: 0,
-    runIds,
-    workspaceId: workspace.id,
-    skipToolsValidation: false,
-  });
-
-  await MessageModel.create({
-    sId: generateRandomModelSId(),
-    rank,
-    conversationId: conversation.id,
-    agentMessageId: agentMessage.id,
-    workspaceId: workspace.id,
-  });
-}
-
-async function createCompactionMessage(
-  auth: Authenticator,
-  {
-    conversation,
-    rank,
-    status,
-    runIds,
-  }: {
-    conversation: ConversationWithoutContentType;
+    run: ReturnType<typeof makeRunWithUsages>;
+  } | null;
+  latestCompactionMessageRun: {
     rank: number;
-    status: "created" | "succeeded" | "failed";
-    runIds: string[] | null;
-  }
-) {
-  const workspace = auth.getNonNullableWorkspace();
-
-  const compactionMessage = await CompactionMessageModel.create({
-    status,
-    content: status === "succeeded" ? "Summary." : null,
-    runIds,
-    workspaceId: workspace.id,
-  });
-
-  await MessageModel.create({
-    sId: generateRandomModelSId(),
-    rank,
-    conversationId: conversation.id,
-    compactionMessageId: compactionMessage.id,
-    workspaceId: workspace.id,
-  });
+    run: ReturnType<typeof makeRunWithUsages>;
+  } | null;
+}) {
+  return {
+    getLatestAgentMessageRun: vi.fn().mockResolvedValue(latestAgentMessageRun),
+    getLatestCompactionMessageRun: vi
+      .fn()
+      .mockResolvedValue(latestCompactionMessageRun),
+  } satisfies Pick<
+    ConversationResource,
+    "getLatestAgentMessageRun" | "getLatestCompactionMessageRun"
+  >;
 }
+
+async function setupTest() {
+  const { req, res, workspace } = await createPrivateApiMockRequest({
+    role: "admin",
+    method: "GET",
+  });
+
+  req.query.wId = workspace.sId;
+  req.query.cId = "conversation_sid";
+  req.url = `/api/w/${workspace.sId}/assistant/conversations/conversation_sid/context-usage`;
+
+  return { req, res };
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("GET /api/w/[wId]/assistant/conversations/[cId]/context-usage", () => {
   it("uses the latest succeeded compaction run when it is newer than the latest agent run", async () => {
-    const { req, res, auth, agent, conversation } = await setupTest();
+    const { req, res } = await setupTest();
 
-    await createAgentMessage(auth, {
-      agent,
-      conversation,
-      rank: 10,
-      runIds: ["agent_run"],
-    });
-    await createCompactionMessage(auth, {
-      conversation,
-      rank: 20,
-      status: "succeeded",
-      runIds: ["compaction_run"],
-    });
-    await createCompactionMessage(auth, {
-      conversation,
-      rank: 30,
-      status: "failed",
-      runIds: ["failed_compaction_run"],
+    const agentRun = makeRunWithUsages([
+      makeRunUsage({ promptTokens: 111, completionTokens: 11 }),
+    ]);
+    const compactionRun = makeRunWithUsages([
+      makeRunUsage({ promptTokens: 222, completionTokens: 123 }),
+    ]);
+    const conversation = makeConversationResource({
+      latestAgentMessageRun: {
+        rank: 10,
+        run: agentRun,
+      },
+      latestCompactionMessageRun: {
+        rank: 20,
+        run: compactionRun,
+      },
     });
 
-    await createRunWithUsage(auth, {
-      dustRunId: "agent_run",
-      createdAt: new Date("2024-01-01T00:00:01.000Z"),
-      promptTokens: 111,
-    });
-    await createRunWithUsage(auth, {
-      dustRunId: "compaction_run",
-      createdAt: new Date("2024-01-01T00:00:02.000Z"),
-      promptTokens: 222,
-      completionTokens: 123,
-    });
-    await createRunWithUsage(auth, {
-      dustRunId: "failed_compaction_run",
-      createdAt: new Date("2024-01-01T00:00:03.000Z"),
-      promptTokens: 333,
-    });
+    vi.spyOn(ConversationResource, "fetchById").mockResolvedValue(
+      conversation as unknown as ConversationResource
+    );
 
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toMatchObject({
-      model: {
-        providerId: "anthropic",
-        modelId: "claude-haiku-4-5-20251001",
-      },
+      model: MODEL,
       contextUsage: 123,
     });
+    expect(agentRun.listRunUsages).not.toHaveBeenCalled();
+    expect(compactionRun.listRunUsages).toHaveBeenCalledOnce();
   });
 
   it("uses the latest agent run when it is newer than the latest succeeded compaction run", async () => {
-    const { req, res, auth, agent, conversation } = await setupTest();
+    const { req, res } = await setupTest();
 
-    await createCompactionMessage(auth, {
-      conversation,
-      rank: 10,
-      status: "succeeded",
-      runIds: ["compaction_run"],
-    });
-    await createAgentMessage(auth, {
-      agent,
-      conversation,
-      rank: 20,
-      runIds: ["agent_run"],
+    const agentRun = makeRunWithUsages([
+      makeRunUsage({ promptTokens: 222, completionTokens: 22 }),
+    ]);
+    const compactionRun = makeRunWithUsages([
+      makeRunUsage({ promptTokens: 111, completionTokens: 77 }),
+    ]);
+    const conversation = makeConversationResource({
+      latestAgentMessageRun: {
+        rank: 20,
+        run: agentRun,
+      },
+      latestCompactionMessageRun: {
+        rank: 10,
+        run: compactionRun,
+      },
     });
 
-    await createRunWithUsage(auth, {
-      dustRunId: "compaction_run",
-      createdAt: new Date("2024-01-01T00:00:01.000Z"),
-      promptTokens: 111,
-      completionTokens: 77,
-    });
-    await createRunWithUsage(auth, {
-      dustRunId: "agent_run",
-      createdAt: new Date("2024-01-01T00:00:02.000Z"),
-      promptTokens: 222,
-    });
+    vi.spyOn(ConversationResource, "fetchById").mockResolvedValue(
+      conversation as unknown as ConversationResource
+    );
 
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toMatchObject({
-      model: {
-        providerId: "anthropic",
-        modelId: "claude-haiku-4-5-20251001",
-      },
+      model: MODEL,
       contextUsage: 222,
     });
+    expect(compactionRun.listRunUsages).not.toHaveBeenCalled();
+    expect(agentRun.listRunUsages).toHaveBeenCalledOnce();
   });
 });
