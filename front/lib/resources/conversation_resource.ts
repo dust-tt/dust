@@ -2022,13 +2022,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
   ): Promise<void> {
     const workspaceId = auth.getNonNullableWorkspace().id;
+    const sanitizedRunIds = runIds.map((runId) => runId.replaceAll("'", "''"));
 
     await CompactionMessageModel.update(
       {
         runIds: fn(
           "ARRAY",
           literal(
-            `SELECT DISTINCT unnest(COALESCE("runIds", '{}') || ARRAY['${runIds.join("','")}']::text[])`
+            `SELECT DISTINCT unnest(COALESCE("runIds", '{}') || ARRAY['${sanitizedRunIds.join("','")}']::text[])`
           )
         ),
       },

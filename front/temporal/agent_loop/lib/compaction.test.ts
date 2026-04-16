@@ -150,4 +150,38 @@ describe("runCompaction", () => {
     expect(compactionMessageRow?.status).toBe("failed");
     expect(compactionMessageRow?.content).toBeNull();
   });
+
+  it("sanitizes run ids before interpolating them into SQL", async () => {
+    const compactionMessage = await createCompactionMessage();
+
+    vi.mocked(runMultiActionsAgent).mockImplementationOnce(
+      async (_auth, _config, _input, options) => {
+        await options?.onRunId?.("llm_trace_run_'quoted'");
+
+        return new Ok({
+          actions: [],
+          generation:
+            "<analysis>Scratchpad.</analysis><summary>Summary.</summary>",
+        });
+      }
+    );
+
+    const result = await runCompaction(auth, {
+      conversationId: conversation.sId,
+      compactionMessageId: compactionMessage.sId,
+      compactionMessageVersion: compactionMessage.version,
+      model: MODEL,
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    const compactionMessageRow = await CompactionMessageModel.findOne({
+      where: {
+        id: compactionMessage.compactionMessageId,
+        workspaceId: workspace.id,
+      },
+    });
+
+    expect(compactionMessageRow?.runIds).toEqual(["llm_trace_run_'quoted'"]);
+  });
 });
