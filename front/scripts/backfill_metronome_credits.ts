@@ -68,8 +68,8 @@ async function backfillCreditsOfType(
         {
           workspaceId: workspace.sId,
           creditId: credit.id,
-          initialMicroUsd: credit.initialAmountMicroUsd,
-          consumedMicroUsd: credit.consumedAmountMicroUsd,
+          initialUsd: credit.initialAmountMicroUsd / 1_000_000,
+          consumedUsd: credit.consumedAmountMicroUsd / 1_000_000,
         },
         `[Backfill] Negative remaining balance for ${metronomeItem}, skipping`
       );
@@ -89,12 +89,11 @@ async function backfillCreditsOfType(
         {
           workspaceId: workspace.sId,
           creditId: credit.id,
-          initialMicroUsd: credit.initialAmountMicroUsd,
-          consumedMicroUsd: credit.consumedAmountMicroUsd,
-          remainingMicroUsd,
-          amount,
-          startingAt,
-          endingBefore,
+          initialUsd: credit.initialAmountMicroUsd / 1_000_000,
+          consumedUsd: credit.consumedAmountMicroUsd / 1_000_000,
+          remainingUsd: amount,
+          startingAt: startingAt.toLocaleDateString("en-GB"),
+          endingBefore: endingBefore.toLocaleDateString("en-GB"),
           idempotencyKey,
         },
         `[Backfill] [DRY RUN] Would create ${metronomeItem} in Metronome`
@@ -132,13 +131,15 @@ async function backfillCreditsOfType(
           creditId: credit.id,
           error: result.error.message,
         },
-        "[Backfill] Failed to create commit in Metronome"
+        `[Backfill] Failed to create ${metronomeItem} in Metronome`
       );
     } else {
-      logger.info(
-        { workspaceId: workspace.sId, creditId: credit.id },
-        `[Backfill] Successfully created ${metronomeItem} in Metronome`
-      );
+      if (result.value) {
+        logger.info(
+          { workspaceId: workspace.sId, creditId: credit.id },
+          `[Backfill] Successfully created ${metronomeItem} in Metronome`
+        );
+      }
     }
   }
 
@@ -146,12 +147,12 @@ async function backfillCreditsOfType(
     {
       workspaceId: workspace.sId,
       metronomeCustomerId,
-      committedCreditsCount: credits.length,
+      creditsCount: credits.length,
       totalAmountUsd: totalAmountMicroUsd / 1_000_000,
     },
     execute
       ? `[Backfill] Done processing ${metronomeItem}s`
-      : `[Backfill] [DRY RUN] Would add ${metronomeItem}s for workspace`
+      : `[Backfill] [DRY RUN] Would create ${metronomeItem}s in Metronome`
   );
 }
 
