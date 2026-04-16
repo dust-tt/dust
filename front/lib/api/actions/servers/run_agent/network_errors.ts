@@ -12,14 +12,15 @@ import type { APIError } from "@dust-tt/client";
  * - "ECONNRESET" - Connection reset by peer
  */
 const TRANSIENT_NETWORK_ERROR_PATTERNS = [
-  /terminated/i,
   /aborted/i,
-  /socket hang up/i,
+  /An unexpected error occurred/i,
+  /ECONNREFUSED/i,
   /ECONNRESET/i,
   /ETIMEDOUT/i,
-  /ECONNREFUSED/i,
   /exceeded maximum reconnection attempts/i,
   /not connected/i,
+  /socket hang up/i,
+  /terminated/i,
 ];
 
 /**
