@@ -96,18 +96,20 @@ export function ContextUsageIndicator({
                 The current context usage is at {percentage}%
               </span>
             </div>
-            <Button
-              variant="outline"
-              size="xs"
-              label="Compact now"
-              onClick={() => {
-                if (contextUsage?.model) {
-                  void compact(contextUsage.model);
-                }
-              }}
-              disabled={isCompacting || !contextUsage?.model}
-              isLoading={isCompacting}
-            />
+            {percentage > 33 && (
+              <Button
+                variant="outline"
+                size="xs"
+                label={isCompacting ? "Compacting" : "Compact now"}
+                onClick={() => {
+                  if (contextUsage?.model) {
+                    void compact(contextUsage.model);
+                  }
+                }}
+                disabled={isCompacting || !contextUsage?.model}
+                isLoading={isCompacting}
+              />
+            )}
           </div>
         </DropdownMenuContent>
       </DropdownMenu>
