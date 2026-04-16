@@ -21,7 +21,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuPortal,
+  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -34,6 +36,7 @@ import {
 import type React from "react";
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useState } from "react";
+import { ProjectNotificationMenu } from "./ProjectNotificationMenu";
 
 /**
  * Hook for handling right-click context menu with timing protection
@@ -142,7 +145,6 @@ export function ProjectMenu({
     disabled: shouldWaitBeforeFetching,
     includeAllMembers: true,
   });
-
   const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
 
   const shareLink = activeSpaceId
@@ -239,6 +241,21 @@ export function ProjectMenu({
           <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
         )}
         <DropdownMenuContent onFocusOutside={(e) => e.preventDefault()}>
+          <DropdownMenuLabel label="My settings" />
+          {canLeave && (
+            <DropdownMenuItem
+              label="Leave"
+              onClick={openLeaveDialog}
+              icon={XMarkIcon}
+            />
+          )}
+          <ProjectNotificationMenu
+            activeSpaceId={activeSpaceId}
+            owner={owner}
+            shouldWaitBeforeFetching={shouldWaitBeforeFetching}
+          />
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel label="Project" />
           {canRename && (
             <DropdownMenuItem
               label="Rename"
@@ -246,41 +263,33 @@ export function ProjectMenu({
               icon={PencilSquareIcon}
             />
           )}
-          {spaceInfo?.members && spaceInfo.members.length > 0 && (
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger
-                icon={ContactsUserIcon}
-                label="Member list"
-              />
-              <DropdownMenuPortal>
-                <DropdownMenuSubContent>
-                  {spaceInfo.members.map((member) => (
-                    <DropdownMenuItem
-                      key={member.sId}
-                      label={member.fullName ?? member.username}
-                      onClick={() => handleSeeUserDetails(member.sId)}
-                      icon={
-                        <Avatar
-                          size="xs"
-                          visual={member.image ?? undefined}
-                          name={member.fullName ?? member.username}
-                          isRounded
-                        />
-                      }
-                      className="!text-foreground dark:!text-foreground-night"
-                    />
-                  ))}
-                </DropdownMenuSubContent>
-              </DropdownMenuPortal>
-            </DropdownMenuSub>
-          )}
-          {shareLink && (
-            <DropdownMenuItem
-              label="Copy link"
-              onClick={copyProjectLink}
-              icon={LinkIcon}
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger
+              icon={ContactsUserIcon}
+              disabled={!spaceInfo?.members?.length}
+              label="Member list"
             />
-          )}
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent>
+                {spaceInfo?.members.map((member) => (
+                  <DropdownMenuItem
+                    key={member.sId}
+                    label={member.fullName ?? member.username}
+                    onClick={() => handleSeeUserDetails(member.sId)}
+                    icon={
+                      <Avatar
+                        size="xs"
+                        visual={member.image ?? undefined}
+                        name={member.fullName ?? member.username}
+                        isRounded
+                      />
+                    }
+                    className="!text-foreground dark:!text-foreground-night"
+                  />
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
           {isProjectEditor && (
             <DropdownMenuItem
               label="Archive"
@@ -289,12 +298,16 @@ export function ProjectMenu({
               variant="warning"
             />
           )}
-          {canLeave && (
-            <DropdownMenuItem
-              label="Leave"
-              onClick={openLeaveDialog}
-              icon={XMarkIcon}
-            />
+          {shareLink && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel label="Share" />
+              <DropdownMenuItem
+                label="Copy link"
+                onClick={copyProjectLink}
+                icon={LinkIcon}
+              />
+            </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
