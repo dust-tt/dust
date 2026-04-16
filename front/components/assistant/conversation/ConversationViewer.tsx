@@ -13,6 +13,7 @@ import {
 } from "@app/components/assistant/conversation/lib";
 import { MessageItem } from "@app/components/assistant/conversation/MessageItem";
 import type {
+  ConversationForkNoticeMessage,
   VirtuosoMessage,
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
@@ -22,6 +23,7 @@ import {
   getPredicateForRankAndBranch,
   isAgentMessageWithStreaming,
   isCompactionMessage,
+  isConversationForkNotice,
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
@@ -53,8 +55,10 @@ import {
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import logger from "@app/logger/logger";
 import {
+  type ConversationForkedChildType,
   type ConversationWithoutContentType,
   isUserMessageTypeWithContentFragments,
+  type LightMessageType,
 } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import {
@@ -160,6 +164,86 @@ export function getBranchedInsertIndex(
   // with a strictly greater rank, or append if none.
   const rankOffset = data.findIndex((m) => m.rank > newMessage.rank);
   return rankOffset === -1 ? data.length : rankOffset;
+}
+
+function makeConversationForkNoticeMessage(
+  sourceMessage: VirtuosoMessage,
+  forkedChild: ConversationForkedChildType
+): ConversationForkNoticeMessage {
+  return {
+    type: "conversation_fork_notice",
+    sId: `conversation-fork-notice-${forkedChild.childConversationId}`,
+    created: sourceMessage.created,
+    rank: sourceMessage.rank,
+    branchId: null,
+    visibility: "visible",
+    reactions: [],
+    richMentions: [],
+    sourceMessageId: forkedChild.sourceMessageId,
+    childConversationId: forkedChild.childConversationId,
+    childConversationTitle: forkedChild.childConversationTitle,
+    user: forkedChild.user,
+  };
+}
+
+function mergeConversationForkNotices(
+  messages: VirtuosoMessage[],
+  forkedChildren: ConversationForkedChildType[] = []
+): VirtuosoMessage[] {
+  const renderedMessages = messages.filter(
+    (message) => !isConversationForkNotice(message)
+  );
+
+  if (forkedChildren.length === 0) {
+    return renderedMessages;
+  }
+
+  const forkedChildrenBySourceMessageId = new Map<
+    string,
+    ConversationForkedChildType[]
+  >();
+
+  for (const forkedChild of forkedChildren) {
+    const currentChildren =
+      forkedChildrenBySourceMessageId.get(forkedChild.sourceMessageId) ?? [];
+    currentChildren.push(forkedChild);
+    forkedChildrenBySourceMessageId.set(
+      forkedChild.sourceMessageId,
+      currentChildren
+    );
+  }
+
+  const mergedMessages: VirtuosoMessage[] = [];
+
+  for (const message of renderedMessages) {
+    mergedMessages.push(message);
+
+    if (!isAgentMessageWithStreaming(message)) {
+      continue;
+    }
+
+    const forkedChildrenForMessage = [
+      ...(forkedChildrenBySourceMessageId.get(message.sId) ?? []),
+    ].sort((a, b) => a.branchedAt - b.branchedAt);
+
+    mergedMessages.push(
+      ...forkedChildrenForMessage.map((forkedChild) =>
+        makeConversationForkNoticeMessage(message, forkedChild)
+      )
+    );
+  }
+
+  return mergedMessages;
+}
+
+export function addConversationForkNotices(
+  messages: LightMessageType[],
+  forkedChildren: ConversationForkedChildType[] = []
+): VirtuosoMessage[] {
+  return mergeConversationForkNotices(
+    convertLightMessageTypeToVirtuosoMessages(messages),
+    forkedChildren
+  );
 }
 
 export const ConversationViewer = ({
@@ -280,10 +364,17 @@ export const ConversationViewer = ({
     // Load a conversation A, send a message, answer is streaming (streaming events have a short TTL).
     // Switch to conversation B, wait till A is done streaming, then switch back to A.
     // Without waiting for revalidation, we would use whatever data was in the swr cache and see the last message as "streaming" (old data, no more streaming events).
-    if (!initialListData && messages.length > 0 && !isValidating) {
+    if (
+      !initialListData &&
+      conversation &&
+      messages.length > 0 &&
+      !isValidating
+    ) {
       const raw = messages.flatMap((m) => m.messages);
-
-      const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
+      const messagesToRender = addConversationForkNotices(
+        raw,
+        conversation.forkedChildren
+      );
 
       setInitialListData(messagesToRender);
 
@@ -329,6 +420,7 @@ export const ConversationViewer = ({
     }
   }, [
     initialListData,
+    conversation,
     messages,
     setInitialListData,
     isValidating,
@@ -386,7 +478,10 @@ export const ConversationViewer = ({
 
     if (olderMessagesFromBackend.length > 0) {
       ref.current.data.prepend(
-        convertLightMessageTypeToVirtuosoMessages(olderMessagesFromBackend)
+        addConversationForkNotices(
+          olderMessagesFromBackend,
+          conversation?.forkedChildren
+        )
       );
     }
 
@@ -398,10 +493,49 @@ export const ConversationViewer = ({
 
     if (recentMessagesFromBackend.length > 0) {
       ref.current.data.append(
-        convertLightMessageTypeToVirtuosoMessages(recentMessagesFromBackend)
+        addConversationForkNotices(
+          recentMessagesFromBackend,
+          conversation?.forkedChildren
+        )
       );
     }
-  }, [messages]);
+  }, [conversation?.forkedChildren, messages]);
+
+  useEffect(() => {
+    if (!ref.current || !ref.current.data.get().length) {
+      return;
+    }
+
+    const currentData = ref.current.data.get();
+    const reconciledData = mergeConversationForkNotices(
+      currentData,
+      conversation?.forkedChildren
+    );
+
+    if (
+      currentData.length === reconciledData.length &&
+      currentData.every(
+        (message, index) => message.sId === reconciledData[index]?.sId
+      )
+    ) {
+      return;
+    }
+
+    while (ref.current.data.get().some(isConversationForkNotice)) {
+      ref.current.data.findAndDelete((message) =>
+        isConversationForkNotice(message)
+      );
+    }
+
+    let index = 0;
+
+    for (const message of reconciledData) {
+      if (isConversationForkNotice(message)) {
+        ref.current.data.insert([message], index);
+      }
+      index += 1;
+    }
+  }, [conversation?.forkedChildren]);
 
   const { feedbacks } = useConversationFeedbacks({
     conversationId: conversationId ?? "",
@@ -876,12 +1010,18 @@ export const ConversationViewer = ({
       data: VirtuosoMessage;
       context: VirtuosoMessageListContext;
     }) => {
+      if (isConversationForkNotice(data)) {
+        return `conversation-${context.conversation?.sId}-${data.sId}`;
+      }
       return `conversation-${context.conversation?.sId}-message-rank-${data.rank}-message-branchId-${data.branchId}`;
     },
     []
   );
 
   const itemIdentity = useCallback((item: VirtuosoMessage) => {
+    if (isConversationForkNotice(item)) {
+      return item.sId;
+    }
     return `message-rank-${item.rank}-message-branchId-${item.branchId}`;
   }, []);
 

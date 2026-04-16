@@ -605,7 +605,7 @@ export function AgentMessage({
     await deleteAgentMessage(agentMessage.sId);
 
     methods.data.map((m) => {
-      if (m.sId === agentMessage.sId) {
+      if (isAgentMessageWithStreaming(m) && m.sId === agentMessage.sId) {
         return {
           ...m,
           visibility: "deleted",
