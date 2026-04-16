@@ -9,8 +9,15 @@ import {
   CollapsibleTrigger,
   Label,
 } from "@dust-tt/sparkle";
+import type {SkillType} from "@app/types/assistant/skill_configuration";
 
-export function SkillBuilderSettingsSection() {
+interface SkillBuilderSettingsSectionProps {
+  skill?: SkillType;
+}
+
+export function SkillBuilderSettingsSection({
+  skill,
+}: SkillBuilderSettingsSectionProps) {
   return (
     <div className="space-y-5">
       <h2 className="heading-lg text-foreground dark:text-foreground-night">
@@ -31,14 +38,16 @@ export function SkillBuilderSettingsSection() {
           <SkillEditorsSheet />
         </div>
       </div>
-      <Collapsible defaultOpen>
-        <CollapsibleTrigger variant="secondary">Advanced</CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="pt-3">
-            <SkillBuilderIsDefaultSection />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+      {skill && (
+        <Collapsible defaultOpen>
+          <CollapsibleTrigger variant="secondary">Advanced</CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="pt-3">
+              <SkillBuilderIsDefaultSection />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </div>
   );
 }
