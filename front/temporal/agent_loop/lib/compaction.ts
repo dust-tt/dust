@@ -7,6 +7,7 @@ import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conver
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import { isProviderWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type {
   CompactionMessageType,
@@ -129,6 +130,7 @@ export async function runCompaction(
 
   const summaryRes = await generateCompactionSummary(auth, {
     conversation,
+    compactionMessage,
     model,
   });
 
@@ -185,8 +187,13 @@ async function generateCompactionSummary(
   auth: Authenticator,
   {
     conversation,
+    compactionMessage,
     model,
-  }: { conversation: ConversationType; model: SupportedModel }
+  }: {
+    conversation: ConversationType;
+    compactionMessage: CompactionMessageType;
+    model: SupportedModel;
+  }
 ): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
@@ -240,6 +247,12 @@ async function generateCompactionSummary(
         conversationId: conversation.sId,
         userId: auth.user()?.sId,
         workspaceId: owner.sId,
+      },
+      onRunId: async (runId) => {
+        await ConversationResource.updateCompactionMessageRunIds(auth, {
+          compactionMessageModelId: compactionMessage.compactionMessageId,
+          runIds: [runId],
+        });
       },
     }
   );

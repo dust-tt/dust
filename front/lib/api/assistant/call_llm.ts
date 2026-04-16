@@ -21,6 +21,7 @@ export interface LLMConfig {
 export interface LLMOptions {
   tracingRecords?: Record<string, string>;
   context?: LLMTraceContext;
+  onRunId?: (runId: string) => Promise<void> | void;
 }
 
 // Zod schema to validate runActionStreamed output.
@@ -65,6 +66,8 @@ export async function runMultiActionsAgent(
     // Should not happen
     return new Err(new Error(`Model ${config.modelId} not supported`));
   }
+
+  await options.onRunId?.(llm.getTraceId());
 
   const actions: NonNullable<LLMOutput["actions"]> = [];
   let generation = "";

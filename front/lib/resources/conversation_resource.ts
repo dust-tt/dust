@@ -2011,6 +2011,36 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return pendingMessages;
   }
 
+  static async updateCompactionMessageRunIds(
+    auth: Authenticator,
+    {
+      compactionMessageModelId,
+      runIds,
+    }: {
+      compactionMessageModelId: ModelId;
+      runIds: string[];
+    }
+  ): Promise<void> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    await CompactionMessageModel.update(
+      {
+        runIds: fn(
+          "ARRAY",
+          literal(
+            `SELECT DISTINCT unnest(COALESCE("runIds", '{}') || ARRAY['${runIds.join("','")}']::text[])`
+          )
+        ),
+      },
+      {
+        where: {
+          id: compactionMessageModelId,
+          workspaceId,
+        },
+      }
+    );
+  }
+
   async getLatestAgentMessageRun(
     auth: Authenticator
   ): Promise<RunResource | null> {
