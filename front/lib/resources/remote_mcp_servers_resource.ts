@@ -126,7 +126,8 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
 
   private static async baseFetch(
     auth: Authenticator,
-    options?: ResourceFindOptions<RemoteMCPServerModel>
+    options?: ResourceFindOptions<RemoteMCPServerModel>,
+    transaction?: Transaction
   ) {
     const { where, ...otherOptions } = options ?? {};
 
@@ -136,6 +137,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
         workspaceId: auth.getNonNullableWorkspace().id,
       },
       ...otherOptions,
+      transaction,
     });
 
     return servers.map(
@@ -178,14 +180,19 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
 
   static async fetchByModelIds(
     auth: Authenticator,
-    ids: ModelId[]
+    ids: ModelId[],
+    transaction?: Transaction
   ): Promise<RemoteMCPServerResource[]> {
     if (ids.length === 0) {
       return [];
     }
-    return this.baseFetch(auth, {
-      where: { id: { [Op.in]: ids } },
-    });
+    return this.baseFetch(
+      auth,
+      {
+        where: { id: { [Op.in]: ids } },
+      },
+      transaction
+    );
   }
 
   static async resolveNamesBySIds(
