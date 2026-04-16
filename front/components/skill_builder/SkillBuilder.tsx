@@ -256,7 +256,7 @@ export default function SkillBuilder({
           <SkillBuilderInstructionsSection />
           {hasFeature("sandbox_tools") && <SkillBuilderFilesSection />}
           <SkillBuilderToolsSection extendedSkill={extendedSkill} />
-          <SkillBuilderSettingsOrComparisonFooter />
+          <SkillBuilderSettingsOrComparisonFooter skill={skill} />
         </div>
       </ScrollArea>
       <BarFooter
@@ -326,12 +326,16 @@ export default function SkillBuilder({
   );
 }
 
-function SkillBuilderSettingsOrComparisonFooter() {
+function SkillBuilderSettingsOrComparisonFooter({
+  skill,
+}: {
+  skill?: SkillType;
+}) {
   const { compareVersion } = useSkillVersionComparisonContext();
 
   if (compareVersion) {
     return <SkillBuilderVersionComparisonFooter />;
   }
 
-  return <SkillBuilderSettingsSection />;
+  return <SkillBuilderSettingsSection skill={skill} />;
 }
