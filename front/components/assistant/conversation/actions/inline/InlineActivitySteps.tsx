@@ -28,6 +28,7 @@ import {
   cn,
   Icon,
   ToolsIcon,
+  XCircleIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -55,6 +56,15 @@ function getCompletionLabel(
   }
 }
 
+function getTerminalLabel(status: LightAgentMessageType["status"]): string {
+  switch (status) {
+    case "cancelled":
+      return "Cancelled";
+    default:
+      return "Completed";
+  }
+}
+
 function getCollapseAnimationStyle(isCollapsed: boolean): React.CSSProperties {
   return {
     gridTemplateRows: isCollapsed ? "0fr" : "1fr",
@@ -68,7 +78,7 @@ function getCollapseAnimationStyle(isCollapsed: boolean): React.CSSProperties {
 /**
  * Inline activity steps component.
  * Everything is wrapped in a single collapsible "Work" section
- * with a stepper timeline containing CoT, actions, and a "Done" marker.
+ * with a stepper timeline containing CoT, actions, and a terminal marker.
  *
  * Steps are accumulated by useAgentMessageStream — this component is a pure render.
  */
@@ -89,7 +99,9 @@ export function InlineActivitySteps({
   const { openPanel } = useConversationSidePanelContext();
 
   const isDone =
-    lastAgentStateClassification === "done" || agentMessage.status === "failed";
+    lastAgentStateClassification === "done" ||
+    agentMessage.status === "failed" ||
+    agentMessage.status === "cancelled";
 
   const [isCollapsed, setIsCollapsed] = useState(isDone && !isLastMessage);
 
@@ -108,7 +120,7 @@ export function InlineActivitySteps({
   const isThinking = lastAgentStateClassification === "thinking";
   const isWriting = lastAgentStateClassification === "writing";
   const isActing = lastAgentStateClassification === "acting";
-  const showPendingToolCalls = pendingToolCalls.length > 0;
+  const showPendingToolCalls = !isDone && pendingToolCalls.length > 0;
 
   const headerLabel =
     agentMessage.completionDurationMs !== null
@@ -117,7 +129,7 @@ export function InlineActivitySteps({
           agentMessage.completionDurationMs
         )
       : isDone
-        ? "Completed"
+        ? getTerminalLabel(agentMessage.status)
         : null;
 
   // Writing-only: no prior steps, just streaming text. Show "Writing..."
@@ -138,8 +150,8 @@ export function InlineActivitySteps({
 
   // Show active thinking whenever the agent is thinking.
   // Dedup in appendThinkingStep handles duplicate content at capture time.
-  const showActiveThinking = isThinking;
-  const showActiveWriting = isWriting;
+  const showActiveThinking = !isDone && isThinking;
+  const showActiveWriting = !isDone && isWriting;
   const latestPendingToolCall = showPendingToolCalls
     ? pendingToolCalls[pendingToolCalls.length - 1]
     : null;
@@ -147,7 +159,9 @@ export function InlineActivitySteps({
     (showActiveThinking && !chainOfThought) ||
     (showActiveWriting && !agentMessage.content);
   const activeAction =
-    isActing && isAgentMessageWithActions ? actions[actions.length - 1] : null;
+    !isDone && isActing && isAgentMessageWithActions
+      ? actions[actions.length - 1]
+      : null;
 
   const hasContent =
     completedSteps.length > 0 ||
@@ -349,9 +363,16 @@ export function InlineActivitySteps({
             {isDone &&
               completedSteps.length > 0 &&
               agentMessage.status !== "gracefully_stopped" && (
-                <TimelineRow icon={CheckIcon} isLast>
+                <TimelineRow
+                  icon={
+                    agentMessage.status === "cancelled"
+                      ? XCircleIcon
+                      : CheckIcon
+                  }
+                  isLast
+                >
                   <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Done
+                    {agentMessage.status === "cancelled" ? "Cancelled" : "Done"}
                   </span>
                 </TimelineRow>
               )}
