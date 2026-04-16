@@ -795,9 +795,8 @@ export async function postUserMessage(
       });
     }
 
-    // If the conversation is part of a project and the conversation branches feature flag is enabled.
     // When the agent is not usable, we will create a branch.
-    if (isPartOfProject && featureFlags.includes("conversation_branches")) {
+    if (isPartOfProject) {
       const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
         configuration: agentConfig,
         conversation,

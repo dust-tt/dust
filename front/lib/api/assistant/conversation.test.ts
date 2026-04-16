@@ -2296,10 +2296,10 @@ describe("postUserMessage", () => {
       projectConversation = fetchedConversationResult.value;
     }
 
-    describe("with conversation_branches feature flag enabled", () => {
+    describe("with projects feature flag enabled regarding branches", () => {
       beforeEach(async () => {
         await setupProjectWithRestrictedAgent();
-        await FeatureFlagFactory.basic(auth, "conversation_branches");
+        await FeatureFlagFactory.basic(auth, "projects");
       });
 
       it("should create a branch and put first message in branch when posting with restricted agent", async () => {
@@ -2446,62 +2446,6 @@ describe("postUserMessage", () => {
         );
         expect(branchRow).not.toBeNull();
         expect(secondUserMessageRow!.branchId).toBe(branchRow!.id);
-
-        rateLimiterSpy.mockRestore();
-      });
-    });
-
-    describe("with conversation_branches feature flag disabled", () => {
-      beforeEach(async () => {
-        await setupProjectWithRestrictedAgent();
-      });
-
-      it("should not create a branch when posting with restricted agent", async () => {
-        const user = auth.getNonNullableUser();
-        const userJson = user.toJSON();
-
-        const rateLimiterSpy = vi
-          .spyOn(rateLimiterModule, "rateLimiter")
-          .mockResolvedValue(100);
-
-        const result = await postUserMessage(auth, {
-          conversation: projectConversation,
-          content: `Hello @${agentWithDifferentSpace.name}`,
-          mentions: [{ configurationId: agentWithDifferentSpace.sId }],
-          context: {
-            username: userJson.username,
-            timezone: "UTC",
-            fullName: userJson.fullName,
-            email: userJson.email,
-            profilePictureUrl: userJson.image,
-            origin: "web",
-          },
-          skipToolsValidation: false,
-        });
-
-        expect(result.isOk()).toBe(true);
-        if (!result.isOk()) {
-          return;
-        }
-
-        const branchesAfter =
-          await ConversationBranchResource.listForConversation(
-            auth,
-            projectConversation.id
-          );
-        expect(branchesAfter.length).toBe(0);
-
-        expect(projectConversation.branchId).toBeNull();
-
-        // When the agent is restricted and we don't create a branch, no agent message is created
-        // but the mention is stored with status agent_restricted_by_space_usage
-        const agentMessages = result.value.agentMessages;
-        expect(agentMessages.length).toBe(0);
-        const richMention = result.value.userMessage.richMentions.find(
-          (m) => m.type === "agent" && m.id === agentWithDifferentSpace.sId
-        );
-        expect(richMention).toBeDefined();
-        expect(richMention!.status).toBe("agent_restricted_by_space_usage");
 
         rateLimiterSpy.mockRestore();
       });

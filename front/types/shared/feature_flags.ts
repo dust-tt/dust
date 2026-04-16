@@ -209,8 +209,8 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
   },
   projects: {
-    description: "Enable use Spaces as Projects",
-    stage: "dust_only",
+    description: "Enable the Projects feature",
+    stage: "on_demand",
   },
   databricks_tool: {
     description: "Databricks MCP tool",
@@ -238,10 +238,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "After a response from Anthropic, make an additional API call to get the reasoning token count for better usage tracking",
     // Not really on_demand but we want to be able to enable it for customers
     stage: "on_demand",
-  },
-  conversation_branches: {
-    description: "Enable conversation branches",
-    stage: "dust_only",
   },
   sessions_branching: {
     description: "Enable sessions branching",
