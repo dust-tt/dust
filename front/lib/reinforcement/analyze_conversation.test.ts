@@ -63,7 +63,7 @@ describe("buildSkillAnalysisPrompt", () => {
     });
     const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);
 
-    expect(userMessage).toContain("<instructions>");
+    expect(userMessage).toContain('<instructions format="html">');
     expect(userMessage).toContain("Always verify data before responding.");
   });
 
