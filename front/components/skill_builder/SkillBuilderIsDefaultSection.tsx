@@ -1,6 +1,7 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import {
   Checkbox,
+  ContentMessage,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -13,10 +14,15 @@ import {
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 
+const MIN_DISCOVERABLE_DESCRIPTION_LENGTH = 150;
+
 export function SkillBuilderIsDefaultSection() {
   const { watch, setValue } = useFormContext<SkillBuilderFormData>();
   const isDefault = watch("isDefault");
+  const agentFacingDescription = watch("agentFacingDescription");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const isDescriptionTooShort =
+    agentFacingDescription.trim().length < MIN_DISCOVERABLE_DESCRIPTION_LENGTH;
 
   const handleCheckboxChange = (checked: boolean) => {
     if (checked) {
@@ -57,14 +63,16 @@ export function SkillBuilderIsDefaultSection() {
           }
         }}
       >
-        <DialogContent size="md" isAlertDialog>
+        <DialogContent size="lg" isAlertDialog>
           <DialogHeader hideButton>
             <DialogTitle>Allow agents to discover this skill?</DialogTitle>
-            <DialogDescription className="pt-4">
-              This skill will be set as default. Agents with&nbsp;
-              <span className="font-semibold">Discover Skills</span>&nbsp; will
-              be able to find and enable it on their own.
-              <ul className="mt-3 list-disc space-y-1 pl-5">
+            <div className="space-y-4 pt-4">
+              <DialogDescription>
+                This skill will be set as default. Agents with&nbsp;
+                <span className="font-semibold">Discover Skills</span>&nbsp;
+                will be able to find and enable it on their own.
+              </DialogDescription>
+              <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground dark:text-muted-foreground-night">
                 <li>
                   This will expose the skill to your entire workspace through
                   the Discover Skills skill.
@@ -74,7 +82,24 @@ export function SkillBuilderIsDefaultSection() {
                   discoverable.
                 </li>
               </ul>
-            </DialogDescription>
+              {isDescriptionTooShort && (
+                <ContentMessage
+                  variant="golden"
+                  title="Agents may not understand when to use this skill"
+                  icon={InformationCircleIcon}
+                  size="lg"
+                  className="w-full"
+                >
+                  The content in&nbsp;
+                  <span className="font-semibold">
+                    What will this skill be used for
+                  </span>
+                  &nbsp;may be too short for agents to clearly understand when
+                  to use this skill. Consider making it more descriptive before
+                  allowing discovery.
+                </ContentMessage>
+              )}
+            </div>
           </DialogHeader>
           <DialogFooter
             leftButtonProps={{
@@ -84,6 +109,7 @@ export function SkillBuilderIsDefaultSection() {
             rightButtonProps={{
               label: "Confirm",
               variant: "warning",
+              disabled: isDescriptionTooShort,
               onClick: handleConfirm,
             }}
           />
