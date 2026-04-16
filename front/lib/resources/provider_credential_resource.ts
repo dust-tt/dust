@@ -396,13 +396,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     await this.invalidateProviderCredentialCache(workspace.id);
   }
 
-  /**
-   * Marks credentials as unhealthy if the provider actually returns an auth
-   * error. Returns the credential that was invalidated so the caller can
-   * emit a `credentials.invalidated` audit event, or `null` if no change was
-   * made (credential missing, provider returned a non-auth error, or the row
-   * was already unhealthy).
-   */
+  // Returns the invalidated credential so the caller can emit credentials.invalidated, or null if no change was made.
   static async markAsUnhealthy(
     auth: Authenticator,
     { providerId }: { providerId: ByokModelProviderIdType }
