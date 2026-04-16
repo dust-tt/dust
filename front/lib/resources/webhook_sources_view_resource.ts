@@ -159,13 +159,15 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
       auth,
       webhookSourceIds
     );
-    const webhookSourceById = new Map(webhookSources.map((ws) => [ws.id, ws]));
+    const webhookSourceByModelId = new Map(
+      webhookSources.map((ws) => [ws.id, ws])
+    );
 
     // Assign webhook sources; filter out views whose source no longer exists
     // unless includeDeleted is set.
     const result: WebhookSourcesViewResource[] = [];
     for (const view of views) {
-      const ws = webhookSourceById.get(view.webhookSourceId);
+      const ws = webhookSourceByModelId.get(view.webhookSourceId);
       if (ws) {
         view._webhookSource = ws;
         result.push(view);
