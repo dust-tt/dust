@@ -905,6 +905,7 @@ export class Authenticator {
       user,
       subscription: auth._subscription,
       workspace: auth._workspace,
+      providersHealth: auth._providersHealth,
     });
   }
 
@@ -918,6 +919,7 @@ export class Authenticator {
       subscription: this._subscription,
       workspace: this._workspace,
       clientIp: this._clientIp,
+      providersHealth: this._providersHealth,
     });
   }
 
