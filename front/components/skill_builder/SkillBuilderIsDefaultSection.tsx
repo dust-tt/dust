@@ -1,7 +1,6 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import {
-  Button,
-  ContentMessage,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -9,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
   InformationCircleIcon,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
@@ -23,17 +23,12 @@ export function SkillBuilderIsDefaultSection() {
   const isDescriptionTooShort =
     agentFacingDescription.trim().length < MIN_DISCOVERABLE_DESCRIPTION_LENGTH;
 
-  const openDialog = () => {
-    setShowConfirmDialog(true);
-  };
-
-  const handleButtonClick = () => {
-    if (isDefault) {
+  const handleCheckboxChange = (checked: boolean) => {
+    if (checked) {
+      setShowConfirmDialog(true);
+    } else {
       setValue("isDefault", false, { shouldDirty: true });
-      return;
     }
-
-    openDialog();
   };
 
   const handleConfirm = () => {
@@ -44,16 +39,19 @@ export function SkillBuilderIsDefaultSection() {
   return (
     <>
       <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
+        <Checkbox
+          checked={isDefault}
+          onCheckedChange={handleCheckboxChange}
           size="sm"
-          label={
-            !isDefault
-              ? "Allow agents to discover this skill"
-              : "Prevent agents from discovering this skill"
+        />
+        <span className="text-sm text-foreground dark:text-foreground-night">
+          Allow agents to discover this skill
+        </span>
+        <Tooltip
+          label="This skill will be set as default. Agents with Discover Skills will be able to find and enable it on their own"
+          trigger={
+            <InformationCircleIcon className="text-muted-foreground dark:text-muted-foreground-night h-4 w-4" />
           }
-          onClick={handleButtonClick}
-          tooltip="This skill will be set as default. Agents with Discover Skills will be able to find and enable it on their own"
         />
       </div>
       <Dialog
@@ -102,7 +100,6 @@ export function SkillBuilderIsDefaultSection() {
               )}
             </div>
           </DialogHeader>
-
           <DialogFooter
             leftButtonProps={{
               label: "Cancel",
