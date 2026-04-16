@@ -76,8 +76,14 @@ export const InputBarSkillSuggestionDropdown = forwardRef<
         }
       }}
       clientRect={() => anchorRect}
-      className="max-h-96 w-80"
+      className="w-80"
       emptyMessage="No skills found"
+      header={
+        <div className="border-b border-border px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Skills
+        </div>
+      }
+      itemsClassName="max-h-96 overflow-y-auto"
       onEscapeKeyDown={onClose}
       onInteractOutside={onClose}
     />
