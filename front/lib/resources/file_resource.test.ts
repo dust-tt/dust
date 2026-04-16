@@ -204,6 +204,7 @@ describe("FileResource", () => {
         status: "ready",
         useCase: "conversation",
         useCaseMetadata: { conversationId: "original-conv-id" },
+        snippet: "copied snippet",
       });
 
       // Copy the file.
@@ -222,6 +223,7 @@ describe("FileResource", () => {
       expect(copiedFile.fileName).toBe(sourceFile.fileName);
       expect(copiedFile.fileSize).toBe(sourceFile.fileSize);
       expect(copiedFile.useCase).toBe("project_context");
+      expect(copiedFile.snippet).toBe("copied snippet");
       expect(copiedFile.useCaseMetadata?.conversationId).toBe("new-conv-id");
       expect(copiedFile.isReady).toBe(true);
     });

@@ -1461,46 +1461,6 @@ export class FileResource extends BaseResource<FileModel> {
     return new Ok(sourceFile);
   }
 
-  private static async createCopyFromReadyFile(
-    auth: Authenticator,
-    {
-      sourceFile,
-      useCase,
-      useCaseMetadata,
-      snippet,
-    }: {
-      sourceFile: FileResource;
-      useCase: FileUseCase;
-      useCaseMetadata?: FileUseCaseMetadata;
-      snippet?: string | null;
-    }
-  ): Promise<
-    Result<
-      FileResource,
-      Error | { name: "dust_error"; code: string; message: string }
-    >
-  > {
-    try {
-      const newFile = await FileResource.makeNew({
-        workspaceId: auth.getNonNullableWorkspace().id,
-        userId: auth.user()?.id ?? null,
-        contentType: sourceFile.contentType,
-        fileName: sourceFile.fileName,
-        fileSize: sourceFile.fileSize,
-        useCase,
-        useCaseMetadata,
-        ...(snippet !== undefined ? { snippet } : {}),
-      });
-
-      await copyContent(auth, sourceFile, newFile);
-      await newFile.markAsReady(auth);
-
-      return new Ok(newFile);
-    } catch (error) {
-      return new Err(normalizeError(error));
-    }
-  }
-
   /**
    * Copy a file to a new file with the specified use case and metadata.
    * This method copies both the file metadata and the content stored in GCS.
@@ -1534,11 +1494,26 @@ export class FileResource extends BaseResource<FileModel> {
       return sourceFileRes;
     }
 
-    return this.createCopyFromReadyFile(auth, {
-      sourceFile: sourceFileRes.value,
-      useCase,
-      useCaseMetadata,
-    });
+    try {
+      const sourceFile = sourceFileRes.value;
+      const newFile = await FileResource.makeNew({
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: auth.user()?.id ?? null,
+        contentType: sourceFile.contentType,
+        fileName: sourceFile.fileName,
+        fileSize: sourceFile.fileSize,
+        useCase,
+        useCaseMetadata,
+        snippet: sourceFile.snippet,
+      });
+
+      await copyContent(auth, sourceFile, newFile);
+      await newFile.markAsReady(auth);
+
+      return new Ok(newFile);
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
   }
 
   static async copyToConversation(
@@ -1577,14 +1552,13 @@ export class FileResource extends BaseResource<FileModel> {
       ...restMetadata
     } = sourceFile.useCaseMetadata ?? {};
 
-    return this.createCopyFromReadyFile(auth, {
-      sourceFile,
+    return this.copy(auth, {
+      sourceId,
       useCase: sourceFile.useCase,
       useCaseMetadata: {
         ...restMetadata,
         conversationId,
       },
-      snippet: sourceFile.snippet,
     });
   }
 }
