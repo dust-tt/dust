@@ -1,14 +1,13 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import {
-  Checkbox,
+  Button,
+  ContentMessage,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  InformationCircleIcon,
-  Tooltip,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
@@ -18,12 +17,17 @@ export function SkillBuilderIsDefaultSection() {
   const isDefault = watch("isDefault");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-  const handleCheckboxChange = (checked: boolean) => {
-    if (checked) {
-      setShowConfirmDialog(true);
-    } else {
+  const openDialog = () => {
+    setShowConfirmDialog(true);
+  };
+
+  const handleButtonClick = () => {
+    if (isDefault) {
       setValue("isDefault", false, { shouldDirty: true });
+      return;
     }
+
+    openDialog();
   };
 
   const handleConfirm = () => {
@@ -34,19 +38,12 @@ export function SkillBuilderIsDefaultSection() {
   return (
     <>
       <div className="flex items-center gap-2">
-        <Checkbox
-          checked={isDefault}
-          onCheckedChange={handleCheckboxChange}
+        <Button
+          variant="outline"
           size="sm"
-        />
-        <span className="text-sm text-foreground dark:text-foreground-night">
-          Allow agents to discover this skill
-        </span>
-        <Tooltip
-          label="This skill will be set as default. Agents with Discover Skills will be able to find and enable it on their own"
-          trigger={
-            <InformationCircleIcon className="text-muted-foreground dark:text-muted-foreground-night h-4 w-4" />
-          }
+          label={!isDefault ? "Allow agents to discover this skill" : "Prevent agents from discovering this skill"}
+          onClick={handleButtonClick}
+          tooltip="This skill will be set as default. Agents with Discover Skills will be able to find and enable it on their own"
         />
       </div>
       <Dialog
