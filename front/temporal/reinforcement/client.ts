@@ -1,10 +1,10 @@
 import { config, REGION_TIMEZONES } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
+import { REINFORCEMENT_EXCLUDED_PLAN_CODES } from "@app/lib/plans/plan_codes";
 import { hasReinforcementEnabled } from "@app/lib/reinforced_agent/workspace_check";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import { EXCLUDED_PLAN_CODES } from "@app/temporal/utils";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { WorkflowHandle } from "@temporalio/client";
@@ -46,7 +46,7 @@ async function getReinforcementWorkspaceIds(): Promise<string[]> {
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
       const planCode = auth.plan()?.code;
-      if (planCode && EXCLUDED_PLAN_CODES.has(planCode)) {
+      if (planCode && REINFORCEMENT_EXCLUDED_PLAN_CODES.has(planCode)) {
         continue;
       }
 

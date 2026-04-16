@@ -1,12 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
-import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { Context } from "@temporalio/activity";
 
 const DEFAULT_WORKSPACE_CONCURRENCY = 50;
-
-/** Plan codes excluded from batch workspace operations (e.g. free trial). */
-export const EXCLUDED_PLAN_CODES = new Set([FREE_TRIAL_PHONE_PLAN_CODE]);
 
 /**
  * List all workspaces and run `fn` on each in parallel (activity-safe, heartbeats

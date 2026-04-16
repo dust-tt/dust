@@ -24,6 +24,11 @@ export const ENT_PLAN_FAKE_CODE = "ENT_PLAN_FAKE_CODE";
 // Dust's own workspace plan.
 export const DUST_COMPANY_PLAN_CODE = "DUST_COMPANY";
 
+/** Plan codes excluded from reinforcement-related batch operations. */
+export const REINFORCEMENT_EXCLUDED_PLAN_CODES = new Set([
+  FREE_TRIAL_PHONE_PLAN_CODE,
+]);
+
 // If the plan code starts with ENT_, it's an entreprise plan
 export const isEntreprisePlanPrefix = (planCode: string) =>
   planCode.startsWith("ENT_");

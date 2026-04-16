@@ -1,6 +1,7 @@
 // biome-ignore-all lint/plugin/noRawSql: hard delete activities require raw SQL for cascade deletions
 import { batchHardDeletePendingAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { REINFORCEMENT_EXCLUDED_PLAN_CODES } from "@app/lib/plans/plan_codes";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import logger from "@app/logger/logger";
@@ -182,27 +183,31 @@ export async function purgeExpiredSyntheticSkillSuggestionsActivity(
     `About to purge synthetic skill suggestions created before ${cutoffDate.toISOString()}.`
   );
 
-  const results = await runOnAllWorkspacesInActivity(async (auth) => {
-    let deleted = 0;
-    let hasMore = true;
+  const results = await runOnAllWorkspacesInActivity(
+    async (auth) => {
+      let deleted = 0;
+      let hasMore = true;
 
-    do {
-      const deletedCount = await SkillSuggestionResource.deleteExpiredSynthetic(
-        auth,
-        cutoffDate,
-        {
-          limit: batchSize,
-        }
-      );
+      do {
+        const deletedCount =
+          await SkillSuggestionResource.deleteExpiredSynthetic(
+            auth,
+            cutoffDate,
+            {
+              limit: batchSize,
+            }
+          );
 
-      deleted += deletedCount;
-      hasMore = deletedCount === batchSize;
+        deleted += deletedCount;
+        hasMore = deletedCount === batchSize;
 
-      Context.current().heartbeat();
-    } while (hasMore);
+        Context.current().heartbeat();
+      } while (hasMore);
 
-    return deleted;
-  });
+      return deleted;
+    },
+    { excludePlanCodes: REINFORCEMENT_EXCLUDED_PLAN_CODES }
+  );
 
   const totalDeleted = results.reduce((sum, count) => sum + count, 0);
 
