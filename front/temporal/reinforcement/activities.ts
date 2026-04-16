@@ -53,7 +53,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import logger from "@app/logger/logger";
-import { ensureReinforcementWorkspaceCrons } from "@app/temporal/reinforcement/client";
+import { ensureReinforcementWorkspaceSchedules } from "@app/temporal/reinforcement/client";
 import { ApplicationFailure } from "@temporalio/common";
 
 // Re-export runToolActivity so the reinforced skills worker registers it,
@@ -1025,12 +1025,12 @@ export async function processSkillAggregationBatchResultActivity({
 }
 
 // ---------------------------------------------------------------------------
-// Ensure crons activity
+// Ensure schedules activity
 // ---------------------------------------------------------------------------
 
-export async function ensureReinforcementWorkspaceCronsActivity(): Promise<{
+export async function ensureReinforcementWorkspaceSchedulesActivity(): Promise<{
   started: string[];
   stopped: string[];
 }> {
-  return ensureReinforcementWorkspaceCrons();
+  return ensureReinforcementWorkspaceSchedules();
 }

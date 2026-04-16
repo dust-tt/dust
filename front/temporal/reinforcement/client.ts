@@ -17,7 +17,7 @@ import {
 import moment from "moment-timezone";
 import { QUEUE_NAME } from "./config";
 import {
-  ensureReinforcementWorkspaceCronsWorkflow,
+  ensureReinforcementWorkspaceSchedulesWorkflow,
   reinforcementWorkspaceWorkflow,
 } from "./workflows";
 
@@ -66,7 +66,7 @@ const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
  * Launch a schedule for a single workspace.
  * Fires at regional midnight with a 2-hour jitter to spread load.
  */
-export async function launchReinforcementWorkspaceCron({
+export async function startReinforcementWorkspaceSchedule({
   workspaceId,
 }: {
   workspaceId: string;
@@ -116,7 +116,7 @@ export async function launchReinforcementWorkspaceCron({
 /**
  * Stop (delete) the schedule for a single workspace.
  */
-export async function stopReinforcementWorkspaceCron({
+export async function deleteReinforcementWorkspaceSchedule({
   workspaceId,
 }: {
   workspaceId: string;
@@ -152,7 +152,7 @@ export const ENSURE_CRONS_WORKFLOW_ID = `ensure-${WORKSPACE_WORKFLOW_ID_PREFIX}c
  * Ensure all flagged workspaces have a running schedule and delete schedules
  * for workspaces that are no longer flagged.
  */
-export async function ensureReinforcementWorkspaceCrons(): Promise<{
+export async function ensureReinforcementWorkspaceSchedules(): Promise<{
   started: string[];
   stopped: string[];
 }> {
@@ -187,7 +187,7 @@ export async function ensureReinforcementWorkspaceCrons(): Promise<{
         { workspaceId },
         "[Reinforcement] Creating schedule for workspace."
       );
-      await launchReinforcementWorkspaceCron({ workspaceId });
+      await startReinforcementWorkspaceSchedule({ workspaceId });
       return workspaceId;
     },
     { concurrency: CONCURRENCY }
@@ -201,7 +201,7 @@ export async function ensureReinforcementWorkspaceCrons(): Promise<{
         { workspaceId },
         "[Reinforcement] Deleting schedule for workspace."
       );
-      await stopReinforcementWorkspaceCron({ workspaceId });
+      await deleteReinforcementWorkspaceSchedule({ workspaceId });
       return workspaceId;
     },
     { concurrency: CONCURRENCY }
@@ -233,7 +233,7 @@ export async function stopAllReinforcementWorkspaceCrons(): Promise<void> {
   }
 
   for (const workspaceId of workspaceIds) {
-    await stopReinforcementWorkspaceCron({ workspaceId });
+    await deleteReinforcementWorkspaceSchedule({ workspaceId });
   }
 
   logger.info(
@@ -242,7 +242,7 @@ export async function stopAllReinforcementWorkspaceCrons(): Promise<void> {
   );
 }
 
-export async function launchEnsureReinforcementCronsWorkflow(): Promise<
+export async function launchEnsureReinforcementSchedulesWorkflow(): Promise<
   Result<string, Error>
 > {
   const client = await getTemporalClientForFrontNamespace();
@@ -252,7 +252,7 @@ export async function launchEnsureReinforcementCronsWorkflow(): Promise<
   const utcHour = elevenPmInTz.utc().hour();
 
   try {
-    await client.workflow.start(ensureReinforcementWorkspaceCronsWorkflow, {
+    await client.workflow.start(ensureReinforcementWorkspaceSchedulesWorkflow, {
       args: [],
       taskQueue: QUEUE_NAME,
       workflowId: ENSURE_CRONS_WORKFLOW_ID,

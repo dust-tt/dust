@@ -1,11 +1,11 @@
 import {
-  ensureReinforcementWorkspaceCrons,
-  launchEnsureReinforcementCronsWorkflow,
-  launchReinforcementWorkspaceCron,
+  deleteReinforcementWorkspaceSchedule,
+  ensureReinforcementWorkspaceSchedules,
+  launchEnsureReinforcementSchedulesWorkflow as launchEnsureReinforcementSchedulesWorkflow,
+  startReinforcementWorkspaceSchedule,
   startReinforcementWorkspaceWorkflow,
-  stopAllReinforcementWorkspaceCrons,
-  stopEnsureReinforcementCronsWorkflow,
-  stopReinforcementWorkspaceCron,
+  stopAllReinforcementWorkspaceCrons as stopAllReinforcementWorkspaceSchedules,
+  stopEnsureReinforcementCronsWorkflow as stopEnsureReinforcementSchedulesWorkflow,
 } from "@app/temporal/reinforcement/client";
 import parseArgs from "minimist";
 
@@ -32,16 +32,16 @@ const main = async () => {
 
   switch (command) {
     case "start":
-      await ensureReinforcementWorkspaceCrons();
+      await ensureReinforcementWorkspaceSchedules();
       return;
     case "stop":
-      await stopAllReinforcementWorkspaceCrons();
+      await stopAllReinforcementWorkspaceSchedules();
       return;
     case "start-ensure":
-      await launchEnsureReinforcementCronsWorkflow();
+      await launchEnsureReinforcementSchedulesWorkflow();
       return;
     case "stop-ensure":
-      await stopEnsureReinforcementCronsWorkflow();
+      await stopEnsureReinforcementSchedulesWorkflow();
       return;
     case "start-workspace": {
       const workspaceId = argv["workspace-id"];
@@ -50,7 +50,7 @@ const main = async () => {
         usage();
         process.exit(1);
       }
-      await launchReinforcementWorkspaceCron({ workspaceId });
+      await startReinforcementWorkspaceSchedule({ workspaceId });
       return;
     }
     case "stop-workspace": {
@@ -60,7 +60,7 @@ const main = async () => {
         usage();
         process.exit(1);
       }
-      await stopReinforcementWorkspaceCron({ workspaceId });
+      await deleteReinforcementWorkspaceSchedule({ workspaceId });
       return;
     }
     case "run-workspace": {
