@@ -353,22 +353,29 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   private static async baseFetch(
     auth: Authenticator,
     options: ResourceFindOptions<MCPServerViewModel> = {},
-    { includeMetadata = true }: { includeMetadata?: boolean } = {}
+    {
+      includeMetadata = true,
+      transaction,
+    }: { includeMetadata?: boolean; transaction?: Transaction } = {}
   ) {
-    const views = await this.baseFetchWithAuthorization(auth, {
-      ...options,
-      where: {
-        ...options.where,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      includes: [
-        ...(options.includes ?? []),
-        {
-          model: UserModel,
-          as: "editedByUser",
+    const views = await this.baseFetchWithAuthorization(
+      auth,
+      {
+        ...options,
+        where: {
+          ...options.where,
+          workspaceId: auth.getNonNullableWorkspace().id,
         },
-      ],
-    });
+        includes: [
+          ...(options.includes ?? []),
+          {
+            model: UserModel,
+            as: "editedByUser",
+          },
+        ],
+      },
+      transaction
+    );
 
     const filteredViews: MCPServerViewResource[] = [];
 
@@ -377,11 +384,15 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     if (options.includeDeleted) {
       filteredViews.push(...views);
     } else {
-      const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+      const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(
+        auth,
+        transaction
+      );
 
       const remoteServers = await RemoteMCPServerResource.fetchByModelIds(
         auth,
-        removeNulls(views.map((v) => v.remoteMCPServerId))
+        removeNulls(views.map((v) => v.remoteMCPServerId)),
+        transaction
       );
       const remoteServerMap = new Map(remoteServers.map((s) => [s.id, s]));
 
@@ -414,7 +425,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     }
 
     if (includeMetadata && filteredViews.length > 0) {
-      await this.populateToolsMetadata(auth, filteredViews);
+      await this.populateToolsMetadata(auth, filteredViews, transaction);
     }
 
     return filteredViews;
@@ -425,7 +436,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
    */
   private static async populateToolsMetadata(
     auth: Authenticator,
-    views: MCPServerViewResource[]
+    views: MCPServerViewResource[],
+    transaction?: Transaction
   ): Promise<void> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
@@ -441,6 +453,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
               workspaceId,
               internalMCPServerId: { [Op.in]: internalServerIds },
             },
+            transaction,
           })
         : [],
       remoteServerIds.length > 0
@@ -449,6 +462,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
               workspaceId,
               remoteMCPServerId: { [Op.in]: remoteServerIds },
             },
+            transaction,
           })
         : [],
     ]);
@@ -532,7 +546,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   static async fetchByModelIds(
     auth: Authenticator,
     ids: ModelId[],
-    { includeMetadata = true }: { includeMetadata?: boolean } = {}
+    {
+      includeMetadata = true,
+      transaction,
+    }: { includeMetadata?: boolean; transaction?: Transaction } = {}
   ) {
     const views = await this.baseFetch(
       auth,
@@ -543,7 +560,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           },
         },
       },
-      { includeMetadata }
+      { includeMetadata, transaction }
     );
 
     return views ?? [];

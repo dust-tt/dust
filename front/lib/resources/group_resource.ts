@@ -623,7 +623,8 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   private static async baseFetch(
     auth: Authenticator,
-    { includes, limit, order, where }: ResourceFindOptions<GroupModel> = {}
+    { includes, limit, order, where }: ResourceFindOptions<GroupModel> = {},
+    transaction?: Transaction
   ) {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const includeClauses: Includeable[] = includes || [];
@@ -636,18 +637,27 @@ export class GroupResource extends BaseResource<GroupModel> {
       include: includeClauses,
       limit,
       order,
+      transaction,
     });
     return groupModels.map((b) => new this(this.model, b.get()));
   }
 
-  static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
-    return this.baseFetch(auth, {
-      where: {
-        id: {
-          [Op.in]: ids,
+  static async fetchByModelIds(
+    auth: Authenticator,
+    ids: ModelId[],
+    { transaction }: { transaction?: Transaction } = {}
+  ) {
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          id: {
+            [Op.in]: ids,
+          },
         },
       },
-    });
+      transaction
+    );
   }
 
   static async fetchById(
