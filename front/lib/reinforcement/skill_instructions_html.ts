@@ -4,14 +4,10 @@ import {
 } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
-import {
-  postProcessMarkdown,
-  preprocessMarkdownForEditor,
-} from "@app/lib/editor/skill_instructions_preprocessing";
+import { preprocessMarkdownForEditor } from "@app/lib/editor/skill_instructions_preprocessing";
 import { generateShortBlockId } from "@app/lib/generate_short_block_id";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { JSONContent } from "@tiptap/core";
-import { generateJSON } from "@tiptap/html/server";
 import { MarkdownManager } from "@tiptap/markdown";
 import { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string";
 import * as cheerio from "cheerio";
@@ -170,11 +166,3 @@ export function convertMarkdownToBlockHtml(markdown: string): string {
   return stripPresentationAttributes(rendered);
 }
 
-/**
- * Convert stored skill instructionsHtml back to Markdown.
- * Used by migration validation to round-trip against original instructions.
- */
-export function convertBlockHtmlToMarkdown(html: string): string {
-  const json = generateJSON(html, SKILL_EDITOR_EXTENSIONS);
-  return postProcessMarkdown(MARKDOWN_MANAGER.serialize(json));
-}

@@ -2,6 +2,7 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -354,6 +355,9 @@ async function handler(
         }
       }
 
+      const instructionsHtml =
+        body.instructionsHtml ?? convertMarkdownToBlockHtml(body.instructions);
+
       const skill = await SkillResource.makeNew(
         auth,
         {
@@ -362,7 +366,7 @@ async function handler(
           agentFacingDescription: body.agentFacingDescription,
           userFacingDescription: body.userFacingDescription,
           instructions: body.instructions,
-          instructionsHtml: body.instructionsHtml ?? null,
+          instructionsHtml,
           editedBy: user.id,
           requestedSpaceIds,
           extendedSkillId: body.extendedSkillId,
