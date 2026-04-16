@@ -171,7 +171,10 @@ export function DiffBlock({
               size="xs"
               variant="outline"
               label={isExpanded ? "Show less" : "Show more"}
-              onClick={() => setIsExpanded((value) => !value)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsExpanded((value) => !value);
+              }}
               aria-expanded={isExpanded}
             />
           </div>

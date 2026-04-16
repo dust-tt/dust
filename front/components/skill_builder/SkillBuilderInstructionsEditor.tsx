@@ -7,8 +7,10 @@ import {
   useSkillInstructionsEditor,
 } from "@app/components/editor/SkillInstructionsEditor";
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
+import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
+import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   postProcessMarkdown,
@@ -135,7 +137,18 @@ export function SkillBuilderInstructionsEditor({
     [setValue]
   );
 
-  const { editor } = useSkillInstructionsEditor({
+  const { owner, skillId, selectedSuggestionId, setAcceptInstructionEdits } =
+    useSkillBuilderContext();
+  const { suggestions, isSuggestionsLoading } = useSkillSuggestions({
+    skillId,
+    states: ["pending"],
+    workspaceId: owner.sId,
+    disabled: !skillId,
+  });
+
+  const hasSuggestions = suggestions.length > 0;
+
+  const { editor, isContentReady } = useSkillInstructionsEditor({
     content: instructionsField.value ?? "",
     htmlContent:
       useHtmlInstructions && instructionsHtmlField.value
@@ -182,6 +195,91 @@ export function SkillBuilderInstructionsEditor({
       onAddKnowledge(handleAddKnowledge);
     }
   }, [editor, handleAddKnowledge, onAddKnowledge]);
+
+  // Register a callback that the suggestions panel can call to accept a
+  // suggestion directly via the editor's ProseMirror commands.
+  // Accepting the ProseMirror suggestion means we don't need to manipulate the HTML by hand again
+  // as we already did it to create the suggestion in ProseMirror.
+  useEffect(() => {
+    if (!editor || !useHtmlInstructions) {
+      setAcceptInstructionEdits(null);
+      return;
+    }
+
+    // Wrap in arrow to avoid React treating the function as a state updater.
+    setAcceptInstructionEdits(() => (suggestionSId: string) => {
+      // Accept each edit of this suggestion via the PM command.
+      for (let i = 0; ; i++) {
+        const editId = `${suggestionSId}:${i}`;
+        const accepted = editor.commands.acceptSuggestion(editId);
+        if (!accepted) {
+          break;
+        }
+      }
+
+      // Sync the editor's new content back to the form.
+      setValue(
+        INSTRUCTIONS_HTML_FIELD_NAME,
+        stripHtmlAttributes(editor.getHTML()),
+        { shouldDirty: true }
+      );
+      setValue(
+        INSTRUCTIONS_FIELD_NAME,
+        postProcessMarkdown(editor.getMarkdown()).trim(),
+        {
+          shouldDirty: true,
+        }
+      );
+    });
+
+    return () => {
+      setAcceptInstructionEdits(null);
+    };
+  }, [editor, useHtmlInstructions, setValue, setAcceptInstructionEdits]);
+
+  // Apply pending instruction suggestions as inline diff decorations.
+  // "Reject all + re-apply current" on every change so that accepts and
+  // rejects from the suggestions panel are immediately reflected.
+  // Wait for isContentReady to be true so there is content on which the diff must be applied
+  useEffect(() => {
+    if (!editor || isSuggestionsLoading || !isContentReady) {
+      return;
+    }
+
+    editor.commands.rejectAllSuggestions();
+
+    for (const suggestion of suggestions) {
+      const { instructionEdits } = suggestion.suggestion;
+      if (!instructionEdits || instructionEdits.length === 0) {
+        continue;
+      }
+      for (let i = 0; i < instructionEdits.length; i++) {
+        const edit = instructionEdits[i];
+        editor.commands.applySuggestion({
+          id: `${suggestion.sId}:${i}`,
+          targetBlockId: edit.targetBlockId,
+          content: edit.content,
+        });
+      }
+    }
+
+    // Highlight all edits of the selected suggestion using prefix matching.
+    // may be null if no suggestion is selected
+    editor.commands.setHighlightedSuggestion(selectedSuggestionId);
+
+    // Make the editor read-only while suggestion diffs are displayed.
+    if (!isDiffMode) {
+      editor.setEditable(!hasSuggestions);
+    }
+  }, [
+    editor,
+    isContentReady,
+    suggestions,
+    isSuggestionsLoading,
+    selectedSuggestionId,
+    isDiffMode,
+    hasSuggestions,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -235,20 +333,16 @@ export function SkillBuilderInstructionsEditor({
       const incomingHtml = instructionsHtmlField.value;
       const currentHtml = stripHtmlAttributes(editor.getHTML());
       if (currentHtml !== incomingHtml) {
-        setTimeout(() => {
-          editor.commands.setContent(incomingHtml, { emitUpdate: false });
-        }, 0);
+        editor.commands.setContent(incomingHtml, { emitUpdate: false });
       }
     } else {
       const incomingMarkdown = instructionsField.value;
       const currentContent = postProcessMarkdown(editor.getMarkdown());
       if (currentContent !== incomingMarkdown) {
-        setTimeout(() => {
-          editor.commands.setContent(
-            preprocessMarkdownForEditor(incomingMarkdown),
-            { emitUpdate: false, contentType: "markdown" }
-          );
-        }, 0);
+        editor.commands.setContent(
+          preprocessMarkdownForEditor(incomingMarkdown),
+          { emitUpdate: false, contentType: "markdown" }
+        );
       }
     }
   }, [
