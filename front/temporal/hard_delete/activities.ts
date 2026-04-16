@@ -5,6 +5,7 @@ import { REINFORCEMENT_EXCLUDED_PLAN_CODES } from "@app/lib/plans/plan_codes";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import logger from "@app/logger/logger";
+import { runOnAllWorkspacesInActivity } from "@app/temporal/activity_utils";
 import type {
   RunExecutionRow,
   RunsJoinsRow,
@@ -15,7 +16,6 @@ import {
   getSyntheticSuggestionsDeletionCutoffDate,
   isSequelizeForeignKeyConstraintError,
 } from "@app/temporal/hard_delete/utils";
-import { runOnAllWorkspacesInActivity } from "@app/temporal/activity_utils";
 import { Context } from "@temporalio/activity";
 import type { Sequelize } from "sequelize";
 import { Op, QueryTypes } from "sequelize";
