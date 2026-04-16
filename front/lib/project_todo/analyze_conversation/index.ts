@@ -120,7 +120,7 @@ async function callExtractActionItemsLLM(
             messages: [
               {
                 role: "user",
-                name: "todo_extractor",
+                name: "takeaway_extractor",
                 content: [{ type: "text", text: document.text }],
               },
             ],
@@ -147,7 +147,7 @@ async function callExtractActionItemsLLM(
         workspaceId: owner.sId,
         error: res.error,
       },
-      "Document todo: LLM call failed"
+      "Document takeaway: LLM call failed"
     );
     return null;
   }
@@ -160,7 +160,7 @@ async function callExtractActionItemsLLM(
         sourceType: document.type,
         workspaceId: owner.sId,
       },
-      "Document todo: no tool call in LLM response"
+      "Document takeaway: no tool call in LLM response"
     );
     return null;
   }
@@ -175,7 +175,7 @@ async function callExtractActionItemsLLM(
         error: parsed.error,
         arguments: action.arguments,
       },
-      "Document todo: failed to parse LLM response"
+      "Document takeaway: failed to parse LLM response"
     );
     return null;
   }
@@ -212,7 +212,7 @@ export async function extractDocumentTakeaways(
         sourceType: document.type,
         workspaceId: owner.sId,
       },
-      "Document todo: no whitelisted model available"
+      "Document takeaway: no whitelisted model available"
     );
     return;
   }
@@ -245,7 +245,7 @@ export async function extractDocumentTakeaways(
         sourceType: document.type,
         workspaceId: owner.sId,
       },
-      "Document todo: no extraction result"
+      "Document takeaway: no extraction result"
     );
     return;
   }
@@ -263,22 +263,22 @@ export async function extractDocumentTakeaways(
     ])
   );
 
-  const exitingAssignees = new Set(assignees.map((u) => u.sId));
+  const existingAssignees = new Set(assignees.map((u) => u.sId));
 
   const actionItems = buildActionItems(
     extraction.action_items,
     new Set(previousActionItems.map((item) => item.sId)),
-    exitingAssignees
+    existingAssignees
   );
   const notableFacts = buildNotableFacts(
     extraction.notable_facts,
     new Set(previousNotableFacts.map((fact) => fact.sId)),
-    exitingAssignees
+    existingAssignees
   );
   const keyDecisions = buildKeyDecisions(
     extraction.key_decisions,
     new Set(previousKeyDecisions.map((d) => d.sId)),
-    exitingAssignees
+    existingAssignees
   );
 
   if (
