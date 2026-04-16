@@ -1,6 +1,7 @@
 import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { getBlockOuterHtml } from "@app/components/shared/utils";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type {
   SkillInstructionEditItemType,
@@ -95,12 +96,7 @@ function InstructionEditDiffBlock({
     if (!instructionsHtml) {
       return "";
     }
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(instructionsHtml, "text/html");
-    const targetElement = doc.querySelector(
-      `[data-block-id="${targetBlockId}"]`
-    );
-    return targetElement ? targetElement.outerHTML : "";
+    return getBlockOuterHtml(instructionsHtml, targetBlockId);
   }, [targetBlockId, getSkillInstructionsHtml]);
 
   const editor = useEditor(
