@@ -394,9 +394,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   static async fetchWorkspaceSystemSpace(
-    auth: Authenticator
+    auth: Authenticator,
+    transaction?: Transaction
   ): Promise<SpaceResource> {
-    const [space] = await this.baseFetch(auth, { where: { kind: "system" } });
+    const [space] = await this.baseFetch(
+      auth,
+      { where: { kind: "system" } },
+      transaction
+    );
 
     if (!space) {
       throw new Error("System space not found.");
@@ -406,9 +411,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   static async fetchWorkspaceGlobalSpace(
-    auth: Authenticator
+    auth: Authenticator,
+    transaction?: Transaction
   ): Promise<SpaceResource> {
-    const [space] = await this.baseFetch(auth, { where: { kind: "global" } });
+    const [space] = await this.baseFetch(
+      auth,
+      { where: { kind: "global" } },
+      transaction
+    );
 
     if (!space) {
       throw new Error("Global space not found.");
@@ -460,20 +470,27 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   static async fetchByModelIds(
     auth: Authenticator,
     ids: ModelId[],
-    { includeDeleted }: { includeDeleted?: boolean } = {}
+    {
+      includeDeleted,
+      transaction,
+    }: { includeDeleted?: boolean; transaction?: Transaction } = {}
   ) {
     if (ids.length === 0) {
       return [];
     }
 
-    const spaces = await this.baseFetch(auth, {
-      where: {
-        id: {
-          [Op.in]: ids,
+    const spaces = await this.baseFetch(
+      auth,
+      {
+        where: {
+          id: {
+            [Op.in]: ids,
+          },
         },
+        includeDeleted,
       },
-      includeDeleted,
-    });
+      transaction
+    );
 
     return spaces ?? [];
   }
