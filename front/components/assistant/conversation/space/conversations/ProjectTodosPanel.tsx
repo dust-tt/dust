@@ -1,5 +1,9 @@
 import { useAppRouter } from "@app/lib/platform";
-import { useProjectTodos, useUpdateProjectTodo } from "@app/lib/swr/projects";
+import {
+  useDeleteProjectTodo,
+  useProjectTodos,
+  useUpdateProjectTodo,
+} from "@app/lib/swr/projects";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   ProjectTodoCategory,
@@ -13,8 +17,10 @@ import {
   CircleIcon,
   cn,
   Icon,
+  IconButton,
   Spinner,
   SquareIcon,
+  TrashIcon,
   WindIcon,
 } from "@dust-tt/sparkle";
 import type React from "react";
@@ -207,21 +213,25 @@ function ReadOnlyProjectTodosPanel({
 
 // ── Editable sub-components ───────────────────────────────────────────────────
 
+interface EditableTodoItemProps {
+  todo: ProjectTodoType;
+  isPendingDone: boolean;
+  onMarkDone: (todo: ProjectTodoType) => void;
+  onDelete: (todo: ProjectTodoType) => void;
+  owner: LightWorkspaceType;
+}
+
 function EditableTodoItem({
   todo,
   isPendingDone,
   onMarkDone,
+  onDelete,
   owner,
-}: {
-  todo: ProjectTodoType;
-  isPendingDone: boolean;
-  onMarkDone: (todo: ProjectTodoType) => void;
-  owner: LightWorkspaceType;
-}) {
+}: EditableTodoItemProps) {
   const isDone = isPendingDone || todo.status === "done";
 
   return (
-    <li className="flex items-start gap-2 py-0.5">
+    <li className="group/todo flex items-start gap-2 py-0.5">
       <div className="mt-0.5 shrink-0">
         <Checkbox
           size="xs"
@@ -234,7 +244,7 @@ function EditableTodoItem({
           }}
         />
       </div>
-      <div className="flex flex-col gap-0.5">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span
           className={cn(
             "text-sm leading-5 transition-all duration-300",
@@ -246,6 +256,15 @@ function EditableTodoItem({
           {todo.text}
         </span>
         <TodoSources sources={todo.sources} owner={owner} isDone={isDone} />
+      </div>
+      <div className="mt-0.5 shrink-0 opacity-0 transition-opacity group-hover/todo:opacity-100">
+        <IconButton
+          icon={TrashIcon}
+          size="xs"
+          variant="ghost"
+          tooltip="Delete todo"
+          onClick={() => onDelete(todo)}
+        />
       </div>
     </li>
   );
@@ -263,6 +282,7 @@ function EditableProjectTodosPanel({
     spaceId,
   });
   const doUpdate = useUpdateProjectTodo({ owner, spaceId });
+  const doDelete = useDeleteProjectTodo({ owner, spaceId });
 
   // Tracks todos being optimistically marked as done (shown with strikethrough).
   const [pendingDoneIds, setPendingDoneIds] = useState<Set<string>>(new Set());
@@ -313,6 +333,16 @@ function EditableProjectTodosPanel({
     void mutateTodos();
     setPendingDoneIds(new Set());
   }, [mutateTodos]);
+
+  const handleDelete = useCallback(
+    async (todo: ProjectTodoType) => {
+      const result = await doDelete(todo.sId);
+      if (result.isOk()) {
+        void mutateTodos();
+      }
+    },
+    [doDelete, mutateTodos]
+  );
 
   return (
     <div className="flex flex-col gap-3">
@@ -389,6 +419,7 @@ function EditableProjectTodosPanel({
                       todo={todo}
                       isPendingDone={pendingDoneIds.has(todo.sId)}
                       onMarkDone={handleMarkDone}
+                      onDelete={handleDelete}
                       owner={owner}
                     />
                   ))}

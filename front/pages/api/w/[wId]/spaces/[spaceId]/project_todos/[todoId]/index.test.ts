@@ -140,7 +140,7 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]", () => {
   });
 
   it("should return 405 for unsupported methods", async () => {
-    const result = await createPrivateApiMockRequest({ method: "DELETE" });
+    const result = await createPrivateApiMockRequest({ method: "GET" });
     req = result.req;
     res = result.res;
     workspace = result.workspace;
