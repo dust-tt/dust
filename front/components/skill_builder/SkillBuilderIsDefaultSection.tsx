@@ -86,7 +86,7 @@ export function SkillBuilderIsDefaultSection() {
               {isDescriptionTooShort && (
                 <ContentMessage
                   variant="golden"
-                  title="Description may be too short"
+                  title="Agents may not understand when to use this skill"
                   icon={InformationCircleIcon}
                   size="lg"
                   className="w-full"
@@ -96,8 +96,8 @@ export function SkillBuilderIsDefaultSection() {
                     What will this skill be used for
                   </span>
                   &nbsp;may be too short for agents to clearly understand when
-                  to use this skill. Consider making it a bit more descriptive
-                  before allowing discovery.
+                  to use this skill. Consider making it more descriptive before
+                  allowing discovery.
                 </ContentMessage>
               )}
             </div>
