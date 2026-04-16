@@ -124,7 +124,7 @@ export function PanelAgentStep({
       {pendingToolCalls.map((pendingToolCall, index) => (
         <div key={getPendingToolCallKey(pendingToolCall, index)}>
           <PendingToolCallDetails
-            displayContext="sidebar-single-actions"
+            displayContext="sidebar-single-action"
             functionCallName={pendingToolCall.toolName}
           />
         </div>
