@@ -131,4 +131,4 @@ Check all of the following:
 
 - `front/lib/api/audit/workos_audit.ts`
 - `front/admin/audit_log_schemas/`
-- `CODING_RULES.md` entries `[AUDIT1]` through `[AUDIT8]`
+- `front/CODING_RULES.md` entries `[AUDIT1]` through `[AUDIT8]`

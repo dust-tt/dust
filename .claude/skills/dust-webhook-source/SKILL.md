@@ -40,6 +40,7 @@ This research determines the metadata types, client methods, event schemas, and 
 Minimal implementation:
 
 - `front/types/triggers/webhooks.ts`
+- `front/types/triggers/webhooks_ui.ts`
 - `front/lib/triggers/built-in-webhooks/<provider>/types.ts`
 - `front/lib/triggers/built-in-webhooks/<provider>/<provider>_client.ts`
 - `front/lib/triggers/built-in-webhooks/<provider>/service.ts`
@@ -63,6 +64,11 @@ In `front/types/triggers/webhooks.ts`:
 - add the provider to `WEBHOOK_PROVIDERS`
 - extend `WebhookProviderServiceDataMap` if the provider needs extra OAuth-fetched data
 - register the preset in `WEBHOOK_PRESETS`
+
+In `front/types/triggers/webhooks_ui.ts`:
+
+- import the provider UI preset
+- register it in `WEBHOOK_PRESETS_UI`
 
 ### 2. Define metadata and type guards
 
@@ -135,8 +141,11 @@ Create:
 
 The create form should:
 
-- drive OAuth with `useCreateOAuthConnection` and `useCase: "webhooks"`
-- fetch any provider-specific setup data once connected
+- rely on `front/components/triggers/CreateWebhookSourceWithProviderForm.tsx` for the OAuth
+  connection flow via `setupOAuthConnection(...)`
+- treat `connectionId` as an input prop; do not recreate the OAuth flow inside the provider-specific
+  form
+- fetch provider-specific setup data with `useWebhookServiceData({ owner, connectionId, provider })`
 - call `onDataToCreateWebhookChange({ connectionId, remoteMetadata })`
 - call `onReadyToSubmitChange(true)` only when configuration is complete
 
