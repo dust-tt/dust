@@ -56,17 +56,19 @@ export function SkillBuilderSuggestionsPanel() {
           `[data-block-id="${edit.targetBlockId}"]`
         );
         if (!targetElement) {
+          // This should never happen, the target element should always exist when suggestion is pending.
+          // If it happens, just ignore the suggestion as we cannot apply it.
           continue;
         }
 
-        const temp = doc.createElement("div");
-        temp.innerHTML = edit.content;
-        targetElement.replaceWith(...Array.from(temp.childNodes));
+        const tempDiv = doc.createElement("div");
+        tempDiv.innerHTML = edit.content;
+        targetElement.replaceWith(...Array.from(tempDiv.childNodes));
       }
 
       const root = doc.querySelector('[data-type="instructions-root"]');
       if (!root) {
-        return;
+        return; // Should never happen
       }
 
       const newHtml = stripHtmlAttributes(root.outerHTML);
