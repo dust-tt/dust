@@ -30,6 +30,7 @@ import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isRecord } from "@app/types/shared/utils/general";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import cloneDeep from "lodash/cloneDeep";
 
 export async function* streamLLMEvents(
@@ -39,7 +40,7 @@ export async function* streamLLMEvents(
     body: MessageCountTokensParams
   ) => APIPromise<MessageTokensCount>
 ): AsyncGenerator<LLMEvent> {
-  const stateContainer = { state: null };
+  const stateContainer: { state: StreamState } = { state: null };
   // Aggregate output items to build a SuccessCompletionEvent at the end of a turn.
   const aggregate = new SuccessAggregate();
   // Accumulate token usage to return later
@@ -262,12 +263,45 @@ function* handleContentBlockStop(
         stateContainer.state.signature ?? ""
       );
       break;
-    case "tool_use":
+    case "tool_use": {
+      const input = stateContainer.state.accumulator;
+
+      // With eager_input_streaming enabled on all tools, the model may produce
+      // invalid JSON. We validate inputs below a size limit to avoid spending
+      // time parsing very large payloads. Per Anthropic docs, we wrap the
+      // invalid JSON and send it back as a tool result so the model can see
+      // its mistake and self-correct.
+      // https://platform.claude.com/docs/en/agents-and-tools/tool-use/fine-grained-tool-streaming#handling-invalid-json-in-tool-responses
+      const MAX_EAGER_VALIDATION_INPUT_LENGTH = 5_000;
+      if (
+        input.length < MAX_EAGER_VALIDATION_INPUT_LENGTH &&
+        input.trim() !== ""
+      ) {
+        const parsed = safeParseJSON(input);
+        if (parsed.isErr()) {
+          logger.warn(
+            {
+              toolName: stateContainer.state.toolInfo.name,
+              inputLength: input.length,
+            },
+            "Tool input failed JSON validation, wrapping as INVALID_JSON tool call"
+          );
+          yield toolCallWithInvalidJson({
+            ...stateContainer.state.toolInfo,
+            invalidJson: input,
+            metadata,
+          });
+          break;
+        }
+      }
+
       yield toolCall({
         ...stateContainer.state.toolInfo,
-        input: stateContainer.state.accumulator,
+        input,
         metadata,
       });
+      break;
+    }
   }
   stateContainer.state = null;
 }
@@ -470,6 +504,34 @@ function toolCall({
       id: id,
       name: name,
       arguments: parseToolArguments(input, name),
+    },
+    metadata,
+  };
+}
+
+/**
+ * Creates a ToolCallEvent wrapping invalid JSON from the model.
+ * Per Anthropic docs for eager_input_streaming, invalid JSON should be wrapped
+ * and sent back as a tool result so the model can see its mistake and retry.
+ * https://platform.claude.com/docs/en/agents-and-tools/tool-use/fine-grained-tool-streaming#handling-invalid-json-in-tool-responses
+ */
+function toolCallWithInvalidJson({
+  id,
+  name,
+  invalidJson,
+  metadata,
+}: {
+  id: string;
+  name: string;
+  invalidJson: string;
+  metadata: LLMClientMetadata;
+}): ToolCallEvent {
+  return {
+    type: "tool_call",
+    content: {
+      id,
+      name,
+      arguments: { INVALID_JSON: invalidJson },
     },
     metadata,
   };
