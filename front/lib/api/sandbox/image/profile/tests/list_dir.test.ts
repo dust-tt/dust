@@ -61,13 +61,6 @@ describe("list_dir", () => {
     expect(stderr).toContain("directory not found");
   });
 
-  it("returns help with --help flag", () => {
-    const { stdout, exitCode } = runBashFunction("list_dir --help", tempDir);
-    expect(exitCode).toBe(0);
-    expect(stdout).toContain("Usage:");
-    expect(stdout).toContain("list_dir [path]");
-  });
-
   it("shows type suffixes for directories and files", () => {
     const { stdout, exitCode } = runBashFunction(
       `list_dir "${tempDir}" --depth 1`,

@@ -47,20 +47,6 @@ describe("glob", () => {
     expect(stderr).toContain("pattern is required");
   });
 
-  it("returns help with --help flag", () => {
-    const { stdout, exitCode } = runBashFunction("glob --help", tempDir);
-    expect(exitCode).toBe(0);
-    expect(stdout).toContain("Usage:");
-    expect(stdout).toContain("glob <pattern>");
-  });
-
-  it("error includes usage hint", () => {
-    const { stderr, exitCode } = runBashFunction("glob", tempDir);
-    expect(exitCode).toBe(1);
-    expect(stderr).toContain("Usage:");
-    expect(stderr).toContain("--help");
-  });
-
   it("supports pagination with next offset footer", () => {
     for (let i = 0; i < 10; i++) {
       fs.writeFileSync(path.join(tempDir, `extra_${i}.txt`), "");

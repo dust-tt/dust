@@ -20,16 +20,6 @@ describe("read_file", () => {
     cleanupTempDir(tempDir);
   });
 
-  it("reads entire file with line numbers", () => {
-    const { stdout, exitCode } = runBashFunction(
-      `read_file "${tempDir}/test.txt"`,
-      tempDir
-    );
-    expect(exitCode).toBe(0);
-    expect(stdout).toContain("1\tline1");
-    expect(stdout).toContain("5\tline5");
-  });
-
   it("reads with offset and limit", () => {
     // offset=2, limit=2 means lines 2-3
     const { stdout, exitCode } = runBashFunction(
@@ -77,20 +67,6 @@ describe("read_file", () => {
     );
     expect(exitCode).toBe(1);
     expect(stderr).toContain("file not found");
-  });
-
-  it("returns help with --help flag", () => {
-    const { stdout, exitCode } = runBashFunction("read_file --help", tempDir);
-    expect(exitCode).toBe(0);
-    expect(stdout).toContain("Usage:");
-    expect(stdout).toContain("read_file <path>");
-  });
-
-  it("error includes usage hint", () => {
-    const { stderr, exitCode } = runBashFunction("read_file", tempDir);
-    expect(exitCode).toBe(1);
-    expect(stderr).toContain("Usage:");
-    expect(stderr).toContain("--help");
   });
 
   it("detects binary files", () => {

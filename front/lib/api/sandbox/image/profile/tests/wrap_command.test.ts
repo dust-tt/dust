@@ -16,36 +16,25 @@ function expectedWrappedCommand(
 }
 
 describe("wrapCommand", () => {
-  it("wraps command with shell function for anthropic provider", () => {
-    const result = wrapCommand("ls -la", "anthropic");
-    expect(result).toBe(expectedWrappedCommand("ls -la", "anthropic"));
-  });
-
-  it("wraps command with shell function for openai provider", () => {
-    const result = wrapCommand("pwd", "openai");
-    expect(result).toBe(expectedWrappedCommand("pwd", "openai"));
-  });
-
-  it("wraps command with shell function for google_ai_studio provider", () => {
-    const result = wrapCommand("echo hello", "google_ai_studio");
-    expect(result).toBe(expectedWrappedCommand("echo hello", "gemini"));
-  });
-
-  it("passes timeoutSec to shell wrapper", () => {
-    const result = wrapCommand("long-cmd", "anthropic", { timeoutSec: 120 });
-    expect(result).toBe(expectedWrappedCommand("long-cmd", "anthropic", 120));
-  });
-
-  it("preserves double quotes in command", () => {
-    const result = wrapCommand('echo "hello world"', "anthropic");
-    expect(result).toBe(
-      expectedWrappedCommand('echo "hello world"', "anthropic")
+  it("maps providers to the correct profile wrapper", () => {
+    expect(wrapCommand("ls -la", "anthropic")).toBe(
+      expectedWrappedCommand("ls -la", "anthropic")
+    );
+    expect(wrapCommand("pwd", "openai")).toBe(
+      expectedWrappedCommand("pwd", "openai")
+    );
+    expect(wrapCommand("echo hello", "google_ai_studio")).toBe(
+      expectedWrappedCommand("echo hello", "gemini")
     );
   });
 
-  it("preserves backslashes in command", () => {
-    const result = wrapCommand("echo \\n", "anthropic");
-    expect(result).toBe(expectedWrappedCommand("echo \\n", "anthropic"));
+  it("preserves the command verbatim and applies custom timeouts", () => {
+    const result = wrapCommand('echo "hello" && echo \\n', "anthropic", {
+      timeoutSec: 120,
+    });
+    expect(result).toBe(
+      expectedWrappedCommand('echo "hello" && echo \\n', "anthropic", 120)
+    );
   });
 
   it("throws when the command contains the reserved heredoc delimiter", () => {

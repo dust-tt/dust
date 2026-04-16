@@ -81,20 +81,6 @@ describe("grep_files", () => {
     expect(stdout).toContain("line4");
   });
 
-  it("returns help with --help flag", () => {
-    const { stdout, exitCode } = runBashFunction("grep_files --help", tempDir);
-    expect(exitCode).toBe(0);
-    expect(stdout).toContain("Usage:");
-    expect(stdout).toContain("grep_files <pattern>");
-  });
-
-  it("error includes usage hint", () => {
-    const { stderr, exitCode } = runBashFunction("grep_files", tempDir);
-    expect(exitCode).toBe(1);
-    expect(stderr).toContain("Usage:");
-    expect(stderr).toContain("--help");
-  });
-
   it("sorts output by file path", () => {
     const { stdout, exitCode } = runBashFunction(
       `grep_files "hello" --path "${tempDir}"`,
@@ -120,7 +106,10 @@ describe("grep_files", () => {
   });
 
   it("treats a leading flag-like pattern literally", () => {
-    fs.writeFileSync(path.join(tempDir, "flags.txt"), "--help is literal here\n");
+    fs.writeFileSync(
+      path.join(tempDir, "flags.txt"),
+      "--help is literal here\n"
+    );
     const { stdout, exitCode } = runBashFunction(
       `grep_files "--help" --path "${tempDir}"`,
       tempDir

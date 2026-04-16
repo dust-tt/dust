@@ -8,7 +8,7 @@ import {
 
 function expectedWrappedCommand(cmd: string, timeoutSec = 60): string {
   return [
-    `source /opt/dust/profile/common.sh && shell "$(cat <<'DUST_CMD_EOF'`,
+    `source /opt/dust/profile/anthropic.sh && shell "$(cat <<'DUST_CMD_EOF'`,
     cmd,
     "DUST_CMD_EOF",
     `)" ${timeoutSec}`,

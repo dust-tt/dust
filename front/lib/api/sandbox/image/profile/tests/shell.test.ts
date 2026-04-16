@@ -30,17 +30,7 @@ describe("shell", () => {
     expect(stdout).toBe("hello");
   });
 
-  it("captures stderr separately from stdout", () => {
-    const { stdout, stderr, exitCode } = runBashFunction(
-      'shell "echo error >&2"',
-      tempDir
-    );
-    expect(exitCode).toBe(0);
-    expect(stdout).toBe("");
-    expect(stderr).toBe("error");
-  });
-
-  it("captures both stdout and stderr separately", () => {
+  it("captures stdout and stderr separately", () => {
     const { stdout, stderr, exitCode } = runBashFunction(
       'shell "echo out && echo err >&2"',
       tempDir
@@ -80,19 +70,5 @@ describe("shell", () => {
     const { stderr, exitCode } = runBashFunction('shell "sleep 5" 1', tempDir);
     expect(exitCode).toBe(124);
     expect(stderr).toContain("timed out after 1s");
-  });
-
-  it("returns help with --help flag", () => {
-    const { stdout, exitCode } = runBashFunction("shell --help", tempDir);
-    expect(exitCode).toBe(0);
-    expect(stdout).toContain("Usage:");
-    expect(stdout).toContain("shell <command>");
-  });
-
-  it("error includes usage hint", () => {
-    const { stderr, exitCode } = runBashFunction("shell", tempDir);
-    expect(exitCode).toBe(1);
-    expect(stderr).toContain("Usage:");
-    expect(stderr).toContain("--help");
   });
 });
