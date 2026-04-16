@@ -37,6 +37,8 @@ export interface SlashCommandDropdownProps
   > {
   className?: string;
   emptyMessage?: string;
+  header?: React.ReactNode;
+  itemsClassName?: string;
   onEscapeKeyDown?: () => void;
   onInteractOutside?: () => void;
 }
@@ -56,6 +58,8 @@ export const SlashCommandDropdown = forwardRef<
       clientRect,
       className = "w-64",
       emptyMessage = "No commands found",
+      header,
+      itemsClassName,
       onEscapeKeyDown,
       onInteractOutside,
     },
@@ -63,6 +67,7 @@ export const SlashCommandDropdown = forwardRef<
   ) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const containerRef = useRef<HTMLDivElement>(null);
+    const selectedItemRef = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLDivElement>(null);
     const [virtualTriggerStyle, setVirtualTriggerStyle] =
       useState<React.CSSProperties>({});
@@ -115,6 +120,12 @@ export const SlashCommandDropdown = forwardRef<
       setSelectedIndex(0);
     }, [items.length]);
 
+    useEffect(() => {
+      selectedItemRef.current?.scrollIntoView({
+        block: "nearest",
+      });
+    }, [selectedIndex]);
+
     // Update virtual trigger position.
     const updateTriggerPosition = useCallback(() => {
       const triggerRect = clientRect?.();
@@ -162,46 +173,50 @@ export const SlashCommandDropdown = forwardRef<
           onCloseAutoFocus={(e) => e.preventDefault()}
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
+          {header}
           {items.length === 0 ? (
             <div className="px-2 py-4 text-center text-sm text-muted-foreground">
               {emptyMessage}
             </div>
           ) : (
-            items.map((item, index) => {
-              const menuItem = (
-                <DropdownMenuItem
-                  key={item.id}
-                  icon={item.icon}
-                  label={item.label}
-                  description={item.description}
-                  truncateText
-                  onClick={() => selectItem(index)}
-                  onMouseEnter={() => setSelectedIndex(index)}
-                  className={
-                    index === selectedIndex
-                      ? "bg-gray-100 dark:bg-gray-800"
-                      : ""
-                  }
-                />
-              );
-
-              // Wrap with DropdownTooltipTrigger if command has tooltip property.
-              if (item.tooltip) {
-                return (
-                  <DropdownTooltipTrigger
+            <div className={itemsClassName}>
+              {items.map((item, index) => {
+                const menuItem = (
+                  <DropdownMenuItem
                     key={item.id}
-                    description={item.tooltip.description}
-                    media={item.tooltip.media}
-                    side="right"
-                    sideOffset={8}
-                  >
-                    {menuItem}
-                  </DropdownTooltipTrigger>
+                    ref={index === selectedIndex ? selectedItemRef : null}
+                    icon={item.icon}
+                    label={item.label}
+                    description={item.description}
+                    truncateText
+                    onClick={() => selectItem(index)}
+                    onMouseEnter={() => setSelectedIndex(index)}
+                    className={
+                      index === selectedIndex
+                        ? "bg-gray-100 dark:bg-gray-800"
+                        : ""
+                    }
+                  />
                 );
-              }
 
-              return menuItem;
-            })
+                // Wrap with DropdownTooltipTrigger if command has tooltip property.
+                if (item.tooltip) {
+                  return (
+                    <DropdownTooltipTrigger
+                      key={item.id}
+                      description={item.tooltip.description}
+                      media={item.tooltip.media}
+                      side="right"
+                      sideOffset={8}
+                    >
+                      {menuItem}
+                    </DropdownTooltipTrigger>
+                  );
+                }
+
+                return menuItem;
+              })}
+            </div>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
