@@ -2,6 +2,10 @@ import {
   useCompactConversation,
   useConversationContextUsage,
 } from "@app/hooks/conversations";
+import {
+  COMPACTION_STARTED_EVENT,
+  CompactionStartedEvent,
+} from "@app/lib/notifications/events";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -9,6 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
 
 interface ContextUsageIndicatorProps {
   buttonSize: "xs" | "sm";
@@ -20,6 +25,8 @@ interface CircleProgressProps {
   percentage: number;
   size?: number;
 }
+
+const CONTEXT_USAGE_PERCENT_THRESHOLD = 33;
 
 function CircleProgress({ percentage, size = 16 }: CircleProgressProps) {
   const strokeWidth = size * 0.14;
@@ -61,6 +68,7 @@ export function ContextUsageIndicator({
   owner,
   conversationId,
 }: ContextUsageIndicatorProps) {
+  const [isOpen, setIsOpen] = useState(false);
   const { contextUsage } = useConversationContextUsage({
     conversationId,
     workspaceId: owner.sId,
@@ -76,9 +84,28 @@ export function ContextUsageIndicator({
       ? Math.round((contextUsage.contextUsage / contextUsage.contextSize) * 100)
       : 0;
 
+  useEffect(() => {
+    const handleCompactionStarted = (event: Event) => {
+      if (
+        event instanceof CompactionStartedEvent &&
+        event.detail.conversationId === conversationId
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener(COMPACTION_STARTED_EVENT, handleCompactionStarted);
+    return () => {
+      window.removeEventListener(
+        COMPACTION_STARTED_EVENT,
+        handleCompactionStarted
+      );
+    };
+  }, [conversationId]);
+
   return (
     <div className="hidden md:block">
-      <DropdownMenu>
+      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost-secondary"
@@ -96,7 +123,7 @@ export function ContextUsageIndicator({
                 The current context usage is at {percentage}%
               </span>
             </div>
-            {percentage > 33 && (
+            {percentage > CONTEXT_USAGE_PERCENT_THRESHOLD && (
               <Button
                 variant="outline"
                 size="xs"
