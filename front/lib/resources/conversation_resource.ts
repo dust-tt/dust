@@ -2042,9 +2042,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
+  // Return the latest run from a successful compaction message.
   async getLatestCompactionMessageRun(
     auth: Authenticator
-  ): Promise<RunResource | null> {
+  ): Promise<{ rank: number; run: RunResource } | null> {
     const owner = auth.getNonNullableWorkspace();
 
     const message = await MessageModel.findOne({
@@ -2057,6 +2058,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           model: CompactionMessageModel,
           as: "compactionMessage",
           required: true,
+          where: {
+            status: "succeeded",
+          },
         },
       ],
       order: [["rank", "DESC"]],
@@ -2076,14 +2080,19 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return null;
     }
 
-    return runs.reduce((latest, r) =>
-      r.createdAt > latest.createdAt ? r : latest
-    );
+    return {
+      rank: message.rank,
+      run: runs.reduce((latest, r) =>
+        r.createdAt > latest.createdAt ? r : latest
+      ),
+    };
   }
 
+  // Return the latest run from an agent message. We accept all statuses as they all have valid
+  // runIds that represent the actual latest run.
   async getLatestAgentMessageRun(
     auth: Authenticator
-  ): Promise<RunResource | null> {
+  ): Promise<{ rank: number; run: RunResource } | null> {
     const owner = auth.getNonNullableWorkspace();
 
     const message = await MessageModel.findOne({
@@ -2115,9 +2124,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return null;
     }
 
-    return runs.reduce((latest, r) =>
-      r.createdAt > latest.createdAt ? r : latest
-    );
+    return {
+      rank: message.rank,
+      run: runs.reduce((latest, r) =>
+        r.createdAt > latest.createdAt ? r : latest
+      ),
+    };
   }
 
   static async resolveForkSourceMessage(
