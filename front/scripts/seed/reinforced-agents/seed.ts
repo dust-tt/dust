@@ -12,7 +12,6 @@ makeScript({}, async ({ execute }, logger) => {
     await FeatureFlagResource.enableMany(ctx.workspace, [
       "reinforced_agents",
       "reinforcement_ui",
-      "skill_builder_instructions_html",
     ]);
     logger.info("Feature flag enabled");
   }

@@ -16,9 +16,7 @@ import { MarkdownManager } from "@tiptap/markdown";
 import { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string";
 import * as cheerio from "cheerio";
 
-const SKILL_EDITOR_EXTENSIONS = buildSkillInstructionsExtensions(true, [], {
-  withDocumentExtensions: true,
-});
+const SKILL_EDITOR_EXTENSIONS = buildSkillInstructionsExtensions(true, []);
 const MARKDOWN_MANAGER = new MarkdownManager({
   extensions: SKILL_EDITOR_EXTENSIONS,
 });

@@ -89,7 +89,6 @@ function useEditorService(editor: Editor | null) {
 interface UseSkillInstructionsEditorProps {
   content: string;
   htmlContent?: string;
-  withDocumentExtensions?: boolean;
   isReadOnly: boolean;
   onUpdate?: (props: { editor: Editor; transaction: Transaction }) => void;
   onBlur?: () => void;
@@ -113,7 +112,6 @@ const skillInstructionsEditableExtensions = [
 export function useSkillInstructionsEditor({
   content,
   htmlContent,
-  withDocumentExtensions = false,
   isReadOnly,
   onUpdate,
   onBlur,
@@ -123,10 +121,9 @@ export function useSkillInstructionsEditor({
     () =>
       buildSkillInstructionsExtensions(
         isReadOnly,
-        skillInstructionsEditableExtensions,
-        { withDocumentExtensions }
+        skillInstructionsEditableExtensions
       ),
-    [isReadOnly, withDocumentExtensions]
+    [isReadOnly]
   );
 
   // Track if initial content has been set

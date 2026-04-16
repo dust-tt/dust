@@ -10,11 +10,11 @@
  * every skill without errors.
  */
 
+import { SkillConfigurationModel } from "@app/lib/models/skill";
 import {
   convertBlockHtmlToMarkdown,
   convertMarkdownToBlockHtml,
-} from "@app/lib/editor/skill_instructions_html";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
+} from "@app/migrations/lib/skill_instructions_html";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";

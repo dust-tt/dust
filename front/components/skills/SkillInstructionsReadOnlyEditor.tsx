@@ -9,6 +9,8 @@ import { useEffect } from "react";
 
 interface SkillInstructionsReadOnlyEditorProps {
   content: string;
+  // instructionsHtml is expected to always be present.
+  // Maintaining a markdown fallback only to derisk unexpected cases.
   htmlContent?: string;
   owner: LightWorkspaceType;
   onKnowledgeItemsChange?: (items: KnowledgeItem[]) => void;
@@ -28,7 +30,6 @@ export function SkillInstructionsReadOnlyEditor({
   const { editor, editorService } = useSkillInstructionsEditor({
     content,
     htmlContent: htmlForEditor,
-    withDocumentExtensions: Boolean(htmlForEditor),
     isReadOnly: true,
   });
 

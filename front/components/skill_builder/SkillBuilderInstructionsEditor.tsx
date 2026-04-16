@@ -11,7 +11,6 @@ import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuild
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   postProcessMarkdown,
   preprocessMarkdownForEditor,
@@ -60,8 +59,6 @@ export function SkillBuilderInstructionsEditor({
 }: SkillBuilderInstructionsEditorProps) {
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
   const { setValue } = useFormContext<SkillBuilderFormData>();
-  const { hasFeature } = useFeatureFlags();
-  const useHtmlInstructions = hasFeature("skill_builder_instructions_html");
 
   const { field: instructionsField, fieldState: instructionsFieldState } =
     useController<SkillBuilderFormData, typeof INSTRUCTIONS_FIELD_NAME>({
@@ -94,13 +91,11 @@ export function SkillBuilderInstructionsEditor({
             postProcessMarkdown(editor.getMarkdown()).trim(),
             { shouldDirty: true }
           );
-          if (useHtmlInstructions) {
-            setValue(
-              INSTRUCTIONS_HTML_FIELD_NAME,
-              stripHtmlAttributes(editor.getHTML()),
-              { shouldDirty: true }
-            );
-          }
+          setValue(
+            INSTRUCTIONS_HTML_FIELD_NAME,
+            stripHtmlAttributes(editor.getHTML()),
+            { shouldDirty: true }
+          );
           setValue(
             ATTACHED_KNOWLEDGE_FIELD_NAME,
             toAttachedKnowledge(collectKnowledgeItems(editor)),
@@ -108,7 +103,7 @@ export function SkillBuilderInstructionsEditor({
           );
         }
       }, 250),
-    [isDiffMode, setValue, useHtmlInstructions]
+    [isDiffMode, setValue]
   );
 
   const handleUpdate = useCallback(
@@ -150,11 +145,9 @@ export function SkillBuilderInstructionsEditor({
 
   const { editor, isContentReady } = useSkillInstructionsEditor({
     content: instructionsField.value ?? "",
-    htmlContent:
-      useHtmlInstructions && instructionsHtmlField.value
-        ? instructionsHtmlField.value
-        : undefined,
-    withDocumentExtensions: useHtmlInstructions,
+    // instructionsHtml is expected to always be present for skills that have
+    // been through the editor. Fall back to markdown-parsed content if absent.
+    htmlContent: instructionsHtmlField.value ?? undefined,
     isReadOnly: false,
     onUpdate: handleUpdate,
     onBlur: handleBlur,
@@ -201,7 +194,7 @@ export function SkillBuilderInstructionsEditor({
   // Accepting the ProseMirror suggestion means we don't need to manipulate the HTML by hand again
   // as we already did it to create the suggestion in ProseMirror.
   useEffect(() => {
-    if (!editor || !useHtmlInstructions) {
+    if (!editor) {
       setAcceptInstructionEdits(null);
       return;
     }
@@ -235,7 +228,7 @@ export function SkillBuilderInstructionsEditor({
     return () => {
       setAcceptInstructionEdits(null);
     };
-  }, [editor, useHtmlInstructions, setValue, setAcceptInstructionEdits]);
+  }, [editor, setValue, setAcceptInstructionEdits]);
 
   // Apply pending instruction suggestions as inline diff decorations.
   // "Reject all + re-apply current" on every change so that accepts and
@@ -310,12 +303,7 @@ export function SkillBuilderInstructionsEditor({
 
   // Sync external changes to the editor content
   useEffect(() => {
-    if (
-      !editor ||
-      (useHtmlInstructions
-        ? !instructionsHtmlField.value
-        : instructionsField.value === undefined)
-    ) {
+    if (!editor || !instructionsHtmlField.value) {
       return;
     }
 
@@ -329,28 +317,12 @@ export function SkillBuilderInstructionsEditor({
       return;
     }
 
-    if (useHtmlInstructions) {
-      const incomingHtml = instructionsHtmlField.value;
-      const currentHtml = stripHtmlAttributes(editor.getHTML());
-      if (currentHtml !== incomingHtml) {
-        editor.commands.setContent(incomingHtml, { emitUpdate: false });
-      }
-    } else {
-      const incomingMarkdown = instructionsField.value;
-      const currentContent = postProcessMarkdown(editor.getMarkdown());
-      if (currentContent !== incomingMarkdown) {
-        editor.commands.setContent(
-          preprocessMarkdownForEditor(incomingMarkdown),
-          { emitUpdate: false, contentType: "markdown" }
-        );
-      }
+    const incomingHtml = instructionsHtmlField.value;
+    const currentHtml = stripHtmlAttributes(editor.getHTML());
+    if (currentHtml !== incomingHtml) {
+      editor.commands.setContent(incomingHtml, { emitUpdate: false });
     }
-  }, [
-    editor,
-    instructionsField.value,
-    instructionsHtmlField.value,
-    useHtmlInstructions,
-  ]);
+  }, [editor, instructionsHtmlField.value]);
 
   useEffect(() => {
     if (!editor) {
