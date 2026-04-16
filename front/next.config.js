@@ -426,6 +426,24 @@ const config = {
 
     const result = [
       {
+        source: "/static/systemavatar/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/static/droidavatar/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
         source: "/:path*", // Match all paths
         headers,
       },
