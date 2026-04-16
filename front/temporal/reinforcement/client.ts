@@ -7,8 +7,10 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
-import type { WorkflowHandle } from "@temporalio/client";
 import {
+  ScheduleAlreadyRunning,
+  ScheduleNotFoundError,
+  ScheduleOverlapPolicy,
   WorkflowExecutionAlreadyStartedError,
   WorkflowNotFoundError,
 } from "@temporalio/client";
@@ -18,14 +20,6 @@ import {
   ensureReinforcementWorkspaceCronsWorkflow,
   reinforcementWorkspaceWorkflow,
 } from "./workflows";
-
-/**
- * Returns the UTC hour corresponding to midnight in the given timezone.
- */
-function getMidnightUtcHour(timezone: string): number {
-  const midnightInTz = moment.tz("00:00", "HH:mm", timezone);
-  return midnightInTz.utc().hour();
-}
 
 const WORKSPACE_WORKFLOW_ID_PREFIX = "reinforcement-workspace-";
 
@@ -66,10 +60,11 @@ async function getReinforcementWorkspaceIds(): Promise<string[]> {
 // Per-workspace cron lifecycle
 // ---------------------------------------------------------------------------
 
+const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+
 /**
- * Launch a cron-scheduled workflow for a single workspace.
- * The cron fires at regional midnight; the workflow itself spreads execution
- * over a 0-2 hour window using a deterministic delay.
+ * Launch a schedule for a single workspace.
+ * Fires at regional midnight with a 2-hour jitter to spread load.
  */
 export async function launchReinforcementWorkspaceCron({
   workspaceId,
@@ -79,26 +74,36 @@ export async function launchReinforcementWorkspaceCron({
   const client = await getTemporalClientForFrontNamespace();
   const region = config.getCurrentRegion();
   const timezone = REGION_TIMEZONES[region];
-  const utcHour = getMidnightUtcHour(timezone);
-  const workflowId = makeWorkspaceCronWorkflowId(workspaceId);
+  const scheduleId = makeWorkspaceCronWorkflowId(workspaceId);
 
   try {
-    await client.workflow.start(reinforcementWorkspaceWorkflow, {
-      args: [{ workspaceId, useBatchMode: true, skipDelay: false }],
-      taskQueue: QUEUE_NAME,
-      workflowId,
-      cronSchedule: `0 ${utcHour} * * *`,
+    await client.schedule.create({
+      action: {
+        type: "startWorkflow",
+        workflowType: reinforcementWorkspaceWorkflow,
+        args: [{ workspaceId, useBatchMode: true }],
+        taskQueue: QUEUE_NAME,
+      },
+      scheduleId,
+      policies: {
+        overlap: ScheduleOverlapPolicy.SKIP,
+      },
+      spec: {
+        calendars: [{ hour: 0, minute: 0 }],
+        timezone,
+        jitter: TWO_HOURS_MS,
+      },
     });
 
     logger.info(
-      { region, timezone, utcHour, workflowId, workspaceId },
-      "[Reinforcement] Launched workspace cron workflow."
+      { region, timezone, scheduleId, workspaceId },
+      "[Reinforcement] Created workspace schedule."
     );
   } catch (e) {
-    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+    if (e instanceof ScheduleAlreadyRunning) {
       logger.info(
-        { workflowId, workspaceId },
-        "[Reinforcement] Workspace cron workflow already running, skipping."
+        { scheduleId, workspaceId },
+        "[Reinforcement] Workspace schedule already exists, skipping."
       );
     } else {
       throw e;
@@ -109,32 +114,29 @@ export async function launchReinforcementWorkspaceCron({
 }
 
 /**
- * Stop the cron-scheduled workflow for a single workspace.
+ * Stop (delete) the schedule for a single workspace.
  */
 export async function stopReinforcementWorkspaceCron({
   workspaceId,
-  stopReason,
 }: {
   workspaceId: string;
-  stopReason: string;
 }) {
   const client = await getTemporalClientForFrontNamespace();
-  const workflowId = makeWorkspaceCronWorkflowId(workspaceId);
+  const scheduleId = makeWorkspaceCronWorkflowId(workspaceId);
 
   try {
-    const handle: WorkflowHandle<typeof reinforcementWorkspaceWorkflow> =
-      client.workflow.getHandle(workflowId);
-    await handle.terminate(stopReason);
+    const handle = client.schedule.getHandle(scheduleId);
+    await handle.delete();
   } catch (e) {
-    if (e instanceof WorkflowNotFoundError) {
+    if (e instanceof ScheduleNotFoundError) {
       logger.info(
-        { workflowId, workspaceId },
-        "[Reinforcement] Workspace cron workflow not running, skipping."
+        { scheduleId, workspaceId },
+        "[Reinforcement] Workspace schedule not found, skipping."
       );
     } else {
       logger.error(
-        { error: e, workflowId, workspaceId },
-        "[Reinforcement] Failed stopping workspace cron workflow."
+        { error: e, scheduleId, workspaceId },
+        "[Reinforcement] Failed deleting workspace schedule."
       );
     }
   }
@@ -147,8 +149,8 @@ export async function stopReinforcementWorkspaceCron({
 export const ENSURE_CRONS_WORKFLOW_ID = `ensure-${WORKSPACE_WORKFLOW_ID_PREFIX}crons`;
 
 /**
- * Ensure all flagged workspaces have a running cron and stop crons for
- * workspaces that are no longer flagged.
+ * Ensure all flagged workspaces have a running schedule and delete schedules
+ * for workspaces that are no longer flagged.
  */
 export async function ensureReinforcementWorkspaceCrons(): Promise<{
   started: string[];
@@ -157,17 +159,17 @@ export async function ensureReinforcementWorkspaceCrons(): Promise<{
   const client = await getTemporalClientForFrontNamespace();
   const reinforcedWorkspaceIds = new Set(await getReinforcementWorkspaceIds());
 
-  // Find currently running cron workflows by workflow type.
+  // Find existing schedules by ID prefix.
   const runningWorkspaceIds = new Set<string>();
-  for await (const workflow of client.workflow.list({
-    query: `WorkflowType = "reinforcementWorkspaceWorkflow" AND ExecutionStatus = 'Running'`,
-  })) {
-    runningWorkspaceIds.add(
-      workflow.workflowId.slice(WORKSPACE_WORKFLOW_ID_PREFIX.length)
-    );
+  for await (const schedule of client.schedule.list()) {
+    if (schedule.scheduleId.startsWith(WORKSPACE_WORKFLOW_ID_PREFIX)) {
+      runningWorkspaceIds.add(
+        schedule.scheduleId.slice(WORKSPACE_WORKFLOW_ID_PREFIX.length)
+      );
+    }
   }
 
-  // Workspaces that need a cron started / stopped.
+  // Workspaces that need a schedule started / stopped.
   const toStart = [...reinforcedWorkspaceIds].filter(
     (id) => !runningWorkspaceIds.has(id)
   );
@@ -177,13 +179,13 @@ export async function ensureReinforcementWorkspaceCrons(): Promise<{
 
   const CONCURRENCY = 5;
 
-  // Start crons for flagged workspaces that aren't running.
+  // Create schedules for flagged workspaces that don't have one.
   const started = await concurrentExecutor(
     toStart,
     async (workspaceId) => {
       logger.info(
         { workspaceId },
-        "[Reinforcement] Starting cron for workspace."
+        "[Reinforcement] Creating schedule for workspace."
       );
       await launchReinforcementWorkspaceCron({ workspaceId });
       return workspaceId;
@@ -191,18 +193,15 @@ export async function ensureReinforcementWorkspaceCrons(): Promise<{
     { concurrency: CONCURRENCY }
   );
 
-  // Stop crons for workspaces that are running but no longer flagged.
+  // Delete schedules for workspaces that are no longer flagged.
   const stopped = await concurrentExecutor(
     toStop,
     async (workspaceId) => {
       logger.info(
         { workspaceId },
-        "[Reinforcement] Stopping cron for workspace."
+        "[Reinforcement] Deleting schedule for workspace."
       );
-      await stopReinforcementWorkspaceCron({
-        workspaceId,
-        stopReason: "Workspace no longer flagged for reinforcement",
-      });
+      await stopReinforcementWorkspaceCron({ workspaceId });
       return workspaceId;
     },
     { concurrency: CONCURRENCY }
@@ -210,7 +209,7 @@ export async function ensureReinforcementWorkspaceCrons(): Promise<{
 
   logger.info(
     { startedCount: started.length, stoppedCount: stopped.length },
-    "[Reinforcement] Ensured reinforcement workspace crons."
+    "[Reinforcement] Ensured reinforcement workspace schedules."
   );
 
   return { started, stopped };
@@ -223,26 +222,23 @@ export async function ensureReinforcementWorkspaceCrons(): Promise<{
 export async function stopAllReinforcementWorkspaceCrons(): Promise<void> {
   const client = await getTemporalClientForFrontNamespace();
 
-  // Stop all running reinforcement workspace cron workflows.
-  const runningWorkspaceIds: string[] = [];
-  for await (const workflow of client.workflow.list({
-    query: `WorkflowType = "reinforcementWorkspaceWorkflow" AND ExecutionStatus = 'Running'`,
-  })) {
-    runningWorkspaceIds.push(
-      workflow.workflowId.slice(WORKSPACE_WORKFLOW_ID_PREFIX.length)
-    );
+  // Delete all reinforcement workspace schedules.
+  const workspaceIds: string[] = [];
+  for await (const schedule of client.schedule.list()) {
+    if (schedule.scheduleId.startsWith(WORKSPACE_WORKFLOW_ID_PREFIX)) {
+      workspaceIds.push(
+        schedule.scheduleId.slice(WORKSPACE_WORKFLOW_ID_PREFIX.length)
+      );
+    }
   }
 
-  for (const workspaceId of runningWorkspaceIds) {
-    await stopReinforcementWorkspaceCron({
-      workspaceId,
-      stopReason: "Stopped all via CLI",
-    });
+  for (const workspaceId of workspaceIds) {
+    await stopReinforcementWorkspaceCron({ workspaceId });
   }
 
   logger.info(
-    { workspaceCount: runningWorkspaceIds.length },
-    "[Reinforcement] Stopped cron workflows for all workspaces."
+    { workspaceCount: workspaceIds.length },
+    "[Reinforcement] Deleted schedules for all workspaces."
   );
 }
 
@@ -327,7 +323,6 @@ export async function startReinforcementWorkspaceWorkflow({
       {
         workspaceId,
         useBatchMode,
-        skipDelay: true,
         skillId,
         conversationLookbackDays,
         disableNotifications,

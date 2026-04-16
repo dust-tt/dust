@@ -45,7 +45,6 @@ export const reinforcementWorkflowPlugin = createPlugin({
       case "stop-cron": {
         await stopReinforcementWorkspaceCron({
           workspaceId: workspace.sId,
-          stopReason: "Stopped via poke plugin",
         });
         return new Ok({
           display: "text",

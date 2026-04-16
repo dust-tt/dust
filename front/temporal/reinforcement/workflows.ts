@@ -99,21 +99,6 @@ const BATCH_POLL_INTERVAL_MIN_MS = 30_000; // 30 seconds (exponential backoff st
 const BATCH_POLL_INTERVAL_MAX_MS = 30 * 60_000; // 30 minutes (exponential backoff cap).
 const BATCH_TIMEOUT_MS = 24 * 60 * 60_000 + 5 * 60_000; // 24 hours + 5 minutes (to guarantee we wait longer than Anthropic's batch limit).
 
-const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
-
-/**
- * Compute a deterministic delay (0 to 2 hours) from a workspace ID string.
- * This spreads cron-triggered executions across the midnight-2am window
- * without using non-deterministic APIs (safe for Temporal replay).
- */
-function computeWorkspaceDelayMs(workspaceId: string): number {
-  let hash = 0;
-  for (const ch of workspaceId) {
-    hash = ((hash << 5) - hash + ch.charCodeAt(0)) | 0;
-  }
-  return Math.abs(hash) % TWO_HOURS_MS;
-}
-
 /**
  * Wait for a batch to complete.
  * Polls with exponential backoff starting at 30 seconds, doubling each time, capped at 30 minutes.
@@ -284,31 +269,26 @@ export async function ensureReinforcementWorkspaceCronsWorkflow(): Promise<void>
 }
 
 /**
- * Workspace-level workflow (one per workspace, cron-scheduled).
- * When `skipDelay` is false (cron runs), sleeps a deterministic delay derived
- * from the workspace ID to spread load across the midnight-2am window.
- * When `skipDelay` is true (manual runs), starts immediately.
+ * Workspace-level workflow (one per workspace, schedule-triggered).
+ * The Temporal schedule applies a 2-hour jitter to spread load.
  *
  * Flow:
  * 1. Check allowed
- * 2. Optional delay (cron spreading)
- * 3. Discover conversations with skills
- * 4. Analyze conversations concurrently via multi-step loop
- * 5. Find skills with synthetic suggestions
- * 6. Aggregate per-skill concurrently via multi-step loop
- * 7. Finalize per skill
+ * 2. Discover conversations with skills
+ * 3. Analyze conversations concurrently via multi-step loop
+ * 4. Find skills with synthetic suggestions
+ * 5. Aggregate per-skill concurrently via multi-step loop
+ * 6. Finalize per skill
  */
 export async function reinforcementWorkspaceWorkflow({
   workspaceId,
   useBatchMode,
-  skipDelay = false,
   skillId,
   conversationLookbackDays,
   disableNotifications = false,
 }: {
   workspaceId: string;
   useBatchMode: boolean;
-  skipDelay?: boolean;
   skillId?: string;
   conversationLookbackDays?: number;
   disableNotifications?: boolean;
@@ -322,13 +302,6 @@ export async function reinforcementWorkspaceWorkflow({
   // Resolve effective batch mode: the caller may request batch mode, but the
   // workspace setting can override it to streaming.
   const effectiveBatchMode = useBatchMode && batchModeAllowed;
-
-  if (!skipDelay) {
-    const delayMs = computeWorkspaceDelayMs(workspaceId);
-    if (delayMs > 0) {
-      await sleep(delayMs);
-    }
-  }
 
   // Phase 1: Discover conversations with skills.
   const conversationsWithSkills =

@@ -60,10 +60,7 @@ const main = async () => {
         usage();
         process.exit(1);
       }
-      await stopReinforcementWorkspaceCron({
-        workspaceId,
-        stopReason: "Stopped via CLI",
-      });
+      await stopReinforcementWorkspaceCron({ workspaceId });
       return;
     }
     case "run-workspace": {
