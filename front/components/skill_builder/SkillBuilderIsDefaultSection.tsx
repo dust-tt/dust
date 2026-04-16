@@ -12,10 +12,15 @@ import {
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 
+const MIN_DISCOVERABLE_DESCRIPTION_LENGTH = 150;
+
 export function SkillBuilderIsDefaultSection() {
   const { watch, setValue } = useFormContext<SkillBuilderFormData>();
   const isDefault = watch("isDefault");
+  const agentFacingDescription = watch("agentFacingDescription");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const isDescriptionTooShort =
+    agentFacingDescription.trim().length < MIN_DISCOVERABLE_DESCRIPTION_LENGTH;
 
   const openDialog = () => {
     setShowConfirmDialog(true);
@@ -54,7 +59,7 @@ export function SkillBuilderIsDefaultSection() {
           }
         }}
       >
-        <DialogContent size="md" isAlertDialog>
+        <DialogContent size="lg" isAlertDialog>
           <DialogHeader hideButton>
             <DialogTitle>Allow agents to discover this skill?</DialogTitle>
             <DialogDescription className="pt-4">
@@ -73,10 +78,25 @@ export function SkillBuilderIsDefaultSection() {
               </ul>
             </DialogDescription>
           </DialogHeader>
+
+          {isDescriptionTooShort && (
+            <ContentMessage
+              variant="warning"
+              title="Description may be too short"
+              size="sm"
+            >
+              The content in "What will this skill be used for?" may be too
+              short for agents to clearly understand when to use this
+              skill. Consider making it a bit more descriptive before
+              allowing discovery.
+            </ContentMessage>
+          )}
+
           <DialogFooter
             leftButtonProps={{
               label: "Cancel",
               variant: "outline",
+              disabled: isDescriptionTooShort
             }}
             rightButtonProps={{
               label: "Confirm",
