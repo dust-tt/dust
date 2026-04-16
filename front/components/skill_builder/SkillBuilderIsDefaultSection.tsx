@@ -1,6 +1,7 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import {
   Checkbox,
+  ContentMessage,
   Dialog,
   DialogContent,
   DialogDescription,
