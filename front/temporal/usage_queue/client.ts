@@ -20,6 +20,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   ScheduleAlreadyRunning,
+  ScheduleNotFoundError,
   ScheduleOverlapPolicy,
   WorkflowExecutionAlreadyStartedError,
 } from "@temporalio/client";
@@ -186,6 +187,10 @@ export async function launchEmitMetronomeUsageEventsWorkflow({
 
 const METRONOME_GAUGE_SCHEDULE_ID = "metronome-gauge-schedule";
 
+// Old schedule ID removed in PR #24160 — clean up from Temporal if still present.
+const DEPRECATED_METRONOME_GAUGE_EVENTS_SCHEDULE_ID =
+  "metronome-gauge-events-schedule";
+
 /**
  * Launch a schedule that emits Metronome workspace_gauge events for all
  * workspaces. Runs daily in prod, every 1h in dev.
@@ -194,6 +199,28 @@ export async function launchMetronomeGaugeSchedule(): Promise<
   Result<undefined, Error>
 > {
   const client = await getTemporalClientForFrontNamespace();
+
+  // Remove the deprecated schedule if it still exists.
+  try {
+    const handle = client.schedule.getHandle(
+      DEPRECATED_METRONOME_GAUGE_EVENTS_SCHEDULE_ID
+    );
+    await handle.delete();
+    logger.info(
+      { scheduleId: DEPRECATED_METRONOME_GAUGE_EVENTS_SCHEDULE_ID },
+      "Deleted deprecated Metronome gauge events schedule."
+    );
+  } catch (err) {
+    if (!(err instanceof ScheduleNotFoundError)) {
+      logger.warn(
+        {
+          scheduleId: DEPRECATED_METRONOME_GAUGE_EVENTS_SCHEDULE_ID,
+          error: err,
+        },
+        "Failed to delete deprecated Metronome gauge events schedule."
+      );
+    }
+  }
 
   try {
     await client.schedule.create({
