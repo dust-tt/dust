@@ -1,6 +1,5 @@
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -32,7 +31,6 @@ interface UseHandleMentionsOptions {
 const useHandleMentions = ({
   allAgents,
   conversation,
-  disableAutoFocus,
   editorService,
   getDraft,
   isAgentBuilder,
@@ -41,8 +39,6 @@ const useHandleMentions = ({
   stickyMentions,
 }: UseHandleMentionsOptions) => {
   const stickyMentionsTextContent = useRef<string | null>(null);
-  const { hasFeature } = useFeatureFlags();
-  const singleAgentInput = hasFeature("enable_steering");
   const { setSelectedSingleAgent } = useContext(InputBarContext);
 
   // Priority: draft > sticky mentions > @dust fallback.
@@ -55,10 +51,6 @@ const useHandleMentions = ({
   const externalAgentSetRef = useRef(false);
 
   useEffect(() => {
-    if (!singleAgentInput) {
-      return;
-    }
-
     const currentId = conversation?.sId ?? null;
     if (currentId !== prevConversationIdRef.current) {
       prevConversationIdRef.current = currentId;
@@ -105,7 +97,6 @@ const useHandleMentions = ({
       }
     }
   }, [
-    singleAgentInput,
     isAgentBuilder,
     conversation,
     stickyMentions,
@@ -114,62 +105,15 @@ const useHandleMentions = ({
     setSelectedSingleAgent,
   ]);
 
-  // In single-agent mode, agent mentions are handled via the agent picker button,
-  // not inserted into the editor. Sticky mentions only contain agent mentions in
-  // single-agent mode, so we skip editor insertion entirely.
-  useEffect(() => {
-    if (singleAgentInput || !stickyMentions || stickyMentions.length === 0) {
-      return;
-    }
-
-    const editorIsEmpty = editorService.isEmpty();
-    const onlyContainsPreviousStickyMention =
-      !editorIsEmpty &&
-      editorService.getTrimmedText() === stickyMentionsTextContent.current;
-
-    // Insert sticky mentions under two conditions:
-    // 1. The editor is currently empty.
-    // 2. The editor contains only the sticky mention from a previously selected agent.
-    // This ensures that sticky mentions are maintained but not duplicated.
-    if (editorIsEmpty || onlyContainsPreviousStickyMention) {
-      queueMicrotask(() => {
-        editorService.resetWithMentions(stickyMentions, disableAutoFocus);
-        stickyMentionsTextContent.current =
-          editorService.getTrimmedText() ?? null;
-      });
-    }
-  }, [editorService, stickyMentions, disableAutoFocus, singleAgentInput]);
-
   useEffect(() => {
     if (selectedAgent) {
-      if (singleAgentInput) {
-        // @TODO we should handle this in each event handler and not inside the useEffect
-        setSelectedSingleAgent(selectedAgent);
-        externalAgentSetRef.current = true;
-        return;
-      }
-      if (!editorService.hasMention(selectedAgent)) {
-        queueMicrotask(() => {
-          editorService.insertMention(selectedAgent);
-          if (pendingInputText) {
-            editorService.insertText(pendingInputText);
-          }
-        });
-      } else if (pendingInputText) {
-        // Schedule insertion to avoid synchronous editor updates during React render/effects.
-        queueMicrotask(() => editorService.insertText(pendingInputText));
-      }
-      // If there's pending input text (e.g. from a butler suggestion), insert it after the mention.
+      // @TODO we should handle this in each event handler and not inside the useEffect
+      setSelectedSingleAgent(selectedAgent);
+      externalAgentSetRef.current = true;
     } else if (pendingInputText) {
       queueMicrotask(() => editorService.insertText(pendingInputText));
     }
-  }, [
-    selectedAgent,
-    pendingInputText,
-    editorService,
-    setSelectedSingleAgent,
-    singleAgentInput,
-  ]);
+  }, [selectedAgent, pendingInputText, editorService, setSelectedSingleAgent]);
 
   return { stickyMentionsTextContent };
 };

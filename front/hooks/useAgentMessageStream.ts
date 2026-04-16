@@ -231,9 +231,8 @@ function appendContentStep(
 /**
  * Flush the current pending segment (CoT or content) as an activity step.
  *
- * In inline activity mode, a pending "tokens" segment is flushed as a content
- * step and `content.current` is cleared so the next segment starts fresh.
- * In non-inline mode, content is left untouched (it accumulates as the body).
+ * A pending "tokens" segment is flushed as a content step and
+ * `content.current` is cleared so the next segment starts fresh.
  *
  * Returns the updated steps and whether the body content was cleared.
  */
@@ -241,14 +240,12 @@ function flushPendingSegment({
   lastClassification,
   chainOfThought,
   content,
-  isInlineActivityEnabled,
   steps,
   suffix,
 }: {
   lastClassification: { current: "tokens" | "chain_of_thought" | null };
   chainOfThought: { current: string };
   content: { current: string };
-  isInlineActivityEnabled: boolean;
   steps: InlineActivityStep[];
   suffix: string;
 }): { steps: InlineActivityStep[]; contentCleared: boolean } {
@@ -261,7 +258,7 @@ function flushPendingSegment({
       contentCleared: false,
     };
   }
-  if (cls === "tokens" && content.current && isInlineActivityEnabled) {
+  if (cls === "tokens" && content.current) {
     const textToFlush = content.current;
     content.current = "";
     return {
@@ -275,7 +272,6 @@ function flushPendingSegment({
 interface UseAgentMessageStreamParams {
   agentMessage: AgentMessageWithStreaming;
   conversationId: string | null;
-  isInlineActivityEnabled: boolean;
   owner: LightWorkspaceType;
   onEventCallback?: (event: {
     eventId: string;
@@ -288,7 +284,6 @@ interface UseAgentMessageStreamParams {
 export function useAgentMessageStream({
   agentMessage,
   conversationId,
-  isInlineActivityEnabled,
   owner,
   onEventCallback: customOnEventCallback,
   streamId,
@@ -315,8 +310,8 @@ export function useAgentMessageStream({
   );
 
   const chainOfThought = useRef(agentMessage.chainOfThought ?? "");
-  // In inline mode, content.current tracks the current text segment only
-  // (cleared on each flush). In non-inline mode, it accumulates all text.
+  // content.current tracks the current text segment only
+  // (cleared on each flush to inline activity steps).
   const content = useRef(agentMessage.content ?? "");
   // Tracks the last token classification to detect transitions between
   // thinking (chain_of_thought) and writing (tokens), flushing completed
@@ -384,9 +379,7 @@ export function useAgentMessageStream({
               classification !== lastClassification.current
             ) {
               const newAgentState =
-                classification === "tokens" && isInlineActivityEnabled
-                  ? "writing"
-                  : "thinking";
+                classification === "tokens" ? "writing" : "thinking";
               methods.data.map((m) => {
                 if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
                   return m;
@@ -395,7 +388,6 @@ export function useAgentMessageStream({
                   lastClassification,
                   chainOfThought,
                   content,
-                  isInlineActivityEnabled,
                   steps: m.streaming.inlineActivitySteps,
                   suffix: `pre-${Date.now()}`,
                 });
@@ -410,7 +402,6 @@ export function useAgentMessageStream({
                 };
               });
             } else if (
-              isInlineActivityEnabled &&
               lastClassification.current === null &&
               classification === "tokens"
             ) {
@@ -497,7 +488,6 @@ export function useAgentMessageStream({
               lastClassification,
               chainOfThought,
               content,
-              isInlineActivityEnabled,
               steps: m.streaming.inlineActivitySteps,
               suffix: `toolparams-${Date.now()}`,
             });
@@ -565,7 +555,6 @@ export function useAgentMessageStream({
               lastClassification,
               chainOfThought,
               content,
-              isInlineActivityEnabled,
               steps: m.streaming.inlineActivitySteps,
               suffix: `error-${Date.now()}`,
             });
@@ -604,7 +593,6 @@ export function useAgentMessageStream({
               lastClassification,
               chainOfThought,
               content,
-              isInlineActivityEnabled,
               steps: m.streaming.inlineActivitySteps,
               suffix: `cancel-${Date.now()}`,
             });
@@ -630,10 +618,9 @@ export function useAgentMessageStream({
           // becomes the message body via the server's canonical message).
           const cotAtSuccess = chainOfThought.current;
           chainOfThought.current = "";
-          // In inline activity mode, content.current tracks only the final
-          // text segment (intermediate segments were flushed to content steps).
-          // The server's full message includes ALL text, so we override with
-          // the tracked final segment. In non-inline mode, we trust the server.
+          // content.current tracks only the final text segment (intermediate
+          // segments were flushed to content steps). The server's full message
+          // includes ALL text, so we override with the tracked final segment.
           // Only override when tokens were actually streamed (lastClassification
           // is non-null); otherwise the content was set server-side without
           // streaming (e.g. prompt commands like /list) and the server's value
@@ -655,9 +642,7 @@ export function useAgentMessageStream({
             return {
               ...m,
               ...getLightAgentMessageFromAgentMessage(messageSuccess.message),
-              ...(isInlineActivityEnabled && hadStreamedTokens
-                ? { content: finalSegment || null }
-                : {}),
+              ...(hadStreamedTokens ? { content: finalSegment || null } : {}),
               streaming: {
                 ...m.streaming,
                 agentState: "done",
@@ -677,13 +662,7 @@ export function useAgentMessageStream({
         customOnEventCallback(eventPayload);
       }
     },
-    [
-      customOnEventCallback,
-      isInlineActivityEnabled,
-      methods,
-      sId,
-      mutateContextUsage,
-    ]
+    [customOnEventCallback, methods, sId, mutateContextUsage]
   );
 
   const { isError } = useEventSource(

@@ -43,7 +43,6 @@ interface InputBarButtonsProps {
   selectedAgent: RichAgentMention | null;
   selectedMCPServerViews: MCPServerViewType[];
   selectedSkills: SkillType[];
-  singleAgentInput: boolean;
   space: SpaceType | undefined;
   user: UserType | null;
 }
@@ -69,7 +68,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   selectedAgent,
   selectedMCPServerViews,
   selectedSkills,
-  singleAgentInput,
   space,
   user,
 }: InputBarButtonsProps) {
@@ -88,11 +86,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       size={buttonSize}
       onAgentDetailsClick={handleAgentDetailsClick}
       onItemClick={(c) => {
-        if (singleAgentInput) {
-          handleSingleAgentSelect(toRichAgentMentionType(c));
-        } else {
-          editorService.insertMention(toRichAgentMentionType(c));
-        }
+        handleSingleAgentSelect(toRichAgentMentionType(c));
       }}
       agents={allAgents}
       showDropdownArrow={false}
@@ -103,31 +97,27 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       }
       disabled={disableInput}
       pickerButton={
-        singleAgentInput ? (
-          selectedAgent ? (
-            <Button
-              variant="ghost-secondary"
-              size={buttonSize}
-              icon={() => (
-                <Avatar size="xxs" visual={selectedAgent.pictureUrl} />
-              )}
-              label={selectedAgent.label}
-              className={cn(
-                disableAgentSelector && "bg-gray-150 dark:bg-gray-800"
-              )}
-            />
-          ) : (
-            <Button
-              variant="ghost-secondary"
-              size={buttonSize}
-              icon={RobotIcon}
-              label="Agent"
-              className={cn(
-                disableAgentSelector && "bg-gray-150 dark:bg-gray-800"
-              )}
-            />
-          )
-        ) : undefined
+        selectedAgent ? (
+          <Button
+            variant="ghost-secondary"
+            size={buttonSize}
+            icon={() => <Avatar size="xxs" visual={selectedAgent.pictureUrl} />}
+            label={selectedAgent.label}
+            className={cn(
+              disableAgentSelector && "bg-gray-150 dark:bg-gray-800"
+            )}
+          />
+        ) : (
+          <Button
+            variant="ghost-secondary"
+            size={buttonSize}
+            icon={RobotIcon}
+            label="Agent"
+            className={cn(
+              disableAgentSelector && "bg-gray-150 dark:bg-gray-800"
+            )}
+          />
+        )
       }
     />
   );
@@ -180,17 +170,11 @@ export const InputBarButtons = React.memo(function InputBarButtons({
         />
       </>
     );
-  return singleAgentInput ? (
+  return (
     <>
       {agentButton}
       {toolsButton}
       {attachmentButton}
-    </>
-  ) : (
-    <>
-      {attachmentButton}
-      {toolsButton}
-      {agentButton}
     </>
   );
 });
