@@ -1,6 +1,6 @@
+import { queryTracker } from "@app/lib/api/query_tracker";
 import { context as otelContext, trace } from "@opentelemetry/api";
 import type { ReadableSpan } from "@opentelemetry/sdk-trace-base";
-import { queryTracker } from "@app/lib/api/query_tracker";
 import type {
   ColumnsDescription,
   Model,
