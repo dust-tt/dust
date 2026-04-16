@@ -198,7 +198,6 @@ export interface CustomEditorProps {
   disableUserMentions?: boolean;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
   onAgentSelect?: (mention: RichMention) => void;
-  singleAgentInputEnabled?: boolean;
   owner: WorkspaceType;
   conversationId?: string | null;
   spaceId?: string;
@@ -231,7 +230,6 @@ export const buildEditorExtensions = ({
   onInlineText,
   onUrlDetected,
   onAgentSelect,
-  singleAgentInputEnabled,
   shouldSuggestAgentRef,
   onFirstAgentMentionPasteRef,
   onAgentMentionsStrippedRef,
@@ -244,7 +242,6 @@ export const buildEditorExtensions = ({
   onInlineText?: (fileId: string, textContent: string) => void;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
   onAgentSelect?: (mention: RichMention) => void;
-  singleAgentInputEnabled?: boolean;
   shouldSuggestAgentRef?: React.RefObject<boolean>;
   onFirstAgentMentionPasteRef?: React.RefObject<
     ((agentId: string) => void) | undefined
@@ -329,7 +326,6 @@ export const buildEditorExtensions = ({
         },
         shouldSuggestAgentRef,
         onAgentSelect,
-        singleAgentInputEnabled,
       }),
     }),
     EmojiExtension,
@@ -338,9 +334,7 @@ export const buildEditorExtensions = ({
         if (node.type.name !== "paragraph") {
           return "";
         }
-        return singleAgentInputEnabled
-          ? "Ask a question"
-          : "Ask an @agent a question, or get some @help";
+        return "Ask a question";
       },
       emptyNodeClass:
         "first:before:text-gray-400 first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
@@ -367,7 +361,6 @@ const useCustomEditor = ({
   disableUserMentions,
   onUrlDetected,
   onAgentSelect,
-  singleAgentInputEnabled,
   owner,
   conversationId,
   spaceId,
@@ -391,7 +384,6 @@ const useCustomEditor = ({
         onInlineText,
         onUrlDetected,
         onAgentSelect,
-        singleAgentInputEnabled,
         shouldSuggestAgentRef,
         onFirstAgentMentionPasteRef,
         onAgentMentionsStrippedRef,
