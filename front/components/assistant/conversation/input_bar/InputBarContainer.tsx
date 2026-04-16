@@ -1464,20 +1464,20 @@ const InputBarContainer = ({
                   conversationId={conversation?.sId}
                 />
               )}
-            {!subscription.plan.isByok &&
-              owner.metadata?.allowVoiceTranscription !== false &&
-              actions.includes("voice") && (
-                <VoicePicker
-                  status={voiceTranscriberService.status}
-                  level={voiceTranscriberService.level}
-                  elapsedSeconds={voiceTranscriberService.elapsedSeconds}
-                  onRecordStart={voiceTranscriberService.startRecording}
-                  onRecordStop={voiceTranscriberService.stopRecording}
-                  disabled={disableInput}
-                  size={buttonSize}
-                  showStopLabel={!isMobile}
-                />
-              )}
+              {!subscription.plan.isByok &&
+                owner.metadata?.allowVoiceTranscription !== false &&
+                actions.includes("voice") && (
+                  <VoicePicker
+                    status={voiceTranscriberService.status}
+                    level={voiceTranscriberService.level}
+                    elapsedSeconds={voiceTranscriberService.elapsedSeconds}
+                    onRecordStart={voiceTranscriberService.startRecording}
+                    onRecordStop={voiceTranscriberService.stopRecording}
+                    disabled={disableInput}
+                    size={buttonSize}
+                    showStopLabel={!isMobile}
+                  />
+                )}
             </div>
             <Button
               size={buttonSize}
