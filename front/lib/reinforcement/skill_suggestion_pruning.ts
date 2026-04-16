@@ -111,9 +111,8 @@ export async function pruneConflictingSkillEditSuggestions(
     return;
   }
 
-  const newData = newSuggestion.toJSON();
-  const newInstructionEdits = newData.suggestion.instructionEdits ?? [];
-  const newToolEdits = newData.suggestion.toolEdits ?? [];
+  const newInstructionEdits = newSuggestion.suggestion.instructionEdits ?? [];
+  const newToolEdits = newSuggestion.suggestion.toolEdits ?? [];
 
   // Full rewrite — everything is outdated.
   if (
@@ -136,7 +135,7 @@ export async function pruneConflictingSkillEditSuggestions(
     allInstructionTargetIds.add(e.targetBlockId);
   }
   for (const p of existingPending) {
-    for (const e of p.toJSON().suggestion.instructionEdits ?? []) {
+    for (const e of p.suggestion.instructionEdits ?? []) {
       allInstructionTargetIds.add(e.targetBlockId);
     }
   }
@@ -146,18 +145,14 @@ export async function pruneConflictingSkillEditSuggestions(
       : new Map<string, Set<string>>();
 
   const toMarkOutdated = existingPending.filter((existing) => {
-    const existingData = existing.toJSON();
     return (
       instructionEditSetsConflict(
         newInstructionEdits,
-        existingData.suggestion.instructionEdits ?? [],
+        existing.suggestion.instructionEdits ?? [],
         skill.instructionsHtml,
         descendantMap
       ) ||
-      toolEditSetsConflict(
-        newToolEdits,
-        existingData.suggestion.toolEdits ?? []
-      )
+      toolEditSetsConflict(newToolEdits, existing.suggestion.toolEdits ?? [])
     );
   });
 
@@ -191,7 +186,7 @@ export async function pruneOutdatedSkillEditSuggestions(
     : new Set<string>();
 
   const outdated = pending.filter((p) => {
-    const { instructionEdits, toolEdits } = p.toJSON().suggestion;
+    const { instructionEdits, toolEdits } = p.suggestion;
 
     for (const edit of toolEdits ?? []) {
       const cannotApply =
