@@ -237,15 +237,34 @@ export const InputBar = React.memo(function InputBar({
     void deleteTool(serverView.sId);
   };
 
-  const handleSkillSelect = (skill: SkillWithoutInstructionsAndToolsType) => {
-    setSelectedSkills((prev) => [...prev, skill]);
-    void addSkill(skill.sId);
-  };
+  const selectedSkillIds = useMemo(
+    () => new Set(selectedSkills.map((skill) => skill.sId)),
+    [selectedSkills]
+  );
 
-  const handleSkillDeselect = (skill: SkillWithoutInstructionsAndToolsType) => {
-    setSelectedSkills((prev) => prev.filter((s) => s.sId !== skill.sId));
-    void deleteSkill(skill.sId);
-  };
+  const handleSkillSelect = useCallback(
+    (skill: SkillWithoutInstructionsAndToolsType) => {
+      if (selectedSkillIds.has(skill.sId)) {
+        return;
+      }
+
+      setSelectedSkills((prev) => [...prev, skill]);
+      void addSkill(skill.sId);
+    },
+    [addSkill, selectedSkillIds]
+  );
+
+  const handleSkillDeselect = useCallback(
+    (skill: SkillWithoutInstructionsAndToolsType) => {
+      if (!selectedSkillIds.has(skill.sId)) {
+        return;
+      }
+
+      setSelectedSkills((prev) => prev.filter((s) => s.sId !== skill.sId));
+      void deleteSkill(skill.sId);
+    },
+    [deleteSkill, selectedSkillIds]
+  );
 
   const activeAgents = useMemo(() => {
     const agents = agentConfigurations.filter((a) => a.status === "active");
