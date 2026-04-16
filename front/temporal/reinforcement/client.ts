@@ -28,7 +28,7 @@ export function makeWorkspaceWorkflowId(workspaceId: string): string {
 }
 
 /**
- * List workspace sIds that have the reinforced_agents feature flag,
+ * List workspace sIds with an active subscription,
  * excluding workspaces on free upgraded or free trial phone plans.
  */
 async function getReinforcementWorkspaceIds(): Promise<string[]> {
@@ -38,6 +38,10 @@ async function getReinforcementWorkspaceIds(): Promise<string[]> {
   for (const workspace of allWorkspaces) {
     try {
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+      if (auth.subscription()?.status !== "active") {
+        continue;
+      }
 
       const planCode = auth.plan()?.code;
       if (planCode && REINFORCEMENT_EXCLUDED_PLAN_CODES.has(planCode)) {
