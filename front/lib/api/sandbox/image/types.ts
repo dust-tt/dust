@@ -94,6 +94,8 @@ export const ALLOWLIST_NETWORK_POLICY: NetworkPolicy = {
     // Datadog EU — sandbox telemetry
     "http-intake.logs.datadoghq.eu",
     "api.datadoghq.eu",
+    // Regional egress proxy (eu.sandbox-egress.dust.tt, us.sandbox-egress.dust.tt, ...)
+    "*.sandbox-egress.dust.tt",
   ],
 };
 

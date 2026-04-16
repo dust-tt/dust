@@ -298,7 +298,7 @@ SHELLEOF`,
   .withToolManifest()
   .register({
     imageName: "dust-base",
-    tag: "0.7.3",
+    tag: "0.7.4",
   });
 
 const IMAGES: readonly SandboxImage[] = [DUST_BASE_IMAGE];
