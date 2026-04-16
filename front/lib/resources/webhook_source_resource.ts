@@ -102,6 +102,14 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     return res.map((c) => new this(this.model, c.get()));
   }
 
+  static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
+    return this.baseFetch(auth, {
+      where: {
+        id: ids,
+      },
+    });
+  }
+
   static async fetchByIds(auth: Authenticator, sIds: string[]) {
     const ids = sIds
       .map((sId) => getResourceIdFromSId(sId))
