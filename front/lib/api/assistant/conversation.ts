@@ -569,7 +569,6 @@ export async function postUserMessage(
     skipToolsValidation,
     skipDustAutoMention,
     doNotAssociateUser,
-    steeringEnabled,
   }: {
     conversation: ConversationType;
     content: string;
@@ -579,7 +578,6 @@ export async function postUserMessage(
     skipToolsValidation: boolean;
     doNotAssociateUser?: boolean;
     skipDustAutoMention?: boolean;
-    steeringEnabled?: boolean;
   }
 ): Promise<
   Result<
@@ -668,30 +666,28 @@ export async function postUserMessage(
     );
 
   // Steering invariants: enforce single agent loop per conversation.
-  if (steeringEnabled) {
-    if (agentMentions.length > 1) {
-      return new Err({
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Only one agent can be mentioned per message.",
-        },
-      });
-    }
+  if (agentMentions.length > 1) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Only one agent can be mentioned per message.",
+      },
+    });
+  }
 
-    if (
-      runningAgentMessage &&
-      agentMentions.length > 0 &&
-      agentMentions[0].configurationId !== runningAgentMessage.configuration.sId
-    ) {
-      return new Err({
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Cannot run a different agent while one is running.",
-        },
-      });
-    }
+  if (
+    runningAgentMessage &&
+    agentMentions.length > 0 &&
+    agentMentions[0].configurationId !== runningAgentMessage.configuration.sId
+  ) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Cannot run a different agent while one is running.",
+      },
+    });
   }
 
   // `getAgentConfiguration` checks that we're only pulling a configuration from the
@@ -888,7 +884,7 @@ export async function postUserMessage(
     // Re-read the agent message status inside the critical section of the advisory lock. Between
     // the initial check and acquiring the lock, the agent loop may have finalized — if so, clear
     // runningAgentMessage so we fall through to the normal flow.
-    if (steeringEnabled && runningAgentMessage) {
+    if (runningAgentMessage) {
       const agentMessageRow = await AgentMessageModel.findOne({
         where: {
           id: runningAgentMessage.agentMessageId,
@@ -905,9 +901,7 @@ export async function postUserMessage(
     // We set the visibility of the user message to "pending" if steering is enabled, we have a
     // running agent message and there are agent mentions in the user messsage.
     const visibility: MessageVisibility =
-      steeringEnabled && runningAgentMessage && agentMentions.length > 0
-        ? "pending"
-        : "visible";
+      runningAgentMessage && agentMentions.length > 0 ? "pending" : "visible";
 
     // Return the user message without mentions.
     // This way typescript forces us to create the mentions after the user message is created.
@@ -1044,11 +1038,7 @@ export async function postUserMessage(
       conversation,
       userMessage,
     });
-  } else if (
-    steeringEnabled &&
-    runningAgentMessage &&
-    userMessage.visibility === "pending"
-  ) {
+  } else if (runningAgentMessage && userMessage.visibility === "pending") {
     // Pending path: signal the running agent loop to gracefully stop.
     await gracefullyStopAgentLoop(auth, {
       messageIds: [runningAgentMessage.sId],
@@ -2875,6 +2865,17 @@ export async function updateAgentMessageWithFinalStatus(
       // When the agent message is cancelled it means the user pushed the "stop" button so the
       // intent is to interrupt all work. We promot user messages but don't trigger a new agent
       // message.
+      return {
+        promotedUserMessages,
+        promotedAuth,
+        agentMessage: null,
+      };
+    }
+
+    if (!agentMessage.configuration) {
+      // Configuration is not available (e.g., workflow error path where the agent
+      // message is reconstructed without its configuration). Promote pending user
+      // messages but don't attempt to create a new agent message.
       return {
         promotedUserMessages,
         promotedAuth,

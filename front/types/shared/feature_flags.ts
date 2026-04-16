@@ -290,11 +290,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable context compaction: summarize older messages to free up context window",
     stage: "dust_only",
   },
-  enable_steering: {
-    description:
-      "Enable steering: pending user messages + graceful stop of running agent loops",
-    stage: "dust_only",
-  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

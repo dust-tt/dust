@@ -1,53 +1,34 @@
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { Button, ChromeLogo, FirefoxLogo, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, XMarkIcon } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 
-const EXTENSION_IMAGE_PATH = "/static/Extension_Banner.png";
-const EXTENSION_BANNER_LOCAL_STORAGE_KEY = "extension-banner-dismissed";
-const EXTENSION_BANNER_URL =
-  "https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn";
+const STEERING_IMAGE_PATH = "/static/Steering_Banner.png";
+const STEERING_BANNER_LOCAL_STORAGE_KEY = "steering-banner-dismissed";
+const STEERING_BANNER_URL =
+  "https://docs.dust.tt/docs/steering-conversations-that-keep-up-with-you";
 
-const FIREFOX_EXTENSION_BANNER_LOCAL_STORAGE_KEY =
-  "firefox-extension-banner-dismissed";
-const FIREFOX_EXTENSION_BANNER_URL =
-  "https://addons.mozilla.org/firefox/addon/dust/";
-
-interface ExtensionBannerProps {
-  showExtensionBanner: boolean;
-  onShowExtensionBanner: (open: boolean) => void;
-  type: "chrome" | "firefox";
+interface SteeringBannerProps {
+  showSteeringBanner: boolean;
+  onShowSteeringBanner: (open: boolean) => void;
 }
 
-function ExtensionBanner({
-  showExtensionBanner,
-  onShowExtensionBanner,
-  type,
-}: ExtensionBannerProps) {
+function SteeringBanner({
+  showSteeringBanner,
+  onShowSteeringBanner,
+}: SteeringBannerProps) {
   const onDismiss = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (type === "firefox") {
-      localStorage.setItem(FIREFOX_EXTENSION_BANNER_LOCAL_STORAGE_KEY, "true");
-    } else {
-      localStorage.setItem(EXTENSION_BANNER_LOCAL_STORAGE_KEY, "true");
-    }
-    onShowExtensionBanner(false);
+    localStorage.setItem(STEERING_BANNER_LOCAL_STORAGE_KEY, "true");
+    onShowSteeringBanner(false);
   };
 
   const onLearnMore = () => {
-    if (type === "firefox") {
-      window.open(
-        FIREFOX_EXTENSION_BANNER_URL,
-        "_blank",
-        "noopener,noreferrer"
-      );
-    } else {
-      window.open(EXTENSION_BANNER_URL, "_blank", "noopener,noreferrer");
-    }
+    window.open(STEERING_BANNER_URL, "_blank", "noopener,noreferrer");
   };
 
-  if (!showExtensionBanner) {
+  if (!showSteeringBanner) {
     return null;
   }
 
@@ -58,15 +39,15 @@ function ExtensionBanner({
       exit={{ opacity: 0, translateY: "120%" }}
       className="relative z-10 mx-2 mb-2 hidden max-w-[300px] cursor-pointer flex-col rounded-2xl border border-border-dark bg-white shadow-md dark:border-border-night dark:bg-background-night sm:flex"
       onClick={withTracking(
-        TRACKING_AREAS.EXTENSION,
-        "cta_extension_banner",
+        TRACKING_AREAS.CONVERSATION,
+        "cta_steering_banner",
         onLearnMore
       )}
     >
       <div className="relative overflow-hidden rounded-t-2xl">
         <img
-          src={EXTENSION_IMAGE_PATH}
-          alt="Extension"
+          src={STEERING_IMAGE_PATH}
+          alt="Steering"
           width={300}
           height={98}
           className="h-[98px] w-[300px] border-b border-border-dark object-cover dark:border-border-night"
@@ -81,19 +62,19 @@ function ExtensionBanner({
       </div>
       <div className="relative px-4 py-3">
         <div className="mb-1 text-sm font-medium text-foreground dark:text-foreground-night">
-          Meet the new {type === "firefox" ? "Firefox" : "Chrome"} Extension
+          Conversations that keep up with you
         </div>
         <h4 className="mb-3 text-xs leading-tight text-primary dark:text-primary-night">
-          Voice input, multi-tab awareness, and page interactions are here.
+          See every step as the agent works. Send a message mid-task and it
+          adjusts.
         </h4>
         <Button
           variant="highlight"
           size="xs"
-          icon={type === "firefox" ? FirefoxLogo : ChromeLogo}
-          label={`Install the ${type === "firefox" ? "Firefox" : "Chrome"} Extension`}
+          label="Learn more"
           onClick={withTracking(
-            TRACKING_AREAS.EXTENSION,
-            "cta_extension_banner",
+            TRACKING_AREAS.CONVERSATION,
+            "cta_steering_banner",
             onLearnMore
           )}
         />
@@ -109,26 +90,16 @@ interface StackedInAppBannersProps {
 export function StackedInAppBanners({
   owner: _owner,
 }: StackedInAppBannersProps) {
-  const isFirefox =
-    typeof navigator !== "undefined" && /firefox/i.test(navigator.userAgent);
-
-  const [showExtensionBanner, setShowExtensionBanner] = useState(() => {
-    if (isFirefox) {
-      return (
-        localStorage.getItem(FIREFOX_EXTENSION_BANNER_LOCAL_STORAGE_KEY) !==
-        "true"
-      );
-    }
-    return localStorage.getItem(EXTENSION_BANNER_LOCAL_STORAGE_KEY) !== "true";
-  });
+  const [showSteeringBanner, setShowSteeringBanner] = useState(
+    () => localStorage.getItem(STEERING_BANNER_LOCAL_STORAGE_KEY) !== "true"
+  );
 
   return (
     <AnimatePresence>
-      <ExtensionBanner
-        key="extension-banner"
-        showExtensionBanner={showExtensionBanner}
-        onShowExtensionBanner={setShowExtensionBanner}
-        type={isFirefox ? "firefox" : "chrome"}
+      <SteeringBanner
+        key="steering-banner"
+        showSteeringBanner={showSteeringBanner}
+        onShowSteeringBanner={setShowSteeringBanner}
       />
     </AnimatePresence>
   );

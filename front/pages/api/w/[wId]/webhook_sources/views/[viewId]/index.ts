@@ -259,7 +259,7 @@ async function editWebhookSourceViewsName(
   const systemView =
     await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
       auth,
-      webhookSourceView.webhookSourceSId
+      webhookSourceView.webhookSource.sId
     );
 
   if (!systemView) {
@@ -310,7 +310,7 @@ async function editWebhookSourceDescriptionAndIcon(
   const systemView =
     await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
       auth,
-      webhookSourceView.webhookSourceSId
+      webhookSourceView.webhookSource.sId
     );
 
   if (!systemView) {

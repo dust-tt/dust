@@ -14,6 +14,7 @@ import type {
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { isBuilder } from "@app/types/user";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -124,15 +125,20 @@ async function handler(
       });
 
       if (withRelations === "true") {
+        const extendedSkills = await SkillResource.fetchByIds(
+          auth,
+          removeNulls(uniq(skills.map((skill) => skill.extendedSkillId)))
+        );
+        const extendedSkillsMap = new Map(
+          extendedSkills.map((skill) => [skill.sId, skill])
+        );
+
         const skillsWithRelations = await concurrentExecutor(
           skills,
           async (sc) => {
             const usage = await sc.fetchUsage(auth);
             const editors = await sc.listEditors(auth);
             const editedByUser = await sc.fetchEditedByUser(auth);
-            const extendedSkill = sc.extendedSkillId
-              ? await SkillResource.fetchById(auth, sc.extendedSkillId)
-              : null;
 
             return {
               ...sc.toJSON(auth),
@@ -140,8 +146,9 @@ async function handler(
                 usage,
                 editors: editors ? editors.map((e) => e.toJSON()) : null,
                 editedByUser: editedByUser ? editedByUser.toJSON() : null,
-                extendedSkill: extendedSkill
-                  ? extendedSkill.toJSON(auth)
+                extendedSkill: sc.extendedSkillId
+                  ? (extendedSkillsMap.get(sc.extendedSkillId)?.toJSON(auth) ??
+                    null)
                   : null,
               },
             } satisfies SkillWithRelationsType;

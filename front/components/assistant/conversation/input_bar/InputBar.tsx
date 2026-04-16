@@ -15,7 +15,6 @@ import {
   useConversationTools,
 } from "@app/hooks/conversations";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
@@ -88,8 +87,6 @@ export const InputBar = React.memo(function InputBar({
   submitBlockMessage = null,
 }: InputBarProps) {
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
-  const { hasFeature } = useFeatureFlags();
-  const singleAgentInput = hasFeature("enable_steering");
   const [isShaking, setIsShaking] = useState(false);
 
   const [attachedNodes, setAttachedNodes] = useState<
@@ -143,7 +140,7 @@ export const InputBar = React.memo(function InputBar({
   // In single-agent mode, block submission when the selected agent differs from
   // the agent that is currently generating a response.
   const agentSwitchBlockMessage = useMemo(() => {
-    if (!singleAgentInput || !selectedSingleAgent) {
+    if (!selectedSingleAgent) {
       return null;
     }
     const conversationId = conversation?.sId ?? "";
@@ -177,7 +174,6 @@ export const InputBar = React.memo(function InputBar({
 
     return null;
   }, [
-    singleAgentInput,
     selectedSingleAgent,
     getConversationGeneratingMessages,
     generatingMessages,
@@ -279,7 +275,6 @@ export const InputBar = React.memo(function InputBar({
     // since it's no longer in the editor as a mention node.
     const hasUserMention = rawMentions.some((m) => m.type === "user");
     const shouldInjectSelectedAgent =
-      singleAgentInput &&
       selectedSingleAgent &&
       !hasUserMention &&
       !rawMentions.some((m) => m.id === selectedSingleAgent.id);

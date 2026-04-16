@@ -78,13 +78,7 @@ const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
 const FADE_OUT_TRANSITION = "50ms ease-out";
 const FADE_IN_TRANSITION = "150ms ease-out";
 
-function getButtonsTransitionStyle(
-  singleAgentInput: boolean,
-  hideButtons: boolean
-): React.CSSProperties | undefined {
-  if (!singleAgentInput) {
-    return undefined;
-  }
+function getButtonsTransitionStyle(hideButtons: boolean): React.CSSProperties {
   const opacityTransition = hideButtons
     ? FADE_OUT_TRANSITION
     : FADE_IN_TRANSITION;
@@ -97,12 +91,8 @@ function getButtonsTransitionStyle(
 }
 
 function getToolbarRowTransitionStyle(
-  singleAgentInput: boolean,
   hideButtons: boolean
-): React.CSSProperties | undefined {
-  if (!singleAgentInput) {
-    return undefined;
-  }
+): React.CSSProperties {
   const opacityTransition = hideButtons
     ? FADE_OUT_TRANSITION
     : FADE_IN_TRANSITION;
@@ -202,13 +192,12 @@ const InputBarContainer = ({
   const { subscription } = useAuth();
   const isMobile = useIsMobile();
   const { hasFeature } = useFeatureFlags();
-  const singleAgentInput = hasFeature("enable_steering");
   const isCompactionEnabled = hasFeature("enable_compaction");
   const { selectedSingleAgent, setSelectedSingleAgent } =
     useContext(InputBarContext);
 
   const [hasUserMention, setHasUserMention] = useState(false);
-  const canSubmitEmpty = singleAgentInput && !!selectedSingleAgent;
+  const canSubmitEmpty = !!selectedSingleAgent;
 
   const agentsById = useMemo(
     () => new Map(allAgents.map((a) => [a.sId, a])),
@@ -419,45 +408,41 @@ const InputBarContainer = ({
     [isSubmitBlocked, canSubmitEmpty, onEnterKeyDown, onShake]
   );
 
-  onFirstAgentMentionPasteRef.current = singleAgentInput
-    ? (agentId: string) => {
-        const agent = agentsById.get(agentId);
-        if (agent) {
-          setSelectedSingleAgent(toRichAgentMentionType(agent));
-        }
-      }
-    : undefined;
+  onFirstAgentMentionPasteRef.current = (agentId: string) => {
+    const agent = agentsById.get(agentId);
+    if (agent) {
+      setSelectedSingleAgent(toRichAgentMentionType(agent));
+    }
+  };
 
-  onAgentMentionsStrippedRef.current = singleAgentInput
-    ? (payload: MentionsStrippedPayload) => {
-        let title: string;
-        let description: string;
-        switch (payload.reason) {
-          case "extra-agents":
-            title = "Agent mentions removed";
-            description = `${payload.count} ${payload.count === 1 ? "agent mention was" : "agent mentions were"} removed. Only one agent can be used at a time.`;
-            break;
-          case "users-stripped-for-agent":
-            title = "User mentions removed";
-            description =
-              "You can’t mention both users and agents in the same message.";
-            break;
-          case "user-conflict":
-          case "mixed-conflict":
-            title = "Agent mentions removed";
-            description =
-              "You can’t mention both users and agents in the same message.";
-            break;
-          default:
-            assertNever(payload);
-        }
-        sendNotification({
-          type: "info",
-          title,
-          description,
-        });
-      }
-    : undefined;
+  onAgentMentionsStrippedRef.current = (payload: MentionsStrippedPayload) => {
+    let title: string;
+    let description: string;
+    switch (payload.reason) {
+      case "extra-agents":
+        title = "Agent mentions removed";
+        description = `${payload.count} ${payload.count === 1 ? "agent mention was" : "agent mentions were"} removed. Only one agent can be used at a time.`;
+        break;
+      case "users-stripped-for-agent":
+        title = "User mentions removed";
+        description =
+          "You can’t mention both users and agents in the same message.";
+        break;
+      case "user-conflict":
+      case "mixed-conflict":
+        title = "Agent mentions removed";
+        description =
+          "You can’t mention both users and agents in the same message.";
+        break;
+      default:
+        assertNever(payload);
+    }
+    sendNotification({
+      type: "info",
+      title,
+      description,
+    });
+  };
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
@@ -467,12 +452,11 @@ const InputBarContainer = ({
     disableUserMentions,
     onUrlDetected: handleUrlDetected,
     onAgentSelect: onSingleAgentSelect,
-    singleAgentInputEnabled: singleAgentInput,
     owner,
     conversationId: conversation?.sId,
     spaceId,
     onInlineText: handleInlineText,
-    shouldSuggestAgentRef: singleAgentInput ? shouldSuggestAgentRef : undefined,
+    shouldSuggestAgentRef,
     onFirstAgentMentionPasteRef,
     onAgentMentionsStrippedRef,
     onLongTextPaste: async ({ text, from, to }) => {
@@ -550,17 +534,9 @@ const InputBarContainer = ({
             editorService.insertText(message.text);
             break;
           case "mention": {
-            if (singleAgentInput) {
-              const agent = agentsById.get(message.id);
-              if (agent) {
-                handleSingleAgentSelect(toRichAgentMentionType(agent));
-              }
-            } else {
-              editorService.insertMention({
-                type: "agent",
-                id: message.id,
-                label: message.name,
-              });
+            const agent = agentsById.get(message.id);
+            if (agent) {
+              handleSingleAgentSelect(toRichAgentMentionType(agent));
             }
             break;
           }
@@ -593,10 +569,10 @@ const InputBarContainer = ({
   const onEditorMentionsChangedRef = useRef((_userMentioned: boolean) => {});
 
   onEditorMentionsChangedRef.current = (userMentioned: boolean) => {
-    shouldSuggestAgentRef.current = !(singleAgentInput && userMentioned);
+    shouldSuggestAgentRef.current = !userMentioned;
     const wasUserMentioned = prevUserMentionedRef.current;
     prevUserMentionedRef.current = userMentioned;
-    if (singleAgentInput && userMentioned && !wasUserMentioned) {
+    if (userMentioned && !wasUserMentioned) {
       setSelectedSingleAgent(null);
       onResetSelections();
       fileUploaderService.resetUpload();
@@ -606,7 +582,7 @@ const InputBarContainer = ({
   // When the selected agent changes, remove any @user mentions (which are
   // incompatible with single-agent mode), notify the user, and persist the draft.
   useEffect(() => {
-    if (singleAgentInput && selectedSingleAgent) {
+    if (selectedSingleAgent) {
       const hadUserMentions = editorService.removeUserMentions();
       if (hadUserMentions) {
         sendNotification({
@@ -620,13 +596,7 @@ const InputBarContainer = ({
       const { markdown } = editorService.getMarkdownAndMentions();
       saveDraft(markdown, selectedSingleAgent);
     }
-  }, [
-    singleAgentInput,
-    selectedSingleAgent,
-    editorService,
-    saveDraft,
-    sendNotification,
-  ]);
+  }, [selectedSingleAgent, editorService, saveDraft, sendNotification]);
 
   // Update the editor ref when the editor is created and listen for updates to the editor.
   useEffect(() => {
@@ -876,13 +846,12 @@ const InputBarContainer = ({
       draft &&
       (editorService.isEmpty() || editorContainsOnlyStickyMentions)
     ) {
-      // TODO: cleanup once we ship the single agent mode
-      // In single-agent mode, strip agent mentions from the draft text since
-      // the agent is handled by the picker button, not inline in the editor.
-      // This handles drafts saved before single-agent mode was enabled.
-      const draftText = singleAgentInput
-        ? draft.text.replace(/:mention\[[^\]]*\]\{sId=[^}]*\}\s*/g, "").trim()
-        : draft.text;
+      // Strip agent mentions from the draft text since the agent is handled
+      // by the picker button, not inline in the editor. This handles drafts
+      // saved before single-agent mode was enabled.
+      const draftText = draft.text
+        .replace(/:mention\[[^\]]*\]\{sId=[^}]*\}\s*/g, "")
+        .trim();
 
       // Schedule content restoration to avoid flushing during render lifecycle.
       queueMicrotask(() =>
@@ -924,7 +893,7 @@ const InputBarContainer = ({
     voiceTranscriberService.status !== "idle";
 
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
-  const hideButtons = singleAgentInput && hasUserMention;
+  const hideButtons = hasUserMention;
 
   const contentEditableClasses = classNames(
     "inline-block w-full",
@@ -936,14 +905,8 @@ const InputBarContainer = ({
 
   const isRecording = voiceTranscriberService.status === "recording";
 
-  const buttonsTransitionStyle = getButtonsTransitionStyle(
-    singleAgentInput,
-    hideButtons
-  );
-  const toolbarRowTransitionStyle = getToolbarRowTransitionStyle(
-    singleAgentInput,
-    hideButtons
-  );
+  const buttonsTransitionStyle = getButtonsTransitionStyle(hideButtons);
+  const toolbarRowTransitionStyle = getToolbarRowTransitionStyle(hideButtons);
 
   return (
     <div
@@ -987,13 +950,9 @@ const InputBarContainer = ({
             "flex w-full flex-col",
             !hideButtons && "py-1.5 sm:pb-2"
           )}
-          style={
-            singleAgentInput
-              ? {
-                  transition: `padding ${COLLAPSE_TRANSITION}`,
-                }
-              : undefined
-          }
+          style={{
+            transition: `padding ${COLLAPSE_TRANSITION}`,
+          }}
         >
           <div
             className="mb-1 flex flex-wrap items-center px-2"
@@ -1132,7 +1091,6 @@ const InputBarContainer = ({
                     selectedAgent={selectedSingleAgent}
                     selectedMCPServerViews={selectedMCPServerViews}
                     selectedSkills={selectedSkills}
-                    singleAgentInput={singleAgentInput}
                     space={space}
                     user={user}
                   />

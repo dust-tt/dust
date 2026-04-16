@@ -15,6 +15,8 @@ struct Cli {
 enum Commands {
     /// Print version information
     Version,
+    /// Forward sandbox egress traffic to the Dust egress proxy
+    Forward(commands::forward::ForwardArgs),
     /// Interact with MCP servers and tools
     Tools {
         /// Server name (omit to list all servers)
@@ -42,6 +44,7 @@ async fn run() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::Version => commands::cmd_version(),
+        Commands::Forward(args) => commands::cmd_forward(args).await?,
         Commands::Tools {
             server_name,
             tool_name,

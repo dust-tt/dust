@@ -48,6 +48,7 @@ import type { DustError } from "@app/lib/error";
 import {
   AgentMessageCompletedEvent,
   CompactionCompletedEvent,
+  CompactionStartedEvent,
 } from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import logger from "@app/logger/logger";
@@ -597,6 +598,9 @@ export const ConversationViewer = ({
                 }
               }
             }
+            if (conversationId) {
+              window.dispatchEvent(new CompactionStartedEvent(conversationId));
+            }
             break;
 
           case "compaction_message_done":
@@ -727,17 +731,15 @@ export const ConversationViewer = ({
         // user keep their current scroll position.
         const isMentioningAgent = mentions.some(isRichAgentMention);
 
+        // When steering (hasRunningAgent), the message is pending and no new
+        // agent message is created — stay at the current scroll position.
+        const shouldScrollToUserMessage = isMentioningAgent && !hasRunningAgent;
+
         const nbMessages = ref.current.data.get().length;
         ref.current.data.append(
           [placeholderUserMsg, ...placeholderAgentMessages],
-          isMentioningAgent && !hasRunningAgent
-            ? () => {
-                return {
-                  index: nbMessages, // Avoid jumping around when the agent message is generated.
-                  align: "start",
-                  behavior: customSmoothScroll,
-                };
-              }
+          shouldScrollToUserMessage
+            ? false // Skip append-time scroll; handled by scrollToItem below.
             : (params) => {
                 if (params.scrollLocation.bottomOffset >= 0) {
                   return {
@@ -750,6 +752,18 @@ export const ConversationViewer = ({
                 }
               }
         );
+
+        // We use scrollToItem instead of the append callback because
+        // Virtuoso's append callback clamps the scroll target before applying
+        // the bottom padding needed for align:"start" near the end of the
+        // list, causing the scroll to undershoot.
+        if (shouldScrollToUserMessage && ref.current) {
+          ref.current.scrollToItem({
+            index: nbMessages,
+            align: "start",
+            behavior: customSmoothScroll,
+          });
+        }
 
         const result = await submitMessage(messageData);
 

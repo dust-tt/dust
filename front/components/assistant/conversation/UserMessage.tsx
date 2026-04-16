@@ -17,7 +17,6 @@ import { useEditUserMessage } from "@app/hooks/useEditUserMessage";
 import { useHover } from "@app/hooks/useHover";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { AGENT_MENTION_REGEX } from "@app/lib/mentions/format";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -161,8 +160,6 @@ export function UserMessage({
     conversationId,
   });
   const confirm = useContext(ConfirmContext);
-  const { hasFeature } = useFeatureFlags();
-  const singleAgentInput = hasFeature("enable_steering");
 
   const originalAgentIds = useMemo(
     () =>
@@ -175,21 +172,18 @@ export function UserMessage({
   const handleSave = async () => {
     const { markdown, mentions } = editorService.getMarkdownAndMentions();
 
-    let content = markdown;
-    let filteredMentions = mentions;
-    if (singleAgentInput) {
-      filteredMentions = mentions.filter(
-        (m) => !isRichAgentMention(m) || originalAgentIds.has(m.id)
-      );
+    const filteredMentions = mentions.filter(
+      (m) => !isRichAgentMention(m) || originalAgentIds.has(m.id)
+    );
 
-      if (filteredMentions.length < mentions.length) {
-        // Strip agent mention syntax from the markdown to match the filtered mentions array.
-        content = markdown
-          .replaceAll(AGENT_MENTION_REGEX, (_match, _label, agentId) =>
-            originalAgentIds.has(agentId) ? _match : ""
-          )
-          .trim();
-      }
+    let content = markdown;
+    if (filteredMentions.length < mentions.length) {
+      // Strip agent mention syntax from the markdown to match the filtered mentions array.
+      content = markdown
+        .replaceAll(AGENT_MENTION_REGEX, (_match, _label, agentId) =>
+          originalAgentIds.has(agentId) ? _match : ""
+        )
+        .trim();
     }
 
     await editMessage({
@@ -206,9 +200,7 @@ export function UserMessage({
     conversationId,
     onEnterKeyDown: handleSave,
     disableAutoFocus: false,
-    // This editor is only mounted in edit mode, so singleAgentInput
-    // alone is sufficient to disable agent mentions (edit mode is implied).
-    disableAgentMentions: singleAgentInput,
+    disableAgentMentions: true,
   });
 
   const renderName = useCallback(

@@ -12,7 +12,7 @@ import { ConversationViewer } from "@app/components/assistant/conversation/Conve
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
@@ -90,9 +90,6 @@ function PreviewContent({
   isTrialPlan,
   isAdmin,
 }: PreviewContentProps) {
-  const { hasFeature } = useFeatureFlags();
-  const singleAgentInput = hasFeature("enable_steering");
-
   return (
     <>
       <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
@@ -111,9 +108,7 @@ function PreviewContent({
                 draftAgent: draftAgent ?? undefined,
                 isSubmitting: isSavingDraftAgent,
                 resetConversation,
-                actionsToShow: singleAgentInput
-                  ? ["attachment", "agents-list"]
-                  : ["attachment"],
+                actionsToShow: ["attachment", "agents-list"],
               }}
               key={conversation.sId}
             />
@@ -139,11 +134,7 @@ function PreviewContent({
                 draftAgent ? [toRichAgentMentionType(draftAgent)] : []
               }
               draftKey={`agent-${draftAgent?.name}-builder-preview`}
-              actions={
-                singleAgentInput
-                  ? ["attachment", "agents-list"]
-                  : ["attachment"]
-              }
+              actions={["attachment", "agents-list"]}
               disableAutoFocus
               isFloating={false}
             />

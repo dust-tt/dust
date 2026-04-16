@@ -15,7 +15,7 @@ export interface WebhookSourceAsset {
 }
 
 export interface CreatedWebhookSourceView {
-  webhookSourceSId: string;
+  webhookSourceId: string;
   viewId: number;
   name: string;
 }
@@ -48,7 +48,7 @@ export async function seedWebhookSources(
         );
       if (systemView) {
         created.set(asset.name, {
-          webhookSourceSId: existing.sId,
+          webhookSourceId: existing.sId,
           viewId: systemView.id,
           name: asset.name,
         });
@@ -96,7 +96,7 @@ export async function seedWebhookSources(
       await ensureGlobalSpaceView(auth, systemView, globalSpace, logger);
 
       created.set(asset.name, {
-        webhookSourceSId: webhookSource.sId,
+        webhookSourceId: webhookSource.sId,
         viewId: systemView.id,
         name: asset.name,
       });

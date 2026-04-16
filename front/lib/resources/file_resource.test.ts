@@ -204,6 +204,7 @@ describe("FileResource", () => {
         status: "ready",
         useCase: "conversation",
         useCaseMetadata: { conversationId: "original-conv-id" },
+        snippet: "copied snippet",
       });
 
       // Copy the file.
@@ -222,6 +223,7 @@ describe("FileResource", () => {
       expect(copiedFile.fileName).toBe(sourceFile.fileName);
       expect(copiedFile.fileSize).toBe(sourceFile.fileSize);
       expect(copiedFile.useCase).toBe("project_context");
+      expect(copiedFile.snippet).toBe("copied snippet");
       expect(copiedFile.useCaseMetadata?.conversationId).toBe("new-conv-id");
       expect(copiedFile.isReady).toBe(true);
     });
@@ -320,6 +322,151 @@ describe("FileResource", () => {
       expect(copiedFile.useCase).toBe("upsert_document");
       expect(copiedFile.useCaseMetadata?.spaceId).toBe("space-1");
       expect(copiedFile.useCaseMetadata?.conversationId).toBeUndefined();
+    });
+
+    it("should copy a conversation file to a different conversation", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const sourceFile = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "source.txt",
+        fileSize: testFileContent.length,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: {
+          conversationId: "parent-conv-id",
+          generatedTables: ["TABLE:parent"],
+          lastEditedByAgentConfigurationId: "agent-config",
+          sourceConversationId: "origin-conv-id",
+          sourceProvider: "github",
+          sourceIcon: "github",
+          hideFromUser: true,
+        },
+        snippet: "preserved snippet",
+      });
+
+      const result = await FileResource.copyToConversation(auth, {
+        sourceId: sourceFile.sId,
+        conversationId: "child-conv-id",
+      });
+
+      assert(result.isOk(), "copyToConversation should succeed");
+      const copiedFile = result.value;
+
+      expect(copiedFile.sId).not.toBe(sourceFile.sId);
+      expect(copiedFile.useCase).toBe("conversation");
+      expect(copiedFile.snippet).toBe("preserved snippet");
+      expect(copiedFile.useCaseMetadata).toEqual({
+        conversationId: "child-conv-id",
+        sourceConversationId: "origin-conv-id",
+        sourceProvider: "github",
+        sourceIcon: "github",
+        hideFromUser: true,
+      });
+    });
+
+    it("should preserve tool_output use case when copying to a conversation", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const sourceFile = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "output.txt",
+        fileSize: testFileContent.length,
+        status: "ready",
+        useCase: "tool_output",
+        useCaseMetadata: {
+          conversationId: "parent-conv-id",
+          hideFromUser: true,
+        },
+        snippet: "tool output snippet",
+      });
+
+      const result = await FileResource.copyToConversation(auth, {
+        sourceId: sourceFile.sId,
+        conversationId: "child-conv-id",
+      });
+
+      assert(result.isOk(), "copyToConversation should succeed");
+      const copiedFile = result.value;
+
+      expect(copiedFile.useCase).toBe("tool_output");
+      expect(copiedFile.snippet).toBe("tool output snippet");
+      expect(copiedFile.useCaseMetadata).toEqual({
+        conversationId: "child-conv-id",
+        hideFromUser: true,
+      });
+    });
+
+    it("should reject non-conversation source use cases", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const sourceFile = await FileFactory.create(auth, null, {
+        contentType: "application/pdf",
+        fileName: "project.pdf",
+        fileSize: 100,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: "space-1" },
+      });
+
+      const result = await FileResource.copyToConversation(auth, {
+        sourceId: sourceFile.sId,
+        conversationId: "child-conv-id",
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain(
+          "Only conversation files can be copied to a conversation"
+        );
+      }
+    });
+
+    it("should return error when source file is missing for copyToConversation", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const result = await FileResource.copyToConversation(auth, {
+        sourceId: "non-existent-file-id",
+        conversationId: "child-conv-id",
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("Source file not found");
+      }
+    });
+
+    it("should return error when source file is not ready for copyToConversation", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const sourceFile = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "not-ready.txt",
+        fileSize: 100,
+        status: "created",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "parent-conv-id" },
+      });
+
+      const result = await FileResource.copyToConversation(auth, {
+        sourceId: sourceFile.sId,
+        conversationId: "child-conv-id",
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("not ready for copying");
+      }
     });
   });
 

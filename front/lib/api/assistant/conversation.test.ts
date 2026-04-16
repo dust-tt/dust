@@ -1187,7 +1187,6 @@ describe("postUserMessage", () => {
   let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
   let conversation: ConversationType;
   let agentConfig1: LightAgentConfigurationType;
-  let agentConfig2: LightAgentConfigurationType;
 
   beforeEach(async () => {
     const setup = await createResourceTest({});
@@ -1197,11 +1196,6 @@ describe("postUserMessage", () => {
     agentConfig1 = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent 1",
       description: "First test agent",
-    });
-
-    agentConfig2 = await AgentConfigurationFactory.createTestAgent(auth, {
-      name: "Test Agent 2",
-      description: "Second test agent",
     });
 
     const conversationWithoutContent = await ConversationFactory.create(auth, {
@@ -1227,9 +1221,6 @@ describe("postUserMessage", () => {
       {
         configurationId: agentConfig1.sId,
       } satisfies AgentMention,
-      {
-        configurationId: agentConfig2.sId,
-      } satisfies AgentMention,
     ];
 
     const user = auth.getNonNullableUser();
@@ -1237,7 +1228,7 @@ describe("postUserMessage", () => {
 
     const result = await postUserMessage(auth, {
       conversation,
-      content: `Hello @${agentConfig1.name} and @${agentConfig2.name}`,
+      content: `Hello @${agentConfig1.name}`,
       mentions,
       context: {
         username: userJson.username,
@@ -1256,20 +1247,18 @@ describe("postUserMessage", () => {
 
       // Verify userMessage has mentions
       expect(userMessage.mentions).toBeDefined();
-      expect(userMessage.mentions.length).toBe(2);
+      expect(userMessage.mentions.length).toBe(1);
 
       // Verify userMessage has richMentions
       expect(userMessage.richMentions).toBeDefined();
-      expect(userMessage.richMentions.length).toBe(2);
+      expect(userMessage.richMentions.length).toBe(1);
 
       // Verify all mentions are agent mentions
       const agentMentions = userMessage.richMentions.filter(isRichAgentMention);
-      expect(agentMentions.length).toBe(2);
+      expect(agentMentions.length).toBe(1);
 
-      // Verify the agent configurations match
-      const mentionedAgentIds = agentMentions.map((m) => m.id);
-      expect(mentionedAgentIds).toContain(agentConfig1.sId);
-      expect(mentionedAgentIds).toContain(agentConfig2.sId);
+      // Verify the agent configuration matches
+      expect(agentMentions[0].id).toBe(agentConfig1.sId);
 
       // Verify mentions are stored in the database
       const mentionsInDb = await MentionModel.findAll({
@@ -1278,12 +1267,8 @@ describe("postUserMessage", () => {
           workspaceId: workspace.id,
         },
       });
-      expect(mentionsInDb.length).toBe(2);
-      const agentConfigIdsInDb = mentionsInDb
-        .map((m) => m.agentConfigurationId)
-        .filter((id): id is string => id !== null);
-      expect(agentConfigIdsInDb).toContain(agentConfig1.sId);
-      expect(agentConfigIdsInDb).toContain(agentConfig2.sId);
+      expect(mentionsInDb.length).toBe(1);
+      expect(mentionsInDb[0].agentConfigurationId).toBe(agentConfig1.sId);
 
       // Verify launchAgentLoopWorkflow was called for agent mentions
       expect(launchAgentLoopWorkflow).toHaveBeenCalled();
@@ -2284,6 +2269,13 @@ describe("postUserMessage", () => {
           messagesCreatedAt: [new Date()],
           spaceId: projectSpace.id,
         }
+      );
+
+      // Mark factory-created agent messages as succeeded so steering doesn't
+      // treat them as a running agent loop.
+      await AgentMessageModel.update(
+        { status: "succeeded" },
+        { where: { workspaceId: workspace.id, status: "created" } }
       );
 
       const fetchedConversationResult = await getConversation(

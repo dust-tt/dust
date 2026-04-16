@@ -1,8 +1,6 @@
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
 import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
-import { AgentMessageCompletionStatus } from "@app/components/assistant/conversation/AgentMessageCompletionStatus";
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
-import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { InlineActivitySteps } from "@app/components/assistant/conversation/actions/inline/InlineActivitySteps";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
@@ -206,7 +204,6 @@ export function AgentMessage({
   const [streamId, setStreamId] = useState<string>(`message-${sId}`);
   const { hasFeature } = useFeatureFlags();
   const isCollapsibleEnabled = hasFeature("collapsible_messages");
-  const isInlineActivityEnabled = hasFeature("enable_steering");
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     useState<boolean>(false);
@@ -251,7 +248,6 @@ export function AgentMessage({
   const { shouldStream, streamError } = useAgentMessageStream({
     agentMessage: agentMessage,
     conversationId,
-    isInlineActivityEnabled,
     owner,
     onEventCallback: useCallback(
       (eventPayload: {
@@ -952,13 +948,7 @@ export function AgentMessage({
           references={references}
           streaming={shouldStream}
           streamError={streamError}
-          lastTokenClassification={
-            isInlineActivityEnabled
-              ? null
-              : agentMessage.streaming.agentState === "thinking"
-                ? "tokens"
-                : null
-          }
+          lastTokenClassification={null}
           activeReferences={activeReferences}
           setActiveReferences={setActiveReferences}
           triggeringUser={triggeringUser}
@@ -1006,8 +996,6 @@ export function AgentMessage({
     );
   };
 
-  const hideCompletionStatus = isDeleted || isInlineActivityEnabled;
-
   return (
     <ConversationMessageContainer messageType="agent" type="agent">
       {!hideHeader && (
@@ -1025,18 +1013,7 @@ export function AgentMessage({
             infoChip={
               agentMessage.prunedContext ? <PrunedContextChip /> : undefined
             }
-            completionStatus={
-              hideCompletionStatus ? undefined : (
-                <AgentMessageCompletionStatus
-                  agentMessage={agentMessage}
-                  onClick={
-                    onCompletionStatusClick
-                      ? () => onCompletionStatusClick(agentMessage.sId)
-                      : undefined
-                  }
-                />
-              )
-            }
+            completionStatus={undefined}
             renderName={renderName}
           />
         </div>
@@ -1106,8 +1083,6 @@ function AgentMessageContent({
   >();
 
   const { vizUrl } = useAuth();
-  const { hasFeature } = useFeatureFlags();
-  const isInlineActivityEnabled = hasFeature("enable_steering");
   const { sId, configuration: agentConfiguration } = agentMessage;
 
   const { postFollowUp } = usePostOnboardingFollowUp({
@@ -1225,10 +1200,6 @@ function AgentMessageContent({
     />
   ) : null;
 
-  if (blockedActionElement && !isInlineActivityEnabled) {
-    return blockedActionElement;
-  }
-
   if (agentMessage.status === "created" && !!streamError) {
     return (
       <ErrorMessage
@@ -1305,25 +1276,15 @@ function AgentMessageContent({
   return (
     <CitationsContext.Provider value={citationsContextValue}>
       <div className="flex flex-col gap-y-4">
-        {isInlineActivityEnabled ? (
-          <InlineActivitySteps
-            agentMessage={agentMessage}
-            lastAgentStateClassification={agentMessage.streaming.agentState}
-            completedSteps={agentMessage.streaming.inlineActivitySteps}
-            pendingToolCalls={agentMessage.streaming.pendingToolCalls}
-            onOpenDetails={onOpenDetails}
-            owner={owner}
-            isLastMessage={isLastMessage}
-          />
-        ) : (
-          <AgentMessageActions
-            agentMessage={agentMessage}
-            lastAgentStateClassification={agentMessage.streaming.agentState}
-            actionProgress={agentMessage.streaming.actionProgress}
-            pendingToolCalls={agentMessage.streaming.pendingToolCalls}
-            owner={owner}
-          />
-        )}
+        <InlineActivitySteps
+          agentMessage={agentMessage}
+          lastAgentStateClassification={agentMessage.streaming.agentState}
+          completedSteps={agentMessage.streaming.inlineActivitySteps}
+          pendingToolCalls={agentMessage.streaming.pendingToolCalls}
+          onOpenDetails={onOpenDetails}
+          owner={owner}
+          isLastMessage={isLastMessage}
+        />
         {blockedActionElement}
         <AgentMessageInteractiveContentGeneratedFiles
           files={interactiveFiles}
@@ -1342,10 +1303,7 @@ function AgentMessageContent({
 
         {agentMessage.content !== null &&
           agentMessage.content !== "" &&
-          !(
-            isInlineActivityEnabled &&
-            agentMessage.streaming.agentState !== "done"
-          ) && (
+          agentMessage.streaming.agentState === "done" && (
             <div>
               <AgentMessageMarkdown
                 content={sanitizeVisualizationContent(agentMessage.content)}
