@@ -89,7 +89,7 @@ function TodoSources({
               );
             }}
           >
-            {source.title ?? source.sourceId}
+            {source.sourceTitle ?? source.sourceId}
           </button>
         </span>
       ))}

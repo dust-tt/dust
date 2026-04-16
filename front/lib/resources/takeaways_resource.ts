@@ -320,7 +320,8 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
         {
           sourceType: s.sourceType,
           sourceId: s.sourceId,
-          title: "MUST ADD TITLE",
+          sourceTitle: s.sourceTitle,
+          sourceUrl: s.sourceUrl,
         },
       ])
     );
@@ -397,6 +398,8 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
       document: {
         id: string;
         type: ProjectTodoSourceType;
+        title: string | null;
+        uri: string | null;
       };
       actionItems: TodoVersionedActionItem[];
       notableFacts: TodoVersionedNotableFact[];
@@ -450,6 +453,8 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
           takeawaysId: takeaway.id,
           sourceType: document.type,
           sourceId: document.id,
+          sourceTitle: document.title,
+          sourceUrl: document.uri,
         },
         { transaction: t }
       );
@@ -486,6 +491,8 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
         document: {
           id: conversationId,
           type: "project_conversation",
+          title: null,
+          uri: null,
         },
         actionItems,
         notableFacts,

@@ -2,7 +2,6 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -61,26 +60,6 @@ async function handler(
           sIds: todoSIds,
         });
 
-      // Resolve conversation titles for conversation-type sources.
-      const allConversationSIds = new Set<string>();
-      for (const sources of sourcesByTodoSId.values()) {
-        for (const source of sources) {
-          if (source.sourceType === "project_conversation") {
-            allConversationSIds.add(source.sourceId);
-          }
-        }
-      }
-
-      const titleByConversationSId = new Map<string, string | null>();
-      if (allConversationSIds.size > 0) {
-        const conversations = await ConversationResource.fetchByIds(auth, [
-          ...allConversationSIds,
-        ]);
-        for (const conversation of conversations) {
-          titleByConversationSId.set(conversation.sId, conversation.title);
-        }
-      }
-
       // Combine todo data with enriched sources.
       const todosWithSources: ProjectTodoType[] = todos.map((t) => {
         const sources = sourcesByTodoSId.get(t.sId) ?? [];
@@ -89,10 +68,8 @@ async function handler(
           sources: sources.map((s) => ({
             sourceType: s.sourceType,
             sourceId: s.sourceId,
-            title:
-              s.sourceType === "project_conversation"
-                ? (titleByConversationSId.get(s.sourceId) ?? null)
-                : null,
+            sourceTitle: s.sourceTitle,
+            sourceUrl: s.sourceUrl,
           })),
         };
       });

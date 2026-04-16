@@ -12,6 +12,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
+  ProjectTodoSourceInfo,
   ProjectTodoSourceType,
   ProjectTodoType,
 } from "@app/types/project_todo";
@@ -281,9 +282,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
   static async fetchSourcesForTodoSIds(
     auth: Authenticator,
     { sIds }: { sIds: string[] }
-  ): Promise<
-    Map<string, Array<{ sourceType: ProjectTodoSourceType; sourceId: string }>>
-  > {
+  ): Promise<Map<string, Array<ProjectTodoSourceInfo>>> {
     if (sIds.length === 0) {
       return new Map();
     }
@@ -312,10 +311,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     });
 
     // Group by logical todo sId.
-    const result = new Map<
-      string,
-      Array<{ sourceType: ProjectTodoSourceType; sourceId: string }>
-    >();
+    const result = new Map<string, Array<ProjectTodoSourceInfo>>();
 
     for (const source of sources) {
       const todoSId = idToSId.get(source.projectTodoId);
@@ -327,6 +323,8 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       existing.push({
         sourceType: source.sourceType,
         sourceId: source.sourceId,
+        sourceTitle: source.sourceTitle,
+        sourceUrl: source.sourceUrl,
       });
       result.set(todoSId, existing);
     }

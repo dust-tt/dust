@@ -25,7 +25,8 @@ export type ProjectTodoSourceType = (typeof PROJECT_TODO_SOURCE_TYPES)[number];
 export type ProjectTodoSourceInfo = {
   sourceType: ProjectTodoSourceType;
   sourceId: string;
-  title: string | null;
+  sourceTitle: string | null;
+  sourceUrl: string | null;
 };
 
 // Safe public representation of a ProjectTodo — no internal ModelIds exposed.

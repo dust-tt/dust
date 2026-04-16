@@ -359,6 +359,8 @@ export class ProjectTodoSourceModel extends WorkspaceAwareModel<ProjectTodoSourc
   declare projectTodoId: ForeignKey<ProjectTodoModel["id"]>;
   declare sourceType: ProjectTodoSourceType;
   declare sourceId: string;
+  declare sourceTitle: string | null;
+  declare sourceUrl: string | null;
 
   declare projectTodo: NonAttribute<ProjectTodoModel>;
 }
@@ -384,6 +386,14 @@ ProjectTodoSourceModel.init(
       allowNull: false,
       comment:
         "String identifier of the source (conversation sId, external URL/ID, etc.) that led to creating this todo.",
+    },
+    sourceTitle: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    sourceUrl: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
   },
   {
