@@ -131,55 +131,35 @@ In `createCompactionMessage(...)`, create the subtype row with:
 
 This mirrors agent message initialization.
 
-### - [ ] 3. Add a compaction metadata updater for `runIds`
+### - [x] 3. Add a `ConversationResource` static updater for compaction `runIds`
 
-Introduce a focused helper for non-terminal compaction metadata updates, similar in spirit to the
-non-terminal branch of `updateAgentMessageDBAndMemory(...)`.
+Move the non-terminal `runIds` persistence into a dedicated static function on
+`front/lib/resources/conversation_resource.ts`.
+
+Behavior:
+- Update `CompactionMessageModel` from `ConversationResource.updateCompactionMessageRunIds(...)`.
+- Use an atomic merge + dedupe SQL expression.
+- No advisory lock is required for this non-terminal metadata update.
 
 Suggested shape:
 
 ```ts
-async function updateCompactionMessageRunIds(
+static async updateCompactionMessageRunIds(
   auth: Authenticator,
   {
-    compactionMessage,
+    compactionMessageModelId,
     runIds,
   }: {
-    compactionMessage: CompactionMessageType;
+    compactionMessageModelId: ModelId;
     runIds: string[];
   }
 ): Promise<void>
 ```
 
-Behavior:
-- Update `CompactionMessageModel` directly.
-- Use an atomic merge + dedupe SQL expression.
-- No advisory lock required for this non-terminal metadata update.
+This preserves the same semantics as agent messages while keeping the raw model update logic in the
+Resource layer.
 
-Suggested merge logic:
-
-```ts
-await CompactionMessageModel.update(
-  {
-    runIds: fn(
-      "ARRAY",
-      literal(
-        `SELECT DISTINCT unnest(COALESCE("runIds", '{}') || ARRAY['${runIds.join("','")}']::text[])`
-      )
-    ),
-  },
-  {
-    where: {
-      id: compactionMessage.compactionMessageId,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-  }
-);
-```
-
-This preserves the same semantics as agent messages.
-
-### - [ ] 4. Expose the LLM trace id from `runMultiActionsAgent`
+### - [x] 4. Expose the LLM trace id from `runMultiActionsAgent`
 
 File:
 - `front/lib/api/assistant/call_llm.ts`
@@ -206,21 +186,18 @@ await options.onRunId?.(llm.getTraceId());
 Why this shape:
 - It exposes the run id early.
 - It allows persistence even if the LLM call later fails.
-- It matches the agent-message behavior where run ids are persisted while the message is still in a
-  running state.
+- It keeps the compaction-specific trigger in `compaction.ts` while moving the raw model update to
+  the Resource layer.
 
-An alternative would be to change the return type to include `runId`, but that only exposes the id
-at the end of the call and is therefore less aligned with the current agent pattern.
-
-### - [ ] 5. Persist compaction run ids as soon as compaction starts the LLM call
+### - [x] 5. Persist compaction run ids as soon as compaction starts the LLM call
 
 File:
 - `front/temporal/agent_loop/lib/compaction.ts`
 
 Thread the current `compactionMessage` through to the code that performs the LLM call.
 
-In `generateCompactionSummary(...)`, call `runMultiActionsAgent(...)` with `onRunId`, and in that
-callback invoke `updateCompactionMessageRunIds(...)`.
+In `generateCompactionSummary(...)`, call `runMultiActionsAgent(...)` with `onRunId`, and call
+`ConversationResource.updateCompactionMessageRunIds(...)` from that callback.
 
 Desired lifecycle:
 
