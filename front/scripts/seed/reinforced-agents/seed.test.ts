@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
@@ -109,10 +110,31 @@ describe("reinforcement seed script integration test", () => {
     const feedbacksWithContent = allFeedbacks.filter((f) => f.content !== null);
     expect(feedbacksWithContent).toHaveLength(4);
 
-    // Verify skill suggestions: 2 for SearchInfoContactWithSuggestion + 2 for MeetingNotesFormatter
+    // Verify skills: 4 skills created (Poem Analyser, SearchInfoContactWithSuggestion, MeetingNotesFormatter, BookKeeper)
+    const expectedSkillNames = [
+      "BookKeeper",
+      "MeetingNotesFormatter",
+      "Poem Analyser",
+      "SearchInfoContactWithSuggestion",
+    ];
+    const skills = await SkillResource.listByWorkspace(authenticator, {
+      status: "active",
+    });
+    const seededSkills = skills.filter((s) =>
+      expectedSkillNames.includes(s.name)
+    );
+    expect(seededSkills).toHaveLength(4);
+
+    // Verify BookKeeper skill has knowledge reference in instructions
+    const bookKeeper = seededSkills.find((s) => s.name === "BookKeeper");
+    expect(bookKeeper).toBeDefined();
+    expect(bookKeeper!.instructionsHtml).toContain("knowledge-node");
+    expect(bookKeeper!.instructionsHtml).toContain("books.xml");
+
+    // Verify skill suggestions: 2 for SearchInfoContactWithSuggestion + 2 for MeetingNotesFormatter + 1 for BookKeeper
     const skillSuggestions =
       await SkillSuggestionResource.listByWorkspace(authenticator);
-    expect(skillSuggestions).toHaveLength(4);
+    expect(skillSuggestions).toHaveLength(5);
 
     const allPending = skillSuggestions.every((s) => s.state === "pending");
     expect(allPending).toBe(true);
@@ -140,7 +162,7 @@ describe("reinforcement seed script integration test", () => {
     });
     expect(withOnlyInstructionEdits).toBeDefined();
 
-    // Third suggestion (MeetingNotesFormatter) has a multi-block replacement
+    // Fourth suggestion (MeetingNotesFormatter) has a multi-block replacement
     const multiBlockSuggestion = skillSuggestions.find((s) => {
       const json = s.toJSON();
       const edits = json.suggestion.instructionEdits;

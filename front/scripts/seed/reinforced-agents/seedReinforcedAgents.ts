@@ -1,9 +1,12 @@
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type {
   AgentAsset,
   ConversationAsset,
+  DataSourceAsset,
   FeedbackAsset,
   SeedContext,
   SkillAsset,
@@ -13,6 +16,7 @@ import {
   seedAgents,
   seedAnalytics,
   seedConversations,
+  seedDataSources,
   seedFeedbacks,
   seedSkill,
   seedSkillSuggestions,
@@ -26,6 +30,7 @@ const AGENT_NAME = "Internal_IT_Helpdesk_Bot_2";
 interface Assets {
   agents: AgentAsset[];
   conversations: ConversationAsset[];
+  dataSources: DataSourceAsset[];
   dustConversations: ConversationAsset[];
   feedbacks: FeedbackAsset[];
   skills: SkillAsset[];
@@ -41,6 +46,21 @@ function loadAssets(): Assets {
   const conversations = JSON.parse(
     fs.readFileSync(path.join(assetsDir, "conversations.json"), "utf-8")
   );
+  const rawDataSources = JSON.parse(
+    fs.readFileSync(path.join(assetsDir, "data_sources.json"), "utf-8")
+  );
+  // Resolve file references: documents can use { file: "filename" } instead of inline content.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw JSON with optional file field
+  const dataSources: DataSourceAsset[] = rawDataSources.map((ds: any) => ({
+    ...ds,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    documents: ds.documents.map((doc: any) => ({
+      ...doc,
+      content: doc.file
+        ? fs.readFileSync(path.join(assetsDir, doc.file), "utf-8")
+        : doc.content,
+    })),
+  }));
   const dustConversations = JSON.parse(
     fs.readFileSync(path.join(assetsDir, "dust-conversations.json"), "utf-8")
   );
@@ -56,6 +76,7 @@ function loadAssets(): Assets {
   return {
     agents,
     conversations,
+    dataSources,
     dustConversations,
     feedbacks,
     skills,
@@ -70,16 +91,54 @@ export async function seedReinforcement(
   const {
     agents,
     conversations,
+    dataSources,
     dustConversations,
     feedbacks,
     skills,
     skillSuggestions,
   } = loadAssets();
 
+  // Seed data sources (e.g. books.xml for BookKeeper skill).
+  // This requires a running Dust CoreAPI so it may fail in test environments.
+  ctx.logger.info("Seeding data sources...");
+  const placeholders: Record<string, string> = {};
+  try {
+    await seedDataSources(ctx, dataSources);
+
+    // Look up created data source views to replace placeholders in skill instructions.
+    if (ctx.execute) {
+      for (const dsAsset of dataSources) {
+        const ds = await DataSourceResource.fetchByNameOrId(
+          ctx.auth,
+          dsAsset.name
+        );
+        if (ds) {
+          const views = await DataSourceViewResource.listForDataSources(
+            ctx.auth,
+            [ds]
+          );
+          if (views.length > 0) {
+            const view = views[0];
+            const prefix = `__${dsAsset.name.toUpperCase()}_`;
+            placeholders[`${prefix}DSV_ID__`] = view.sId;
+            placeholders[`${prefix}SPACE_ID__`] = view.space.sId;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    ctx.logger.warn(
+      { error: e },
+      "Failed to seed data sources (CoreAPI unavailable?), skills will have unresolved placeholders"
+    );
+  }
+
   ctx.logger.info("Seeding skills...");
   const createdSkills = new Map<string, SkillResource>();
   for (const skillAsset of skills) {
-    const created = await seedSkill(ctx, skillAsset);
+    // Replace data source placeholders in instructions.
+    const resolvedAsset = resolveSkillPlaceholders(skillAsset, placeholders);
+    const created = await seedSkill(ctx, resolvedAsset);
     if (created) {
       createdSkills.set(skillAsset.name, created);
     }
@@ -148,7 +207,10 @@ export async function seedReinforcement(
   await seedFeedbacks(ctx, feedbacks);
 
   ctx.logger.info("Seeding skill suggestions...");
-  await seedSkillSuggestions(ctx, skillSuggestions, createdSkills);
+  const resolvedSkillSuggestions = skillSuggestions.map((s) =>
+    resolveSkillSuggestionPlaceholders(s, placeholders)
+  );
+  await seedSkillSuggestions(ctx, resolvedSkillSuggestions, createdSkills);
 
   if (!skipAnalytics) {
     ctx.logger.info("Indexing analytics to Elasticsearch...");
@@ -156,4 +218,45 @@ export async function seedReinforcement(
     const conversationIds = allConversations.map((c) => c.sId);
     await seedAnalytics(ctx, conversationIds);
   }
+}
+
+function resolveSkillPlaceholders(
+  skill: SkillAsset,
+  placeholders: Record<string, string>
+): SkillAsset {
+  if (Object.keys(placeholders).length === 0) {
+    return skill;
+  }
+
+  let { instructions, instructionsHtml } = skill;
+  for (const [key, value] of Object.entries(placeholders)) {
+    instructions = instructions.replaceAll(key, value);
+    instructionsHtml = instructionsHtml.replaceAll(key, value);
+  }
+
+  return { ...skill, instructions, instructionsHtml };
+}
+
+function resolveSkillSuggestionPlaceholders(
+  suggestion: SkillSuggestionAsset,
+  placeholders: Record<string, string>
+): SkillSuggestionAsset {
+  if (Object.keys(placeholders).length === 0) {
+    return suggestion;
+  }
+
+  const instructionEdits = suggestion.suggestion.instructionEdits?.map(
+    (edit) => {
+      let content = edit.content;
+      for (const [key, value] of Object.entries(placeholders)) {
+        content = content.replaceAll(key, value);
+      }
+      return { ...edit, content };
+    }
+  );
+
+  return {
+    ...suggestion,
+    suggestion: { ...suggestion.suggestion, instructionEdits },
+  };
 }

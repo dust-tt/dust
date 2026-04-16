@@ -1,0 +1,24 @@
+[
+  {
+    "name": "books",
+    "description": "Library book catalog",
+    "documents": [
+      {
+        "id": "books_xml",
+        "title": "books.xml",
+        "file": "books.xml"
+      }
+    ]
+  },
+  {
+    "name": "borrowers",
+    "description": "Library borrowers and loan history",
+    "documents": [
+      {
+        "id": "borrowers_csv",
+        "title": "borrowers.csv",
+        "file": "borrowers.csv"
+      }
+    ]
+  }
+]
