@@ -1,6 +1,5 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import {
-  Checkbox,
   ContentMessage,
   Dialog,
   DialogContent,
@@ -9,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
   InformationCircleIcon,
+  SliderToggle,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -24,8 +24,8 @@ export function SkillBuilderIsDefaultSection() {
   const isDescriptionTooShort =
     agentFacingDescription.trim().length < MIN_DISCOVERABLE_DESCRIPTION_LENGTH;
 
-  const handleCheckboxChange = (checked: boolean) => {
-    if (checked) {
+  const handleToggle = () => {
+    if (!isDefault) {
       setShowConfirmDialog(true);
     } else {
       setValue("isDefault", false, { shouldDirty: true });
@@ -40,11 +40,7 @@ export function SkillBuilderIsDefaultSection() {
   return (
     <>
       <div className="flex items-center gap-2">
-        <Checkbox
-          checked={isDefault}
-          onCheckedChange={handleCheckboxChange}
-          size="sm"
-        />
+        <SliderToggle selected={isDefault} onClick={handleToggle} size="xs" />
         <span className="text-sm text-foreground dark:text-foreground-night">
           Allow agents to discover this skill
         </span>
