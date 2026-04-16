@@ -349,6 +349,8 @@ async function executeToolStreaming(
               ? "remote"
               : "internal",
             conversationId: conversation.sId,
+            initiating_user_id: auth.user()?.sId ?? "unknown",
+            initiating_user_email: auth.user()?.email ?? "unknown",
           },
         });
 

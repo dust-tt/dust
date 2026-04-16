@@ -1022,6 +1022,19 @@ export async function postUserMessage(
 
   // Emit agent.executed for each agent being invoked.
   for (const agentMessage of agentMessages) {
+    const metadata: Record<string, string> = {
+      conversationId: conversation.sId,
+      agentName: agentMessage.configuration.name,
+      origin: context.origin,
+    };
+
+    // When the actor is not a human user (API key context), record unknown
+    // initiating-user fields so the downstream audit log schema stays populated.
+    if (!auth.user()) {
+      metadata.initiating_user_id = "unknown";
+      metadata.initiating_user_email = "unknown";
+    }
+
     void emitAuditLogEvent({
       auth,
       action: "agent.executed",
@@ -1029,11 +1042,7 @@ export async function postUserMessage(
         buildAuditLogTarget("workspace", conversation.owner),
         buildAuditLogTarget("agent", agentMessage.configuration),
       ],
-      metadata: {
-        conversationId: conversation.sId,
-        agentName: agentMessage.configuration.name,
-        origin: context.origin,
-      },
+      metadata,
     });
   }
 
@@ -2915,6 +2924,19 @@ export async function updateAgentMessageWithFinalStatus(
   if (newAgentMessage) {
     await publishAgentMessagesEvents(conversation, [newAgentMessage]);
 
+    const steeringMetadata: Record<string, string> = {
+      conversationId: conversation.sId,
+      agentName: newAgentMessage.configuration.name,
+      origin: "steering",
+    };
+
+    // When the actor is not a human user (API key context), record unknown
+    // initiating-user fields so the downstream audit log schema stays populated.
+    if (!promotedAuth.user()) {
+      steeringMetadata.initiating_user_id = "unknown";
+      steeringMetadata.initiating_user_email = "unknown";
+    }
+
     void emitAuditLogEvent({
       auth: promotedAuth,
       action: "agent.executed",
@@ -2922,11 +2944,7 @@ export async function updateAgentMessageWithFinalStatus(
         buildAuditLogTarget("workspace", owner),
         buildAuditLogTarget("agent", newAgentMessage.configuration),
       ],
-      metadata: {
-        conversationId: conversation.sId,
-        agentName: newAgentMessage.configuration.name,
-        origin: "steering",
-      },
+      metadata: steeringMetadata,
     });
 
     await runAgentLoopWorkflow({
