@@ -145,8 +145,6 @@ export function SkillBuilderInstructionsEditor({
 
   const { editor, isContentReady } = useSkillInstructionsEditor({
     content: instructionsField.value ?? "",
-    // instructionsHtml is expected to always be present for skills that have
-    // been through the editor. Fall back to markdown-parsed content if absent.
     htmlContent: instructionsHtmlField.value ?? undefined,
     isReadOnly: false,
     onUpdate: handleUpdate,
