@@ -651,6 +651,7 @@ export async function createCompactionMessage(
     {
       status: "created",
       content: null,
+      runIds: null,
       workspaceId: workspace.id,
     },
     { transaction }
