@@ -197,7 +197,9 @@ export function SkillBuilderInstructionsEditor({
   }, [editor, handleAddKnowledge, onAddKnowledge]);
 
   // Register a callback that the suggestions panel can call to accept a
-  // suggestion directly via the editor's PM commands (bypasses HTML roundtrip).
+  // suggestion directly via the editor's ProseMirror commands.
+  // Accepting the ProseMirror suggestion means we don't need to manipulate the HTML by hand again
+  // as we already did it to create the suggestion in ProseMirror.
   useEffect(() => {
     if (!editor || !useHtmlInstructions) {
       setAcceptInstructionEdits(null);
@@ -262,6 +264,7 @@ export function SkillBuilderInstructionsEditor({
     }
 
     // Highlight all edits of the selected suggestion using prefix matching.
+    // may be null if no suggestion is selected
     editor.commands.setHighlightedSuggestion(selectedSuggestionId);
 
     // Make the editor read-only while suggestion diffs are displayed.
