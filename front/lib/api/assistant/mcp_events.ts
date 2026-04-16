@@ -61,12 +61,12 @@ export async function* getMCPEventsForServer(
         callbackReader.next(),
         timeoutPromise,
       ]);
-      clearTimeout(timeoutId);
 
       // Determine if we timeouted.
       if (rawEvent === "timeout") {
         break;
       }
+      clearTimeout(timeoutId);
 
       if (rawEvent === "close") {
         break;

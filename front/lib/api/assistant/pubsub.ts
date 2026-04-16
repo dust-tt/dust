@@ -78,12 +78,12 @@ export async function* getConversationEvents({
         callbackReader.next(),
         timeoutPromise,
       ]);
-      clearTimeout(timeoutId);
 
-      // Determine if we timeouted
+      // Determine if we timeouted.
       if (rawEvent === "timeout") {
         break;
       }
+      clearTimeout(timeoutId);
 
       if (rawEvent === "close") {
         break;
