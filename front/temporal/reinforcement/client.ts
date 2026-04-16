@@ -1,7 +1,6 @@
 import { config, REGION_TIMEZONES } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import { REINFORCEMENT_EXCLUDED_PLAN_CODES } from "@app/lib/plans/plan_codes";
-import { hasReinforcementEnabled } from "@app/lib/reinforced_agent/workspace_check";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -24,7 +23,7 @@ import {
 
 const WORKSPACE_WORKFLOW_ID_PREFIX = "reinforcement-workspace-";
 
-export function makeWorkspaceScheduleId(workspaceId: string): string {
+export function makeWorkspaceWorkflowId(workspaceId: string): string {
   return `${WORKSPACE_WORKFLOW_ID_PREFIX}${workspaceId}`;
 }
 
@@ -45,9 +44,7 @@ async function getReinforcementWorkspaceIds(): Promise<string[]> {
         continue;
       }
 
-      if (await hasReinforcementEnabled(auth)) {
-        flaggedIds.push(workspace.sId);
-      }
+      flaggedIds.push(workspace.sId);
     } catch (e) {
       logger.error(
         { error: e, workspaceId: workspace.sId },
@@ -77,7 +74,7 @@ export async function startReinforcementWorkspaceSchedule({
   const client = await getTemporalClientForFrontNamespace();
   const region = config.getCurrentRegion();
   const timezone = REGION_TIMEZONES[region];
-  const scheduleId = makeWorkspaceScheduleId(workspaceId);
+  const scheduleId = makeWorkspaceWorkflowId(workspaceId);
 
   try {
     await client.schedule.create({
@@ -125,7 +122,7 @@ export async function deleteReinforcementWorkspaceSchedule({
   workspaceId: string;
 }) {
   const client = await getTemporalClientForFrontNamespace();
-  const scheduleId = makeWorkspaceScheduleId(workspaceId);
+  const scheduleId = makeWorkspaceWorkflowId(workspaceId);
 
   try {
     const handle = client.schedule.getHandle(scheduleId);
