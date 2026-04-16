@@ -382,6 +382,14 @@ export type ConversationForkedFromType = {
   user: UserType;
 };
 
+export type ConversationForkedChildType = {
+  childConversationId: string;
+  childConversationTitle: string | null;
+  sourceMessageId: string;
+  branchedAt: number;
+  user: UserType;
+};
+
 /**
  * A lighter version of Conversation without the content (for menu display).
  *
@@ -406,6 +414,10 @@ export type ConversationWithoutContentType = {
 
   // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];
+};
+
+export type ConversationDetailType = ConversationWithoutContentType & {
+  forkedChildren?: ConversationForkedChildType[];
 };
 
 /**

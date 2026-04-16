@@ -30,7 +30,7 @@
  *               type: object
  *               properties:
  *                 conversation:
- *                   $ref: '#/components/schemas/PrivateConversation'
+ *                   $ref: '#/components/schemas/PrivateConversationDetail'
  *       401:
  *         description: Unauthorized
  *   delete:
@@ -129,8 +129,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import {
+  type ConversationDetailType,
   ConversationError,
-  type ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -157,7 +157,7 @@ export type PatchConversationsRequestBody = t.TypeOf<
 >;
 
 export type GetConversationResponseBody = {
-  conversation: ConversationWithoutContentType;
+  conversation: ConversationDetailType;
 };
 
 export type PatchConversationResponseBody = {
@@ -187,7 +187,7 @@ async function handler(
   switch (req.method) {
     case "GET": {
       const conversationRes =
-        await ConversationResource.fetchConversationWithoutContent(auth, cId);
+        await ConversationResource.fetchConversationDetail(auth, cId);
 
       if (conversationRes.isErr()) {
         // Distinguish between "not found" and "access restricted" for the UI.
