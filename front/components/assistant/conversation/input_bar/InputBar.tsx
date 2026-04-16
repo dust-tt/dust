@@ -67,7 +67,7 @@ interface InputBarProps {
   isSubmitting?: boolean;
   disable?: boolean;
   isAgentBuilder?: boolean;
-  compactionBlockMessage?: string | null;
+  submitBlockMessage?: string | null;
 }
 
 export const InputBar = React.memo(function InputBar({
@@ -85,7 +85,7 @@ export const InputBar = React.memo(function InputBar({
   isFloating = true,
   isSubmitting = false,
   disable = false,
-  compactionBlockMessage = null,
+  submitBlockMessage: externalSubmitBlockMessage = null,
 }: InputBarProps) {
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
   const { hasFeature } = useFeatureFlags();
@@ -187,7 +187,8 @@ export const InputBar = React.memo(function InputBar({
   ]);
 
   const isBlockedByAgentSwitch = agentSwitchBlockMessage !== null;
-  const submitBlockMessage = compactionBlockMessage ?? agentSwitchBlockMessage;
+  const submitBlockMessage =
+    externalSubmitBlockMessage ?? agentSwitchBlockMessage;
 
   // Tools selection
 

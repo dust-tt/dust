@@ -453,7 +453,7 @@ export const AgentInputBar = ({
         actions={agentBuilderContext?.actionsToShow}
         isSubmitting={agentBuilderContext?.isSubmitting === true}
         isAgentBuilder={!!agentBuilderContext}
-        compactionBlockMessage={compactionBlockMessage}
+        submitBlockMessage={compactionBlockMessage}
       />
     </div>
   );
