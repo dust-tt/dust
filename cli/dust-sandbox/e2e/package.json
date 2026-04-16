@@ -1,0 +1,17 @@
+{
+  "name": "dust-sandbox-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "smoke": "bun smoke.ts"
+  },
+  "dependencies": {
+    "@dust-tt/client": "1.2.6"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.0"
+  },
+  "overrides": {
+    "eventsource-parser": "1.1.2"
+  }
+}
