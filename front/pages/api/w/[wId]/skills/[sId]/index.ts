@@ -1,7 +1,6 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
-import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -314,16 +313,13 @@ async function handler(
         );
       }
 
-      const instructionsHtml =
-        body.instructionsHtml ?? convertMarkdownToBlockHtml(body.instructions);
-
       await skill.updateSkill(auth, {
         agentFacingDescription: body.agentFacingDescription,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
         fileAttachments: files,
         icon: body.icon,
         instructions: body.instructions,
-        instructionsHtml,
+        instructionsHtml: body.instructionsHtml,
         isDefault: body.isDefault,
         mcpServerViews,
         name,

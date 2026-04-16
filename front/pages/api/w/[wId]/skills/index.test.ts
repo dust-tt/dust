@@ -5,7 +5,6 @@ import {
 } from "@app/lib/models/skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -690,55 +689,6 @@ describe("POST /api/w/[wId]/skills", () => {
     });
     expect(skillConfiguration).not.toBeNull();
     expect(skillConfiguration!.requestedSpaceIds).toEqual([regularSpace.id]);
-  });
-
-  it("stores instructionsHtml derived from instructions and returns it on read", async () => {
-    const { req, res, auth } = await setupTest("POST", "admin");
-
-    const instructions = "## Title\n\nDo **this** and *that*.\n\n- item one\n- item two";
-
-    req.body = {
-      name: "HTML Validation Skill",
-      agentFacingDescription: "Checks instructionsHtml round-trip",
-      userFacingDescription: "User description",
-      instructions,
-      icon: "PuzzleIcon",
-      tools: [],
-      extendedSkillId: null,
-      attachedKnowledge: [],
-    };
-
-    await handler(req, res);
-    expect(res._getStatusCode()).toBe(200);
-
-    const postData = res._getJSONData();
-    const skillSId = postData.skill.sId;
-    const postHtml: string = postData.skill.instructionsHtml;
-
-    // instructionsHtml should be non-null and contain the expected semantic HTML.
-    expect(postHtml).not.toBeNull();
-    expect(postHtml).toContain('data-type="instructions-root"');
-    expect(postHtml).toContain('data-block-id="instructions-root"');
-    expect(postHtml).toContain("<h2");
-    expect(postHtml).toContain("Title");
-    expect(postHtml).toContain("<strong>this</strong>");
-    expect(postHtml).toContain("<em>that</em>");
-    expect(postHtml).toContain("<ul");
-    expect(postHtml).toContain("item one");
-    expect(postHtml).toContain("item two");
-
-    // Spot-check: calling convertMarkdownToBlockHtml locally produces the same
-    // structure (same tags and text content, block IDs differ on every call).
-    const localHtml = convertMarkdownToBlockHtml(instructions);
-    const stripBlockIds = (html: string) =>
-      html.replace(/data-block-id="[^"]*"/g, 'data-block-id=""');
-    expect(stripBlockIds(postHtml)).toBe(stripBlockIds(localHtml));
-
-    // Verify the stored value can be retrieved via the resource (persistence check).
-    const fetchedSkill = await SkillResource.fetchById(auth, skillSId);
-    expect(fetchedSkill).not.toBeNull();
-    expect(fetchedSkill!.toJSON(auth).instructions).toBe(instructions);
-    expect(fetchedSkill!.toJSON(auth).instructionsHtml).toBe(postHtml);
   });
 });
 
