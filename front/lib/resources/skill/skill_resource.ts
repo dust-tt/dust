@@ -499,9 +499,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     options: SkillConfigurationFindOptions = {},
     context: {
       agentLoopData?: AgentLoopExecutionData;
+      transaction?: Transaction;
     } = {}
   ): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
+    const { agentLoopData, transaction } = context;
 
     const { where, includes, onlyCustom, ...otherOptions } = options;
 
@@ -514,6 +516,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         workspaceId: workspace.id,
       },
       include: includes,
+      transaction,
     });
 
     // Check if the user has access to skill requested spaces.
@@ -522,7 +525,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
     const spaces =
       uniqueRequestedSpaceIds.length > 0
-        ? await SpaceResource.fetchByModelIds(auth, uniqueRequestedSpaceIds)
+        ? await SpaceResource.fetchByModelIds(auth, uniqueRequestedSpaceIds, {
+            transaction,
+          })
         : [];
     const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
     const foundSpaceIds = new Set(spaces.map((s) => s.id));
@@ -551,6 +556,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
               [Op.in]: allowedCustomSkillIds,
             },
           },
+          transaction,
         });
 
       const skillMCPServerConfigsBySkillId = groupBy(
@@ -566,6 +572,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
               [Op.in]: customSkills.map((c) => c.id),
             },
           },
+          transaction,
         });
 
       const dataSourceConfigsBySkillId = groupBy(
@@ -580,11 +587,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             [Op.in]: allowedCustomSkillIds,
           },
         },
+        transaction,
       });
 
       const allFileResources = await FileResource.fetchByModelIdsWithAuth(
         auth,
-        fileAttachmentModels.map((a) => a.fileId)
+        fileAttachmentModels.map((a) => a.fileId),
+        transaction
       );
 
       const fileResourceById = new Map(allFileResources.map((f) => [f.id, f]));
@@ -606,6 +615,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           workspaceId: workspace.id,
         },
         attributes: ["groupId", "skillConfigurationId"],
+        transaction,
       });
 
       // TODO(SKILLS 2025-12-11): Ensure all skills have ONE group.
@@ -616,7 +626,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         );
         const editorGroups = await GroupResource.fetchByModelIds(
           auth,
-          uniqueGroupIds
+          uniqueGroupIds,
+          { transaction }
         );
 
         // Build a map from a skill's ID to its editor group.
@@ -636,7 +647,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       const allMCPServerViews = await MCPServerViewResource.fetchByModelIds(
         auth,
         removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId)),
-        { includeMetadata: false }
+        { includeMetadata: false, transaction }
       );
 
       allowedCustomSkillsRes = allowedCustomSkills.map((customSkill) => {
@@ -681,10 +692,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       await concurrentExecutor(
         globalSkillDefinitions,
         async (def) => {
-          if (
-            context.agentLoopData &&
-            def.isDisabledForAgentLoop?.(context.agentLoopData)
-          ) {
+          if (agentLoopData && def.isDisabledForAgentLoop?.(agentLoopData)) {
             return null;
           }
           return this.fromGlobalSkill(auth, def, context);
@@ -821,9 +829,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       agentLoopData,
       status,
+      transaction,
     }: {
       agentLoopData?: AgentLoopExecutionData;
       status?: SkillStatus | SkillStatus[];
+      transaction?: Transaction;
     } = {}
   ): Promise<SkillResource[]> {
     const customSkillModelIds = removeNulls(refs.map((r) => r.customSkillId));
@@ -838,7 +848,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           ...(status ? { status } : {}),
         },
       },
-      { agentLoopData }
+      { agentLoopData, transaction }
     );
   }
 
@@ -1148,9 +1158,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       conversation,
       agentLoopData,
+      transaction,
     }: {
       conversation: ConversationWithoutContentType;
       agentLoopData?: AgentLoopExecutionData;
+      transaction?: Transaction;
     }
   ): Promise<SkillResource[]> {
     const { agentConfiguration } = agentLoopData ?? {};
@@ -1169,10 +1181,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             }
           : { agentConfigurationId: null }),
       },
+      transaction,
     });
 
     return this.fetchBySkillReferences(auth, conversationSkills, {
       agentLoopData,
+      transaction,
     });
   }
 
@@ -1376,8 +1390,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     def: GlobalSkillDefinition,
     {
       agentLoopData,
+      transaction,
     }: {
       agentLoopData?: AgentLoopExecutionData;
+      transaction?: Transaction;
     } = {}
   ): Promise<SkillResource> {
     const { agentConfiguration } = agentLoopData ?? {};
@@ -1396,7 +1412,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             await MCPServerViewResource.listMCPServerViewsAutoInternalForSpaces(
               auth,
               name,
-              requestedSpaceModelIds
+              requestedSpaceModelIds,
+              transaction
             );
           return views.map((view) => ({
             view,
