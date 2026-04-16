@@ -19,13 +19,9 @@
     "install:all": "npm install",
     "knip": "knip",
     "format": "biome check --write --error-on-warnings .",
-    "format:check": "biome check --error-on-warnings .",
-    "format:lefthook": "biome format --write",
-    "lint": "biome lint --error-on-warnings .",
-    "lint:fix": "biome lint --fix --error-on-warnings .",
-    "lint:lefthook": "biome lint --error-on-warnings",
-    "biome": "biome check --error-on-warnings .",
-    "biome:lefthook": "biome check --write --error-on-warnings",
+    "format:ci": "biome ci --error-on-warnings .",
+    "format:lefthook": "biome check --write --error-on-warnings",
+    "format:changed": "biome check --write --error-on-warnings --changed",
     "test:grit": "command -v grit >/dev/null 2>&1 || { echo 'Error: grit CLI not found. Install it with: brew install getgrit/tap/grit (or: curl -fsSL https://docs.grit.io/install | bash)'; exit 1; } && grit patterns test"
   },
   "devDependencies": {
