@@ -254,6 +254,7 @@ export const ConversationViewer = ({
   const { mutateContextUsage } = useConversationContextUsage({
     conversationId: isCompactionEnabled ? conversationId : null,
     workspaceId: owner.sId,
+    options: { disabled: true },
   });
 
   const submitMessage = useSubmitMessage({
