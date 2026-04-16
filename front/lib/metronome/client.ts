@@ -786,6 +786,58 @@ export async function listMetronomeUsageWithGroups({
 }
 
 /**
+ * Update the amount of a free credit segment created from a recurring credit in a package.
+ * Called when a credit.segment.start webhook fires, to set the correct user-based amount.
+ * The segment_id is the access schedule item ID provided in the webhook event.
+ */
+export async function updateMetronomeFreeCreditSegmentAmount({
+  metronomeCustomerId,
+  contractId,
+  creditId,
+  segmentId,
+  amount,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  creditId: string;
+  segmentId: string;
+  amount: number;
+}): Promise<Result<void, Error>> {
+  try {
+    await getMetronomeClient().v2.contracts.edit({
+      customer_id: metronomeCustomerId,
+      contract_id: contractId,
+      update_credits: [
+        {
+          credit_id: creditId,
+          access_schedule: {
+            update_schedule_items: [
+              {
+                id: segmentId,
+                amount,
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    logger.info(
+      { metronomeCustomerId, contractId, creditId, segmentId, amount },
+      "[Metronome] Free credit segment amount updated"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, contractId, creditId, segmentId, amount },
+      "[Metronome] Failed to update free credit segment amount"
+    );
+    return new Err(error);
+  }
+}
+
+/**
  * Create a credit grant on a Metronome customer.
  * Used for monthly free programmatic credits on legacy plans.
  */
