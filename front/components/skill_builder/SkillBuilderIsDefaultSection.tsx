@@ -67,11 +67,13 @@ export function SkillBuilderIsDefaultSection() {
         <DialogContent size="lg" isAlertDialog>
           <DialogHeader hideButton>
             <DialogTitle>Allow agents to discover this skill?</DialogTitle>
-            <DialogDescription className="pt-4">
-              This skill will be set as default. Agents with&nbsp;
-              <span className="font-semibold">Discover Skills</span>&nbsp; will
-              be able to find and enable it on their own.
-              <ul className="mt-3 list-disc space-y-1 pl-5">
+            <div className="space-y-4 pt-4">
+              <DialogDescription>
+                This skill will be set as default. Agents with&nbsp;
+                <span className="font-semibold">Discover Skills</span>&nbsp;
+                will be able to find and enable it on their own.
+              </DialogDescription>
+              <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground dark:text-muted-foreground-night">
                 <li>
                   This will expose the skill to your entire workspace through
                   the Discover Skills skill.
@@ -81,22 +83,21 @@ export function SkillBuilderIsDefaultSection() {
                   discoverable.
                 </li>
               </ul>
-            </DialogDescription>
+              {isDescriptionTooShort && (
+                <ContentMessage
+                  variant="golden"
+                  title="Description may be too short"
+                  icon={InformationCircleIcon}
+                  size="sm"
+                >
+                  The content in "What will this skill be used for?" may be too
+                  short for agents to clearly understand when to use this skill.
+                  Consider making it a bit more descriptive before allowing
+                  discovery.
+                </ContentMessage>
+              )}
+            </div>
           </DialogHeader>
-
-          {isDescriptionTooShort && (
-            <ContentMessage
-              variant="golden"
-              title="Description may be too short"
-              icon={InformationCircleIcon}
-              size="sm"
-            >
-              The content in "What will this skill be used for?" may be too
-              short for agents to clearly understand when to use this skill.
-              Consider making it a bit more descriptive before allowing
-              discovery.
-            </ContentMessage>
-          )}
 
           <DialogFooter
             leftButtonProps={{
