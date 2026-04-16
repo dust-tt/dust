@@ -608,6 +608,7 @@ export const ConversationViewer = ({
                   : m
               );
             }
+            void mutateContextUsage();
             window.dispatchEvent(new CompactionCompletedEvent());
             break;
           default:
