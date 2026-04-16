@@ -4,7 +4,7 @@ FROM ubuntu:noble-20260210.1 AS rootfs
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  ca-certificates curl git unzip xz-utils gnupg lsb-release netcat-openbsd iptables \
+  ca-certificates curl git unzip xz-utils gnupg lsb-release netcat-openbsd iptables acl \
   && rm -rf /var/lib/apt/lists/*
 
 RUN useradd --system --no-create-home --uid 9990 --shell /usr/sbin/nologin dust-fwd \

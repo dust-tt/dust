@@ -32,7 +32,7 @@ describe("sandbox image registry", () => {
   test("adds the PR1 base-image primitives to the sandbox bedrock Dockerfile", () => {
     const dockerfile = getSandboxBedrockDockerfile();
 
-    expect(dockerfile).toContain("netcat-openbsd iptables");
+    expect(dockerfile).toContain("netcat-openbsd iptables acl");
     expect(dockerfile).toContain(
       "useradd --system --no-create-home --uid 9990 --shell /usr/sbin/nologin dust-fwd"
     );
@@ -65,7 +65,13 @@ describe("sandbox image registry", () => {
           "useradd --create-home --uid 1001 --gid agent --shell /bin/bash agent-proxied"
         ),
         expect.stringContaining("chgrp agent /home/agent /files/conversation"),
-        expect.stringContaining("chmod g+w /home/agent /files/conversation"),
+        expect.stringContaining("chmod g+ws /home/agent /files/conversation"),
+        expect.stringContaining(
+          "setfacl -R -d -m g::rwx /home/agent /files/conversation"
+        ),
+        expect.stringContaining(
+          "setfacl -R -m g::rwx /home/agent /files/conversation"
+        ),
       ])
     );
   });
@@ -76,8 +82,18 @@ describe("sandbox image registry", () => {
 
     expect(runCommands).toEqual(
       expect.arrayContaining([
+        // Loopback exemption lives in nat (before REDIRECT), not filter —
+        // otherwise the redirect rewrites the destination first.
         expect.stringContaining(
-          "iptables -A OUTPUT -o lo -m owner --uid-owner 1001 -j RETURN"
+          "iptables -t nat -A OUTPUT -m owner --uid-owner 1001 -d 127.0.0.0/8 -j RETURN"
+        ),
+        // Metadata + RFC1918 RETURNs in nat keep original dst intact for
+        // the filter-table defense-in-depth DROPs below.
+        expect.stringContaining(
+          "iptables -t nat -A OUTPUT -m owner --uid-owner 1001 -d 169.254.169.254/32 -j RETURN"
+        ),
+        expect.stringContaining(
+          "iptables -t nat -A OUTPUT -m owner --uid-owner 1001 -d 10.0.0.0/8 -j RETURN"
         ),
         expect.stringContaining(
           "iptables -t nat -A OUTPUT -m owner --uid-owner 1001 -p tcp -j REDIRECT --to-ports 9990"

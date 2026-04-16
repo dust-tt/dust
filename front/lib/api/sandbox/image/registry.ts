@@ -88,27 +88,44 @@ function getLocalContent(dir: string, filename: string): () => string {
 }
 
 function getAgentProxiedSetupCommand(): string {
+  // setgid bit on shared dirs + default POSIX ACLs ensures files created
+  // by either agent or agent-proxied are group-owned by `agent` and
+  // group-writable, regardless of the creating process's umask — avoids
+  // a perms handoff footgun during the PR1→PR2 rollout window.
   return [
     `useradd --create-home --uid ${AGENT_PROXIED_UID} --gid agent --shell /bin/bash agent-proxied`,
     "chgrp agent /home/agent /files/conversation",
-    "chmod g+w /home/agent /files/conversation",
+    "chmod g+ws /home/agent /files/conversation",
+    "setfacl -R -d -m g::rwx /home/agent /files/conversation",
+    "setfacl -R -m g::rwx /home/agent /files/conversation",
   ].join(" && ");
 }
 
 function getEgressIptablesSetupCommand(): string {
+  // nat/OUTPUT runs before filter/OUTPUT for locally generated packets.
+  // Exemptions (loopback, metadata, RFC1918) must land in nat BEFORE the
+  // REDIRECT — otherwise the destination is rewritten to 127.0.0.1:9990
+  // and filter DROPs on the original dst never fire. Loopback
+  // intentionally has no matching rule in filter so local services keep
+  // working; metadata/RFC1918 are dropped in filter as defense in depth.
   return [
     "set -eu",
-    `iptables -A OUTPUT -o lo -m owner --uid-owner ${AGENT_PROXIED_UID} -j RETURN`,
+    `iptables -t nat -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 127.0.0.0/8 -j RETURN`,
+    `iptables -t nat -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 169.254.169.254/32 -j RETURN`,
+    `iptables -t nat -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 10.0.0.0/8 -j RETURN`,
+    `iptables -t nat -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 172.16.0.0/12 -j RETURN`,
+    `iptables -t nat -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 192.168.0.0/16 -j RETURN`,
     `iptables -t nat -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -p tcp -j REDIRECT --to-ports 9990`,
+    // DNS pinned to resolvers first — resolver may itself live in RFC1918.
     "for NS in $(awk '/^nameserver/ {print $2}' /etc/resolv.conf); do",
     `  iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -p udp --dport 53 -d "$NS" -j ACCEPT`,
     "done",
-    `iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -p udp -j DROP`,
-    `iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -p icmp -j DROP`,
     `iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 169.254.169.254/32 -j DROP`,
     `iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 10.0.0.0/8 -j DROP`,
     `iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 172.16.0.0/12 -j DROP`,
     `iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 192.168.0.0/16 -j DROP`,
+    `iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -p udp -j DROP`,
+    `iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -p icmp -j DROP`,
     `ip6tables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -j DROP`,
   ].join("\n");
 }
