@@ -310,11 +310,11 @@ When a wake-up fires:
    loop created it). For API-created wake-ups with no user, uses internal admin auth. See Security
    section for interaction restrictions that prevent privilege escalation.
 
-2. **Conversation cleanup**: `ON DELETE CASCADE` on the `conversationId` FK deletes wake-up rows.
-   A `beforeDestroy` hook on `WakeUpResource` cancels the associated Temporal workflow/schedule
-   before the row is removed.
+2. **Conversation cleanup**: Handled in code, not via DB cascade. When a conversation is deleted,
+   the deletion logic cancels all active wake-ups (Temporal workflows/schedules) and deletes the
+   `WakeUpModel` rows explicitly.
 
-3. **Wake-up message content**: Figured out during implementation.
+3. **Wake-up message content**: To be figured out during implementation.
 
 4. **Billing**: Wake-up fires count as programmatic usage, same treatment as trigger-fired
    messages.
