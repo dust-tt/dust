@@ -631,13 +631,6 @@ const InputBarContainer = ({
     };
   }, [editor, editorService, saveDraft]);
 
-  // Disable the editor when disableInput is true.
-  useEffect(() => {
-    if (editor) {
-      editor.setEditable(!disableInput);
-    }
-  }, [editor, disableInput]);
-
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced);
 
   const { spaces, isSpacesLoading } = useSpaces({
