@@ -48,6 +48,7 @@ import type { DustError } from "@app/lib/error";
 import {
   AgentMessageCompletedEvent,
   CompactionCompletedEvent,
+  CompactionStartedEvent,
 } from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import logger from "@app/logger/logger";
@@ -596,6 +597,9 @@ export const ConversationViewer = ({
                   ref.current.data.append([compactionMessage]);
                 }
               }
+            }
+            if (conversationId) {
+              window.dispatchEvent(new CompactionStartedEvent(conversationId));
             }
             break;
 
