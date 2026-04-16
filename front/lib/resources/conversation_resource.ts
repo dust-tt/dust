@@ -2042,13 +2042,59 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
-  async getLatestAgentMessageRun(
+  // Return the latest run from a successful compaction message.
+  async getLatestCompactionMessageRun(
     auth: Authenticator
-  ): Promise<RunResource | null> {
+  ): Promise<{ rank: number; run: RunResource } | null> {
     const owner = auth.getNonNullableWorkspace();
 
-    // Include in-progress ("created") agent messages so that context usage is available even while
-    // the agent is still running (it accumulates runIds step by step).
+    const message = await MessageModel.findOne({
+      where: {
+        conversationId: this.id,
+        workspaceId: owner.id,
+      },
+      include: [
+        {
+          model: CompactionMessageModel,
+          as: "compactionMessage",
+          required: true,
+          where: {
+            status: "succeeded",
+          },
+        },
+      ],
+      order: [["rank", "DESC"]],
+    });
+
+    if (!message?.compactionMessage?.runIds?.length) {
+      return null;
+    }
+
+    // The runIds array ordering is not guaranteed to be chronological. Fetch all runs and pick
+    // the most recently created one.
+    const runs = await RunResource.listByDustRunIds(auth, {
+      dustRunIds: message.compactionMessage.runIds,
+    });
+
+    if (runs.length === 0) {
+      return null;
+    }
+
+    return {
+      rank: message.rank,
+      run: runs.reduce((latest, r) =>
+        r.createdAt > latest.createdAt ? r : latest
+      ),
+    };
+  }
+
+  // Return the latest run from an agent message. We accept all statuses as they all have valid
+  // runIds that represent the actual latest run.
+  async getLatestAgentMessageRun(
+    auth: Authenticator
+  ): Promise<{ rank: number; run: RunResource } | null> {
+    const owner = auth.getNonNullableWorkspace();
+
     const message = await MessageModel.findOne({
       where: {
         conversationId: this.id,
@@ -2059,9 +2105,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           model: AgentMessageModel,
           as: "agentMessage",
           required: true,
-          where: {
-            status: ["succeeded", "gracefully_stopped", "created"],
-          },
         },
       ],
       order: [["rank", "DESC"]],
@@ -2081,9 +2124,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return null;
     }
 
-    return runs.reduce((latest, r) =>
-      r.createdAt > latest.createdAt ? r : latest
-    );
+    return {
+      rank: message.rank,
+      run: runs.reduce((latest, r) =>
+        r.createdAt > latest.createdAt ? r : latest
+      ),
+    };
   }
 
   static async resolveForkSourceMessage(
