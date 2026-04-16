@@ -113,4 +113,20 @@ describe("convertMarkdownToBlockHtml", () => {
     expect($("strong").length).toBe(1);
     expect($("em[class], strong[class]").length).toBe(0);
   });
+
+  it("recovers standalone <knowledge /> lines as knowledge nodes (not HTML-escaped text)", () => {
+    const md = [
+      "Intro",
+      "",
+      '<knowledge id="n1" title="My Doc" space="sp1" dsv="dsv1" hasChildren="false" />',
+      "",
+      "Outro",
+    ].join("\n");
+
+    const html = convertMarkdownToBlockHtml(md);
+
+    expect(html).not.toContain("&lt;knowledge");
+    expect(html).toContain('data-type="knowledge-node"');
+    expect(html).toContain("My Doc");
+  });
 });
