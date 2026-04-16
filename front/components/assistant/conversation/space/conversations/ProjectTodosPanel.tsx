@@ -1,9 +1,5 @@
 import { useAppRouter } from "@app/lib/platform";
-import {
-  useCreateProjectTodo,
-  useProjectTodos,
-  useUpdateProjectTodo,
-} from "@app/lib/swr/projects";
+import { useProjectTodos, useUpdateProjectTodo } from "@app/lib/swr/projects";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   ProjectTodoCategory,
@@ -17,8 +13,6 @@ import {
   CircleIcon,
   cn,
   Icon,
-  Input,
-  PlusIcon,
   Spinner,
   SquareIcon,
   WindIcon,
@@ -213,98 +207,6 @@ function ReadOnlyProjectTodosPanel({
 
 // ── Editable sub-components ───────────────────────────────────────────────────
 
-interface AddTodoFormProps {
-  defaultCategory?: ProjectTodoCategory;
-  onSubmit: (category: ProjectTodoCategory, text: string) => Promise<void>;
-  onCancel: () => void;
-  isBusy: boolean;
-}
-
-function AddTodoForm({
-  defaultCategory = "to_do",
-  onSubmit,
-  onCancel,
-  isBusy,
-}: AddTodoFormProps) {
-  const [text, setText] = useState("");
-  const [category, setCategory] =
-    useState<ProjectTodoCategory>(defaultCategory);
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter" && text.trim()) {
-        void onSubmit(category, text.trim());
-      } else if (e.key === "Escape") {
-        onCancel();
-      }
-    },
-    [category, onCancel, onSubmit, text]
-  );
-
-  return (
-    <div className="flex flex-col gap-2 pt-1">
-      <Input
-        autoFocus
-        placeholder="What needs to be done?"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={handleKeyDown}
-        disabled={isBusy}
-        className="text-sm"
-      />
-      {/* Category selector chips */}
-      <div className="flex flex-wrap gap-1">
-        {ORDERED_CATEGORIES.map((cat) => {
-          const config = CATEGORY_CONFIG[cat];
-          const isSelected = category === cat;
-          return (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setCategory(cat)}
-              className={cn(
-                "flex items-center gap-1 rounded px-2 py-0.5 text-xs transition-colors",
-                isSelected
-                  ? "bg-primary-100 dark:bg-primary-100-night text-primary dark:text-primary-night font-medium"
-                  : "bg-muted dark:bg-muted-night text-muted-foreground dark:text-muted-foreground-night hover:bg-primary-50 dark:hover:bg-primary-50-night"
-              )}
-            >
-              <Icon
-                visual={config.icon}
-                size="xs"
-                className={config.iconClassName}
-              />
-              {config.label}
-            </button>
-          );
-        })}
-      </div>
-      {/* Submit / cancel */}
-      <div className="flex gap-2">
-        <Button
-          size="xs"
-          variant="primary"
-          label="Add"
-          disabled={!text.trim() || isBusy}
-          isLoading={isBusy}
-          onClick={() => {
-            if (text.trim()) {
-              void onSubmit(category, text.trim());
-            }
-          }}
-        />
-        <Button
-          size="xs"
-          variant="ghost"
-          label="Cancel"
-          onClick={onCancel}
-          disabled={isBusy}
-        />
-      </div>
-    </div>
-  );
-}
-
 function EditableTodoItem({
   todo,
   isPendingDone,
@@ -360,19 +262,12 @@ function EditableProjectTodosPanel({
     owner,
     spaceId,
   });
-  const doCreate = useCreateProjectTodo({ owner, spaceId });
   const doUpdate = useUpdateProjectTodo({ owner, spaceId });
 
   // Tracks todos being optimistically marked as done (shown with strikethrough).
   const [pendingDoneIds, setPendingDoneIds] = useState<Set<string>>(new Set());
-  // Which section's inline add form is open, or "global" for the bottom-level form.
-  const [addingTo, setAddingTo] = useState<
-    ProjectTodoCategory | "global" | null
-  >(null);
-  const [isCreating, setIsCreating] = useState(false);
 
   const { todosByCategory, activeSections } = groupTodosByCategory(todos);
-  const isEmpty = activeSections.length === 0 && !isCreating;
 
   const handleMarkDone = useCallback(
     async (todo: ProjectTodoType) => {
@@ -418,20 +313,6 @@ function EditableProjectTodosPanel({
     void mutateTodos();
     setPendingDoneIds(new Set());
   }, [mutateTodos]);
-
-  const handleCreate = useCallback(
-    async (category: ProjectTodoCategory, text: string) => {
-      setIsCreating(true);
-      const result = await doCreate(category, text);
-      setIsCreating(false);
-
-      if (result.isOk()) {
-        setAddingTo(null);
-        void mutateTodos();
-      }
-    },
-    [doCreate, mutateTodos]
-  );
 
   return (
     <div className="flex flex-col gap-3">
@@ -512,57 +393,15 @@ function EditableProjectTodosPanel({
                     />
                   ))}
                 </ul>
-
-                {/* Inline add form / button for this section */}
-                <div className="pl-7">
-                  {addingTo === cat ? (
-                    <AddTodoForm
-                      defaultCategory={cat}
-                      onSubmit={handleCreate}
-                      onCancel={() => setAddingTo(null)}
-                      isBusy={isCreating}
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setAddingTo(cat)}
-                      className="flex items-center gap-1 text-xs text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors"
-                    >
-                      <Icon visual={PlusIcon} size="xs" />
-                      Add
-                    </button>
-                  )}
-                </div>
               </div>
             );
           })}
 
           {/* Empty state */}
-          {isEmpty && (
+          {activeSections.length === 0 && (
             <p className="text-sm italic text-faint dark:text-faint-night">
               All caught up!
             </p>
-          )}
-
-          {/* Global add todo */}
-          {addingTo === "global" ? (
-            <AddTodoForm
-              onSubmit={handleCreate}
-              onCancel={() => setAddingTo(null)}
-              isBusy={isCreating}
-            />
-          ) : (
-            addingTo === null && (
-              <div>
-                <Button
-                  size="xs"
-                  variant="outline"
-                  icon={PlusIcon}
-                  label="Add todo"
-                  onClick={() => setAddingTo("global")}
-                />
-              </div>
-            )
           )}
         </div>
       )}
