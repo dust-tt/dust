@@ -786,11 +786,11 @@ export async function listMetronomeUsageWithGroups({
 }
 
 /**
- * Update the amount of a free credit segment created from a recurring credit in a package.
+ * Update the amount of a credit segment created from a recurring credit in a package.
  * Called when a credit.segment.start webhook fires, to set the correct user-based amount.
  * The segment_id is the access schedule item ID provided in the webhook event.
  */
-export async function updateMetronomeFreeCreditSegmentAmount({
+export async function updateMetronomeCreditSegmentAmount({
   metronomeCustomerId,
   contractId,
   creditId,

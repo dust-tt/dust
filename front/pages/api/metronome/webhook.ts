@@ -6,9 +6,12 @@ import {
 } from "@app/lib/credits/free";
 import {
   getMetronomeClient,
-  updateMetronomeFreeCreditSegmentAmount,
+  updateMetronomeCreditSegmentAmount,
 } from "@app/lib/metronome/client";
-import { getProductFreeMonthlyCreditId } from "@app/lib/metronome/constants";
+import {
+  getCreditTypeProgrammaticUsdId,
+  getProductFreeMonthlyCreditId,
+} from "@app/lib/metronome/constants";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -149,7 +152,10 @@ async function handler(
             product,
           } = parsed.data;
 
-          if (product.id !== getProductFreeMonthlyCreditId()) {
+          if (
+            product.id !== getProductFreeMonthlyCreditId() ||
+            creditId !== getCreditTypeProgrammaticUsdId()
+          ) {
             logger.info(
               { customerId, creditId, productId: product.id },
               "[Metronome Webhook] credit.segment.start: ignoring non-free-credit segment"
@@ -171,7 +177,7 @@ async function handler(
           const amountMicroUsd = calculateFreeCreditAmountMicroUsd(userCount);
           const amount = amountMicroUsd / 1_000_000;
 
-          const updateResult = await updateMetronomeFreeCreditSegmentAmount({
+          const updateResult = await updateMetronomeCreditSegmentAmount({
             metronomeCustomerId: customerId,
             contractId,
             creditId,
