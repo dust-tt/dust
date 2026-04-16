@@ -88,7 +88,8 @@ export function SkillBuilderIsDefaultSection() {
                   variant="golden"
                   title="Description may be too short"
                   icon={InformationCircleIcon}
-                  size="sm"
+                  size="lg"
+                  className="w-full"
                 >
                   The content in "What will this skill be used for?" may be too
                   short for agents to clearly understand when to use this skill.
