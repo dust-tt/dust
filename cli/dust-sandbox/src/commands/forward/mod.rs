@@ -172,7 +172,8 @@ async fn handle_connection(
         .await
         .context("failed to establish TLS connection to proxy")?;
 
-    let frame = build_handshake_frame(&runtime.token, &domain_extraction.domain, original_port);
+    let frame = build_handshake_frame(&runtime.token, &domain_extraction.domain, original_port)
+        .context("failed to build proxy handshake frame")?;
     proxy_stream
         .write_all(&frame)
         .await
