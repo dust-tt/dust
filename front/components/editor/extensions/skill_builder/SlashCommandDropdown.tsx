@@ -120,6 +120,7 @@ export const SlashCommandDropdown = forwardRef<
       setSelectedIndex(0);
     }, [items.length]);
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: selectedIndex drives which item owns the ref.
     useEffect(() => {
       selectedItemRef.current?.scrollIntoView({
         block: "nearest",
