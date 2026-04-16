@@ -67,6 +67,7 @@ interface InputBarProps {
   isSubmitting?: boolean;
   disable?: boolean;
   isAgentBuilder?: boolean;
+  compactionBlockMessage?: string | null;
 }
 
 export const InputBar = React.memo(function InputBar({
@@ -84,6 +85,7 @@ export const InputBar = React.memo(function InputBar({
   isFloating = true,
   isSubmitting = false,
   disable = false,
+  compactionBlockMessage = null,
 }: InputBarProps) {
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
   const { hasFeature } = useFeatureFlags();
@@ -185,6 +187,7 @@ export const InputBar = React.memo(function InputBar({
   ]);
 
   const isBlockedByAgentSwitch = agentSwitchBlockMessage !== null;
+  const submitBlockMessage = compactionBlockMessage ?? agentSwitchBlockMessage;
 
   // Tools selection
 
@@ -265,7 +268,7 @@ export const InputBar = React.memo(function InputBar({
       isLocalSubmitting ||
       isEmpty ||
       fileUploaderService.isProcessingFiles ||
-      isBlockedByAgentSwitch
+      submitBlockMessage !== null
     ) {
       return;
     }
@@ -479,7 +482,8 @@ export const InputBar = React.memo(function InputBar({
             saveDraft={saveDraft}
             getDraft={getDraft}
             user={user}
-            agentSwitchBlockMessage={agentSwitchBlockMessage}
+            disableAgentSelector={isBlockedByAgentSwitch}
+            submitBlockMessage={submitBlockMessage}
             onShake={handleShake}
           />
         </div>

@@ -7,6 +7,7 @@ import type {
 } from "@app/components/assistant/conversation/types";
 import {
   isAgentMessageWithStreaming,
+  isCompactionMessage,
   isHandoverUserMessage,
   isHiddenMessage,
   isUserMessage,
@@ -100,6 +101,11 @@ export const AgentInputBar = ({
     : null;
 
   const draftAgent = agentBuilderContext?.draftAgent;
+  const compactionBlockMessage = allMessages.some(
+    (message) => isCompactionMessage(message) && message.status === "created"
+  )
+    ? "Wait for compaction to finish"
+    : null;
 
   const autoMentions = useMemo(() => {
     // If we are in the agent builder, we show the draft agent as the sticky mention, all the time.
@@ -447,6 +453,7 @@ export const AgentInputBar = ({
         actions={agentBuilderContext?.actionsToShow}
         isSubmitting={agentBuilderContext?.isSubmitting === true}
         isAgentBuilder={!!agentBuilderContext}
+        compactionBlockMessage={compactionBlockMessage}
       />
     </div>
   );
