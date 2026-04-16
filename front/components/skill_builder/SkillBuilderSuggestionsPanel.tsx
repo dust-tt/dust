@@ -1,5 +1,4 @@
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
-import { stripHtmlAttributes } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
@@ -42,49 +41,6 @@ export function SkillBuilderSuggestionsPanel() {
     workspaceId: owner.sId,
   });
 
-  const applyInstructionEdits = useCallback(
-    (suggestion: SkillSuggestionType) => {
-      const { instructionEdits } = suggestion.suggestion;
-      if (!instructionEdits || instructionEdits.length === 0) {
-        return;
-      }
-
-      const currentHtml = getValues("instructionsHtml");
-      if (!currentHtml) {
-        return;
-      }
-
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(currentHtml, "text/html");
-
-      for (const edit of instructionEdits) {
-        const targetElement = doc.querySelector(
-          `[data-block-id="${edit.targetBlockId}"]`
-        );
-        if (!targetElement) {
-          // This should never happen, the target element should always exist when suggestion is pending.
-          // If it happens, just ignore the suggestion as we cannot apply it.
-          continue;
-        }
-
-        const tempDiv = doc.createElement("div");
-        tempDiv.innerHTML = edit.content;
-        targetElement.replaceWith(...Array.from(tempDiv.childNodes));
-      }
-
-      const root = doc.querySelector('[data-type="instructions-root"]');
-      if (!root) {
-        return; // Should never happen
-      }
-
-      const newHtml = stripHtmlAttributes(root.outerHTML);
-      setValue("instructionsHtml", newHtml, {
-        shouldDirty: true,
-      });
-    },
-    [getValues, setValue]
-  );
-
   const applyToolEdits = useCallback(
     (suggestion: SkillSuggestionType) => {
       const { toolEdits } = suggestion.suggestion;
@@ -121,11 +77,7 @@ export function SkillBuilderSuggestionsPanel() {
     async (suggestion: SkillSuggestionType) => {
       const result = await patchSuggestions([suggestion.sId], "approved");
       if (result) {
-        if (acceptInstructionEdits) {
-          acceptInstructionEdits(suggestion.sId);
-        } else {
-          applyInstructionEdits(suggestion);
-        }
+        acceptInstructionEdits?.(suggestion.sId);
         applyToolEdits(suggestion);
         setSelectedSuggestionId(null);
         await mutateSuggestions();
@@ -135,7 +87,6 @@ export function SkillBuilderSuggestionsPanel() {
       patchSuggestions,
       mutateSuggestions,
       acceptInstructionEdits,
-      applyInstructionEdits,
       applyToolEdits,
       setSelectedSuggestionId,
     ]
