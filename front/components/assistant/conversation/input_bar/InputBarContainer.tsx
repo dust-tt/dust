@@ -128,7 +128,6 @@ export interface InputBarContainerProps {
   conversation?: ConversationWithoutContentType;
   space?: SpaceType;
   disableAutoFocus: boolean;
-  disableInput: boolean;
   disableUserMentions?: boolean;
   fileUploaderService: FileUploaderService;
   getDraft: () => {
@@ -168,7 +167,6 @@ const InputBarContainer = ({
   disableAutoFocus,
   disableUserMentions,
   isSubmitting,
-  disableInput,
   fileUploaderService,
   getDraft,
   isAgentBuilder = false,
@@ -881,7 +879,6 @@ const InputBarContainer = ({
   const isSubmitDisabled =
     (isEmpty && !canSubmitEmpty) ||
     isSubmitting ||
-    disableInput ||
     isSubmitBlocked ||
     voiceTranscriberService.status !== "idle";
 
@@ -915,13 +912,11 @@ const InputBarContainer = ({
       <div className="flex w-0 flex-grow flex-col">
         <div className="relative">
           <EditorContent
-            disabled={disableInput}
             editor={editor}
             className={classNames(
               contentEditableClasses,
               "scrollbar-hide",
               "overflow-y-auto",
-              disableInput && "cursor-not-allowed",
               hideButtons
                 ? "max-h-[40vh] pr-20"
                 : "max-h-[40vh] min-h-14 sm:min-h-16"
@@ -965,13 +960,9 @@ const InputBarContainer = ({
                   }
                   target="_blank"
                   className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:flex"
-                  onRemove={
-                    disableInput
-                      ? undefined
-                      : () => {
-                          onSkillDeselect(skill);
-                        }
-                  }
+                  onRemove={() => {
+                    onSkillDeselect(skill);
+                  }}
                 />
                 <Chip
                   size="xs"
@@ -983,13 +974,9 @@ const InputBarContainer = ({
                   }
                   target="_blank"
                   className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:hidden"
-                  onRemove={
-                    disableInput
-                      ? undefined
-                      : () => {
-                          onSkillDeselect(skill);
-                        }
-                  }
+                  onRemove={() => {
+                    onSkillDeselect(skill);
+                  }}
                 />
               </React.Fragment>
             ))}
@@ -1001,25 +988,17 @@ const InputBarContainer = ({
                   label={getMcpServerViewDisplayName(msv)}
                   icon={getIcon(msv.server.icon)}
                   className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:flex"
-                  onRemove={
-                    disableInput
-                      ? undefined
-                      : () => {
-                          onMCPServerViewDeselect(msv);
-                        }
-                  }
+                  onRemove={() => {
+                    onMCPServerViewDeselect(msv);
+                  }}
                 />
                 <Chip
                   size="xs"
                   icon={getIcon(msv.server.icon)}
                   className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:hidden"
-                  onRemove={
-                    disableInput
-                      ? undefined
-                      : () => {
-                          onMCPServerViewDeselect(msv);
-                        }
-                  }
+                  onRemove={() => {
+                    onMCPServerViewDeselect(msv);
+                  }}
                 />
               </React.Fragment>
             ))}
@@ -1071,7 +1050,6 @@ const InputBarContainer = ({
                     clientType={clientType}
                     conversation={conversation}
                     disableAgentSelector={disableAgentSelector}
-                    disableInput={disableInput}
                     editorService={editorService}
                     fileInputRef={fileInputRef}
                     fileUploaderService={fileUploaderService}
@@ -1112,7 +1090,6 @@ const InputBarContainer = ({
                       variant="ghost-secondary"
                       icon={PlusIcon}
                       size={buttonSize}
-                      disabled={disableInput}
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -1171,7 +1148,6 @@ const InputBarContainer = ({
                   onNodeSelect={onNodeSelect}
                   onNodeUnselect={onNodeUnselect}
                   attachedNodes={attachedNodes}
-                  disabled={disableInput}
                   buttonSize={buttonSize}
                   toolFileUpload={{
                     useCase: "conversation",
@@ -1206,7 +1182,6 @@ const InputBarContainer = ({
                   elapsedSeconds={voiceTranscriberService.elapsedSeconds}
                   onRecordStart={voiceTranscriberService.startRecording}
                   onRecordStop={voiceTranscriberService.stopRecording}
-                  disabled={disableInput}
                   size={buttonSize}
                   showStopLabel={!isMobile}
                 />
