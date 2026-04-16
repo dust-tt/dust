@@ -236,6 +236,7 @@ async function getSubscriptionInfo(
 async function migrateWorkspace(
   workspace: LightWorkspaceType,
   execute: boolean,
+  force: boolean,
   logger: Logger,
   packageInfo: {
     aliasToPackageId: Record<string, string>;
@@ -300,6 +301,18 @@ async function migrateWorkspace(
         "Contract has no package_id — skipping (manually created?)"
       );
       continue;
+    }
+    // Already on the latest package version — nothing to migrate unless forced.
+    if (contractPackageId === targetPackageId && !force) {
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          contractId: contract.id,
+          targetAlias,
+        },
+        "Contract already on latest package version — skipping (use --force to re-create)"
+      );
+      return;
     }
     oldAlias = packageInfo.packageIdToAlias[contractPackageId];
     oldContractId = contract.id;
@@ -390,6 +403,22 @@ async function migrateWorkspace(
     });
   }
 
+  // Update metronomeContractId on the subscription first so that the contract
+  // cache is invalidated before syncing subscriptions (syncMauCount /
+  // syncSeatCount call getActiveContract which reads from Redis cache).
+  await SubscriptionResource.updateMetronomeContractId(
+    subInfo.subscriptionModelId,
+    newContractId
+  );
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      subscriptionId: subInfo.subscriptionModelId,
+      newContractId,
+    },
+    "Updated metronomeContractId on subscription"
+  );
+
   // Sync subscriptions: seats for pro/business, MAU for enterprise.
   if (isEnterprise) {
     const mauResult = await syncMauCount({
@@ -426,20 +455,6 @@ async function migrateWorkspace(
       );
     }
   }
-
-  // Update metronomeContractId on the subscription.
-  await SubscriptionResource.updateMetronomeContractId(
-    subInfo.subscriptionModelId,
-    newContractId
-  );
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      subscriptionId: subInfo.subscriptionModelId,
-      newContractId,
-    },
-    "Updated metronomeContractId on subscription"
-  );
 }
 
 makeScript(
@@ -455,6 +470,13 @@ makeScript(
       describe:
         "Only migrate contracts targeting this package alias (e.g., 'legacy-pro-29'). Omit to migrate all.",
       type: "string" as const,
+    },
+    force: {
+      alias: "f",
+      describe:
+        "Force re-creation of contracts even if already on the latest package version (useful to update overrides).",
+      type: "boolean" as const,
+      default: false,
     },
   },
   async (args, logger) => {
@@ -482,6 +504,7 @@ makeScript(
       await migrateWorkspace(
         renderLightWorkspaceType({ workspace }),
         args.execute,
+        args.force,
         logger,
         packageInfo,
         packageAliasFilter
@@ -492,6 +515,7 @@ makeScript(
           migrateWorkspace(
             workspace,
             args.execute,
+            args.force,
             logger,
             packageInfo,
             packageAliasFilter
