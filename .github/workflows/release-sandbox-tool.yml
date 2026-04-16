@@ -33,7 +33,7 @@ jobs:
           ref: ${{ inputs.codex_tag }}
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@c93f4f9c67595668add93d3d6895795ce52d8c2d # 1.85.0
+        uses: dtolnay/rust-toolchain@aad518f59d88bae90133242f9ddac7f8bbc5dddf # 1.94.1
 
       - name: Install cross
         run: cargo install cross --git https://github.com/cross-rs/cross
