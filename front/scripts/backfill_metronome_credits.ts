@@ -78,7 +78,9 @@ async function backfillCreditsOfType(
     const startingAt = credit.startDate!;
     const endingBefore = credit.expirationDate!;
     const amount = remainingMicroUsd / 1_000_000;
-    const idempotencyKey = `backfill-metronome-${metronomeItem}-${workspace.sId}-${credit.id}`;
+
+    // For commits, it's the same idempotency key as the one used when customers purchase a commit in the app.
+    const idempotencyKey = `${metronomeItem}-${workspace.sId}-${startingAt.getTime()}-${amount}`;
 
     totalAmountMicroUsd += remainingMicroUsd;
 
