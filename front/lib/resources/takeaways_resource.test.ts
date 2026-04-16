@@ -46,9 +46,8 @@ describe("TakeawaysResource", () => {
 
       const fact = {
         sId: "fact_001",
-        text: "A notable fact",
+        shortDescription: "A notable fact",
         relevantUserIds: [],
-        sourceMessageRank: 1,
       };
       const updated = await takeaway.updateWithVersion(auth, {
         actionItems: [],
@@ -58,7 +57,7 @@ describe("TakeawaysResource", () => {
 
       expect(updated.sId).toBe(originalSId);
       expect(updated.notableFacts).toHaveLength(1);
-      expect(updated.notableFacts[0].text).toBe("A notable fact");
+      expect(updated.notableFacts[0].shortDescription).toBe("A notable fact");
     });
 
     it("should throw when called with a different workspace's auth", async () => {
@@ -86,15 +85,13 @@ describe("TakeawaysResource", () => {
 
       const fact1 = {
         sId: "fact_001",
-        text: "First fact",
+        shortDescription: "First fact",
         relevantUserIds: [],
-        sourceMessageRank: 1,
       };
       const fact2 = {
         sId: "fact_002",
-        text: "Second fact",
+        shortDescription: "Second fact",
         relevantUserIds: [],
-        sourceMessageRank: 2,
       };
 
       const v1 = await takeaway.updateWithVersion(auth, {
@@ -109,7 +106,7 @@ describe("TakeawaysResource", () => {
       });
 
       expect(v2.sId).toBe(takeaway.sId);
-      expect(v2.notableFacts[0].text).toBe("Second fact");
+      expect(v2.notableFacts[0].shortDescription).toBe("Second fact");
     });
   });
 
@@ -133,9 +130,8 @@ describe("TakeawaysResource", () => {
       const conversationId = "conv_testupdate";
       const fact = {
         sId: "fact_001",
-        text: "Updated fact",
+        shortDescription: "Updated fact",
         relevantUserIds: [],
-        sourceMessageRank: 1,
       };
 
       const first = await TakeawaysResource.makeNewForConversation(auth, {
@@ -156,7 +152,7 @@ describe("TakeawaysResource", () => {
 
       // Same stable identity — the main row was updated in place.
       expect(second.sId).toBe(first.sId);
-      expect(second.notableFacts[0].text).toBe("Updated fact");
+      expect(second.notableFacts[0].shortDescription).toBe("Updated fact");
     });
   });
 
@@ -239,9 +235,8 @@ describe("TakeawaysResource", () => {
       const conversationId = "conv_testdeletewithversion";
       const fact = {
         sId: "fact_001",
-        text: "A fact",
+        shortDescription: "A fact",
         relevantUserIds: [],
-        sourceMessageRank: 1,
       };
 
       const takeaway = await TakeawaysResource.makeNewForConversation(auth, {

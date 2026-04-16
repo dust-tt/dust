@@ -9,7 +9,6 @@ import {
   applyNodeIdsFilterToCoreSearchArgs,
   getCoreSearchArgs,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   makeIncludeResultResource,
   makeIncludeWarningResource,
@@ -33,14 +32,17 @@ import assert from "assert";
  */
 export async function runIncludeDataRetrieval(
   auth: Authenticator,
-  agentLoopContext: AgentLoopContextType,
   {
+    citationsOffset,
+    retrievalTopK,
     timeFrame,
     dataSources,
     nodeIds,
     tagsIn,
     tagsNot,
   }: {
+    citationsOffset: number;
+    retrievalTopK: number;
     timeFrame?: TimeFrame;
     dataSources: DataSourcesToolConfigurationType;
     nodeIds?: string[];
@@ -61,16 +63,6 @@ export async function runIncludeDataRetrieval(
 > {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const credentials = await getLlmCredentials(auth);
-
-  if (!agentLoopContext.runContext) {
-    return new Err(
-      new MCPError("No conversation context available", { tracked: false })
-    );
-  }
-
-  const { citationsOffset, retrievalTopK } =
-    agentLoopContext.runContext.stepContext;
-
   const coreSearchArgsResults = await getCoreSearchArgs(auth, dataSources);
 
   if (coreSearchArgsResults.isErr()) {

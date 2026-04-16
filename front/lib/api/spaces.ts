@@ -275,7 +275,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     const featureFlags = await getFeatureFlags(auth);
     if (featureFlags.includes("project_todo")) {
       void stopProjectTodoWorkflow({
-        authType: auth.toJSON(),
+        workspaceId: auth.getNonNullableWorkspace().sId,
         spaceId: space.sId,
         stopReason: "project deleted",
       });
@@ -371,7 +371,7 @@ export async function hardDeleteSpace(
     const featureFlags = await getFeatureFlags(auth);
     if (featureFlags.includes("project_todo")) {
       void stopProjectTodoWorkflow({
-        authType: auth.toJSON(),
+        workspaceId: auth.getNonNullableWorkspace().sId,
         spaceId: space.sId,
         stopReason: "project hard deleted",
       });
@@ -632,7 +632,7 @@ export async function createSpaceAndGroup(
       const featureFlags = await getFeatureFlags(auth);
       if (featureFlags.includes("project_todo")) {
         void launchOrSignalProjectTodoWorkflow({
-          authType: auth.toJSON(),
+          workspaceId: owner.sId,
           spaceId: space.sId,
         });
       }

@@ -11,8 +11,7 @@ describe("buildActionItems", () => {
     const raw = [
       {
         sId: knownSId,
-        text: "Review PR",
-        source_message_rank: 3,
+        short_description: "Review PR",
         status: "open" as const,
       },
     ];
@@ -23,8 +22,7 @@ describe("buildActionItems", () => {
   it("maps open status correctly", () => {
     const raw = [
       {
-        text: "Fix bug",
-        source_message_rank: 1,
+        short_description: "Fix bug",
         status: "open" as const,
       },
     ];
@@ -38,8 +36,7 @@ describe("buildActionItems", () => {
     const before = new Date().toISOString();
     const raw = [
       {
-        text: "Send report",
-        source_message_rank: 5,
+        short_description: "Send report",
         status: "done" as const,
         detected_done_rationale: "User confirmed it was sent",
       },
@@ -57,14 +54,12 @@ describe("buildActionItems", () => {
   it("maps assignee_name to assigneeName, null when absent", () => {
     const raw = [
       {
-        text: "Call client",
-        source_message_rank: 2,
+        short_description: "Call client",
         status: "open" as const,
         assignee_name: "Alice",
       },
       {
-        text: "Write docs",
-        source_message_rank: 3,
+        short_description: "Write docs",
         status: "open" as const,
       },
     ];
@@ -74,9 +69,7 @@ describe("buildActionItems", () => {
   });
 
   it("sets assigneeUserId to null when no participants match", () => {
-    const raw = [
-      { text: "Task", source_message_rank: 1, status: "open" as const },
-    ];
+    const raw = [{ short_description: "Task", status: "open" as const }];
     const result = buildActionItems(raw, new Set(), new Set());
     expect(result[0].assigneeUserId).toBeNull();
   });
@@ -84,8 +77,7 @@ describe("buildActionItems", () => {
   it("resolves assigneeUserId when assignee_user_id matches a participant", () => {
     const raw = [
       {
-        text: "Review PR",
-        source_message_rank: 1,
+        short_description: "Review PR",
         status: "open" as const,
         assignee_name: "Alice",
         assignee_user_id: "user-abc",
@@ -100,8 +92,7 @@ describe("buildActionItems", () => {
   it("discards assigneeUserId when it does not match any participant", () => {
     const raw = [
       {
-        text: "Review PR",
-        source_message_rank: 1,
+        short_description: "Review PR",
         status: "open" as const,
         assignee_name: "Alice",
         assignee_user_id: "unknown-id",
@@ -111,14 +102,6 @@ describe("buildActionItems", () => {
     const result = buildActionItems(raw, new Set(), participants);
     expect(result[0].assigneeUserId).toBeNull();
     expect(result[0].assigneeName).toBe("Alice");
-  });
-
-  it("preserves sourceMessageRank", () => {
-    const raw = [
-      { text: "Task", source_message_rank: 42, status: "open" as const },
-    ];
-    const result = buildActionItems(raw, new Set(), new Set());
-    expect(result[0].sourceMessageRank).toBe(42);
   });
 });
 
@@ -133,20 +116,18 @@ describe("buildPromptActionItems", () => {
     const items: TodoVersionedActionItem[] = [
       {
         sId: "abc",
-        text: "Refactor auth",
+        shortDescription: "Refactor auth",
         assigneeName: "Bob",
         assigneeUserId: null,
-        sourceMessageRank: 1,
         status: "open",
         detectedDoneAt: null,
         detectedDoneRationale: null,
       },
       {
         sId: "def",
-        text: "Ship feature",
+        shortDescription: "Ship feature",
         assigneeName: null,
         assigneeUserId: null,
-        sourceMessageRank: 2,
         status: "done",
         detectedDoneAt: "2024-01-01T00:00:00.000Z",
         detectedDoneRationale: null,
@@ -154,12 +135,15 @@ describe("buildPromptActionItems", () => {
     ];
     const prompt = buildPromptActionItems(items);
     expect(prompt).toContain("Known action items:");
-    expect(prompt).toContain("sId: abc");
-    expect(prompt).toContain("[open] Refactor auth");
-    expect(prompt).toContain("assigned: Bob");
-    expect(prompt).toContain("sId: def");
-    expect(prompt).toContain("[done] Ship feature");
-    // The second item has no assignee — its line must not include an "(assigned: ...)" suffix.
-    expect(prompt).not.toContain("Ship feature (assigned:");
+    expect(prompt).toContain(
+      `<action_item sId="abc" status="open"><short_description>Refactor auth</short_description><assignee name="Bob" /></action_item>`
+    );
+    expect(prompt).toContain(
+      `<action_item sId="def" status="done"><short_description>Ship feature</short_description></action_item>`
+    );
+    // The second item has no assignee, so no assignee tag should be present for it.
+    expect(prompt).not.toContain(
+      `<action_item sId="def" status="done"><short_description>Ship feature</short_description><assignee`
+    );
   });
 });

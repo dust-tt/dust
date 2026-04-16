@@ -1,4 +1,3 @@
-import type { AuthenticatorType } from "@app/lib/auth";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
@@ -29,18 +28,18 @@ function makeProjectMergeWorkflowId(
 }
 
 export async function launchOrSignalProjectTodoWorkflow({
-  authType,
+  workspaceId,
   spaceId,
 }: {
-  authType: AuthenticatorType;
+  workspaceId: string;
   spaceId: string;
 }): Promise<void> {
   const client = await getTemporalClientForFrontNamespace();
-  const workflowId = makeProjectTodoWorkflowId(authType.workspaceId, spaceId);
+  const workflowId = makeProjectTodoWorkflowId(workspaceId, spaceId);
   const spaceModelId = getResourceIdFromSId(spaceId);
   if (!spaceModelId) {
     logger.warn(
-      { workspaceId: authType.workspaceId, spaceId },
+      { workspaceId, spaceId },
       "Skipping project todo workflow start for invalid space ID"
     );
     return;
@@ -51,12 +50,12 @@ export async function launchOrSignalProjectTodoWorkflow({
 
   try {
     await client.workflow.start(projectTodoWorkflow, {
-      args: [{ authType, spaceId }],
+      args: [{ workspaceId, spaceId }],
       taskQueue: QUEUE_NAME,
       workflowId,
       cronSchedule,
       memo: {
-        workspaceId: authType.workspaceId,
+        workspaceId,
         spaceId,
         scheduleOffsetMinutes,
       },
@@ -67,7 +66,7 @@ export async function launchOrSignalProjectTodoWorkflow({
       logger.error(
         {
           workflowId,
-          workspaceId: authType.workspaceId,
+          workspaceId,
           spaceId,
           error: normalizeError(e),
         },
@@ -78,17 +77,17 @@ export async function launchOrSignalProjectTodoWorkflow({
 }
 
 export async function stopProjectTodoWorkflow({
-  authType,
+  workspaceId,
   spaceId,
   stopReason = "project archived",
 }: {
-  authType: AuthenticatorType;
+  workspaceId: string;
   spaceId: string;
   stopReason?: string;
 }): Promise<void> {
   try {
     const client = await getTemporalClientForFrontNamespace();
-    const workflowId = makeProjectTodoWorkflowId(authType.workspaceId, spaceId);
+    const workflowId = makeProjectTodoWorkflowId(workspaceId, spaceId);
     await client.workflow.getHandle(workflowId).terminate(stopReason);
   } catch (e) {
     if (!(e instanceof WorkflowNotFoundError)) {
@@ -107,25 +106,25 @@ export async function stopProjectTodoWorkflow({
 // Called from `signalOrStartMergeWorkflowActivity` to fan-in into the per-project merge
 // workflow. Uses signalWithStart so the merge workflow is created if not already running.
 export async function signalOrStartProjectMergeWorkflow({
-  authType,
+  workspaceId,
   spaceId,
 }: {
-  authType: AuthenticatorType;
+  workspaceId: string;
   spaceId: string;
 }): Promise<void> {
   const client = await getTemporalClientForFrontNamespace();
-  const workflowId = makeProjectMergeWorkflowId(authType.workspaceId, spaceId);
+  const workflowId = makeProjectMergeWorkflowId(workspaceId, spaceId);
 
   try {
     await client.workflow.signalWithStart(projectMergeWorkflow, {
-      args: [{ authType, spaceId }],
+      args: [{ workspaceId, spaceId }],
       taskQueue: QUEUE_NAME,
       workflowId,
       signal: mergeRequestSignal,
       signalArgs: [],
       workflowExecutionTimeout: "7 days",
       memo: {
-        workspaceId: authType.workspaceId,
+        workspaceId,
         spaceId,
       },
     });
@@ -134,7 +133,7 @@ export async function signalOrStartProjectMergeWorkflow({
     logger.error(
       {
         workflowId,
-        workspaceId: authType.workspaceId,
+        workspaceId,
         spaceId,
         error: normalizeError(e),
       },

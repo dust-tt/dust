@@ -1,6 +1,4 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { getDataSourceURI } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { makeProjectConfigurationURI } from "@app/lib/actions/mcp_internal_actions/project_configuration_uri";
 import type {
   ToolDefinition,
@@ -11,6 +9,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { runIncludeDataRetrieval } from "@app/lib/api/actions/servers/include_data/include_function";
 import { buildProjectSearchDataSources } from "@app/lib/api/actions/servers/project_manager/build_project_search_data_sources";
 import {
+  buildProjectRetrieveDataSources,
   getProjectSpace,
   getWritableProjectContext,
   makeSuccessResponse,
@@ -23,10 +22,7 @@ import {
   createConversation,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
-import {
-  isContentNodeAttachmentType,
-  renderAttachmentXml,
-} from "@app/lib/api/assistant/conversation/attachments";
+import { renderAttachmentXml } from "@app/lib/api/assistant/conversation/attachments";
 import {
   getConversation,
   getLightConversation,
@@ -37,13 +33,11 @@ import {
   fetchLatestProjectContextFileContentFragment,
   listProjectContextAttachments,
 } from "@app/lib/api/projects/context";
-import { fetchProjectDataSourceView } from "@app/lib/api/projects/data_sources";
 import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
@@ -81,52 +75,6 @@ function formatListedConversationWithoutMessages(
       config.getAppUrl()
     ),
   };
-}
-
-async function buildProjectRetrieveDataSources(
-  auth: Authenticator,
-  space: SpaceResource
-): Promise<DataSourcesToolConfigurationType> {
-  const owner = auth.getNonNullableWorkspace();
-  const dataSources: DataSourcesToolConfigurationType = [];
-
-  const projectDsViewRes = await fetchProjectDataSourceView(auth, space);
-  if (projectDsViewRes.isOk()) {
-    dataSources.push({
-      uri: getDataSourceURI({
-        workspaceId: owner.sId,
-        dataSourceViewId: projectDsViewRes.value.sId,
-        filter: { parents: null, tags: null },
-      }),
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
-    });
-  }
-
-  const attachments = await listProjectContextAttachments(auth, space);
-  const seenContentNodeKeys = new Set<string>();
-  for (const attachment of attachments) {
-    if (!isContentNodeAttachmentType(attachment)) {
-      continue;
-    }
-    const key = `${attachment.nodeDataSourceViewId}:${attachment.nodeId}`;
-    if (seenContentNodeKeys.has(key)) {
-      continue;
-    }
-    seenContentNodeKeys.add(key);
-    dataSources.push({
-      uri: getDataSourceURI({
-        workspaceId: owner.sId,
-        dataSourceViewId: attachment.nodeDataSourceViewId,
-        filter: {
-          parents: { in: [attachment.nodeId], not: [] },
-          tags: null,
-        },
-      }),
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
-    });
-  }
-
-  return dataSources;
 }
 
 /**
@@ -615,10 +563,19 @@ export function createProjectManagerTools(
           );
         }
 
-        return runIncludeDataRetrieval(auth, agentLoopContext, {
+        if (!agentLoopContext?.runContext) {
+          throw new Error(
+            "agentLoopRunContext is required where the tool is called"
+          );
+        }
+
+        return runIncludeDataRetrieval(auth, {
           timeFrame: params.timeFrame,
           dataSources,
           nodeIds: params.nodeIds,
+          citationsOffset:
+            agentLoopContext.runContext.stepContext.citationsOffset,
+          retrievalTopK: agentLoopContext.runContext.stepContext.retrievalTopK,
         });
       }, "Failed to retrieve recent project documents");
     },

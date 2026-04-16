@@ -2,7 +2,6 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getFastestWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { MessageModel } from "@app/lib/models/agent/conversation";
 import {
   buildActionItems,
   buildPromptActionItems,
@@ -16,21 +15,22 @@ import {
   buildPromptNotableFacts,
 } from "@app/lib/project_todo/analyze_conversation/notable_facts";
 import {
-  ExtractActionItemsResult,
   type ExtractionResult,
+  ExtractTakeawaysInputSchema,
 } from "@app/lib/project_todo/analyze_conversation/types";
+import { buildSpec } from "@app/lib/project_todo/analyze_conversation/utils";
 import {
-  buildSpec,
-  renderConversationForLLM,
-} from "@app/lib/project_todo/analyze_conversation/utils";
-import { TakeawaysResource } from "@app/lib/resources/takeaways_resource";
+  type TakeawaySourceDocument,
+  TakeawaysResource,
+} from "@app/lib/resources/takeaways_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type {
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { startActiveObservation } from "@langfuse/tracing";
 
 export type ConversationParticipant = {
@@ -61,7 +61,7 @@ export function getConversationParticipants(
   }));
 }
 
-function buildParticipantRoster(
+function _buildParticipantRoster(
   participants: ConversationParticipant[]
 ): string {
   if (participants.length === 0) {
@@ -77,7 +77,7 @@ function buildParticipantRoster(
   );
 }
 
-const AGENTIC_CONTEXT_PREAMBLE =
+const _AGENTIC_CONTEXT_PREAMBLE =
   "IMPORTANT CONTEXT: This is a conversation between human users and a Dust AI assistant.\n" +
   "Messages from the assistant are AI-generated responses, NOT from a human participant.\n" +
   "- Do NOT treat user questions that the AI assistant already answered as open action items.\n" +
@@ -92,22 +92,20 @@ const AGENTIC_CONTEXT_PREAMBLE =
 async function callExtractActionItemsLLM(
   auth: Authenticator,
   {
-    conv,
     model,
     specification,
     prompt,
-    conversation,
+    document,
   }: {
-    conv: ModelConversationTypeMultiActions;
     model: ModelConfigurationType;
     specification: AgentActionSpecification;
     prompt: string;
-    conversation: ConversationType;
+    document: TakeawaySourceDocument;
   }
 ): Promise<ExtractionResult | null> {
   const owner = auth.getNonNullableWorkspace();
   const res = await startActiveObservation(
-    "project-todo-analyze-conversation",
+    "project-todo-analyze-document",
     () =>
       runMultiActionsAgent(
         auth,
@@ -118,15 +116,24 @@ async function callExtractActionItemsLLM(
           useCache: false,
         },
         {
-          conversation: conv,
+          conversation: {
+            messages: [
+              {
+                role: "user",
+                name: "todo_extractor",
+                content: [{ type: "text", text: document.text }],
+              },
+            ],
+          },
           prompt,
           specifications: [specification],
           forceToolCall: specification.name,
         },
         {
           context: {
-            operationType: "project_todo_analyze_conversation",
-            conversationId: conversation.sId,
+            operationType: "project_todo_analyze_document",
+            sourceId: document.id,
+            sourceType: document.type,
             workspaceId: owner.sId,
           },
         }
@@ -134,8 +141,13 @@ async function callExtractActionItemsLLM(
   );
   if (res.isErr()) {
     logger.error(
-      { conversationId: conversation.id, error: res.error },
-      "Conversation todo: LLM call failed"
+      {
+        sourceId: document.id,
+        sourceType: document.type,
+        workspaceId: owner.sId,
+        error: res.error,
+      },
+      "Document todo: LLM call failed"
     );
     return null;
   }
@@ -143,17 +155,27 @@ async function callExtractActionItemsLLM(
   const action = res.value.actions?.[0];
   if (!action?.arguments) {
     logger.warn(
-      { conversationId: conversation.id },
-      "Conversation todo: no tool call in LLM response"
+      {
+        sourceId: document.id,
+        sourceType: document.type,
+        workspaceId: owner.sId,
+      },
+      "Document todo: no tool call in LLM response"
     );
     return null;
   }
 
-  const parsed = ExtractActionItemsResult.safeParse(action.arguments);
+  const parsed = ExtractTakeawaysInputSchema.safeParse(action.arguments);
   if (!parsed.success) {
     logger.warn(
-      { conversationId: conversation.id, error: parsed.error },
-      "Conversation todo: failed to parse LLM response"
+      {
+        sourceId: document.id,
+        sourceType: document.type,
+        workspaceId: owner.sId,
+        error: parsed.error,
+        arguments: action.arguments,
+      },
+      "Document todo: failed to parse LLM response"
     );
     return null;
   }
@@ -163,104 +185,120 @@ async function callExtractActionItemsLLM(
 // Maps raw LLM-extracted items to typed action items, reusing sIds from the
 // previous version when the LLM echoes them back, generating new UUIDs otherwise.
 
-export async function analyzeConversationTodos(
+export async function extractDocumentTakeaways(
   auth: Authenticator,
   {
-    conversation,
-    messageId,
+    spaceId,
+    document,
   }: {
-    conversation: ConversationType;
-    messageId: string;
+    spaceId: string;
+    document: TakeawaySourceDocument;
   }
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  const { spaceId } = conversation;
-  if (!spaceId) {
-    logger.warn(
-      { conversationId: conversation.id, workspaceId: owner.sId },
-      "Conversation todo: skipping analysis for conversation without a space"
-    );
-    return;
-  }
-
   // Fetch the model and the previous version concurrently — they are independent.
   const [model, previousVersion] = await Promise.all([
     getFastestWhitelistedModel(auth),
-    TakeawaysResource.fetchLatestByConversationId(auth, {
-      conversationId: conversation.sId,
+    TakeawaysResource.fetchLatestBySourceIdAndType(auth, {
+      sourceId: document.id,
+      sourceType: document.type,
     }),
   ]);
   if (!model) {
     logger.warn(
-      { conversationId: conversation.id, workspaceId: owner.sId },
-      "Conversation todo: no whitelisted model available"
+      {
+        sourceId: document.id,
+        sourceType: document.type,
+        workspaceId: owner.sId,
+      },
+      "Document todo: no whitelisted model available"
     );
-    return;
-  }
-
-  // Verify the source message still exists; skip analysis for deleted messages,
-  // matching the same guard used by the butler evaluators.
-  const sourceMessage = await MessageModel.findOne({
-    attributes: ["id"],
-    where: { sId: messageId, workspaceId: owner.id, visibility: "visible" },
-  });
-  if (!sourceMessage) {
     return;
   }
 
   const previousActionItems = previousVersion?.actionItems ?? [];
   const previousNotableFacts = previousVersion?.notableFacts ?? [];
   const previousKeyDecisions = previousVersion?.keyDecisions ?? [];
-  const participants = getConversationParticipants(conversation);
-  const participantSIds = new Set(participants.map((p) => p.sId));
+  // const participants = getConversationParticipants(conversation);
+  // const participantSIds = new Set(participants.map((p) => p.sId));
   const prompt = [
-    AGENTIC_CONTEXT_PREAMBLE,
-    buildParticipantRoster(participants),
+    //AGENTIC_CONTEXT_PREAMBLE,
+    //buildParticipantRoster(participants),
     buildPromptActionItems(previousActionItems),
     buildPromptNotableFacts(previousNotableFacts),
     buildPromptKeyDecisions(previousKeyDecisions),
     "You MUST call the tool. Always call it, even if there are no action items, notable facts, or key decisions (use empty arrays).",
   ].join("\n\n");
   const specification = buildSpec();
-  const conv = await renderConversationForLLM(auth, {
-    conversation,
-    model,
-    prompt,
-  });
-  if (!conv) {
-    return;
-  }
 
   const extraction = await callExtractActionItemsLLM(auth, {
-    conv,
     model,
     specification,
     prompt,
-    conversation,
+    document,
   });
   if (!extraction) {
+    logger.error(
+      {
+        sourceId: document.id,
+        sourceType: document.type,
+        workspaceId: owner.sId,
+      },
+      "Document todo: no extraction result"
+    );
     return;
   }
+
+  // Fetch all assignees from the action items.
+  const assignees = await UserResource.fetchByIds(
+    removeNulls([
+      ...new Set([
+        ...extraction.action_items.map((item) => item.assignee_user_id),
+        ...extraction.notable_facts
+          .map((fact) => fact.relevant_user_ids)
+          .flat(),
+        ...extraction.key_decisions.map((d) => d.relevant_user_ids).flat(),
+      ]),
+    ])
+  );
+
+  const exitingAssignees = new Set(assignees.map((u) => u.sId));
 
   const actionItems = buildActionItems(
     extraction.action_items,
     new Set(previousActionItems.map((item) => item.sId)),
-    participantSIds
+    exitingAssignees
   );
   const notableFacts = buildNotableFacts(
     extraction.notable_facts,
     new Set(previousNotableFacts.map((fact) => fact.sId)),
-    participantSIds
+    exitingAssignees
   );
   const keyDecisions = buildKeyDecisions(
     extraction.key_decisions,
     new Set(previousKeyDecisions.map((d) => d.sId)),
-    participantSIds
+    exitingAssignees
   );
 
-  await TakeawaysResource.makeNewForConversation(auth, {
-    conversationId: conversation.sId,
+  if (
+    actionItems.length === 0 &&
+    notableFacts.length === 0 &&
+    keyDecisions.length === 0
+  ) {
+    logger.info(
+      {
+        sourceId: document.id,
+        sourceType: document.type,
+        workspaceId: owner.sId,
+      },
+      "Conversation todo: no takeaways extracted"
+    );
+    return;
+  }
+
+  await TakeawaysResource.makeNewForDocument(auth, {
+    document,
     spaceId,
     actionItems,
     notableFacts,
@@ -269,7 +307,8 @@ export async function analyzeConversationTodos(
 
   logger.info(
     {
-      conversationId: conversation.id,
+      sourceId: document.id,
+      sourceType: document.type,
       workspaceId: owner.sId,
       actionItemCount: actionItems.length,
       notableFactCount: notableFacts.length,

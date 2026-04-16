@@ -28,7 +28,12 @@ export function createIncludeDataTools(
             "agentLoopRunContext is required where the tool is called."
           );
         }
-        return runIncludeDataRetrieval(auth, agentLoopContext, params);
+        return runIncludeDataRetrieval(auth, {
+          ...params,
+          citationsOffset:
+            agentLoopContext.runContext.stepContext.citationsOffset,
+          retrievalTopK: agentLoopContext.runContext.stepContext.retrievalTopK,
+        });
       },
     };
     return buildTools(INCLUDE_DATA_BASE_TOOLS_METADATA, handlers);
@@ -42,7 +47,12 @@ export function createIncludeDataTools(
           "agentLoopRunContext is required where the tool is called."
         );
       }
-      return runIncludeDataRetrieval(auth, agentLoopContext, params);
+      return runIncludeDataRetrieval(auth, {
+        ...params,
+        citationsOffset:
+          agentLoopContext.runContext.stepContext.citationsOffset,
+        retrievalTopK: agentLoopContext.runContext.stepContext.retrievalTopK,
+      });
     },
     find_tags: async ({ query, dataSources }, _extra) => {
       return executeFindTags(auth, query, dataSources);

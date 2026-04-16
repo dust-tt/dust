@@ -48,6 +48,7 @@ import { TakeawaysResource } from "@app/lib/resources/takeaways_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import type { ProjectTodoSourceType } from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";
 import type {
   TodoVersionedActionItem,
@@ -101,15 +102,10 @@ export async function mergeTakeawaysIntoProject(
   }
 
   // Batch-fetch conversations by sId.
-  const conversationSIds = [
-    ...new Set(
-      takeawaysWithSource.map(({ conversationSId }) => conversationSId)
-    ),
+  const sourceIds = [
+    ...new Set(takeawaysWithSource.map(({ source }) => source.sourceId)),
   ];
-  const conversations = await ConversationResource.fetchByIds(
-    auth,
-    conversationSIds
-  );
+  const conversations = await ConversationResource.fetchByIds(auth, sourceIds);
   const conversationBySId = new Map<string, ConversationResource>(
     conversations.map((c) => [c.sId, c])
   );
@@ -181,7 +177,10 @@ async function collectNewCandidates(
   }: {
     takeawaysWithSource: Array<{
       takeaway: TakeawaysResource;
-      conversationSId: string;
+      source: {
+        sourceType: ProjectTodoSourceType;
+        sourceId: string;
+      };
     }>;
     conversationBySId: Map<string, ConversationResource>;
     usersById: Map<string, UserResource>;
@@ -191,17 +190,17 @@ async function collectNewCandidates(
 
   await concurrentExecutor(
     takeawaysWithSource,
-    async ({ takeaway, conversationSId }) => {
-      const conversation = conversationBySId.get(conversationSId);
+    async ({ takeaway, source }) => {
+      const conversation = conversationBySId.get(source.sourceId);
       if (!conversation) {
         logger.warn(
-          { conversationSId },
+          { sourceId: source.sourceId },
           "Project todo merge: conversation not found, skipping takeaway"
         );
         return;
       }
       const candidates = await collectConversationCandidates(auth, {
-        conversationSId,
+        conversationSId: source.sourceId,
         takeaway,
         usersById,
       });
@@ -372,7 +371,7 @@ async function createOrLinkTodos(
       if (match !== null) {
         // Semantic duplicate found — link the new source to the existing todo.
         await match.addSource(auth, {
-          sourceType: "conversation",
+          sourceType: "project_conversation",
           sourceId: candidate.itemId,
         });
 
@@ -413,7 +412,7 @@ async function createOrLinkTodos(
       });
 
       await todo.addSource(auth, {
-        sourceType: "conversation",
+        sourceType: "project_conversation",
         sourceId: candidate.itemId,
       });
 
@@ -459,7 +458,7 @@ export function actionItemBlob(item: TodoVersionedActionItem): TodoBlob {
   const isDone = item.status === "done";
   return {
     category: "to_do",
-    text: item.text,
+    text: item.shortDescription,
     status: isDone ? "done" : "todo",
     doneAt:
       isDone && item.detectedDoneAt ? new Date(item.detectedDoneAt) : null,
@@ -469,7 +468,7 @@ export function actionItemBlob(item: TodoVersionedActionItem): TodoBlob {
 export function keyDecisionBlob(item: TodoVersionedKeyDecision): TodoBlob {
   return {
     category: "to_know",
-    text: item.text,
+    text: item.shortDescription,
     status: item.status === "decided" ? "done" : "todo",
     doneAt: null,
   };
@@ -478,7 +477,7 @@ export function keyDecisionBlob(item: TodoVersionedKeyDecision): TodoBlob {
 export function notableFactBlob(item: TodoVersionedNotableFact): TodoBlob {
   return {
     category: "to_know",
-    text: item.text,
+    text: item.shortDescription,
     status: "todo",
     doneAt: null,
   };

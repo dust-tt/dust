@@ -13,11 +13,10 @@ export function buildKeyDecisions(
       decision.sId !== undefined && previousSIds.has(decision.sId)
         ? decision.sId
         : uuidv4(),
-    text: decision.text,
+    shortDescription: decision.short_description,
     relevantUserIds: (decision.relevant_user_ids ?? []).filter((id) =>
       participantSIds.has(id)
     ),
-    sourceMessageRank: decision.source_message_rank,
     status: decision.status,
   }));
 }
@@ -27,20 +26,24 @@ export function buildPromptKeyDecisions(
 ): string {
   let prompt =
     "Key decision guidelines:\n" +
-    "- A key decision is a choice or resolution that was explicitly made during the conversation " +
+    "- A key decision is a choice or resolution that was explicitly made in the document " +
     "(e.g., a technical approach chosen, a scope change agreed upon, a trade-off accepted).\n" +
-    "- Use the exact message rank where the decision was first reached as source_message_rank.\n" +
     "- Set status to 'decided' if the decision is finalized, 'open' if it is still being deliberated.\n" +
     "- Do not include minor preferences or passing comments — only significant, consequential decisions.\n" +
     "- Include relevant_user_ids (from the participant list) for people involved in making this decision.\n\n";
   if (previousKeyDecisions.length > 0) {
     prompt +=
-      "The following key decisions were detected in a previous analysis of this conversation. " +
-      "If you detect the same decision again, copy its sId exactly into the output. " +
+      "The following key decisions were detected in a previous analysis of this document. " +
+      "If you detect the same decision again, copy its sId exactly into the output and keep the other required fields the same. " +
       "Omit the sId field for brand-new decisions that were not previously tracked.\n\n" +
       "Known key decisions:\n";
     for (const decision of previousKeyDecisions) {
-      prompt += `- sId: ${decision.sId} | ${decision.status === "decided" ? "[decided]" : "[open]"} ${decision.text}\n`;
+      prompt += `<key_decision sId="${decision.sId}" status="${decision.status}">`;
+      prompt += `<short_description>${decision.shortDescription}</short_description>`;
+      if (decision.relevantUserIds && decision.relevantUserIds.length > 0) {
+        prompt += `<relevant_user_ids>${decision.relevantUserIds.join(",")}</relevant_user_ids>`;
+      }
+      prompt += `</key_decision>\n`;
     }
     prompt += "\n";
   }

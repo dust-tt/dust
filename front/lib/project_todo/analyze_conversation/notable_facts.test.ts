@@ -8,15 +8,13 @@ import { describe, expect, it } from "vitest";
 describe("buildNotableFacts", () => {
   it("reuses sId when it matches a previous sId", () => {
     const knownSId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
-    const raw = [
-      { sId: knownSId, text: "Launch date is Q3", source_message_rank: 3 },
-    ];
+    const raw = [{ sId: knownSId, short_description: "Launch date is Q3" }];
     const result = buildNotableFacts(raw, new Set([knownSId]), new Set());
     expect(result[0].sId).toBe(knownSId);
   });
 
   it("returns empty relevantUserIds when no user ids provided", () => {
-    const raw = [{ text: "Some fact", source_message_rank: 1 }];
+    const raw = [{ short_description: "Some fact" }];
     const result = buildNotableFacts(raw, new Set(), new Set());
     expect(result[0].relevantUserIds).toEqual([]);
   });
@@ -24,8 +22,7 @@ describe("buildNotableFacts", () => {
   it("resolves relevantUserIds from valid participant ids", () => {
     const raw = [
       {
-        text: "Budget is 100k",
-        source_message_rank: 1,
+        short_description: "Budget is 100k",
         relevant_user_ids: ["user-abc", "user-def", "unknown-id"],
       },
     ];
@@ -34,11 +31,10 @@ describe("buildNotableFacts", () => {
     expect(result[0].relevantUserIds).toEqual(["user-abc", "user-def"]);
   });
 
-  it("preserves text and sourceMessageRank", () => {
-    const raw = [{ text: "Deadline is Friday", source_message_rank: 7 }];
+  it("preserves shortDescription", () => {
+    const raw = [{ short_description: "Deadline is Friday" }];
     const result = buildNotableFacts(raw, new Set(), new Set());
-    expect(result[0].text).toBe("Deadline is Friday");
-    expect(result[0].sourceMessageRank).toBe(7);
+    expect(result[0].shortDescription).toBe("Deadline is Friday");
   });
 
   it("returns an empty array for empty input", () => {
@@ -57,14 +53,14 @@ describe("buildPromptNotableFacts", () => {
     const facts: TodoVersionedNotableFact[] = [
       {
         sId: "fact-1",
-        text: "Budget capped at €100k",
+        shortDescription: "Budget capped at €100k",
         relevantUserIds: [],
-        sourceMessageRank: 1,
       },
     ];
     const prompt = buildPromptNotableFacts(facts);
     expect(prompt).toContain("Known notable facts:");
-    expect(prompt).toContain("sId: fact-1");
-    expect(prompt).toContain("Budget capped at €100k");
+    expect(prompt).toContain(
+      `<notable_fact sId="fact-1"><short_description>Budget capped at €100k</short_description></notable_fact>`
+    );
   });
 });
