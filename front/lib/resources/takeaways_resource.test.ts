@@ -70,9 +70,8 @@ describe("TakeawaysResource", () => {
           notableFacts: [
             {
               sId: "fact_cross",
-              text: "Cross-tenant fact",
+              shortDescription: "Cross-tenant fact",
               relevantUserIds: [],
-              sourceMessageRank: 1,
             },
           ],
           keyDecisions: [],
