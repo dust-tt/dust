@@ -2042,13 +2042,50 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
+  async getLatestCompactionMessageRun(
+    auth: Authenticator
+  ): Promise<RunResource | null> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const message = await MessageModel.findOne({
+      where: {
+        conversationId: this.id,
+        workspaceId: owner.id,
+      },
+      include: [
+        {
+          model: CompactionMessageModel,
+          as: "compactionMessage",
+          required: true,
+        },
+      ],
+      order: [["rank", "DESC"]],
+    });
+
+    if (!message?.compactionMessage?.runIds?.length) {
+      return null;
+    }
+
+    // The runIds array ordering is not guaranteed to be chronological. Fetch all runs and pick
+    // the most recently created one.
+    const runs = await RunResource.listByDustRunIds(auth, {
+      dustRunIds: message.compactionMessage.runIds,
+    });
+
+    if (runs.length === 0) {
+      return null;
+    }
+
+    return runs.reduce((latest, r) =>
+      r.createdAt > latest.createdAt ? r : latest
+    );
+  }
+
   async getLatestAgentMessageRun(
     auth: Authenticator
   ): Promise<RunResource | null> {
     const owner = auth.getNonNullableWorkspace();
 
-    // Include in-progress ("created") agent messages so that context usage is available even while
-    // the agent is still running (it accumulates runIds step by step).
     const message = await MessageModel.findOne({
       where: {
         conversationId: this.id,
@@ -2059,9 +2096,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           model: AgentMessageModel,
           as: "agentMessage",
           required: true,
-          where: {
-            status: ["succeeded", "gracefully_stopped", "created"],
-          },
         },
       ],
       order: [["rank", "DESC"]],
