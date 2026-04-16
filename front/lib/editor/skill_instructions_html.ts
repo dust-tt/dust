@@ -92,6 +92,55 @@ function stripPresentationAttributes(html: string): string {
 }
 
 /**
+ * TipTap's server-side parseHTMLToken has no DOM, so it converts block-level
+ * HTML tokens (e.g. a standalone <knowledge .../> on its own line) to plain-
+ * text paragraphs instead of calling generateJSON + parseHTML rules. Walk the
+ * parsed JSON tree and restore any such nodes back to proper knowledgeNode
+ * JSONContent before rendering to HTML.
+ */
+const KNOWLEDGE_TAG_REGEX = /^<knowledge\s+([^>]+)\s*\/>$/;
+
+function recoverKnowledgeNodes(node: JSONContent): JSONContent {
+  if (node.type === "paragraph" && node.content?.length === 1) {
+    const child = node.content[0];
+    if (child.type === "text") {
+      const text = (child.text ?? "").trim();
+      const match = KNOWLEDGE_TAG_REGEX.exec(text);
+      if (match) {
+        const attrs = match[1];
+        const id = /id="([^"]+)"/.exec(attrs)?.[1];
+        const title = /title="([^"]+)"/.exec(attrs)?.[1];
+        if (id && title) {
+          return {
+            ...node,
+            content: [
+              {
+                type: "knowledgeNode",
+                attrs: {
+                  selectedItems: [
+                    {
+                      nodeId: id,
+                      label: title,
+                      spaceId: /space="([^"]*)"/.exec(attrs)?.[1] ?? "",
+                      dataSourceViewId: /dsv="([^"]*)"/.exec(attrs)?.[1] ?? "",
+                      hasChildren: /hasChildren="true"/.test(attrs),
+                    },
+                  ],
+                },
+              },
+            ],
+          };
+        }
+      }
+    }
+  }
+  if (node.content) {
+    return { ...node, content: node.content.map(recoverKnowledgeNodes) };
+  }
+  return node;
+}
+
+/**
  * Convert Markdown to stored skill instructionsHtml.
  * Uses the same extension schema as the browser editor, then strips CSS class attrs.
  */
@@ -101,12 +150,14 @@ export function convertMarkdownToBlockHtml(markdown: string): string {
     ? MARKDOWN_MANAGER.parse(preprocessed)
     : null;
 
+  const rawContent = parsedDoc?.content ?? [{ type: "paragraph" }];
+
   const json: JSONContent = {
     type: "doc",
     content: [
       {
         type: INSTRUCTIONS_ROOT_NODE_NAME,
-        content: parsedDoc?.content ?? [{ type: "paragraph" }],
+        content: rawContent.map(recoverKnowledgeNodes),
       },
     ],
   };
