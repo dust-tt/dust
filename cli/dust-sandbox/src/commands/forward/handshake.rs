@@ -1,15 +1,21 @@
+use anyhow::{Context, Result};
+
 // Keep these constants and frame layout in sync with egress-proxy/src/handshake.rs.
 pub const PROTOCOL_VERSION: u8 = 0x01;
 pub const ALLOW_RESPONSE: u8 = 0x00;
 pub const DENY_RESPONSE: u8 = 0x01;
 
-pub fn build_handshake_frame(token: &str, domain: &str, original_dest_port: u16) -> Vec<u8> {
+pub fn build_handshake_frame(
+    token: &str,
+    domain: &str,
+    original_dest_port: u16,
+) -> Result<Vec<u8>> {
     let token_bytes = token.as_bytes();
     let domain_bytes = domain.as_bytes();
-    let token_len =
-        u16::try_from(token_bytes.len()).expect("token length should fit in the wire format");
-    let domain_len =
-        u16::try_from(domain_bytes.len()).expect("domain length should fit in the wire format");
+    let token_len = u16::try_from(token_bytes.len())
+        .context("token length does not fit in the handshake wire format")?;
+    let domain_len = u16::try_from(domain_bytes.len())
+        .context("domain length does not fit in the handshake wire format")?;
 
     let mut frame = Vec::with_capacity(1 + 2 + token_bytes.len() + 2 + domain_bytes.len() + 2);
     frame.push(PROTOCOL_VERSION);
@@ -18,7 +24,7 @@ pub fn build_handshake_frame(token: &str, domain: &str, original_dest_port: u16)
     frame.extend_from_slice(&domain_len.to_be_bytes());
     frame.extend_from_slice(domain_bytes);
     frame.extend_from_slice(&original_dest_port.to_be_bytes());
-    frame
+    Ok(frame)
 }
 
 #[cfg(test)]
@@ -27,7 +33,8 @@ mod tests {
 
     #[test]
     fn encodes_handshake_frame_in_proxy_wire_format() {
-        let frame = build_handshake_frame("token", "example.com", 443);
+        let frame = build_handshake_frame("token", "example.com", 443)
+            .expect("build_handshake_frame should succeed for short inputs");
 
         assert_eq!(
             frame,
