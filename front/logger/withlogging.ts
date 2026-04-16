@@ -1,4 +1,5 @@
 import { shouldForceClientReload } from "@app/lib/api/force_client_reload";
+import { queryTracker } from "@app/lib/api/query_tracker";
 import type { BearerTokenError } from "@app/lib/auth";
 import { getSession, getSessionFromBearerToken } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -181,10 +182,11 @@ export function withLogging<T>(
       }
     }
 
+    const queryTrackerStore = { concurrent: 0, peak: 0 };
     try {
-      await handler(req, res, {
-        session,
-      });
+      await queryTracker.run(queryTrackerStore, () =>
+        handler(req, res, { session })
+      );
     } catch (err) {
       const elapsed = new Date().getTime() - now.getTime();
       const error = normalizeError(err);
@@ -199,6 +201,7 @@ export function withLogging<T>(
           durationMs: elapsed,
           extensionVersion,
           method: req.method,
+          peakConcurrentQueries: queryTrackerStore.peak,
           route,
           sessionId,
           streaming,
@@ -260,6 +263,7 @@ export function withLogging<T>(
         durationMs: elapsed,
         extensionVersion,
         method: req.method,
+        peakConcurrentQueries: queryTrackerStore.peak,
         route,
         sessionId,
         statusCode: res.statusCode,
@@ -339,8 +343,11 @@ export function withGetServerSidePropsLogging<
       }
     }
 
+    const queryTrackerStore = { concurrent: 0, peak: 0 };
     try {
-      const res = await getServerSideProps(context, auth, session);
+      const res = await queryTracker.run(queryTrackerStore, () =>
+        getServerSideProps(context, auth, session)
+      );
 
       const elapsed = new Date().getTime() - now.getTime();
 
@@ -373,6 +380,7 @@ export function withGetServerSidePropsLogging<
           route,
           durationMs: elapsed,
           clientIp,
+          peakConcurrentQueries: queryTrackerStore.peak,
         },
         "Processed getServerSideProps"
       );
@@ -391,6 +399,7 @@ export function withGetServerSidePropsLogging<
           url: context.resolvedUrl,
           route,
           clientIp,
+          peakConcurrentQueries: queryTrackerStore.peak,
           error: {
             name: error.name,
             message: error.message,
