@@ -9,6 +9,7 @@ import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/S
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { getIcon } from "@app/components/resources/resources_icons";
+import { getBlockOuterHtml } from "@app/components/shared/utils";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
@@ -84,13 +85,7 @@ const InstructionsSuggestionCard = memo(
         return "";
       }
 
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(instructionsHtml, "text/html");
-      const targetElement = doc.querySelector(
-        `[data-block-id="${targetBlockId}"]`
-      );
-
-      return targetElement ? targetElement.outerHTML : "";
+      return getBlockOuterHtml(instructionsHtml, targetBlockId);
     }, [targetBlockId, getCommittedInstructionsHtml]);
 
     const editor = useEditor(
