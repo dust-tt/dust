@@ -116,8 +116,7 @@ export const SlashCommandExtension =
                 component = new ReactRenderer(SlashCommandDropdown, {
                   props: {
                     ...props,
-                    onEscapeKeyDown: closeSuggestionDropdown,
-                    onInteractOutside: closeSuggestionDropdown,
+                    onClose: closeSuggestionDropdown,
                   },
                   editor: props.editor,
                 });
@@ -133,8 +132,7 @@ export const SlashCommandExtension =
                 activeEditorView = props.editor.view;
                 component?.updateProps({
                   ...props,
-                  onEscapeKeyDown: closeSuggestionDropdown,
-                  onInteractOutside: closeSuggestionDropdown,
+                  onClose: closeSuggestionDropdown,
                 });
 
                 if (!props.clientRect) {

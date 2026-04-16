@@ -39,8 +39,7 @@ export interface SlashCommandDropdownProps
   emptyMessage?: string;
   header?: React.ReactNode;
   itemsClassName?: string;
-  onEscapeKeyDown?: () => void;
-  onInteractOutside?: () => void;
+  onClose?: () => void;
 }
 
 export interface SlashCommandDropdownRef {
@@ -60,8 +59,7 @@ export const SlashCommandDropdown = forwardRef<
       emptyMessage = "No commands found",
       header,
       itemsClassName,
-      onEscapeKeyDown,
-      onInteractOutside,
+      onClose,
     },
     ref
   ) => {
@@ -169,8 +167,8 @@ export const SlashCommandDropdown = forwardRef<
           collisionPadding={12}
           side="bottom"
           sideOffset={4}
-          onEscapeKeyDown={onEscapeKeyDown}
-          onInteractOutside={onInteractOutside}
+          onEscapeKeyDown={onClose}
+          onInteractOutside={onClose}
           onCloseAutoFocus={(e) => e.preventDefault()}
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
