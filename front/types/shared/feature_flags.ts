@@ -289,6 +289,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   browser_extension_mcp_tools: {
     description:
       "Show the browser extension MCP tools toggle in workspace access settings",
+  input_bar_slash_skills: {
+    description:
+      "Enable slash-triggered skill selection in the conversation input bar",
     stage: "dust_only",
   },
   sensitivity_labels: {

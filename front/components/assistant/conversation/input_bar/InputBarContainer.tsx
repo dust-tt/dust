@@ -7,7 +7,16 @@ import {
   getPastedFileName,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
+import {
+  filterInputBarSkills,
+  InputBarSkillSuggestionDropdown,
+} from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionDropdown";
+import {
+  getEditorViewRangeRect,
+  getInputBarSkillSlashTrigger,
+} from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionUtils";
 import type { MentionsStrippedPayload } from "@app/components/editor/extensions/MentionExtension";
+import type { SlashCommandDropdownRef } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
@@ -22,6 +31,7 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
+import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
@@ -75,6 +85,24 @@ import { InputBarContext } from "./InputBarContext";
 const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
 const FADE_OUT_TRANSITION = "50ms ease-out";
 const FADE_IN_TRANSITION = "150ms ease-out";
+
+type SkillPickerState = {
+  anchorRect: DOMRect;
+  query: string;
+};
+
+function getSkillPickerStateFromEditor(editor: Editor): SkillPickerState | null {
+  const trigger = getInputBarSkillSlashTrigger(editor.state);
+
+  if (!trigger) {
+    return null;
+  }
+
+  return {
+    anchorRect: getEditorViewRangeRect(editor.view, trigger.range.from),
+    query: trigger.query,
+  };
+}
 
 function getButtonsTransitionStyle(hideButtons: boolean): React.CSSProperties {
   const opacityTransition = hideButtons
@@ -189,6 +217,7 @@ const InputBarContainer = ({
   const isMobile = useIsMobile();
   const { hasFeature } = useFeatureFlags();
   const isCompactionEnabled = hasFeature("enable_compaction");
+  const isInputBarSlashSkillsEnabled = hasFeature("input_bar_slash_skills");
   const { selectedSingleAgent, setSelectedSingleAgent } =
     useContext(InputBarContext);
 
@@ -225,15 +254,102 @@ const InputBarContainer = ({
   >(undefined);
   const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
+  const [skillPickerState, setSkillPickerState] =
+    useState<SkillPickerState | null>(null);
   const plusButtonRef = useRef<HTMLDivElement>(null);
   const clientType = useClientType();
+  const shouldEnableSkillSelection =
+    actions.includes("capabilities") && isInputBarSlashSkillsEnabled;
 
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
 
   // Create a ref to hold the editor instance
   const editorRef = useRef<Editor | null>(null);
+  const skillPickerDropdownRef = useRef<SlashCommandDropdownRef | null>(null);
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
+
+  const { skills: availableSkills } = useSkills({
+    owner,
+    status: "active",
+    globalSpaceOnly: true,
+    disabled: !shouldEnableSkillSelection,
+  });
+
+  const selectedSkillIds = useMemo(
+    () => new Set(selectedSkills.map((skill) => skill.sId)),
+    [selectedSkills]
+  );
+  const filteredSkillPickerSkills = useMemo(
+    () =>
+      filterInputBarSkills({
+        query: skillPickerState?.query ?? "",
+        selectedSkillIds,
+        skills: availableSkills,
+      }),
+    [availableSkills, selectedSkillIds, skillPickerState?.query]
+  );
+
+  const handleOpenSkillPicker = useCallback(
+    (anchorRect: DOMRect | null, query: string) => {
+      if (!anchorRect) {
+        return;
+      }
+
+      setSkillPickerState({ anchorRect, query });
+    },
+    []
+  );
+
+  const handleSkillPickerClose = useCallback(() => {
+    setSkillPickerState(null);
+  }, []);
+
+  const handleSkillPickerSelection = useCallback(
+    (skill: SkillWithoutToolsType) => {
+      const editorInstance = editorRef.current;
+      const trigger = editorInstance
+        ? getInputBarSkillSlashTrigger(editorInstance.state)
+        : null;
+
+      if (editorInstance && trigger) {
+        editorInstance.chain().focus().deleteRange(trigger.range).run();
+      }
+
+      onSkillSelect(skill);
+      setSkillPickerState(null);
+      queueMicrotask(() => editorRef.current?.commands.focus("end"));
+    },
+    [onSkillSelect]
+  );
+
+  const handleSelectFirstSkillFromPicker = useCallback(() => {
+    const firstSkill = filteredSkillPickerSkills[0];
+
+    if (!skillPickerState || !firstSkill) {
+      return false;
+    }
+
+    handleSkillPickerSelection(firstSkill);
+    return true;
+  }, [filteredSkillPickerSkills, handleSkillPickerSelection, skillPickerState]);
+
+  const handleSkillPickerKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      if (!skillPickerState) {
+        return false;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        handleSkillPickerClose();
+        return true;
+      }
+
+      return skillPickerDropdownRef.current?.onKeyDown({ event }) ?? false;
+    },
+    [handleSkillPickerClose, skillPickerState]
+  );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const removePastedAttachmentChip = useCallback(
@@ -455,6 +571,15 @@ const InputBarContainer = ({
     shouldSuggestAgentRef,
     onFirstAgentMentionPasteRef,
     onAgentMentionsStrippedRef,
+    onOpenSkillPicker: shouldEnableSkillSelection
+      ? handleOpenSkillPicker
+      : undefined,
+    onSkillPickerKeyDown: shouldEnableSkillSelection
+      ? handleSkillPickerKeyDown
+      : undefined,
+    onSelectFirstSkillFromPicker: shouldEnableSkillSelection
+      ? handleSelectFirstSkillFromPicker
+      : undefined,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
       let inserted = false;
@@ -596,6 +721,15 @@ const InputBarContainer = ({
 
   // Update the editor ref when the editor is created and listen for updates to the editor.
   useEffect(() => {
+    const syncSkillPickerState = () => {
+      if (!editor || !shouldEnableSkillSelection || !editor.isFocused) {
+        setSkillPickerState(null);
+        return;
+      }
+
+      setSkillPickerState(getSkillPickerStateFromEditor(editor));
+    };
+
     const handleUpdate = () => {
       setIsEmpty(editorService.isEmpty());
 
@@ -609,6 +743,8 @@ const InputBarContainer = ({
       const userMentioned = mentions.some((m) => m.type === "user");
       setHasUserMention(userMentioned);
       onEditorMentionsChangedRef.current(userMentioned);
+
+      syncSkillPickerState();
     };
 
     if (editorRef.current) {
@@ -625,7 +761,7 @@ const InputBarContainer = ({
         editor.off("update", handleUpdate);
       }
     };
-  }, [editor, editorService, saveDraft]);
+  }, [editor, editorService, saveDraft, shouldEnableSkillSelection]);
 
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced);
 
@@ -897,16 +1033,17 @@ const InputBarContainer = ({
   const toolbarRowTransitionStyle = getToolbarRowTransitionStyle(hideButtons);
 
   return (
-    <div
-      id="InputBarContainer"
-      className="relative flex flex-1 cursor-text flex-row sm:pt-0"
-      onClick={(e) => {
-        // If e.target is not a child of a div with class "tiptap", then focus on the editor
-        if (!(e.target instanceof HTMLElement && e.target.closest(".tiptap"))) {
-          editorService.focusEnd();
-        }
-      }}
-    >
+    <>
+      <div
+        id="InputBarContainer"
+        className="relative flex flex-1 cursor-text flex-row sm:pt-0"
+        onClick={(e) => {
+          // If e.target is not a child of a div with class "tiptap", then focus on the editor
+          if (!(e.target instanceof HTMLElement && e.target.closest(".tiptap"))) {
+            editorService.focusEnd();
+          }
+        }}
+      >
       <div className="flex w-0 flex-grow flex-col">
         <div className="relative">
           <EditorContent
@@ -1209,7 +1346,18 @@ const InputBarContainer = ({
           />
         </div>
       </div>
-    </div>
+      </div>
+
+      {skillPickerState && (
+        <InputBarSkillSuggestionDropdown
+          ref={skillPickerDropdownRef}
+          anchorRect={skillPickerState.anchorRect}
+          onClose={handleSkillPickerClose}
+          onSkillSelect={handleSkillPickerSelection}
+          skills={filteredSkillPickerSkills}
+        />
+      )}
+    </>
   );
 };
 
