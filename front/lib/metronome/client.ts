@@ -611,6 +611,15 @@ export async function createMetronomeCommit({
     );
     return new Ok(undefined);
   } catch (err) {
+    if (err instanceof ConflictError) {
+      // Idempotency key conflict — commit already created, safe to ignore.
+      logger.info(
+        { metronomeCustomerId, idempotencyKey },
+        "[Metronome] Commit already exists (idempotent)"
+      );
+      return new Ok(undefined);
+    }
+
     const error = normalizeError(err);
     logger.error(
       {
