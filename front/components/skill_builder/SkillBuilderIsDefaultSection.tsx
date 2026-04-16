@@ -8,6 +8,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  InformationCircleIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
@@ -46,7 +47,11 @@ export function SkillBuilderIsDefaultSection() {
         <Button
           variant="outline"
           size="sm"
-          label={!isDefault ? "Allow agents to discover this skill" : "Prevent agents from discovering this skill"}
+          label={
+            !isDefault
+              ? "Allow agents to discover this skill"
+              : "Prevent agents from discovering this skill"
+          }
           onClick={handleButtonClick}
           tooltip="This skill will be set as default. Agents with Discover Skills will be able to find and enable it on their own"
         />
@@ -81,14 +86,15 @@ export function SkillBuilderIsDefaultSection() {
 
           {isDescriptionTooShort && (
             <ContentMessage
-              variant="warning"
+              variant="golden"
               title="Description may be too short"
+              icon={InformationCircleIcon}
               size="sm"
             >
               The content in "What will this skill be used for?" may be too
-              short for agents to clearly understand when to use this
-              skill. Consider making it a bit more descriptive before
-              allowing discovery.
+              short for agents to clearly understand when to use this skill.
+              Consider making it a bit more descriptive before allowing
+              discovery.
             </ContentMessage>
           )}
 
