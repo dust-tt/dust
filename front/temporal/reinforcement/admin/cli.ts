@@ -4,19 +4,19 @@ import {
   launchEnsureReinforcementSchedulesWorkflow as launchEnsureReinforcementSchedulesWorkflow,
   startReinforcementWorkspaceSchedule,
   startReinforcementWorkspaceWorkflow,
-  stopAllReinforcementWorkspaceCrons as stopAllReinforcementWorkspaceSchedules,
-  stopEnsureReinforcementCronsWorkflow as stopEnsureReinforcementSchedulesWorkflow,
+  stopAllReinforcementWorkspaceSchedules as stopAllReinforcementWorkspaceSchedules,
+  stopEnsureReinforcementSchedulesWorkflow as stopEnsureReinforcementSchedulesWorkflow,
 } from "@app/temporal/reinforcement/client";
 import parseArgs from "minimist";
 
 function usage() {
   console.error(`Usage:
-  start                                                                          Ensure all workspace crons match feature flags (start missing, stop extra)
-  stop                                                                           Stop all running workspace cron workflows
+  start                                                                          Ensure all workspace schedules (start missing, stop extra)
+  stop                                                                           Stop all running schedules
   start-ensure                                                                   Start the daily ensure-crons workflow (11pm local)
   stop-ensure                                                                    Stop the daily ensure-crons workflow
-  start-workspace --workspace-id <sId>                                          Start the cron workflow for a specific workspace
-  stop-workspace --workspace-id <sId>                                           Stop the cron workflow for a specific workspace
+  start-workspace --workspace-id <sId>                                          Start the schedule for a specific workspace
+  stop-workspace --workspace-id <sId>                                           Stop the schedule for a specific workspace
   run-workspace --workspace-id <sId> [--batch] [--skill-id <sId>] [--days <n>] Run once for a specific workspace
   run-skill --workspace-id <sId> --skill-id <sId> [--batch] [--days <n>]       Run for a specific skill (shorthand)`);
 }

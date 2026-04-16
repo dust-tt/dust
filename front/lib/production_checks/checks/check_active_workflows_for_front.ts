@@ -1,9 +1,9 @@
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
-import { ENSURE_CRONS_WORKFLOW_ID } from "@app/temporal/reinforcement/client";
+import { ENSURE_SCHEDULES_WORKFLOW_ID } from "@app/temporal/reinforcement/client";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 import type { Client, WorkflowHandle } from "@temporalio/client";
 
-const WORKFLOW_IDS = ["data-retention-workflow", ENSURE_CRONS_WORKFLOW_ID];
+const WORKFLOW_IDS = ["data-retention-workflow", ENSURE_SCHEDULES_WORKFLOW_ID];
 
 async function isWorkflowRunning(client: Client, workflowId: string) {
   try {
