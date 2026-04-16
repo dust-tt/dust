@@ -1,6 +1,9 @@
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { instructionBlockSetsConflict } from "@app/lib/editor/instructions_block_conflict";
+import {
+  buildDescendantMap,
+  instructionBlockSetsConflict,
+} from "@app/lib/editor/instructions_block_conflict";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
@@ -345,11 +348,20 @@ export async function pruneConflictingInstructionSuggestions(
 
   const newTargetBlockIds = new Set(newSuggestions.map((s) => s.targetBlockId));
 
+  const allBlockIds = new Set([
+    ...newTargetBlockIds,
+    ...existingPending.map((s) => s.suggestion.targetBlockId),
+  ]);
+  const descendantMap = agentConfiguration.instructionsHtml
+    ? buildDescendantMap(agentConfiguration.instructionsHtml, allBlockIds)
+    : new Map<string, Set<string>>();
+
   const toMarkOutdated = existingPending.filter((existingSugg) =>
     instructionBlockSetsConflict(
       newTargetBlockIds,
       new Set([existingSugg.suggestion.targetBlockId]),
-      agentConfiguration.instructionsHtml
+      agentConfiguration.instructionsHtml,
+      descendantMap
     )
   );
 

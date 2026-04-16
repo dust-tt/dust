@@ -1,3 +1,4 @@
+import { buildDescendantMap } from "@app/lib/editor/instructions_block_conflict";
 import {
   hasSuggestionSelfConflict,
   instructionEditSetsConflict,
@@ -36,59 +37,104 @@ function makeToolEdit(
   return { toolId, action };
 }
 
+const EMPTY_DESCENDANT_MAP = new Map<string, Set<string>>();
+
+function descendantMapForConflict(
+  html: string | null,
+  editsA: Array<{ targetBlockId: string }>,
+  editsB: Array<{ targetBlockId: string }>
+): Map<string, Set<string>> {
+  if (!html) {
+    return EMPTY_DESCENDANT_MAP;
+  }
+  return buildDescendantMap(html, [
+    ...editsA.map((e) => e.targetBlockId),
+    ...editsB.map((e) => e.targetBlockId),
+  ]);
+}
+
 describe("instructionEditSetsConflict", () => {
   it("returns false when either set is empty", () => {
     expect(
-      instructionEditSetsConflict([], [makeInstructionEdit("para-1")], null)
+      instructionEditSetsConflict(
+        [],
+        [makeInstructionEdit("para-1")],
+        null,
+        EMPTY_DESCENDANT_MAP
+      )
     ).toBe(false);
     expect(
-      instructionEditSetsConflict([makeInstructionEdit("para-1")], [], null)
+      instructionEditSetsConflict(
+        [makeInstructionEdit("para-1")],
+        [],
+        null,
+        EMPTY_DESCENDANT_MAP
+      )
     ).toBe(false);
-    expect(instructionEditSetsConflict([], [], null)).toBe(false);
+    expect(
+      instructionEditSetsConflict([], [], null, EMPTY_DESCENDANT_MAP)
+    ).toBe(false);
   });
 
   it("conflicts when either set contains root rewrite", () => {
     const root = makeInstructionEdit(INSTRUCTIONS_ROOT_TARGET_BLOCK_ID);
     const block = makeInstructionEdit("para-1");
 
-    expect(instructionEditSetsConflict([root], [block], null)).toBe(true);
-    expect(instructionEditSetsConflict([block], [root], null)).toBe(true);
-    expect(instructionEditSetsConflict([root], [root], null)).toBe(true);
+    expect(
+      instructionEditSetsConflict([root], [block], null, EMPTY_DESCENDANT_MAP)
+    ).toBe(true);
+    expect(
+      instructionEditSetsConflict([block], [root], null, EMPTY_DESCENDANT_MAP)
+    ).toBe(true);
+    expect(
+      instructionEditSetsConflict([root], [root], null, EMPTY_DESCENDANT_MAP)
+    ).toBe(true);
   });
 
   it("conflicts when both sets target the same block ID", () => {
     const editA = makeInstructionEdit("para-1");
     const editB = makeInstructionEdit("para-1");
 
-    expect(instructionEditSetsConflict([editA], [editB], null)).toBe(true);
+    expect(
+      instructionEditSetsConflict([editA], [editB], null, EMPTY_DESCENDANT_MAP)
+    ).toBe(true);
   });
 
   it("does not conflict when sets target different, unrelated blocks", () => {
+    const editsA = [makeInstructionEdit("para-1")];
+    const editsB = [makeInstructionEdit("para-3")];
     expect(
       instructionEditSetsConflict(
-        [makeInstructionEdit("para-1")],
-        [makeInstructionEdit("para-3")],
-        HIERARCHY_HTML
+        editsA,
+        editsB,
+        HIERARCHY_HTML,
+        descendantMapForConflict(HIERARCHY_HTML, editsA, editsB)
       )
     ).toBe(false);
   });
 
   it("conflicts when A targets an ancestor of a block in B", () => {
+    const editsA = [makeInstructionEdit("section-1")];
+    const editsB = [makeInstructionEdit("para-1")];
     expect(
       instructionEditSetsConflict(
-        [makeInstructionEdit("section-1")],
-        [makeInstructionEdit("para-1")],
-        HIERARCHY_HTML
+        editsA,
+        editsB,
+        HIERARCHY_HTML,
+        descendantMapForConflict(HIERARCHY_HTML, editsA, editsB)
       )
     ).toBe(true);
   });
 
   it("conflicts when B targets an ancestor of a block in A (symmetric)", () => {
+    const editsA = [makeInstructionEdit("para-1")];
+    const editsB = [makeInstructionEdit("section-1")];
     expect(
       instructionEditSetsConflict(
-        [makeInstructionEdit("para-1")],
-        [makeInstructionEdit("section-1")],
-        HIERARCHY_HTML
+        editsA,
+        editsB,
+        HIERARCHY_HTML,
+        descendantMapForConflict(HIERARCHY_HTML, editsA, editsB)
       )
     ).toBe(true);
   });
@@ -98,27 +144,34 @@ describe("instructionEditSetsConflict", () => {
       instructionEditSetsConflict(
         [makeInstructionEdit("para-1")],
         [makeInstructionEdit("para-2")],
-        null
+        null,
+        EMPTY_DESCENDANT_MAP
       )
     ).toBe(false);
   });
 
   it("does not conflict for siblings with instructionsHtml", () => {
+    const editsA = [makeInstructionEdit("para-1")];
+    const editsB = [makeInstructionEdit("para-2")];
     expect(
       instructionEditSetsConflict(
-        [makeInstructionEdit("para-1")],
-        [makeInstructionEdit("para-2")],
-        HIERARCHY_HTML
+        editsA,
+        editsB,
+        HIERARCHY_HTML,
+        descendantMapForConflict(HIERARCHY_HTML, editsA, editsB)
       )
     ).toBe(false);
   });
 
   it("conflicts when a block in A targets a deeply nested descendant via B", () => {
+    const editsA = [makeInstructionEdit("section-1")];
+    const editsB = [makeInstructionEdit("para-2")];
     expect(
       instructionEditSetsConflict(
-        [makeInstructionEdit("section-1")],
-        [makeInstructionEdit("para-2")],
-        HIERARCHY_HTML
+        editsA,
+        editsB,
+        HIERARCHY_HTML,
+        descendantMapForConflict(HIERARCHY_HTML, editsA, editsB)
       )
     ).toBe(true);
   });

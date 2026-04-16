@@ -1,6 +1,24 @@
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { JSDOM } from "jsdom";
 
+function getDescendantBlockIdsFromDoc(
+  doc: Document,
+  targetBlockId: string
+): Set<string> {
+  const descendants = new Set<string>();
+  const targetElement = doc.querySelector(`[data-block-id="${targetBlockId}"]`);
+  if (!targetElement) {
+    return descendants;
+  }
+  targetElement.querySelectorAll("[data-block-id]").forEach((element) => {
+    const descendantId = element.getAttribute("data-block-id");
+    if (descendantId && descendantId !== targetBlockId) {
+      descendants.add(descendantId);
+    }
+  });
+  return descendants;
+}
+
 /**
  * Returns every `data-block-id` nested under `targetBlockId` in serialized
  * instructions HTML
@@ -9,25 +27,26 @@ export function getDescendantBlockIds(
   instructionsHtml: string,
   targetBlockId: string
 ): Set<string> {
-  const descendants = new Set<string>();
+  const dom = new JSDOM(instructionsHtml);
+  return getDescendantBlockIdsFromDoc(dom.window.document, targetBlockId);
+}
 
+/**
+ * Parses instructions HTML once and returns a map of blockId -> descendant block IDs
+ * for the given block IDs. Use this to avoid repeated HTML parsing when checking
+ * conflicts for multiple block IDs.
+ */
+export function buildDescendantMap(
+  instructionsHtml: string,
+  blockIds: Iterable<string>
+): Map<string, Set<string>> {
   const dom = new JSDOM(instructionsHtml);
   const doc = dom.window.document;
-
-  const targetElement = doc.querySelector(`[data-block-id="${targetBlockId}"]`);
-  if (!targetElement) {
-    return descendants;
+  const map = new Map<string, Set<string>>();
+  for (const blockId of blockIds) {
+    map.set(blockId, getDescendantBlockIdsFromDoc(doc, blockId));
   }
-
-  const descendantElements = targetElement.querySelectorAll("[data-block-id]");
-  descendantElements.forEach((element) => {
-    const descendantId = element.getAttribute("data-block-id");
-    if (descendantId && descendantId !== targetBlockId) {
-      descendants.add(descendantId);
-    }
-  });
-
-  return descendants;
+  return map;
 }
 
 /**
@@ -41,7 +60,8 @@ export function getDescendantBlockIds(
 export function instructionBlockSetsConflict(
   blockIdsA: Set<string>,
   blockIdsB: Set<string>,
-  instructionsHtml: string | null
+  instructionsHtml: string | null,
+  descendantMap: Map<string, Set<string>>
 ): boolean {
   if (blockIdsA.size === 0 || blockIdsB.size === 0) {
     return false;
@@ -65,7 +85,7 @@ export function instructionBlockSetsConflict(
   // Ancestor-descendant relationship (symmetric: check both directions).
   if (instructionsHtml) {
     for (const id of blockIdsA) {
-      const descendants = getDescendantBlockIds(instructionsHtml, id);
+      const descendants = descendantMap.get(id) ?? new Set<string>();
       for (const bId of blockIdsB) {
         if (descendants.has(bId)) {
           return true;
@@ -73,7 +93,7 @@ export function instructionBlockSetsConflict(
       }
     }
     for (const id of blockIdsB) {
-      const descendants = getDescendantBlockIds(instructionsHtml, id);
+      const descendants = descendantMap.get(id) ?? new Set<string>();
       for (const aId of blockIdsA) {
         if (descendants.has(aId)) {
           return true;
