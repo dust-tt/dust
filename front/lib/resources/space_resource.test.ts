@@ -1600,6 +1600,7 @@ const KNOWN_SPACE_RELATED_MODELS = [
   "takeaways",
   "takeaways_version",
   "webhook_sources_view",
+  "user_project_notification_preferences",
 ];
 
 describe("SpaceResource cleanup on delete", () => {
