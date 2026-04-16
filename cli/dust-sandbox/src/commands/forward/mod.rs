@@ -125,6 +125,11 @@ async fn load_token(token_file: &PathBuf) -> Result<String> {
 }
 
 fn build_tls_connector() -> Result<TlsConnector> {
+    // rustls 0.23 requires an explicit process-level CryptoProvider.
+    // install_default returns Err if one is already installed — we just want to
+    // guarantee some provider is present before ClientConfig::builder().
+    let _ = rustls::crypto::ring::default_provider().install_default();
+
     let mut roots = RootCertStore::empty();
     let certs = rustls_native_certs::load_native_certs();
 
