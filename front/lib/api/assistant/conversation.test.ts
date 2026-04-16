@@ -1187,7 +1187,6 @@ describe("postUserMessage", () => {
   let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
   let conversation: ConversationType;
   let agentConfig1: LightAgentConfigurationType;
-  let agentConfig2: LightAgentConfigurationType;
 
   beforeEach(async () => {
     const setup = await createResourceTest({});
@@ -1197,11 +1196,6 @@ describe("postUserMessage", () => {
     agentConfig1 = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent 1",
       description: "First test agent",
-    });
-
-    agentConfig2 = await AgentConfigurationFactory.createTestAgent(auth, {
-      name: "Test Agent 2",
-      description: "Second test agent",
     });
 
     const conversationWithoutContent = await ConversationFactory.create(auth, {
