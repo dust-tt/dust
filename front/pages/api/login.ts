@@ -18,6 +18,7 @@ import { getUserFromSession } from "@app/lib/iam/session";
 import { createOrUpdateUser, fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { readAnonymousIdFromCookies } from "@app/lib/utils/anonymous_id";
 import type { UTMParams } from "@app/lib/utils/utm";
@@ -89,6 +90,22 @@ async function handler(
 
   // Login flow: the first step is to attempt to find the user.
   const nullableUser = await fetchUserFromSession(session);
+  if (nullableUser) {
+    // Should never happen - if we have stale data in the cache, send a panic log.
+    const fetchedUser = await UserResource.fetchById(nullableUser.sId);
+    if (!fetchedUser) {
+      logger.error(
+        {
+          workOSUserId: nullableUser.workOSUserId,
+          panic: true,
+        },
+        "User not found in database, but found in cache. Flush redis cache for this workOSUserId."
+      );
+      res.status(401).end();
+      return;
+    }
+  }
+
   const { created: userCreated, user } = await createOrUpdateUser({
     user: nullableUser,
     externalUser: session.user,

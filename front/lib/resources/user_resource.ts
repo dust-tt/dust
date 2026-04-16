@@ -536,6 +536,10 @@ export class UserResource extends BaseResource<UserModel> {
         transaction,
       });
 
+      if (this.workOSUserId) {
+        await UserResource.invalidateUserByWorkOSIdCache(this.workOSUserId);
+      }
+
       return new Ok(undefined);
     } catch (err) {
       return new Err(normalizeError(err));
@@ -552,6 +556,10 @@ export class UserResource extends BaseResource<UserModel> {
         },
         transaction,
       });
+
+      if (this.workOSUserId) {
+        await UserResource.invalidateUserByWorkOSIdCache(this.workOSUserId);
+      }
 
       return new Ok(undefined);
     } catch (err) {
