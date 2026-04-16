@@ -415,7 +415,11 @@ function buildDecorations(
   const schema = state.schema;
 
   for (const [suggestionId, suggestion] of suggestions) {
-    const isHighlighted = suggestionId === highlightedId;
+    // Support prefix matching: a highlightedId of "abc" highlights both "abc" and "abc:0", "abc:1", etc.
+    const isHighlighted =
+      highlightedId !== null &&
+      (suggestionId === highlightedId ||
+        suggestionId.startsWith(highlightedId + ":"));
     const applyBlockHighlight = showBlockHighlight && isHighlighted;
 
     for (const op of suggestion.operations) {

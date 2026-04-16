@@ -14,7 +14,13 @@ import { useCallback } from "react";
 import { useFormContext } from "react-hook-form";
 
 export function SkillBuilderSuggestionsPanel() {
-  const { owner, skillId } = useSkillBuilderContext();
+  const {
+    owner,
+    skillId,
+    selectedSuggestionId,
+    setSelectedSuggestionId,
+    acceptInstructionEdits,
+  } = useSkillBuilderContext();
   const { getValues, setValue } = useFormContext<SkillBuilderFormData>();
 
   const getSkillInstructionsHtml = useCallback(
@@ -115,22 +121,44 @@ export function SkillBuilderSuggestionsPanel() {
     async (suggestion: SkillSuggestionType) => {
       const result = await patchSuggestions([suggestion.sId], "approved");
       if (result) {
-        applyInstructionEdits(suggestion);
+        if (acceptInstructionEdits) {
+          acceptInstructionEdits(suggestion.sId);
+        } else {
+          applyInstructionEdits(suggestion);
+        }
         applyToolEdits(suggestion);
+        setSelectedSuggestionId(null);
         await mutateSuggestions();
       }
     },
-    [patchSuggestions, mutateSuggestions, applyInstructionEdits, applyToolEdits]
+    [
+      patchSuggestions,
+      mutateSuggestions,
+      acceptInstructionEdits,
+      applyInstructionEdits,
+      applyToolEdits,
+      setSelectedSuggestionId,
+    ]
   );
 
   const handleDecline = useCallback(
     async (suggestion: SkillSuggestionType) => {
       const result = await patchSuggestions([suggestion.sId], "rejected");
       if (result) {
+        setSelectedSuggestionId(null);
         await mutateSuggestions();
       }
     },
-    [patchSuggestions, mutateSuggestions]
+    [patchSuggestions, mutateSuggestions, setSelectedSuggestionId]
+  );
+
+  const handleSelect = useCallback(
+    (suggestionId: string) => {
+      setSelectedSuggestionId(
+        selectedSuggestionId === suggestionId ? null : suggestionId
+      );
+    },
+    [selectedSuggestionId, setSelectedSuggestionId]
   );
 
   return (
@@ -166,6 +194,8 @@ export function SkillBuilderSuggestionsPanel() {
                 onAccept={handleAccept}
                 onDecline={handleDecline}
                 getSkillInstructionsHtml={getSkillInstructionsHtml}
+                isSelected={selectedSuggestionId === suggestion.sId}
+                onSelect={() => handleSelect(suggestion.sId)}
               />
             ))
           )}

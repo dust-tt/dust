@@ -41,7 +41,6 @@ import {
   ContentMessage,
   cn,
   InformationCircleIcon,
-  LightbulbIcon,
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
@@ -180,15 +179,8 @@ export default function SkillBuilder({
     void form.handleSubmit(handleSubmit)();
   };
 
-  const [isSuggestionsPanelOpen, setIsSuggestionsPanelOpen] = useState(false);
-
-  useEffect(() => {
-    if (hasPendingSuggestions) {
-      setIsSuggestionsPanelOpen(true);
-    }
-  }, [hasPendingSuggestions]);
-
-  const showSuggestionsPanel = skill && !isMobile && hasReinforcedAgents;
+  const showSuggestionsPanel =
+    skill && !isMobile && hasReinforcedAgents && hasPendingSuggestions;
 
   const leftPanel = (
     <div className="flex h-full w-full flex-col">
@@ -206,21 +198,6 @@ export default function SkillBuilder({
         }
         rightActions={
           <div className="flex items-center gap-2">
-            {showSuggestionsPanel && (
-              <Button
-                icon={LightbulbIcon}
-                size="sm"
-                variant={
-                  isSuggestionsPanelOpen ? "highlight" : "ghost-secondary"
-                }
-                tooltip={
-                  isSuggestionsPanelOpen
-                    ? "Hide suggestions"
-                    : "Show suggestions"
-                }
-                onClick={() => setIsSuggestionsPanelOpen((prev) => !prev)}
-              />
-            )}
             <BarHeader.ButtonBar variant="close" onClose={handleCancel} />
           </div>
         }
@@ -305,16 +282,14 @@ export default function SkillBuilder({
                   </div>
                 </ResizablePanel>
 
-                {isSuggestionsPanelOpen && (
-                  <>
-                    <ResizableHandle withHandle />
-                    <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
-                      <div className="h-full w-full overflow-y-auto">
-                        <SkillBuilderSuggestionsPanel />
-                      </div>
-                    </ResizablePanel>
-                  </>
-                )}
+                <>
+                  <ResizableHandle withHandle />
+                  <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
+                    <div className="h-full w-full overflow-y-auto">
+                      <SkillBuilderSuggestionsPanel />
+                    </div>
+                  </ResizablePanel>
+                </>
               </ResizablePanelGroup>
             ) : (
               leftPanel

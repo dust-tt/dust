@@ -131,6 +131,8 @@ interface SkillSuggestionCardProps {
   onAccept: (suggestion: SkillSuggestionType) => void;
   onDecline: (suggestion: SkillSuggestionType) => void;
   getSkillInstructionsHtml: () => string;
+  isSelected: boolean;
+  onSelect: () => void;
 }
 
 export function SkillSuggestionCard({
@@ -138,55 +140,62 @@ export function SkillSuggestionCard({
   onAccept,
   onDecline,
   getSkillInstructionsHtml,
+  isSelected,
+  onSelect,
 }: SkillSuggestionCardProps) {
   const { instructionEdits, toolEdits } = suggestion.suggestion;
 
   return (
-    <Card variant="primary" size="md" className="flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
-        <span className="heading-base text-foreground dark:text-foreground-night">
-          Suggestion
-        </span>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            label="Decline"
-            onClick={() => onDecline(suggestion)}
-          />
-          <Button
-            variant="highlight"
-            size="sm"
-            label="Accept"
-            onClick={() => onAccept(suggestion)}
-          />
-        </div>
-      </div>
-
-      {suggestion.analysis && (
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          {suggestion.analysis}
-        </p>
-      )}
-
-      {toolEdits && toolEdits.length > 0 && (
-        <ToolEditsSection toolEdits={toolEdits} />
-      )}
-
-      {instructionEdits && instructionEdits.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-            Instruction changes
+    <div
+      className={`cursor-pointer rounded-xl transition-shadow ${isSelected ? "ring-2 ring-highlight-300 dark:ring-highlight-300-night" : ""}`}
+      onClick={onSelect}
+    >
+      <Card variant="primary" size="md" className="flex-col gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="heading-base text-foreground dark:text-foreground-night">
+            Suggestion
           </span>
-          {instructionEdits.map((edit, index) => (
-            <InstructionEditDiffBlock
-              key={index}
-              edit={edit}
-              getSkillInstructionsHtml={getSkillInstructionsHtml}
+          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="outline"
+              size="sm"
+              label="Decline"
+              onClick={() => onDecline(suggestion)}
             />
-          ))}
+            <Button
+              variant="highlight"
+              size="sm"
+              label="Accept"
+              onClick={() => onAccept(suggestion)}
+            />
+          </div>
         </div>
-      )}
-    </Card>
+
+        {suggestion.analysis && (
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            {suggestion.analysis}
+          </p>
+        )}
+
+        {toolEdits && toolEdits.length > 0 && (
+          <ToolEditsSection toolEdits={toolEdits} />
+        )}
+
+        {instructionEdits && instructionEdits.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+              Instruction changes
+            </span>
+            {instructionEdits.map((edit, index) => (
+              <InstructionEditDiffBlock
+                key={index}
+                edit={edit}
+                getSkillInstructionsHtml={getSkillInstructionsHtml}
+              />
+            ))}
+          </div>
+        )}
+      </Card>
+    </div>
   );
 }
