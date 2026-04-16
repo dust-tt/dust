@@ -146,7 +146,7 @@ export async function deleteReinforcementWorkspaceSchedule({
 // Ensure schedules (start missing, stop extra)
 // ---------------------------------------------------------------------------
 
-export const ENSURE_SCHEDULES_WORKFLOW_ID = `ensure-${WORKSPACE_WORKFLOW_ID_PREFIX}schedules`;
+export const ENSURE_REINFORCEMENT_SCHEDULES_WORKFLOW_ID = `ensure-${WORKSPACE_WORKFLOW_ID_PREFIX}schedules`;
 
 /**
  * Ensure all flagged workspaces have a running schedule and delete schedules
@@ -255,18 +255,23 @@ export async function launchEnsureReinforcementSchedulesWorkflow(): Promise<
     await client.workflow.start(ensureReinforcementWorkspaceSchedulesWorkflow, {
       args: [],
       taskQueue: QUEUE_NAME,
-      workflowId: ENSURE_SCHEDULES_WORKFLOW_ID,
+      workflowId: ENSURE_REINFORCEMENT_SCHEDULES_WORKFLOW_ID,
       cronSchedule: `0 ${utcHour} * * *`,
     });
 
     logger.info(
-      { region, timezone, utcHour, workflowId: ENSURE_SCHEDULES_WORKFLOW_ID },
+      {
+        region,
+        timezone,
+        utcHour,
+        workflowId: ENSURE_REINFORCEMENT_SCHEDULES_WORKFLOW_ID,
+      },
       "[Reinforcement] Launched ensure-schedules workflow."
     );
   } catch (e) {
     if (e instanceof WorkflowExecutionAlreadyStartedError) {
       logger.info(
-        { workflowId: ENSURE_SCHEDULES_WORKFLOW_ID },
+        { workflowId: ENSURE_REINFORCEMENT_SCHEDULES_WORKFLOW_ID },
         "[Reinforcement] Ensure-schedules workflow already running, skipping."
       );
     } else {
@@ -274,24 +279,26 @@ export async function launchEnsureReinforcementSchedulesWorkflow(): Promise<
     }
   }
 
-  return new Ok(ENSURE_SCHEDULES_WORKFLOW_ID);
+  return new Ok(ENSURE_REINFORCEMENT_SCHEDULES_WORKFLOW_ID);
 }
 
 export async function stopEnsureReinforcementSchedulesWorkflow(): Promise<void> {
   const client = await getTemporalClientForFrontNamespace();
 
   try {
-    const handle = client.workflow.getHandle(ENSURE_SCHEDULES_WORKFLOW_ID);
+    const handle = client.workflow.getHandle(
+      ENSURE_REINFORCEMENT_SCHEDULES_WORKFLOW_ID
+    );
     await handle.terminate("Stopped via CLI");
   } catch (e) {
     if (e instanceof WorkflowNotFoundError) {
       logger.info(
-        { workflowId: ENSURE_SCHEDULES_WORKFLOW_ID },
+        { workflowId: ENSURE_REINFORCEMENT_SCHEDULES_WORKFLOW_ID },
         "[Reinforcement] Ensure-schedules workflow not running, skipping."
       );
     } else {
       logger.error(
-        { error: e, workflowId: ENSURE_SCHEDULES_WORKFLOW_ID },
+        { error: e, workflowId: ENSURE_REINFORCEMENT_SCHEDULES_WORKFLOW_ID },
         "[Reinforcement] Failed stopping ensure-schedules workflow."
       );
     }
