@@ -61,6 +61,26 @@ describe("TakeawaysResource", () => {
       expect(updated.notableFacts[0].text).toBe("A notable fact");
     });
 
+    it("should throw when called with a different workspace's auth", async () => {
+      const takeaway = await TakeawaysFactory.create(auth, space);
+      const otherSetup = await createResourceTest({ role: "user" });
+
+      await expect(
+        takeaway.updateWithVersion(otherSetup.authenticator, {
+          actionItems: [],
+          notableFacts: [
+            {
+              sId: "fact_cross",
+              text: "Cross-tenant fact",
+              relevantUserIds: [],
+              sourceMessageRank: 1,
+            },
+          ],
+          keyDecisions: [],
+        })
+      ).rejects.toThrow("Workspace mismatch");
+    });
+
     it("should allow multiple successive updates", async () => {
       const takeaway = await TakeawaysFactory.create(auth, space);
 
