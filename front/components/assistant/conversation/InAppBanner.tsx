@@ -1,3 +1,4 @@
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { Button, XMarkIcon } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
@@ -37,7 +38,11 @@ function SteeringBanner({
       transition={{ duration: 0.1, ease: "easeIn" }}
       exit={{ opacity: 0, translateY: "120%" }}
       className="relative z-10 mx-2 mb-2 hidden max-w-[300px] cursor-pointer flex-col rounded-2xl border border-border-dark bg-white shadow-md dark:border-border-night dark:bg-background-night sm:flex"
-      onClick={onLearnMore}
+      onClick={withTracking(
+        TRACKING_AREAS.CONVERSATION,
+        "cta_steering_banner",
+        onLearnMore
+      )}
     >
       <div className="relative overflow-hidden rounded-t-2xl">
         <img
@@ -67,7 +72,11 @@ function SteeringBanner({
           variant="highlight"
           size="xs"
           label="Learn more"
-          onClick={onLearnMore}
+          onClick={withTracking(
+            TRACKING_AREAS.CONVERSATION,
+            "cta_steering_banner",
+            onLearnMore
+          )}
         />
       </div>
     </motion.div>
