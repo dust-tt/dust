@@ -33,10 +33,16 @@ export class WorkspaceFactory {
     planCode: string,
     overrides?: WorkspaceOverrides
   ): Promise<WorkspaceType> {
+    const workspaceDescription =
+      `[DEBUG] ${expect.getState().currentTestName}\n\n${faker.company.catchPhrase()}`.slice(
+        0,
+        255
+      );
+
     const workspace = await WorkspaceModel.create({
       sId: generateRandomModelSId(),
       name: faker.company.name(),
-      description: `[DEBUG] ${expect.getState().currentTestName}\n\n${faker.company.catchPhrase()}`,
+      description: workspaceDescription,
       workOSOrganizationId: faker.string.alpha(10),
       ...(overrides?.whiteListedProviders !== undefined && {
         whiteListedProviders: overrides.whiteListedProviders,
