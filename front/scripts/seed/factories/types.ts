@@ -37,6 +37,7 @@ export interface SkillAsset {
   agentFacingDescription: string;
   userFacingDescription: string;
   instructions: string;
+  instructionsHtml: string;
 }
 
 export interface SkillSuggestionAsset {

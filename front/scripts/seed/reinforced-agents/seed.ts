@@ -9,7 +9,10 @@ makeScript({}, async ({ execute }, logger) => {
   // Enable the reinforced_agents feature flag
   logger.info("Enabling reinforced_agents feature flag...");
   if (execute) {
-    await FeatureFlagResource.enableMany(ctx.workspace, ["reinforced_agents"]);
+    await FeatureFlagResource.enableMany(ctx.workspace, [
+      "reinforced_agents",
+      "reinforcement_ui",
+    ]);
     logger.info("Feature flag enabled");
   }
 
