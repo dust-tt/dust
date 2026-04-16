@@ -84,6 +84,13 @@ import { startActiveObservation } from "@langfuse/tracing";
 import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
 
+const ASK_USER_QUESTION_ALLOWED_ORIGINS: UserMessageOrigin[] = [
+  "web",
+  "slack",
+  "extension",
+  "agent_sidekick",
+];
+
 // Concatenate two content strings, ensuring at least one whitespace character
 // between them when both are non-empty. This prevents words from being glued
 // together across successive LLM calls.
@@ -288,11 +295,6 @@ export async function runModel(
   }
 
   // Filter out ask_user_question for origins that don't support interactive questions.
-  const ASK_USER_QUESTION_ALLOWED_ORIGINS: UserMessageOrigin[] = [
-    "web",
-    "slack",
-    "agent_sidekick",
-  ];
   const filteredMcpActions = !ASK_USER_QUESTION_ALLOWED_ORIGINS.includes(
     userMessage.context.origin
   )
