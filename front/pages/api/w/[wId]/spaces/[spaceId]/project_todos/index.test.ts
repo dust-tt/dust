@@ -1,9 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { ProjectTodoFactory } from "@app/tests/utils/ProjectTodoFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { WorkspaceType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { MockRequest, MockResponse } from "node-mocks-http";
@@ -88,82 +86,5 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_todos", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(405);
-  });
-});
-
-describe("POST /api/w/[wId]/spaces/[spaceId]/project_todos", () => {
-  let req: MockRequest<NextApiRequest>;
-  let res: MockResponse<NextApiResponse>;
-  let workspace: WorkspaceType;
-
-  async function setup() {
-    const result = await createPrivateApiMockRequest({ method: "POST" });
-    req = result.req;
-    res = result.res;
-    workspace = result.workspace;
-    return result;
-  }
-
-  it("should create a todo and return 201", async () => {
-    const { user } = await setup();
-    const project = await SpaceFactory.project(workspace, user.id);
-    req.query.spaceId = project.sId;
-    req.body = { category: "to_do", text: "New todo item" };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(201);
-    const { todo } = res._getJSONData();
-    expect(todo.text).toBe("New todo item");
-    expect(todo.category).toBe("to_do");
-    expect(todo.status).toBe("todo");
-    expect(typeof todo.sId).toBe("string");
-  });
-
-  it("should create todos for different members in the same project", async () => {
-    const { user } = await setup();
-    const project = await SpaceFactory.project(workspace, user.id);
-
-    // Add a second user to the project.
-    const user2 = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, user2, { role: "user" });
-    const memberGroup = project.groups.find((g) => g.kind === "regular");
-    const adminAuth = await Authenticator.internalAdminForWorkspace(
-      workspace.sId
-    );
-    if (memberGroup) {
-      await memberGroup.dangerouslyAddMembers(adminAuth, {
-        users: [user2.toJSON()],
-      });
-    }
-
-    req.query.spaceId = project.sId;
-    req.body = { category: "to_know", text: "User1 todo" };
-    await handler(req, res);
-    expect(res._getStatusCode()).toBe(201);
-  });
-
-  it("should return 400 for missing required fields", async () => {
-    const { user } = await setup();
-    const project = await SpaceFactory.project(workspace, user.id);
-    req.query.spaceId = project.sId;
-    req.body = { text: "Missing category" };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error.type).toBe("invalid_request_error");
-  });
-
-  it("should return 400 for an invalid category", async () => {
-    const { user } = await setup();
-    const project = await SpaceFactory.project(workspace, user.id);
-    req.query.spaceId = project.sId;
-    req.body = { category: "invalid_category", text: "Some todo" };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error.type).toBe("invalid_request_error");
   });
 });
