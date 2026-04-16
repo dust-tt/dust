@@ -17,7 +17,7 @@ export function formatSkillContext(skill: SkillType): string {
     : "";
 
   const instructionsBlock = skill.instructionsHtml
-    ? `<instructions>${escapeXml(skill.instructionsHtml)}</instructions>`
+    ? `<instructions format="html">${skill.instructionsHtml}</instructions>`
     : "";
 
   return `<skill ID="${escapeXml(skill.sId)}" name="${escapeXml(skill.name)}">${toolsBlock}${descBlock}${instructionsBlock}</skill>`;
