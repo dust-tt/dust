@@ -32,6 +32,21 @@ export function getDescendantBlockIds(
 }
 
 /**
+ * Returns every `data-block-id` present anywhere in serialized instructions HTML.
+ */
+export function getAllBlockIds(instructionsHtml: string): Set<string> {
+  const doc = new JSDOM(instructionsHtml).window.document;
+  const blockIds = new Set<string>();
+  doc.querySelectorAll("[data-block-id]").forEach((element) => {
+    const id = element.getAttribute("data-block-id");
+    if (id) {
+      blockIds.add(id);
+    }
+  });
+  return blockIds;
+}
+
+/**
  * Parses instructions HTML once and returns a map of blockId -> descendant block IDs
  * for the given block IDs. Use this to avoid repeated HTML parsing when checking
  * conflicts for multiple block IDs.

@@ -2,11 +2,16 @@ import { buildDescendantMap } from "@app/lib/editor/instructions_block_conflict"
 import {
   hasSuggestionSelfConflict,
   instructionEditSetsConflict,
+  pruneOutdatedSkillEditSuggestions,
   toolEditSetsConflict,
 } from "@app/lib/reinforcement/skill_suggestion_pruning";
+import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { SkillEditSuggestionType } from "@app/types/suggestions/skill_suggestion";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 const HIERARCHY_HTML = `
   <div data-block-id="section-1">
@@ -302,5 +307,110 @@ describe("hasSuggestionSelfConflict", () => {
         HIERARCHY_HTML
       )
     ).toBe(false);
+  });
+});
+
+describe("pruneOutdatedSkillEditSuggestions", () => {
+  let authenticator: Awaited<
+    ReturnType<typeof createResourceTest>
+  >["authenticator"];
+
+  beforeEach(async () => {
+    ({ authenticator } = await createResourceTest({ role: "admin" }));
+  });
+
+  describe("instruction edits", () => {
+    it("marks a suggestion outdated when its target block no longer exists in the skill", async () => {
+      const skill = await SkillFactory.create(authenticator, {
+        instructionsHtml: '<p data-block-id="block-1">Content.</p>',
+      });
+      const suggestion = await SkillSuggestionFactory.createEdit(
+        authenticator,
+        skill,
+        { suggestion: { instructionEdits: [makeInstructionEdit("block-1")] } }
+      );
+
+      // Simulate the user removing the block by saving a new HTML without it.
+      await skill.updateSkill(authenticator, {
+        name: skill.name,
+        agentFacingDescription: skill.agentFacingDescription,
+        userFacingDescription: skill.userFacingDescription,
+        instructions: skill.instructions,
+        instructionsHtml: '<p data-block-id="block-2">New content.</p>',
+        icon: skill.icon,
+        isDefault: skill.isDefault,
+        mcpServerViews: skill.mcpServerViews,
+        requestedSpaceIds: [],
+        attachedKnowledge: [],
+      });
+
+      await pruneOutdatedSkillEditSuggestions(authenticator, skill);
+
+      const fetched = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.state).toBe("outdated");
+    });
+
+    it("keeps a suggestion pending when its target block still exists", async () => {
+      const skill = await SkillFactory.create(authenticator, {
+        instructionsHtml:
+          '<p data-block-id="block-1">A.</p><p data-block-id="block-2">B.</p>',
+      });
+      const suggestion = await SkillSuggestionFactory.createEdit(
+        authenticator,
+        skill,
+        { suggestion: { instructionEdits: [makeInstructionEdit("block-1")] } }
+      );
+
+      // Save with block-1 still present.
+      await skill.updateSkill(authenticator, {
+        name: skill.name,
+        agentFacingDescription: skill.agentFacingDescription,
+        userFacingDescription: skill.userFacingDescription,
+        instructions: skill.instructions,
+        instructionsHtml:
+          '<p data-block-id="block-1">Updated A.</p><p data-block-id="block-2">B.</p>',
+        icon: skill.icon,
+        isDefault: skill.isDefault,
+        mcpServerViews: skill.mcpServerViews,
+        requestedSpaceIds: [],
+        attachedKnowledge: [],
+      });
+
+      await pruneOutdatedSkillEditSuggestions(authenticator, skill);
+
+      const fetched = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.state).toBe("pending");
+    });
+
+    it("marks a root-rewrite suggestion outdated after any save", async () => {
+      const skill = await SkillFactory.create(authenticator, {
+        instructionsHtml: '<p data-block-id="block-1">Content.</p>',
+      });
+      const suggestion = await SkillSuggestionFactory.createEdit(
+        authenticator,
+        skill,
+        {
+          suggestion: {
+            instructionEdits: [
+              makeInstructionEdit(INSTRUCTIONS_ROOT_TARGET_BLOCK_ID),
+            ],
+          },
+        }
+      );
+
+      await pruneOutdatedSkillEditSuggestions(authenticator, skill);
+
+      const fetched = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.state).toBe("outdated");
+    });
   });
 });

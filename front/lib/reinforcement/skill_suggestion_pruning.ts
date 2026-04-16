@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import {
   buildDescendantMap,
+  getAllBlockIds,
   instructionBlockSetsConflict,
 } from "@app/lib/editor/instructions_block_conflict";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -165,4 +166,56 @@ export async function pruneConflictingSkillEditSuggestions(
     toMarkOutdated,
     "outdated"
   );
+}
+
+/**
+ * Marks pending skill edit suggestions as outdated when they can no longer be applied
+ * to the skill's current state.
+ */
+export async function pruneOutdatedSkillEditSuggestions(
+  auth: Authenticator,
+  skill: SkillResource
+): Promise<void> {
+  const pending = await SkillSuggestionResource.listBySkillConfigurationId(
+    auth,
+    skill.sId,
+    { states: ["pending"], kind: "edit" }
+  );
+  if (pending.length === 0) {
+    return;
+  }
+
+  const currentToolSIds = new Set(skill.mcpServerViews.map((v) => v.sId));
+  const currentBlockIds = skill.instructionsHtml
+    ? getAllBlockIds(skill.instructionsHtml)
+    : new Set<string>();
+
+  const outdated = pending.filter((p) => {
+    const { instructionEdits, toolEdits } = p.toJSON().suggestion;
+
+    for (const edit of toolEdits ?? []) {
+      const cannotApply =
+        edit.action === "add"
+          ? currentToolSIds.has(edit.toolId)
+          : !currentToolSIds.has(edit.toolId);
+      if (cannotApply) {
+        return true;
+      }
+    }
+
+    // We do not do a diff check to determine if the content of a specific instruction block has changed.
+    // Taking this simplification as it is a low impact edge case.
+    for (const edit of instructionEdits ?? []) {
+      if (
+        edit.targetBlockId === INSTRUCTIONS_ROOT_TARGET_BLOCK_ID ||
+        !currentBlockIds.has(edit.targetBlockId)
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  });
+
+  await SkillSuggestionResource.bulkUpdateState(auth, outdated, "outdated");
 }
