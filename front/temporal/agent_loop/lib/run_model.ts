@@ -41,6 +41,7 @@ import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type { DurationRecorder } from "@app/lib/duration_recorder";
 import {
   AgentMessageContentParser,
@@ -365,6 +366,7 @@ export async function runModel(
     workspaceContext = await buildWorkspaceContext(auth);
   }
 
+  const featureFlags = await getFeatureFlags(auth);
   const prompt = constructPromptMultiActions(auth, {
     userMessage,
     agentConfiguration,
@@ -381,6 +383,9 @@ export async function runModel(
     toolsetsContext,
     userContext,
     workspaceContext,
+    disableNativeReasoningMetaPrompt: featureFlags.includes(
+      "disable_claude_native_reasoning_meta_prompt"
+    ),
   });
 
   const specifications: AgentActionSpecification[] = [];

@@ -87,11 +87,13 @@ function constructToolsSection({
   model,
   agentConfiguration,
   serverToolsAndInstructions,
+  disableNativeReasoningMetaPrompt,
 }: {
   hasAvailableActions: boolean;
   model: ModelConfigurationType;
   agentConfiguration: AgentConfigurationType;
   serverToolsAndInstructions?: ServerToolsAndInstructions[];
+  disableNativeReasoningMetaPrompt?: boolean;
 }): string {
   let toolsSection = "# TOOLS\n";
 
@@ -107,6 +109,7 @@ function constructToolsSection({
     toolUseDirectives += `${CHAIN_OF_THOUGHT_META_PROMPT}\n`;
   } else if (
     model.nativeReasoningMetaPrompt &&
+    !disableNativeReasoningMetaPrompt &&
     (agentConfiguration.model.reasoningEffort === "medium" ||
       agentConfiguration.model.reasoningEffort === "high")
   ) {
@@ -383,6 +386,7 @@ export function constructPromptMultiActions(
     toolsetsContext,
     userContext,
     workspaceContext,
+    disableNativeReasoningMetaPrompt,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -399,6 +403,7 @@ export function constructPromptMultiActions(
     toolsetsContext?: string;
     userContext?: string;
     workspaceContext?: string;
+    disableNativeReasoningMetaPrompt?: boolean;
   }
 ): SystemPromptSections {
   const owner = auth.workspace();
@@ -431,6 +436,7 @@ export function constructPromptMultiActions(
     model,
     agentConfiguration,
     serverToolsAndInstructions,
+    disableNativeReasoningMetaPrompt,
   });
   const skillsSection = constructSkillsSection({
     enabledSkills,
