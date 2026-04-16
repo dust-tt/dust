@@ -27,8 +27,8 @@ import {
   ChevronRightIcon,
   cn,
   Icon,
-  StopIcon,
   ToolsIcon,
+  XCircleIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -365,7 +365,9 @@ export function InlineActivitySteps({
               agentMessage.status !== "gracefully_stopped" && (
                 <TimelineRow
                   icon={
-                    agentMessage.status === "cancelled" ? StopIcon : CheckIcon
+                    agentMessage.status === "cancelled"
+                      ? XCircleIcon
+                      : CheckIcon
                   }
                   isLast
                 >

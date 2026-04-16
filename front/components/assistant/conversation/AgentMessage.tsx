@@ -1381,7 +1381,7 @@ function AgentMessageContent({
         {agentMessage.status === "cancelled" && (
           <div className="flex flex-col gap-2">
             <div className="text-sm text-faint dark:text-faint-night">
-              Agent work was cancelled.
+              Message generation stopped by user
             </div>
             <div>
               <ButtonGroupDropdown
