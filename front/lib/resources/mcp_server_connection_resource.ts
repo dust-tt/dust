@@ -4,6 +4,10 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
@@ -68,9 +72,31 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
       workspaceId: auth.getNonNullableWorkspace().id,
       userId: user.id,
     });
-    return new this(MCPServerConnectionModel, server.get(), {
+
+    const resource = new this(MCPServerConnectionModel, server.get(), {
       user,
     });
+
+    void emitAuditLogEvent({
+      auth,
+      action: "mcp_connection.created",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("mcp_connection", {
+          sId: resource.sId,
+          name:
+            resource.internalMCPServerId ??
+            String(resource.remoteMCPServerId ?? "unknown"),
+        }),
+      ],
+      metadata: {
+        connectionType: blob.connectionType ?? "unknown",
+        serverType: resource.internalMCPServerId ? "internal" : "remote",
+        authType: blob.connectionId ? "oauth" : "keypair",
+      },
+    });
+
+    return resource;
   }
 
   // Fetching.
@@ -307,6 +333,17 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
       );
     }
 
+    // Capture fields needed for audit logging before destruction.
+    const auditMetadata = {
+      sId: this.sId,
+      name:
+        this.internalMCPServerId ?? String(this.remoteMCPServerId ?? "unknown"),
+      connectionType: this.connectionType,
+      serverType: this.internalMCPServerId ? "internal" : "remote",
+      authType: this.connectionId ? "oauth" : "keypair",
+      connectionId: this.connectionId,
+    };
+
     try {
       await this.model.destroy({
         where: {
@@ -339,6 +376,45 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
           transaction,
         });
       }
+
+      void emitAuditLogEvent({
+        auth,
+        action: "mcp_connection.deleted",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("mcp_connection", {
+            sId: auditMetadata.sId,
+            name: auditMetadata.name,
+          }),
+        ],
+        metadata: {
+          connectionType: auditMetadata.connectionType,
+          serverType: auditMetadata.serverType,
+          authType: auditMetadata.authType,
+        },
+      });
+
+      // Only emit oauth.revoked for OAuth-based connections, since keypair
+      // connections hold no refresh token to revoke.
+      if (auditMetadata.connectionId) {
+        void emitAuditLogEvent({
+          auth,
+          action: "oauth.revoked",
+          targets: [
+            buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+            buildAuditLogTarget("mcp_connection", {
+              sId: auditMetadata.sId,
+              name: auditMetadata.name,
+            }),
+          ],
+          metadata: {
+            provider: auditMetadata.name,
+            connectionId: auditMetadata.connectionId,
+            connectionType: auditMetadata.connectionType,
+          },
+        });
+      }
+
       return new Ok(undefined);
     } catch (err) {
       return new Err(normalizeError(err));
