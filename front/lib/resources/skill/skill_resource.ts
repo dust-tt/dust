@@ -1390,8 +1390,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     def: GlobalSkillDefinition,
     {
       agentLoopData,
+      transaction,
     }: {
       agentLoopData?: AgentLoopExecutionData;
+      transaction?: Transaction;
     } = {}
   ): Promise<SkillResource> {
     const { agentConfiguration } = agentLoopData ?? {};
@@ -1410,7 +1412,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             await MCPServerViewResource.listMCPServerViewsAutoInternalForSpaces(
               auth,
               name,
-              requestedSpaceModelIds
+              requestedSpaceModelIds,
+              transaction
             );
           return views.map((view) => ({
             view,

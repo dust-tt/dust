@@ -630,42 +630,48 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   static async listByMCPServers(
     auth: Authenticator,
-    mcpServerIds: string[]
+    mcpServerIds: string[],
+    transaction?: Transaction
   ): Promise<MCPServerViewResource[]> {
     const serverTypesAndIds = mcpServerIds.map((mcpServerId) => ({
       ...getServerTypeAndIdFromSId(mcpServerId),
       mcpServerId,
     }));
 
-    return this.baseFetch(auth, {
-      where: {
-        [Op.or]: [
-          {
-            serverType: "internal" as const,
-            internalMCPServerId: {
-              [Op.in]: serverTypesAndIds
-                .filter(({ serverType }) => serverType === "internal")
-                .map(({ mcpServerId }) => mcpServerId),
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          [Op.or]: [
+            {
+              serverType: "internal" as const,
+              internalMCPServerId: {
+                [Op.in]: serverTypesAndIds
+                  .filter(({ serverType }) => serverType === "internal")
+                  .map(({ mcpServerId }) => mcpServerId),
+              },
             },
-          },
-          {
-            serverType: "remote",
-            remoteMCPServerId: {
-              [Op.in]: serverTypesAndIds
-                .filter(({ serverType }) => serverType === "remote")
-                .map(({ id }) => id),
+            {
+              serverType: "remote",
+              remoteMCPServerId: {
+                [Op.in]: serverTypesAndIds
+                  .filter(({ serverType }) => serverType === "remote")
+                  .map(({ id }) => id),
+              },
             },
-          },
-        ],
+          ],
+        },
       },
-    });
+      { transaction }
+    );
   }
 
   static async listByMCPServer(
     auth: Authenticator,
-    mcpServerId: string
+    mcpServerId: string,
+    transaction?: Transaction
   ): Promise<MCPServerViewResource[]> {
-    return this.listByMCPServers(auth, [mcpServerId]);
+    return this.listByMCPServers(auth, [mcpServerId], transaction);
   }
 
   static async getByMCPServerAndSpace(
@@ -723,14 +729,16 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   static async listMCPServerViewsAutoInternalForSpaces(
     auth: Authenticator,
     name: AutoInternalMCPServerNameType,
-    spaceModelIds: ModelId[]
+    spaceModelIds: ModelId[],
+    transaction?: Transaction
   ) {
     const views = await this.listByMCPServer(
       auth,
       autoInternalMCPServerNameToSId({
         name,
         workspaceId: auth.getNonNullableWorkspace().id,
-      })
+      }),
+      transaction
     );
 
     // We include the global space, which is omitted from the requested space IDs of an agent.
