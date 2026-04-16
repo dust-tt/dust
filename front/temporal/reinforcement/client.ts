@@ -1,6 +1,7 @@
 import { config, REGION_TIMEZONES } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import { REINFORCEMENT_EXCLUDED_PLAN_CODES } from "@app/lib/plans/plan_codes";
+import { hasReinforcementEnabled } from "@app/lib/reinforced_agent/workspace_check";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -44,7 +45,9 @@ async function getReinforcementWorkspaceIds(): Promise<string[]> {
         continue;
       }
 
-      flaggedIds.push(workspace.sId);
+      if (await hasReinforcementEnabled(auth)) {
+        flaggedIds.push(workspace.sId);
+      }
     } catch (e) {
       logger.error(
         { error: e, workspaceId: workspace.sId },
