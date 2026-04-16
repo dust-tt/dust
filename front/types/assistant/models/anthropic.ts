@@ -276,7 +276,9 @@ export const CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "medium",
   nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
-  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  // Opus 4.7 uses a new tokenizer (~555k words/1M tokens vs ~750k for anthropic_base).
+  // Ratio: 750/555 ≈ 1.35, applied on top of the base 1.3 adjustment → 1.3 × 1.35 ≈ 1.75.
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT * 1.35,
   supportsPromptCaching: true,
   supportsBatchProcessing: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
