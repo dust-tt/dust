@@ -290,9 +290,9 @@ const config = {
   getOAuthFathomClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_FATHOM_CLIENT_ID");
   },
-  getDevOAuthFathomRedirectBaseUrl: (): string => {
-    return EnvironmentConfig.getEnvVariable(
-      "DEV_OAUTH_FATHOM_REDIRECT_BASE_URL"
+  getDevOAuthRedirectBaseUrl: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "DEV_OAUTH_REDIRECT_BASE_URL"
     );
   },
   getOAuthLinearClientId: (): string => {

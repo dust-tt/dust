@@ -5,6 +5,7 @@ import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   ensurePathExists,
+  followInternalRef,
   hasNoRequiredProperties,
   jsonSchemaHasRequiredDustToolInput,
   setValueAtPath,
@@ -126,6 +127,54 @@ describe("JSON Schema Utilities", () => {
           newKey: "new-value",
         },
       });
+    });
+  });
+
+  describe("followInternalRef", () => {
+    it("follows #/definitions/ refs", () => {
+      const schema: JSONSchema = {
+        type: "object",
+        definitions: {
+          Note: {
+            type: "object",
+            properties: { text: { type: "string" } },
+          },
+        },
+      };
+
+      expect(followInternalRef(schema, "#/definitions/Note")).toEqual({
+        type: "object",
+        properties: { text: { type: "string" } },
+      });
+    });
+
+    it("follows #/$defs/ refs", () => {
+      const schema: JSONSchema = {
+        type: "object",
+        $defs: {
+          Note: {
+            type: "object",
+            properties: { text: { type: "string" } },
+          },
+        },
+      };
+
+      expect(followInternalRef(schema, "#/$defs/Note")).toEqual({
+        type: "object",
+        properties: { text: { type: "string" } },
+      });
+    });
+
+    it("returns null for external refs", () => {
+      const schema: JSONSchema = { type: "object" };
+      expect(
+        followInternalRef(schema, "https://example.com/schema")
+      ).toBeNull();
+    });
+
+    it("returns null when path does not exist", () => {
+      const schema: JSONSchema = { type: "object" };
+      expect(followInternalRef(schema, "#/definitions/Missing")).toBeNull();
     });
   });
 

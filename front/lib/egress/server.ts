@@ -62,11 +62,30 @@ export function createProxyFetch(
   init?: globalThis.RequestInit
 ) => Promise<globalThis.Response> {
   const proxyInit = { dispatcher: agent };
-  // @ts-expect-error The return type uses DOM types (globalThis.Response/RequestInit) because
-  // Next.js exports DOM typings and the MCP SDK's FetchLike expects them. undici's fetch is
-  // structurally compatible at runtime; the mismatch is only that DOM RequestInit lacks
-  // `dispatcher` and undici.Response is a distinct (but equivalent) class.
-  return (input, init) => undiciFetch(input, { ...init, ...proxyInit });
+  return async (input, init) => {
+    // @ts-expect-error - globalThis.RequestInit and undici.RequestInit are structurally
+    // compatible at runtime; the mismatch is only that DOM RequestInit lacks `dispatcher`.
+    const response = await undiciFetch(input, { ...init, ...proxyInit });
+    return toGlobalResponse(response);
+  };
+}
+
+/**
+ * Wraps an undici Response in a globalThis.Response.
+ *
+ * undici's fetch returns its own Response class that is structurally compatible
+ * with the Web API Response but fails `instanceof globalThis.Response` checks.
+ * The MCP SDK relies on `instanceof Response` in parseErrorResponse(), so any
+ * fetch function passed to the SDK must return the global variant.
+ */
+export function toGlobalResponse(r: Response): globalThis.Response {
+  // @ts-expect-error - undici's ReadableStream and globalThis.ReadableStream are
+  // structurally identical at runtime but TypeScript treats them as distinct types.
+  return new globalThis.Response(r.body, {
+    status: r.status,
+    statusText: r.statusText,
+    headers: Object.fromEntries(r.headers.entries()),
+  });
 }
 
 // Fetch helper for trusted, first‑party egress or intra‑VPC calls.
