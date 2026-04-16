@@ -2,7 +2,7 @@ import { switchToMetronomeBillingPlugin } from "@app/lib/api/poke/plugins/worksp
 import { Authenticator } from "@app/lib/auth";
 import { addStripeMetronomeBillingConfig } from "@app/lib/metronome/client";
 import {
-  cancelSubscriptionAtPeriodEnd,
+  cancelSubscriptionImmediatelyNoInvoice,
   getStripeSubscription,
 } from "@app/lib/plans/stripe";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -18,7 +18,7 @@ vi.mock("@app/lib/plans/stripe", async () => {
   return {
     ...actual,
     getStripeSubscription: vi.fn(),
-    cancelSubscriptionAtPeriodEnd: vi.fn(),
+    cancelSubscriptionImmediatelyNoInvoice: vi.fn(),
   };
 });
 
@@ -188,7 +188,7 @@ describe("switchToMetronomeBillingPlugin", () => {
       vi.mocked(addStripeMetronomeBillingConfig).mockResolvedValue(
         new Ok(undefined)
       );
-      vi.mocked(cancelSubscriptionAtPeriodEnd).mockRejectedValue(
+      vi.mocked(cancelSubscriptionImmediatelyNoInvoice).mockRejectedValue(
         new Error("Stripe API error")
       );
 
@@ -223,7 +223,7 @@ describe("switchToMetronomeBillingPlugin", () => {
       vi.mocked(addStripeMetronomeBillingConfig).mockResolvedValue(
         new Ok(undefined)
       );
-      vi.mocked(cancelSubscriptionAtPeriodEnd).mockResolvedValue(true);
+      vi.mocked(cancelSubscriptionImmediatelyNoInvoice).mockResolvedValue(true);
 
       const result = await switchToMetronomeBillingPlugin.execute(
         auth,
@@ -239,14 +239,14 @@ describe("switchToMetronomeBillingPlugin", () => {
       }
 
       // New active subscription has no stripeSubscriptionId, keeps metronomeContractId,
-      // and starts at the Stripe period end date.
+      // and starts now (Stripe is cancelled immediately, not at period end).
       const newSub = await SubscriptionResource.fetchActiveByWorkspaceModelId(
         workspace.id
       );
       expect(newSub).not.toBeNull();
       expect(newSub!.stripeSubscriptionId).toBeNull();
       expect(newSub!.metronomeContractId).toBe(METRONOME_CONTRACT_ID);
-      expect(newSub!.startDate.getTime()).toBe(PERIOD_END_SECONDS * 1000);
+      expect(newSub!.startDate.getTime()).toBeCloseTo(Date.now(), -3);
     });
   });
 });
