@@ -20,7 +20,10 @@ import {
   syncMauCount,
 } from "@app/lib/metronome/mau_sync";
 import { syncSeatCount } from "@app/lib/metronome/seats";
-import { LEGACY_ENTERPRISE_PACKAGE_ALIAS } from "@app/lib/metronome/types";
+import {
+  isSeatBasedMetronomePackageAlias,
+  LEGACY_ENTERPRISE_PACKAGE_ALIAS,
+} from "@app/lib/metronome/types";
 import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
 import { getStripeClient } from "@app/lib/plans/stripe";
 import { countActiveUsersForPeriodInWorkspace } from "@app/lib/plans/usage/mau";
@@ -76,24 +79,13 @@ export async function switchMetronomeContractPackage({
   }
 
   const { contractId: metronomeContractId, startingAt } = contractResult.value;
-
-  const syncFns = [
-    () =>
-      syncSeatCount({
-        metronomeCustomerId,
-        contractId: metronomeContractId,
-        workspace,
-        startingAt,
-      }),
-    () =>
-      syncMauCount({
-        metronomeCustomerId,
-        contractId: metronomeContractId,
-        workspace,
-        startingAt,
-      }),
-  ];
-  await concurrentExecutor(syncFns, (fn) => fn(), { concurrency: 2 });
+  await syncContractQuantities(
+    metronomeCustomerId,
+    metronomeContractId,
+    workspace,
+    startingAt,
+    packageAlias
+  );
 
   return new Ok({ metronomeContractId });
 }
@@ -146,25 +138,13 @@ export async function provisionMetronomeCustomerAndContract({
   }
 
   const { contractId: metronomeContractId, startingAt } = contractResult.value;
-
-  // Provision seats and MAU on the new contract.
-  const syncFns = [
-    () =>
-      syncSeatCount({
-        metronomeCustomerId,
-        contractId: metronomeContractId,
-        workspace,
-        startingAt,
-      }),
-    () =>
-      syncMauCount({
-        metronomeCustomerId,
-        contractId: metronomeContractId,
-        workspace,
-        startingAt,
-      }),
-  ];
-  await concurrentExecutor(syncFns, (fn) => fn(), { concurrency: 2 });
+  await syncContractQuantities(
+    metronomeCustomerId,
+    metronomeContractId,
+    workspace,
+    startingAt,
+    packageAlias
+  );
 
   return new Ok({
     metronomeCustomerId,
@@ -201,6 +181,39 @@ export interface EnterprisePricingCents {
   tiers: StripeTierCents[];
   /** Monthly floor amount in cents (flat_amount on first tier, or unit_amount for FIXED). */
   floorCents: number;
+}
+
+async function syncContractQuantities(
+  metronomeCustomerId: string,
+  metronomeContractId: string,
+  workspace: LightWorkspaceType,
+  startingAt: string,
+  packageAlias: string
+) {
+  const shouldSyncSeats = isSeatBasedMetronomePackageAlias(packageAlias);
+
+  // Provision seats and MAU on the new contract.
+  const syncFns = [
+    ...(shouldSyncSeats
+      ? [
+          () =>
+            syncSeatCount({
+              metronomeCustomerId,
+              contractId: metronomeContractId,
+              workspace,
+              startingAt,
+            }),
+        ]
+      : []),
+    () =>
+      syncMauCount({
+        metronomeCustomerId,
+        contractId: metronomeContractId,
+        workspace,
+        startingAt,
+      }),
+  ];
+  await concurrentExecutor(syncFns, (fn) => fn(), { concurrency: 2 });
 }
 
 /** Extract the MAU threshold number from a billing mode (MAU_1→1, MAU_5→5, MAU_10→10). */

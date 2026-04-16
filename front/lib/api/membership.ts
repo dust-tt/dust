@@ -5,7 +5,10 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
-import { syncSeatCount } from "@app/lib/metronome/seats";
+import {
+  isSeatBasedMetronomeContract,
+  syncSeatCount,
+} from "@app/lib/metronome/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -20,7 +23,7 @@ import type {
   MembershipOriginType,
   MembershipRoleType,
 } from "@app/types/memberships";
-import { Ok, type Result } from "@app/types/shared/result";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 import type {
   ActiveRoleType,
   LightWorkspaceType,
@@ -40,6 +43,20 @@ async function syncSeatCountForWorkspace(
   if (!subscription?.metronomeContractId) {
     return new Ok(undefined);
   }
+
+  const seatBasedResult = await isSeatBasedMetronomeContract({
+    metronomeCustomerId: workspace.metronomeCustomerId,
+    metronomeContractId: subscription.metronomeContractId,
+  });
+
+  if (seatBasedResult.isErr()) {
+    return new Err(seatBasedResult.error);
+  }
+
+  if (!seatBasedResult.value) {
+    return new Ok(undefined);
+  }
+
   return await syncSeatCount({
     metronomeCustomerId: workspace.metronomeCustomerId,
     contractId: subscription.metronomeContractId,

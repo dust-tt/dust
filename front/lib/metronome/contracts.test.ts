@@ -2,18 +2,64 @@ import type { EnterprisePricingCents } from "@app/lib/metronome/contracts";
 import {
   buildEnterpriseOverrides,
   extractEnterprisePricing,
+  provisionMetronomeCustomerAndContract,
+  switchMetronomeContractPackage,
 } from "@app/lib/metronome/contracts";
+import { Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
 import type Stripe from "stripe";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
-const { mockPrices } = vi.hoisted(() => {
+const {
+  mockCreateMetronomeContract,
+  mockCreateMetronomeCustomer,
+  mockFindMetronomeCustomerByAlias,
+  mockPrices,
+  mockScheduleMetronomeContractEnd,
+  mockSyncMauCount,
+  mockSyncSeatCount,
+} = vi.hoisted(() => {
   const mockPrices = { retrieve: vi.fn() };
-  return { mockPrices };
+
+  return {
+    mockCreateMetronomeContract: vi.fn(),
+    mockCreateMetronomeCustomer: vi.fn(),
+    mockFindMetronomeCustomerByAlias: vi.fn(),
+    mockPrices,
+    mockScheduleMetronomeContractEnd: vi.fn(),
+    mockSyncMauCount: vi.fn(),
+    mockSyncSeatCount: vi.fn(),
+  };
 });
+
+vi.mock("@app/lib/metronome/client", () => ({
+  ceilToHourISO: (date: Date) => date.toISOString(),
+  createMetronomeContract: mockCreateMetronomeContract,
+  createMetronomeCustomer: mockCreateMetronomeCustomer,
+  epochSecondsToFloorHourISO: vi.fn(),
+  findMetronomeCustomerByAlias: mockFindMetronomeCustomerByAlias,
+  getMetronomeClient: vi.fn(),
+  scheduleMetronomeContractEnd: mockScheduleMetronomeContractEnd,
+}));
+
+vi.mock("@app/lib/metronome/mau_sync", async () => {
+  const actual = await vi.importActual<
+    typeof import("@app/lib/metronome/mau_sync")
+  >("@app/lib/metronome/mau_sync");
+
+  return {
+    ...actual,
+    syncMauCount: mockSyncMauCount,
+  };
+});
+
+vi.mock("@app/lib/metronome/seats", () => ({
+  syncSeatCount: mockSyncSeatCount,
+}));
 
 vi.mock("@app/lib/plans/stripe", () => ({
   getStripeClient: () => ({ prices: mockPrices }),
@@ -42,6 +88,38 @@ const noopLogger = {
   warn: vi.fn(),
   error: vi.fn(),
 } as any;
+
+const WORKSPACE = {
+  id: 42,
+  sId: "w_123",
+  name: "Workspace",
+} as LightWorkspaceType;
+
+beforeEach(() => {
+  mockPrices.retrieve.mockReset();
+
+  mockFindMetronomeCustomerByAlias.mockReset();
+  mockFindMetronomeCustomerByAlias.mockResolvedValue(new Ok("m-customer"));
+
+  mockCreateMetronomeCustomer.mockReset();
+  mockCreateMetronomeCustomer.mockResolvedValue(
+    new Ok({ metronomeCustomerId: "m-customer" })
+  );
+
+  mockCreateMetronomeContract.mockReset();
+  mockCreateMetronomeContract.mockResolvedValue(
+    new Ok({ contractId: "m-contract", startingAt: START_DATE })
+  );
+
+  mockScheduleMetronomeContractEnd.mockReset();
+  mockScheduleMetronomeContractEnd.mockResolvedValue(new Ok(undefined));
+
+  mockSyncSeatCount.mockReset();
+  mockSyncSeatCount.mockResolvedValue(new Ok(undefined));
+
+  mockSyncMauCount.mockReset();
+  mockSyncMauCount.mockResolvedValue(new Ok(undefined));
+});
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -561,5 +639,84 @@ describe("buildEnterpriseOverrides", () => {
 
     expect(result.recurring_commits![0].access_amount.unit_price).toBe(325000);
     expect(result.custom_fields?.MAU_TIERS).toBe("FLOOR-101-201");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Contract provisioning / switching
+// ---------------------------------------------------------------------------
+
+describe("provisionMetronomeCustomerAndContract", () => {
+  it("syncs seats and MAU for seat-based packages", async () => {
+    const result = await provisionMetronomeCustomerAndContract({
+      workspace: WORKSPACE,
+      stripeCustomerId: "stripe-customer",
+      packageAlias: "legacy-pro-monthly",
+      uniquenessKey: "uniq_123",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockSyncSeatCount).toHaveBeenCalledTimes(1);
+    expect(mockSyncSeatCount).toHaveBeenCalledWith({
+      metronomeCustomerId: "m-customer",
+      contractId: "m-contract",
+      workspace: WORKSPACE,
+      startingAt: START_DATE,
+    });
+    expect(mockSyncMauCount).toHaveBeenCalledTimes(1);
+    expect(mockSyncMauCount).toHaveBeenCalledWith({
+      metronomeCustomerId: "m-customer",
+      contractId: "m-contract",
+      workspace: WORKSPACE,
+      startingAt: START_DATE,
+    });
+  });
+
+  it("skips seats for enterprise packages and still syncs MAU", async () => {
+    const result = await provisionMetronomeCustomerAndContract({
+      workspace: WORKSPACE,
+      stripeCustomerId: "stripe-customer",
+      packageAlias: "legacy-enterprise",
+      uniquenessKey: "uniq_123",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockSyncSeatCount).not.toHaveBeenCalled();
+    expect(mockSyncMauCount).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("switchMetronomeContractPackage", () => {
+  it("syncs seats and MAU for seat-based packages", async () => {
+    const result = await switchMetronomeContractPackage({
+      metronomeCustomerId: "m-customer",
+      oldContractId: "old-contract",
+      workspace: WORKSPACE,
+      packageAlias: "legacy-business",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockScheduleMetronomeContractEnd).toHaveBeenCalledTimes(1);
+    expect(mockSyncSeatCount).toHaveBeenCalledTimes(1);
+    expect(mockSyncSeatCount).toHaveBeenCalledWith({
+      metronomeCustomerId: "m-customer",
+      contractId: "m-contract",
+      workspace: WORKSPACE,
+      startingAt: START_DATE,
+    });
+    expect(mockSyncMauCount).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips seats for enterprise packages and still syncs MAU", async () => {
+    const result = await switchMetronomeContractPackage({
+      metronomeCustomerId: "m-customer",
+      oldContractId: "old-contract",
+      workspace: WORKSPACE,
+      packageAlias: "legacy-enterprise-eur",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockSyncSeatCount).not.toHaveBeenCalled();
+    expect(mockSyncMauCount).toHaveBeenCalledTimes(1);
   });
 });

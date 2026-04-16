@@ -1,10 +1,14 @@
-import { updateSubscriptionQuantity } from "@app/lib/metronome/client";
+import {
+  getMetronomeContractPackageAliases,
+  updateSubscriptionQuantity,
+} from "@app/lib/metronome/client";
 import { getProductWorkspaceSeatId } from "@app/lib/metronome/constants";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
+import { isSeatBasedMetronomePackageAlias } from "@app/lib/metronome/types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
-import { Err } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 
 /**
@@ -25,6 +29,29 @@ async function getSeatSubscriptionId(
       s.subscription_rate.product.id === seatProductId
   );
   return seatSub?.id ?? undefined;
+}
+
+/**
+ * Returns whether Metronome contract belongs to a seat-based package family.
+ * MAU/FIXED enterprise contracts are not seat-based and should not call syncSeatCount.
+ */
+export async function isSeatBasedMetronomeContract({
+  metronomeCustomerId,
+  metronomeContractId,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+}): Promise<Result<boolean, Error>> {
+  const aliasesResult = await getMetronomeContractPackageAliases({
+    metronomeCustomerId,
+    metronomeContractId,
+  });
+
+  if (aliasesResult.isErr()) {
+    return new Err(aliasesResult.error);
+  }
+
+  return new Ok(aliasesResult.value.some(isSeatBasedMetronomePackageAlias));
 }
 
 /**
