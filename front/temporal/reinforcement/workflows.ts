@@ -25,7 +25,7 @@ export const interceptors: WorkflowInterceptorsFactory = () => ({
 const { ensureReinforcementWorkspaceCronsActivity } = proxyActivities<
   typeof activities
 >({
-  startToCloseTimeout: "10 minutes",
+  startToCloseTimeout: "30 minutes",
 });
 
 const { getReinforcementSettingsActivity } = proxyActivities<typeof activities>(
