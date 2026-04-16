@@ -93,11 +93,11 @@ export function SkillBuilderIsDefaultSection() {
                 >
                   The content in&nbsp;
                   <span className="font-semibold">
-                    What will this skill be used for?
-                  </span>&nbsp;
-                  may be too short for agents to clearly understand when to use
-                  this skill. Consider making it a bit more descriptive before
-                  allowing discovery.
+                    What will this skill be used for
+                  </span>
+                  &nbsp;may be too short for agents to clearly understand when
+                  to use this skill. Consider making it a bit more descriptive
+                  before allowing discovery.
                 </ContentMessage>
               )}
             </div>
