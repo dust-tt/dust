@@ -88,8 +88,7 @@ CREATE TABLE wake_ups (
   "cronTimezone"  TEXT,                       -- for cron
   "reason"        TEXT NOT NULL,
   "status"        TEXT NOT NULL DEFAULT 'scheduled',  -- scheduled | fired | cancelled | expired
-  "fireCount"     INTEGER NOT NULL DEFAULT 0,
-  "temporalWorkflowId" TEXT                  -- for cancellation
+  "fireCount"     INTEGER NOT NULL DEFAULT 0
 );
 
 -- Indexes.
