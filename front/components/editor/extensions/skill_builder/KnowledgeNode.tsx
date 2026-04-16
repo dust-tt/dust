@@ -112,11 +112,24 @@ export const KnowledgeNode = Node.create<{}>({
 
           return [];
         },
-        renderHTML: (attributes) => ({
-          "data-selected-items": encodeURIComponent(
-            JSON.stringify(attributes.selectedItems)
-          ),
-        }),
+        renderHTML: (attributes) => {
+          // Strip down to BaseKnowledgeItem fields only to avoid persisting
+          // the full DataSourceViewContentNode which bloats the HTML.
+          const items = (attributes.selectedItems as KnowledgeItem[]).map(
+            (item): BaseKnowledgeItem => ({
+              dataSourceViewId: item.dataSourceViewId,
+              hasChildren: isFullKnowledgeItem(item)
+                ? computeHasChildren(item.node)
+                : item.hasChildren,
+              label: item.label,
+              nodeId: item.nodeId,
+              spaceId: item.spaceId,
+            })
+          );
+          return {
+            "data-selected-items": encodeURIComponent(JSON.stringify(items)),
+          };
+        },
       },
     };
   },
