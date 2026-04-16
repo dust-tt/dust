@@ -13,7 +13,10 @@ import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import { globalCoalescer } from "@app/temporal/agent_loop/lib/event_coalescer";
+import {
+  DEFAULT_EVENT_FLUSH_INTERVAL_MS,
+  globalCoalescer,
+} from "@app/temporal/agent_loop/lib/event_coalescer";
 import type {
   LightAgentConfigurationType,
   ToolErrorEvent,
@@ -37,7 +40,10 @@ import {
   type WhereOptions,
 } from "sequelize";
 
-const DEEP_CONVERSATION_FLUSH_INTERVAL_MS = 1000;
+const SUB_AGENT_FLUSH_INTERVAL_MS = 2 * DEFAULT_EVENT_FLUSH_INTERVAL_MS;
+// Conversations that are more than one level deep will seldom be viewed in real-time.
+const DEEP_CONVERSATION_FLUSH_INTERVAL_MS =
+  10 * DEFAULT_EVENT_FLUSH_INTERVAL_MS;
 
 /**
  * Update in database as well as in-memory agent message.
@@ -388,9 +394,13 @@ export async function updateResourceAndPublishEvent(
 
   // All events go through the coalescer, which handles batching logic internally.
   const key = `${conversation.sId}-${event.messageId}-${step}`;
-  // Flush every DEEP_CONVERSATION_FLUSH_INTERVAL_MS for deep conversations to avoid flooding the Redis stream with events, use the default flush interval for main conversations.
   const flushIntervalMs =
-    conversation.depth > 0 ? DEEP_CONVERSATION_FLUSH_INTERVAL_MS : undefined;
+    conversation.depth > 0
+      ? conversation.depth > 1
+        : DEEP_CONVERSATION_FLUSH_INTERVAL_MS
+        ? SUB_AGENT_FLUSH_INTERVAL_MS
+      : undefined;
+
   await globalCoalescer.handleEvent({
     conversationId: conversation.sId,
     event,
