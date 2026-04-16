@@ -165,4 +165,3 @@ export function convertMarkdownToBlockHtml(markdown: string): string {
 
   return stripPresentationAttributes(rendered);
 }
-
