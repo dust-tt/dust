@@ -15,7 +15,7 @@ export function PrivateConversationUrlsToggle({
   return (
     <ContextItem
       title="Private conversation URLs by default"
-      subElement="Restrict conversation URL access to participants and workspace admins by default"
+      subElement="Restrict conversation URL access to participants only by default"
       visual={<LockIcon className="h-6 w-6" />}
       hasSeparatorIfLast={true}
       action={
