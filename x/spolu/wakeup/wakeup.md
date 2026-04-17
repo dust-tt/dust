@@ -75,7 +75,6 @@ delays ("in 2 hours"), absolute times ("at 2026-04-16T16:00Z"), and cron pattern
 ```sql
 CREATE TABLE wake_ups (
   id              BIGSERIAL PRIMARY KEY,
-  "sId"           TEXT NOT NULL UNIQUE,
   "createdAt"     TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   "updatedAt"     TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   "workspaceId"   BIGINT NOT NULL REFERENCES workspaces(id),
@@ -234,7 +233,7 @@ Per-conversation limits (enforced at `schedule_wakeup` action time):
 
 | Guardrail                      | Default | Rationale                          |
 |--------------------------------|---------|------------------------------------|
-| Max active wake-ups / conv     | 3       | Prevent runaway scheduling         |
+| Max active wake-ups / conv     | 1       | One wake-up at a time per conv     |
 | Min interval between fires     | 5 min   | Prevent tight polling loops        |
 | Max cron fires                 | 512     | Prevent unbounded recurring runs   |
 | Max cron lifetime              | None    | Need ability to keep a frame green |
@@ -313,7 +312,9 @@ When a wake-up fires:
    the deletion logic cancels all active wake-ups (Temporal workflows/schedules) and deletes the
    `WakeUpModel` rows explicitly.
 
-3. **Wake-up message content**: To be figured out during implementation.
+3. **Wake-up message content**: Exact format to be figured out during implementation. The message
+   should include a `<dust_system>` contextual block explaining that this is a wake-up, followed
+   by the reason provided by the agent when scheduling it.
 
 4. **Billing**: Wake-up fires count as programmatic usage, same treatment as trigger-fired
    messages.
