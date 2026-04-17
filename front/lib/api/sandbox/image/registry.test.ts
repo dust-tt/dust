@@ -58,7 +58,7 @@ describe("sandbox image registry", () => {
   test("adds the PR1 base-image primitives to the sandbox bedrock Dockerfile", () => {
     const dockerfile = getSandboxBedrockDockerfile();
 
-    expect(dockerfile).toContain("netcat-openbsd iptables acl");
+    expect(dockerfile).toContain("netcat-openbsd nftables acl");
     expect(dockerfile).toContain(
       "useradd --system --no-create-home --uid 9990 --shell /usr/sbin/nologin dust-fwd"
     );
@@ -77,7 +77,7 @@ describe("sandbox image registry", () => {
       });
       expect(imageResult.value.imageId).toEqual({
         imageName: "dust-base",
-        tag: "0.7.7",
+        tag: "0.7.8",
       });
     }
   });
@@ -103,47 +103,45 @@ describe("sandbox image registry", () => {
     );
   });
 
-  test("copies the boot-time iptables script and enables its systemd unit", () => {
+  test("copies the build-time nftables script and executes it during image assembly", () => {
     const operations = getDustBaseImageOperations();
     const runCommands = getRunCommands(operations);
     const copyOperations = getCopyOperations(operations);
-    const iptablesScript = getCopiedContent(
+    const nftablesScript = getCopiedContent(
       copyOperations,
-      "/etc/dust/egress-iptables.sh"
-    );
-    const serviceUnit = getCopiedContent(
-      copyOperations,
-      "/etc/systemd/system/dust-egress-iptables.service"
+      "/etc/dust/egress-nftables.sh"
     );
 
     expect(runCommands).toEqual(
       expect.arrayContaining([
-        "chmod 755 /etc/dust/egress-iptables.sh",
-        "systemctl daemon-reload && systemctl enable dust-egress-iptables.service",
+        "chmod 755 /etc/dust/egress-nftables.sh && /etc/dust/egress-nftables.sh",
       ])
     );
 
-    expect(runCommands.join("\n")).not.toContain("iptables -t nat -A OUTPUT");
+    expect(runCommands.join("\n")).not.toContain("systemctl enable");
+    expect(runCommands.join("\n")).not.toContain("iptables");
 
-    expect(iptablesScript).toContain(
-      'iptables -t nat -A OUTPUT -m owner --uid-owner "$PROXIED_UID" -d 127.0.0.0/8 -j RETURN'
+    expect(nftablesScript).toContain("nft add table ip dust-egress");
+    expect(nftablesScript).toContain(
+      "nft add chain ip dust-egress nat_output '{ type nat hook output priority -100 ; policy accept ; }'"
     );
-    expect(iptablesScript).toContain(
-      'iptables -t nat -A OUTPUT -m owner --uid-owner "$PROXIED_UID" -p tcp -j REDIRECT --to-ports 9990'
+    expect(nftablesScript).toContain(
+      "nft add chain ip dust-egress filter_output '{ type filter hook output priority 0 ; policy accept ; }'"
     );
-    expect(iptablesScript).toContain(
-      'iptables -A OUTPUT -m owner --uid-owner "$PROXIED_UID" -p udp --dport 53 -d "$NS" -j ACCEPT'
+    expect(nftablesScript).toContain(
+      "nft add rule ip dust-egress nat_output meta skuid $PROXIED_UID ip daddr 127.0.0.0/8 return"
     );
-    expect(iptablesScript).toContain(
-      'iptables -A OUTPUT -m owner --uid-owner "$PROXIED_UID" -d 169.254.169.254/32 -j DROP'
+    expect(nftablesScript).toContain(
+      "nft add rule ip dust-egress nat_output meta skuid $PROXIED_UID tcp dport != 0 redirect to :9990"
     );
-    expect(iptablesScript).toContain(
-      'ip6tables -A OUTPUT -m owner --uid-owner "$PROXIED_UID" -j DROP'
+    expect(nftablesScript).toContain(
+      'nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID udp dport 53 ip daddr "$NS" accept'
     );
-
-    expect(serviceUnit).toContain("Type=oneshot");
-    expect(serviceUnit).toContain("RemainAfterExit=yes");
-    expect(serviceUnit).toContain("ExecStart=/etc/dust/egress-iptables.sh");
-    expect(serviceUnit).toContain("WantedBy=multi-user.target");
+    expect(nftablesScript).toContain(
+      "nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 169.254.169.254 drop"
+    );
+    expect(nftablesScript).toContain(
+      "nft add rule ip6 dust-egress filter_output meta skuid $PROXIED_UID drop"
+    );
   });
 });
