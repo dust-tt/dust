@@ -4,7 +4,6 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { ConversationType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
@@ -18,7 +17,7 @@ const PostConversationForkBodySchema = t.partial({
 });
 
 export type PostConversationForkResponseBody = {
-  conversation: ConversationType;
+  conversationId: string;
 };
 
 async function handler(
@@ -112,7 +111,7 @@ async function handler(
   }
 
   return res.status(200).json({
-    conversation: createRes.value,
+    conversationId: createRes.value,
   });
 }
 

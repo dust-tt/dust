@@ -210,7 +210,10 @@ describe("createConversationFork", () => {
       throw result.error;
     }
 
-    const childConversation = result.value;
+    const childConversation = await fetchConversationOrThrow(
+      auth,
+      result.value
+    );
 
     expect(childConversation.title).toBe("Parent conversation (forked)");
     expect(childConversation.spaceId).toBe(globalSpace.sId);
@@ -309,7 +312,12 @@ describe("createConversationFork", () => {
       throw result.error;
     }
 
-    expect(result.value.forkedFrom?.sourceMessageId).toBe(
+    const childConversation = await fetchConversationOrThrow(
+      auth,
+      result.value
+    );
+
+    expect(childConversation.forkedFrom?.sourceMessageId).toBe(
       firstAgentMessage.sId
     );
   });
@@ -413,9 +421,14 @@ describe("createConversationFork", () => {
       throw result.error;
     }
 
-    const childMCPServerViews = await ConversationResource.fetchMCPServerViews(
+    const childConversation = await fetchConversationOrThrow(
       auth,
       result.value
+    );
+
+    const childMCPServerViews = await ConversationResource.fetchMCPServerViews(
+      auth,
+      childConversation
     );
 
     expect(childMCPServerViews).toHaveLength(1);
@@ -471,8 +484,13 @@ describe("createConversationFork", () => {
       throw result.error;
     }
 
+    const childConversation = await fetchConversationOrThrow(
+      auth,
+      result.value
+    );
+
     const childSkills = await SkillResource.listEnabledByConversation(auth, {
-      conversation: result.value,
+      conversation: childConversation,
     });
 
     expect(childSkills).toHaveLength(1);
@@ -536,8 +554,13 @@ describe("createConversationFork", () => {
       throw result.error;
     }
 
+    const childConversation = await fetchConversationOrThrow(
+      auth,
+      result.value
+    );
+
     const childAttachments = await listAttachments(auth, {
-      conversation: result.value,
+      conversation: childConversation,
     });
     const childFileAttachments = childAttachments.filter(isFileAttachmentType);
 
@@ -550,7 +573,7 @@ describe("createConversationFork", () => {
     ]);
     expect(copiedFiles).toHaveLength(1);
     expect(copiedFiles[0]?.useCaseMetadata?.conversationId).toBe(
-      result.value.sId
+      childConversation.sId
     );
     expect(copiedFiles[0]?.snippet).toBe(sourceFile.snippet);
 
@@ -634,8 +657,13 @@ describe("createConversationFork", () => {
       throw result.error;
     }
 
+    const childConversation = await fetchConversationOrThrow(
+      auth,
+      result.value
+    );
+
     const childAttachments = await listAttachments(auth, {
-      conversation: result.value,
+      conversation: childConversation,
     });
     const childFileAttachments = childAttachments.filter(isFileAttachmentType);
 
@@ -707,14 +735,19 @@ describe("createConversationFork", () => {
       throw result.error;
     }
 
-    expect(result.value.requestedSpaceIds).toEqual([
+    const childConversation = await fetchConversationOrThrow(
+      auth,
+      result.value
+    );
+
+    expect(childConversation.requestedSpaceIds).toEqual([
       globalSpace.sId,
       restrictedSpace.sId,
     ]);
 
     const childConversationForOtherUser = await ConversationResource.fetchById(
       otherAuth,
-      result.value.sId
+      childConversation.sId
     );
     expect(childConversationForOtherUser).toBeNull();
   });
