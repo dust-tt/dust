@@ -4,6 +4,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { getConversationUrlAccessMode } from "@app/types/assistant/conversation";
@@ -86,6 +87,53 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]", () => {
       user: user.toJSON(),
       lastReadAt: null,
     });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+  });
+
+  it("returns 200 for project conversations for non-participants when private conversation URLs are enabled", async () => {
+    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+      role: "user",
+      method: "GET",
+    });
+
+    const adminUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, adminUser, { role: "admin" });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminUser.sId,
+      workspace.sId
+    );
+
+    const projectSpace = await SpaceFactory.project(workspace, adminUser.id);
+    const addMemberResult = await projectSpace.addMembers(adminAuth, {
+      userIds: [adminUser.sId, user.sId],
+    });
+    assert(addMemberResult.isOk(), "Failed to add users to project space");
+    const refreshedAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminUser.sId,
+      workspace.sId
+    );
+
+    const conversation = await ConversationFactory.create(refreshedAdminAuth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      requestedSpaceIds: [projectSpace.id],
+      spaceId: projectSpace.id,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
+      privateConversationUrlsByDefault: true,
+    });
+    assert(
+      updateResult.isOk(),
+      "Failed to enable private conversation URLs setting"
+    );
+
+    req.query.wId = workspace.sId;
+    req.query.cId = conversation.sId;
+    req.url = `/api/w/${workspace.sId}/assistant/conversations/${conversation.sId}`;
 
     await handler(req, res);
 
