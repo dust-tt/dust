@@ -1,5 +1,8 @@
 import { postNewContentFragment } from "@app/lib/api/assistant/conversation";
-import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import {
+  isContentNodeAttachmentType,
+  isFileAttachmentType,
+} from "@app/lib/api/assistant/conversation/attachments";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { createUserMessage } from "@app/lib/api/assistant/conversation/messages";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
@@ -14,6 +17,10 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import type {
+  ContentFragmentInputWithContentNode,
+  ContentFragmentInputWithFileIdType,
+} from "@app/types/api/internal/assistant";
 import type {
   ConversationType,
   ConversationWithoutContentType,
@@ -213,7 +220,7 @@ async function createForkInitializationMessage(
   });
 }
 
-async function copyConversationFileAttachments(
+async function carryOverConversationAttachments(
   auth: Authenticator,
   {
     parentConversation,
@@ -224,7 +231,7 @@ async function copyConversationFileAttachments(
     childConversation: ConversationType;
     sourceMessageRank: number;
   }
-): Promise<number> {
+): Promise<void> {
   const parentConversationAtSource = filterConversationContentUpToRank(
     parentConversation,
     sourceMessageRank
@@ -232,45 +239,74 @@ async function copyConversationFileAttachments(
   const attachments = await listAttachments(auth, {
     conversation: parentConversationAtSource,
   });
-  // For now we only carry over direct file attachments that were explicitly posted into the
+  // We carry over direct conversation attachments that were explicitly posted into the
   // conversation. Project-context files remain accessible via the shared project, and agent-
-  // generated files need a separate follow-up because they are not re-attached through content
-  // fragments today.
-  const directConversationFileAttachments = attachments
-    .filter(isFileAttachmentType)
-    .filter(
-      (attachment) =>
-        attachment.source === "user" && !attachment.isInProjectContext
-    );
+  // generated files still need a separate follow-up because they are not re-attached through
+  // content fragments today.
+  const directConversationAttachments = attachments.filter((attachment) => {
+    if (isFileAttachmentType(attachment)) {
+      return attachment.source === "user" && !attachment.isInProjectContext;
+    }
 
-  let copiedAttachmentCount = 0;
-  for (const attachment of directConversationFileAttachments) {
-    const copiedFile = await FileResource.copyToConversation(auth, {
-      sourceId: attachment.fileId,
-      conversationId: childConversation.sId,
-    });
+    return isContentNodeAttachmentType(attachment);
+  });
 
-    if (copiedFile.isErr()) {
-      logger.error(
-        {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          parentConversationId: parentConversation.sId,
-          childConversationId: childConversation.sId,
-          sourceFileId: attachment.fileId,
-          error: copiedFile.error,
-        },
-        "Failed to copy file attachment into forked conversation."
-      );
-      continue;
+  for (const attachment of directConversationAttachments) {
+    let carriedAttachment:
+      | ContentFragmentInputWithFileIdType
+      | ContentFragmentInputWithContentNode;
+    let attachErrorMessage: string;
+    let attachLogMetadata: Record<string, string>;
+
+    if (isFileAttachmentType(attachment)) {
+      const copiedFile = await FileResource.copyToConversation(auth, {
+        sourceId: attachment.fileId,
+        conversationId: childConversation.sId,
+      });
+
+      if (copiedFile.isErr()) {
+        logger.error(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            parentConversationId: parentConversation.sId,
+            childConversationId: childConversation.sId,
+            sourceFileId: attachment.fileId,
+            error: copiedFile.error,
+          },
+          "Failed to copy file attachment into forked conversation."
+        );
+        continue;
+      }
+
+      carriedAttachment = {
+        title: attachment.title,
+        fileId: copiedFile.value.sId,
+      };
+      attachErrorMessage =
+        "Failed to attach copied file into forked conversation.";
+      attachLogMetadata = {
+        sourceFileId: attachment.fileId,
+        copiedFileId: copiedFile.value.sId,
+      };
+    } else {
+      carriedAttachment = {
+        title: attachment.title,
+        nodeId: attachment.nodeId,
+        nodeDataSourceViewId: attachment.nodeDataSourceViewId,
+      };
+      attachErrorMessage =
+        "Failed to reattach content node into forked conversation.";
+      attachLogMetadata = {
+        contentFragmentId: attachment.contentFragmentId,
+        nodeId: attachment.nodeId,
+        nodeDataSourceViewId: attachment.nodeDataSourceViewId,
+      };
     }
 
     const attachmentResult = await postNewContentFragment(
       auth,
       childConversation,
-      {
-        title: attachment.title,
-        fileId: copiedFile.value.sId,
-      },
+      carriedAttachment,
       null
     );
 
@@ -280,19 +316,13 @@ async function copyConversationFileAttachments(
           workspaceId: auth.getNonNullableWorkspace().sId,
           parentConversationId: parentConversation.sId,
           childConversationId: childConversation.sId,
-          sourceFileId: attachment.fileId,
-          copiedFileId: copiedFile.value.sId,
+          ...attachLogMetadata,
           error: attachmentResult.error,
         },
-        "Failed to attach copied file into forked conversation."
+        attachErrorMessage
       );
-      continue;
     }
-
-    copiedAttachmentCount += 1;
   }
-
-  return copiedAttachmentCount;
 }
 
 export async function createConversationFork(
@@ -421,7 +451,7 @@ export async function createConversationFork(
         childConversationId: childConversationId.value.childConversationId,
         error: childConversation.error,
       },
-      "Failed to reload child conversation for fork file attachment copy."
+      "Failed to reload child conversation for fork attachment carryover."
     );
 
     return new Ok(childConversationId.value.childConversationId);
@@ -439,12 +469,12 @@ export async function createConversationFork(
         childConversationId: childConversation.value.sId,
         error: parentConversationWithContent.error,
       },
-      "Failed to reload parent conversation for fork file attachment copy."
+      "Failed to reload parent conversation for fork attachment carryover."
     );
     return new Ok(childConversation.value.sId);
   }
 
-  await copyConversationFileAttachments(auth, {
+  await carryOverConversationAttachments(auth, {
     parentConversation: parentConversationWithContent.value,
     childConversation: childConversation.value,
     sourceMessageRank: childConversationId.value.sourceMessageRank,
