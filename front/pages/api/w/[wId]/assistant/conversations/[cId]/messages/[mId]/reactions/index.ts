@@ -47,7 +47,8 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid query parameters, `cId` (string) and `mId` (string) are required.",
+        message:
+          "Invalid query parameters, `cId` (string) and `mId` (string) are required.",
       },
     });
   }
@@ -67,7 +68,10 @@ async function handler(
   const serializedConversation = conversation.toJSON();
 
   if (isProjectConversation(serializedConversation)) {
-    const space = await SpaceResource.fetchById(auth, serializedConversation.spaceId);
+    const space = await SpaceResource.fetchById(
+      auth,
+      serializedConversation.spaceId
+    );
     if (!space) {
       return apiError(req, res, {
         status_code: 404,
