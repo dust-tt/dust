@@ -403,6 +403,7 @@ export function UserMessage({
                   ) : (
                     <div
                       className={cn(
+                        "min-w-0",
                         isPending &&
                           "text-muted-foreground dark:text-muted-foreground-night"
                       )}
