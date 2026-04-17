@@ -162,7 +162,6 @@ async function handler(
   }
 
   const messageRes = await conversation.getMessageById(auth, mId);
-
   if (messageRes.isErr()) {
     return apiError(req, res, {
       status_code: 404,
