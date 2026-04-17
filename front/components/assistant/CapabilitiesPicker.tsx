@@ -74,7 +74,7 @@ function CapabilitiesPickerLoading({ count = 5 }: { count?: number }) {
 interface SkillMenuItemProps {
   skill: SkillWithoutToolsType;
   onSelect: (skill: SkillWithoutToolsType) => void;
-  onDetails: (skillSId: string) => void;
+  onDetails: (skillId: string) => void;
   closeDropdown: () => void;
 }
 
