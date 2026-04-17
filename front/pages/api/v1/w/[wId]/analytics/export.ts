@@ -2,8 +2,8 @@
  * @swagger
  * /api/v1/w/{wId}/analytics/export:
  *   get:
- *     summary: Export workspace analytics as CSV
- *     description: Export analytics data for the workspace identified by {wId} in CSV format.
+ *     summary: Export workspace analytics
+ *     description: Export analytics data for the workspace identified by {wId} in CSV or JSON format.
  *     tags:
  *       - Workspace
  *     security:
@@ -51,13 +51,25 @@
  *         description: IANA timezone name (defaults to UTC)
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: format
+ *         required: false
+ *         description: Output format (defaults to csv)
+ *         schema:
+ *           type: string
+ *           enum: [csv, json]
  *     responses:
  *       200:
- *         description: The analytics data in CSV format
+ *         description: The analytics data in CSV or JSON format
  *         content:
  *           text/csv:
  *             schema:
  *               type: string
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
  *       400:
  *         description: Invalid request query parameters
  *       403:
@@ -72,11 +84,12 @@ import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { GetAnalyticsExportRequestSchema } from "@dust-tt/client";
+import { parse as parseCSV } from "csv-parse/sync";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<string>>,
+  res: NextApiResponse<WithAPIErrorResponse<string | Record<string, string>[]>>,
   auth: Authenticator
 ): Promise<void> {
   if (!auth.isKey() || !auth.isBuilder()) {
@@ -92,12 +105,13 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { table, startDate, endDate, timezone } = req.query;
+      const { table, startDate, endDate, timezone, format } = req.query;
       const q = GetAnalyticsExportRequestSchema.safeParse({
         table,
         startDate,
         endDate,
         timezone,
+        format,
       });
       if (!q.success) {
         return apiError(req, res, {
@@ -126,6 +140,15 @@ async function handler(
             message: csv.error.message,
           },
         });
+      }
+
+      if (q.data.format === "json") {
+        const records = parseCSV<Record<string, string>>(csv.value, {
+          columns: true,
+          skip_empty_lines: true,
+        });
+        res.setHeader("Content-Type", "application/json");
+        return res.status(200).json(records);
       }
 
       res.setHeader("Content-Type", "text/csv");
