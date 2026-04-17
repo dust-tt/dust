@@ -47,7 +47,6 @@ export const SlashCommandDropdown = forwardRef<
 >(({ items, command, clientRect, onClose }, ref) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
-  const selectedItemRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
   const [virtualTriggerStyle, setVirtualTriggerStyle] =
     useState<React.CSSProperties>({});
@@ -99,13 +98,6 @@ export const SlashCommandDropdown = forwardRef<
   useEffect(() => {
     setSelectedIndex(0);
   }, [items.length]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedIndex drives which item owns the ref.
-  useEffect(() => {
-    selectedItemRef.current?.scrollIntoView({
-      block: "nearest",
-    });
-  }, [selectedIndex]);
 
   // Update virtual trigger position.
   const updateTriggerPosition = useCallback(() => {
@@ -163,7 +155,6 @@ export const SlashCommandDropdown = forwardRef<
             const menuItem = (
               <DropdownMenuItem
                 key={item.id}
-                ref={index === selectedIndex ? selectedItemRef : null}
                 icon={item.icon}
                 label={item.label}
                 truncateText
