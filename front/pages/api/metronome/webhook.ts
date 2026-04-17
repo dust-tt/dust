@@ -31,6 +31,12 @@ type ResponseBody = {
   message?: string;
 };
 
+const ContractStartEventSchema = z.object({
+  type: z.literal("contract.start"),
+  contract_id: z.string(),
+  customer_id: z.string(),
+});
+
 const ContractEndEventSchema = z.object({
   type: z.literal("contract.end"),
   contract_id: z.string(),
@@ -228,9 +234,37 @@ async function handler(
           );
           break;
 
-        case "contract.start":
-          logger.info({ event }, "[Metronome Webhook] Contract started");
+        case "contract.start": {
+          const parsed = ContractStartEventSchema.safeParse(event);
+          if (!parsed.success) {
+            logger.error(
+              { event, error: parsed.error.message },
+              "[Metronome Webhook] Invalid contract.start event"
+            );
+            break;
+          }
+
+          const { contract_id: contractId, customer_id: customerId } =
+            parsed.data;
+
+          logger.info(
+            { contractId, customerId },
+            "[Metronome Webhook] Contract started"
+          );
+
+          const workspace =
+            await WorkspaceResource.fetchByMetronomeCustomerId(customerId);
+          if (!workspace) {
+            logger.warn(
+              { contractId, customerId },
+              "[Metronome Webhook] contract.start: workspace not found"
+            );
+            break;
+          }
+
+          await invalidateContractCache(workspace.sId);
           break;
+        }
 
         case "contract.end": {
           const parsed = ContractEndEventSchema.safeParse(event);
