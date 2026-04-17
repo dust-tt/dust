@@ -1,5 +1,5 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
+import { renderConversationAsTextWithFeedback } from "@app/lib/api/assistant/conversation/render_conversation_with_feedback";
 import {
   REINFORCED_TOOLS_DESCRIPTION,
   SHARED_PROMPT_SECTIONS,
@@ -144,9 +144,8 @@ export async function buildConversationAnalysisBatchMap(
   const batchMap = new Map<string, LLMStreamParameters>();
 
   for (const conversationId of conversationIds) {
-    const conversationRes = await getShrinkWrappedConversation(auth, {
+    const conversationRes = await renderConversationAsTextWithFeedback(auth, {
       conversationId,
-      includeFeedback: true,
       includeActionDetails: true,
     });
     if (conversationRes.isErr()) {

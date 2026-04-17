@@ -1,4 +1,4 @@
-import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
+import { renderConversationAsTextWithFeedback } from "@app/lib/api/assistant/conversation/render_conversation_with_feedback";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { formatSkillContext } from "@app/lib/reinforcement/format_skill_context";
@@ -80,8 +80,8 @@ Step 7: Make suggestions.
 ONLY make suggestions that will affect the skill behavior. NEVER suggest cosmetic-only fixes.
 `,
 
-  conversation_analysis: `ALWAYS inspect the full conversation, which is a chronological timeline of messages. Each message has an index, sId, sender (user or agent name), actions, and content. Here are key signals of areas where the agent behavior could be improved:
-1. Feedback - If the user provided feedback, it will be included with each message in the form of thumbs up/down and comments. This is the MOST important signal as it is directly provided by the user and an explicit signal.
+  conversation_analysis: `ALWAYS inspect the full conversation, which is a chronological timeline of messages. Agent messages may include an Actions section listing tool calls with their inputs and outputs, and a User feedback section with sentiment and comments. Here are key signals of areas where the agent behavior could be improved:
+1. Feedback - If the user provided feedback, it will be included after the agent message in a "User feedback:" section with thumbs up/down ratings and optional comments. This is the MOST important signal as it is directly provided by the user and an explicit signal.
 2. User reaction - Any user indication of confusion, disagreement, or correction is a signal of dissatisfaction. A user follow-up question or request could mean the skill response was useful, but a skill could be improved in terms of proactively providing that information or performing the action without user intervention.
 3. Tool calls - If the tool calls needed to be retried, could a skill's instructions be more clear on how to use that tool?
 4. Sequence - Did the agent call the tools in the correct order?
@@ -157,9 +157,8 @@ export async function buildSkillConversationAnalysisBatchMap(
   const skillById = new Map(skills.map((s) => [s.sId, s]));
 
   for (const { conversationId, skillIds } of conversationsWithSkills) {
-    const conversationRes = await getShrinkWrappedConversation(auth, {
+    const conversationRes = await renderConversationAsTextWithFeedback(auth, {
       conversationId,
-      includeFeedback: true,
       includeActionDetails: true,
     });
     if (conversationRes.isErr()) {
