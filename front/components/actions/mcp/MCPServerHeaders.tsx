@@ -4,14 +4,16 @@ import { useFieldArray, useFormContext } from "react-hook-form";
 
 type FormWithCustomHeaders = {
   customHeaders: Array<{ key: string; value: string }>;
+  predefinedHeaderKeys?: string[];
 };
 
 export function MCPServerHeaders() {
   // `register` binds inputs via DOM refs so RHF tracks values natively without triggering React re-renders on each
   // keystroke. Using `update` instead would replace the field object (regenerating field.id), causing React to remount
   // the input on every keystroke and lose focus.
-  const { control, register, getValues } =
+  const { control, register, getValues, watch } =
     useFormContext<FormWithCustomHeaders>();
+  const predefinedHeaderKeys = watch("predefinedHeaderKeys");
   const { fields, append, remove } = useFieldArray<
     FormWithCustomHeaders,
     "customHeaders"
@@ -24,6 +26,7 @@ export function MCPServerHeaders() {
     <div className="flex w-full flex-col">
       <div className="flex flex-col gap-4">
         {fields.map((field, index) => {
+          const isPredefined = predefinedHeaderKeys?.includes(field.key);
           const isRedacted =
             field.value === WebCrawlerHeaderRedactedValue ||
             getValues(`customHeaders.${index}.value`) ===
@@ -35,7 +38,7 @@ export function MCPServerHeaders() {
                   <Input
                     {...register(`customHeaders.${index}.key`)}
                     placeholder="Header Name"
-                    disabled={isRedacted}
+                    disabled={isRedacted || isPredefined}
                     className="w-full"
                   />
                 </div>
@@ -48,11 +51,13 @@ export function MCPServerHeaders() {
                   />
                 </div>
               </div>
-              <Button
-                variant="outline"
-                icon={XMarkIcon}
-                onClick={() => remove(index)}
-              />
+              {!isPredefined && (
+                <Button
+                  variant="outline"
+                  icon={XMarkIcon}
+                  onClick={() => remove(index)}
+                />
+              )}
             </div>
           );
         })}

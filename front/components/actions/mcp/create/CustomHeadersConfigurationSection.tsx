@@ -28,9 +28,11 @@ export function CustomHeadersConfigurationSection({
   });
 
   const useCustomHeaders = useCustomHeadersField.value;
+  const predefinedHeaderKeys = form.watch("predefinedHeaderKeys");
 
   const showToggle =
     !defaultServerConfig &&
+    !predefinedHeaderKeys?.length &&
     (!internalMCPServer || requiresBearerTokenConfiguration(internalMCPServer));
 
   return (
