@@ -30,7 +30,6 @@ export const ModelConfigurationSchema = z.object({
   shortDescription: z.string(),
   isLegacy: z.boolean(),
   isLatest: z.boolean(),
-  nativeReasoningMetaPrompt: z.string().optional(),
   formattingMetaPrompt: z.string().optional(),
   toolUseMetaPrompt: z.string().optional(),
   tokenCountAdjustment: z.number().optional(),
