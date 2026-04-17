@@ -35,7 +35,7 @@ front/
 
 - Use `npx tsgo --noEmit` to type-check the front project.
 - Use `npm run format:changed` (from the repo root) to format and lint changed files.
-- Use the corresponding `.claude/skills` workflows on demand for testing, Temporal, LLM, MCP servers, Elasticsearch, audit events, and webhook sources.
+- For changes related to Temporal, LLM, MCP servers, Elasticsearch, audit events, and webhook sources, and for testing, use the corresponding skills.
 
 # Running tests
 - Use `npm run test -- filetotest
