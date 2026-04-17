@@ -447,6 +447,22 @@ export async function createConversationFork(
     sourceMessageRank: childConversationId.value.sourceMessageRank,
   });
 
+  if (copiedAttachmentCount === 0) {
+    return childConversation;
+  }
+
+  const updatedChildConversation = await getConversation(
+    auth,
+    childConversation.value.sId
+  );
+  if (updatedChildConversation.isErr()) {
+    return new Err(
+      new DustError(
+        "internal_error",
+        "The forked conversation could not be reloaded after copying file attachments."
+      )
+    );
+  }
 
   return updatedChildConversation;
 }
