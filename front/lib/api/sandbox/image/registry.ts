@@ -10,7 +10,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import fs from "fs";
 import path from "path";
 
+const DUST_BEDROCK_IMAGE_VERSION = "1.5.0";
+const DUST_BASE_IMAGE_VERSION = "0.7.5";
 const DSBX_CLI_VERSION = "0.1.4";
+const AGENT_PROXIED_UID = 1001;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
 // Released via the "Release sandbox tool" GitHub Actions workflow.
 const APPLY_PATCH_VERSION = "0.1.0";
@@ -84,7 +87,52 @@ function getLocalContent(dir: string, filename: string): () => string {
   return () => fs.readFileSync(path.join(dir, filename), "utf-8");
 }
 
-const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:1.3.0")
+function getAgentProxiedSetupCommand(): string {
+  // setgid bit on shared dirs + default POSIX ACLs ensures files created
+  // by either agent or agent-proxied are group-owned by `agent` and
+  // group-writable, regardless of the creating process's umask — avoids
+  // a perms handoff footgun during the PR1→PR2 rollout window.
+  return [
+    `useradd --create-home --uid ${AGENT_PROXIED_UID} --gid agent --shell /bin/bash agent-proxied`,
+    "chgrp agent /home/agent /files/conversation",
+    "chmod g+ws /home/agent /files/conversation",
+    "setfacl -R -d -m g::rwx /home/agent /files/conversation",
+    "setfacl -R -m g::rwx /home/agent /files/conversation",
+  ].join(" && ");
+}
+
+function getEgressIptablesSetupCommand(): string {
+  // nat/OUTPUT runs before filter/OUTPUT for locally generated packets.
+  // Exemptions (loopback, metadata, RFC1918) must land in nat BEFORE the
+  // REDIRECT — otherwise the destination is rewritten to 127.0.0.1:9990
+  // and filter DROPs on the original dst never fire. Loopback
+  // intentionally has no matching rule in filter so local services keep
+  // working; metadata/RFC1918 are dropped in filter as defense in depth.
+  return [
+    "set -eu",
+    `iptables -t nat -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 127.0.0.0/8 -j RETURN`,
+    `iptables -t nat -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 169.254.169.254/32 -j RETURN`,
+    `iptables -t nat -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 10.0.0.0/8 -j RETURN`,
+    `iptables -t nat -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 172.16.0.0/12 -j RETURN`,
+    `iptables -t nat -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 192.168.0.0/16 -j RETURN`,
+    `iptables -t nat -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -p tcp -j REDIRECT --to-ports 9990`,
+    // DNS pinned to resolvers first — resolver may itself live in RFC1918.
+    "for NS in $(awk '/^nameserver/ {print $2}' /etc/resolv.conf); do",
+    `  iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -p udp --dport 53 -d "$NS" -j ACCEPT`,
+    "done",
+    `iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 169.254.169.254/32 -j DROP`,
+    `iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 10.0.0.0/8 -j DROP`,
+    `iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 172.16.0.0/12 -j DROP`,
+    `iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 192.168.0.0/16 -j DROP`,
+    `iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -p udp -j DROP`,
+    `iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -p icmp -j DROP`,
+    `ip6tables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -j DROP`,
+  ].join("\n");
+}
+
+const DUST_BASE_IMAGE = SandboxImage.fromDocker(
+  `dust-sbx-bedrock:${DUST_BEDROCK_IMAGE_VERSION}`
+)
   // Create agent user first so e2b creates /home/agent with correct ownership.
   .setUser("agent")
   // Conversation files bootstrap
@@ -92,6 +140,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:1.3.0")
   .runCmd("mkdir -p /files/conversation && chmod 777 /files/conversation", {
     user: "root",
   })
+  .runCmd(getAgentProxiedSetupCommand(), { user: "root" })
   // Create simple netcat-based token server script.
   .runCmd("mkdir -p /home/agent/.bin", { user: "root" })
   // TODO(2026-03-06 SANDBOX): .copy is broken, use file once fixed.
@@ -243,6 +292,7 @@ SHELLEOF`,
     { user: "root" }
   )
   .runCmd("systemctl daemon-reload", { user: "root" })
+  .runCmd(getEgressIptablesSetupCommand(), { user: "root" })
   // Profile functions (no install needed, provided by profile scripts)
   .registerTool([
     {
@@ -298,7 +348,7 @@ SHELLEOF`,
   .withToolManifest()
   .register({
     imageName: "dust-base",
-    tag: "0.7.4",
+    tag: DUST_BASE_IMAGE_VERSION,
   });
 
 const IMAGES: readonly SandboxImage[] = [DUST_BASE_IMAGE];
