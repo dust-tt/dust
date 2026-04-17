@@ -2,12 +2,12 @@
  * Backfill a recurring $0 credit to existing Metronome contracts.
  *
  * For each workspace with a Metronome customer ID, lists all active contracts
- * directly from Metronome and adds a monthly recurring commit with $0 amount
+ * directly from Metronome and adds a monthly recurring credit with $0 amount
  * using the Free Monthly Credits product. The credit amount is expected to be
  * updated each billing period via the credit.segment.start webhook
  * (see updateMetronomeCreditSegmentAmount).
  *
- * Idempotent: checks whether a recurring commit with the Free Monthly Credits
+ * Idempotent: checks whether a recurring credit with the Free Monthly Credits
  * product already exists on each contract before adding one.
  * Re-running the script will not create duplicate entries.
  *
@@ -16,13 +16,12 @@
 
 import { floorToHourISO, getMetronomeClient } from "@app/lib/metronome/client";
 import {
-  CURRENCY_TO_CREDIT_TYPE_ID,
+  getCreditTypeProgrammaticUsdId,
   getProductFreeMonthlyCreditId,
 } from "@app/lib/metronome/constants";
 import type { Logger } from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-
 import { makeScript } from "./helpers";
 import { runOnAllWorkspaces } from "./workspace_helpers";
 
@@ -58,16 +57,16 @@ async function backfillRecurringCreditForWorkspace(
   }
 
   const freeCreditProductId = getProductFreeMonthlyCreditId();
-  const creditTypeId = CURRENCY_TO_CREDIT_TYPE_ID["usd"];
+  const creditTypeId = getCreditTypeProgrammaticUsdId();
 
   for (const contract of contracts) {
     const contractId = contract.id;
 
-    const existingCommitProductIds = new Set(
-      (contract.recurring_commits ?? []).map((c) => c.product.id)
+    const existingCreditProductIds = new Set(
+      (contract.recurring_credits ?? []).map((c) => c.product.id)
     );
 
-    if (existingCommitProductIds.has(freeCreditProductId)) {
+    if (existingCreditProductIds.has(freeCreditProductId)) {
       logger.info(
         { workspaceId: workspace.sId, contractId },
         "[Backfill] Recurring credit already exists on contract, skipping"
@@ -77,17 +76,12 @@ async function backfillRecurringCreditForWorkspace(
 
     const startingAt = floorToHourISO(new Date(contract.starting_at));
 
-    const recurringCommit = {
+    const recurringCredit = {
       product_id: freeCreditProductId,
       name: "Monthly Free Credit",
       starting_at: startingAt,
       priority: 1, // Apply before prepaid commits.
       access_amount: {
-        credit_type_id: creditTypeId,
-        unit_price: 0,
-        quantity: 1,
-      },
-      invoice_amount: {
         credit_type_id: creditTypeId,
         unit_price: 0,
         quantity: 1,
@@ -99,7 +93,11 @@ async function backfillRecurringCreditForWorkspace(
 
     if (!execute) {
       logger.info(
-        { workspaceId: workspace.sId, contractId, recurringCommit },
+        {
+          workspaceId: workspace.sId,
+          contractId,
+          recurringCredit: recurringCredit,
+        },
         "[Backfill] [DRY RUN] Would add recurring credit to contract"
       );
       continue;
@@ -109,7 +107,7 @@ async function backfillRecurringCreditForWorkspace(
       await client.v2.contracts.edit({
         customer_id: metronomeCustomerId,
         contract_id: contractId,
-        add_recurring_commits: [recurringCommit],
+        add_recurring_credits: [recurringCredit],
       });
 
       logger.info(

@@ -360,7 +360,7 @@ export class CreditResource extends BaseResource<CreditModel> {
       expirationDate?: Date;
       transaction?: Transaction;
     } = {}
-  ): Promise<Result<void, Error>> {
+  ): Promise<Result<{ startDate: Date; expirationDate: Date }, Error>> {
     const effectiveStartDate = startDate ?? new Date();
     const effectiveExpirationDate =
       expirationDate ??
@@ -387,7 +387,10 @@ export class CreditResource extends BaseResource<CreditModel> {
         return new Err(new Error("Credit already started"));
       }
 
-      return new Ok(undefined);
+      return new Ok({
+        startDate: effectiveStartDate,
+        expirationDate: effectiveExpirationDate,
+      });
     } catch (error) {
       if (error instanceof UniqueConstraintError) {
         return new Err(
@@ -435,6 +438,19 @@ export class CreditResource extends BaseResource<CreditModel> {
         initialAmountMicroUsd,
       },
       transaction
+    );
+  }
+
+  async setMetronomeCreditId(
+    metronomeCreditId: string,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    await this.model.update(
+      { metronomeCreditId },
+      {
+        where: { id: this.id, workspaceId: this.workspaceId },
+        transaction,
+      }
     );
   }
 

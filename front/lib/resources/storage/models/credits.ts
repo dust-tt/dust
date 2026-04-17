@@ -25,6 +25,8 @@ export class CreditModel extends WorkspaceAwareModel<CreditModel> {
   declare discount: number | null;
   // Stripe invoice ID or line item ID for idempotency.
   declare invoiceOrLineItemId: string | null;
+  // Metronome credit or commit ID (set after backfill or creation in Metronome).
+  declare metronomeCreditId: string | null;
   // User who purchased the credit (null for free/system-generated credits).
   declare boughtByUserId: ForeignKey<UserModel["id"]> | null;
 
@@ -79,6 +81,11 @@ CreditModel.init(
     },
     invoiceOrLineItemId: {
       type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    metronomeCreditId: {
+      type: DataTypes.STRING(255),
       allowNull: true,
       defaultValue: null,
     },
