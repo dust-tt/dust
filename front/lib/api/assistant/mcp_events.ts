@@ -127,7 +127,7 @@ export async function publishMCPResults(
       }
 
       // Different request ID — keep it.
-      return false;    
+      return false;
     },
     getMCPServerChannelId(auth, { mcpServerId })
   );
