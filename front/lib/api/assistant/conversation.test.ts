@@ -2604,18 +2604,15 @@ describe("editUserMessage", () => {
     }
     conversation = fetchedConversationResult.value;
 
-    // Create an original user message with agent mentions
+    // Create an original user message without agent mentions so no placeholder agent
+    // message is created in the DB (edit tests verify hasAgentMessagesAfter = false).
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
 
     const postResult = await postUserMessage(auth, {
       conversation,
-      content: `Original message with @${agentConfig1.name}`,
-      mentions: [
-        {
-          configurationId: agentConfig1.sId,
-        } satisfies AgentMention,
-      ],
+      content: "Original message",
+      mentions: [],
       context: {
         username: userJson.username,
         timezone: "UTC",
@@ -2843,6 +2840,41 @@ describe("editUserMessage", () => {
       // Verify launchAgentLoopWorkflow was NOT called (no agent mentions)
       expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
     }
+  });
+
+  it("should not re-trigger the agent loop when editing a message that already has an agent response after it", async () => {
+    // Post a second message with an agent mention so a placeholder agent message row
+    // lands in the DB at a rank > originalUserMessage.rank.
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+    await postUserMessage(auth, {
+      conversation,
+      content: `Follow-up message with @${agentConfig1.name}`,
+      mentions: [{ configurationId: agentConfig1.sId } satisfies AgentMention],
+      context: {
+        username: userJson.username,
+        timezone: "UTC",
+        fullName: userJson.fullName,
+        email: userJson.email,
+        profilePictureUrl: userJson.image,
+        origin: "web",
+      },
+      skipToolsValidation: false,
+    });
+    vi.clearAllMocks();
+
+    // Now edit the original message (which has an agent message after it).
+    const result = await editUserMessage(auth, {
+      conversation,
+      message: originalUserMessage,
+      content: `Edited with @${agentConfig1.name}`,
+      mentions: [{ configurationId: agentConfig1.sId } satisfies AgentMention],
+      skipToolsValidation: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    // Edit should succeed but not kick off a new agent loop since one already exists after.
+    expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
   });
 
   it("should preserve mentions when editing a message without agent mentions (only user mentions)", async () => {

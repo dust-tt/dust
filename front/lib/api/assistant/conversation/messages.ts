@@ -686,3 +686,36 @@ export async function createCompactionMessage(
     content: null,
   };
 }
+
+/**
+ * Returns true if there is at least one agent message in the conversation after the given rank,
+ * in the same branch. Must be called within a transaction to be consistent with concurrent writes.
+ */
+export async function hasAgentMessageAfterRank(
+  auth: Authenticator,
+  {
+    conversation,
+    rank,
+    branchId,
+    transaction,
+  }: {
+    conversation: ConversationWithoutContentType;
+    rank: number;
+    branchId: number | null;
+    transaction: Transaction;
+  }
+): Promise<boolean> {
+  const owner = auth.getNonNullableWorkspace();
+  const messageAfterRank = await MessageModel.findOne({
+    where: {
+      workspaceId: owner.id,
+      conversationId: conversation.id,
+      rank: { [Op.gt]: rank },
+      agentMessageId: { [Op.ne]: null },
+      branchId,
+    },
+    transaction,
+  });
+
+  return !!messageAfterRank;
+}

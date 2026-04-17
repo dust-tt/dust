@@ -449,13 +449,22 @@ export const ConversationViewer = ({
                 } else {
                   ref.current.data.append([userMessage], scroll);
                 }
-                // Using else if with the type guard just to please the type checker as we already know it's a user message from the predicate.
+                // Using else if with the type guard just to please the type checker as we already
+                // know it's a user message from the predicate.
               } else if (isUserMessage(exists)) {
                 // We only update if the version is greater or equals than the existing version.
                 if (exists.version <= event.message.version) {
-                  ref.current.data.map((m) =>
-                    areSameRankAndBranch(m, userMessage) ? userMessage : m
-                  );
+                  ref.current.data.map((m) => {
+                    if (!areSameRankAndBranch(m, userMessage)) {
+                      return m;
+                    }
+                    // Preserve existing content fragments: edits only change the text, so content
+                    // fragments from the event can be empty and we keep the ones already in the
+                    // client state.
+                    return isUserMessage(m)
+                      ? { ...userMessage, contentFragments: m.contentFragments }
+                      : userMessage;
+                  });
                 }
               }
 
