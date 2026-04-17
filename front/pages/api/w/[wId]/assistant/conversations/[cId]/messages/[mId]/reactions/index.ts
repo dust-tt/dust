@@ -1,6 +1,4 @@
 /** @ignoreswagger */
-import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import {
   createMessageReaction,
@@ -13,21 +11,16 @@ import {
 } from "@app/lib/api/assistant/streaming/events";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  AgentMessageType,
-  ConversationType,
-  MessageReactionType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
+import type { MessageReactionType } from "@app/types/assistant/conversation";
 import {
+  ConversationError,
   isAgentMessageType,
-  isCompactionMessageType,
   isProjectConversation,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
-import type { ContentFragmentType } from "@app/types/content_fragment";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -49,27 +42,32 @@ async function handler(
 ): Promise<void> {
   const user = auth.getNonNullableUser();
 
-  if (!(typeof req.query.cId === "string")) {
+  if (!isString(req.query.cId) || !isString(req.query.mId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid query parameters, `cId` (string) is required.",
+        message: "Invalid query parameters, `cId` (string) and `mId` (string) are required.",
       },
     });
   }
 
-  const conversationId = req.query.cId;
-  const conversationRes = await getConversation(auth, conversationId);
-
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    req.query.cId
+  );
+  if (!conversation) {
+    return apiErrorForConversation(
+      req,
+      res,
+      new ConversationError("conversation_not_found")
+    );
   }
 
-  const conversation = conversationRes.value;
+  const serializedConversation = conversation.toJSON();
 
-  if (isProjectConversation(conversation)) {
-    const space = await SpaceResource.fetchById(auth, conversation.spaceId);
+  if (isProjectConversation(serializedConversation)) {
+    const space = await SpaceResource.fetchById(auth, serializedConversation.spaceId);
     if (!space) {
       return apiError(req, res, {
         status_code: 404,
@@ -87,16 +85,6 @@ async function handler(
     }
   }
 
-  if (!(typeof req.query.mId === "string")) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameters, `mId` (string) is required.",
-      },
-    });
-  }
-
   const messageId = req.query.mId;
   const bodyValidation = MessageReactionRequestBodySchema.decode(req.body);
   if (isLeft(bodyValidation)) {
@@ -110,8 +98,13 @@ async function handler(
     });
   }
 
-  const message = conversation.content.flat().find((m) => m.sId === messageId);
-  if (!message) {
+  const messageRes = await conversation.getMessageById(auth, messageId);
+  // Preserve prior behavior: only main-branch user/agent messages are reactable.
+  if (
+    messageRes.isErr() ||
+    messageRes.value.branchId !== null ||
+    messageRes.value.contentFragmentId
+  ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -120,7 +113,8 @@ async function handler(
       },
     });
   }
-  if (isCompactionMessageType(message)) {
+  const message = messageRes.value;
+  if (message.compactionMessageId) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -134,7 +128,7 @@ async function handler(
     case "POST":
       const created = await createMessageReaction(auth, {
         messageId,
-        conversation,
+        conversation: serializedConversation,
         user: user.toJSON(),
         context: {
           username: user.username,
@@ -159,7 +153,7 @@ async function handler(
     case "DELETE":
       const deleted = await deleteMessageReaction(auth, {
         messageId,
-        conversation,
+        conversation: serializedConversation,
         user: user.toJSON(),
         context: {
           username: user.username,
