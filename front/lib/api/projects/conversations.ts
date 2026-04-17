@@ -1,3 +1,7 @@
+import {
+  canUserAccessConversation,
+  rebuildConversationRequirements,
+} from "@app/lib/api/assistant/conversation/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -121,6 +125,110 @@ export async function moveConversationToProject(
       }
     }
   }, transaction);
+
+  return new Ok(undefined);
+}
+
+export async function moveConversationOutOfProject(
+  auth: Authenticator,
+  {
+    conversation,
+  }: {
+    conversation: ConversationWithoutContentType;
+  }
+): Promise<
+  Result<
+    void,
+    DustError<
+      | "internal_error"
+      | "unauthorized"
+      | "conversation_not_found"
+      | "space_not_found"
+    >
+  >
+> {
+  if (!isProjectConversation(conversation)) {
+    return new Err(
+      new DustError("internal_error", "Conversation is not in a project")
+    );
+  }
+
+  const project = await SpaceResource.fetchById(auth, conversation.spaceId);
+  if (!project) {
+    return new Err(new DustError("space_not_found", "Project not found"));
+  }
+
+  if (!project.canAdministrate(auth)) {
+    return new Err(
+      new DustError(
+        "unauthorized",
+        `You must be an editor of "${project.name}".`
+      )
+    );
+  }
+
+  const conversationResource = await ConversationResource.fetchById(
+    auth,
+    conversation.sId
+  );
+  if (!conversationResource) {
+    return new Err(
+      new DustError("conversation_not_found", "Conversation not found")
+    );
+  }
+
+  // Before moving the conversation, capture the current state:
+  // - Current updatedAt timestamp
+  // - All participants with their lastReadAt status
+  const oldUpdatedAt = conversationResource.updatedAt;
+  const participants = await conversationResource.listParticipants(auth);
+
+  // Remove the project association.
+  await conversationResource.clearSpaceId();
+
+  // Rebuild requestedSpaceIds from all agents and content fragments in the conversation.
+  // When a conversation is in a project, its requestedSpaceIds is set to [projectSpaceId] only.
+  // Moving out requires recalculating the full set of space requirements.
+  const requestedSpaceModelIds = await rebuildConversationRequirements(
+    auth,
+    conversationResource
+  );
+  await conversationResource.updateRequirements(requestedSpaceModelIds);
+
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+
+  for (const participant of participants) {
+    // After moving out of a project, some participants may no longer have access
+    // to the conversation's required spaces. Remove those participants.
+    const hasAccess = await canUserAccessConversation(auth, {
+      userId: participant.sId,
+      conversationId: conversation.sId,
+    });
+
+    if (!hasAccess) {
+      const participantAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        participant.sId,
+        workspaceId
+      );
+      await conversationResource.leaveConversation(participantAuth);
+      continue;
+    }
+
+    // For participants who still have access and had already read the conversation,
+    // mark them as read to preserve their read status.
+    const wasRead =
+      participant.lastReadAt !== null && participant.lastReadAt >= oldUpdatedAt;
+
+    if (wasRead) {
+      const participantAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        participant.sId,
+        workspaceId
+      );
+      await ConversationResource.markAsReadForAuthUser(participantAuth, {
+        conversation,
+      });
+    }
+  }
 
   return new Ok(undefined);
 }

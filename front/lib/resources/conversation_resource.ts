@@ -2767,6 +2767,69 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     await this.update({ spaceId: space.id }, transaction);
   }
 
+  async clearSpaceId() {
+    await this.update({ spaceId: null });
+  }
+
+  /**
+   * Get the distinct agent configurations and content fragment DataSourceViews
+   * used in this conversation. This data is needed to rebuild the conversation's
+   * requestedSpaceIds when moving out of a project.
+   */
+  async fetchSpaceRequirementSourceData(auth: Authenticator): Promise<{
+    agentConfigurationIds: string[];
+    contentFragmentDsvModelIds: number[];
+  }> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const agentMessages = await MessageModel.findAll({
+      where: {
+        conversationId: this.id,
+        workspaceId,
+        agentMessageId: { [Op.ne]: null },
+        branchId: { [Op.is]: null },
+      },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: ["agentConfigurationId"],
+        },
+      ],
+    });
+
+    const agentConfigurationIds = uniq(
+      agentMessages
+        .map((m) => m.agentMessage?.agentConfigurationId)
+        .filter((id): id is string => Boolean(id))
+    );
+
+    const cfMessages = await MessageModel.findAll({
+      where: {
+        conversationId: this.id,
+        workspaceId,
+        contentFragmentId: { [Op.ne]: null },
+        branchId: { [Op.is]: null },
+      },
+      include: [
+        {
+          model: ContentFragmentModel,
+          as: "contentFragment",
+          required: true,
+        },
+      ],
+    });
+
+    const contentFragmentDsvModelIds = uniq(
+      cfMessages
+        .map((m) => m.contentFragment?.nodeDataSourceViewId)
+        .filter((modelId): modelId is number => modelId != null)
+    );
+
+    return { agentConfigurationIds, contentFragmentDsvModelIds };
+  }
+
   static async markHasError(
     auth: Authenticator,
     { conversation }: { conversation: ConversationWithoutContentType },

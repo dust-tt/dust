@@ -1,9 +1,11 @@
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getContentFragmentSpaceIds } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
 import {
   type ConversationAccessType,
   ConversationResource,
 } from "@app/lib/resources/conversation_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
@@ -229,4 +231,44 @@ export async function updateConversationRequirements(
     allSpaceRequirements,
     t
   );
+}
+
+/**
+ * Rebuild the requestedSpaceIds for a conversation by collecting space requirements
+ * from all agents mentioned and all content fragments with content nodes.
+ *
+ * This function recalculates the full set of requirements from scratch. Used when moving
+ * a conversation out of a project, since project conversations have their requirements
+ * set to [projectSpaceId] only.
+ */
+export async function rebuildConversationRequirements(
+  auth: Authenticator,
+  conversationResource: ConversationResource
+): Promise<number[]> {
+  const { agentConfigurationIds, contentFragmentDsvModelIds } =
+    await conversationResource.fetchSpaceRequirementSourceData(auth);
+
+  let agentSpaceModelIds: number[] = [];
+  if (agentConfigurationIds.length > 0) {
+    const agents = await getAgentConfigurations(auth, {
+      agentIds: agentConfigurationIds,
+      variant: "light",
+    });
+
+    agentSpaceModelIds = agents
+      .flatMap((a) => a.requestedSpaceIds)
+      .map((sId) => getResourceIdFromSId(sId))
+      .filter((modelId): modelId is number => modelId !== null);
+  }
+
+  let cfSpaceModelIds: number[] = [];
+  if (contentFragmentDsvModelIds.length > 0) {
+    const dsvs = await DataSourceViewResource.fetchByModelIds(
+      auth,
+      contentFragmentDsvModelIds
+    );
+    cfSpaceModelIds = dsvs.map((dsv) => dsv.space.id);
+  }
+
+  return uniq([...agentSpaceModelIds, ...cfSpaceModelIds]);
 }
