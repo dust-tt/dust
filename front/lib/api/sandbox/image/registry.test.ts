@@ -19,6 +19,32 @@ function getRunCommands(operations: readonly Operation[]): string[] {
   );
 }
 
+function getCopyOperations(
+  operations: readonly Operation[]
+): Extract<Operation, { type: "copy" }>[] {
+  return operations.flatMap((operation) =>
+    operation.type === "copy" ? [operation] : []
+  );
+}
+
+function getCopiedContent(
+  copyOperations: readonly Extract<Operation, { type: "copy" }>[],
+  dest: string
+): string {
+  const operation = copyOperations.find(
+    (copyOperation) => copyOperation.dest === dest
+  );
+  expect(operation).toBeDefined();
+  expect(operation?.src.type).toBe("content");
+
+  if (!operation || operation.src.type !== "content") {
+    throw new Error(`missing copied content for ${dest}`);
+  }
+
+  const content = operation.src.getContent();
+  return typeof content === "string" ? content : content.toString("utf-8");
+}
+
 function getSandboxBedrockDockerfile(): string {
   const dockerfilePath = path.resolve(
     __dirname,
@@ -51,7 +77,7 @@ describe("sandbox image registry", () => {
       });
       expect(imageResult.value.imageId).toEqual({
         imageName: "dust-base",
-        tag: "0.7.6",
+        tag: "0.7.7",
       });
     }
   });
@@ -77,38 +103,47 @@ describe("sandbox image registry", () => {
     );
   });
 
-  test("bakes uid-scoped iptables rules into the template", () => {
+  test("copies the boot-time iptables script and enables its systemd unit", () => {
     const operations = getDustBaseImageOperations();
     const runCommands = getRunCommands(operations);
+    const copyOperations = getCopyOperations(operations);
+    const iptablesScript = getCopiedContent(
+      copyOperations,
+      "/etc/dust/egress-iptables.sh"
+    );
+    const serviceUnit = getCopiedContent(
+      copyOperations,
+      "/etc/systemd/system/dust-egress-iptables.service"
+    );
 
     expect(runCommands).toEqual(
       expect.arrayContaining([
-        // Loopback exemption lives in nat (before REDIRECT), not filter —
-        // otherwise the redirect rewrites the destination first.
-        expect.stringContaining(
-          "iptables -t nat -A OUTPUT -m owner --uid-owner 1003 -d 127.0.0.0/8 -j RETURN"
-        ),
-        // Metadata + RFC1918 RETURNs in nat keep original dst intact for
-        // the filter-table defense-in-depth DROPs below.
-        expect.stringContaining(
-          "iptables -t nat -A OUTPUT -m owner --uid-owner 1003 -d 169.254.169.254/32 -j RETURN"
-        ),
-        expect.stringContaining(
-          "iptables -t nat -A OUTPUT -m owner --uid-owner 1003 -d 10.0.0.0/8 -j RETURN"
-        ),
-        expect.stringContaining(
-          "iptables -t nat -A OUTPUT -m owner --uid-owner 1003 -p tcp -j REDIRECT --to-ports 9990"
-        ),
-        expect.stringContaining(
-          'iptables -A OUTPUT -m owner --uid-owner 1003 -p udp --dport 53 -d "$NS" -j ACCEPT'
-        ),
-        expect.stringContaining(
-          "iptables -A OUTPUT -m owner --uid-owner 1003 -d 169.254.169.254/32 -j DROP"
-        ),
-        expect.stringContaining(
-          "ip6tables -A OUTPUT -m owner --uid-owner 1003 -j DROP"
-        ),
+        "chmod 755 /etc/dust/egress-iptables.sh",
+        "systemctl daemon-reload && systemctl enable dust-egress-iptables.service",
       ])
     );
+
+    expect(runCommands.join("\n")).not.toContain("iptables -t nat -A OUTPUT");
+
+    expect(iptablesScript).toContain(
+      'iptables -t nat -A OUTPUT -m owner --uid-owner "$PROXIED_UID" -d 127.0.0.0/8 -j RETURN'
+    );
+    expect(iptablesScript).toContain(
+      'iptables -t nat -A OUTPUT -m owner --uid-owner "$PROXIED_UID" -p tcp -j REDIRECT --to-ports 9990'
+    );
+    expect(iptablesScript).toContain(
+      'iptables -A OUTPUT -m owner --uid-owner "$PROXIED_UID" -p udp --dport 53 -d "$NS" -j ACCEPT'
+    );
+    expect(iptablesScript).toContain(
+      'iptables -A OUTPUT -m owner --uid-owner "$PROXIED_UID" -d 169.254.169.254/32 -j DROP'
+    );
+    expect(iptablesScript).toContain(
+      'ip6tables -A OUTPUT -m owner --uid-owner "$PROXIED_UID" -j DROP'
+    );
+
+    expect(serviceUnit).toContain("Type=oneshot");
+    expect(serviceUnit).toContain("RemainAfterExit=yes");
+    expect(serviceUnit).toContain("ExecStart=/etc/dust/egress-iptables.sh");
+    expect(serviceUnit).toContain("WantedBy=multi-user.target");
   });
 });

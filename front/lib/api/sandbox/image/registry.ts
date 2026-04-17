@@ -11,12 +11,13 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.5.0";
-const DUST_BASE_IMAGE_VERSION = "0.7.6";
+const DUST_BASE_IMAGE_VERSION = "0.7.7";
 const DSBX_CLI_VERSION = "0.1.4";
 const AGENT_PROXIED_UID = 1003;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
 // Released via the "Release sandbox tool" GitHub Actions workflow.
 const APPLY_PATCH_VERSION = "0.1.0";
+const EGRESS_LOCAL_DIR = path.resolve(__dirname, "egress");
 const PROFILE_LOCAL_DIR = path.resolve(__dirname, "profile");
 const TELEMETRY_LOCAL_DIR = path.resolve(__dirname, "telemetry");
 
@@ -99,35 +100,6 @@ function getAgentProxiedSetupCommand(): string {
     "setfacl -R -d -m g::rwx /home/agent /files/conversation",
     "setfacl -R -m g::rwx /home/agent /files/conversation",
   ].join(" && ");
-}
-
-function getEgressIptablesSetupCommand(): string {
-  // nat/OUTPUT runs before filter/OUTPUT for locally generated packets.
-  // Exemptions (loopback, metadata, RFC1918) must land in nat BEFORE the
-  // REDIRECT — otherwise the destination is rewritten to 127.0.0.1:9990
-  // and filter DROPs on the original dst never fire. Loopback
-  // intentionally has no matching rule in filter so local services keep
-  // working; metadata/RFC1918 are dropped in filter as defense in depth.
-  return [
-    "set -eu",
-    `iptables -t nat -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 127.0.0.0/8 -j RETURN`,
-    `iptables -t nat -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 169.254.169.254/32 -j RETURN`,
-    `iptables -t nat -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 10.0.0.0/8 -j RETURN`,
-    `iptables -t nat -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 172.16.0.0/12 -j RETURN`,
-    `iptables -t nat -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 192.168.0.0/16 -j RETURN`,
-    `iptables -t nat -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -p tcp -j REDIRECT --to-ports 9990`,
-    // DNS pinned to resolvers first — resolver may itself live in RFC1918.
-    "for NS in $(awk '/^nameserver/ {print $2}' /etc/resolv.conf); do",
-    `  iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -p udp --dport 53 -d "$NS" -j ACCEPT`,
-    "done",
-    `iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 169.254.169.254/32 -j DROP`,
-    `iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 10.0.0.0/8 -j DROP`,
-    `iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 172.16.0.0/12 -j DROP`,
-    `iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -d 192.168.0.0/16 -j DROP`,
-    `iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -p udp -j DROP`,
-    `iptables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -p icmp -j DROP`,
-    `ip6tables -A OUTPUT -m owner --uid-owner ${AGENT_PROXIED_UID} -j DROP`,
-  ].join("\n");
 }
 
 const DUST_BASE_IMAGE = SandboxImage.fromDocker(
@@ -291,8 +263,23 @@ SHELLEOF`,
     "/etc/systemd/system/fluent-bit.service",
     { user: "root" }
   )
-  .runCmd("systemctl daemon-reload", { user: "root" })
-  .runCmd(getEgressIptablesSetupCommand(), { user: "root" })
+  .copy(
+    getLocalContent(EGRESS_LOCAL_DIR, "egress-iptables.sh"),
+    "/etc/dust/egress-iptables.sh",
+    { user: "root" }
+  )
+  .runCmd("chmod 755 /etc/dust/egress-iptables.sh", { user: "root" })
+  .copy(
+    getLocalContent(EGRESS_LOCAL_DIR, "dust-egress-iptables.service"),
+    "/etc/systemd/system/dust-egress-iptables.service",
+    { user: "root" }
+  )
+  .runCmd(
+    "systemctl daemon-reload && systemctl enable dust-egress-iptables.service",
+    {
+      user: "root",
+    }
+  )
   // Profile functions (no install needed, provided by profile scripts)
   .registerTool([
     {
