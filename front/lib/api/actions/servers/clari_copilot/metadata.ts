@@ -32,7 +32,15 @@ export const CLARI_COPILOT_TOOLS_METADATA = createToolsRecord({
       user_email: z
         .string()
         .optional()
-        .describe("Filter by internal participant email address."),
+        .describe(
+          "Filter by internal participant email address (members of your organization)."
+        ),
+      attendee_email: z
+        .string()
+        .optional()
+        .describe(
+          "Filter by external participant email address (prospects or customers who attended the call)."
+        ),
       limit: z
         .number()
         .int()

@@ -26,6 +26,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import { getTokenFieldLabel } from "@app/lib/actions/mcp_internal_actions/server_token_labels";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
@@ -128,12 +129,24 @@ export function CreateMCPServerDialog({
     [needsCustomName, internalMCPServer, existingViewNames]
   );
 
+  const tokenLabel = internalMCPServer
+    ? getTokenFieldLabel(internalMCPServer.name)
+    : undefined;
+  const predefinedHeaders = tokenLabel?.predefinedHeaders;
+  const showBearerTokenSection = tokenLabel?.showBearerTokenSection ?? true;
+
   const defaultValues = useMemo<CreateMCPServerDialogFormValues>(() => {
     return {
       ...getCreateMCPServerDialogDefaultValues(defaultServerConfig),
       viewName: suggestedViewName,
+      // Pre-fill headers and store their keys so the form can lock them as non-removable.
+      ...(predefinedHeaders && {
+        useCustomHeaders: true,
+        customHeaders: predefinedHeaders.map((key) => ({ key, value: "" })),
+        predefinedHeaderKeys: predefinedHeaders,
+      }),
     };
-  }, [defaultServerConfig, suggestedViewName]);
+  }, [defaultServerConfig, suggestedViewName, predefinedHeaders]);
 
   const form = useForm<CreateMCPServerDialogFormValues>({
     resolver: zodResolver(createMCPServerDialogFormSchema),
@@ -523,7 +536,8 @@ export function CreateMCPServerDialog({
               )}
 
               {internalMCPServer &&
-                requiresBearerTokenConfiguration(internalMCPServer) && (
+                requiresBearerTokenConfiguration(internalMCPServer) &&
+                showBearerTokenSection && (
                   <InternalBearerTokenSection
                     serverName={internalMCPServer.name}
                   />
