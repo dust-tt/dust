@@ -219,13 +219,13 @@ export async function runDeduplicationLLMCall(
   }
 
   // Map candidateIndex → matched existing sId (only when a match was reported).
-  const indexToMatchedSId = new Map<number, string>();
+  const indexToMatchedId = new Map<number, string>();
   for (const match of parsed.data.matches) {
     if (match.duplicate_of_sid) {
-      indexToMatchedSId.set(match.candidate_index, match.duplicate_of_sid);
+      indexToMatchedId.set(match.candidate_index, match.duplicate_of_sid);
     }
   }
-  return indexToMatchedSId;
+  return indexToMatchedId;
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -267,21 +267,21 @@ export async function batchDeduplicateCandidates(
         return;
       }
 
-      const indexToMatchedSId = await runDeduplicationLLMCall(auth, {
+      const indexToMatchedId = await runDeduplicationLLMCall(auth, {
         model,
         candidates: groupCandidates,
         existingTodos,
       });
 
-      const todosBySId = new Map(existingTodos.map((t) => [t.sId, t]));
+      const todosById = new Map(existingTodos.map((t) => [t.sId, t]));
 
       for (let i = 0; i < groupCandidates.length; i++) {
         const candidate = groupCandidates[i];
-        const matchedSId = indexToMatchedSId.get(i);
-        if (!matchedSId) {
+        const matchedId = indexToMatchedId.get(i);
+        if (!matchedId) {
           continue;
         }
-        const matched = todosBySId.get(matchedSId);
+        const matched = todosById.get(matchedId);
         if (matched) {
           deduplicationMap.set(
             makeDedupResultKey(candidate.userId, candidate.itemId),

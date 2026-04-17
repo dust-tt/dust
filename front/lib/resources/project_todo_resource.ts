@@ -284,7 +284,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
   // Returns all source entries grouped by logical todo sId. Because sources are
   // linked to specific version rows, this queries across ALL versions for the
   // given set of logical todo sIds and deduplicates by (sId, sourceType, sourceId).
-  static async fetchSourcesForTodoSIds(
+  static async fetchSourcesForTodoIds(
     auth: Authenticator,
     { sIds }: { sIds: string[] }
   ): Promise<Map<string, Array<ProjectTodoSourceInfo>>> {
@@ -319,19 +319,19 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     const result = new Map<string, Array<ProjectTodoSourceInfo>>();
 
     for (const source of sources) {
-      const todoSId = idToSId.get(source.projectTodoId);
-      if (!todoSId) {
+      const todoId = idToSId.get(source.projectTodoId);
+      if (!todoId) {
         continue;
       }
 
-      const existing = result.get(todoSId) ?? [];
+      const existing = result.get(todoId) ?? [];
       existing.push({
         sourceType: source.sourceType,
         sourceId: source.sourceId,
         sourceTitle: source.sourceTitle,
         sourceUrl: source.sourceUrl,
       });
-      result.set(todoSId, existing);
+      result.set(todoId, existing);
     }
 
     return result;

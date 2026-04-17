@@ -371,7 +371,7 @@ async function createOrLinkTodos(
 
         logger.info(
           {
-            existingTodoSId: match.sId,
+            existingTodoId: match.sId,
             itemId: candidate.itemId,
             userId: candidate.userId,
             source: candidate.source,
@@ -405,7 +405,7 @@ async function createOrLinkTodos(
 
       logger.info(
         {
-          todoSId: todo.sId,
+          todoId: todo.sId,
           itemId: candidate.itemId,
           userId: candidate.userId,
           source: candidate.source,
