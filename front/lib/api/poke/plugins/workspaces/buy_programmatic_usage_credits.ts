@@ -184,6 +184,8 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
         consumedAmountMicroUsd: 0,
         discount: null,
         invoiceOrLineItemId: idempotencyKey,
+        startDate,
+        expirationDate,
       });
 
       const startResult = await credit.start(auth, {

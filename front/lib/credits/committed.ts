@@ -21,8 +21,6 @@ import {
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-
-import { CREDIT_EXPIRATION_DAYS } from "@app/types/credits";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
@@ -118,6 +116,8 @@ export async function startCreditFromProOneOffInvoice({
     const metronomeResult = await addMetronomeCommitsForWorkspace({
       auth,
       amountCredits: creditAmountCents / 100,
+      startDate: startResult.value.startDate,
+      expirationDate: startResult.value.expirationDate,
     });
     if (metronomeResult.isErr()) {
       return new Err(metronomeResult.error);
@@ -315,8 +315,8 @@ export async function createEnterpriseCreditPurchase({
   const metronomeResult = await addMetronomeCommitsForWorkspace({
     auth,
     amountCredits: amountMicroUsd / 1_000_000,
-    startDate,
-    expirationDate,
+    startDate: startResult.value.startDate,
+    expirationDate: startResult.value.expirationDate,
   });
   if (metronomeResult.isErr()) {
     return new Err(metronomeResult.error);
@@ -496,8 +496,8 @@ async function addMetronomeCommitsForWorkspace({
   auth: Authenticator;
   /** Amount in custom credit units (not cents). */
   amountCredits: number;
-  startDate?: Date;
-  expirationDate?: Date;
+  startDate: Date;
+  expirationDate: Date;
 }): Promise<Result<void, Error>> {
   const workspace = auth.getNonNullableWorkspace();
   const metronomeCustomerId = workspace.metronomeCustomerId;
@@ -510,14 +510,6 @@ async function addMetronomeCommitsForWorkspace({
     return new Ok(undefined);
   }
 
-  const effectiveStartDate = startDate ?? new Date();
-  const effectiveExpirationDate =
-    expirationDate ??
-    new Date(
-      effectiveStartDate.getTime() +
-        CREDIT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000
-    );
-
   const productId = getProductPrepaidCommitId();
 
   const result = await createMetronomeCommit({
@@ -525,10 +517,10 @@ async function addMetronomeCommitsForWorkspace({
     productId,
     creditTypeId: getCreditTypeProgrammaticUsdId(),
     amount: amountCredits,
-    startingAt: effectiveStartDate,
-    endingBefore: effectiveExpirationDate,
-    name: `Prepaid commit (${effectiveStartDate.toISOString()})`,
-    idempotencyKey: `commit-${workspace.sId}-${effectiveStartDate.getTime()}-${amountCredits}`,
+    startingAt: startDate,
+    endingBefore: expirationDate,
+    name: `Prepaid commit (${startDate.toISOString()})`,
+    idempotencyKey: `commit-${workspace.sId}-${startDate.getTime()}-${amountCredits}`,
     priority: 2, // Committed credits should be applied after any free credits (priority 1) but before any PAYG commits (priority 3)
   });
 
