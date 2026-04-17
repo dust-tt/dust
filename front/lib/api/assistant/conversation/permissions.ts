@@ -1,14 +1,12 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { getContentFragmentSpaceIds } from "@app/lib/api/assistant/permissions";
+import { getContentFragmentsSpaceIds } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
 import {
   type ConversationAccessType,
   ConversationResource,
 } from "@app/lib/resources/conversation_resource";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
-import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isProjectConversation } from "@app/types/assistant/conversation";
@@ -141,12 +139,12 @@ export async function updateConversationRequirements(
   auth: Authenticator,
   {
     agents,
-    contentFragment,
+    contentFragmentDsvIds,
     conversation,
     t,
   }: {
     agents?: LightAgentConfigurationType[];
-    contentFragment?: ContentFragmentInputWithContentNode;
+    contentFragmentDsvIds?: string[];
     conversation: ConversationWithoutContentType;
     t?: Transaction;
   }
@@ -180,13 +178,12 @@ export async function updateConversationRequirements(
   if (agents) {
     newSpaceRequirements = agents.flatMap((agent) => agent.requestedSpaceIds);
   }
-  if (contentFragment) {
-    const requestedSpaceId = await getContentFragmentSpaceIds(
+  if (contentFragmentDsvIds) {
+    const requestedSpaceIds = await getContentFragmentsSpaceIds(
       auth,
-      contentFragment
+      contentFragmentDsvIds
     );
-
-    newSpaceRequirements.push(requestedSpaceId);
+    newSpaceRequirements.push(...requestedSpaceIds);
   }
 
   newSpaceRequirements = uniq(newSpaceRequirements);
@@ -244,31 +241,26 @@ export async function updateConversationRequirements(
 export async function rebuildConversationRequirements(
   auth: Authenticator,
   conversationResource: ConversationResource
-): Promise<number[]> {
-  const { agentConfigurationIds, contentFragmentDsvModelIds } =
-    await conversationResource.fetchSpaceRequirementSourceData(auth);
+): Promise<void> {
+  // Clear existing requirements so that updateConversationRequirements starts from a clean state.
+  await conversationResource.updateRequirements([]);
 
-  let agentSpaceModelIds: number[] = [];
-  if (agentConfigurationIds.length > 0) {
-    const agents = await getAgentConfigurations(auth, {
-      agentIds: agentConfigurationIds,
-      variant: "light",
-    });
-
-    agentSpaceModelIds = agents
-      .flatMap((a) => a.requestedSpaceIds)
-      .map((sId) => getResourceIdFromSId(sId))
-      .filter((modelId): modelId is number => modelId !== null);
-  }
-
-  let cfSpaceModelIds: number[] = [];
-  if (contentFragmentDsvModelIds.length > 0) {
-    const dsvs = await DataSourceViewResource.fetchByModelIds(
-      auth,
-      contentFragmentDsvModelIds
+  const { agentConfigurationIds, contentFragmentDsvIds } =
+    await conversationResource.fetchAgentConfigurationAndContentFragmentIds(
+      auth
     );
-    cfSpaceModelIds = dsvs.map((dsv) => dsv.space.id);
-  }
 
-  return uniq([...agentSpaceModelIds, ...cfSpaceModelIds]);
+  const agents =
+    agentConfigurationIds.length > 0
+      ? await getAgentConfigurations(auth, {
+          agentIds: agentConfigurationIds,
+          variant: "light",
+        })
+      : [];
+
+  await updateConversationRequirements(auth, {
+    agents,
+    contentFragmentDsvIds,
+    conversation: conversationResource.toJSON(),
+  });
 }

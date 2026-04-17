@@ -6,7 +6,6 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import type { WorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -286,13 +285,6 @@ describe("updateConversationRequirements", () => {
         auth.user() ?? null
       );
 
-      // Create content fragment input
-      const contentFragment: ContentFragmentInputWithContentNode = {
-        title: "Test Fragment",
-        nodeId: "test-node-id",
-        nodeDataSourceViewId: dsView.sId,
-      };
-
       // Fetch conversation
       const fetchedConversationResult = await getConversation(
         auth,
@@ -303,9 +295,9 @@ describe("updateConversationRequirements", () => {
       }
       const regularConversation = fetchedConversationResult.value;
 
-      // Call updateConversationRequirements with content fragment
+      // Call updateConversationRequirements with content fragment DSV ID
       await updateConversationRequirements(auth, {
-        contentFragment,
+        contentFragmentDsvIds: [dsView.sId],
         conversation: regularConversation,
       });
 
@@ -361,12 +353,6 @@ describe("updateConversationRequirements", () => {
         auth.user() ?? null
       );
 
-      const contentFragment: ContentFragmentInputWithContentNode = {
-        title: "Test Fragment",
-        nodeId: "test-node-id",
-        nodeDataSourceViewId: dsView.sId,
-      };
-
       // Fetch agents and conversation
       const { getAgentConfigurations } = await import(
         "@app/lib/api/assistant/configuration/agent"
@@ -388,7 +374,7 @@ describe("updateConversationRequirements", () => {
       // Call updateConversationRequirements with both
       await updateConversationRequirements(auth, {
         agents,
-        contentFragment,
+        contentFragmentDsvIds: [dsView.sId],
         conversation: regularConversation,
       });
 

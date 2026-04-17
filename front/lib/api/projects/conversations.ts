@@ -189,11 +189,7 @@ export async function moveConversationOutOfProject(
   // Rebuild requestedSpaceIds from all agents and content fragments in the conversation.
   // When a conversation is in a project, its requestedSpaceIds is set to [projectSpaceId] only.
   // Moving out requires recalculating the full set of space requirements.
-  const requestedSpaceModelIds = await rebuildConversationRequirements(
-    auth,
-    conversationResource
-  );
-  await conversationResource.updateRequirements(requestedSpaceModelIds);
+  await rebuildConversationRequirements(auth, conversationResource);
 
   const workspaceId = auth.getNonNullableWorkspace().sId;
 

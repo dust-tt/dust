@@ -15,6 +15,7 @@ import { REINFORCEMENT_METADATA_KEYS } from "@app/lib/reinforced_agent/types";
 import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
   createResourcePermissionsFromSpacesWithMap,
@@ -2772,13 +2773,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
-   * Get the distinct agent configurations and content fragment DataSourceViews
+   * Get the distinct agent configuration IDs and content fragment DataSourceView ids
    * used in this conversation. This data is needed to rebuild the conversation's
    * requestedSpaceIds when moving out of a project.
    */
-  async fetchSpaceRequirementSourceData(auth: Authenticator): Promise<{
+  async fetchAgentConfigurationAndContentFragmentIds(
+    auth: Authenticator
+  ): Promise<{
     agentConfigurationIds: string[];
-    contentFragmentDsvModelIds: number[];
+    contentFragmentDsvIds: string[];
   }> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
@@ -2821,13 +2824,22 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       ],
     });
 
-    const contentFragmentDsvModelIds = uniq(
+    const contentFragmentDsvIds = uniq(
       cfMessages
-        .map((m) => m.contentFragment?.nodeDataSourceViewId)
-        .filter((modelId): modelId is number => modelId != null)
+        .map((m) => {
+          const modelId = m.contentFragment?.nodeDataSourceViewId;
+          if (modelId == null) {
+            return null;
+          }
+          return DataSourceViewResource.modelIdToSId({
+            id: modelId,
+            workspaceId,
+          });
+        })
+        .filter((sId): sId is string => sId !== null)
     );
 
-    return { agentConfigurationIds, contentFragmentDsvModelIds };
+    return { agentConfigurationIds, contentFragmentDsvIds };
   }
 
   static async markHasError(
