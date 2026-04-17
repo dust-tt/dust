@@ -11,7 +11,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.5.0";
-const DUST_BASE_IMAGE_VERSION = "0.7.7";
+const DUST_BASE_IMAGE_VERSION = "0.7.8";
 const DSBX_CLI_VERSION = "0.1.4";
 const AGENT_PROXIED_UID = 1003;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
@@ -264,21 +264,13 @@ SHELLEOF`,
     { user: "root" }
   )
   .copy(
-    getLocalContent(EGRESS_LOCAL_DIR, "egress-iptables.sh"),
-    "/etc/dust/egress-iptables.sh",
-    { user: "root" }
-  )
-  .runCmd("chmod 755 /etc/dust/egress-iptables.sh", { user: "root" })
-  .copy(
-    getLocalContent(EGRESS_LOCAL_DIR, "dust-egress-iptables.service"),
-    "/etc/systemd/system/dust-egress-iptables.service",
+    getLocalContent(EGRESS_LOCAL_DIR, "egress-nftables.sh"),
+    "/etc/dust/egress-nftables.sh",
     { user: "root" }
   )
   .runCmd(
-    "systemctl daemon-reload && systemctl enable dust-egress-iptables.service",
-    {
-      user: "root",
-    }
+    "chmod 755 /etc/dust/egress-nftables.sh && /etc/dust/egress-nftables.sh",
+    { user: "root" }
   )
   // Profile functions (no install needed, provided by profile scripts)
   .registerTool([
