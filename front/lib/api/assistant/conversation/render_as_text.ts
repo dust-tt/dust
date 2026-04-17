@@ -254,7 +254,9 @@ function renderUserMessageAsText(
 function hasFeedback(
   msg: AgentMessageType | LightAgentMessageType
 ): msg is AgentMessageWithFeedbackType {
-  return "feedback" in msg && Array.isArray(msg.feedback) && msg.feedback.length > 0;
+  return (
+    "feedback" in msg && Array.isArray(msg.feedback) && msg.feedback.length > 0
+  );
 }
 
 function renderAgentMessageAsText(
