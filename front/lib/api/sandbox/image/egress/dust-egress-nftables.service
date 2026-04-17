@@ -1,0 +1,11 @@
+[Unit]
+Description=Dust egress nftables rules for agent-proxied
+After=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/etc/dust/egress-nftables.sh
+
+[Install]
+WantedBy=multi-user.target

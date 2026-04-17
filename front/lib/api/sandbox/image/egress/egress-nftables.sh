@@ -3,7 +3,7 @@ set -eu
 
 PROXIED_UID=1003
 
-# Build-time application should leave the snapshot with a single canonical ruleset.
+# Reinstall a single canonical ruleset on every sandbox boot.
 nft delete table ip dust-egress 2>/dev/null || true
 nft delete table ip6 dust-egress 2>/dev/null || true
 
