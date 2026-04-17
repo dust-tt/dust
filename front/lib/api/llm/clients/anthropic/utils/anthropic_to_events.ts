@@ -33,6 +33,8 @@ import { isRecord } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import cloneDeep from "lodash/cloneDeep";
 
+const MAX_EAGER_VALIDATION_INPUT_LENGTH = 5_000;
+
 export async function* streamLLMEvents(
   messageStreamEvents: AsyncIterable<BetaRawMessageStreamEvent>,
   metadata: LLMClientMetadata,
@@ -272,7 +274,6 @@ function* handleContentBlockStop(
       // invalid JSON and send it back as a tool result so the model can see
       // its mistake and self-correct.
       // https://platform.claude.com/docs/en/agents-and-tools/tool-use/fine-grained-tool-streaming#handling-invalid-json-in-tool-responses
-      const MAX_EAGER_VALIDATION_INPUT_LENGTH = 5_000;
       if (
         input.length < MAX_EAGER_VALIDATION_INPUT_LENGTH &&
         input.trim() !== ""
