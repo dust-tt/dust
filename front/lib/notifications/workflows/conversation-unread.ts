@@ -118,7 +118,6 @@ const ConversationDetailsSchema = z.object({
   author: z.string(),
   authorIsAgent: z.boolean(),
   authorUserId: z.string().optional(),
-  avatarUrl: z.string().optional(),
   isFromTrigger: z.boolean(),
   isFromEmailAgentConversation: z.boolean(),
   workspaceName: z.string(),
@@ -236,7 +235,6 @@ const getConversationDetails = async ({
   let author: string;
   let authorIsAgent: boolean;
   let authorUserId: string | undefined;
-  let avatarUrl: string | undefined;
   let mentionedUserIds: string[] = [];
   const messageContent =
     message.type === "agent_message" || message.type === "user_message"
@@ -261,9 +259,9 @@ const getConversationDetails = async ({
     author = "Someone else";
     authorIsAgent = false;
   } else if (isUserMessageType(message)) {
-    author = message.user?.fullName ?? "Someone else";
+    author =
+      message.user?.fullName ?? message.context.fullName ?? "Someone else";
     authorUserId = message.user?.sId ?? undefined;
-    avatarUrl = message.user?.image ?? undefined;
     authorIsAgent = false;
 
     // Extract approved user mentions from the rendered message.
@@ -274,7 +272,6 @@ const getConversationDetails = async ({
     author = message.configuration.name
       ? `@${message.configuration.name}`
       : "An agent";
-    avatarUrl = message.configuration.pictureUrl ?? undefined;
     authorIsAgent = true;
   } else {
     assertNever(message);
@@ -323,7 +320,6 @@ const getConversationDetails = async ({
     author,
     authorIsAgent,
     authorUserId,
-    avatarUrl,
     isFromTrigger,
     isFromEmailAgentConversation,
     workspaceName,
