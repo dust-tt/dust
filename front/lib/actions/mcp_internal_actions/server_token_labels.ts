@@ -1,8 +1,11 @@
-interface TokenFieldLabel {
+type TokenFieldLabel = {
   label: string;
-  placeholder: string;
   tooltip: string;
-}
+  predefinedHeaders?: string[];
+} & (
+  | { showBearerTokenSection?: true; placeholder: string }
+  | { showBearerTokenSection: false; placeholder?: string }
+);
 
 const SERVER_TOKEN_LABELS: Record<string, TokenFieldLabel> = {
   slab: {
@@ -16,6 +19,13 @@ const SERVER_TOKEN_LABELS: Record<string, TokenFieldLabel> = {
     placeholder: "Paste your Ashby API key",
     tooltip:
       "You can generate an API key from your Ashby Developer Settings under API Keys.",
+  },
+  clari_copilot: {
+    label: "Clari Copilot API Credentials",
+    tooltip:
+      "You can find your credentials in Clari Copilot under Workspace Settings > Integrations > Clari Copilot API.",
+    predefinedHeaders: ["X-Api-Key", "X-Api-Password"],
+    showBearerTokenSection: false,
   },
   front: {
     label: "Front API Token",

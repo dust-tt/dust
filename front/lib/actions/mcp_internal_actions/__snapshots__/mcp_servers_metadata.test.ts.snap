@@ -58,6 +58,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "ask_user_question": {
     "ask_user_question": "never_ask",
   },
+  "clari_copilot": {
+    "get_call_details": "never_ask",
+    "search_calls": "never_ask",
+  },
   "common_utilities": {
     "generate_random_float": "never_ask",
     "generate_random_number": "never_ask",
