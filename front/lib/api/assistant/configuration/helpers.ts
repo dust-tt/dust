@@ -60,14 +60,14 @@ export async function isSelfHostedImageWithValidContentType(
   }
 
   // Attempt to decode the URL, since Google Cloud Storage URL encodes the filename.
-  const contentType = await getPublicUploadBucket().getFileContentType(
+  const contentTypeResult = await getPublicUploadBucket().getFileContentType(
     decodeURIComponent(filename)
   );
-  if (!contentType) {
+  if (contentTypeResult.isErr() || !contentTypeResult.value) {
     return false;
   }
 
-  return contentType.includes("image");
+  return contentTypeResult.value.includes("image");
 }
 
 export async function getAgentIdFromName(
