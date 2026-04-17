@@ -24,13 +24,6 @@ export async function getFolderSearchServers(
   attachments: ConversationAttachmentType[],
   autoInternalViews: Map<AutoInternalMCPServerNameType, MCPServerViewResource>
 ): Promise<ServerSideMCPServerConfigurationType[]> {
-  const retrievalView = autoInternalViews.get("search") ?? null;
-
-  assert(
-    retrievalView,
-    "MCP server view not found for search. Ensure auto tools are created."
-  );
-
   const searchableFolders: ContentNodeAttachmentType[] = [];
   for (const attachment of attachments) {
     if (
@@ -40,6 +33,16 @@ export async function getFolderSearchServers(
       searchableFolders.push(attachment);
     }
   }
+
+  if (searchableFolders.length === 0) {
+    return [];
+  }
+
+  const retrievalView = autoInternalViews.get("search") ?? null;
+  assert(
+    retrievalView,
+    "MCP server view not found for search. Ensure auto tools are created."
+  );
 
   const servers: ServerSideMCPServerConfigurationType[] = [];
 

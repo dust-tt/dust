@@ -726,15 +726,14 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return views.filter((view) => view.space.kind === "global");
   }
 
-  static async getMCPServerViewsForAutoInternalToolsAsMap(
+  static async getMCPServerViewsForAutoInternalToolsAsMap<
+    T extends AutoInternalMCPServerNameType,
+  >(
     auth: Authenticator,
-    names: readonly AutoInternalMCPServerNameType[]
-  ): Promise<Map<AutoInternalMCPServerNameType, MCPServerViewResource>> {
+    names: readonly T[]
+  ): Promise<Map<T, MCPServerViewResource>> {
     const workspaceId = auth.getNonNullableWorkspace().id;
-    const nameByInternalMCPServerId = new Map<
-      string,
-      AutoInternalMCPServerNameType
-    >(
+    const nameByInternalMCPServerId = new Map<string, T>(
       names.map((name) => [
         autoInternalMCPServerNameToSId({ name, workspaceId }),
         name,
@@ -745,7 +744,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       ...nameByInternalMCPServerId.keys(),
     ]);
 
-    const map = new Map<AutoInternalMCPServerNameType, MCPServerViewResource>();
+    const map = new Map<T, MCPServerViewResource>();
     for (const view of views) {
       if (view.space.kind !== "global" || !view.internalMCPServerId) {
         continue;

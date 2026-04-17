@@ -1,6 +1,7 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { getCommonUtilitiesServer } from "@app/lib/api/assistant/jit/common_utilities";
 import {
   getConversationFilesServer,
@@ -10,20 +11,12 @@ import { getFolderSearchServers } from "@app/lib/api/assistant/jit/folder";
 import { getQueryTablesServer } from "@app/lib/api/assistant/jit/query_tables_v2";
 import { getSchedulesManagementServer } from "@app/lib/api/assistant/jit/schedules_management";
 import { getSkillManagementServer } from "@app/lib/api/assistant/jit/skills";
+import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { removeNulls } from "@app/types/shared/utils/general";
-
-const JIT_AUTO_INTERNAL_SERVER_NAMES = [
-  "common_utilities",
-  "skill_management",
-  "schedules_management",
-  "conversation_files",
-  "query_tables_v2",
-  "search",
-] as const satisfies readonly AutoInternalMCPServerNameType[];
 
 /**
  * Servers whose tool specifications are mostly always added or never added.
@@ -149,10 +142,29 @@ export async function getJITServers(
   servers: ServerSideMCPServerConfigurationType[];
   hasConditionalJITTools: boolean;
 }> {
+  const namesToFetch: AutoInternalMCPServerNameType[] = [
+    "common_utilities",
+    "skill_management",
+    "schedules_management",
+  ];
+  if (attachments.length > 0) {
+    namesToFetch.push("conversation_files");
+    if (attachments.some((a) => a.isQueryable)) {
+      namesToFetch.push("query_tables_v2");
+    }
+    if (
+      attachments.some(
+        (a) => isContentNodeAttachmentType(a) && isSearchableFolder(a)
+      )
+    ) {
+      namesToFetch.push("search");
+    }
+  }
+
   const autoInternalViews =
     await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
       auth,
-      JIT_AUTO_INTERNAL_SERVER_NAMES
+      namesToFetch
     );
 
   const [baseServers, conditionalServers] = await Promise.all([
