@@ -1,7 +1,4 @@
 /** @ignoreswagger */
-import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import {
   createMessageReaction,
   deleteMessageReaction,
@@ -12,22 +9,24 @@ import {
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type {
   AgentMessageType,
-  ConversationType,
+  ConversationWithoutContentType,
   MessageReactionType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+import type { ContentFragmentType } from "@app/types/content_fragment";
 import {
   isAgentMessageType,
   isCompactionMessageType,
   isProjectConversation,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
-import type { ContentFragmentType } from "@app/types/content_fragment";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -59,14 +58,32 @@ async function handler(
     });
   }
 
-  const conversationId = req.query.cId;
-  const conversationRes = await getConversation(auth, conversationId);
-
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
+  if (!(typeof req.query.mId === "string")) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid query parameters, `mId` (string) is required.",
+      },
+    });
   }
 
-  const conversation = conversationRes.value;
+  const conversationId = req.query.cId;
+  const messageId = req.query.mId;
+
+  const conversationResource = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+
+  if (!conversationResource) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: { type: "conversation_not_found", message: "Conversation not found." },
+    });
+  }
+
+  const conversation = conversationResource.toJSON();
 
   if (isProjectConversation(conversation)) {
     const space = await SpaceResource.fetchById(auth, conversation.spaceId);
@@ -87,17 +104,6 @@ async function handler(
     }
   }
 
-  if (!(typeof req.query.mId === "string")) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameters, `mId` (string) is required.",
-      },
-    });
-  }
-
-  const messageId = req.query.mId;
   const bodyValidation = MessageReactionRequestBodySchema.decode(req.body);
   if (isLeft(bodyValidation)) {
     const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -110,7 +116,34 @@ async function handler(
     });
   }
 
-  const message = conversation.content.flat().find((m) => m.sId === messageId);
+  const messageRes = await conversationResource.getMessageById(auth, messageId);
+  if (messageRes.isErr()) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "The message you're trying to react to does not exist.",
+      },
+    });
+  }
+
+  const renderedMessagesRes = await batchRenderMessages(
+    auth,
+    conversationResource,
+    [messageRes.value],
+    "full"
+  );
+  if (renderedMessagesRes.isErr()) {
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to render message.",
+      },
+    });
+  }
+
+  const message = renderedMessagesRes.value.find((m) => m.sId === messageId);
   if (!message) {
     return apiError(req, res, {
       status_code: 400,
@@ -120,6 +153,7 @@ async function handler(
       },
     });
   }
+
   if (isCompactionMessageType(message)) {
     return apiError(req, res, {
       status_code: 400,
@@ -205,7 +239,7 @@ const publishMessageUpdate = async (
     conversation,
     message,
   }: {
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     message: UserMessageType | ContentFragmentType | AgentMessageType;
   }
 ) => {
@@ -218,7 +252,8 @@ const publishMessageUpdate = async (
       conversation,
       {
         ...message,
-        contentFragments: getRelatedContentFragments(conversation, message),
+        // Content fragments are not changed by reactions; client preserves existing ones.
+        contentFragments: [],
         reactions: reactions[message.id] ?? [],
       },
       []

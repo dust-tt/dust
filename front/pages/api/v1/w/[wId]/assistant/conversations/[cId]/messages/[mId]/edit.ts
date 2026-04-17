@@ -1,8 +1,8 @@
 import { editUserMessage } from "@app/lib/api/assistant/conversation";
+import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { addBackwardCompatibleAgentMessageFields } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
-import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import { isUserMessageType } from "@app/types/assistant/conversation";

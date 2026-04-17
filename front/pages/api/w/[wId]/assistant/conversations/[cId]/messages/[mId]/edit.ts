@@ -57,9 +57,9 @@
  *         description: Unauthorized
  */
 import { editUserMessage } from "@app/lib/api/assistant/conversation";
+import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { UserMessageType } from "@app/types/assistant/conversation";
@@ -174,7 +174,9 @@ async function handler(
         });
       }
 
-      const message = renderedMessagesRes.value.find((m) => m.sId === messageId);
+      const message = renderedMessagesRes.value.find(
+        (m) => m.sId === messageId
+      );
       if (!message || !isUserMessageType(message)) {
         return apiError(req, res, {
           status_code: 400,
