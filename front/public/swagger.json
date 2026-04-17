@@ -6527,7 +6527,7 @@
       },
       "patch": {
         "summary": "Update a conversation",
-        "description": "Update a conversation's title, mark it as read, or move it to a different space.",
+        "description": "Update a conversation's title, mark it as read, move it to a different space, or control URL access mode.",
         "tags": [
           "Private Conversations"
         ],
@@ -6592,6 +6592,21 @@
                     "properties": {
                       "spaceId": {
                         "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "accessMode"
+                    ],
+                    "properties": {
+                      "accessMode": {
+                        "type": "string",
+                        "enum": [
+                          "participants_only",
+                          "workspace_members"
+                        ]
                       }
                     }
                   }

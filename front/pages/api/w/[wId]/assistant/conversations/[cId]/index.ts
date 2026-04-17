@@ -60,7 +60,7 @@
  *         description: Unauthorized
  *   patch:
  *     summary: Update a conversation
- *     description: Update a conversation's title, mark it as read, or move it to a different space.
+ *     description: Update a conversation's title, mark it as read, move it to a different space, or control URL access mode.
  *     tags:
  *       - Private Conversations
  *     parameters:
@@ -102,6 +102,15 @@
  *                 properties:
  *                   spaceId:
  *                     type: string
+ *               - type: object
+ *                 required:
+ *                   - accessMode
+ *                 properties:
+ *                   accessMode:
+ *                     type: string
+ *                     enum:
+ *                       - participants_only
+ *                       - workspace_members
  *     responses:
  *       200:
  *         description: Successfully updated conversation
@@ -149,6 +158,12 @@ const PatchConversationsRequestBodySchema = t.union([
   }),
   t.type({
     spaceId: t.string,
+  }),
+  t.type({
+    accessMode: t.keyof({
+      participants_only: null,
+      workspace_members: null,
+    }),
   }),
 ]);
 
@@ -333,6 +348,17 @@ async function handler(
                 assertNever(r.error.code);
             }
           }
+        } else if ("accessMode" in bodyValidation.right) {
+          const result = await ConversationResource.updateUrlAccessMode(
+            auth,
+            conversation.sId,
+            bodyValidation.right.accessMode
+          );
+          if (result.isErr()) {
+            return apiErrorForConversation(req, res, result.error);
+          }
+
+          return res.status(200).json({ success: true });
         } else {
           return apiError(req, res, {
             status_code: 400,

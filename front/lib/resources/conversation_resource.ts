@@ -34,11 +34,16 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ConversationForkedFromType,
   ConversationMCPServerViewType,
+  ConversationMetadata,
+  ConversationUrlAccessMode,
   ConversationVisibility,
   ConversationWithoutContentType,
   ParticipantActionType,
 } from "@app/types/assistant/conversation";
-import { ConversationError } from "@app/types/assistant/conversation";
+import {
+  ConversationError,
+  getConversationUrlAccessMode,
+} from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -164,6 +169,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return (
       auth.getNonNullableWorkspace().metadata
         ?.privateConversationUrlsByDefault === true
+    );
+  }
+
+  private static getConversationUrlAccessModeForPrivateByDefault(conversation: {
+    metadata: ConversationMetadata;
+  }): ConversationUrlAccessMode {
+    return (
+      getConversationUrlAccessMode(conversation.metadata) ?? "participants_only"
     );
   }
 
@@ -470,11 +483,23 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return [];
     }
 
+    const participantRestrictedConversations = spaceBasedAccessible.filter(
+      (conversation) =>
+        this.getConversationUrlAccessModeForPrivateByDefault(conversation) ===
+        "participants_only"
+    );
+
+    if (participantRestrictedConversations.length === 0) {
+      return spaceBasedAccessible;
+    }
+
     const participations = await ConversationParticipantModel.findAll({
       where: {
         workspaceId: workspace.id,
         userId: user.id,
-        conversationId: { [Op.in]: spaceBasedAccessible.map((c) => c.id) },
+        conversationId: {
+          [Op.in]: participantRestrictedConversations.map((c) => c.id),
+        },
       },
       attributes: ["conversationId"],
     });
@@ -483,8 +508,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       participations.map((p) => p.conversationId)
     );
 
-    return spaceBasedAccessible.filter((c) =>
-      participantConversationIds.has(c.id)
+    return spaceBasedAccessible.filter(
+      (conversation) =>
+        this.getConversationUrlAccessModeForPrivateByDefault(conversation) ===
+          "workspace_members" || participantConversationIds.has(conversation.id)
     );
   }
 
@@ -497,6 +524,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     if (auth.isAdmin()) {
+      return true;
+    }
+
+    if (
+      this.getConversationUrlAccessModeForPrivateByDefault(conversation) ===
+      "workspace_members"
+    ) {
       return true;
     }
 
@@ -2518,6 +2552,27 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       },
       transaction
     );
+  }
+
+  static async updateUrlAccessMode(
+    auth: Authenticator,
+    sId: string,
+    accessMode: ConversationUrlAccessMode,
+    transaction?: Transaction
+  ) {
+    const conversation = await this.fetchById(auth, sId);
+    if (conversation == null) {
+      return new Err(new ConversationError("conversation_not_found"));
+    }
+
+    const metadata: ConversationMetadata = {
+      ...conversation.metadata,
+      urlAccessMode: accessMode,
+    };
+
+    await conversation.update({ metadata }, transaction);
+
+    return new Ok(undefined);
   }
 
   static async fetchMCPServerViews(

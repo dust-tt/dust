@@ -6,6 +6,7 @@ import {
   useBranchConversation,
   useConversationParticipants,
   useConversationParticipationOptions,
+  useConversationUrlAccessMode,
   useJoinConversation,
 } from "@app/hooks/conversations";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
@@ -26,7 +27,10 @@ import {
   setQueryParam,
 } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import {
+  getConversationUrlAccessMode,
+  isProjectConversation,
+} from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
@@ -267,6 +271,13 @@ export function ConversationMenu({
   const openConversationInBrowser = () => {
     window.open(conversationLink, "_blank");
   };
+  const {
+    isUpdatingConversationUrlAccessMode,
+    updateConversationUrlAccessMode,
+  } = useConversationUrlAccessMode({
+    owner,
+    conversationId: activeConversationId,
+  });
 
   if (!activeConversationId) {
     return null;
@@ -275,6 +286,17 @@ export function ConversationMenu({
   const canJoin = conversationParticipationOptions.includes("join");
   const canLeave = conversationParticipationOptions.includes("leave");
   const canDelete = conversationParticipationOptions.includes("delete");
+  const isPrivateConversationUrlsByDefaultEnabled =
+    owner.metadata?.privateConversationUrlsByDefault === true;
+  const conversationUrlAccessMode = getConversationUrlAccessMode(
+    conversation?.metadata
+  );
+  const canMakeUrlAccessible =
+    isPrivateConversationUrlsByDefaultEnabled &&
+    conversationUrlAccessMode !== "workspace_members";
+  const canRestrictUrlAccess =
+    isPrivateConversationUrlsByDefaultEnabled &&
+    conversationUrlAccessMode === "workspace_members";
 
   return (
     <div
@@ -440,6 +462,24 @@ export function ConversationMenu({
               label="Copy link"
               onClick={copyConversationLink}
               icon={LinkIcon}
+            />
+          )}
+          {(canMakeUrlAccessible || canRestrictUrlAccess) && (
+            <DropdownMenuItem
+              label={
+                canRestrictUrlAccess
+                  ? "Restrict URL access"
+                  : "Make URL accessible"
+              }
+              onClick={() => {
+                void updateConversationUrlAccessMode(
+                  canRestrictUrlAccess
+                    ? "participants_only"
+                    : "workspace_members"
+                );
+              }}
+              icon={LinkIcon}
+              disabled={isUpdatingConversationUrlAccessMode}
             />
           )}
           {canTurnIntoAgent && (
