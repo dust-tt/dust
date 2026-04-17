@@ -1,6 +1,7 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -13,7 +14,8 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 export async function getSchedulesManagementServer(
   auth: Authenticator,
   agentConfiguration: LightAgentConfigurationType,
-  conversation: ConversationWithoutContentType
+  conversation: ConversationWithoutContentType,
+  autoInternalViews: Map<AutoInternalMCPServerNameType, MCPServerViewResource>
 ): Promise<ServerSideMCPServerConfigurationType | null> {
   const owner = auth.getNonNullableWorkspace();
   const userResource = auth.user();
@@ -32,10 +34,7 @@ export async function getSchedulesManagementServer(
   }
 
   const schedulesManagementView =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "schedules_management"
-    );
+    autoInternalViews.get("schedules_management") ?? null;
 
   if (!schedulesManagementView) {
     logger.warn(

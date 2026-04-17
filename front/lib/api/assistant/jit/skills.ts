@@ -1,6 +1,7 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
@@ -13,7 +14,8 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 export async function getSkillManagementServer(
   auth: Authenticator,
   agentConfiguration: AgentConfigurationType,
-  conversation: ConversationWithoutContentType
+  conversation: ConversationWithoutContentType,
+  autoInternalViews: Map<AutoInternalMCPServerNameType, MCPServerViewResource>
 ): Promise<ServerSideMCPServerConfigurationType | null> {
   const refs = await SkillResource.getSkillReferencesForAgent(
     auth,
@@ -24,11 +26,7 @@ export async function getSkillManagementServer(
     return null;
   }
 
-  const skillManagementView =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "skill_management"
-    );
+  const skillManagementView = autoInternalViews.get("skill_management") ?? null;
 
   if (!skillManagementView) {
     logger.warn(

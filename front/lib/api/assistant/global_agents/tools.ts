@@ -1,5 +1,4 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AGENT_ROUTER_ACTION_DESCRIPTION,
@@ -43,27 +42,18 @@ export async function getMCPServerViewsForGlobalAgents(
   auth: Authenticator,
   variant: AgentFetchVariant
 ): Promise<MCPServerViewsForGlobalAgentsMap> {
-  let allMCPServerViews: MCPServerViewResource[] = [];
-  if (variant === "full") {
-    allMCPServerViews =
-      await MCPServerViewResource.getMCPServerViewsForAutoInternalTools(auth, [
-        ...MCP_SERVERS_FOR_GLOBAL_AGENTS,
-      ]);
-  }
-
-  const mcpServerViewsByServerId = new Map(
-    allMCPServerViews.map((v) => [v.internalMCPServerId, v])
-  );
+  const viewsByName =
+    variant === "full"
+      ? await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
+          auth,
+          MCP_SERVERS_FOR_GLOBAL_AGENTS
+        )
+      : new Map<AutoInternalMCPServerNameType, MCPServerViewResource>();
 
   return Object.fromEntries(
     MCP_SERVERS_FOR_GLOBAL_AGENTS.map((name) => [
       name,
-      mcpServerViewsByServerId.get(
-        autoInternalMCPServerNameToSId({
-          name,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        })
-      ) ?? null,
+      viewsByName.get(name) ?? null,
     ])
   ) as MCPServerViewsForGlobalAgentsMap;
 }

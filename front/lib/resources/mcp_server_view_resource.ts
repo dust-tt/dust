@@ -726,6 +726,38 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return views.filter((view) => view.space.kind === "global");
   }
 
+  static async getMCPServerViewsForAutoInternalToolsAsMap(
+    auth: Authenticator,
+    names: readonly AutoInternalMCPServerNameType[]
+  ): Promise<Map<AutoInternalMCPServerNameType, MCPServerViewResource>> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const nameByInternalMCPServerId = new Map<
+      string,
+      AutoInternalMCPServerNameType
+    >(
+      names.map((name) => [
+        autoInternalMCPServerNameToSId({ name, workspaceId }),
+        name,
+      ])
+    );
+
+    const views = await this.listByMCPServers(auth, [
+      ...nameByInternalMCPServerId.keys(),
+    ]);
+
+    const map = new Map<AutoInternalMCPServerNameType, MCPServerViewResource>();
+    for (const view of views) {
+      if (view.space.kind !== "global" || !view.internalMCPServerId) {
+        continue;
+      }
+      const name = nameByInternalMCPServerId.get(view.internalMCPServerId);
+      if (name) {
+        map.set(name, view);
+      }
+    }
+    return map;
+  }
+
   static async listMCPServerViewsAutoInternalForSpaces(
     auth: Authenticator,
     name: AutoInternalMCPServerNameType,
