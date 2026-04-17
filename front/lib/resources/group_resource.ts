@@ -1061,6 +1061,36 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.map((group) => new this(GroupModel, group.get()));
   }
 
+  static async getMemberCountsForGroups(
+    auth: Authenticator,
+    groups: GroupResource[]
+  ): Promise<Map<ModelId, number>> {
+    const owner = auth.getNonNullableWorkspace();
+    const counts = new Map<ModelId, number>();
+
+    const globalGroup = groups.find((g) => g.isGlobal());
+    const regularGroups = groups.filter((g) => !g.isGlobal());
+
+    // Global group count comes from workspace active memberships.
+    if (globalGroup) {
+      const { total } = await MembershipResource.getActiveMemberships({
+        workspace: owner,
+      });
+      counts.set(globalGroup.id, total);
+    }
+
+    // All regular group counts in one query, reusing the existing method.
+    if (regularGroups.length > 0) {
+      const membershipsByGroup =
+        await GroupResource.getActiveMembershipsForGroups(auth, regularGroups);
+      for (const [groupId, userIds] of Object.entries(membershipsByGroup)) {
+        counts.set(Number(groupId), userIds.length);
+      }
+    }
+
+    return counts;
+  }
+
   static async getActiveMembershipsForGroups(
     auth: Authenticator,
     groups: GroupResource[]
