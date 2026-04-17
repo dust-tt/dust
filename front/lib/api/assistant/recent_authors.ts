@@ -2,6 +2,7 @@ import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   AgentRecentAuthors,
   LightAgentConfigurationType,
@@ -9,7 +10,7 @@ import type {
 import { getGlobalAgentAuthorName } from "@app/types/assistant/assistant";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
-import { Sequelize } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 
 // We keep the most recent authorIds for 3 days.
 const recentAuthorIdsKeyTTL = 60 * 60 * 24 * 3; // 3 days.
@@ -27,26 +28,51 @@ function _getRecentAuthorIdsKey({
   return `agent_recent_author_ids_${workspaceId}_${agentId}`;
 }
 
-async function fetchRecentAuthorIdsWithVersion(
+async function fetchRecentAuthorIdsWithVersionForAgents(
   auth: Authenticator,
-  { agentId }: { agentId: string }
-) {
-  return AgentConfigurationModel.findAll({
+  { agentIds }: { agentIds: string[] }
+): Promise<Map<string, { authorId: number; version: number }[]>> {
+  if (agentIds.length === 0) {
+    return new Map();
+  }
+
+  const rows = await AgentConfigurationModel.findAll({
     attributes: [
+      "sId",
       "authorId",
       [Sequelize.fn("MAX", Sequelize.col("version")), "version"],
     ],
-    group: "authorId",
+    group: ["sId", "authorId"],
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
-      sId: agentId,
+      sId: { [Op.in]: agentIds },
     },
-    order: [
-      ["version", "DESC"], // Order by version descending.
-      ["authorId", "DESC"],
-    ],
-    limit: 3, // Limit to the last 3 authors.
   });
+
+  const byAgentId = new Map<string, { authorId: number; version: number }[]>();
+  for (const row of rows) {
+    const agentId = row.get("sId") as string;
+    const authorId = row.get("authorId") as number;
+    // `version` is aliased from MAX(version) so read it via get().
+    const version = row.get("version") as number;
+    const bucket = byAgentId.get(agentId) ?? [];
+    bucket.push({ authorId, version });
+    byAgentId.set(agentId, bucket);
+  }
+
+  // Per-agent top-3 by (version DESC, authorId DESC) to match the previous
+  // per-agent query's ordering and LIMIT 3.
+  for (const [agentId, authors] of byAgentId) {
+    authors.sort((a, b) => {
+      if (b.version !== a.version) {
+        return b.version - a.version;
+      }
+      return b.authorId - a.authorId;
+    });
+    byAgentId.set(agentId, authors.slice(0, 3));
+  }
+
+  return byAgentId;
 }
 
 /**
@@ -77,35 +103,45 @@ async function setAuthorIdsWithVersionInRedis(
   });
 }
 
-async function populateAuthorIdsFromDb(
+async function populateAuthorIdsFromDbForAgents(
   auth: Authenticator,
-  {
-    agentId,
-  }: {
-    agentId: string;
-  }
-) {
-  const recentAuthorIdsWithVersion = await fetchRecentAuthorIdsWithVersion(
+  { agentIds }: { agentIds: string[] }
+): Promise<Map<string, string[]>> {
+  const recentAuthorsByAgentId = await fetchRecentAuthorIdsWithVersionForAgents(
     auth,
-    { agentId }
+    { agentIds }
   );
 
-  if (recentAuthorIdsWithVersion.length === 0) {
-    return [];
+  const result = new Map<string, string[]>();
+  for (const agentId of agentIds) {
+    const authors = recentAuthorsByAgentId.get(agentId) ?? [];
+    result.set(
+      agentId,
+      authors.map((a) => a.authorId.toString())
+    );
   }
 
-  const authorIdsWithScore = recentAuthorIdsWithVersion.map((a) => ({
-    // Redis only supports strings.
-    value: a.get("authorId").toString(),
-    score: a.version,
-  }));
+  const agentsWithAuthors = agentIds.filter(
+    (agentId) => (recentAuthorsByAgentId.get(agentId) ?? []).length > 0
+  );
 
-  await setAuthorIdsWithVersionInRedis(auth, {
-    agentId,
-    authorIdsWithScore,
-  });
+  await concurrentExecutor(
+    agentsWithAuthors,
+    async (agentId) => {
+      const authors = recentAuthorsByAgentId.get(agentId) ?? [];
+      await setAuthorIdsWithVersionInRedis(auth, {
+        agentId,
+        authorIdsWithScore: authors.map((a) => ({
+          // Redis only supports strings.
+          value: a.authorId.toString(),
+          score: a.version,
+        })),
+      });
+    },
+    { concurrency: 8 }
+  );
 
-  return recentAuthorIdsWithVersion.map((a) => a.authorId.toString());
+  return result;
 }
 
 function renderAuthors(
@@ -136,39 +172,46 @@ export async function getAgentsRecentAuthors({
   const owner = auth.getNonNullableWorkspace();
   const currentUserId = auth.user()?.id;
 
-  const recentAuthorsIdsByAgentId: Record<string, number[] | null> = (
-    await Promise.all(
-      agents.map(async (agent): Promise<[string, number[] | null]> => {
-        const { sId: agentId } = agent;
+  const nonGlobalAgents = agents.filter((agent) => agent.scope !== "global");
 
-        if (agent.scope === "global") {
-          return [agentId, null];
-        }
-        const agentRecentAuthorIdsKey = _getRecentAuthorIdsKey({
-          agentId,
-          workspaceId: owner.sId,
-        });
-        let recentAuthorIds = await runOnRedis(
-          { origin: "agent_recent_authors" },
-          async (redis) =>
-            redis.zRange(agentRecentAuthorIdsKey, 0, 2, { REV: true })
-        );
-        if (recentAuthorIds.length === 0) {
-          // Populate from the database and store in Redis if the entry is not already present.
-          recentAuthorIds = await populateAuthorIdsFromDb(auth, {
-            agentId,
-          });
-        }
-        return [agentId, recentAuthorIds.map((id) => parseInt(id, 10))];
-      })
-    )
-  ).reduce<Record<string, number[] | null>>(
-    (acc, [agentId, recentAuthorIds]) => {
-      acc[agentId] = recentAuthorIds;
-      return acc;
+  // First pass: read Redis for all non-global agents concurrently.
+  const redisResults = await concurrentExecutor(
+    nonGlobalAgents,
+    async (agent): Promise<[string, string[]]> => {
+      const { sId: agentId } = agent;
+      const agentRecentAuthorIdsKey = _getRecentAuthorIdsKey({
+        agentId,
+        workspaceId: owner.sId,
+      });
+      const recentAuthorIds = await runOnRedis(
+        { origin: "agent_recent_authors" },
+        async (redis) =>
+          redis.zRange(agentRecentAuthorIdsKey, 0, 2, { REV: true })
+      );
+      return [agentId, recentAuthorIds];
     },
-    {}
+    { concurrency: 8 }
   );
+
+  // Collect cold-cache agent IDs and batch-fetch them in a single SQL query.
+  const coldCacheAgentIds = redisResults
+    .filter(([, ids]) => ids.length === 0)
+    .map(([agentId]) => agentId);
+  const dbBackfill = await populateAuthorIdsFromDbForAgents(auth, {
+    agentIds: coldCacheAgentIds,
+  });
+
+  const recentAuthorsIdsByAgentId: Record<string, number[] | null> = {};
+  for (const agent of agents) {
+    if (agent.scope === "global") {
+      recentAuthorsIdsByAgentId[agent.sId] = null;
+    }
+  }
+  for (const [agentId, redisIds] of redisResults) {
+    const ids =
+      redisIds.length > 0 ? redisIds : (dbBackfill.get(agentId) ?? []);
+    recentAuthorsIdsByAgentId[agentId] = ids.map((id) => parseInt(id, 10));
+  }
 
   const authorByUserId: Record<number, UserType> = (
     await UserResource.fetchByModelIds(
