@@ -426,8 +426,21 @@ export function AgentMessage({
   // GenerationContext: to know if we are generating or not.
   const generationContext = useGenerationContext();
 
+  // Once a handoff user message exists for this agent message, the agent has
+  // effectively handed over: the child agent owns the generation from here.
+  // Treat this message as no longer generating so we don't show duplicate
+  // "Stop agent" buttons / streaming affordances alongside the child.
+  const isAgentMessageHandingOver = methods.data
+    .get()
+    .some(
+      (m) =>
+        isUserMessage(m) &&
+        isHandoverUserMessage(m) &&
+        m.agenticMessageData?.originMessageId === sId
+    );
+
   useEffect(() => {
-    if (shouldStream) {
+    if (shouldStream && !isAgentMessageHandingOver) {
       generationContext.addGeneratingMessage({
         messageId: sId,
         conversationId,
@@ -438,6 +451,7 @@ export function AgentMessage({
     }
   }, [
     shouldStream,
+    isAgentMessageHandingOver,
     generationContext,
     sId,
     conversationId,
@@ -552,15 +566,6 @@ export function AgentMessage({
       />
     );
   }
-
-  const isAgentMessageHandingOver = methods.data
-    .get()
-    .some(
-      (m) =>
-        isUserMessage(m) &&
-        isHandoverUserMessage(m) &&
-        m.agenticMessageData?.originMessageId === sId
-    );
 
   const parentAgentMessage = methods.data
     .get()
@@ -952,6 +957,7 @@ export function AgentMessage({
           activeReferences={activeReferences}
           setActiveReferences={setActiveReferences}
           triggeringUser={triggeringUser}
+          isAgentMessageHandingOver={isAgentMessageHandingOver}
           additionalMarkdownComponents={additionalMarkdownComponents}
           additionalMarkdownPlugins={additionalMarkdownPlugins}
         />
@@ -1043,6 +1049,7 @@ function AgentMessageContent({
   reloadMessage,
   isRetryHandlerProcessing,
   onQuickReplySend,
+  isAgentMessageHandingOver,
   additionalMarkdownComponents: propsAdditionalMarkdownComponents,
   additionalMarkdownPlugins,
 }: {
@@ -1074,6 +1081,10 @@ function AgentMessageContent({
     }[]
   ) => void;
   onQuickReplySend: (message: string) => Promise<void>;
+  // True once a handoff user message pointing to this agent message exists —
+  // the child agent owns generation from that point, so this message should
+  // collapse its inline activity (no more "Thinking…") and drop its stop button.
+  isAgentMessageHandingOver: boolean;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
 }) {
@@ -1278,7 +1289,11 @@ function AgentMessageContent({
       <div className="flex flex-col gap-y-4">
         <InlineActivitySteps
           agentMessage={agentMessage}
-          lastAgentStateClassification={agentMessage.streaming.agentState}
+          lastAgentStateClassification={
+            isAgentMessageHandingOver
+              ? "done"
+              : agentMessage.streaming.agentState
+          }
           completedSteps={agentMessage.streaming.inlineActivitySteps}
           pendingToolCalls={agentMessage.streaming.pendingToolCalls}
           onOpenDetails={onOpenDetails}
