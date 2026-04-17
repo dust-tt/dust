@@ -108,11 +108,19 @@ export class FileStorage {
   }
 
   async getFileContentType(filename: string): Promise<string | undefined> {
-    const gcsFile = this.file(filename);
+    try {
+      const gcsFile = this.file(filename);
 
-    const [metadata] = await gcsFile.getMetadata();
+      const [metadata] = await gcsFile.getMetadata();
 
-    return metadata.contentType;
+      return metadata.contentType;
+    } catch (error) {
+      if (isGCSNotFoundError(error)) {
+        return undefined;
+      }
+
+      throw error;
+    }
   }
 
   async getSignedUrl(
