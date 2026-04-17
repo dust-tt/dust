@@ -1,8 +1,10 @@
 import config from "@app/lib/api/config";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
+import { isDevelopment } from "@app/types/shared/env";
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import type {
   OAuthClientInformationFull,
+  OAuthClientInformationMixed,
   OAuthClientMetadata,
   OAuthTokens,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
@@ -25,14 +27,31 @@ export class MCPOAuthProvider implements OAuthClientProvider {
   }
 
   get clientMetadata(): OAuthClientMetadata {
+    const baseUrl = config.getStaticWebsiteUrl();
+
+    // In production `baseUrl` is always https so these URIs are always set.
+    // In dev `baseUrl` is http://localhost and OAuth servers reject non-https
+    // URIs here — we drop these informational fields entirely; they don't
+    // matter for local testing.
+    if (!isDevelopment() && !baseUrl.startsWith("https://")) {
+      throw new Error(
+        `OAuth client metadata requires an HTTPS base URL, got: ${baseUrl}`
+      );
+    }
+    const informationalUris = isDevelopment()
+      ? {}
+      : {
+          client_uri: baseUrl,
+          logo_uri: baseUrl + "/static/AppIcon.png",
+          tos_uri: baseUrl + "/terms",
+          policy_uri: baseUrl + "/privacy",
+        };
+
     return {
       redirect_uris: [finalizeUriForProvider("mcp")],
       client_name: "Dust",
-      client_uri: config.getStaticWebsiteUrl(),
-      logo_uri: config.getStaticWebsiteUrl() + "/static/AppIcon.png",
+      ...informationalUris,
       contacts: ["support@dust.com"],
-      tos_uri: config.getStaticWebsiteUrl() + "/terms",
-      policy_uri: config.getStaticWebsiteUrl() + "/privacy",
       software_id: "dust",
       token_endpoint_auth_method: "none",
       grant_types: ["authorization_code", "refresh_token"],
@@ -42,6 +61,12 @@ export class MCPOAuthProvider implements OAuthClientProvider {
 
   clientInformation(): OAuthClientInformationFull | undefined {
     return undefined;
+  }
+
+  saveClientInformation(_clientInformation: OAuthClientInformationMixed): void {
+    // No-op: the SDK checks for this method's existence before attempting
+    // dynamic client registration. We provide it so the probe/discovery
+    // flow doesn't throw prematurely.
   }
 
   async tokens(): Promise<OAuthTokens | undefined> {

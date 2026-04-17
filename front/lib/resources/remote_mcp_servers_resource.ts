@@ -11,7 +11,7 @@ import {
 import type { MCPToolType, RemoteMCPServerType } from "@app/lib/api/mcp";
 import type { MCPOAuthConnectionMetadataType } from "@app/lib/api/oauth/providers/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { untrustedFetch } from "@app/lib/egress/server";
+import { toGlobalResponse, untrustedFetch } from "@app/lib/egress/server";
 import { DustError } from "@app/lib/error";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
@@ -449,16 +449,17 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     // Basically, we do the 2 first steps of the Guided Tour.
     // See: https://github.com/modelcontextprotocol/inspector/blob/c2dbff738e582941d6b1af04c4b9f41c28305487/client/src/lib/oauth-state-machine.ts#L31
 
-    // @ts-expect-error - Typescript confusion over the Fetch types from node and elsewhere.
     const fetchFn: FetchLike = async (input, init?) => {
-      // @ts-expect-error - Typescript confusion over the Fetch types from node and elsewhere.
-      return untrustedFetch(input, {
+      // @ts-expect-error - globalThis.RequestInit and undici.RequestInit are structurally
+      // compatible at runtime.
+      const response = await untrustedFetch(String(input), {
         ...init,
         headers: {
           ...init?.headers,
           ...customHeaders,
         },
       });
+      return toGlobalResponse(response);
     };
 
     // Default to discovering from the server's URL
