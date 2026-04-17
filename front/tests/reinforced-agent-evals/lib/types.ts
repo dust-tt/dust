@@ -101,7 +101,7 @@ export interface MockConversationMessage {
  */
 export function buildConversationText(
   messages: MockConversationMessage[],
-  agentConfigSId: string = "agent-under-test"
+  agentConfigId: string = "agent-under-test"
 ): string {
   const feedbackByMessageId = new Map<
     string,
@@ -119,7 +119,7 @@ export function buildConversationText(
         created,
         content: msg.content,
         context: { username: "user" },
-        mentions: [{ configurationId: agentConfigSId }],
+        mentions: [{ configurationId: agentConfigId }],
       };
     }
 
@@ -146,7 +146,7 @@ export function buildConversationText(
       created,
       content: msg.content,
       status: "succeeded",
-      configuration: { sId: agentConfigSId, name: "Agent" },
+      configuration: { sId: agentConfigId, name: "Agent" },
       actions,
       parentAgentMessageId: null,
     };
