@@ -5,6 +5,7 @@ import {
   epochSecondsToFloorHourISO,
   findMetronomeCustomerByAlias,
   getMetronomeClient,
+  getMetronomeContractById,
   scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
 import {
@@ -16,14 +17,15 @@ import {
 } from "@app/lib/metronome/constants";
 import {
   computeTierQuantity,
+  hasMauSubscriptionInContract,
   parseMauTiers,
   syncMauCount,
 } from "@app/lib/metronome/mau_sync";
-import { syncSeatCount } from "@app/lib/metronome/seats";
 import {
-  isSeatBasedMetronomePackageAlias,
-  LEGACY_ENTERPRISE_PACKAGE_ALIAS,
-} from "@app/lib/metronome/types";
+  getSeatSubscriptionIdFromContract,
+  syncSeatCount,
+} from "@app/lib/metronome/seats";
+import { LEGACY_ENTERPRISE_PACKAGE_ALIAS } from "@app/lib/metronome/types";
 import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
 import { getStripeClient } from "@app/lib/plans/stripe";
 import { countActiveUsersForPeriodInWorkspace } from "@app/lib/plans/usage/mau";
@@ -79,13 +81,15 @@ export async function switchMetronomeContractPackage({
   }
 
   const { contractId: metronomeContractId, startingAt } = contractResult.value;
-  await syncContractQuantities(
+  const syncResult = await syncContractQuantities(
     metronomeCustomerId,
     metronomeContractId,
     workspace,
-    startingAt,
-    packageAlias
+    startingAt
   );
+  if (syncResult.isErr()) {
+    return new Err(syncResult.error);
+  }
 
   return new Ok({ metronomeContractId });
 }
@@ -138,13 +142,15 @@ export async function provisionMetronomeCustomerAndContract({
   }
 
   const { contractId: metronomeContractId, startingAt } = contractResult.value;
-  await syncContractQuantities(
+  const syncResult = await syncContractQuantities(
     metronomeCustomerId,
     metronomeContractId,
     workspace,
-    startingAt,
-    packageAlias
+    startingAt
   );
+  if (syncResult.isErr()) {
+    return new Err(syncResult.error);
+  }
 
   return new Ok({
     metronomeCustomerId,
@@ -187,12 +193,22 @@ async function syncContractQuantities(
   metronomeCustomerId: string,
   metronomeContractId: string,
   workspace: LightWorkspaceType,
-  startingAt: string,
-  packageAlias: string
-) {
-  const shouldSyncSeats = isSeatBasedMetronomePackageAlias(packageAlias);
+  startingAt: string
+): Promise<Result<void, Error>> {
+  const contractResult = await getMetronomeContractById({
+    metronomeCustomerId,
+    metronomeContractId,
+  });
+  if (contractResult.isErr()) {
+    return new Err(contractResult.error);
+  }
 
-  // Provision seats and MAU on the new contract.
+  const contract = contractResult.value;
+
+  const seatSubscriptionId = getSeatSubscriptionIdFromContract(contract);
+  const shouldSyncSeats = seatSubscriptionId !== undefined;
+  const shouldSyncMau = hasMauSubscriptionInContract(contract);
+
   const syncFns = [
     ...(shouldSyncSeats
       ? [
@@ -202,18 +218,34 @@ async function syncContractQuantities(
               contractId: metronomeContractId,
               workspace,
               startingAt,
+              seatSubscriptionId,
             }),
         ]
       : []),
-    () =>
-      syncMauCount({
-        metronomeCustomerId,
-        contractId: metronomeContractId,
-        workspace,
-        startingAt,
-      }),
+    ...(shouldSyncMau
+      ? [
+          () =>
+            syncMauCount({
+              metronomeCustomerId,
+              contractId: metronomeContractId,
+              workspace,
+              startingAt,
+              contract,
+            }),
+        ]
+      : []),
   ];
-  await concurrentExecutor(syncFns, (fn) => fn(), { concurrency: 2 });
+  const results = await concurrentExecutor(syncFns, (fn) => fn(), {
+    concurrency: 2,
+  });
+
+  for (const result of results) {
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+  }
+
+  return new Ok(undefined);
 }
 
 /** Extract the MAU threshold number from a billing mode (MAU_1→1, MAU_5→5, MAU_10→10). */
