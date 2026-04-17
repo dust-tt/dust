@@ -73,7 +73,7 @@ describe("sandbox image registry", () => {
     if (imageResult.isOk()) {
       expect(imageResult.value.baseImage).toEqual({
         type: "docker",
-        imageRef: "dust-sbx-bedrock:1.5.0",
+        imageRef: "dust-sbx-bedrock:1.6.0",
       });
       expect(imageResult.value.imageId).toEqual({
         imageName: "dust-base",
