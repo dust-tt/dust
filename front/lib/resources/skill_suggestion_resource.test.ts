@@ -567,12 +567,30 @@ describe("SkillSuggestionResource", () => {
         ],
       });
       expect(json.analysis).toBe("Improved clarity");
+      expect(json.title).toBeNull();
       expect(json.state).toBe("pending");
       expect(json.source).toBe("reinforcement");
       expect(json.skillConfigurationId).toBe(skill.sId);
       expect(json.sourceConversationId).toBeNull();
       expect(typeof json.createdAt).toBe("number");
       expect(typeof json.updatedAt).toBe("number");
+    });
+
+    it("should round-trip a title through create, fetch, and toJSON", async () => {
+      const title = "Clarify response tone";
+
+      const suggestion = await SkillSuggestionFactory.create(
+        authenticator,
+        skill,
+        { title }
+      );
+      expect(suggestion.toJSON().title).toBe(title);
+
+      const fetched = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.toJSON().title).toBe(title);
     });
   });
 });

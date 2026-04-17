@@ -17,6 +17,7 @@ export class SkillSuggestionFactory {
       kind: SkillSuggestionKind;
       suggestion: SkillSuggestionPayload;
       analysis: string | null;
+      title: string | null;
       state: SkillSuggestionState;
       source: SkillSuggestionSource;
     }> = {}
@@ -33,6 +34,7 @@ export class SkillSuggestionFactory {
         ],
       },
       analysis: overrides.analysis ?? "Improved instructions",
+      title: overrides.title ?? null,
       state: overrides.state ?? "pending",
       source: overrides.source ?? "reinforcement",
     });
@@ -51,6 +53,7 @@ export class SkillSuggestionFactory {
         toolEdits?: { action: "add" | "remove"; toolId: string }[];
       };
       analysis: string | null;
+      title: string | null;
       state: SkillSuggestionState;
       source: SkillSuggestionSource;
     }> = {}
@@ -67,6 +70,7 @@ export class SkillSuggestionFactory {
         ],
       },
       analysis: overrides.analysis,
+      title: overrides.title,
       state: overrides.state,
       source: overrides.source,
     });

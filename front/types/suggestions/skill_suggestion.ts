@@ -106,6 +106,7 @@ const BaseSkillSuggestionSchema = z.object({
   updatedAt: z.number(),
   skillConfigurationId: z.string(),
   analysis: z.string().nullable(),
+  title: z.string().nullable(),
   state: z.enum(SKILL_SUGGESTION_STATES),
   source: z.enum(SKILL_SUGGESTION_SOURCES),
   sourceConversationId: z.string().nullable(),

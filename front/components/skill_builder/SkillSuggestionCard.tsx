@@ -153,7 +153,7 @@ export function SkillSuggestionCard({
       <Card variant="primary" size="md" className="flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
           <span className="heading-base text-foreground dark:text-foreground-night">
-            Suggestion
+            {suggestion.title ?? "Suggestion"}
           </span>
           <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
             <Button
