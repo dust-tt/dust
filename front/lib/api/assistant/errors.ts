@@ -1,5 +1,7 @@
 export const CONTEXT_WINDOW_DOC_URL =
   "https://docs.dust.tt/docs/understanding-llms-context-windows";
+export const RUNNING_AGENT_SWITCH_BLOCK_MESSAGE =
+  "Wait for current active agent to finish before calling another agent.";
 
 const CONTEXT_WINDOW_EXCEEDED_TITLE = "Context window exceeded";
 const CONTEXT_WINDOW_EXCEEDED_MESSAGE =
