@@ -142,6 +142,8 @@ async function handler(
         });
       }
 
+      // TODO: Avoid CSV→parse round-trip. Return structured data directly
+      // from exportTable() instead of converting CSV back to JSON.
       if (q.data.format === "json") {
         const records = parseCSV<Record<string, string>>(csv.value, {
           columns: true,
