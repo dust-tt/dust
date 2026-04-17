@@ -46,6 +46,7 @@ export function useFeatureFlags() {
   const ctx = useContext(AuthContext);
   const serverFlags = ctx?.featureFlags ?? [];
 
+  // Third arg is the SSR snapshot — same function works because the initial version is 0 in both environments.
   const overrideVersion = useSyncExternalStore(
     DEV_MODE_ACTIVE ? subscribeFeatureFlagOverrides : noopSubscribe,
     getFeatureFlagOverrideVersion,
