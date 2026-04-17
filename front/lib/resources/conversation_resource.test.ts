@@ -25,6 +25,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -1396,6 +1397,56 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
     allConversations = await ConversationResource.listAll(auth);
     conversationIds = allConversations.map((c) => c.sId);
     expect(conversationIds).not.toContain(tempSpaceConvo.sId);
+  });
+
+  it("should require user participation when private conversation URLs are private by default", async () => {
+    const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
+      privateConversationUrlsByDefault: true,
+    });
+    assert(updateResult.isOk(), "Failed to enable private conversation URLs");
+
+    const refreshedUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      userAuth.getNonNullableUser().sId,
+      workspace.sId
+    );
+    const refreshedAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminAuth.getNonNullableUser().sId,
+      workspace.sId
+    );
+
+    const participantRequiredConversation = await ConversationFactory.create(
+      refreshedAdminAuth,
+      {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        messagesCreatedAt: [dateFromDaysAgo(2)],
+      }
+    );
+
+    const initialUserConversations =
+      await ConversationResource.listAll(refreshedUserAuth);
+    expect(initialUserConversations.map((c) => c.sId)).not.toContain(
+      participantRequiredConversation.sId
+    );
+
+    await ConversationResource.upsertParticipation(refreshedUserAuth, {
+      conversation: participantRequiredConversation,
+      action: "posted",
+      user: refreshedUserAuth.getNonNullableUser().toJSON(),
+      lastReadAt: null,
+    });
+
+    const participantUserConversations =
+      await ConversationResource.listAll(refreshedUserAuth);
+    expect(participantUserConversations.map((c) => c.sId)).toContain(
+      participantRequiredConversation.sId
+    );
+
+    const adminConversations =
+      await ConversationResource.listAll(refreshedAdminAuth);
+    expect(adminConversations.map((c) => c.sId)).toContain(
+      participantRequiredConversation.sId
+    );
   });
 });
 
@@ -3349,6 +3400,147 @@ describe("Space Handling", () => {
         emptySpaceConvo.sId
       );
 
+      expect(result).toBe("allowed");
+    });
+
+    it("should return 'conversation_access_restricted' for non-participants when private conversation URLs are private by default", async () => {
+      const updateResult = await WorkspaceResource.updateMetadata(
+        workspace.id,
+        {
+          privateConversationUrlsByDefault: true,
+        }
+      );
+      assert(updateResult.isOk(), "Failed to enable private conversation URLs");
+
+      const refreshedUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        userAuth.getNonNullableUser().sId,
+        workspace.sId
+      );
+
+      const result = await ConversationResource.canAccess(
+        refreshedUserAuth,
+        conversations.accessible
+      );
+
+      expect(result).toBe("conversation_access_restricted");
+    });
+
+    it("should return 'allowed' for participants when private conversation URLs are private by default", async () => {
+      const updateResult = await WorkspaceResource.updateMetadata(
+        workspace.id,
+        {
+          privateConversationUrlsByDefault: true,
+        }
+      );
+      assert(updateResult.isOk(), "Failed to enable private conversation URLs");
+
+      const refreshedUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        userAuth.getNonNullableUser().sId,
+        workspace.sId
+      );
+      const refreshedAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminAuth.getNonNullableUser().sId,
+        workspace.sId
+      );
+
+      const conversation = await ConversationResource.fetchById(
+        refreshedAdminAuth,
+        conversations.accessible
+      );
+      assert(conversation, "Conversation not found");
+
+      await ConversationResource.upsertParticipation(refreshedUserAuth, {
+        conversation: conversation.toJSON(),
+        action: "posted",
+        user: refreshedUserAuth.getNonNullableUser().toJSON(),
+        lastReadAt: null,
+      });
+
+      const result = await ConversationResource.canAccess(
+        refreshedUserAuth,
+        conversations.accessible
+      );
+
+      expect(result).toBe("allowed");
+    });
+
+    it("should keep space-based checks as a prerequisite when private conversation URLs are private by default", async () => {
+      const updateResult = await WorkspaceResource.updateMetadata(
+        workspace.id,
+        {
+          privateConversationUrlsByDefault: true,
+        }
+      );
+      assert(updateResult.isOk(), "Failed to enable private conversation URLs");
+
+      const refreshedUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        userAuth.getNonNullableUser().sId,
+        workspace.sId
+      );
+
+      const result = await ConversationResource.canAccess(
+        refreshedUserAuth,
+        conversations.restricted
+      );
+
+      expect(result).toBe("conversation_access_restricted");
+    });
+
+    it("should allow admin access when private conversation URLs are private by default", async () => {
+      const updateResult = await WorkspaceResource.updateMetadata(
+        workspace.id,
+        {
+          privateConversationUrlsByDefault: true,
+        }
+      );
+      assert(updateResult.isOk(), "Failed to enable private conversation URLs");
+
+      const refreshedAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminAuth.getNonNullableUser().sId,
+        workspace.sId
+      );
+
+      const result = await ConversationResource.canAccess(
+        refreshedAdminAuth,
+        conversations.accessible
+      );
+
+      expect(result).toBe("allowed");
+    });
+
+    it("should restore previous behavior when private conversation URLs are disabled again", async () => {
+      let updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
+        privateConversationUrlsByDefault: true,
+      });
+      assert(updateResult.isOk(), "Failed to enable private conversation URLs");
+
+      let refreshedUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        userAuth.getNonNullableUser().sId,
+        workspace.sId
+      );
+
+      let result = await ConversationResource.canAccess(
+        refreshedUserAuth,
+        conversations.accessible
+      );
+      expect(result).toBe("conversation_access_restricted");
+
+      updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
+        privateConversationUrlsByDefault: false,
+      });
+      assert(
+        updateResult.isOk(),
+        "Failed to disable private conversation URLs"
+      );
+
+      refreshedUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        userAuth.getNonNullableUser().sId,
+        workspace.sId
+      );
+      result = await ConversationResource.canAccess(
+        refreshedUserAuth,
+        conversations.accessible
+      );
       expect(result).toBe("allowed");
     });
   });

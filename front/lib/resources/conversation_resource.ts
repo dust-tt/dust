@@ -158,6 +158,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
+  private static isPrivateConversationUrlsByDefaultEnabled(
+    auth: Authenticator
+  ): boolean {
+    return (
+      auth.getNonNullableWorkspace().metadata
+        ?.privateConversationUrlsByDefault === true
+    );
+  }
+
   private static fromModel(
     conversation: ConversationModel,
     space: SpaceResource | null
@@ -449,7 +458,125 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       )
     );
 
-    return spaceBasedAccessible;
+    if (
+      !this.isPrivateConversationUrlsByDefaultEnabled(auth) ||
+      auth.isAdmin()
+    ) {
+      return spaceBasedAccessible;
+    }
+
+    const user = auth.user();
+    if (!user || spaceBasedAccessible.length === 0) {
+      return [];
+    }
+
+    const participations = await ConversationParticipantModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        userId: user.id,
+        conversationId: { [Op.in]: spaceBasedAccessible.map((c) => c.id) },
+      },
+      attributes: ["conversationId"],
+    });
+
+    const participantConversationIds = new Set(
+      participations.map((p) => p.conversationId)
+    );
+
+    return spaceBasedAccessible.filter((c) =>
+      participantConversationIds.has(c.id)
+    );
+  }
+
+  private static async canUserAccessPrivateByDefaultConversation(
+    auth: Authenticator,
+    conversation: ConversationModel
+  ): Promise<boolean> {
+    if (!this.isPrivateConversationUrlsByDefaultEnabled(auth)) {
+      return true;
+    }
+
+    if (auth.isAdmin()) {
+      return true;
+    }
+
+    const user = auth.user();
+    if (!user) {
+      return false;
+    }
+
+    const participationCount = await ConversationParticipantModel.count({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: conversation.id,
+        userId: user.id,
+      },
+    });
+
+    return participationCount > 0;
+  }
+
+  private static async isConversationReadableFromRequestedSpaces(
+    auth: Authenticator,
+    conversation: ConversationModel
+  ): Promise<boolean> {
+    const spaces = await SpaceResource.fetchByModelIds(
+      auth,
+      conversation.requestedSpaceIds
+    );
+
+    const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
+
+    return auth.canRead(
+      createResourcePermissionsFromSpacesWithMap(
+        spaceIdToGroupsMap,
+        conversation.requestedSpaceIds
+      )
+    );
+  }
+
+  static async canAccess(
+    auth: Authenticator,
+    sId: string
+  ): Promise<
+    "allowed" | "conversation_not_found" | "conversation_access_restricted"
+  > {
+    const workspace = auth.getNonNullableWorkspace();
+    const { where } = this.getOptions();
+    const conversation = await this.model.findOne({
+      where: {
+        sId,
+        workspaceId: workspace.id,
+        ...where,
+      },
+    });
+    if (!conversation) {
+      return "conversation_not_found";
+    }
+
+    try {
+      if (
+        !(await this.isConversationReadableFromRequestedSpaces(
+          auth,
+          conversation
+        ))
+      ) {
+        return "conversation_access_restricted";
+      }
+    } catch (_error) {
+      return "conversation_not_found";
+    }
+
+    if (
+      !(await this.canUserAccessPrivateByDefaultConversation(
+        auth,
+        conversation
+      ))
+    ) {
+      return "conversation_access_restricted";
+    }
+
+    return "allowed";
   }
 
   private static triggerModelIdToSId({
@@ -599,48 +726,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const conversations = await this.fetchByIds(auth, sIds);
     await this.enrichWithReadState(auth, conversations);
     return conversations;
-  }
-
-  static async canAccess(
-    auth: Authenticator,
-    sId: string
-  ): Promise<
-    "allowed" | "conversation_not_found" | "conversation_access_restricted"
-  > {
-    const workspace = auth.getNonNullableWorkspace();
-    const { where } = this.getOptions();
-    const conversation = await this.model.findOne({
-      where: {
-        sId,
-        workspaceId: workspace.id,
-        ...where,
-      },
-    });
-    if (!conversation) {
-      return "conversation_not_found";
-    }
-    const spaces = await SpaceResource.fetchByModelIds(
-      auth,
-      conversation.requestedSpaceIds
-    );
-    try {
-      const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
-      if (
-        !auth.canRead(
-          createResourcePermissionsFromSpacesWithMap(
-            spaceIdToGroupsMap,
-            conversation.requestedSpaceIds
-          )
-        )
-      ) {
-        return "conversation_access_restricted";
-      }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (error) {
-      return "conversation_not_found";
-    }
-    return "allowed";
   }
 
   static async listAll(
