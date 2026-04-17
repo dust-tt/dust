@@ -445,6 +445,9 @@ const config = {
   getTemporalAgentNamespace: () => {
     return EnvironmentConfig.getOptionalEnvVariable("TEMPORAL_AGENT_NAMESPACE");
   },
+  getTemporalFrontNamespace: () => {
+    return EnvironmentConfig.getOptionalEnvVariable("TEMPORAL_NAMESPACE");
+  },
   // Deployment component name. Set via DD_SERVICE in helm values per deployment.
   getServiceName: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DD_SERVICE");
