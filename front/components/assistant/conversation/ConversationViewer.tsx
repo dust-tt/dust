@@ -1041,7 +1041,8 @@ export const ConversationViewer = ({
 
   const onConversationBranched = useCallback(() => {
     void mutateConversations();
-  }, [mutateConversations]);
+    void mutateConversation();
+  }, [mutateConversation, mutateConversations]);
 
   // After reversal in the hook, messages[0] is the oldest page. This only
   // returns the actual first conversation message when all pages are loaded
