@@ -11,6 +11,7 @@ import type {
   PostProjectContextContentNodeResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_context";
 import type { PatchProjectTodoResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]/index";
+import type { PostCleanDoneTodosResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/clean";
 import type { GetProjectTodosResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/index";
 import type { CheckNameResponseBody } from "@app/pages/api/w/[wId]/spaces/check-name";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
@@ -420,6 +421,46 @@ export function useDeleteProjectTodo({
       sendNotification({
         type: "error",
         title: "Failed to delete todo",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
+export function useCleanDoneProjectTodos({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  return async (): Promise<Result<{ cleanedCount: number }, Error>> => {
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_todos/clean`,
+        { method: "POST" }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to clean done todos",
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      const data: PostCleanDoneTodosResponseBody = await res.json();
+      return new Ok({ cleanedCount: data.cleanedCount });
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to clean done todos",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));

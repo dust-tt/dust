@@ -1,11 +1,15 @@
 import { useAppRouter } from "@app/lib/platform";
 import {
+  useCleanDoneProjectTodos,
   useDeleteProjectTodo,
   useProjectTodos,
   useUpdateProjectTodo,
 } from "@app/lib/swr/projects";
+import type { GetProjectTodosResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/index";
+
 import type {
   ProjectTodoCategory,
+  ProjectTodoStatus,
   ProjectTodoType,
 } from "@app/types/project_todo";
 import { PROJECT_TODO_CATEGORIES } from "@app/types/project_todo";
@@ -22,6 +26,7 @@ import {
   TrashIcon,
   WindIcon,
 } from "@dust-tt/sparkle";
+import { AnimatePresence, motion } from "framer-motion";
 import type React from "react";
 import { useCallback, useState } from "react";
 
@@ -212,36 +217,52 @@ function ReadOnlyProjectTodosPanel({
 
 interface EditableTodoItemProps {
   todo: ProjectTodoType;
-  isPendingDone: boolean;
-  onMarkDone: (todo: ProjectTodoType) => void;
+  onToggleDone: (todo: ProjectTodoType) => void;
   onDelete: (todo: ProjectTodoType) => void;
   owner: LightWorkspaceType;
 }
 
 function EditableTodoItem({
   todo,
-  isPendingDone,
-  onMarkDone,
+  onToggleDone,
   onDelete,
   owner,
 }: EditableTodoItemProps) {
-  const isDone = isPendingDone || todo.status === "done";
+  const isDone = todo.status === "done";
+
+  const handleToggle = () => {
+    onToggleDone(todo);
+  };
 
   return (
-    <li className="group/todo flex items-start gap-2 py-0.5">
-      <div className="mt-0.5 shrink-0">
+    <motion.li
+      layout
+      initial={{ opacity: 1, height: "auto" }}
+      animate={{ opacity: 1, height: "auto" }}
+      exit={{
+        opacity: 0,
+        height: 0,
+        marginTop: 0,
+        marginBottom: 0,
+        paddingTop: 0,
+        paddingBottom: 0,
+      }}
+      transition={{ duration: 0.3, ease: "easeInOut" }}
+      className="group/todo flex items-center gap-2 overflow-hidden py-0.5"
+    >
+      <div className="shrink-0">
         <Checkbox
           size="xs"
           checked={isDone}
           isMutedAfterCheck
-          onCheckedChange={(checked) => {
-            if (checked === true && !isDone) {
-              onMarkDone(todo);
-            }
-          }}
+          onCheckedChange={() => handleToggle()}
         />
       </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+      <button
+        type="button"
+        className="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 text-left"
+        onClick={handleToggle}
+      >
         <span
           className={cn(
             "text-sm leading-5 transition-all duration-300",
@@ -253,8 +274,8 @@ function EditableTodoItem({
           {todo.text}
         </span>
         <TodoSources sources={todo.sources} owner={owner} isDone={isDone} />
-      </div>
-      <div className="mt-0.5 shrink-0 opacity-0 transition-opacity group-hover/todo:opacity-100">
+      </button>
+      <div className="shrink-0 opacity-0 transition-opacity group-hover/todo:opacity-100">
         <IconButton
           icon={TrashIcon}
           size="xs"
@@ -263,7 +284,7 @@ function EditableTodoItem({
           onClick={() => onDelete(todo)}
         />
       </div>
-    </li>
+    </motion.li>
   );
 }
 
@@ -280,56 +301,89 @@ function EditableProjectTodosPanel({
   });
   const doUpdate = useUpdateProjectTodo({ owner, spaceId });
   const doDelete = useDeleteProjectTodo({ owner, spaceId });
+  const doCleanDone = useCleanDoneProjectTodos({ owner, spaceId });
 
-  // Tracks todos being optimistically marked as done (shown with strikethrough).
-  const [pendingDoneIds, setPendingDoneIds] = useState<Set<string>>(new Set());
+  // Tracks todos being animated out during a clean operation.
+  const [pendingRemovalIds, setPendingRemovalIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [isCleaning, setIsCleaning] = useState(false);
+
+  const hasDoneItems = todos.some((t) => t.status === "done");
 
   const { todosByCategory, activeSections } = groupTodosByCategory(todos);
 
-  const handleMarkDone = useCallback(
-    async (todo: ProjectTodoType) => {
-      setPendingDoneIds((prev) => new Set([...prev, todo.sId]));
+  // Optimistically update a todo's status in the SWR cache and send the PATCH.
+  // On failure the cache is revalidated from the server.
+  const handleSetStatus = useCallback(
+    async (todo: ProjectTodoType, status: ProjectTodoStatus) => {
+      const optimistic = (prev: GetProjectTodosResponseBody | undefined) => ({
+        todos: (prev?.todos ?? []).map((t) =>
+          t.sId === todo.sId ? { ...t, status } : t
+        ),
+      });
 
-      const result = await doUpdate(todo.sId, { status: "done" });
+      void mutateTodos(optimistic, { revalidate: false });
 
+      const result = await doUpdate(todo.sId, { status });
       if (result.isErr()) {
-        setPendingDoneIds((prev) => {
-          const next = new Set(prev);
-          next.delete(todo.sId);
-          return next;
-        });
-        return;
-      }
-
-      // After a brief visual pause, refresh the list.
-      setTimeout(() => {
+        // Revert: let SWR re-fetch the real server state.
         void mutateTodos();
-        setPendingDoneIds((prev) => {
-          const next = new Set(prev);
-          next.delete(todo.sId);
-          return next;
-        });
-      }, 600);
+      }
     },
     [doUpdate, mutateTodos]
+  );
+
+  const handleToggleDone = useCallback(
+    (todo: ProjectTodoType) => {
+      if (todo.status === "done") {
+        void handleSetStatus(todo, "todo");
+      } else {
+        void handleSetStatus(todo, "done");
+      }
+    },
+    [handleSetStatus]
   );
 
   const handleMarkSectionDone = useCallback(
     async (category: ProjectTodoCategory) => {
       const undone = (todosByCategory[category] ?? []).filter(
-        (t) => t.status !== "done" && !pendingDoneIds.has(t.sId)
+        (t) => t.status !== "done"
       );
       for (const todo of undone) {
-        void handleMarkDone(todo);
+        void handleSetStatus(todo, "done");
       }
     },
-    [handleMarkDone, pendingDoneIds, todosByCategory]
+    [handleSetStatus, todosByCategory]
   );
 
-  const handleClean = useCallback(() => {
-    void mutateTodos();
-    setPendingDoneIds(new Set());
-  }, [mutateTodos]);
+  const handleClean = useCallback(async () => {
+    setIsCleaning(true);
+
+    // Optimistically hide done items to trigger exit animations.
+    const doneSIds = new Set(
+      todos.filter((t) => t.status === "done").map((t) => t.sId)
+    );
+    setPendingRemovalIds(doneSIds);
+
+    const result = await doCleanDone();
+
+    if (result.isOk()) {
+      // Wait for exit animations to finish, then refresh the server data.
+      // pendingRemovalIds is cleared only after mutateTodos resolves so items
+      // don't briefly reappear from the stale SWR cache and re-trigger the
+      // exit animation.
+      setTimeout(async () => {
+        await mutateTodos();
+        setPendingRemovalIds(new Set());
+        setIsCleaning(false);
+      }, 350);
+    } else {
+      // Revert on failure.
+      setPendingRemovalIds(new Set());
+      setIsCleaning(false);
+    }
+  }, [doCleanDone, mutateTodos, todos]);
 
   const handleDelete = useCallback(
     async (todo: ProjectTodoType) => {
@@ -349,7 +403,7 @@ function EditableProjectTodosPanel({
           Todos
         </h3>
         <div className="flex-1" />
-        {pendingDoneIds.size > 0 && (
+        {hasDoneItems && (
           <Button
             size="xs"
             variant="outline"
@@ -357,6 +411,7 @@ function EditableProjectTodosPanel({
             label="Clean"
             tooltip="Remove checked items"
             onClick={handleClean}
+            disabled={isCleaning}
           />
         )}
       </div>
@@ -372,11 +427,11 @@ function EditableProjectTodosPanel({
           {activeSections.map((cat) => {
             const config = CATEGORY_CONFIG[cat];
             const items = todosByCategory[cat] ?? [];
-            const allPendingDone =
-              items.length > 0 &&
-              items.every(
-                (t) => t.status === "done" || pendingDoneIds.has(t.sId)
-              );
+            const visibleItems = items.filter(
+              (t) => !pendingRemovalIds.has(t.sId)
+            );
+            const allDone =
+              items.length > 0 && items.every((t) => t.status === "done");
 
             return (
               <div key={cat} className="flex flex-col gap-1">
@@ -394,7 +449,7 @@ function EditableProjectTodosPanel({
                     <Checkbox
                       size="xs"
                       className="hidden group-hover/section-title:flex"
-                      checked={allPendingDone}
+                      checked={allDone}
                       isMutedAfterCheck
                       onCheckedChange={(checked) => {
                         if (checked === true) {
@@ -410,16 +465,17 @@ function EditableProjectTodosPanel({
 
                 {/* Todo items */}
                 <ul className="flex flex-col pl-7">
-                  {items.map((todo) => (
-                    <EditableTodoItem
-                      key={todo.sId}
-                      todo={todo}
-                      isPendingDone={pendingDoneIds.has(todo.sId)}
-                      onMarkDone={handleMarkDone}
-                      onDelete={handleDelete}
-                      owner={owner}
-                    />
-                  ))}
+                  <AnimatePresence>
+                    {visibleItems.map((todo) => (
+                      <EditableTodoItem
+                        key={todo.sId}
+                        todo={todo}
+                        onToggleDone={handleToggleDone}
+                        onDelete={handleDelete}
+                        owner={owner}
+                      />
+                    ))}
+                  </AnimatePresence>
                 </ul>
               </div>
             );
