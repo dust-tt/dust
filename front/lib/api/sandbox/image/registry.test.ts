@@ -77,7 +77,7 @@ describe("sandbox image registry", () => {
       });
       expect(imageResult.value.imageId).toEqual({
         imageName: "dust-base",
-        tag: "0.7.8",
+        tag: "0.7.9",
       });
     }
   });
@@ -103,7 +103,7 @@ describe("sandbox image registry", () => {
     );
   });
 
-  test("copies the build-time nftables script and executes it during image assembly", () => {
+  test("copies the nftables boot assets and enables the systemd oneshot", () => {
     const operations = getDustBaseImageOperations();
     const runCommands = getRunCommands(operations);
     const copyOperations = getCopyOperations(operations);
@@ -111,15 +111,30 @@ describe("sandbox image registry", () => {
       copyOperations,
       "/etc/dust/egress-nftables.sh"
     );
+    const serviceUnit = getCopiedContent(
+      copyOperations,
+      "/etc/systemd/system/dust-egress-nftables.service"
+    );
 
     expect(runCommands).toEqual(
       expect.arrayContaining([
-        "chmod 755 /etc/dust/egress-nftables.sh && /etc/dust/egress-nftables.sh",
+        "chmod 755 /etc/dust/egress-nftables.sh",
+        "systemctl daemon-reload && systemctl enable dust-egress-nftables.service",
       ])
     );
 
-    expect(runCommands.join("\n")).not.toContain("systemctl enable");
+    expect(runCommands.join("\n")).not.toContain(
+      "chmod 755 /etc/dust/egress-nftables.sh && /etc/dust/egress-nftables.sh"
+    );
     expect(runCommands.join("\n")).not.toContain("iptables");
+
+    expect(serviceUnit).toContain(
+      "Description=Dust egress nftables rules for agent-proxied"
+    );
+    expect(serviceUnit).toContain("Type=oneshot");
+    expect(serviceUnit).toContain("RemainAfterExit=yes");
+    expect(serviceUnit).toContain("ExecStart=/etc/dust/egress-nftables.sh");
+    expect(serviceUnit).toContain("WantedBy=multi-user.target");
 
     expect(nftablesScript).toContain("nft add table ip dust-egress");
     expect(nftablesScript).toContain(
