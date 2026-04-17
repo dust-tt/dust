@@ -2,11 +2,7 @@ import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/project_todo/config";
-import { mergeRequestSignal } from "@app/temporal/project_todo/signals";
-import {
-  projectMergeWorkflow,
-  projectTodoWorkflow,
-} from "@app/temporal/project_todo/workflows";
+import { projectTodoWorkflow } from "@app/temporal/project_todo/workflows";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   WorkflowExecutionAlreadyStartedError,
@@ -18,13 +14,6 @@ function makeProjectTodoWorkflowId(
   spaceId: string
 ): string {
   return `project-todo-${workspaceId}-${spaceId}`;
-}
-
-function makeProjectMergeWorkflowId(
-  workspaceId: string,
-  spaceId: string
-): string {
-  return `project-merge-todo-${workspaceId}-${spaceId}`;
 }
 
 export async function launchOrSignalProjectTodoWorkflow({
@@ -100,44 +89,5 @@ export async function stopProjectTodoWorkflow({
         "Failed terminating project todo workflow"
       );
     }
-  }
-}
-
-// Called from `signalOrStartMergeWorkflowActivity` to fan-in into the per-project merge
-// workflow. Uses signalWithStart so the merge workflow is created if not already running.
-export async function signalOrStartProjectMergeWorkflow({
-  workspaceId,
-  spaceId,
-}: {
-  workspaceId: string;
-  spaceId: string;
-}): Promise<void> {
-  const client = await getTemporalClientForFrontNamespace();
-  const workflowId = makeProjectMergeWorkflowId(workspaceId, spaceId);
-
-  try {
-    await client.workflow.signalWithStart(projectMergeWorkflow, {
-      args: [{ workspaceId, spaceId }],
-      taskQueue: QUEUE_NAME,
-      workflowId,
-      signal: mergeRequestSignal,
-      signalArgs: [],
-      workflowExecutionTimeout: "7 days",
-      memo: {
-        workspaceId,
-        spaceId,
-      },
-    });
-  } catch (e) {
-    // Swallow errors — merge workflow failures must not block the analysis workflow.
-    logger.error(
-      {
-        workflowId,
-        workspaceId,
-        spaceId,
-        error: normalizeError(e),
-      },
-      "Failed signaling project merge workflow"
-    );
   }
 }

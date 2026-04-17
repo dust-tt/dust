@@ -3,7 +3,7 @@ import { z } from "zod";
 export const EXTRACT_DOCUMENT_TAKEAWAYS_FUNCTION_NAME =
   "extract_document_takeaways";
 
-export const ActionItemSchema = z.object({
+const ActionItemSchema = z.object({
   // Present when the item matches a previously known action item. The LLM
   // should copy the sId verbatim from the list provided in the prompt.
   sId: z
@@ -14,6 +14,7 @@ export const ActionItemSchema = z.object({
     ),
   short_description: z
     .string()
+    .optional()
     .describe("Short description of the action item."),
   assignee_name: z.string().optional(),
   assignee_user_id: z
@@ -24,6 +25,7 @@ export const ActionItemSchema = z.object({
     ),
   status: z
     .enum(["open", "done"])
+    .optional()
     .describe(
       "'done' if the item was explicitly resolved in the document, 'open' otherwise."
     ),
@@ -35,7 +37,7 @@ export const ActionItemSchema = z.object({
     ),
 });
 
-export const NotableFactSchema = z.object({
+const NotableFactSchema = z.object({
   // Present when the fact matches a previously known notable fact. The LLM
   // should copy the sId verbatim from the list provided in the prompt.
   sId: z
@@ -46,6 +48,7 @@ export const NotableFactSchema = z.object({
     ),
   short_description: z
     .string()
+    .optional()
     .describe("Short description of the notable fact."),
   relevant_user_ids: z
     .array(z.string())
@@ -55,7 +58,7 @@ export const NotableFactSchema = z.object({
     ),
 });
 
-export const KeyDecisionSchema = z.object({
+const KeyDecisionSchema = z.object({
   // Present when the decision matches a previously known key decision. The LLM
   // should copy the sId verbatim from the list provided in the prompt.
   sId: z
@@ -66,6 +69,7 @@ export const KeyDecisionSchema = z.object({
     ),
   short_description: z
     .string()
+    .optional()
     .describe("Short description of the key decision."),
   relevant_user_ids: z
     .array(z.string())
@@ -75,10 +79,15 @@ export const KeyDecisionSchema = z.object({
     ),
   status: z
     .enum(["decided", "open"])
+    .optional()
     .describe(
       "'decided' if the decision is finalized, 'open' if still being deliberated."
     ),
 });
+
+export type ActionItem = z.infer<typeof ActionItemSchema>;
+export type NotableFact = z.infer<typeof NotableFactSchema>;
+export type KeyDecision = z.infer<typeof KeyDecisionSchema>;
 
 export const ExtractTakeawaysInputSchema = z.object({
   topic: z

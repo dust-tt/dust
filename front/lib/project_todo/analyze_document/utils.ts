@@ -2,7 +2,7 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import {
   EXTRACT_DOCUMENT_TAKEAWAYS_FUNCTION_NAME,
   ExtractTakeawaysInputSchema,
-} from "@app/lib/project_todo/analyze_conversation/types";
+} from "@app/lib/project_todo/analyze_document/types";
 import type { JSONSchema7 } from "json-schema";
 import zodToJsonSchema from "zod-to-json-schema";
 

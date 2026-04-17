@@ -1,24 +1,28 @@
-import type { KeyDecisionSchema } from "@app/lib/project_todo/analyze_conversation/types";
+import type { KeyDecision } from "@app/lib/project_todo/analyze_document/types";
 import type { TodoVersionedKeyDecision } from "@app/types/takeaways";
 import { v4 as uuidv4 } from "uuid";
-import type { z } from "zod";
 
 export function buildKeyDecisions(
-  rawDecisions: z.infer<typeof KeyDecisionSchema>[],
-  previousSIds: Set<string>,
-  participantSIds: Set<string>
+  rawDecisions: KeyDecision[],
+  previousDecisions: KeyDecision[],
+  validUserIds: Set<string>
 ): TodoVersionedKeyDecision[] {
-  return rawDecisions.map((decision) => ({
-    sId:
-      decision.sId !== undefined && previousSIds.has(decision.sId)
-        ? decision.sId
-        : uuidv4(),
-    shortDescription: decision.short_description,
-    relevantUserIds: (decision.relevant_user_ids ?? []).filter((id) =>
-      participantSIds.has(id)
-    ),
-    status: decision.status,
-  }));
+  const previousDecisionsBySId = new Map(
+    previousDecisions.map((decision) => [decision.sId, decision])
+  );
+
+  return rawDecisions.map((decision) => {
+    const previousDecision = previousDecisionsBySId.get(decision.sId);
+    return {
+      sId: previousDecision?.sId ?? uuidv4(),
+      shortDescription:
+        decision.short_description ?? previousDecision?.short_description ?? "",
+      relevantUserIds: (decision.relevant_user_ids ?? []).filter((id) =>
+        validUserIds.has(id)
+      ),
+      status: decision.status ?? previousDecision?.status ?? "open",
+    };
+  });
 }
 
 export function buildPromptKeyDecisions(
@@ -30,11 +34,13 @@ export function buildPromptKeyDecisions(
     "(e.g., a technical approach chosen, a scope change agreed upon, a trade-off accepted).\n" +
     "- Set status to 'decided' if the decision is finalized, 'open' if it is still being deliberated.\n" +
     "- Do not include minor preferences or passing comments — only significant, consequential decisions.\n" +
-    "- Include relevant_user_ids (from the participant list) for people involved in making this decision.\n\n";
+    "- In the description, mention users and agents by their name, NOT via their id or via a generic term like User, Agent or Bot.\n" +
+    "- In the description, refer to the assignee by Your pronouns (e.g., 'You', 'Your', 'Yours'), not by their name.\n" +
+    "- Include relevant_user_ids (from the project members list) for people involved in making this decision.\n\n";
   if (previousKeyDecisions.length > 0) {
     prompt +=
       "The following key decisions were detected in a previous analysis of this document. " +
-      "If you detect the same decision again, copy its sId exactly into the output and keep the other required fields the same. " +
+      "If you detect the same decision again, copy its sId exactly into the output, update the other fields when appropriate. " +
       "Omit the sId field for brand-new decisions that were not previously tracked.\n\n" +
       "Known key decisions:\n";
     for (const decision of previousKeyDecisions) {
