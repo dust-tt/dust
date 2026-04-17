@@ -20,6 +20,7 @@ import {
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
+import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import {
   batchRenderMessages,
   batchRenderUserMessagesWithoutMentions,
@@ -692,7 +693,7 @@ export async function postUserMessage(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Cannot run a different agent while one is running.",
+        message: RUNNING_AGENT_SWITCH_BLOCK_MESSAGE,
       },
     });
   }
