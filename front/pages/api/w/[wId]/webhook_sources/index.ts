@@ -8,11 +8,11 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateSecureSecret } from "@app/lib/resources/string_ids_server";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { buildWebhookUrl } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { ModelId } from "@app/types/shared/model_id";
 import type {
   WebhookSourceForAdminType,
   WebhookSourceWithViewsAndUsageType,
@@ -66,32 +66,34 @@ async function handler(
         await WebhookSourceResource.listByWorkspace(auth);
 
       const usageBySourceId = await getWebhookSourcesUsage({ auth });
-      const webhookSourcesWithViews = await concurrentExecutor(
-        webhookSourceResources,
-        async (webhookSourceResource) => {
-          const webhookSource = webhookSourceResource.toJSONForAdmin();
-          const webhookSourceViewResources =
-            await WebhookSourcesViewResource.listByWebhookSource(
-              auth,
-              webhookSource.id
-            );
-          const views = webhookSourceViewResources.map((view) =>
-            view.toJSONForAdmin()
-          );
+      const allViewResources =
+        await WebhookSourcesViewResource.listByWebhookSourceIds(
+          auth,
+          webhookSourceResources.map((s) => s.id)
+        );
 
-          return { ...webhookSource, views };
-        },
-        {
-          concurrency: 10,
-        }
-      );
+      const viewsBySourceId = new Map<ModelId, WebhookSourcesViewResource[]>();
+      for (const view of allViewResources) {
+        const list = viewsBySourceId.get(view.webhookSourceId) ?? [];
+        list.push(view);
+        viewsBySourceId.set(view.webhookSourceId, list);
+      }
+
+      const webhookSourcesWithViews = webhookSourceResources.map((src) => {
+        const webhookSource = src.toJSONForAdmin();
+        const views = (viewsBySourceId.get(src.id) ?? []).map((v) =>
+          v.toJSONForAdmin()
+        );
+        return {
+          ...webhookSource,
+          views,
+          usage: usageBySourceId[webhookSource.id] ?? { count: 0, agents: [] },
+        };
+      });
 
       return res.status(200).json({
         success: true,
-        webhookSourcesWithViews: webhookSourcesWithViews.map((source) => ({
-          ...source,
-          usage: usageBySourceId[source.id] ?? { count: 0, agents: [] },
-        })),
+        webhookSourcesWithViews,
       });
     }
 

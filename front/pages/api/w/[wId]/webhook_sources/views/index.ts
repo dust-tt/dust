@@ -3,7 +3,6 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
@@ -60,29 +59,19 @@ async function handler(
         });
       }
 
-      const webhookSourceViews = await concurrentExecutor(
-        normalizedQuery.spaceIds,
-        async (spaceId) => {
-          const space = await SpaceResource.fetchById(auth, spaceId);
-          if (!space || !space.canReadOrAdministrate(auth)) {
-            return null;
-          }
-          const views = await WebhookSourcesViewResource.listBySpace(
-            auth,
-            space
-          );
-          return views.map((v) => v.toJSON());
-        },
-        { concurrency: 10 }
+      const spaces = await SpaceResource.fetchByIds(
+        auth,
+        normalizedQuery.spaceIds
       );
-
-      const flattenedWebhookSourceViews = webhookSourceViews
-        .flat()
-        .filter((v): v is WebhookSourceViewType => v !== null);
+      const allowedSpaces = spaces.filter((s) => s.canReadOrAdministrate(auth));
+      const views = await WebhookSourcesViewResource.listBySpaces(
+        auth,
+        allowedSpaces
+      );
 
       return res.status(200).json({
         success: true,
-        webhookSourceViews: flattenedWebhookSourceViews,
+        webhookSourceViews: views.map((v) => v.toJSON()),
       });
     }
     default: {
