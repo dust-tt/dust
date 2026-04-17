@@ -116,7 +116,6 @@ function InstructionEditDiffBlock({
           id: targetBlockId,
           targetBlockId,
           content,
-          multiBlock: true,
         });
         e.commands.setHighlightedSuggestion(targetBlockId);
       },

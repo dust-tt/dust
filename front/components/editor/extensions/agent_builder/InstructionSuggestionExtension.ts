@@ -18,7 +18,6 @@ import { ChangeSet } from "prosemirror-changeset";
 interface BlockOperation {
   targetBlockId: string;
   newContent: string; // HTML content.
-  multiBlock: boolean; // When true, newContent may produce multiple blocks replacing the target.
 }
 
 // A stored suggestion with its operations.
@@ -136,18 +135,16 @@ function parseHTMLToBlocks(
   // are preserved. For single-block targets, return all children of the
   // instructionsRoot — this supports multi-block replacements where one block
   // is replaced by several (e.g., "<p>A</p><p>B</p>").
-  const container: PMNode = parsed;
-  const first = container.firstChild;
-  if (first?.type.name === INSTRUCTIONS_ROOT_NODE_NAME) {
-    if (targetBlockId === INSTRUCTIONS_ROOT_TARGET_BLOCK_ID) {
-      return [first];
-    }
-
-    const children: PMNode[] = [];
-    first.content.forEach((child) => children.push(child));
-    return children;
+  const first = parsed.firstChild;
+  if (
+    first?.type.name === INSTRUCTIONS_ROOT_NODE_NAME &&
+    targetBlockId === INSTRUCTIONS_ROOT_TARGET_BLOCK_ID
+  ) {
+    return [first];
   }
 
+  const container =
+    first?.type.name === INSTRUCTIONS_ROOT_NODE_NAME ? first : parsed;
   const children: PMNode[] = [];
   container.content.forEach((child) => children.push(child));
   return children;
@@ -305,54 +302,6 @@ function addBlockAdditionWidget(
   );
 }
 
-// Create decorations when a single block is replaced by multiple blocks.
-// Diffs the first new node against the old block, then shows remaining new
-// blocks as full addition widgets after the old block.
-function buildMultiBlockDecorations({
-  applyBlockHighlight,
-  blockPos,
-  decorations,
-  isHighlighted,
-  newNodes,
-  oldNode,
-  schema,
-  suggestionId,
-}: {
-  applyBlockHighlight: boolean;
-  blockPos: number;
-  decorations: Decoration[];
-  isHighlighted: boolean;
-  newNodes: PMNode[];
-  oldNode: PMNode;
-  schema: Schema;
-  suggestionId: string;
-}): void {
-  // Diff the first new node against the old block.
-  buildBlockDecorations({
-    applyBlockHighlight,
-    blockPos,
-    decorations,
-    isHighlighted,
-    newNode: newNodes[0],
-    oldNode,
-    schema,
-    suggestionId,
-  });
-
-  // Show remaining new nodes as full addition widgets after the old block.
-  const afterBlockPos = blockPos + oldNode.nodeSize;
-  for (let i = 1; i < newNodes.length; i++) {
-    addBlockAdditionWidget(
-      afterBlockPos,
-      newNodes[i],
-      isHighlighted,
-      decorations,
-      schema,
-      suggestionId
-    );
-  }
-}
-
 // Create per-child-block decorations for root-level targets. Matches old and
 // new children by position and diffs each pair for word-level inline diffs.
 // Extra new blocks are shown as full additions, extra old blocks as deletions.
@@ -484,22 +433,18 @@ function buildDecorations(
 
       const { node: blockNode, pos: blockPos } = found;
 
-      const allNewNodes = parseHTMLToBlocks(
+      const newNodes = parseHTMLToBlocks(
         op.newContent,
         schema,
         op.targetBlockId
       );
-      if (allNewNodes.length === 0) {
+      if (newNodes.length === 0) {
         continue;
       }
 
-      // When multiBlock is false (default), only use the first parsed block
-      // to preserve backward compatibility with agent builder sidekick suggestions.
-      const newNodes = op.multiBlock ? allNewNodes : [allNewNodes[0]];
-
       // For root-level targets, diff per-child block so that word-level diffs stay within their
-      // block and block boundaries are preserved. For single-block targets, diff the block directly.
-      // Multi-block replacements (one block → many) get their own rendering path.
+      // block and block boundaries are preserved. For single-block targets, diff the first new
+      // block against the old block and show any extra new blocks as addition widgets.
       if (
         blockNode.type.name === INSTRUCTIONS_ROOT_NODE_NAME &&
         newNodes[0].type.name === INSTRUCTIONS_ROOT_NODE_NAME
@@ -514,7 +459,7 @@ function buildDecorations(
           isHighlighted,
           decorations,
         });
-      } else if (newNodes.length === 1) {
+      } else {
         buildBlockDecorations({
           applyBlockHighlight,
           oldNode: blockNode,
@@ -525,17 +470,19 @@ function buildDecorations(
           isHighlighted,
           decorations,
         });
-      } else {
-        buildMultiBlockDecorations({
-          applyBlockHighlight,
-          oldNode: blockNode,
-          newNodes,
-          blockPos,
-          schema,
-          suggestionId,
-          isHighlighted,
-          decorations,
-        });
+
+        // Extra new blocks shown as full addition widgets after the old block.
+        const afterBlockPos = blockPos + blockNode.nodeSize;
+        for (let i = 1; i < newNodes.length; i++) {
+          addBlockAdditionWidget(
+            afterBlockPos,
+            newNodes[i],
+            isHighlighted,
+            decorations,
+            schema,
+            suggestionId
+          );
+        }
       }
     }
   }
@@ -682,9 +629,6 @@ export interface ApplySuggestionOptions {
   targetBlockId: string;
   // HTML content for the block (e.g., '<p>New text with <strong>bold</strong></p>').
   content: string;
-  // When true, content may produce multiple blocks replacing the target block.
-  // Defaults to false (only the first parsed block is used).
-  multiBlock?: boolean;
 }
 
 declare module "@tiptap/core" {
@@ -823,7 +767,7 @@ export const InstructionSuggestionExtension = Extension.create<{
       applySuggestion:
         (options: ApplySuggestionOptions) =>
         ({ tr, state, dispatch }) => {
-          const { id, targetBlockId, content, multiBlock = false } = options;
+          const { id, targetBlockId, content } = options;
 
           if (!findBlockByBlockId(state.doc, targetBlockId)) {
             return false;
@@ -832,7 +776,7 @@ export const InstructionSuggestionExtension = Extension.create<{
           if (dispatch) {
             const suggestion: StoredSuggestion = {
               id,
-              operations: [{ targetBlockId, newContent: content, multiBlock }],
+              operations: [{ targetBlockId, newContent: content }],
             };
             tr.setMeta(pluginKey, { type: "add", suggestion });
             dispatch(tr);
@@ -860,17 +804,14 @@ export const InstructionSuggestionExtension = Extension.create<{
               }
 
               const { node: blockNode, pos: blockPos } = found;
-              const allNewNodes = parseHTMLToBlocks(
+              const newNodes = parseHTMLToBlocks(
                 op.newContent,
                 schema,
                 op.targetBlockId
               );
-              if (allNewNodes.length === 0) {
+              if (newNodes.length === 0) {
                 continue;
               }
-
-              // When multiBlock is false (default), only use the first parsed block.
-              const newNodes = op.multiBlock ? allNewNodes : [allNewNodes[0]];
 
               if (newNodes.length === 1) {
                 const newNode = newNodes[0];

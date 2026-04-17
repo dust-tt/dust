@@ -145,9 +145,7 @@ describe("reinforcement seed script integration test", () => {
       const json = s.toJSON();
       const edits = json.suggestion.instructionEdits;
       return (
-        edits &&
-        edits.length === 1 &&
-        edits[0].content.includes("</p><p>")
+        edits && edits.length === 1 && edits[0].content.includes("</p><p>")
       );
     });
     expect(multiBlockSuggestion).toBeDefined();
