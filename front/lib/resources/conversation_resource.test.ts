@@ -1399,7 +1399,7 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
     expect(conversationIds).not.toContain(tempSpaceConvo.sId);
   });
 
-  it("should require user participation when private conversation URLs are private by default", async () => {
+  it("should require user participation when private conversation URLs are private by default (including admins)", async () => {
     const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
       privateConversationUrlsByDefault: true,
     });
@@ -1444,7 +1444,7 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
 
     const adminConversations =
       await ConversationResource.listAll(refreshedAdminAuth);
-    expect(adminConversations.map((c) => c.sId)).toContain(
+    expect(adminConversations.map((c) => c.sId)).not.toContain(
       participantRequiredConversation.sId
     );
   });
@@ -3422,7 +3422,9 @@ describe("Space Handling", () => {
         conversations.accessible
       );
 
-      expect(result).toBe("conversation_access_restricted");
+      expect(result).toBe(
+        "conversation_access_restricted_by_private_by_default_url_restriction"
+      );
     });
 
     it("should return 'allowed' for non-participants when URL access mode is workspace_members", async () => {
@@ -3481,7 +3483,10 @@ describe("Space Handling", () => {
 
       const conversation = await ConversationResource.fetchById(
         refreshedAdminAuth,
-        conversations.accessible
+        conversations.accessible,
+        {
+          dangerouslySkipPermissionFiltering: true,
+        }
       );
       assert(conversation, "Conversation not found");
 
@@ -3581,7 +3586,7 @@ describe("Space Handling", () => {
       expect(result).toBe("conversation_access_restricted");
     });
 
-    it("should allow admin access when private conversation URLs are private by default", async () => {
+    it("should restrict admin access when private conversation URLs are private by default and admin is not a participant", async () => {
       const updateResult = await WorkspaceResource.updateMetadata(
         workspace.id,
         {
@@ -3600,7 +3605,9 @@ describe("Space Handling", () => {
         conversations.accessible
       );
 
-      expect(result).toBe("allowed");
+      expect(result).toBe(
+        "conversation_access_restricted_by_private_by_default_url_restriction"
+      );
     });
 
     it("should restore previous behavior when private conversation URLs are disabled again", async () => {
@@ -3618,7 +3625,9 @@ describe("Space Handling", () => {
         refreshedUserAuth,
         conversations.accessible
       );
-      expect(result).toBe("conversation_access_restricted");
+      expect(result).toBe(
+        "conversation_access_restricted_by_private_by_default_url_restriction"
+      );
 
       updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
         privateConversationUrlsByDefault: false,

@@ -62,17 +62,15 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]", () => {
     expect(res._getStatusCode()).toBe(200);
   });
 
-  it("returns 403 conversation_access_restricted for non-participants when private conversation URLs are enabled", async () => {
+  it("returns 404 conversation_not_found for non-participants when private conversation URLs are enabled", async () => {
     const { req, res } = await setupUserRequestWithConversation({
       privateByDefaultEnabled: true,
     });
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData().error.type).toBe(
-      "conversation_access_restricted"
-    );
+    expect(res._getStatusCode()).toBe(404);
+    expect(res._getJSONData().error.type).toBe("conversation_not_found");
   });
 
   it("returns 200 for participants when private conversation URLs are enabled", async () => {
@@ -140,7 +138,7 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]", () => {
     expect(res._getStatusCode()).toBe(200);
   });
 
-  it("returns 200 for admins when private conversation URLs are enabled", async () => {
+  it("returns 404 conversation_not_found for admins when private conversation URLs are enabled and they are not participants", async () => {
     const { req, res, workspace, globalSpace } =
       await createPrivateApiMockRequest({
         role: "admin",
@@ -174,7 +172,8 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]", () => {
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(200);
+    expect(res._getStatusCode()).toBe(404);
+    expect(res._getJSONData().error.type).toBe("conversation_not_found");
   });
 });
 

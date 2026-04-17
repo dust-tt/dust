@@ -483,16 +483,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       )
     );
 
-    if (
-      !this.isPrivateConversationUrlsByDefaultEnabled(auth) ||
-      auth.isAdmin()
-    ) {
+    if (!this.isPrivateConversationUrlsByDefaultEnabled(auth)) {
       return spaceBasedAccessible;
-    }
-
-    const user = auth.user();
-    if (!user || spaceBasedAccessible.length === 0) {
-      return [];
     }
 
     const participantRestrictedConversations = spaceBasedAccessible.filter(
@@ -501,6 +493,19 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         this.getConversationUrlAccessModeForPrivateByDefault(conversation) ===
           "participants_only"
     );
+
+    const user = auth.user();
+    if (!user || spaceBasedAccessible.length === 0) {
+      const participantRestrictedConversationIds = new Set(
+        participantRestrictedConversations.map(
+          (conversation) => conversation.id
+        )
+      );
+      return spaceBasedAccessible.filter(
+        (conversation) =>
+          !participantRestrictedConversationIds.has(conversation.id)
+      );
+    }
 
     if (participantRestrictedConversations.length === 0) {
       return spaceBasedAccessible;
@@ -535,10 +540,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     conversation: ConversationModel
   ): Promise<boolean> {
     if (!this.isPrivateConversationUrlsByDefaultEnabled(auth)) {
-      return true;
-    }
-
-    if (auth.isAdmin()) {
       return true;
     }
 
