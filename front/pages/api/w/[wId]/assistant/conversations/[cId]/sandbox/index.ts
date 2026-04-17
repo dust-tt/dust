@@ -1,8 +1,7 @@
 /** @ignoreswagger */
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import { apiError } from "@app/logger/withlogging";
@@ -42,9 +41,15 @@ async function handler(
     });
   }
 
-  const conversationRes = await getConversation(auth, cId);
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
+  const conversation = await ConversationResource.fetchById(auth, cId);
+  if (!conversation) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "The conversation you're trying to access was not found.",
+      },
+    });
   }
 
   const sandbox = await SandboxResource.fetchByConversationId(auth, cId);
