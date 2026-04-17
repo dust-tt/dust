@@ -72,6 +72,12 @@ interface UserParticipation {
   updated: number;
 }
 
+export type ConversationAccessType =
+  | "allowed"
+  | "conversation_not_found"
+  | "conversation_access_restricted"
+  | "conversation_access_restricted_by_private_by_default_url_restriction";
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -585,9 +591,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static async canAccess(
     auth: Authenticator,
     sId: string
-  ): Promise<
-    "allowed" | "conversation_not_found" | "conversation_access_restricted"
-  > {
+  ): Promise<ConversationAccessType> {
     const workspace = auth.getNonNullableWorkspace();
     const { where } = this.getOptions();
     const conversation = await this.model.findOne({
@@ -620,7 +624,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         conversation
       ))
     ) {
-      return "conversation_access_restricted";
+      return "conversation_access_restricted_by_private_by_default_url_restriction";
     }
 
     return "allowed";

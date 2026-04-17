@@ -85,13 +85,22 @@ export async function getMentionStatus(
     return "user_restricted_by_conversation_access";
   }
 
-  const canAccess = await canUserAccessConversation(auth, {
+  const access = await canUserAccessConversation(auth, {
     userId: mentionedUser.sId,
     conversationId: conversation.sId,
   });
-  if (!canAccess) {
-    return "user_restricted_by_conversation_access";
+  switch (access) {
+    case "conversation_not_found":
+    case "conversation_access_restricted":
+      return "user_restricted_by_conversation_access";
+    case "allowed":
+    case "conversation_access_restricted_by_private_by_default_url_restriction":
+      // Let the rest of the flow handle it.
+      break;
+    default:
+      assertNever(access);
   }
+
   if (isParticipant) {
     return "approved";
   }
