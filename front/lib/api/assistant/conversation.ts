@@ -679,9 +679,7 @@ export async function postUserMessage(
   if (
     runningAgentMessage &&
     agentMentions.length > 0 &&
-    agentMentions[0].configurationId !==
-      runningAgentMessage.configuration.sId &&
-    agenticMessageData?.type !== "agent_handover"
+    agentMentions[0].configurationId !== runningAgentMessage.configuration.sId
   ) {
     return new Err({
       status_code: 400,
