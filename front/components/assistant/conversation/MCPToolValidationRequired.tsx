@@ -172,10 +172,13 @@ export function MCPToolValidationRequired({
               {errorMessage}
             </div>
           )}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:mt-3">
+          <div className="flex flex-col gap-3 sm:mt-3">
             {(blockedAction.stake === "low" ||
               blockedAction.stake === "medium") && (
-              <Label htmlFor="never-ask-again" className="flex w-fit cursor-pointer flex-row items-center gap-2 py-1 pr-2 text-xs">
+              <Label
+                htmlFor="never-ask-again"
+                className="flex w-fit cursor-pointer flex-row items-center gap-2 py-1 pr-2 text-xs"
+              >
                 <Checkbox
                   id="never-ask-again"
                   checked={neverAskAgain}
@@ -189,7 +192,7 @@ export function MCPToolValidationRequired({
               </Label>
             )}
             <div className="hidden sm:block sm:flex-grow" />
-            <div className="flex flex-row gap-3">
+            <div className="flex flex-row gap-3 self-end">
               <Button
                 label="Decline"
                 variant="outline"
