@@ -50,8 +50,9 @@ async function syncSeatCountForWorkspace(
     return new Ok(undefined);
   }
 
-  const seatSubscriptionId = getSeatSubscriptionIdFromContract(contract);
-  if (!seatSubscriptionId) {
+  // Gate on seat subscription presence — contracts without a seat product (e.g. enterprise)
+  // should not trigger a seat sync.
+  if (!getSeatSubscriptionIdFromContract(contract)) {
     return new Ok(undefined);
   }
 
@@ -59,7 +60,7 @@ async function syncSeatCountForWorkspace(
     metronomeCustomerId: workspace.metronomeCustomerId,
     contractId: subscription.metronomeContractId,
     workspace,
-    seatSubscriptionId,
+    contract,
   });
 }
 

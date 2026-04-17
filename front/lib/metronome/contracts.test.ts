@@ -693,7 +693,7 @@ describe("provisionMetronomeCustomerAndContract", () => {
       contractId: "m-contract",
       workspace: WORKSPACE,
       startingAt: START_DATE,
-      seatSubscriptionId: "seat-subscription",
+      contract: CONTRACT,
     });
     expect(mockSyncMauCount).toHaveBeenCalledTimes(1);
     expect(mockSyncMauCount).toHaveBeenCalledWith({
@@ -753,7 +753,7 @@ describe("switchMetronomeContractPackage", () => {
       contractId: "m-contract",
       workspace: WORKSPACE,
       startingAt: START_DATE,
-      seatSubscriptionId: "seat-subscription",
+      contract: CONTRACT,
     });
     expect(mockSyncMauCount).toHaveBeenCalledTimes(1);
   });

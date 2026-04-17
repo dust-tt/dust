@@ -218,7 +218,7 @@ async function syncContractQuantities(
               contractId: metronomeContractId,
               workspace,
               startingAt,
-              seatSubscriptionId,
+              contract,
             }),
         ]
       : []),

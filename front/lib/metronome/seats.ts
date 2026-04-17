@@ -73,17 +73,20 @@ export async function syncSeatCount({
   contractId,
   workspace,
   startingAt,
-  seatSubscriptionId,
+  contract,
 }: {
   metronomeCustomerId: string;
   contractId: string;
   workspace: LightWorkspaceType;
   startingAt?: string;
-  seatSubscriptionId?: string;
+  contract?: SeatContractLike;
 }): Promise<Result<void, Error>> {
-  let subscriptionId = seatSubscriptionId;
-
-  if (!subscriptionId) {
+  // When the contract is provided by the caller (provisioning, membership hooks),
+  // use it directly to avoid a redundant fetch. Mirrors the same pattern as syncMauCount.
+  let subscriptionId: string | undefined;
+  if (contract) {
+    subscriptionId = getSeatSubscriptionIdFromContract(contract);
+  } else {
     const subscriptionIdResult = await getSeatSubscriptionIdOnContract({
       metronomeCustomerId,
       metronomeContractId: contractId,
