@@ -2,7 +2,7 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { detectSkillsFromUploadedFiles } from "@app/lib/api/skills/detection/files/detect_skills";
 import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_skills";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { DetectedSkillSummary } from "@app/lib/skill_detection";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -32,17 +32,6 @@ async function handler(
           api_error: {
             type: "app_auth_error",
             message: "User is not a builder.",
-          },
-        });
-      }
-
-      const featureFlags = await getFeatureFlags(auth);
-      if (!featureFlags.includes("sandbox_tools")) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Skill import is not supported.",
           },
         });
       }
