@@ -224,8 +224,9 @@ export class ActivityInboundLogInterceptor
             this.logger.info(
               {
                 connectorId,
-                workspaceId,
                 dataSourceId,
+                error: err,
+                workspaceId,
               },
               `Stopping connector manager because of expired token.`
             );
@@ -234,8 +235,9 @@ export class ActivityInboundLogInterceptor
             this.logger.info(
               {
                 connectorId,
-                workspaceId,
                 dataSourceId,
+                error: err,
+                workspaceId,
               },
               `Stopping connector manager because of quota exceeded for the workspace.`
             );
