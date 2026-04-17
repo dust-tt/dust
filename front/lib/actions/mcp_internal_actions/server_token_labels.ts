@@ -1,11 +1,11 @@
-interface TokenFieldLabel {
+type TokenFieldLabel = {
   label: string;
-  placeholder?: string;
   tooltip: string;
   predefinedHeaders?: string[];
-  // Set to false when the API uses custom headers instead of a bearer token.
-  showBearerTokenSection?: boolean;
-}
+} & (
+  | { showBearerTokenSection?: true; placeholder: string }
+  | { showBearerTokenSection: false; placeholder?: string }
+);
 
 const SERVER_TOKEN_LABELS: Record<string, TokenFieldLabel> = {
   slab: {
