@@ -10,7 +10,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import fs from "fs";
 import path from "path";
 
-const DUST_BEDROCK_IMAGE_VERSION = "1.5.0";
+const DUST_BEDROCK_IMAGE_VERSION = "1.6.0";
 const DUST_BASE_IMAGE_VERSION = "0.7.8";
 const DSBX_CLI_VERSION = "0.1.4";
 const AGENT_PROXIED_UID = 1003;
