@@ -15,14 +15,20 @@ import type {
 import { PROJECT_TODO_CATEGORIES } from "@app/types/project_todo";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  BookOpenIcon,
   Button,
+  ChatBubbleLeftRightIcon,
   Checkbox,
   CircleIcon,
   cn,
+  DriveLogo,
   Icon,
   IconButton,
+  NotionLogo,
+  SlackLogo,
   Spinner,
   SquareIcon,
+  Tooltip,
   TrashIcon,
   WindIcon,
 } from "@dust-tt/sparkle";
@@ -56,6 +62,29 @@ const ORDERED_CATEGORIES: ProjectTodoCategory[] = [...PROJECT_TODO_CATEGORIES];
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
+function getSourceDisplay(source: ProjectTodoType["sources"][number]) {
+  const sourceIconByType: Record<
+    ProjectTodoType["sources"][number]["sourceType"],
+    React.ComponentType
+  > = {
+    project_conversation: ChatBubbleLeftRightIcon,
+    project_knowledge: BookOpenIcon,
+    slack: SlackLogo,
+    notion: NotionLogo,
+    gdrive: DriveLogo,
+  };
+
+  const originalLabel = source.sourceTitle ?? source.sourceId;
+  const customLabel = source.sourceType === "slack" ? "Slack thread" : null;
+
+  return {
+    icon: sourceIconByType[source.sourceType],
+    label: customLabel ?? originalLabel,
+    originalLabel,
+    hasCustomLabel: customLabel !== null,
+  };
+}
+
 function TodoSources({
   sources,
   owner,
@@ -84,15 +113,57 @@ function TodoSources({
       {sources.map((source, index) => (
         <span key={`${source.sourceType}-${source.sourceId}`}>
           {index > 0 && ", "}
-          <button
-            type="button"
-            className="underline hover:no-underline"
-            onClick={() => {
-              void router.push(source.sourceUrl ?? "");
-            }}
-          >
-            {source.sourceTitle ?? source.sourceId}
-          </button>
+          {(() => {
+            const { icon, label, originalLabel, hasCustomLabel } =
+              getSourceDisplay(source);
+
+            const trigger = (
+              <button
+                type="button"
+                className="underline hover:no-underline"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+
+                  if (!source.sourceUrl) {
+                    return;
+                  }
+
+                  try {
+                    const currentOrigin = window.location.origin;
+                    const targetUrl = new URL(source.sourceUrl, currentOrigin);
+
+                    if (targetUrl.origin === currentOrigin) {
+                      const internalPath = `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`;
+                      void router.push(internalPath);
+                      return;
+                    }
+
+                    window.open(
+                      targetUrl.toString(),
+                      "_blank",
+                      "noopener,noreferrer"
+                    );
+                  } catch {
+                    void router.push(source.sourceUrl);
+                  }
+                }}
+              >
+                <Icon
+                  visual={icon}
+                  size="xs"
+                  className="mr-1 inline-block align-text-bottom opacity-70"
+                />
+                <span>{label}</span>
+              </button>
+            );
+
+            if (!hasCustomLabel) {
+              return trigger;
+            }
+
+            return <Tooltip label={originalLabel} trigger={trigger} />;
+          })()}
         </span>
       ))}
     </span>
@@ -345,13 +416,23 @@ function EditableProjectTodosPanel({
     [handleSetStatus]
   );
 
-  const handleMarkSectionDone = useCallback(
+  const handleToggleSection = useCallback(
     async (category: ProjectTodoCategory) => {
-      const undone = (todosByCategory[category] ?? []).filter(
-        (t) => t.status !== "done"
-      );
-      for (const todo of undone) {
-        void handleSetStatus(todo, "done");
+      const sectionTodos = todosByCategory[category] ?? [];
+      if (sectionTodos.length === 0) {
+        return;
+      }
+
+      const nextStatus: ProjectTodoStatus = sectionTodos.every(
+        (t) => t.status === "done"
+      )
+        ? "todo"
+        : "done";
+
+      for (const todo of sectionTodos) {
+        if (todo.status !== nextStatus) {
+          void handleSetStatus(todo, nextStatus);
+        }
       }
     },
     [handleSetStatus, todosByCategory]
@@ -451,14 +532,17 @@ function EditableProjectTodosPanel({
                       className="hidden group-hover/section-title:flex"
                       checked={allDone}
                       isMutedAfterCheck
-                      onCheckedChange={(checked) => {
-                        if (checked === true) {
-                          void handleMarkSectionDone(cat);
-                        }
+                      onCheckedChange={() => {
+                        void handleToggleSection(cat);
                       }}
                     />
                   </div>
-                  <h4 className="heading-lg text-foreground dark:text-foreground-night">
+                  <h4
+                    className="heading-lg cursor-pointer text-foreground dark:text-foreground-night"
+                    onClick={() => {
+                      void handleToggleSection(cat);
+                    }}
+                  >
                     {config.label}
                   </h4>
                 </div>
