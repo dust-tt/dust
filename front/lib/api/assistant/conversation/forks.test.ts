@@ -2,7 +2,11 @@ import {
   createConversation,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
-import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import {
+  isContentNodeAttachmentType,
+  isFileAttachmentType,
+} from "@app/lib/api/assistant/conversation/attachments";
+import * as contentFragmentModule from "@app/lib/api/assistant/conversation/content_fragment";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { createConversationFork } from "@app/lib/api/assistant/conversation/forks";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
@@ -19,6 +23,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -175,6 +180,29 @@ function mockCopyToConversation() {
       });
 
       return new Ok(copiedFile);
+    });
+}
+
+function mockContentNodeAttachments(nodeDataSourceViewId: number) {
+  return vi
+    .spyOn(contentFragmentModule, "getContentFragmentBlob")
+    .mockImplementation(async (_auth, cf) => {
+      if (!("nodeId" in cf)) {
+        throw new Error(
+          "Unexpected file content fragment input in content node mock."
+        );
+      }
+
+      return new Ok({
+        contentType: "text/plain",
+        fileId: null,
+        nodeId: cf.nodeId,
+        nodeDataSourceViewId,
+        nodeType: "document",
+        sourceUrl: null,
+        textBytes: null,
+        title: cf.title,
+      });
     });
 }
 
@@ -672,6 +700,105 @@ describe("createConversationFork", () => {
 
     copyToConversationSpy.mockRestore();
   }, 15_000);
+
+  it("reattaches content node attachments that existed at the selected source message", async () => {
+    const { auth, workspace, globalSpace } =
+      await createPrivateApiMockRequest();
+
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace,
+      auth.user() ?? null
+    );
+    const getContentFragmentBlobSpy = mockContentNodeAttachments(
+      dataSourceView.id
+    );
+
+    const parentConversation = await createConversation(auth, {
+      title: "Parent conversation",
+      visibility: "unlisted",
+      spaceId: null,
+    });
+
+    let parentConversationWithContent = await fetchConversationOrThrow(
+      auth,
+      parentConversation.sId
+    );
+    const firstAttachmentResult = await postNewContentFragment(
+      auth,
+      parentConversationWithContent,
+      {
+        title: "First note",
+        nodeId: "node_before_fork",
+        nodeDataSourceViewId: dataSourceView.sId,
+      },
+      null
+    );
+    expect(firstAttachmentResult.isOk()).toBe(true);
+
+    parentConversationWithContent = await fetchConversationOrThrow(
+      auth,
+      parentConversation.sId
+    );
+    const userMessage = await createUserMessage(auth, {
+      conversation: parentConversationWithContent,
+      rank: 1,
+      content: "Fork from here.",
+    });
+    const sourceMessage = await createAgentMessage(auth, {
+      conversation: parentConversationWithContent,
+      rank: 2,
+      parentId: userMessage.id,
+      status: "succeeded",
+    });
+
+    parentConversationWithContent = await fetchConversationOrThrow(
+      auth,
+      parentConversation.sId
+    );
+    const secondAttachmentResult = await postNewContentFragment(
+      auth,
+      parentConversationWithContent,
+      {
+        title: "Second note",
+        nodeId: "node_after_fork",
+        nodeDataSourceViewId: dataSourceView.sId,
+      },
+      null
+    );
+    expect(secondAttachmentResult.isOk()).toBe(true);
+
+    const result = await createConversationFork(auth, {
+      conversationId: parentConversation.sId,
+      sourceMessageId: sourceMessage.sId,
+    });
+
+    expect(result.isErr()).toBe(false);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    const childConversation = await fetchConversationOrThrow(
+      auth,
+      result.value
+    );
+
+    const childAttachments = await listAttachments(auth, {
+      conversation: childConversation,
+    });
+    const childContentNodeAttachments = childAttachments.filter(
+      isContentNodeAttachmentType
+    );
+
+    expect(childContentNodeAttachments).toHaveLength(1);
+    expect(childContentNodeAttachments[0]?.title).toBe("First note");
+    expect(childContentNodeAttachments[0]?.nodeId).toBe("node_before_fork");
+    expect(childContentNodeAttachments[0]?.nodeDataSourceViewId).toBe(
+      dataSourceView.sId
+    );
+
+    getContentFragmentBlobSpy.mockRestore();
+  });
 
   it("inherits the parent's requested spaces so the fork does not broaden visibility", async () => {
     const {
