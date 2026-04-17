@@ -60,3 +60,8 @@ RUN printf '%s\n' \
   'export VIRTUAL_ENV="/opt/venv"' \
   'export NPM_CONFIG_PREFIX="/opt/npm-global"' \
   > /etc/profile.d/dust-env.sh
+
+RUN if command -v sudo >/dev/null 2>&1; then \
+  echo "sudo must not be installed in sandbox images" >&2; \
+  exit 1; \
+fi

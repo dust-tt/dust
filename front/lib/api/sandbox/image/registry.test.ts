@@ -37,6 +37,7 @@ describe("sandbox image registry", () => {
       "useradd --system --no-create-home --uid 9990 --shell /usr/sbin/nologin dust-fwd"
     );
     expect(dockerfile).toContain("mkdir -p /etc/dust");
+    expect(dockerfile).toContain("command -v sudo >/dev/null 2>&1");
   });
 
   test("registers the PR1 sandbox image versions", () => {
@@ -76,7 +77,7 @@ describe("sandbox image registry", () => {
     );
   });
 
-  test("bakes uid-scoped iptables rules and the sudo invariant into the template", () => {
+  test("bakes uid-scoped iptables rules into the template", () => {
     const operations = getDustBaseImageOperations();
     const runCommands = getRunCommands(operations);
 
@@ -107,7 +108,6 @@ describe("sandbox image registry", () => {
         expect.stringContaining(
           "ip6tables -A OUTPUT -m owner --uid-owner 1001 -j DROP"
         ),
-        expect.stringContaining("command -v sudo >/dev/null 2>&1"),
       ])
     );
   });

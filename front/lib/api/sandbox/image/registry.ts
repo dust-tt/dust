@@ -130,15 +130,6 @@ function getEgressIptablesSetupCommand(): string {
   ].join("\n");
 }
 
-function getSudoInvariantCheckCommand(): string {
-  return [
-    "if command -v sudo >/dev/null 2>&1; then",
-    '  echo "sudo must not be installed in sandbox images" >&2',
-    "  exit 1",
-    "fi",
-  ].join("\n");
-}
-
 const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   `dust-sbx-bedrock:${DUST_BEDROCK_IMAGE_VERSION}`
 )
@@ -302,7 +293,6 @@ SHELLEOF`,
   )
   .runCmd("systemctl daemon-reload", { user: "root" })
   .runCmd(getEgressIptablesSetupCommand(), { user: "root" })
-  .runCmd(getSudoInvariantCheckCommand(), { user: "root" })
   // Profile functions (no install needed, provided by profile scripts)
   .registerTool([
     {
