@@ -66,7 +66,7 @@ export async function importSkillsFromFiles(
   }
 ): Promise<Result<ImportSkillsResult, Error>> {
   const allSkills: ZipDetectedSkill[] = [];
-  const featureFlags = await getFeatureFlags(auth)
+  const featureFlags = await getFeatureFlags(auth);
   const allowFileAttachments = featureFlags.includes("sandbox_tools");
 
   // Readers are keyed by skill to avoid re-opening the same zip for each
