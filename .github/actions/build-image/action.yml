@@ -171,6 +171,13 @@ runs:
           build_args+=("--build-arg NEXT_PUBLIC_DUST_APP_URL=https://${CF_BRANCH}--app.preview.dust.tt")
         fi
 
+        # Tag with 'latest' for main branch prod non-canary builds
+        LATEST_TAGS=()
+        if [[ "$ENV" == "prod" && "$COMPONENT" == "$BASE_COMPONENT" && "${{ github.ref_name }}" == "main" ]]; then
+          REGISTRY="${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images"
+          LATEST_TAGS+=("-t" "${REGISTRY}/${COMPONENT}:latest")
+        fi
+
         # Special handling for front component, build both front and workers targets
         if [[ "$BASE_COMPONENT" == "front" ]]; then
           echo "🏗️ Building front component with dual targets (front + workers)"
@@ -187,6 +194,7 @@ runs:
             --cache-to type=gha,mode=max,scope=${{ inputs.component }}-front \
             -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
             -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}:${{ inputs.commit_sha }} \
+            "${LATEST_TAGS[@]}" \
             --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
             --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
             ${build_args[@]} \
@@ -194,6 +202,10 @@ runs:
             .
 
           # Build workers target
+          LATEST_TAGS_WORKERS=()
+          if [[ "$ENV" == "prod" && "$COMPONENT" == "$BASE_COMPONENT" && "${{ github.ref_name }}" == "main" ]]; then
+            LATEST_TAGS_WORKERS+=("-t" "${REGISTRY}/${COMPONENT}-workers:latest")
+          fi
           depot build \
             --project $DEPOT_PROJECT_ID \
             --platform linux/amd64 \
@@ -205,6 +217,7 @@ runs:
             --cache-to type=gha,mode=max,scope=${{ inputs.component }}-workers \
             -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
             -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}-workers:${{ inputs.commit_sha }} \
+            "${LATEST_TAGS_WORKERS[@]}" \
             --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
             --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
             ${build_args[@]} \
@@ -220,6 +233,7 @@ runs:
             --cache-to type=gha,mode=max,scope=${{ inputs.component }} \
             -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
             -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}:${{ inputs.commit_sha }} \
+            "${LATEST_TAGS[@]}" \
             --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
             --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
             ${build_args[@]} \
