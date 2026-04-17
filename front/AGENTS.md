@@ -35,25 +35,10 @@ front/
 
 - Use `npx tsgo --noEmit` to type-check the front project.
 - Use `npm run format:changed` (from the repo root) to format and lint changed files.
-- Read `runbooks/TEST.md` for all things related to testing.
+- Use the corresponding `.claude/skills` workflows on demand for testing, Temporal, LLM, MCP servers, Elasticsearch, audit events, and webhook sources.
 
 # Running tests
 - Use `npm run test -- filetotest
-
-# Runbooks
-
-Runbooks for various typical development tasks are located under `runbooks/`:
-
-`ELASTICSEARCH.md`: add a new Elasticsearch index for search in front.
-`NEW_AUDIT_EVENT.md`: add a new audit log event (schema, type, emit call).
-`NEW_LLM.md`: add support for a new provider/model.
-`NEW_MCP_SERVER.md`: add a new MCP server to Dust.
-`NEW_WEBHOOK_SOURCE.md`: add a new webhook source to Dust.
-`TEMPORAL.md`: create a new temporal workflow.
-`TEST.md`: running tests in front.
-`LANDING_PAGE.md`: port a Replit landing page into the Dust front codebase.
-
-Read these files on-demand when working on tasks.
 
 @CODING_RULES.md
 
