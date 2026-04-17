@@ -4,6 +4,7 @@ import {
   PersonalAuthCredentialOverrides,
 } from "@app/components/oauth/PersonalAuthCredentialOverrides";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
+import { useCompleteAuthenticationAction } from "@app/hooks/useCompleteAuthenticationAction";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/api/mcp";
@@ -24,7 +25,6 @@ interface MCPServerPersonalAuthenticationRequiredProps {
   mcpServerId: string;
   owner: LightWorkspaceType;
   provider: OAuthProvider;
-  retryHandler: () => void;
   scope?: string;
 }
 
@@ -34,7 +34,6 @@ export function MCPServerPersonalAuthenticationRequired({
   mcpServerId,
   owner,
   provider,
-  retryHandler,
   scope,
 }: MCPServerPersonalAuthenticationRequiredProps) {
   const { user } = useAuth();
@@ -53,6 +52,12 @@ export function MCPServerPersonalAuthenticationRequired({
   const [overriddenCredentials, setCredentialOverrides] = useState<
     Record<string, string>
   >({});
+
+  const { completeAuthenticationAction, isCompleting } =
+    useCompleteAuthenticationAction({
+      owner,
+      onError: setConnectionError,
+    });
 
   const overridableInputs = getOverridablePersonalAuthInputs({ provider });
 
@@ -93,11 +98,22 @@ export function MCPServerPersonalAuthenticationRequired({
         if (result.error) {
           setConnectionError(result.error);
         }
-      } else {
-        setIsConnected(true);
-        await retryHandler();
-        removeCompletedAction(blockedAction.actionId);
+        return;
       }
+
+      const completionRes = await completeAuthenticationAction({
+        actionId: blockedAction.actionId,
+        conversationId: blockedAction.conversationId,
+        messageId: blockedAction.messageId,
+      });
+
+      if (!completionRes.success) {
+        setIsConnected(false);
+        return;
+      }
+
+      setIsConnected(true);
+      removeCompletedAction(blockedAction.actionId);
     } finally {
       setIsConnecting(false);
     }
@@ -109,7 +125,7 @@ export function MCPServerPersonalAuthenticationRequired({
     cardState = "disabled";
   } else if (isConnected) {
     cardState = "accepted";
-  } else if (isConnecting) {
+  } else if (isConnecting || isCompleting) {
     cardState = "disabled";
   } else {
     cardState = "active";
@@ -166,12 +182,13 @@ export function MCPServerPersonalAuthenticationRequired({
           label={connectionError ? "Retry" : "Connect"}
           disabled={
             isConnecting ||
+            isCompleting ||
             !areCredentialOverridesValid(
               overridableInputs,
               overriddenCredentials
             )
           }
-          isLoading={isConnecting}
+          isLoading={isConnecting || isCompleting}
           onClick={() => void onConnectClick(mcpServer)}
         />
       </div>

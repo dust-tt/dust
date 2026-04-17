@@ -47,12 +47,6 @@ export function BlockedAction({
           mcpServerId={blockedAction.metadata.mcpServerId}
           provider={blockedAction.authorizationInfo.provider}
           scope={blockedAction.authorizationInfo.scope}
-          retryHandler={() =>
-            retryHandler({
-              conversationId: blockedAction.conversationId,
-              messageId: blockedAction.messageId,
-            })
-          }
         />
       );
 

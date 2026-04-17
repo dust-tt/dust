@@ -1,0 +1,146 @@
+import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
+import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
+import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
+import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import logger from "@app/logger/logger";
+import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+
+export async function completeAuthenticationAction(
+  auth: Authenticator,
+  conversation: ConversationResource,
+  {
+    actionId,
+    messageId,
+  }: {
+    actionId: string;
+    messageId: string;
+  }
+): Promise<Result<void, DustError>> {
+  const owner = auth.getNonNullableWorkspace();
+  const user = auth.user();
+  const { sId: conversationId, title: conversationTitle } = conversation;
+
+  logger.info(
+    {
+      actionId,
+      messageId,
+      conversationId,
+      workspaceId: owner.sId,
+      userId: user?.sId,
+    },
+    "Complete authentication action request"
+  );
+
+  const {
+    agentMessageId,
+    agentMessageVersion,
+    userMessageId,
+    userMessageVersion,
+    userMessageUserId,
+    userMessageOrigin,
+    branchId,
+  } = await getUserMessageIdFromMessageId(auth, {
+    messageId,
+  });
+
+  if (userMessageUserId !== user?.id) {
+    return new Err(
+      new DustError(
+        "unauthorized",
+        "User is not authorized to complete authentication for this action"
+      )
+    );
+  }
+
+  const action = await AgentMCPActionResource.fetchById(auth, actionId);
+  if (!action) {
+    return new Err(
+      new DustError("action_not_found", `Action not found: ${actionId}`)
+    );
+  }
+
+  if (action.status !== "blocked_authentication_required") {
+    return new Err(
+      new DustError(
+        "action_not_blocked",
+        `Action is not blocked for authentication: ${action.status}`
+      )
+    );
+  }
+
+  const [updatedCount] = await action.updateStatus("ready_allowed_explicitly");
+
+  if (updatedCount === 0) {
+    logger.info(
+      {
+        actionId,
+        messageId,
+        workspaceId: owner.sId,
+        userId: user?.sId,
+      },
+      "Authentication action already resumed"
+    );
+
+    return new Ok(undefined);
+  }
+
+  await getRedisHybridManager().removeEvent((event) => {
+    const payload = JSON.parse(event.message["payload"]);
+
+    return (
+      typeof payload === "object" &&
+      payload !== null &&
+      "type" in payload &&
+      payload.type === "tool_personal_auth_required" &&
+      "actionId" in payload &&
+      payload.actionId === actionId
+    );
+  }, getMessageChannelId(messageId));
+
+  const blockedActions =
+    await AgentMCPActionResource.listBlockedActionsForConversation(
+      auth,
+      conversation
+    );
+
+  if (blockedActions.some((a) => a.messageId === messageId)) {
+    logger.info(
+      { blockedActions },
+      "Skipping agent loop launch because there are remaining blocked actions"
+    );
+    return new Ok(undefined);
+  }
+
+  await launchAgentLoopWorkflow({
+    auth,
+    agentLoopArgs: {
+      agentMessageId,
+      agentMessageVersion,
+      conversationId,
+      conversationTitle,
+      conversationBranchId: branchId,
+      userMessageId,
+      userMessageVersion,
+      userMessageOrigin,
+    },
+    startStep: action.stepContent.step,
+    waitForCompletion: true,
+  });
+
+  logger.info(
+    {
+      workspaceId: owner.sId,
+      conversationId,
+      messageId,
+      actionId,
+    },
+    "Authentication completed, agent loop resumed"
+  );
+
+  return new Ok(undefined);
+}
