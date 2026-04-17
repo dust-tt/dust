@@ -19,7 +19,6 @@ export const GetTriggersResponseBodySchema = z.object({
   triggers: z.array(
     FullTriggerSchema.and(
       z.object({
-        isSubscriber: z.boolean(),
         isEditor: z.boolean(),
         editorName: z.string().optional(),
       })
@@ -114,19 +113,14 @@ async function handler(
         editorUsers.map((user) => [user.id, user.fullName()])
       );
 
-      const triggersWithIsSubscriber = await Promise.all(
-        allTriggers.map(async (trigger) => ({
-          ...trigger.toJSON(),
-          // TODO: when introducing subscribers functionnality,
-          // query the subscribers outside the promise.all loop to avoid the N^2 query
-          isSubscriber: false, // await trigger.isSubscriber(auth),
-          isEditor: trigger.editor === auth.getNonNullableUser().id,
-          editorName: editorNamesMap.get(trigger.editor),
-        }))
-      );
+      const triggers = allTriggers.map((trigger) => ({
+        ...trigger.toJSON(),
+        isEditor: trigger.editor === auth.getNonNullableUser().id,
+        editorName: editorNamesMap.get(trigger.editor),
+      }));
 
       return res.status(200).json({
-        triggers: triggersWithIsSubscriber,
+        triggers,
       });
     }
 
