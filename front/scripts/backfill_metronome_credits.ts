@@ -131,7 +131,7 @@ async function backfillCreditsOfType(
             startingAt: startingAt.toISOString(),
             endingBefore: endingBefore.toISOString(),
             name: `Monthly credit backfill (${startingAt.toISOString().split("T")[0]})`,
-            idempotencyKey: `free-poke-${workspace.sId}-${startingAt.getTime()}`,
+            idempotencyKey: `cerateCredit-${workspace.sId}-${startingAt.getTime()}-${endingBefore.getTime()}`,
           })
         : await createMetronomeCommit({
             metronomeCustomerId,
@@ -141,7 +141,7 @@ async function backfillCreditsOfType(
             startingAt,
             endingBefore,
             name: `Prepaid commit backfill (${startingAt.toISOString().split("T")[0]})`,
-            idempotencyKey: `commit-${workspace.sId}-${startingAt.getTime()}-${initialAmount}`,
+            idempotencyKey: `createCommit-${workspace.sId}-${startingAt.getTime()}-${endingBefore.getTime()}`,
           });
 
     if (result.isErr()) {

@@ -176,7 +176,7 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
 
     // Handle free credit creation (no Stripe invoice).
     if (validatedArgs.isFreeCredit) {
-      const idempotencyKey = `free-poke-${workspace.sId}-${startDate.getTime()}`;
+      const idempotencyKey = `createCredit-${workspace.sId}-${startDate.getTime()}-${expirationDate.getTime()}`;
 
       const credit = await CreditResource.makeNew(auth, {
         type: "free",
