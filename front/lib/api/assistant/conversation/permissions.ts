@@ -1,6 +1,9 @@
 import { getContentFragmentSpaceIds } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import {
+  type ConversationAccessType,
+  ConversationResource,
+} from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
@@ -23,19 +26,16 @@ export async function canUserAccessConversation(
     userId: string;
     conversationId: string;
   }
-): Promise<boolean> {
+): Promise<ConversationAccessType> {
   const workspace = auth.getNonNullableWorkspace();
   const fakeAuth = await Authenticator.fromUserIdAndWorkspaceId(
     userId,
     workspace.sId
   );
 
-  const canAccess = await ConversationResource.canAccess(
-    fakeAuth,
-    conversationId
-  );
+  const access = await ConversationResource.canAccess(fakeAuth, conversationId);
 
-  return canAccess === "allowed";
+  return access;
 }
 
 /**
