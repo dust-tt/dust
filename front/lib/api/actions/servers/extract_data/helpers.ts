@@ -6,7 +6,6 @@ import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import type { CoreDataSourceSearchCriteria } from "@app/lib/api/assistant/process_data_sources";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
@@ -127,8 +126,6 @@ export async function getPromptForProcessDustApp({
     );
   }
 
-  const featureFlags = await getFeatureFlags(auth);
-
   return systemPromptToText(
     constructPromptMultiActions(auth, {
       userMessage,
@@ -141,7 +138,6 @@ export async function getPromptForProcessDustApp({
       equippedSkills: [],
       agentsList: null,
       conversation,
-      narrateProgress: featureFlags.includes("narrate_progress"),
     })
   );
 }

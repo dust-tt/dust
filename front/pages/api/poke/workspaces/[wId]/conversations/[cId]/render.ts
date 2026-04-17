@@ -13,7 +13,7 @@ import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -252,7 +252,6 @@ async function handler(
           })
         : null;
 
-      const featureFlags = await getFeatureFlags(auth);
       const promptSections = constructPromptMultiActions(auth, {
         userMessage,
         agentConfiguration,
@@ -265,7 +264,6 @@ async function handler(
         serverToolsAndInstructions,
         enabledSkills,
         equippedSkills,
-        narrateProgress: featureFlags.includes("narrate_progress"),
       });
       const prompt = systemPromptToText(promptSections);
 
