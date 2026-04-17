@@ -3,7 +3,10 @@ import {
   remoteMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  getInternalMCPServerNameFromSId,
+  matchesInternalMCPServerName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -85,6 +88,7 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
         buildAuditLogTarget("mcp_connection", {
           sId: resource.sId,
           name:
+            getInternalMCPServerNameFromSId(resource.internalMCPServerId) ??
             resource.internalMCPServerId ??
             String(resource.remoteMCPServerId ?? "unknown"),
         }),
@@ -337,7 +341,9 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
     const auditMetadata = {
       sId: this.sId,
       name:
-        this.internalMCPServerId ?? String(this.remoteMCPServerId ?? "unknown"),
+        getInternalMCPServerNameFromSId(this.internalMCPServerId) ??
+        this.internalMCPServerId ??
+        String(this.remoteMCPServerId ?? "unknown"),
       connectionType: this.connectionType,
       serverType: this.internalMCPServerId ? "internal" : "remote",
       authType: this.connectionId ? "oauth" : "keypair",
