@@ -172,10 +172,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
     stage: "dust_only",
   },
-  slack_bot_mcp: {
-    description: "Slack bot MCP server for workspace-level Slack integration",
-    stage: "on_demand",
-  },
   legacy_dust_apps: {
     description: "Access to legacy Dust Apps (editor and associated tools)",
     stage: "on_demand",
