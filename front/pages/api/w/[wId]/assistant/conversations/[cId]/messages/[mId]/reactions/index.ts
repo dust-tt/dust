@@ -1,4 +1,7 @@
 /** @ignoreswagger */
+import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import {
   createMessageReaction,
   deleteMessageReaction,
@@ -9,24 +12,22 @@ import {
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type {
   AgentMessageType,
-  ConversationWithoutContentType,
+  ConversationType,
   MessageReactionType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-import type { ContentFragmentType } from "@app/types/content_fragment";
 import {
   isAgentMessageType,
   isCompactionMessageType,
   isProjectConversation,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
+import type { ContentFragmentType } from "@app/types/content_fragment";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -58,32 +59,14 @@ async function handler(
     });
   }
 
-  if (!(typeof req.query.mId === "string")) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameters, `mId` (string) is required.",
-      },
-    });
-  }
-
   const conversationId = req.query.cId;
-  const messageId = req.query.mId;
+  const conversationRes = await getConversation(auth, conversationId);
 
-  const conversationResource = await ConversationResource.fetchById(
-    auth,
-    conversationId
-  );
-
-  if (!conversationResource) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: { type: "conversation_not_found", message: "Conversation not found." },
-    });
+  if (conversationRes.isErr()) {
+    return apiErrorForConversation(req, res, conversationRes.error);
   }
 
-  const conversation = conversationResource.toJSON();
+  const conversation = conversationRes.value;
 
   if (isProjectConversation(conversation)) {
     const space = await SpaceResource.fetchById(auth, conversation.spaceId);
@@ -104,6 +87,17 @@ async function handler(
     }
   }
 
+  if (!(typeof req.query.mId === "string")) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid query parameters, `mId` (string) is required.",
+      },
+    });
+  }
+
+  const messageId = req.query.mId;
   const bodyValidation = MessageReactionRequestBodySchema.decode(req.body);
   if (isLeft(bodyValidation)) {
     const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -116,34 +110,7 @@ async function handler(
     });
   }
 
-  const messageRes = await conversationResource.getMessageById(auth, messageId);
-  if (messageRes.isErr()) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The message you're trying to react to does not exist.",
-      },
-    });
-  }
-
-  const renderedMessagesRes = await batchRenderMessages(
-    auth,
-    conversationResource,
-    [messageRes.value],
-    "full"
-  );
-  if (renderedMessagesRes.isErr()) {
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to render message.",
-      },
-    });
-  }
-
-  const message = renderedMessagesRes.value.find((m) => m.sId === messageId);
+  const message = conversation.content.flat().find((m) => m.sId === messageId);
   if (!message) {
     return apiError(req, res, {
       status_code: 400,
@@ -153,7 +120,6 @@ async function handler(
       },
     });
   }
-
   if (isCompactionMessageType(message)) {
     return apiError(req, res, {
       status_code: 400,
@@ -239,7 +205,7 @@ const publishMessageUpdate = async (
     conversation,
     message,
   }: {
-    conversation: ConversationWithoutContentType;
+    conversation: ConversationType;
     message: UserMessageType | ContentFragmentType | AgentMessageType;
   }
 ) => {
@@ -252,8 +218,7 @@ const publishMessageUpdate = async (
       conversation,
       {
         ...message,
-        // Content fragments are not changed by reactions; client preserves existing ones.
-        contentFragments: [],
+        contentFragments: getRelatedContentFragments(conversation, message),
         reactions: reactions[message.id] ?? [],
       },
       []
