@@ -180,7 +180,7 @@ const migrateWorkspaceMissingEditorGroups = async (
     activeAgentsWithoutGroup.map((agent) => agent.sId)
   );
 
-  const activeAgentsBySid = _.keyBy(activeAgentsWithoutGroup, "sId");
+  const activeAgentsById = _.keyBy(activeAgentsWithoutGroup, "sId");
 
   // For those agents, load all non-draft versions so we can reuse an existing
   // editor group if one is already associated with any version.
@@ -213,18 +213,18 @@ const migrateWorkspaceMissingEditorGroups = async (
   await concurrentExecutor(
     groupedAgents,
     async (agentConfigs) => {
-      const agentSid = agentConfigs[0].sId;
-      const currentConfig = activeAgentsBySid[agentSid];
+      const agentId = agentConfigs[0].sId;
+      const currentConfig = activeAgentsById[agentId];
 
       if (!currentConfig) {
         logger.warn(
-          { agent: agentSid },
+          { agent: agentId },
           "Active configuration not found for agent when backfilling; skipping"
         );
         return;
       }
 
-      const agentLogger = logger.child({ agentId: agentSid });
+      const agentLogger = logger.child({ agentId });
 
       await backfillMissingEditorGroupForAgent(
         auth,

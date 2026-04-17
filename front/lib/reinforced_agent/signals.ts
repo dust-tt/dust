@@ -170,7 +170,7 @@ export async function fetchReinforcementAutoTrackSignals(
     feedbackCountByAgentId,
     humanConversationSIdsByAgent: humanConvSIdsByAgent,
     agentIdsWithRecentPendingSuggestions: new Set(
-      pendingSuggestions.map((s) => s.agentConfigurationSId)
+      pendingSuggestions.map((s) => s._agentConfigurationId)
     ),
   };
 }

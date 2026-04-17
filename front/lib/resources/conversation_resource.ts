@@ -957,17 +957,17 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       conversations.map((c) => [c.id, c.sId])
     );
 
-    const agentToConvSIds = new Map<string, Set<string>>();
+    const agentToConvIds = new Map<string, Set<string>>();
     for (const p of participations) {
       const convSId = sIdById.get(p.message!.conversationId);
       if (!convSId) {
         continue;
       }
       const agentId = p.agentConfigurationId;
-      if (!agentToConvSIds.has(agentId)) {
-        agentToConvSIds.set(agentId, new Set());
+      if (!agentToConvIds.has(agentId)) {
+        agentToConvIds.set(agentId, new Set());
       }
-      agentToConvSIds.get(agentId)!.add(convSId);
+      agentToConvIds.get(agentId)!.add(convSId);
     }
 
     let qualifyingConvSIds: Set<string>;
@@ -1012,7 +1012,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     }
 
-    for (const [agentId, convSIds] of agentToConvSIds) {
+    for (const [agentId, convSIds] of agentToConvIds) {
       const qualifying = [...convSIds].filter((sId) =>
         qualifyingConvSIds.has(sId)
       );

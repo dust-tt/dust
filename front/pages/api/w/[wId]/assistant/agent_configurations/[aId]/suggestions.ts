@@ -178,7 +178,7 @@ async function handler(
       }
 
       for (const suggestion of suggestions) {
-        if (suggestion.agentConfigurationSId !== agent.sId) {
+        if (suggestion._agentConfigurationId !== agent.sId) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
