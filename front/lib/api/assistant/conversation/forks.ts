@@ -18,6 +18,10 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
+  ContentFragmentInputWithContentNode,
+  ContentFragmentInputWithFileIdType,
+} from "@app/types/api/internal/assistant";
+import type {
   ConversationType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
@@ -248,6 +252,12 @@ async function carryOverConversationAttachments(
   });
 
   for (const attachment of directConversationAttachments) {
+    let carriedAttachment:
+      | ContentFragmentInputWithFileIdType
+      | ContentFragmentInputWithContentNode;
+    let attachErrorMessage: string;
+    let attachLogMetadata: Record<string, string>;
+
     if (isFileAttachmentType(attachment)) {
       const copiedFile = await FileResource.copyToConversation(auth, {
         sourceId: attachment.fileId,
@@ -268,41 +278,35 @@ async function carryOverConversationAttachments(
         continue;
       }
 
-      const attachmentResult = await postNewContentFragment(
-        auth,
-        childConversation,
-        {
-          title: attachment.title,
-          fileId: copiedFile.value.sId,
-        },
-        null
-      );
-
-      if (attachmentResult.isErr()) {
-        logger.error(
-          {
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            parentConversationId: parentConversation.sId,
-            childConversationId: childConversation.sId,
-            sourceFileId: attachment.fileId,
-            copiedFileId: copiedFile.value.sId,
-            error: attachmentResult.error,
-          },
-          "Failed to attach copied file into forked conversation."
-        );
-      }
-
-      continue;
+      carriedAttachment = {
+        title: attachment.title,
+        fileId: copiedFile.value.sId,
+      };
+      attachErrorMessage =
+        "Failed to attach copied file into forked conversation.";
+      attachLogMetadata = {
+        sourceFileId: attachment.fileId,
+        copiedFileId: copiedFile.value.sId,
+      };
+    } else {
+      carriedAttachment = {
+        title: attachment.title,
+        nodeId: attachment.nodeId,
+        nodeDataSourceViewId: attachment.nodeDataSourceViewId,
+      };
+      attachErrorMessage =
+        "Failed to reattach content node into forked conversation.";
+      attachLogMetadata = {
+        contentFragmentId: attachment.contentFragmentId,
+        nodeId: attachment.nodeId,
+        nodeDataSourceViewId: attachment.nodeDataSourceViewId,
+      };
     }
 
     const attachmentResult = await postNewContentFragment(
       auth,
       childConversation,
-      {
-        title: attachment.title,
-        nodeId: attachment.nodeId,
-        nodeDataSourceViewId: attachment.nodeDataSourceViewId,
-      },
+      carriedAttachment,
       null
     );
 
@@ -312,12 +316,10 @@ async function carryOverConversationAttachments(
           workspaceId: auth.getNonNullableWorkspace().sId,
           parentConversationId: parentConversation.sId,
           childConversationId: childConversation.sId,
-          contentFragmentId: attachment.contentFragmentId,
-          nodeId: attachment.nodeId,
-          nodeDataSourceViewId: attachment.nodeDataSourceViewId,
+          ...attachLogMetadata,
           error: attachmentResult.error,
         },
-        "Failed to reattach content node into forked conversation."
+        attachErrorMessage
       );
     }
   }
