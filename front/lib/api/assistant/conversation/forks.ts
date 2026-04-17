@@ -304,9 +304,7 @@ export async function createConversationFork(
     conversationId: string;
     sourceMessageId?: string;
   }
-): Promise<
-  Result<ConversationType, DustError<CreateConversationForkErrorCode>>
-> {
+): Promise<Result<string, DustError<CreateConversationForkErrorCode>>> {
   const parentConversation = await ConversationResource.fetchById(
     auth,
     conversationId
@@ -416,12 +414,17 @@ export async function createConversationFork(
     childConversationId.value.childConversationId
   );
   if (childConversation.isErr()) {
-    return new Err(
-      new DustError(
-        "internal_error",
-        "The forked conversation could not be loaded after creation."
-      )
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        parentConversationId: conversationId,
+        childConversationId: childConversationId.value.childConversationId,
+        error: childConversation.error,
+      },
+      "Failed to reload child conversation for fork file attachment copy."
     );
+
+    return new Ok(childConversationId.value.childConversationId);
   }
 
   const parentConversationWithContent = await getConversation(
@@ -438,31 +441,14 @@ export async function createConversationFork(
       },
       "Failed to reload parent conversation for fork file attachment copy."
     );
-    return childConversation;
+    return new Ok(childConversation.value.sId);
   }
 
-  const copiedAttachmentCount = await copyConversationFileAttachments(auth, {
+  await copyConversationFileAttachments(auth, {
     parentConversation: parentConversationWithContent.value,
     childConversation: childConversation.value,
     sourceMessageRank: childConversationId.value.sourceMessageRank,
   });
 
-  if (copiedAttachmentCount === 0) {
-    return childConversation;
-  }
-
-  const updatedChildConversation = await getConversation(
-    auth,
-    childConversation.value.sId
-  );
-  if (updatedChildConversation.isErr()) {
-    return new Err(
-      new DustError(
-        "internal_error",
-        "The forked conversation could not be reloaded after copying file attachments."
-      )
-    );
-  }
-
-  return updatedChildConversation;
+  return new Ok(childConversation.value.sId);
 }

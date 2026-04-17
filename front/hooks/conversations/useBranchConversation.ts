@@ -55,13 +55,14 @@ export function useBranchConversation({
           return false;
         }
 
-        const { conversation }: PostConversationForkResponseBody =
-          await res.json();
+        const {
+          conversationId: forkedConversationId,
+        }: PostConversationForkResponseBody = await res.json();
 
         void onConversationBranched?.();
 
         await router.push(
-          getConversationRoute(owner.sId, conversation.sId),
+          getConversationRoute(owner.sId, forkedConversationId),
           undefined,
           {
             shallow: true,
