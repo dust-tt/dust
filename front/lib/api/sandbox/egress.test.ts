@@ -93,7 +93,11 @@ describe("sandbox egress helpers", () => {
     expect(result).toEqual(new Ok(false));
     expect(sandbox.exec).toHaveBeenCalledWith(
       {},
-      expect.stringContaining("test -d /etc/dust")
+      expect.stringContaining("test -x /opt/bin/dsbx")
+    );
+    expect(sandbox.exec).toHaveBeenCalledWith(
+      {},
+      expect.stringContaining("grep -q 'skuid 1003'")
     );
   });
 

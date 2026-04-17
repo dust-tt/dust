@@ -90,7 +90,7 @@ export async function sandboxSupportsEgressForwarding(
 ): Promise<Result<boolean, Error>> {
   const probeResult = await sandbox.exec(
     auth,
-    "test -d /etc/dust && id agent-proxied >/dev/null 2>&1 && id dust-fwd >/dev/null 2>&1 && command -v dsbx >/dev/null 2>&1"
+    "test -d /etc/dust && id agent-proxied >/dev/null 2>&1 && id dust-fwd >/dev/null 2>&1 && test -x /opt/bin/dsbx && nft list ruleset 2>/dev/null | grep -q 'skuid 1003'"
   );
 
   if (probeResult.isErr()) {
