@@ -1,6 +1,7 @@
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { PendingToolCallDetails } from "@app/components/assistant/conversation/actions/PendingToolCallDetails";
 import {
+  type ActionProgressState,
   getPendingToolCallKey,
   type PendingToolCall,
 } from "@app/components/assistant/conversation/types";
@@ -16,7 +17,7 @@ interface AgentStepProps {
   isStreaming?: boolean;
   pendingToolCalls?: PendingToolCall[];
   streamingActions?: AgentMCPActionWithOutputType[];
-  streamActionProgress: Map<number, any>;
+  streamActionProgress: ActionProgressState;
   owner: LightWorkspaceType;
   messageStatus:
     | "created"
