@@ -32,11 +32,10 @@ async function handler(
     });
   }
 
-  // Get triggers where user is editor or subscriber concurrently
-  const [editorTriggers, subscriberTriggers] = await Promise.all([
-    TriggerResource.listByUserEditor(auth, auth.getNonNullableUser()),
-    TriggerResource.listByUserSubscriber(auth, auth.getNonNullableUser()),
-  ]);
+  const editorTriggers = await TriggerResource.listByUserEditor(
+    auth,
+    auth.getNonNullableUser()
+  );
 
   const editorTriggersWithAgentInfo = await concurrentExecutor(
     editorTriggers,
@@ -60,35 +59,7 @@ async function handler(
     { concurrency: 5 }
   );
 
-  const subscriberTriggersWithAgentInfo = await concurrentExecutor(
-    subscriberTriggers,
-    async (trigger) => {
-      const agentConfiguration = await getAgentConfiguration(auth, {
-        agentId: trigger.agentConfigurationId,
-        variant: "light",
-      });
-
-      if (!agentConfiguration) {
-        return null;
-      }
-
-      return {
-        ...trigger.toJSON(),
-        isEditor: false,
-        agentName: agentConfiguration.name,
-        agentPictureUrl: agentConfiguration.pictureUrl,
-      };
-    },
-    { concurrency: 5 }
-  );
-
-  // Combine and filter out null values
-  const allTriggers = [
-    ...editorTriggersWithAgentInfo,
-    ...subscriberTriggersWithAgentInfo,
-  ];
-
-  const filteredTriggers = allTriggers.filter(
+  const filteredTriggers = editorTriggersWithAgentInfo.filter(
     (trigger): trigger is Exclude<typeof trigger, null> => trigger !== null
   );
 
