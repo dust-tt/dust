@@ -1,7 +1,7 @@
 # Elasticsearch Overview
 
-This reference covers environment prerequisites, current architecture, and the existing `front`
-and `core` index patterns that new Elasticsearch work should follow.
+This reference covers environment prerequisites and operational setup details for Elasticsearch work
+in `front`.
 
 ## Prerequisites
 
@@ -47,42 +47,5 @@ If using custom analyzers with ICU tokenization:
 
 **Note:** Simple analytics indices do not require any plugins.
 
-## Overview of Current Architecture
-
-### Scope of This Guide
-
-This guide focuses on Elasticsearch indices managed in the `front` codebase, particularly
-analytics indices. However, the patterns and techniques documented here apply to all Elasticsearch
-indices across the codebase.
-
-**Note:** Consider consolidating all Elasticsearch index management under a shared location in the
-future to centralize patterns and reduce duplication.
-
-### Current Indices
-
-#### Front Analytics Indices
-
-The `front` codebase currently has one index for agent message analytics:
-
-- **Index Name:** `agent_message_analytics`
-- **Current Version:** 2 (migrated from version 1)
-- **Alias:** `front.agent_message_analytics` (write-enabled alias)
-- **Purpose:** Track agent performance, tool usage, costs, and user feedback
-- **Complexity:** Basic mappings, no custom analyzers
-
-#### Core Search Indices
-
-The `core` codebase has indices for data source search:
-
-- **Index Name:** `data_sources_nodes`
-- **Current Version:** 4 (multiple migrations)
-- **Alias:** `core.data_sources_nodes` (write-enabled alias)
-- **Purpose:** Full-text search across connected data sources
-- **Complexity:** Custom analyzers (ICU, edge n-grams), multi-field mappings, normalizers
-
-### Key Files (front)
-
-- **Client:** `lib/api/elasticsearch.ts` - Singleton client with error handling
-- **Front Index Definitions:** `lib/your_feature/indices/` - Mappings and settings per version
-- **Index Creation Script:** `scripts/create_elasticsearch_index.ts`
-- **Indexing Logic:** `temporal/es_indexation_queue/activities.ts` - Shared queue for ES indexation
+Simple analytics indices do not need anything else from this file. If you are deciding how the Dust
+index architecture is structured, use `SKILL.md` directly.

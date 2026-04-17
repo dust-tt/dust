@@ -52,6 +52,28 @@ material such as analyzer design, full curl verification, query recipes, or relo
 - Check relocation requirements for any workspace-scoped index that is expected to remain available
   after workspace region moves.
 
+## Current Architecture
+
+This skill focuses on Elasticsearch indices managed in `front`, especially analytics-style indices,
+but the patterns also match the broader Dust Elasticsearch setup.
+
+Current examples to copy from:
+
+- `front.agent_message_analytics`
+  - version `2`
+  - write alias `front.agent_message_analytics`
+  - basic mappings, no custom analyzers
+- `core.data_sources_nodes`
+  - version `4`
+  - write alias `core.data_sources_nodes`
+  - advanced analyzers, edge n-grams, multi-field mappings, and normalizers
+
+The general pattern is:
+
+- versioned physical indices such as `front.<index_name>_<version>`
+- one stable alias such as `front.<index_name>` for app reads and writes
+- mappings and region-specific settings stored alongside the feature code
+
 ## Primary Files
 
 - `front/lib/api/elasticsearch.ts`
@@ -82,7 +104,7 @@ material such as analyzer design, full curl verification, query recipes, or relo
 
 ## Supporting References
 
-- Environment, architecture, and current examples:
+- Environment setup and plugin checks:
   [references/overview.md](references/overview.md)
 - Full index creation and migration details, including analyzers and curl verification:
   [references/create-index.md](references/create-index.md)
