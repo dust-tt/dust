@@ -19,9 +19,6 @@ import { Authenticator } from "@app/lib/auth";
 import {
   createMetronomeCommit,
   createMetronomeCredit,
-  deductMetronomeCreditBalance,
-  getMetronomeCommit,
-  getMetronomeCredit,
 } from "@app/lib/metronome/client";
 import {
   getCreditTypeProgrammaticUsdId,
@@ -113,16 +110,6 @@ async function backfillCreditsOfType(
         },
         `[Backfill] [DRY RUN] Would create ${metronomeItem} in Metronome`
       );
-      if (consumedMicroUsd > 0) {
-        logger.info(
-          {
-            workspaceId: workspace.sId,
-            creditId: credit.id,
-            consumedUsd: consumedAmount,
-          },
-          `[Backfill] [DRY RUN] Would also deduct consumed amount from ${metronomeItem}`
-        );
-      }
       continue;
     }
 
@@ -174,72 +161,6 @@ async function backfillCreditsOfType(
       { workspaceId: workspace.sId, creditId: credit.id },
       `[Backfill] Successfully created ${metronomeItem} in Metronome`
     );
-
-    if (consumedAmount <= 0) {
-      continue;
-    }
-
-    // Fetch the balance to get the access schedule segment ID needed for the deduction.
-    const balanceResult =
-      type === "free"
-        ? await getMetronomeCredit({
-            metronomeCustomerId,
-            creditId: result.value.id,
-          })
-        : await getMetronomeCommit({
-            metronomeCustomerId,
-            commitId: result.value.id,
-          });
-
-    if (balanceResult.isErr()) {
-      logger.error(
-        {
-          workspaceId: workspace.sId,
-          creditId: credit.id,
-          error: balanceResult.error.message,
-        },
-        `[Backfill] Failed to fetch ${metronomeItem} for deduction`
-      );
-      continue;
-    }
-
-    const segmentId =
-      balanceResult.value?.access_schedule?.schedule_items[0]?.id;
-    if (!segmentId) {
-      logger.error(
-        { workspaceId: workspace.sId, creditId: credit.id },
-        `[Backfill] No segment ID on ${metronomeItem}, cannot apply deduction`
-      );
-      continue;
-    }
-
-    const deductResult = await deductMetronomeCreditBalance({
-      metronomeCustomerId,
-      creditId: result.value.id,
-      segmentId,
-      amount: consumedAmount,
-      reason: `Backfill: ${consumedAmount} already consumed before Metronome migration (db credit ${credit.id})`,
-    });
-
-    if (deductResult.isErr()) {
-      logger.error(
-        {
-          workspaceId: workspace.sId,
-          creditId: credit.id,
-          error: deductResult.error.message,
-        },
-        `[Backfill] Failed to deduct consumed amount from ${metronomeItem}`
-      );
-    } else {
-      logger.info(
-        {
-          workspaceId: workspace.sId,
-          creditId: credit.id,
-          consumedUsd: consumedAmount,
-        },
-        `[Backfill] Successfully deducted consumed amount from ${metronomeItem}`
-      );
-    }
   }
 
   logger.info(

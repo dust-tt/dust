@@ -927,6 +927,7 @@ export async function getMetronomeCredit({
     const response = await getMetronomeClient().v1.customers.credits.list({
       customer_id: metronomeCustomerId,
       credit_id: creditId,
+      include_contract_credits: true,
     });
     return new Ok(response.data[0] ?? null);
   } catch (err) {
@@ -953,6 +954,7 @@ export async function getMetronomeCommit({
     const response = await getMetronomeClient().v1.customers.commits.list({
       customer_id: metronomeCustomerId,
       commit_id: commitId,
+      include_contract_commits: true,
     });
     return new Ok(response.data[0] ?? null);
   } catch (err) {
