@@ -604,7 +604,7 @@ export async function createOrUpgradeAgentConfiguration({
           {
             workspaceId: owner.sId,
             agentConfigurationId: agentConfigurationRes.value.sId,
-            skillSId: skill.sId,
+            skillId: skill.sId,
           },
           "Skill not found when creating agent configuration, skipping"
         );

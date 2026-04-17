@@ -240,13 +240,13 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     expect(res._getStatusCode()).toBe(200);
 
-    const skillSId = SkillResource.modelIdToSId({
+    const skillId = SkillResource.modelIdToSId({
       id: skill.id,
       workspaceId: workspace.id,
     });
     const skillResult = res
       ._getJSONData()
-      .skills.find((s: SkillWithRelationsType) => s.sId === skillSId);
+      .skills.find((s: SkillWithRelationsType) => s.sId === skillId);
 
     expect(skillResult).toMatchObject({
       relations: {
@@ -313,13 +313,13 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     expect(res._getStatusCode()).toBe(200);
 
-    const skillSId = SkillResource.modelIdToSId({
+    const skillId = SkillResource.modelIdToSId({
       id: skill.id,
       workspaceId: workspace.id,
     });
     const skillResult = res
       ._getJSONData()
-      .skills.find((s: SkillWithRelationsType) => s.sId === skillSId);
+      .skills.find((s: SkillWithRelationsType) => s.sId === skillId);
 
     expect(skillResult).toMatchObject({
       relations: {
@@ -349,13 +349,13 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     expect(res._getStatusCode()).toBe(200);
 
-    const skillSId = SkillResource.modelIdToSId({
+    const skillId = SkillResource.modelIdToSId({
       id: skill.id,
       workspaceId: workspace.id,
     });
     const skillResult = res
       ._getJSONData()
-      .skills.find((s: SkillType) => s.sId === skillSId);
+      .skills.find((s: SkillType) => s.sId === skillId);
 
     expect(skillResult).toBeDefined();
     expect(skillResult).not.toHaveProperty("usage");
@@ -395,13 +395,13 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     expect(res._getStatusCode()).toBe(200);
 
-    const skillSId = SkillResource.modelIdToSId({
+    const skillId = SkillResource.modelIdToSId({
       id: skill.id,
       workspaceId: workspace.id,
     });
     const skillResult = res
       ._getJSONData()
-      .skills.find((s: SkillWithRelationsType) => s.sId === skillSId);
+      .skills.find((s: SkillWithRelationsType) => s.sId === skillId);
 
     expect(skillResult).toMatchObject({
       relations: {
