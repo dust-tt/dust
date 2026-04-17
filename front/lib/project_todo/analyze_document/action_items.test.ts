@@ -1,7 +1,7 @@
 import {
   buildActionItems,
   buildPromptActionItems,
-} from "@app/lib/project_todo/analyze_conversation/action_items";
+} from "@app/lib/project_todo/analyze_document/action_items";
 import type { TodoVersionedActionItem } from "@app/types/takeaways";
 import { describe, expect, it } from "vitest";
 
@@ -15,7 +15,7 @@ describe("buildActionItems", () => {
         status: "open" as const,
       },
     ];
-    const result = buildActionItems(raw, new Set([knownSId]), new Set());
+    const result = buildActionItems(raw, [{ sId: knownSId }], new Set());
     expect(result[0].sId).toBe(knownSId);
   });
 
@@ -26,7 +26,7 @@ describe("buildActionItems", () => {
         status: "open" as const,
       },
     ];
-    const result = buildActionItems(raw, new Set(), new Set());
+    const result = buildActionItems(raw, [], new Set());
     expect(result[0].status).toBe("open");
     expect(result[0].detectedDoneAt).toBeNull();
     expect(result[0].detectedDoneRationale).toBeNull();
@@ -41,7 +41,7 @@ describe("buildActionItems", () => {
         detected_done_rationale: "User confirmed it was sent",
       },
     ];
-    const result = buildActionItems(raw, new Set(), new Set());
+    const result = buildActionItems(raw, [], new Set());
     const after = new Date().toISOString();
 
     expect(result[0].status).toBe("done");
@@ -63,14 +63,14 @@ describe("buildActionItems", () => {
         status: "open" as const,
       },
     ];
-    const result = buildActionItems(raw, new Set(), new Set());
+    const result = buildActionItems(raw, [], new Set());
     expect(result[0].assigneeName).toBe("Alice");
     expect(result[1].assigneeName).toBeNull();
   });
 
   it("sets assigneeUserId to null when no participants match", () => {
     const raw = [{ short_description: "Task", status: "open" as const }];
-    const result = buildActionItems(raw, new Set(), new Set());
+    const result = buildActionItems(raw, [], new Set());
     expect(result[0].assigneeUserId).toBeNull();
   });
 
@@ -84,7 +84,7 @@ describe("buildActionItems", () => {
       },
     ];
     const participants = new Set(["user-abc", "user-def"]);
-    const result = buildActionItems(raw, new Set(), participants);
+    const result = buildActionItems(raw, [], participants);
     expect(result[0].assigneeUserId).toBe("user-abc");
     expect(result[0].assigneeName).toBe("Alice");
   });
@@ -99,7 +99,7 @@ describe("buildActionItems", () => {
       },
     ];
     const participants = new Set(["user-abc"]);
-    const result = buildActionItems(raw, new Set(), participants);
+    const result = buildActionItems(raw, [], participants);
     expect(result[0].assigneeUserId).toBeNull();
     expect(result[0].assigneeName).toBe("Alice");
   });

@@ -421,6 +421,12 @@ ProjectTodoSourceModel.init(
         fields: ["sourceType", "sourceId"],
         concurrently: true,
       },
+      {
+        name: "project_todo_sources_ws_unique_idx",
+        fields: ["workspaceId", "projectTodoId", "sourceType", "sourceId"],
+        unique: true,
+        concurrently: true,
+      },
     ],
   }
 );

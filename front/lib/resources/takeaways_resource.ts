@@ -38,6 +38,11 @@ export type TakeawaySourceDocument = {
   uri: string;
 };
 
+export type TakeawaysWithSource = {
+  takeaway: TakeawaysResource;
+  source: ProjectTodoSourceInfo;
+};
+
 type TakeawaysVersionCreationAttributes = CreationAttributes<TakeawaysModel> & {
   takeawaysId: ModelId;
   version: number;
@@ -289,12 +294,7 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
   static async fetchLatestBySpaceId(
     auth: Authenticator,
     { spaceModelId }: { spaceModelId: ModelId }
-  ): Promise<
-    {
-      takeaway: TakeawaysResource;
-      source: { sourceType: ProjectTodoSourceType; sourceId: string };
-    }[]
-  > {
+  ): Promise<TakeawaysWithSource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     const rows = await TakeawaysModel.findAll({
@@ -326,10 +326,7 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
       ])
     );
 
-    const result: {
-      takeaway: TakeawaysResource;
-      source: ProjectTodoSourceInfo;
-    }[] = [];
+    const result: TakeawaysWithSource[] = [];
     for (const row of rows) {
       const source = sourceByTakeawaysId.get(row.id);
       if (!source) {

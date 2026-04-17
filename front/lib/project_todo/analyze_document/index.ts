@@ -1,91 +1,54 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { getFastestWhitelistedModel } from "@app/lib/assistant";
+import { getSmallWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import {
   buildActionItems,
   buildPromptActionItems,
-} from "@app/lib/project_todo/analyze_conversation/action_items";
+} from "@app/lib/project_todo/analyze_document/action_items";
 import {
   buildKeyDecisions,
   buildPromptKeyDecisions,
-} from "@app/lib/project_todo/analyze_conversation/key_decisions";
+} from "@app/lib/project_todo/analyze_document/key_decisions";
 import {
   buildNotableFacts,
   buildPromptNotableFacts,
-} from "@app/lib/project_todo/analyze_conversation/notable_facts";
+} from "@app/lib/project_todo/analyze_document/notable_facts";
 import {
   type ExtractionResult,
   ExtractTakeawaysInputSchema,
-} from "@app/lib/project_todo/analyze_conversation/types";
-import { buildSpec } from "@app/lib/project_todo/analyze_conversation/utils";
+} from "@app/lib/project_todo/analyze_document/types";
+import { buildSpec } from "@app/lib/project_todo/analyze_document/utils";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   type TakeawaySourceDocument,
   TakeawaysResource,
 } from "@app/lib/resources/takeaways_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
-import type {
-  ConversationType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { startActiveObservation } from "@langfuse/tracing";
+import { buildPromptForSourceType } from "./prompts";
 
-export type ConversationParticipant = {
-  sId: string;
-  fullName: string;
-};
-
-// Extracts a deduplicated list of human participants from the conversation
-// content. Only user messages with an authenticated user (non-null .user) are
-// included, since programmatic senders lack a stable sId.
-export function getConversationParticipants(
-  conversation: ConversationType
-): ConversationParticipant[] {
-  const seen = new Map<string, string>();
-  for (const group of conversation.content) {
-    for (const message of group) {
-      if (message.type === "user_message") {
-        const userMsg = message as UserMessageType;
-        if (userMsg.user && !seen.has(userMsg.user.sId)) {
-          seen.set(userMsg.user.sId, userMsg.user.fullName);
-        }
-      }
-    }
+async function buildPromptProjectMembers(
+  auth: Authenticator,
+  { spaceId }: { spaceId: string }
+): Promise<string> {
+  const space = await SpaceResource.fetchById(auth, spaceId);
+  if (!space) {
+    throw new Error("Space not found for project members prompt");
   }
-  return Array.from(seen.entries()).map(([sId, fullName]) => ({
-    sId,
-    fullName,
-  }));
-}
 
-function _buildParticipantRoster(
-  participants: ConversationParticipant[]
-): string {
-  if (participants.length === 0) {
-    return "";
-  }
-  const lines = participants.map(
-    (p) => `- id: "${p.sId}" | name: "${p.fullName}"`
-  );
-  return (
-    "Conversation participants (human users only):\n" +
-    lines.join("\n") +
-    "\n\n"
-  );
-}
+  const r = await space.fetchManualGroupsMemberships(auth, {
+    shouldIncludeAllMembers: true,
+  });
 
-const _AGENTIC_CONTEXT_PREAMBLE =
-  "IMPORTANT CONTEXT: This is a conversation between human users and a Dust AI assistant.\n" +
-  "Messages from the assistant are AI-generated responses, NOT from a human participant.\n" +
-  "- Do NOT treat user questions that the AI assistant already answered as open action items.\n" +
-  "- Only extract action items that represent real commitments between human participants, " +
-  "or tasks that a human explicitly stated they need to do outside the conversation.\n" +
-  "- A user asking the AI assistant to do something (e.g., 'can you check X?', 'please look into Y') " +
-  "is NOT an action item — it is a query being handled in real-time by the assistant.\n" +
-  "- Assignees and relevant users must always be human participants, never the AI assistant.\n\n";
+  const members = await UserResource.fetchByModelIds(
+    r.allGroupMemberships.map((m) => m.userId)
+  );
+  return `Project members:\n\n${members.map((m) => `- ${m.fullName()} (email: ${m.email}, id: ${m.sId})`).join("\n")}`;
+}
 
 // Calls the LLM with a forced extract_action_items tool call and parses the result.
 // Returns null if the call fails, produces no tool call, or the output fails parsing.
@@ -199,7 +162,7 @@ export async function extractDocumentTakeaways(
 
   // Fetch the model and the previous version concurrently — they are independent.
   const [model, previousVersion] = await Promise.all([
-    getFastestWhitelistedModel(auth),
+    getSmallWhitelistedModel(auth),
     TakeawaysResource.fetchLatestBySourceIdAndType(auth, {
       sourceId: document.id,
       sourceType: document.type,
@@ -220,11 +183,10 @@ export async function extractDocumentTakeaways(
   const previousActionItems = previousVersion?.actionItems ?? [];
   const previousNotableFacts = previousVersion?.notableFacts ?? [];
   const previousKeyDecisions = previousVersion?.keyDecisions ?? [];
-  // const participants = getConversationParticipants(conversation);
-  // const participantSIds = new Set(participants.map((p) => p.sId));
+
   const prompt = [
-    //AGENTIC_CONTEXT_PREAMBLE,
-    //buildParticipantRoster(participants),
+    await buildPromptProjectMembers(auth, { spaceId }),
+    buildPromptForSourceType(document.type),
     buildPromptActionItems(previousActionItems),
     buildPromptNotableFacts(previousNotableFacts),
     buildPromptKeyDecisions(previousKeyDecisions),
@@ -263,22 +225,22 @@ export async function extractDocumentTakeaways(
     ])
   );
 
-  const existingAssignees = new Set(assignees.map((u) => u.sId));
+  const validAssigneesUserIds = new Set(assignees.map((u) => u.sId));
 
   const actionItems = buildActionItems(
     extraction.action_items,
-    new Set(previousActionItems.map((item) => item.sId)),
-    existingAssignees
+    previousActionItems,
+    validAssigneesUserIds
   );
   const notableFacts = buildNotableFacts(
     extraction.notable_facts,
-    new Set(previousNotableFacts.map((fact) => fact.sId)),
-    existingAssignees
+    previousNotableFacts,
+    validAssigneesUserIds
   );
   const keyDecisions = buildKeyDecisions(
     extraction.key_decisions,
-    new Set(previousKeyDecisions.map((d) => d.sId)),
-    existingAssignees
+    previousKeyDecisions,
+    validAssigneesUserIds
   );
 
   if (
@@ -292,7 +254,7 @@ export async function extractDocumentTakeaways(
         sourceType: document.type,
         workspaceId: owner.sId,
       },
-      "Conversation todo: no takeaways extracted"
+      "Document takeaway: no takeaways extracted"
     );
     return;
   }
@@ -314,6 +276,6 @@ export async function extractDocumentTakeaways(
       notableFactCount: notableFacts.length,
       keyDecisionCount: keyDecisions.length,
     },
-    "Conversation todo: analysis complete"
+    "Document takeaway: analysis complete"
   );
 }

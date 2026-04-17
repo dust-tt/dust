@@ -30,7 +30,8 @@ export function buildConversationMessageSections(
     if (msg.type === "user_message") {
       const userName = msg.user?.fullName || msg.user?.username || "User";
       const userEmail = msg.user?.email || "Unknown";
-      prefix = `>> User (${userName}, ${userEmail}) [${dateStr}]:\n`;
+      const userId = msg.user?.sId || "Unknown";
+      prefix = `>> User (name: ${userName}, email: ${userEmail}, id: ${userId}) [${dateStr}]:\n`;
       content = msg.content ? msg.content + "\n" : "\n";
     } else if (msg.type === "agent_message") {
       const agentName = msg.configuration?.name || "Assistant";

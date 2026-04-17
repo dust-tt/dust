@@ -13,7 +13,6 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   ProjectTodoSourceInfo,
-  ProjectTodoSourceType,
   ProjectTodoType,
 } from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -337,26 +336,41 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
 
   // ── Source links (* => todo) ─────────────────────────────────────────────
 
-  async addSource(
+  async upsertSource(
     auth: Authenticator,
     {
-      sourceType,
-      sourceId,
+      source,
     }: {
-      sourceType: ProjectTodoSourceType;
-      sourceId: string;
+      source: ProjectTodoSourceInfo;
     },
     transaction?: Transaction
   ): Promise<void> {
-    await ProjectTodoSourceModel.create(
+    const where = {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      projectTodoId: this.id,
+      sourceType: source.sourceType,
+      sourceId: source.sourceId,
+    };
+    const [sourceInstance, created] = await ProjectTodoSourceModel.findOrCreate(
       {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        projectTodoId: this.id,
-        sourceType,
-        sourceId,
-      },
-      { transaction }
+        where,
+        defaults: {
+          ...where,
+          sourceTitle: source.sourceTitle,
+          sourceUrl: source.sourceUrl,
+        },
+        transaction,
+      }
     );
+    if (!created) {
+      await sourceInstance.update(
+        {
+          sourceTitle: source.sourceTitle,
+          sourceUrl: source.sourceUrl,
+        },
+        { transaction }
+      );
+    }
   }
 
   // ── Serialization ──────────────────────────────────────────────────────────

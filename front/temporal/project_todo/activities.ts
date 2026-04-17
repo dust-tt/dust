@@ -2,14 +2,15 @@ import { isIncludeResultResourceType } from "@app/lib/actions/mcp_internal_actio
 import { runIncludeDataRetrieval } from "@app/lib/api/actions/servers/include_data/include_function";
 import { buildProjectRetrieveDataSources } from "@app/lib/api/actions/servers/project_manager/helpers";
 import { Authenticator } from "@app/lib/auth";
-import { extractDocumentTakeaways } from "@app/lib/project_todo/analyze_conversation";
+import { extractDocumentTakeaways } from "@app/lib/project_todo/analyze_document";
+import { mergeTakeawaysIntoProject } from "@app/lib/project_todo/merge_into_project";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { TakeawaySourceDocument } from "@app/lib/resources/takeaways_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { signalOrStartProjectMergeWorkflow } from "@app/temporal/project_todo/client";
+import type { ConnectorProvider } from "@app/types/data_source";
 import type { ProjectTodoSourceType } from "@app/types/project_todo";
 import { removeNulls } from "@app/types/shared/utils/general";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
@@ -20,7 +21,7 @@ function resultToTakeawaySourceDocument(
 ): TakeawaySourceDocument | null {
   if (isIncludeResultResourceType(result)) {
     let sourceType: ProjectTodoSourceType | null = null;
-    switch (result.resource.source.provider) {
+    switch (result.resource.source.provider as ConnectorProvider) {
       case "dust_project":
         sourceType =
           result.resource.source.mimeType ===
@@ -28,9 +29,31 @@ function resultToTakeawaySourceDocument(
             ? "project_conversation"
             : "project_knowledge";
         break;
+      case "slack":
+      case "slack_bot":
+        sourceType = "slack";
+        break;
+      case "google_drive":
+        sourceType = "gdrive";
+        break;
+      case "notion":
+        sourceType = "notion";
+        break;
       default:
+        logger.info(
+          {
+            provider: result.resource.source.provider,
+            mimeType: result.resource.source.mimeType,
+          },
+          "[resultToTakeawaySourceDocument] Unknown provider"
+        );
         return null;
     }
+
+    if (!sourceType) {
+      return null;
+    }
+
     return {
       title: result.resource.text,
       id: result.resource.id,
@@ -91,7 +114,7 @@ export async function analyzeProjectTodosActivity({
     retrievalTopK: 128,
     dataSources: await buildProjectRetrieveDataSources(auth, space),
     // TODO: compute this from the last time the project todo was analyzed.
-    timeFrame: { duration: 7, unit: "day" },
+    timeFrame: { duration: 1, unit: "day" },
   });
 
   if (results.isErr()) {
@@ -131,19 +154,7 @@ export async function analyzeProjectTodosActivity({
   );
 }
 
-// Starts or signals `projectMergeWorkflow` (signalWithStart). Used when merge is driven
-// via signals; the cron `projectTodoWorkflow` path calls `mergeTodosForProjectActivity` directly.
-export async function signalOrStartMergeWorkflowActivity({
-  workspaceId,
-  spaceId,
-}: {
-  workspaceId: string;
-  spaceId: string;
-}): Promise<void> {
-  await signalOrStartProjectMergeWorkflow({ workspaceId, spaceId });
-}
-
-// Called by projectMergeWorkflow. Merges the latest takeaway snapshots
+// Called by projectTodoWorkflow. Merges the latest takeaway snapshots
 // for all conversations in the project into project_todo rows.
 export async function mergeTodosForProjectActivity({
   workspaceId,
@@ -152,23 +163,5 @@ export async function mergeTodosForProjectActivity({
   workspaceId: string;
   spaceId: string;
 }): Promise<void> {
-  /*
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    logger.error(
-      { spaceId, error: authResult.error },
-      "Project todo merge: failed to deserialize authenticator"
-    );
-    return;
-  }
-
-  const auth = authResult.value;
-
-  logger.info(
-    { spaceId, workspaceId: auth.getNonNullableWorkspace().sId },
-    "Project todo merge: activity invoked (not yet implemented)"
-  );
-
-  await mergeTakeawaysIntoProject(auth, { spaceId });
-  */
+  await mergeTakeawaysIntoProject({ workspaceId, spaceId });
 }

@@ -1,7 +1,7 @@
 import {
   buildNotableFacts,
   buildPromptNotableFacts,
-} from "@app/lib/project_todo/analyze_conversation/notable_facts";
+} from "@app/lib/project_todo/analyze_document/notable_facts";
 import type { TodoVersionedNotableFact } from "@app/types/takeaways";
 import { describe, expect, it } from "vitest";
 
@@ -9,13 +9,13 @@ describe("buildNotableFacts", () => {
   it("reuses sId when it matches a previous sId", () => {
     const knownSId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
     const raw = [{ sId: knownSId, short_description: "Launch date is Q3" }];
-    const result = buildNotableFacts(raw, new Set([knownSId]), new Set());
+    const result = buildNotableFacts(raw, [{ sId: knownSId }], new Set());
     expect(result[0].sId).toBe(knownSId);
   });
 
   it("returns empty relevantUserIds when no user ids provided", () => {
     const raw = [{ short_description: "Some fact" }];
-    const result = buildNotableFacts(raw, new Set(), new Set());
+    const result = buildNotableFacts(raw, [], new Set());
     expect(result[0].relevantUserIds).toEqual([]);
   });
 
@@ -27,18 +27,18 @@ describe("buildNotableFacts", () => {
       },
     ];
     const participants = new Set(["user-abc", "user-def"]);
-    const result = buildNotableFacts(raw, new Set(), participants);
+    const result = buildNotableFacts(raw, [], participants);
     expect(result[0].relevantUserIds).toEqual(["user-abc", "user-def"]);
   });
 
   it("preserves shortDescription", () => {
     const raw = [{ short_description: "Deadline is Friday" }];
-    const result = buildNotableFacts(raw, new Set(), new Set());
+    const result = buildNotableFacts(raw, [], new Set());
     expect(result[0].shortDescription).toBe("Deadline is Friday");
   });
 
   it("returns an empty array for empty input", () => {
-    expect(buildNotableFacts([], new Set(), new Set())).toEqual([]);
+    expect(buildNotableFacts([], [], new Set())).toEqual([]);
   });
 });
 

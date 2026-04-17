@@ -4,7 +4,6 @@ import {
   useProjectTodos,
   useUpdateProjectTodo,
 } from "@app/lib/swr/projects";
-import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   ProjectTodoCategory,
   ProjectTodoType,
@@ -84,9 +83,7 @@ function TodoSources({
             type="button"
             className="underline hover:no-underline"
             onClick={() => {
-              void router.push(
-                getConversationRoute(owner.sId, source.sourceId)
-              );
+              void router.push(source.sourceUrl ?? "");
             }}
           >
             {source.sourceTitle ?? source.sourceId}

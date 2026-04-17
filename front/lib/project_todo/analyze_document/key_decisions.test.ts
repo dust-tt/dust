@@ -1,7 +1,7 @@
 import {
   buildKeyDecisions,
   buildPromptKeyDecisions,
-} from "@app/lib/project_todo/analyze_conversation/key_decisions";
+} from "@app/lib/project_todo/analyze_document/key_decisions";
 import type { TodoVersionedKeyDecision } from "@app/types/takeaways";
 import { describe, expect, it } from "vitest";
 
@@ -15,7 +15,7 @@ describe("buildKeyDecisions", () => {
         status: "decided" as const,
       },
     ];
-    const result = buildKeyDecisions(raw, new Set([knownSId]), new Set());
+    const result = buildKeyDecisions(raw, [{ sId: knownSId }], new Set());
     expect(result[0].sId).toBe(knownSId);
   });
 
@@ -26,7 +26,7 @@ describe("buildKeyDecisions", () => {
         status: "decided" as const,
       },
     ];
-    const result = buildKeyDecisions(raw, new Set(), new Set());
+    const result = buildKeyDecisions(raw, [], new Set());
     expect(result[0].status).toBe("decided");
   });
 
@@ -37,7 +37,7 @@ describe("buildKeyDecisions", () => {
         status: "open" as const,
       },
     ];
-    const result = buildKeyDecisions(raw, new Set(), new Set());
+    const result = buildKeyDecisions(raw, [], new Set());
     expect(result[0].status).toBe("open");
   });
 
@@ -48,7 +48,7 @@ describe("buildKeyDecisions", () => {
         status: "decided" as const,
       },
     ];
-    const result = buildKeyDecisions(raw, new Set(), new Set());
+    const result = buildKeyDecisions(raw, [], new Set());
     expect(result[0].relevantUserIds).toEqual([]);
   });
 
@@ -61,7 +61,7 @@ describe("buildKeyDecisions", () => {
       },
     ];
     const participants = new Set(["user-abc", "user-def"]);
-    const result = buildKeyDecisions(raw, new Set(), participants);
+    const result = buildKeyDecisions(raw, [], participants);
     expect(result[0].relevantUserIds).toEqual(["user-abc"]);
   });
 
@@ -72,12 +72,12 @@ describe("buildKeyDecisions", () => {
         status: "decided" as const,
       },
     ];
-    const result = buildKeyDecisions(raw, new Set(), new Set());
+    const result = buildKeyDecisions(raw, [], new Set());
     expect(result[0].shortDescription).toBe("Launch in Europe first");
   });
 
   it("returns an empty array for empty input", () => {
-    expect(buildKeyDecisions([], new Set(), new Set())).toEqual([]);
+    expect(buildKeyDecisions([], [], new Set())).toEqual([]);
   });
 });
 

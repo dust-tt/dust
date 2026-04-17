@@ -1,10 +1,12 @@
 import { Authenticator } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { makeScript } from "@app/scripts/helpers";
+import {
+  analyzeProjectTodosActivity,
+  mergeTodosForProjectActivity,
+} from "@app/temporal/project_todo/activities";
 import { QUEUE_NAME } from "@app/temporal/project_todo/config";
-import { projectTodoWorkflow } from "@app/temporal/project_todo/workflows";
 
 makeScript(
   {
@@ -67,16 +69,7 @@ makeScript(
       return;
     }
 
-    const client = await getTemporalClientForFrontNamespace();
-    await client.workflow.start(projectTodoWorkflow, {
-      args: [{ workspaceId, spaceId: space.sId }],
-      taskQueue: QUEUE_NAME,
-      workflowId: oneOffWorkflowId,
-      memo: {
-        workspaceId,
-        spaceId: space.sId,
-        trigger: "manual_one_off_dev",
-      },
-    });
+    await analyzeProjectTodosActivity({ workspaceId, spaceId });
+    await mergeTodosForProjectActivity({ workspaceId, spaceId });
   }
 );
