@@ -150,6 +150,15 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     );
   }
 
+  /**
+   * Metronome-billed: Metronome is the primary billing provider, no Stripe subscription.
+   */
+  get isMetronomeBilled(): boolean {
+    return (
+      this.stripeSubscriptionId === null && this.metronomeContractId !== null
+    );
+  }
+
   static async makeNew(
     blob: CreationAttributes<SubscriptionModel>,
     plan: PlanType,
