@@ -657,13 +657,46 @@ export async function postUserMessage(
     });
   }
 
-  const agentMentions = mentions.filter(isAgentMention);
+  const rawAgentMentions = mentions.filter(isAgentMention);
   let runningAgentMessage = conversation.content
     .flat()
     .find(
       (m): m is AgentMessageType =>
         isAgentMessageType(m) && m.status === "created"
     );
+
+  // `getAgentConfiguration` checks that we're only pulling a configuration from the
+  // same workspace or a global one.
+  const results = await Promise.all([
+    getAgentConfigurations(auth, {
+      agentIds: rawAgentMentions.map((mention) => mention.configurationId),
+      variant: "extra_light",
+    }),
+    (() => {
+      // If the origin of the user message is "run_agent", we do not want to update the
+      // participation of the user so that the conversation does not appear in the user's history.
+      if (agenticMessageData?.type === "run_agent") {
+        return;
+      }
+
+      return ConversationResource.upsertParticipation(auth, {
+        conversation,
+        action: "posted",
+        user: user?.toJSON() ?? null,
+      });
+    })(),
+  ]);
+
+  const fetchedAgentConfigurations = removeNulls(results[0]);
+  const resolvedAgentConfigurationIds = new Set(
+    fetchedAgentConfigurations.map((config) => config.sId)
+  );
+  // Ignore unresolved IDs here so non-agent references do not interfere with steering checks.
+  const agentMentions = rawAgentMentions.filter((mention) =>
+    resolvedAgentConfigurationIds.has(mention.configurationId)
+  );
+  let agentConfigurations = fetchedAgentConfigurations;
+  let shouldCreateBranch = false;
 
   // Steering invariants: enforce single agent loop per conversation.
   if (agentMentions.length > 1) {
@@ -696,33 +729,6 @@ export async function postUserMessage(
       },
     });
   }
-
-  // `getAgentConfiguration` checks that we're only pulling a configuration from the
-  // same workspace or a global one.
-  const results = await Promise.all([
-    getAgentConfigurations(auth, {
-      agentIds: mentions
-        .filter(isAgentMention)
-        .map((mention) => mention.configurationId),
-      variant: "extra_light",
-    }),
-    (() => {
-      // If the origin of the user message is "run_agent", we do not want to update the
-      // participation of the user so that the conversation does not appear in the user's history.
-      if (agenticMessageData?.type === "run_agent") {
-        return;
-      }
-
-      return ConversationResource.upsertParticipation(auth, {
-        conversation,
-        action: "posted",
-        user: user?.toJSON() ?? null,
-      });
-    })(),
-  ]);
-
-  let agentConfigurations = removeNulls(results[0]);
-  let shouldCreateBranch = false;
 
   // Check if no mentions, in that case, we might automatically append an @dust mention.
   if (

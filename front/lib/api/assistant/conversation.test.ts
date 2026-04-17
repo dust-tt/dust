@@ -1448,6 +1448,94 @@ describe("postUserMessage", () => {
     }
   });
 
+  describe("steering with unresolved mention ids", () => {
+    async function createConversationWithRunningAgent() {
+      const { messageRow: userMessageRow } =
+        await ConversationFactory.createUserMessage({
+          auth,
+          workspace,
+          conversation,
+          content: "Initial message",
+        });
+
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversation.id,
+        rank: 1,
+        parentId: userMessageRow.id,
+        agentConfigurationId: agentConfig1.sId,
+        agentConfigurationVersion: agentConfig1.version,
+      });
+
+      const fetchedConversationResult = await getConversation(
+        auth,
+        conversation.sId
+      );
+      if (fetchedConversationResult.isErr()) {
+        throw new Error("Failed to fetch conversation with running agent");
+      }
+
+      vi.clearAllMocks();
+
+      return fetchedConversationResult.value;
+    }
+
+    it("should still reject a different running agent when unresolved ids are present", async () => {
+      const agentConfig2 = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        {
+          name: "Test Agent 2",
+          description: "Second test agent",
+        }
+      );
+      const user = auth.getNonNullableUser();
+      const userJson = user.toJSON();
+      const rateLimiterSpy = vi
+        .spyOn(rateLimiterModule, "rateLimiter")
+        .mockResolvedValue(100);
+      const contentFragmentId = generateRandomModelSId("cf");
+
+      try {
+        const runningConversation = await createConversationWithRunningAgent();
+
+        const result = await postUserMessage(auth, {
+          conversation: runningConversation,
+          content: `Switch to @${agentConfig2.name}`,
+          mentions: [
+            {
+              configurationId: agentConfig2.sId,
+            } satisfies AgentMention,
+            {
+              configurationId: contentFragmentId,
+            } satisfies AgentMention,
+          ],
+          context: {
+            username: userJson.username,
+            timezone: "UTC",
+            fullName: userJson.fullName,
+            email: userJson.email,
+            profilePictureUrl: userJson.image,
+            origin: "api",
+          },
+          skipToolsValidation: false,
+        });
+
+        expect(result.isErr()).toBe(true);
+        if (result.isOk()) {
+          return;
+        }
+
+        expect(result.error.status_code).toBe(400);
+        expect(result.error.api_error.message).toBe(
+          "Cannot run a different agent while one is running."
+        );
+        expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
+      } finally {
+        rateLimiterSpy.mockRestore();
+      }
+    });
+  });
+
   describe("compaction blocking", () => {
     it("should reject posting when a compaction message is running", async () => {
       const user = auth.getNonNullableUser();
