@@ -62,8 +62,11 @@ There may be situations where suggestions are co-dependent. For example, there m
 
   suggestion_tool_calls: `
 You are provided all of the attributes associated with a conversation suggestion. You MUST use these EXACT attributes to create the final suggestion.
-The only exception is the "analysis" attribute. You MUST provide a new analysis based on why you picked the suggestion. The end user does NOT care about the technical considerations behind your thought process.
-The analysis MUST be a user-facing explanation of why the suggestion is impactful and how many conversations support the suggestion.
+The only exceptions are the "analysis" and "title" attributes; these MUST be newly authored for each final suggestion.
+
+For "analysis": Provide a user-facing explanation of why the suggestion is impactful and how many conversations support it. The end user does NOT care about the technical considerations behind your thought process.
+
+For "title": You MUST provide a short, action-oriented, user-facing title that summarizes what the suggestion changes. The title MUST be at most 25 characters. Examples: "Clarify response tone", "Add Slack search tool", "Remove GitHub tool". Each suggestion MUST have a distinct title.
 `,
 };
 

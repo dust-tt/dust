@@ -74,6 +74,14 @@ export const TOOL_SCHEMAS: Record<
       .string()
       .optional()
       .describe("Why this change improves the skill"),
+    title: z
+      .string()
+      .max(25)
+      .optional()
+      .describe(
+        "A short, action-oriented user-facing title for this suggestion (MUST be at most 25 characters). " +
+          "Only set this when producing final aggregated suggestions; leave unset for synthetic suggestions."
+      ),
   }),
 };
 

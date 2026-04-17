@@ -397,6 +397,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       updatedAt: this.updatedAt.getTime(),
       skillConfigurationId: this.skillConfigurationSId,
       analysis: this.analysis,
+      title: this.title,
       state: this.state,
       source: this.source,
       sourceConversationId: this.sourceConversationSId,

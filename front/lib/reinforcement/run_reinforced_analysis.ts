@@ -7,6 +7,7 @@ import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { getLargeWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+
 import {
   hasSuggestionSelfConflict,
   pruneConflictingSkillEditSuggestions,
@@ -98,6 +99,14 @@ const REINFORCED_SKILLS_TOOL_DEFINITIONS: Record<
         .string()
         .optional()
         .describe("Why this change improves the skill"),
+      title: z
+        .string()
+        .max(25)
+        .optional()
+        .describe(
+          "A short, action-oriented user-facing title for this suggestion (MUST be at most 25 characters). " +
+            "Only set this when producing final aggregated suggestions; leave unset for synthetic suggestions."
+        ),
     },
   },
 };
@@ -433,6 +442,7 @@ async function createSkillSuggestionsFromToolCall({
             toolEdits: parsed.data.toolEdits,
           },
           analysis: parsed.data.analysis ?? null,
+          title: parsed.data.title ?? null,
           state: "pending",
           source,
           sourceConversationId: conversation?.id ?? null,
