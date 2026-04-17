@@ -184,8 +184,6 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
         consumedAmountMicroUsd: 0,
         discount: null,
         invoiceOrLineItemId: idempotencyKey,
-        startDate,
-        expirationDate,
       });
 
       const startResult = await credit.start(auth, {
@@ -206,8 +204,8 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
           productId: getProductFreeMonthlyCreditId(),
           creditTypeId: getCreditTypeProgrammaticUsdId(),
           amount,
-          startingAt: startDate.toISOString(),
-          endingBefore: expirationDate.toISOString(),
+          startingAt: startResult.value.startDate.toISOString(),
+          endingBefore: startResult.value.expirationDate.toISOString(),
           name: `Free poke credit ($${originalAmount.toFixed(2)})`,
           idempotencyKey,
         });
