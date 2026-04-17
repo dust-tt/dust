@@ -51,7 +51,7 @@ describe("sandbox image registry", () => {
       });
       expect(imageResult.value.imageId).toEqual({
         imageName: "dust-base",
-        tag: "0.7.5",
+        tag: "0.7.6",
       });
     }
   });
@@ -63,7 +63,7 @@ describe("sandbox image registry", () => {
     expect(runCommands).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          "useradd --create-home --uid 1001 --gid agent --shell /bin/bash agent-proxied"
+          "useradd --create-home --uid 1003 --gid agent --shell /bin/bash agent-proxied"
         ),
         expect.stringContaining("chgrp agent /home/agent /files/conversation"),
         expect.stringContaining("chmod g+ws /home/agent /files/conversation"),
@@ -86,27 +86,27 @@ describe("sandbox image registry", () => {
         // Loopback exemption lives in nat (before REDIRECT), not filter —
         // otherwise the redirect rewrites the destination first.
         expect.stringContaining(
-          "iptables -t nat -A OUTPUT -m owner --uid-owner 1001 -d 127.0.0.0/8 -j RETURN"
+          "iptables -t nat -A OUTPUT -m owner --uid-owner 1003 -d 127.0.0.0/8 -j RETURN"
         ),
         // Metadata + RFC1918 RETURNs in nat keep original dst intact for
         // the filter-table defense-in-depth DROPs below.
         expect.stringContaining(
-          "iptables -t nat -A OUTPUT -m owner --uid-owner 1001 -d 169.254.169.254/32 -j RETURN"
+          "iptables -t nat -A OUTPUT -m owner --uid-owner 1003 -d 169.254.169.254/32 -j RETURN"
         ),
         expect.stringContaining(
-          "iptables -t nat -A OUTPUT -m owner --uid-owner 1001 -d 10.0.0.0/8 -j RETURN"
+          "iptables -t nat -A OUTPUT -m owner --uid-owner 1003 -d 10.0.0.0/8 -j RETURN"
         ),
         expect.stringContaining(
-          "iptables -t nat -A OUTPUT -m owner --uid-owner 1001 -p tcp -j REDIRECT --to-ports 9990"
+          "iptables -t nat -A OUTPUT -m owner --uid-owner 1003 -p tcp -j REDIRECT --to-ports 9990"
         ),
         expect.stringContaining(
-          'iptables -A OUTPUT -m owner --uid-owner 1001 -p udp --dport 53 -d "$NS" -j ACCEPT'
+          'iptables -A OUTPUT -m owner --uid-owner 1003 -p udp --dport 53 -d "$NS" -j ACCEPT'
         ),
         expect.stringContaining(
-          "iptables -A OUTPUT -m owner --uid-owner 1001 -d 169.254.169.254/32 -j DROP"
+          "iptables -A OUTPUT -m owner --uid-owner 1003 -d 169.254.169.254/32 -j DROP"
         ),
         expect.stringContaining(
-          "ip6tables -A OUTPUT -m owner --uid-owner 1001 -j DROP"
+          "ip6tables -A OUTPUT -m owner --uid-owner 1003 -j DROP"
         ),
       ])
     );
