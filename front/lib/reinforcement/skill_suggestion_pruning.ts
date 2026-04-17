@@ -180,7 +180,7 @@ export async function pruneOutdatedSkillEditSuggestions(
     return;
   }
 
-  const currentToolSIds = new Set(skill.mcpServerViews.map((v) => v.sId));
+  const currentToolIds = new Set(skill.mcpServerViews.map((v) => v.sId));
   const currentBlockIds = skill.instructionsHtml
     ? getAllBlockIds(skill.instructionsHtml)
     : new Set<string>();
@@ -191,8 +191,8 @@ export async function pruneOutdatedSkillEditSuggestions(
     for (const edit of toolEdits ?? []) {
       const cannotApply =
         edit.action === "add"
-          ? currentToolSIds.has(edit.toolId)
-          : !currentToolSIds.has(edit.toolId);
+          ? currentToolIds.has(edit.toolId)
+          : !currentToolIds.has(edit.toolId);
       if (cannotApply) {
         return true;
       }
@@ -201,6 +201,8 @@ export async function pruneOutdatedSkillEditSuggestions(
     // We do not do a diff check to determine if the content of a specific instruction block has changed.
     // Taking this simplification as it is a low impact edge case.
     for (const edit of instructionEdits ?? []) {
+      // If the target block is the instructions root block or the block no longer exists, mark the suggestion as outdated.
+      // The root block suggestion would overwrite the entire instructions, so we mark it as outdated as we know it is missing the new updates.
       if (
         edit.targetBlockId === INSTRUCTIONS_ROOT_TARGET_BLOCK_ID ||
         !currentBlockIds.has(edit.targetBlockId)
