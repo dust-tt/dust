@@ -19,7 +19,7 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
-import { useSpaces } from "@app/lib/swr/spaces";
+import { useSpaceInfo, useSpaces } from "@app/lib/swr/spaces";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import {
   getAgentBuilderRoute,
@@ -230,6 +230,19 @@ export function ConversationMenu({
     disabled: shouldWaitBeforeFetching || !hasFeature("projects"),
   });
 
+  const conversationSpaceId =
+    conversation && isProjectConversation(conversation)
+      ? conversation.spaceId
+      : null;
+  const { spaceInfo: conversationSpaceInfo } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: conversationSpaceId,
+    disabled: shouldWaitBeforeFetching || !conversationSpaceId,
+  });
+  const isProjectEditor = conversationSpaceInfo?.isEditor ?? false;
+  const canMoveOutOfProject =
+    conversation && isProjectConversation(conversation) && isProjectEditor;
+
   const moveConversationToProject = useMoveConversationToProject(owner);
   const moveConversationOutOfProject = useMoveConversationOutOfProject(
     owner,
@@ -384,11 +397,7 @@ export function ConversationMenu({
             <DropdownMenuSub>
               <DropdownMenuSubTrigger
                 icon={ArrowRightIcon}
-                label={
-                  conversation && isProjectConversation(conversation)
-                    ? "Move to..."
-                    : "Move to project"
-                }
+                label={canMoveOutOfProject ? "Move to..." : "Move to project"}
                 disabled={!projects.length}
               />
               <DropdownMenuPortal>
@@ -396,7 +405,7 @@ export function ConversationMenu({
                   collisionPadding={16}
                   className="max-w-60"
                 >
-                  {conversation && isProjectConversation(conversation) && (
+                  {canMoveOutOfProject && (
                     <>
                       <DropdownMenuItem
                         icon={XMarkIcon}
