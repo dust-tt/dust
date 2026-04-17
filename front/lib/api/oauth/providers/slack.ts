@@ -73,14 +73,11 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
             "mpim:read",
             "team:read",
             "im:read",
+            "reactions:read",
+            "reactions:write",
             "users:read",
             "users:read.email",
           ];
-
-          // TODO: This is temporary until our Slack app scope is approved.
-          if (extraConfig?.slack_bot_mcp_feature_flag) {
-            scopes.push("reactions:read", "reactions:write");
-          }
 
           return scopes;
         case "labs_transcripts":
@@ -200,13 +197,6 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
         ...restConfig
       } = extraConfig;
       return restConfig;
-    } else if (useCase === "platform_actions") {
-      const feature_flags = await getFeatureFlags(auth);
-      const config = { ...extraConfig };
-      if (feature_flags.includes("slack_bot_mcp")) {
-        config.slack_bot_mcp_feature_flag = "true";
-      }
-      return config;
     }
 
     return extraConfig;
