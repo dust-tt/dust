@@ -158,6 +158,7 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const { conversationId } = res._getJSONData();
+    expect(res._getJSONData().conversation).toEqual({ sId: conversationId });
     const conversation = await fetchConversationOrThrow(auth, conversationId);
 
     expect(conversation.title).toBe("Parent conversation (forked)");
@@ -203,6 +204,7 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const { conversationId } = res._getJSONData();
+    expect(res._getJSONData().conversation).toEqual({ sId: conversationId });
     const conversation = await fetchConversationOrThrow(auth, conversationId);
 
     expect(conversation.forkedFrom).toEqual({
