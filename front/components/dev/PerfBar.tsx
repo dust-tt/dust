@@ -123,7 +123,7 @@ export function PerfBar({ metrics }: PerfBarProps) {
         value={String(metrics.netRequests)}
         valueWidthPx={22}
         tooltip={[
-          "Network requests in the last 3 seconds.",
+          "Network requests in the last 1 second.",
           "Counts both fetch() and XMLHttpRequest calls.",
         ].join("\n")}
       />
