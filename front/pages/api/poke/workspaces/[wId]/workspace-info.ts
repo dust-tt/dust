@@ -31,6 +31,7 @@ export type PokeGetWorkspaceInfo = {
   stripeSubscription: Stripe.Subscription | null;
   subscriptions: SubscriptionType[];
   whitelistableFeatures: WhitelistableFeature[];
+  temporalFrontNamespace: string;
   workspaceCreationDay: string;
   workspaceVerifiedDomains: WorkspaceDomain[];
   workosEnvironmentId: string;
@@ -118,6 +119,7 @@ async function handler(
         programmaticUsageConfig: programmaticUsageConfig?.toJSON() ?? null,
         baseUrl: config.getApiBaseUrl(),
         workosEnvironmentId: config.getWorkOSEnvironmentId(),
+        temporalFrontNamespace: config.getTemporalFrontNamespace() ?? "",
       });
 
     default:

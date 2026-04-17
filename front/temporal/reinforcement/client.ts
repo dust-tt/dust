@@ -33,7 +33,7 @@ export function makeWorkspaceWorkflowId(workspaceId: string): string {
  */
 async function getReinforcementWorkspaceIds(): Promise<string[]> {
   const allWorkspaces = await WorkspaceResource.listAll();
-  const flaggedIds: string[] = [];
+  const reinforcementWorkspaceIds: string[] = [];
 
   for (const workspace of allWorkspaces) {
     try {
@@ -48,7 +48,7 @@ async function getReinforcementWorkspaceIds(): Promise<string[]> {
         continue;
       }
 
-      flaggedIds.push(workspace.sId);
+      reinforcementWorkspaceIds.push(workspace.sId);
     } catch (e) {
       logger.error(
         { error: e, workspaceId: workspace.sId },
@@ -57,7 +57,7 @@ async function getReinforcementWorkspaceIds(): Promise<string[]> {
     }
   }
 
-  return flaggedIds;
+  return reinforcementWorkspaceIds;
 }
 
 // ---------------------------------------------------------------------------
@@ -162,6 +162,10 @@ export async function ensureReinforcementWorkspaceSchedules(): Promise<{
 }> {
   const client = await getTemporalClientForFrontNamespace();
   const reinforcedWorkspaceIds = new Set(await getReinforcementWorkspaceIds());
+  logger.info(
+    { reinforcedWorkspaceCount: reinforcedWorkspaceIds.size },
+    "[Reinforcement] Ensuring workspace schedules."
+  );
 
   // Find existing schedules by ID prefix.
   const runningWorkspaceIds = new Set<string>();
@@ -172,6 +176,10 @@ export async function ensureReinforcementWorkspaceSchedules(): Promise<{
       );
     }
   }
+  logger.info(
+    { runningWorkspaceCount: runningWorkspaceIds.size },
+    "[Reinforcement] Found existing workspace schedules."
+  );
 
   // Workspaces that need a schedule started / stopped.
   const toStart = [...reinforcedWorkspaceIds].filter(
@@ -179,6 +187,10 @@ export async function ensureReinforcementWorkspaceSchedules(): Promise<{
   );
   const toStop = [...runningWorkspaceIds].filter(
     (id) => !reinforcedWorkspaceIds.has(id)
+  );
+  logger.info(
+    { toStartCount: toStart.length, toStopCount: toStop.length },
+    "[Reinforcement] Schedules to start/stop."
   );
 
   const CONCURRENCY = 5;

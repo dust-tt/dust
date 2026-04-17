@@ -137,6 +137,7 @@ export function WorkspacePage() {
     extensionConfig,
     programmaticUsageConfig,
     workosEnvironmentId,
+    temporalFrontNamespace,
   } = workspaceInfo;
 
   return (
@@ -214,6 +215,7 @@ export function WorkspacePage() {
                   dataRetention={dataRetention}
                   workosEnvironmentId={workosEnvironmentId}
                   hasDummyFeature={hasDummyFeature}
+                  temporalFrontNamespace={temporalFrontNamespace}
                 />
               </TabsContent>
               <TabsContent value="subscriptions">
