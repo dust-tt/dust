@@ -15,6 +15,7 @@ import {
   useConversationTools,
 } from "@app/hooks/conversations";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { getRunningAgentSwitchBlockMessage } from "@app/lib/conversation_agent_switch";
 import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
@@ -152,7 +153,7 @@ export const InputBar = React.memo(function InputBar({
       const name =
         agentConfigurations.find((a) => a.sId === activeBlockingId)?.name ??
         "another agent";
-      return `Wait for @${name} to finish before switching agents`;
+      return getRunningAgentSwitchBlockMessage(name);
     }
 
     // Check messages with a pending blocked action from a different agent.

@@ -53,6 +53,7 @@ import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects/context";
 import { isModelAvailable, isProviderWhitelisted } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { getRunningAgentSwitchBlockMessage } from "@app/lib/conversation_agent_switch";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
 import { hasCredits } from "@app/lib/metronome/credit_balance";
@@ -692,7 +693,9 @@ export async function postUserMessage(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Wait for @${runningAgentMessage.configuration.name} to finish before switching agents`,
+        message: getRunningAgentSwitchBlockMessage(
+          runningAgentMessage.configuration.name
+        ),
       },
     });
   }
