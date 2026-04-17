@@ -543,5 +543,5 @@ async function addMetronomeCommitsForWorkspace({
       "[Commit Purchase] Failed to add commits to Metronome"
     );
   }
-  return result;
+  return new Ok(undefined);
 }

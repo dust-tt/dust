@@ -12,13 +12,16 @@
  * Idempotent: uses a deterministic idempotency key based on the credit DB id.
  * Re-running the script will not create duplicate entries in Metronome.
  *
- * Run with: npx tsx scripts/backfill_metronome_committed_credits.ts [--execute] [--workspaceId <sId>] [--type free|committed|all]
+ * Run with: npx tsx scripts/backfill_metronome_credits.ts [--execute] [--workspaceId <sId>] [--type free|committed|all]
  */
 
 import { Authenticator } from "@app/lib/auth";
 import {
   createMetronomeCommit,
   createMetronomeCredit,
+  deductMetronomeCreditBalance,
+  getMetronomeCommit,
+  getMetronomeCredit,
 } from "@app/lib/metronome/client";
 import {
   getCreditTypeProgrammaticUsdId,
@@ -54,6 +57,15 @@ async function backfillCreditsOfType(
   );
 
   if (credits.length === 0) {
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        metronomeCustomerId,
+        creditType: type,
+      },
+      `[Backfill] No active credits of type "${type}" to backfill, skipping`
+    );
+
     return;
   }
 
@@ -61,43 +73,56 @@ async function backfillCreditsOfType(
   const metronomeItem = type === "free" ? "credit" : "commit";
 
   for (const credit of credits) {
-    const remainingMicroUsd =
-      credit.initialAmountMicroUsd - credit.consumedAmountMicroUsd;
+    const initialMicroUsd = credit.initialAmountMicroUsd;
+    const consumedMicroUsd = credit.consumedAmountMicroUsd;
+    const remainingMicroUsd = initialMicroUsd - consumedMicroUsd;
+
     if (remainingMicroUsd < 0) {
       logger.warn(
         {
           workspaceId: workspace.sId,
           creditId: credit.id,
-          initialUsd: credit.initialAmountMicroUsd / 1_000_000,
-          consumedUsd: credit.consumedAmountMicroUsd / 1_000_000,
+          initialUsd: initialMicroUsd / 1_000_000,
+          consumedUsd: consumedMicroUsd / 1_000_000,
         },
         `[Backfill] Negative remaining balance for ${metronomeItem}, skipping`
       );
       continue;
     }
+
     const startingAt = credit.startDate!;
     const endingBefore = credit.expirationDate!;
-    const amount = remainingMicroUsd / 1_000_000;
+    // Create with full initial amount; consumed portion is deducted separately below.
+    const initialAmount = initialMicroUsd / 1_000_000;
+    const consumedAmount = consumedMicroUsd / 1_000_000;
+    // Stable key based on DB credit id, independent of amounts.
+    const idempotencyKey = `${metronomeItem}-${workspace.sId}-${credit.id}`;
 
-    // For commits, it's the same idempotency key as the one used when customers purchase a commit in the app.
-    const idempotencyKey = `${metronomeItem}-${workspace.sId}-${startingAt.getTime()}-${amount}`;
-
-    totalAmountMicroUsd += remainingMicroUsd;
+    totalAmountMicroUsd += initialMicroUsd;
 
     if (!execute) {
       logger.info(
         {
           workspaceId: workspace.sId,
           creditId: credit.id,
-          initialUsd: credit.initialAmountMicroUsd / 1_000_000,
-          consumedUsd: credit.consumedAmountMicroUsd / 1_000_000,
-          remainingUsd: amount,
+          initialUsd: initialAmount,
+          consumedUsd: consumedAmount,
           startingAt: startingAt.toLocaleDateString("en-GB"),
           endingBefore: endingBefore.toLocaleDateString("en-GB"),
           idempotencyKey,
         },
         `[Backfill] [DRY RUN] Would create ${metronomeItem} in Metronome`
       );
+      if (consumedMicroUsd > 0) {
+        logger.info(
+          {
+            workspaceId: workspace.sId,
+            creditId: credit.id,
+            consumedUsd: consumedAmount,
+          },
+          `[Backfill] [DRY RUN] Would also deduct consumed amount from ${metronomeItem}`
+        );
+      }
       continue;
     }
 
@@ -107,7 +132,7 @@ async function backfillCreditsOfType(
             metronomeCustomerId,
             productId: getProductFreeMonthlyCreditId(),
             creditTypeId: getCreditTypeProgrammaticUsdId(),
-            amount,
+            amount: initialAmount,
             startingAt: startingAt.toISOString(),
             endingBefore: endingBefore.toISOString(),
             name: `Monthly credit backfill (${startingAt.toISOString().split("T")[0]})`,
@@ -117,7 +142,7 @@ async function backfillCreditsOfType(
             metronomeCustomerId,
             productId: getProductPrepaidCommitId(),
             creditTypeId: getCreditTypeProgrammaticUsdId(),
-            amount,
+            amount: initialAmount,
             startingAt,
             endingBefore,
             name: `Prepaid commit backfill (${startingAt.toISOString().split("T")[0]})`,
@@ -133,13 +158,87 @@ async function backfillCreditsOfType(
         },
         `[Backfill] Failed to create ${metronomeItem} in Metronome`
       );
+      continue;
+    }
+
+    if (!result.value) {
+      // Idempotency conflict — already created in a previous run, skip deduction.
+      logger.info(
+        { workspaceId: workspace.sId, creditId: credit.id },
+        `[Backfill] ${metronomeItem} already exists in Metronome, skipping deduction`
+      );
+      continue;
+    }
+
+    logger.info(
+      { workspaceId: workspace.sId, creditId: credit.id },
+      `[Backfill] Successfully created ${metronomeItem} in Metronome`
+    );
+
+    if (consumedAmount <= 0) {
+      continue;
+    }
+
+    // Fetch the balance to get the access schedule segment ID needed for the deduction.
+    const balanceResult =
+      type === "free"
+        ? await getMetronomeCredit({
+            metronomeCustomerId,
+            creditId: result.value.id,
+          })
+        : await getMetronomeCommit({
+            metronomeCustomerId,
+            commitId: result.value.id,
+          });
+
+    if (balanceResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          creditId: credit.id,
+          error: balanceResult.error.message,
+        },
+        `[Backfill] Failed to fetch ${metronomeItem} for deduction`
+      );
+      continue;
+    }
+
+    const segmentId =
+      balanceResult.value?.access_schedule?.schedule_items[0]?.id;
+    if (!segmentId) {
+      logger.error(
+        { workspaceId: workspace.sId, creditId: credit.id },
+        `[Backfill] No segment ID on ${metronomeItem}, cannot apply deduction`
+      );
+      continue;
+    }
+
+    const deductResult = await deductMetronomeCreditBalance({
+      metronomeCustomerId,
+      creditId: result.value.id,
+      segmentId,
+      amount: consumedAmount,
+      reason: `Backfill: ${consumedAmount} already consumed before Metronome migration (db credit ${credit.id})`,
+    });
+
+    if (deductResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          creditId: credit.id,
+          error: deductResult.error.message,
+        },
+        `[Backfill] Failed to deduct consumed amount from ${metronomeItem}`
+      );
     } else {
-      if (result.value) {
-        logger.info(
-          { workspaceId: workspace.sId, creditId: credit.id },
-          `[Backfill] Successfully created ${metronomeItem} in Metronome`
-        );
-      }
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          creditId: credit.id,
+          consumedUsd: consumedAmount,
+        },
+        `[Backfill] Successfully deducted consumed amount from ${metronomeItem}`
+      );
     }
   }
 

@@ -4,7 +4,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import Metronome, { ConflictError } from "@metronome/sdk";
-import type { ContractV2 } from "@metronome/sdk/resources";
+import type { Commit, ContractV2, Credit } from "@metronome/sdk/resources";
 import type {
   MetronomeBalance,
   MetronomeEvent,
@@ -562,7 +562,7 @@ export async function createMetronomeCommit({
   idempotencyKey: string;
   name?: string;
   priority?: number;
-}): Promise<Result<void, Error>> {
+}): Promise<Result<{ id: string } | null, Error>> {
   // Metronome requires dates on hour boundaries — round down start, round up end.
   const roundedStartingAt = floorToHourISO(startingAt);
   const roundedEndingBefore = ceilToHourISO(endingBefore);
@@ -579,7 +579,7 @@ export async function createMetronomeCommit({
       "[Metronome] Adding commits to customer"
     );
 
-    await getMetronomeClient().v1.customers.commits.create({
+    const response = await getMetronomeClient().v1.customers.commits.create({
       customer_id: metronomeCustomerId,
       type: "PREPAID",
       product_id: productId,
@@ -609,7 +609,7 @@ export async function createMetronomeCommit({
       },
       "[Metronome] Commits added to customer"
     );
-    return new Ok(undefined);
+    return new Ok(response.data);
   } catch (err) {
     if (err instanceof ConflictError) {
       // Idempotency key conflict — commit already created, safe to ignore.
@@ -617,7 +617,7 @@ export async function createMetronomeCommit({
         { metronomeCustomerId, idempotencyKey },
         "[Metronome] Commit already exists (idempotent)"
       );
-      return new Ok(undefined);
+      return new Ok(null);
     }
 
     const error = normalizeError(err);
@@ -868,7 +868,7 @@ export async function createMetronomeCredit({
   endingBefore: string;
   name: string;
   idempotencyKey: string;
-}): Promise<Result<{ creditId: string }, Error>> {
+}): Promise<Result<{ id: string } | null, Error>> {
   // Metronome requires dates on hour boundaries — round down start, round up end.
   const roundedStartingAt = floorToHourISO(new Date(startingAt));
   const roundedEndingBefore = ceilToHourISO(new Date(endingBefore));
@@ -893,7 +893,7 @@ export async function createMetronomeCredit({
       uniqueness_key: idempotencyKey,
     });
 
-    return new Ok({ creditId: response.data.id });
+    return new Ok(response.data);
   } catch (err) {
     if (err instanceof ConflictError) {
       // Idempotency key conflict — credit already granted, safe to ignore.
@@ -901,13 +901,107 @@ export async function createMetronomeCredit({
         { metronomeCustomerId, idempotencyKey },
         "[Metronome] Credit grant already exists (idempotent)"
       );
-      return new Ok({ creditId: "already-exists" });
+      return new Ok(null);
     }
 
     const error = normalizeError(err);
     logger.error(
       { error, metronomeCustomerId, name, idempotencyKey },
       "[Metronome] Failed to create credit grant"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Fetch a specific customer-level credit by its Metronome ID.
+ */
+export async function getMetronomeCredit({
+  metronomeCustomerId,
+  creditId,
+}: {
+  metronomeCustomerId: string;
+  creditId: string;
+}): Promise<Result<Credit | null, Error>> {
+  try {
+    const response = await getMetronomeClient().v1.customers.credits.list({
+      customer_id: metronomeCustomerId,
+      credit_id: creditId,
+    });
+    return new Ok(response.data[0] ?? null);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, creditId },
+      "[Metronome] Failed to fetch credit"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Fetch a specific customer-level commit by its Metronome ID.
+ */
+export async function getMetronomeCommit({
+  metronomeCustomerId,
+  commitId,
+}: {
+  metronomeCustomerId: string;
+  commitId: string;
+}): Promise<Result<Commit | null, Error>> {
+  try {
+    const response = await getMetronomeClient().v1.customers.commits.list({
+      customer_id: metronomeCustomerId,
+      commit_id: commitId,
+    });
+    return new Ok(response.data[0] ?? null);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, commitId },
+      "[Metronome] Failed to fetch commit"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Apply a manual deduction to a customer-level credit balance.
+ * Used when backfilling credits that have a pre-existing consumed amount.
+ * The amount parameter is a positive value and will be negated internally.
+ */
+export async function deductMetronomeCreditBalance({
+  metronomeCustomerId,
+  creditId,
+  segmentId,
+  amount,
+  reason,
+}: {
+  metronomeCustomerId: string;
+  creditId: string;
+  segmentId: string;
+  amount: number;
+  reason: string;
+}): Promise<Result<void, Error>> {
+  try {
+    await getMetronomeClient().v1.contracts.addManualBalanceEntry({
+      id: creditId,
+      customer_id: metronomeCustomerId,
+      amount: -amount, // negative to draw down the balance
+      reason,
+      segment_id: segmentId,
+      // contract_id omitted — applies to customer-level balance
+    });
+    logger.info(
+      { metronomeCustomerId, creditId, segmentId, amount },
+      "[Metronome] Manual credit deduction applied"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, creditId, segmentId, amount },
+      "[Metronome] Failed to apply manual credit deduction"
     );
     return new Err(error);
   }
