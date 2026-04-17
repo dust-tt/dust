@@ -9,10 +9,6 @@ Implement built-in webhook providers under `front/lib/triggers/built-in-webhooks
 The work spans provider research, OAuth prerequisites, typed remote metadata, a provider client,
 the remote webhook service, preset registration, and the setup/details UI.
 
-`SKILL.md` is meant to be sufficient for the normal implementation path. Only load the supporting
-references when you need a deeper research checklist, a concrete provider shape to copy, or more
-involved local testing guidance.
-
 ## Hard Prerequisites
 
 Do not start implementation until both of these already exist:
@@ -178,14 +174,7 @@ Manual checklist:
 - confirm the incoming payload matches the registered schema and event detection logic
 - delete the source and verify the provider-side webhook is removed
 
-## Supporting References
-
-- provider-doc research checklist:
-  [references/provider-research.md](references/provider-research.md)
-- concrete provider patterns, example PRs, and expanded local testing guidance:
-  [references/patterns-and-testing.md](references/patterns-and-testing.md)
-
-## Code References
+## References
 
 - `front/lib/resources/webhook_source_resource.ts`
 - `front/types/triggers/remote_webhook_service.ts`
