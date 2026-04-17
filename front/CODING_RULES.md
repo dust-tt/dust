@@ -285,7 +285,7 @@ The Type interface is not to be used in the backend.
 - A JSON schema file at `front/admin/audit_log_schemas/<action>.json`
 - The action string added to the `AuditAction` union type in `front/lib/api/audit/workos_audit.ts`
 - A `void emitAuditLogEvent(...)` or `void emitAuditLogEventDirect(...)` call at the mutation site
-- See `runbooks/NEW_AUDIT_EVENT.md` for the step-by-step checklist
+- See the `dust-audit-log-event` skill for the step-by-step checklist
 
 ### [AUDIT4] Place the emit call AFTER the mutation succeeds, not before
 
