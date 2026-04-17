@@ -7,7 +7,7 @@ import {
 } from "@app/lib/api/skills/detection/zip/detect_skills";
 import type { ZipDetectedSkill } from "@app/lib/api/skills/detection/zip/types";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -66,6 +66,8 @@ export async function importSkillsFromFiles(
   }
 ): Promise<Result<ImportSkillsResult, Error>> {
   const allSkills: ZipDetectedSkill[] = [];
+  const featureFlags = await getFeatureFlags(auth)
+  const allowFileAttachments = featureFlags.includes("sandbox_tools");
 
   // Readers are keyed by skill to avoid re-opening the same zip for each
   // attachment. Each zip buffer produces one reader shared across its skills.
@@ -84,16 +86,23 @@ export async function importSkillsFromFiles(
       return new Err(new Error(detectResult.error.message));
     }
 
-    const readerResult = createZipAttachmentReader(buffer);
-    if (readerResult.isErr()) {
-      await cleanupTempFiles(uploadedFiles);
-      return new Err(readerResult.error);
+    let reader:
+      | ((originalEntryName: string) => Result<Buffer, Error>)
+      | undefined;
+    if (allowFileAttachments) {
+      const readerResult = createZipAttachmentReader(buffer);
+      if (readerResult.isErr()) {
+        await cleanupTempFiles(uploadedFiles);
+        return new Err(readerResult.error);
+      }
+      reader = readerResult.value;
     }
-    const reader = readerResult.value;
 
     for (const skill of detectResult.value) {
       allSkills.push(skill);
-      readerBySkill.set(skill, reader);
+      if (reader) {
+        readerBySkill.set(skill, reader);
+      }
     }
   }
 
@@ -144,31 +153,34 @@ export async function importSkillsFromFiles(
         return;
       }
 
-      const readEntry = readerBySkill.get(skill);
-      if (!readEntry) {
-        skipped.push({
-          name: skill.name,
-          message: "Internal error: no zip reader for skill.",
-        });
-        return;
+      let fileAttachments: FileResource[] = [];
+      if (allowFileAttachments) {
+        const readEntry = readerBySkill.get(skill);
+        if (!readEntry) {
+          skipped.push({
+            name: skill.name,
+            message: "Internal error: no zip reader for skill.",
+          });
+          return;
+        }
+
+        const skillDirPath = path.dirname(skill.skillMdPath);
+        const uploadResults = await concurrentExecutor(
+          skill.attachments,
+          (attachment) =>
+            uploadAttachment(auth, {
+              originalEntryName: attachment.originalEntryName,
+              contentType: attachment.contentType,
+              fileName: path.relative(skillDirPath, attachment.path),
+              readEntry,
+            }),
+          { concurrency: IMPORT_CONCURRENCY }
+        );
+
+        fileAttachments = uploadResults.filter(
+          (r): r is FileResource => r !== null
+        );
       }
-
-      const skillDirPath = path.dirname(skill.skillMdPath);
-      const uploadResults = await concurrentExecutor(
-        skill.attachments,
-        (attachment) =>
-          uploadAttachment(auth, {
-            originalEntryName: attachment.originalEntryName,
-            contentType: attachment.contentType,
-            fileName: path.relative(skillDirPath, attachment.path),
-            readEntry,
-          }),
-        { concurrency: IMPORT_CONCURRENCY }
-      );
-
-      const fileAttachments = uploadResults.filter(
-        (r): r is FileResource => r !== null
-      );
 
       if (existing) {
         const attachedKnowledge = await existing.getAttachedKnowledge(auth);
@@ -182,14 +194,16 @@ export async function importSkillsFromFiles(
           mcpServerViews: existing.mcpServerViews,
           attachedKnowledge,
           requestedSpaceIds: existing.requestedSpaceIds,
-          fileAttachments,
+          ...(allowFileAttachments ? { fileAttachments } : {}),
           source,
           sourceMetadata: { filePath: skill.skillMdPath },
         });
 
-        await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
-          skillId: existing.sId,
-        });
+        if (allowFileAttachments) {
+          await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
+            skillId: existing.sId,
+          });
+        }
 
         updated.push(existing);
       } else {
@@ -231,14 +245,16 @@ export async function importSkillsFromFiles(
           },
           {
             mcpServerViews: suggestedMCPServerViews,
-            fileAttachments,
+            ...(allowFileAttachments ? { fileAttachments } : {}),
             addCurrentUserAsEditor: auth.user() !== null,
           }
         );
 
-        await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
-          skillId: skillResource.sId,
-        });
+        if (allowFileAttachments) {
+          await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
+            skillId: skillResource.sId,
+          });
+        }
 
         imported.push(skillResource);
       }
