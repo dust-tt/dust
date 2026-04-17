@@ -1,7 +1,6 @@
 import { editorVariants } from "@app/components/editor/editorStyles";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
-import { stripHtmlAttributes } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import {
   SkillInstructionsEditorContent,
   useSkillInstructionsEditor,
@@ -18,6 +17,8 @@ import {
 import { cn } from "@dust-tt/sparkle";
 import type { Transaction } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
+import type { Config } from "dompurify";
+import DOMPurify from "dompurify";
 import debounce from "lodash/debounce";
 import { useCallback, useEffect, useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
@@ -46,6 +47,19 @@ function toAttachedKnowledge(
     spaceId: item.spaceId,
     title: item.label,
   }));
+}
+
+function sanitizeSkillInstructionsHtml(html: string): string {
+  try {
+    const config: Config = {
+      ADD_TAGS: ["knowledge"],
+      ADD_ATTR: ["space", "dsv", "hasChildren"],
+      FORBID_ATTR: ["style", "class"],
+    };
+    return DOMPurify.sanitize(html, config);
+  } catch {
+    return html;
+  }
 }
 
 const INSTRUCTIONS_EDITOR_SIZE = "min-h-60 max-h-[1024px]";
@@ -93,7 +107,7 @@ export function SkillBuilderInstructionsEditor({
           );
           setValue(
             INSTRUCTIONS_HTML_FIELD_NAME,
-            stripHtmlAttributes(editor.getHTML()),
+            sanitizeSkillInstructionsHtml(editor.getHTML()),
             { shouldDirty: true }
           );
           setValue(
@@ -211,7 +225,7 @@ export function SkillBuilderInstructionsEditor({
       // Sync the editor's new content back to the form.
       setValue(
         INSTRUCTIONS_HTML_FIELD_NAME,
-        stripHtmlAttributes(editor.getHTML()),
+        sanitizeSkillInstructionsHtml(editor.getHTML()),
         { shouldDirty: true }
       );
       setValue(
@@ -316,7 +330,7 @@ export function SkillBuilderInstructionsEditor({
     }
 
     const incomingHtml = instructionsHtmlField.value;
-    const currentHtml = stripHtmlAttributes(editor.getHTML());
+    const currentHtml = sanitizeSkillInstructionsHtml(editor.getHTML());
     if (currentHtml !== incomingHtml) {
       editor.commands.setContent(incomingHtml, { emitUpdate: false });
     }
