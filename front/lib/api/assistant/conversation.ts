@@ -87,6 +87,7 @@ import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   getTimeframeSecondsFromLiteral,
   rateLimiter,
@@ -2614,8 +2615,9 @@ async function isMessagesLimitReached(
     activeSeats,
   });
   const agentMentions = mentions.filter(isAgentMention);
-  const remainingMentions = await Promise.all(
-    agentMentions.map(() =>
+  const remainingMentions = await concurrentExecutor(
+    agentMentions,
+    () =>
       rateLimiter({
         key: makeAgentMentionsRateLimitKeyForWorkspace(
           owner,
@@ -2624,8 +2626,8 @@ async function isMessagesLimitReached(
         maxPerTimeframe: effectiveMaxMessages,
         timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
         logger,
-      })
-    )
+      }),
+    { concurrency: 4 }
   );
   // We let the user talk to all agents if any of the rate limiter answered "ok".
   // Subsequent calls to this function would block the user anyway.
