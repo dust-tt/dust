@@ -176,9 +176,14 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     });
 
     if (schemaResult.isErr()) {
+      // Not tracked: schema retrieval failures typically reflect customer-side
+      // warehouse configuration (IP allowlists, credentials, network) that Dust
+      // cannot action. The underlying error message is surfaced to the model so
+      // it can relay actionable guidance (e.g. IP to allowlist) to the user.
       return new Err(
         new MCPError(
-          `Error retrieving database schema: ${schemaResult.error.message}`
+          `Error retrieving database schema: ${schemaResult.error.message}`,
+          { tracked: false }
         )
       );
     }
