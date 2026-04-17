@@ -30,7 +30,12 @@ export interface SlashCommand {
 }
 
 export interface SlashCommandDropdownProps
-  extends SuggestionProps<SlashCommand> {}
+  extends Pick<
+    SuggestionProps<SlashCommand>,
+    "clientRect" | "command" | "items"
+  > {
+  onClose?: () => void;
+}
 
 export interface SlashCommandDropdownRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean;
@@ -39,7 +44,7 @@ export interface SlashCommandDropdownRef {
 export const SlashCommandDropdown = forwardRef<
   SlashCommandDropdownRef,
   SlashCommandDropdownProps
->(({ items, command, clientRect }, ref) => {
+>(({ items, command, clientRect, onClose }, ref) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -60,6 +65,10 @@ export const SlashCommandDropdown = forwardRef<
     ref,
     () => ({
       onKeyDown: ({ event }) => {
+        if (items.length === 0) {
+          return false;
+        }
+
         if (event.key === "ArrowDown") {
           event.preventDefault();
           setSelectedIndex((selectedIndex + 1) % items.length);
@@ -128,8 +137,12 @@ export const SlashCommandDropdown = forwardRef<
         ref={containerRef}
         className="w-64"
         align="start"
+        avoidCollisions
+        collisionPadding={12}
         side="bottom"
         sideOffset={4}
+        onEscapeKeyDown={onClose}
+        onInteractOutside={onClose}
         onCloseAutoFocus={(e) => e.preventDefault()}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
