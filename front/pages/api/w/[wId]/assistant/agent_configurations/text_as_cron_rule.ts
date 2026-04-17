@@ -61,8 +61,9 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "POST": {
-      const bodyValidation =
-        PostTextAsCronRuleRequestBodySchema.safeParse(req.body);
+      const bodyValidation = PostTextAsCronRuleRequestBodySchema.safeParse(
+        req.body
+      );
 
       if (!bodyValidation.success) {
         return apiError(req, res, {
