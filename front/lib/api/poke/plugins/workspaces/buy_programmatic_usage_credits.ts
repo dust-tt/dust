@@ -226,6 +226,10 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
             )
           );
         }
+
+        if (metronomeResult.value) {
+          await credit.setMetronomeCreditId(metronomeResult.value.id);
+        }
       }
 
       return new Ok({

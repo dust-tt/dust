@@ -70,6 +70,17 @@ async function backfillCreditsOfType(
   const metronomeItem = type === "free" ? "credit" : "commit";
 
   for (const credit of credits) {
+    if (credit.metronomeCreditId) {
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          creditId: credit.id,
+          metronomeCreditId: credit.metronomeCreditId,
+        },
+        `[Backfill] Credit already linked to Metronome, skipping`
+      );
+      continue;
+    }
     const initialMicroUsd = credit.initialAmountMicroUsd;
     const consumedMicroUsd = credit.consumedAmountMicroUsd;
     const remainingMicroUsd = initialMicroUsd - consumedMicroUsd;
@@ -157,8 +168,14 @@ async function backfillCreditsOfType(
       continue;
     }
 
+    await credit.setMetronomeCreditId(result.value.id);
+
     logger.info(
-      { workspaceId: workspace.sId, creditId: credit.id },
+      {
+        workspaceId: workspace.sId,
+        creditId: credit.id,
+        metronomeId: result.value.id,
+      },
       `[Backfill] Successfully created ${metronomeItem} in Metronome`
     );
   }

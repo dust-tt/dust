@@ -115,6 +115,7 @@ export async function startCreditFromProOneOffInvoice({
   if (creditAmountCents) {
     const metronomeResult = await addMetronomeCommitsForWorkspace({
       auth,
+      credit,
       amountCredits: creditAmountCents / 100,
       startDate: startResult.value.startDate,
       expirationDate: startResult.value.expirationDate,
@@ -314,6 +315,7 @@ export async function createEnterpriseCreditPurchase({
 
   const metronomeResult = await addMetronomeCommitsForWorkspace({
     auth,
+    credit,
     amountCredits: amountMicroUsd / 1_000_000,
     startDate: startResult.value.startDate,
     expirationDate: startResult.value.expirationDate,
@@ -489,11 +491,13 @@ export async function deleteCreditFromVoidedInvoice({
 
 async function addMetronomeCommitsForWorkspace({
   auth,
+  credit,
   amountCredits,
   startDate,
   expirationDate,
 }: {
   auth: Authenticator;
+  credit: CreditResource;
   /** Amount in custom credit units (not cents). */
   amountCredits: number;
   startDate: Date;
@@ -534,6 +538,17 @@ async function addMetronomeCommitsForWorkspace({
       },
       "[Commit Purchase] Failed to add commits to Metronome"
     );
+    return new Ok(undefined);
   }
+
+  if (result.value) {
+    await credit.setMetronomeCreditId(result.value.id);
+  } else {
+    logger.warn(
+      { workspaceId: workspace.sId, metronomeCustomerId },
+      "[Commit Purchase] Metronome commit already exists (idempotency conflict), metronomeCreditId not updated"
+    );
+  }
+
   return new Ok(undefined);
 }

@@ -914,30 +914,92 @@ export async function createMetronomeCredit({
 }
 
 /**
+ * List customer-level credits for a Metronome customer.
+ * Optionally filter by a specific credit id.
+ */
+export async function listMetronomeCustomerCredits({
+  metronomeCustomerId,
+  creditId,
+  includeContractCredits = false,
+}: {
+  metronomeCustomerId: string;
+  creditId?: string;
+  includeContractCredits?: boolean;
+}): Promise<Result<Credit[], Error>> {
+  try {
+    const credits: Credit[] = [];
+    for await (const entry of getMetronomeClient().v1.customers.credits.list({
+      customer_id: metronomeCustomerId,
+      ...(creditId ? { credit_id: creditId } : {}),
+      include_contract_credits: includeContractCredits,
+    })) {
+      credits.push(entry);
+    }
+    return new Ok(credits);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, creditId },
+      "[Metronome] Failed to list customer credits"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * List customer-level commits for a Metronome customer.
+ * Optionally filter by a specific commit id.
+ */
+export async function listMetronomeCustomerCommits({
+  metronomeCustomerId,
+  commitId,
+  includeContractCommits = false,
+}: {
+  metronomeCustomerId: string;
+  commitId?: string;
+  includeContractCommits?: boolean;
+}): Promise<Result<Commit[], Error>> {
+  try {
+    const commits: Commit[] = [];
+    for await (const entry of getMetronomeClient().v1.customers.commits.list({
+      customer_id: metronomeCustomerId,
+      ...(commitId ? { commit_id: commitId } : {}),
+      include_contract_commits: includeContractCommits,
+    })) {
+      commits.push(entry);
+    }
+    return new Ok(commits);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, commitId },
+      "[Metronome] Failed to list customer commits"
+    );
+    return new Err(error);
+  }
+}
+
+/**
  * Fetch a specific customer-level credit by its Metronome ID.
  */
 export async function getMetronomeCredit({
   metronomeCustomerId,
   creditId,
+  includeContractCredits = true,
 }: {
   metronomeCustomerId: string;
   creditId: string;
+  includeContractCredits?: boolean;
 }): Promise<Result<Credit | null, Error>> {
-  try {
-    const response = await getMetronomeClient().v1.customers.credits.list({
-      customer_id: metronomeCustomerId,
-      credit_id: creditId,
-      include_contract_credits: true,
-    });
-    return new Ok(response.data[0] ?? null);
-  } catch (err) {
-    const error = normalizeError(err);
-    logger.error(
-      { error, metronomeCustomerId, creditId },
-      "[Metronome] Failed to fetch credit"
-    );
-    return new Err(error);
+  const result = await listMetronomeCustomerCredits({
+    metronomeCustomerId,
+    creditId,
+    includeContractCredits,
+  });
+  if (result.isErr()) {
+    return result;
   }
+  return new Ok(result.value[0] ?? null);
 }
 
 /**
@@ -946,25 +1008,21 @@ export async function getMetronomeCredit({
 export async function getMetronomeCommit({
   metronomeCustomerId,
   commitId,
+  includeContractCommits = true,
 }: {
   metronomeCustomerId: string;
   commitId: string;
+  includeContractCommits?: boolean;
 }): Promise<Result<Commit | null, Error>> {
-  try {
-    const response = await getMetronomeClient().v1.customers.commits.list({
-      customer_id: metronomeCustomerId,
-      commit_id: commitId,
-      include_contract_commits: true,
-    });
-    return new Ok(response.data[0] ?? null);
-  } catch (err) {
-    const error = normalizeError(err);
-    logger.error(
-      { error, metronomeCustomerId, commitId },
-      "[Metronome] Failed to fetch commit"
-    );
-    return new Err(error);
+  const result = await listMetronomeCustomerCommits({
+    metronomeCustomerId,
+    commitId,
+    includeContractCommits,
+  });
+  if (result.isErr()) {
+    return result;
   }
+  return new Ok(result.value[0] ?? null);
 }
 
 /**

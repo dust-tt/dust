@@ -441,6 +441,19 @@ export class CreditResource extends BaseResource<CreditModel> {
     );
   }
 
+  async setMetronomeCreditId(
+    metronomeCreditId: string,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    await this.model.update(
+      { metronomeCreditId },
+      {
+        where: { id: this.id, workspaceId: this.workspaceId },
+        transaction,
+      }
+    );
+  }
+
   private makeBoughtBy(
     editedByUser: Attributes<UserModel> | undefined,
     editedAt: Date | undefined
