@@ -372,6 +372,9 @@ async function executeToolStreaming(
               : "internal",
             mcpServerName: action.toolConfiguration.mcpServerName,
             conversationId: conversation.sId,
+            ...(conversation.triggerId
+              ? { triggerId: conversation.triggerId }
+              : {}),
             initiating_user_id: auth.user()?.sId ?? "unknown",
             initiating_user_email: auth.user()?.email ?? "unknown",
             ...extractDataSourceIds(action.augmentedInputs),

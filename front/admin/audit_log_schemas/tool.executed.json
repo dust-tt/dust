@@ -16,6 +16,7 @@
     "toolType": "string",
     "mcpServerName": "string",
     "conversationId": "string",
+    "triggerId": "string",
     "accessedDataSourceIds": "string",
     "accessedTableIds": "string",
     "actor_type": "string",

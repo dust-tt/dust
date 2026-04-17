@@ -12,6 +12,7 @@
     "conversationId": "string",
     "agentName": "string",
     "origin": "string",
+    "triggerId": "string",
     "actor_type": "string",
     "initiating_user_id": "string",
     "initiating_user_email": "string"
