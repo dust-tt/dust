@@ -1,4 +1,3 @@
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import {
   createPublicApiAuthenticationTests,
   createPublicApiMockRequest,
@@ -35,11 +34,9 @@ describe("POST /api/v1/w/[wId]/skills", () => {
   });
 
   it("returns 400 when no files are uploaded", async () => {
-    const { req, res, auth } = await createPublicApiMockRequest({
+    const { req, res } = await createPublicApiMockRequest({
       method: "POST",
     });
-
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     mockParse.mockResolvedValue([{}, {}]);
 
@@ -50,22 +47,6 @@ describe("POST /api/v1/w/[wId]/skills", () => {
       error: {
         type: "invalid_request_error",
         message: "No files uploaded.",
-      },
-    });
-  });
-
-  it("returns 403 when the workspace does not support skill import", async () => {
-    const { req, res } = await createPublicApiMockRequest({
-      method: "POST",
-    });
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData()).toEqual({
-      error: {
-        type: "invalid_request_error",
-        message: "Skill import is not supported.",
       },
     });
   });
