@@ -86,6 +86,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { isInShutdown } from "@app/lib/shutdown_signal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
@@ -114,6 +115,9 @@ const MCP_NOTIFICATION_EVENT_NAME = "mcp-notification";
 const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
 const MCP_TOOL_ERROR_EVENT_NAME = "TOOL_ERROR" as const;
 const MCP_TOOL_HEARTBEAT_EVENT_NAME = "TOOL_HEARTBEAT" as const;
+const TOOL_EXECUTION_CANCELLED_MESSAGE = "The tool execution was cancelled.";
+const TOOL_EXECUTION_INTERRUPTED_MESSAGE =
+  "A tool was interrupted before Dust could confirm the result. Please check whether it completed, then retry.";
 
 const EMPTY_INPUT_SCHEMA: JSONSchema = {
   properties: {},
@@ -524,7 +528,9 @@ export async function* tryCallMCPTool(
     } catch (toolError) {
       if (abortSignal?.aborted) {
         return makeMCPToolExit({
-          message: "The tool execution was cancelled.",
+          message: isInShutdown()
+            ? TOOL_EXECUTION_INTERRUPTED_MESSAGE
+            : TOOL_EXECUTION_CANCELLED_MESSAGE,
           isError: true,
         });
       }
