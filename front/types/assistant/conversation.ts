@@ -382,6 +382,9 @@ export type ConversationForkedFromType = {
   user: UserType;
 };
 
+/**
+ * @swaggerschema PrivateConversationForkedChild (swagger_private_schemas.ts)
+ */
 export type ConversationForkedChildType = {
   childConversationId: string;
   childConversationTitle: string | null;
@@ -416,6 +419,9 @@ export type ConversationWithoutContentType = {
   requestedSpaceIds: string[];
 };
 
+/**
+ * @swaggerschema PrivateConversationDetail (swagger_private_schemas.ts)
+ */
 export type ConversationDetailType = ConversationWithoutContentType & {
   forkedChildren?: ConversationForkedChildType[];
 };
