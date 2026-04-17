@@ -676,10 +676,17 @@ export async function postUserMessage(
     });
   }
 
+  // When isHandover is true we allow creating a new agentic loop as the parent one will close asap,
+  // the steering code path is disabled in that case: we allow mentioning another agent (the agent
+  // to handoff to) and we don't set the user message state to pending (see below).
+  const isHandover = agenticMessageData?.type === "agent_handover";
+
   if (
     runningAgentMessage &&
     agentMentions.length > 0 &&
-    agentMentions[0].configurationId !== runningAgentMessage.configuration.sId
+    agentMentions[0].configurationId !==
+      runningAgentMessage.configuration.sId &&
+    !isHandover
   ) {
     return new Err({
       status_code: 400,
@@ -899,9 +906,13 @@ export async function postUserMessage(
     }
 
     // We set the visibility of the user message to "pending" if steering is enabled, we have a
-    // running agent message and there are agent mentions in the user messsage.
+    // running agent message and there are agent mentions in the user messsage. If we are handing
+    // over we don't attempt steering as the intent is to start a new agentic loop and stop the
+    // parent one ASAP.
     const visibility: MessageVisibility =
-      runningAgentMessage && agentMentions.length > 0 ? "pending" : "visible";
+      runningAgentMessage && agentMentions.length > 0 && !isHandover
+        ? "pending"
+        : "visible";
 
     // Return the user message without mentions.
     // This way typescript forces us to create the mentions after the user message is created.
