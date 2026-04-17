@@ -48,6 +48,8 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   ExternalLinkIcon,
+  EyeIcon,
+  EyeSlashIcon,
   LinkIcon,
   PencilSquareIcon,
   PlusCircleIcon,
@@ -288,14 +290,18 @@ export function ConversationMenu({
   const canDelete = conversationParticipationOptions.includes("delete");
   const isPrivateConversationUrlsByDefaultEnabled =
     owner.metadata?.privateConversationUrlsByDefault === true;
+  const isProjectConversationWithOwnUrl =
+    conversation !== undefined && isProjectConversation(conversation);
   const conversationUrlAccessMode = getConversationUrlAccessMode(
     conversation?.metadata
   );
   const canMakeUrlAccessible =
     isPrivateConversationUrlsByDefaultEnabled &&
+    !isProjectConversationWithOwnUrl &&
     conversationUrlAccessMode !== "workspace_members";
   const canRestrictUrlAccess =
     isPrivateConversationUrlsByDefaultEnabled &&
+    !isProjectConversationWithOwnUrl &&
     conversationUrlAccessMode === "workspace_members";
 
   return (
@@ -478,7 +484,7 @@ export function ConversationMenu({
                     : "workspace_members"
                 );
               }}
-              icon={LinkIcon}
+              icon={canRestrictUrlAccess ? EyeSlashIcon : EyeIcon}
               disabled={isUpdatingConversationUrlAccessMode}
             />
           )}

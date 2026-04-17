@@ -180,6 +180,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
+  private static shouldApplyPrivateByDefaultUrlRestriction(conversation: {
+    spaceId: ModelId | null;
+  }): boolean {
+    return conversation.spaceId === null;
+  }
+
   private static fromModel(
     conversation: ConversationModel,
     space: SpaceResource | null
@@ -485,8 +491,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const participantRestrictedConversations = spaceBasedAccessible.filter(
       (conversation) =>
+        this.shouldApplyPrivateByDefaultUrlRestriction(conversation) &&
         this.getConversationUrlAccessModeForPrivateByDefault(conversation) ===
-        "participants_only"
+          "participants_only"
     );
 
     if (participantRestrictedConversations.length === 0) {
@@ -510,8 +517,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     return spaceBasedAccessible.filter(
       (conversation) =>
+        !this.shouldApplyPrivateByDefaultUrlRestriction(conversation) ||
         this.getConversationUrlAccessModeForPrivateByDefault(conversation) ===
-          "workspace_members" || participantConversationIds.has(conversation.id)
+          "workspace_members" ||
+        participantConversationIds.has(conversation.id)
     );
   }
 
@@ -524,6 +533,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     if (auth.isAdmin()) {
+      return true;
+    }
+
+    if (!this.shouldApplyPrivateByDefaultUrlRestriction(conversation)) {
       return true;
     }
 

@@ -3500,6 +3500,65 @@ describe("Space Handling", () => {
       expect(result).toBe("allowed");
     });
 
+    it("should keep project conversations accessible to non-participants when private conversation URLs are private by default", async () => {
+      const updateResult = await WorkspaceResource.updateMetadata(
+        workspace.id,
+        {
+          privateConversationUrlsByDefault: true,
+        }
+      );
+      assert(updateResult.isOk(), "Failed to enable private conversation URLs");
+
+      const refreshedUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        userAuth.getNonNullableUser().sId,
+        workspace.sId
+      );
+      const refreshedAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminAuth.getNonNullableUser().sId,
+        workspace.sId
+      );
+
+      const projectSpace = await SpaceFactory.project(
+        workspace,
+        refreshedAdminAuth.getNonNullableUser().id
+      );
+      const addMemberResult = await projectSpace.addMembers(
+        refreshedAdminAuth,
+        {
+          userIds: [
+            refreshedAdminAuth.getNonNullableUser().sId,
+            refreshedUserAuth.getNonNullableUser().sId,
+          ],
+        }
+      );
+      assert(addMemberResult.isOk(), "Failed to add users to project space");
+      const projectCreatorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        refreshedAdminAuth.getNonNullableUser().sId,
+        workspace.sId
+      );
+      const projectReaderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        refreshedUserAuth.getNonNullableUser().sId,
+        workspace.sId
+      );
+
+      const projectConversation = await ConversationFactory.create(
+        projectCreatorAuth,
+        {
+          agentConfigurationId: agents[0].sId,
+          requestedSpaceIds: [projectSpace.id],
+          spaceId: projectSpace.id,
+          messagesCreatedAt: [dateFromDaysAgo(2)],
+        }
+      );
+
+      const result = await ConversationResource.canAccess(
+        projectReaderAuth,
+        projectConversation.sId
+      );
+
+      expect(result).toBe("allowed");
+    });
+
     it("should keep space-based checks as a prerequisite when private conversation URLs are private by default", async () => {
       const updateResult = await WorkspaceResource.updateMetadata(
         workspace.id,
