@@ -1,5 +1,6 @@
 import { EmailAgentsToggle } from "@app/components/workspace/settings/EmailAgentsToggle";
 import { InteractiveContentSharingToggle } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
+import { PrivateConversationUrlsToggle } from "@app/components/workspace/settings/PrivateConversationUrlsToggle";
 import { RestrictAgentsPublishingCapability } from "@app/components/workspace/settings/RestrictAgentsPublishingCapability";
 import { VoiceTranscriptionToggle } from "@app/components/workspace/settings/VoiceTranscriptionToggle";
 import { useAuth } from "@app/lib/auth/AuthContext";
@@ -27,6 +28,7 @@ export function CapabilitiesSection({
           <VoiceTranscriptionToggle owner={owner} />
         )}
         <EmailAgentsToggle owner={owner} />
+        <PrivateConversationUrlsToggle owner={owner} />
         {publishingRestrictionMessage && (
           <RestrictAgentsPublishingCapability
             subElement={publishingRestrictionMessage}
