@@ -13,6 +13,7 @@ interface CheckResult {
   existing: string[];
   missing: string[];
   buildMatrix: Array<{ image: string; tag: string }>;
+  allBuildMatrix: Array<{ image: string; tag: string }>;
 }
 
 interface CheckArgs {
@@ -74,11 +75,17 @@ async function checkSandboxImages(args: CheckArgs): Promise<void> {
     }
   }
 
+  const allBuildMatrix = requiredImages.map((imageId) => ({
+    image: imageId.imageName,
+    tag: imageId.tag,
+  }));
+
   const result: CheckResult = {
     required: requiredIds,
     existing,
     missing,
     buildMatrix,
+    allBuildMatrix,
   };
 
   if (json) {
