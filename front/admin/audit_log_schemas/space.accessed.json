@@ -1,5 +1,5 @@
 {
-  "action": "space.deleted",
+  "action": "space.accessed",
   "targets": [
     {
       "type": "workspace"
@@ -11,6 +11,8 @@
   "metadata": {
     "spaceName": "string",
     "spaceKind": "string",
+    "isRestricted": "string",
+    "accessMethod": "string",
     "actor_type": "string"
   }
 }

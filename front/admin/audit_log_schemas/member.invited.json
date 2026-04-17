@@ -7,6 +7,7 @@
   ],
   "metadata": {
     "invitedCount": "string",
-    "emails": "string"
+    "emails": "string",
+    "actor_type": "string"
   }
 }

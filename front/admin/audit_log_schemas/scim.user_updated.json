@@ -10,6 +10,7 @@
   ],
   "metadata": {
     "directoryId": "string",
-    "updatedAttributes": "string"
+    "updatedAttributes": "string",
+    "actor_type": "string"
   }
 }

@@ -6,6 +6,7 @@
     }
   ],
   "metadata": {
-    "domain": "string"
+    "domain": "string",
+    "actor_type": "string"
   }
 }

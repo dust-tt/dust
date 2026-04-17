@@ -1038,6 +1038,11 @@ export async function postUserMessage(
         conversationId: conversation.sId,
         agentName: agentMessage.configuration.name,
         origin: context.origin,
+        ...(conversation.triggerId
+          ? { triggerId: conversation.triggerId }
+          : {}),
+        initiating_user_id: auth.user()?.sId ?? "unknown",
+        initiating_user_email: auth.user()?.email ?? "unknown",
       },
     });
   }
@@ -2949,6 +2954,11 @@ export async function updateAgentMessageWithFinalStatus(
         conversationId: conversation.sId,
         agentName: newAgentMessage.configuration.name,
         origin: "steering",
+        ...(conversation.triggerId
+          ? { triggerId: conversation.triggerId }
+          : {}),
+        initiating_user_id: promotedAuth.user()?.sId ?? "unknown",
+        initiating_user_email: promotedAuth.user()?.email ?? "unknown",
       },
     });
 

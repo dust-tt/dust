@@ -45,7 +45,14 @@ type AuditAction =
   // OAuth & Credentials.
   | "oauth.initiated"
   | "oauth.authorized"
+  | "oauth.revoked"
   | "credentials.created"
+  | "credentials.updated"
+  | "credentials.revoked"
+  | "credentials.invalidated"
+  // MCP Connections.
+  | "mcp_connection.created"
+  | "mcp_connection.deleted"
   // Projects.
   | "project.joined"
   | "project.left"
@@ -70,6 +77,7 @@ type AuditAction =
   | "agent.restored"
   | "agent.scope_changed"
   // Spaces.
+  | "space.accessed"
   | "space.created"
   | "space.deleted"
   | "space.permissions_updated"
@@ -80,6 +88,7 @@ type AuditAction =
   | "datasource.updated"
   | "datasource.deleted"
   | "datasource.deleted_admin"
+  | "datasource.reauthorized"
   // Audit Logs.
   | "audit_log.viewed"
   | "audit_log.export_configured";
@@ -91,6 +100,23 @@ export type EmitAuditLogEventParams = {
   context?: AuditLogContext;
   metadata?: Record<string, string | number | boolean>;
 };
+
+/**
+ * Serializes all metadata values to strings so the emitted event matches the
+ * schema definitions, which declare every metadata value as `"string"`.
+ */
+function serializeMetadata(
+  metadata: Record<string, string | number | boolean> | undefined
+): Record<string, string> | undefined {
+  if (!metadata) {
+    return undefined;
+  }
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(metadata)) {
+    result[key] = typeof value === "string" ? value : String(value);
+  }
+  return result;
+}
 
 /**
  * Returns true if audit logs are enabled for the workspace,
@@ -127,14 +153,22 @@ export async function emitAuditLogEvent({
       return;
     }
 
+    const actor = buildAuditActor(auth);
+    if (!actor.type) {
+      logger.warn({ action }, "Audit event emitted without actor_type");
+    }
+
     await createAuditLogEvent({
       workspace,
       event: {
         action,
-        actor: buildAuditActor(auth),
+        actor,
         targets,
         context: context ?? { location: auth.clientIp() ?? "internal" },
-        metadata,
+        metadata: serializeMetadata({
+          ...metadata,
+          actor_type: actor.type,
+        }),
       },
     });
   } catch (error) {
@@ -187,6 +221,10 @@ export async function emitAuditLogEventDirect({
       return;
     }
 
+    if (!actor.type) {
+      logger.warn({ action }, "Audit event emitted without actor_type");
+    }
+
     await createAuditLogEvent({
       workspace,
       event: {
@@ -194,7 +232,10 @@ export async function emitAuditLogEventDirect({
         actor,
         targets,
         context,
-        metadata,
+        metadata: serializeMetadata({
+          ...metadata,
+          actor_type: actor.type,
+        }),
       },
     });
   } catch (error) {
@@ -251,7 +292,9 @@ type AuditTargetType =
   | "trigger"
   | "api_key"
   | "invitation"
-  | "group";
+  | "group"
+  | "credential"
+  | "mcp_connection";
 
 /**
  * Resource shape required for each audit target type.

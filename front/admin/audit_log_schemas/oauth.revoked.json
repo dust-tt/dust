@@ -1,17 +1,17 @@
 {
-  "action": "datasource.deleted",
+  "action": "oauth.revoked",
   "targets": [
     {
       "type": "workspace"
     },
     {
-      "type": "data_source"
+      "type": "mcp_connection"
     }
   ],
   "metadata": {
-    "dataSourceName": "string",
     "provider": "string",
-    "spaceId": "string",
+    "connectionId": "string",
+    "connectionType": "string",
     "actor_type": "string"
   }
 }

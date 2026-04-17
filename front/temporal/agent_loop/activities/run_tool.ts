@@ -32,6 +32,28 @@ import assert from "assert";
 
 const CONVERSATION_CACHE_TTL_MS = 5000;
 
+// Extracts sIds of accessed datasources/tables from tool augmentedInputs.
+// All datasource-accessing tools use a standard `dataSources` or `tables` array
+// of { uri } objects whose last path segment is the configuration sId.
+function extractDataSourceIds(
+  inputs: Record<string, unknown>
+): Record<string, string> {
+  const result: Record<string, string> = {};
+  const ds = inputs.dataSources;
+  const tables = inputs.tables;
+  if (Array.isArray(ds) && ds.length > 0) {
+    result.accessedDataSourceIds = ds
+      .map((d: { uri: string }) => d.uri.split("/").pop() ?? "")
+      .join(",");
+  }
+  if (Array.isArray(tables) && tables.length > 0) {
+    result.accessedTableIds = tables
+      .map((t: { uri: string }) => t.uri.split("/").pop() ?? "")
+      .join(",");
+  }
+  return result;
+}
+
 export async function runToolActivity(
   authType: AuthenticatorType,
   {
@@ -348,7 +370,14 @@ async function executeToolStreaming(
             )
               ? "remote"
               : "internal",
+            mcpServerName: action.toolConfiguration.mcpServerName,
             conversationId: conversation.sId,
+            ...(conversation.triggerId
+              ? { triggerId: conversation.triggerId }
+              : {}),
+            initiating_user_id: auth.user()?.sId ?? "unknown",
+            initiating_user_email: auth.user()?.email ?? "unknown",
+            ...extractDataSourceIds(action.augmentedInputs),
           },
         });
 

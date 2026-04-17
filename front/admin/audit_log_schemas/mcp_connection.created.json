@@ -1,12 +1,17 @@
 {
-  "action": "sso.connection_deleted",
+  "action": "mcp_connection.created",
   "targets": [
     {
       "type": "workspace"
+    },
+    {
+      "type": "mcp_connection"
     }
   ],
   "metadata": {
     "connectionType": "string",
+    "serverType": "string",
+    "authType": "string",
     "actor_type": "string"
   }
 }

@@ -1,5 +1,5 @@
 {
-  "action": "datasource.deleted",
+  "action": "datasource.reauthorized",
   "targets": [
     {
       "type": "workspace"
@@ -11,7 +11,7 @@
   "metadata": {
     "dataSourceName": "string",
     "provider": "string",
-    "spaceId": "string",
+    "newConnectionId": "string",
     "actor_type": "string"
   }
 }

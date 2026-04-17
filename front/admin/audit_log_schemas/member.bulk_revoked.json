@@ -8,6 +8,7 @@
   "metadata": {
     "revokedEmails": "string",
     "count": "string",
-    "source": "string"
+    "source": "string",
+    "actor_type": "string"
   }
 }

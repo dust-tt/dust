@@ -10,6 +10,7 @@
   ],
   "metadata": {
     "previousSpendingCap": "string",
-    "newSpendingCap": "string"
+    "newSpendingCap": "string",
+    "actor_type": "string"
   }
 }

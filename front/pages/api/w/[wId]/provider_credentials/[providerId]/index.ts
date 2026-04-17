@@ -1,4 +1,9 @@
 /** @ignoreswagger */
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
@@ -96,6 +101,22 @@ async function handler(
         });
       }
 
+      void emitAuditLogEvent({
+        auth,
+        action: "credentials.created",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("credential", {
+            sId: providerCredential.sId,
+            name: providerId,
+          }),
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          providerId,
+        },
+      });
+
       return res.status(201).json({
         providerCredential: providerCredential.toJSON(),
       });
@@ -143,6 +164,22 @@ async function handler(
         });
       }
 
+      void emitAuditLogEvent({
+        auth,
+        action: "credentials.updated",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("credential", {
+            sId: providerCredential.sId,
+            name: providerId,
+          }),
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          providerId,
+        },
+      });
+
       return res.status(200).json({
         providerCredential: providerCredential.toJSON(),
       });
@@ -175,6 +212,23 @@ async function handler(
           },
         });
       }
+
+      void emitAuditLogEvent({
+        auth,
+        action: "credentials.revoked",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("credential", {
+            sId: existing.sId,
+            name: providerId,
+          }),
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          providerId,
+          reason: "user_deleted",
+        },
+      });
 
       res.status(204).end();
       return;
