@@ -692,7 +692,7 @@ export async function postUserMessage(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Cannot run a different agent while one is running.",
+        message: `Wait for @${runningAgentMessage.configuration.name} to finish before switching agents`,
       },
     });
   }
