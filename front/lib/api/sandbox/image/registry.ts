@@ -13,7 +13,6 @@ import path from "path";
 const DUST_BEDROCK_IMAGE_VERSION = "1.5.0";
 const DUST_BASE_IMAGE_VERSION = "0.7.6";
 const DSBX_CLI_VERSION = "0.1.4";
-// E2B's default `user` account occupies uid 1001; `agent` is uid 1002.
 const AGENT_PROXIED_UID = 1003;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
 // Released via the "Release sandbox tool" GitHub Actions workflow.
