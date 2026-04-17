@@ -26,6 +26,7 @@ import {
   isRichAgentMention,
   isRichUserMention,
 } from "@app/types/assistant/mentions";
+import { Op } from "sequelize";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("batchRenderMessages", () => {
@@ -103,6 +104,7 @@ describe("batchRenderMessages", () => {
       );
 
       expect(result.isOk()).toBe(true);
+
       if (result.isOk()) {
         const renderedMessages = result.value;
         expect(renderedMessages.length).toBeGreaterThan(0);
@@ -194,14 +196,14 @@ describe("batchRenderMessages", () => {
       }
     });
 
-    it("falls back to the DB for parentAgentMessageId when the handover origin is not in the batch", async () => {
+    it("preloads parentAgentMessageId when the handover origin is not in the batch", async () => {
       // Simulates an agent_handover in a single conversation:
       //   rank 0: initial user message
       //   rank 1: origin agent message (the handover source)
       //   rank 2: handover user message pointing back to rank 1 by sId
       //   rank 3: child agent message produced by the sub-agent
-      // A single-message render of rank 3 doesn't include rank 1, so the
-      // fallback has to resolve the origin from the DB.
+      // A single-message render of rank 3 doesn't include rank 1, so batch
+      // rendering has to preload the origin before rendering the child.
       const conversation = await ConversationFactory.create(auth, {
         agentConfigurationId: agentConfig.sId,
         messagesCreatedAt: [new Date()],
@@ -263,6 +265,9 @@ describe("batchRenderMessages", () => {
       );
       expect(conversationResource).not.toBeNull();
 
+      const findAllSpy = vi.spyOn(MessageModel, "findAll");
+      const findOneSpy = vi.spyOn(MessageModel, "findOne");
+
       const result = await batchRenderMessages(
         auth,
         conversationResource!,
@@ -278,6 +283,26 @@ describe("batchRenderMessages", () => {
         expect(rendered).toBeDefined();
         expect(rendered?.parentAgentMessageId).toBe(originAgentMessage!.sId);
       }
+
+      const handoverOriginPreloadCalls = findAllSpy.mock.calls.filter(
+        ([options]) =>
+          Array.isArray(options?.attributes) &&
+          options.attributes.length === 1 &&
+          options.attributes[0] === "sId"
+      );
+
+      expect(handoverOriginPreloadCalls).toHaveLength(1);
+      expect(handoverOriginPreloadCalls[0]?.[0]).toMatchObject({
+        where: {
+          conversationId: {
+            [Op.in]: [conversation.id],
+          },
+          sId: {
+            [Op.in]: [originAgentMessage!.sId],
+          },
+        },
+      });
+      expect(findOneSpy).not.toHaveBeenCalled();
     });
 
     it("should work with light view type", async () => {
