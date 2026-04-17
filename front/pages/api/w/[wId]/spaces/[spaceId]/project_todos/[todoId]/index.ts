@@ -27,9 +27,15 @@ export interface PatchProjectTodoResponseBody {
   todo: ProjectTodoType;
 }
 
+export type DeleteProjectTodoResponseBody = never;
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PatchProjectTodoResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      PatchProjectTodoResponseBody | DeleteProjectTodoResponseBody
+    >
+  >,
   auth: Authenticator,
   { space }: { space: SpaceResource }
 ): Promise<void> {
@@ -65,6 +71,17 @@ async function handler(
     });
   }
 
+  const user = auth.getNonNullableUser();
+  if (todo.userId !== user.id) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "invalid_request_error",
+        message: "You can only modify your own todos.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "PATCH": {
       const parseResult = PatchProjectTodoBodySchema.safeParse(req.body);
@@ -79,7 +96,6 @@ async function handler(
       }
 
       const { text, status } = parseResult.data;
-      const user = auth.getNonNullableUser();
 
       const updates: Parameters<typeof todo.updateWithVersion>[1] = {};
 
@@ -108,12 +124,20 @@ async function handler(
       return res.status(200).json({ todo: updatedTodo.toJSON() });
     }
 
+    case "DELETE": {
+      await todo.softDelete(auth);
+
+      res.status(204).end();
+      return;
+    }
+
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, PATCH is expected.",
+          message:
+            "The method passed is not supported, PATCH or DELETE is expected.",
         },
       });
   }

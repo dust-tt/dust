@@ -104,6 +104,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
         | "markedAsDoneByType"
         | "markedAsDoneByUserId"
         | "markedAsDoneByAgentConfigurationId"
+        | "deletedAt"
       >
     >,
     transaction?: Transaction
@@ -151,6 +152,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       markedAsDoneByUserId: this.markedAsDoneByUserId ?? null,
       markedAsDoneByAgentConfigurationId:
         this.markedAsDoneByAgentConfigurationId ?? null,
+      deletedAt: this.deletedAt ?? null,
     };
     await ProjectTodoVersionModel.create(versionData, { transaction });
   }
@@ -168,6 +170,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       where: {
         ...where,
         workspaceId: auth.getNonNullableWorkspace().id,
+        deletedAt: null,
       },
       ...otherOptions,
       transaction,
@@ -379,6 +382,12 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
   }
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
+
+  async softDelete(auth: Authenticator): Promise<Result<undefined, Error>> {
+    await this.updateWithVersion(auth, { deletedAt: new Date() });
+
+    return new Ok(undefined);
+  }
 
   async delete(
     auth: Authenticator,

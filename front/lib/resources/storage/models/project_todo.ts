@@ -90,6 +90,11 @@ const PROJECT_TODO_MODEL_ATTRIBUTES = {
     allowNull: true,
     comment: "Explanation for why the actor made a change.",
   },
+  deletedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    defaultValue: null,
+  },
 } as const;
 
 // ── Main model ──────────────────────────────────────────────────────────────
@@ -120,6 +125,7 @@ export class ProjectTodoModel extends WorkspaceAwareModel<ProjectTodoModel> {
   declare status: ProjectTodoStatus;
   declare doneAt: Date | null;
   declare actorRationale: string | null;
+  declare deletedAt: CreationOptional<Date | null>;
 
   declare space: NonAttribute<SpaceModel>;
   declare user: NonAttribute<UserModel>;

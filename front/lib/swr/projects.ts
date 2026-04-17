@@ -387,3 +387,42 @@ export function useUpdateProjectTodo({
     }
   };
 }
+
+export function useDeleteProjectTodo({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  return async (todoId: string): Promise<Result<void, Error>> => {
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_todos/${todoId}`,
+        { method: "DELETE" }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to delete todo",
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      return new Ok(undefined);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to delete todo",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
