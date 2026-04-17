@@ -1,5 +1,5 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { ALL_TOKENS, COLOR_GROUPS, type ColorToken } from "./devModeConfig";
 import { S } from "./devPanelStyles";
@@ -160,31 +160,25 @@ export function ColorOverridePanel({ onClose }: ColorOverridePanelProps) {
     injectColorStyles(readColorOverrides());
   }, []);
 
-  const setColor = useCallback(
-    (token: string, color: string) => {
-      const next = { ...overrides, [token]: color };
-      setOverrides(next);
-      writeColorOverrides(next);
-    },
-    [overrides]
-  );
+  const setColor = (token: string, color: string) => {
+    const next = { ...overrides, [token]: color };
+    setOverrides(next);
+    writeColorOverrides(next);
+  };
 
-  const clearColor = useCallback(
-    (token: string) => {
-      const next = { ...overrides };
-      delete next[token];
-      setOverrides(next);
-      writeColorOverrides(next);
-    },
-    [overrides]
-  );
+  const clearColor = (token: string) => {
+    const next = { ...overrides };
+    delete next[token];
+    setOverrides(next);
+    writeColorOverrides(next);
+  };
 
-  const resetAll = useCallback(() => {
+  const resetAll = () => {
     setOverrides({});
     writeColorOverrides({});
-  }, []);
+  };
 
-  const copyAll = useCallback(() => {
+  const copyAll = () => {
     const isDark = theme === "dark";
     const snapshot: Record<string, string> = {};
     for (const [key, token] of Object.entries(ALL_TOKENS)) {
@@ -194,11 +188,11 @@ export function ColorOverridePanel({ onClose }: ColorOverridePanelProps) {
     void navigator.clipboard.writeText(JSON.stringify(snapshot, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
-  }, [theme, overrides]);
+  };
 
-  const toggleGroup = useCallback((label: string) => {
+  const toggleGroup = (label: string) => {
     setCollapsed((prev) => ({ ...prev, [label]: !prev[label] }));
-  }, []);
+  };
 
   const isDark = theme === "dark";
 
