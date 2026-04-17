@@ -2903,6 +2903,7 @@ export const GetAnalyticsExportRequestSchema = z
     startDate: AnalyticsDateSchema,
     endDate: AnalyticsDateSchema,
     timezone: Timezone.optional(),
+    format: z.enum(["csv", "json"]).optional(),
   })
   .refine((d) => d.startDate <= d.endDate, {
     message: "startDate must be before or equal to endDate",

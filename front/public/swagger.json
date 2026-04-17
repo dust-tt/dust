@@ -230,8 +230,8 @@
     },
     "/api/v1/w/{wId}/analytics/export": {
       "get": {
-        "summary": "Export workspace analytics as CSV",
-        "description": "Export analytics data for the workspace identified by {wId} in CSV format.",
+        "summary": "Export workspace analytics",
+        "description": "Export analytics data for the workspace identified by {wId} in CSV or JSON format.",
         "tags": [
           "Workspace"
         ],
@@ -297,15 +297,36 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Output format (defaults to csv)",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "json"
+              ]
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "The analytics data in CSV format",
+            "description": "The analytics data in CSV or JSON format",
             "content": {
               "text/csv": {
                 "schema": {
                   "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
                 }
               }
             }
