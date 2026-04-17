@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import {
   buildDescendantMap,
+  getAllBlockIds,
   instructionBlockSetsConflict,
 } from "@app/lib/editor/instructions_block_conflict";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -110,9 +111,8 @@ export async function pruneConflictingSkillEditSuggestions(
     return;
   }
 
-  const newData = newSuggestion.toJSON();
-  const newInstructionEdits = newData.suggestion.instructionEdits ?? [];
-  const newToolEdits = newData.suggestion.toolEdits ?? [];
+  const newInstructionEdits = newSuggestion.suggestion.instructionEdits ?? [];
+  const newToolEdits = newSuggestion.suggestion.toolEdits ?? [];
 
   // Full rewrite — everything is outdated.
   if (
@@ -135,7 +135,7 @@ export async function pruneConflictingSkillEditSuggestions(
     allInstructionTargetIds.add(e.targetBlockId);
   }
   for (const p of existingPending) {
-    for (const e of p.toJSON().suggestion.instructionEdits ?? []) {
+    for (const e of p.suggestion.instructionEdits ?? []) {
       allInstructionTargetIds.add(e.targetBlockId);
     }
   }
@@ -145,18 +145,14 @@ export async function pruneConflictingSkillEditSuggestions(
       : new Map<string, Set<string>>();
 
   const toMarkOutdated = existingPending.filter((existing) => {
-    const existingData = existing.toJSON();
     return (
       instructionEditSetsConflict(
         newInstructionEdits,
-        existingData.suggestion.instructionEdits ?? [],
+        existing.suggestion.instructionEdits ?? [],
         skill.instructionsHtml,
         descendantMap
       ) ||
-      toolEditSetsConflict(
-        newToolEdits,
-        existingData.suggestion.toolEdits ?? []
-      )
+      toolEditSetsConflict(newToolEdits, existing.suggestion.toolEdits ?? [])
     );
   });
 
@@ -165,4 +161,58 @@ export async function pruneConflictingSkillEditSuggestions(
     toMarkOutdated,
     "outdated"
   );
+}
+
+/**
+ * Marks pending skill edit suggestions as outdated when they can no longer be applied
+ * to the skill's current state.
+ */
+export async function pruneOutdatedSkillEditSuggestions(
+  auth: Authenticator,
+  skill: SkillResource
+): Promise<void> {
+  const pending = await SkillSuggestionResource.listBySkillConfigurationId(
+    auth,
+    skill.sId,
+    { states: ["pending"], kind: "edit" }
+  );
+  if (pending.length === 0) {
+    return;
+  }
+
+  const currentToolIds = new Set(skill.mcpServerViews.map((v) => v.sId));
+  const currentBlockIds = skill.instructionsHtml
+    ? getAllBlockIds(skill.instructionsHtml)
+    : new Set<string>();
+
+  const outdated = pending.filter((p) => {
+    const { instructionEdits, toolEdits } = p.suggestion;
+
+    for (const edit of toolEdits ?? []) {
+      const cannotApply =
+        edit.action === "add"
+          ? currentToolIds.has(edit.toolId)
+          : !currentToolIds.has(edit.toolId);
+      if (cannotApply) {
+        return true;
+      }
+    }
+
+    // We do not do a diff check to determine if the content of a specific instruction block has changed.
+    // Taking this simplification as it is a low impact edge case.
+    for (const edit of instructionEdits ?? []) {
+      // If the target block is the instructions root block or the block no longer exists, mark the suggestion as outdated.
+      // The root block suggestion would overwrite the entire instructions, so we mark it as outdated as we know it is missing the new updates.
+      if (
+        edit.targetBlockId === INSTRUCTIONS_ROOT_TARGET_BLOCK_ID ||
+        !currentBlockIds.has(edit.targetBlockId)
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  });
+
+  await SkillSuggestionResource.bulkUpdateState(auth, outdated, "outdated");
 }
