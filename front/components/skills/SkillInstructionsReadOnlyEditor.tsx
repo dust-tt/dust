@@ -28,7 +28,6 @@ export function SkillInstructionsReadOnlyEditor({
   const { editor, editorService } = useSkillInstructionsEditor({
     content,
     htmlContent: htmlForEditor,
-    withDocumentExtensions: Boolean(htmlForEditor),
     isReadOnly: true,
   });
 

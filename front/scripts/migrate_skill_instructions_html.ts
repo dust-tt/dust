@@ -10,16 +10,27 @@
  * every skill without errors.
  */
 
-import {
-  convertBlockHtmlToMarkdown,
-  convertMarkdownToBlockHtml,
-} from "@app/lib/editor/skill_instructions_html";
+import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
+import { postProcessMarkdown } from "@app/lib/editor/skill_instructions_preprocessing";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
+import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
+import { generateJSON } from "@tiptap/html/server";
+import { MarkdownManager } from "@tiptap/markdown";
 import { unescape } from "html-escaper";
 import { Op } from "sequelize";
+
+const SKILL_EDITOR_EXTENSIONS = buildSkillInstructionsExtensions(true, []);
+const MARKDOWN_MANAGER = new MarkdownManager({
+  extensions: SKILL_EDITOR_EXTENSIONS,
+});
+
+function convertBlockHtmlToMarkdown(html: string): string {
+  const json = generateJSON(html, SKILL_EDITOR_EXTENSIONS);
+  return postProcessMarkdown(MARKDOWN_MANAGER.serialize(json));
+}
 
 const ZWS = "\u200B";
 
