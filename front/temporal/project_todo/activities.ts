@@ -51,7 +51,7 @@ export async function analyzeProjectTodosActivity({
 }): Promise<void> {
   const workspace = await WorkspaceResource.fetchById(workspaceId);
   if (!workspace) {
-    logger.error({ spaceId }, "Workspace not found");
+    logger.error({ workspaceId }, "Workspace not found");
     return;
   }
   const adminAuth = await Authenticator.internalAdminForWorkspace(workspaceId);
