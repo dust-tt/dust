@@ -117,7 +117,9 @@ async function handler(
       const triggersWithIsSubscriber = await Promise.all(
         allTriggers.map(async (trigger) => ({
           ...trigger.toJSON(),
-          isSubscriber: await trigger.isSubscriber(auth),
+          // TODO: when introducing subscribers functionnality,
+          // query the subscribers outside the promise.all loop to avoid the N^2 query
+          isSubscriber: false, // await trigger.isSubscriber(auth),
           isEditor: trigger.editor === auth.getNonNullableUser().id,
           editorName: editorNamesMap.get(trigger.editor),
         }))
