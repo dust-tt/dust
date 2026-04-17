@@ -35,17 +35,19 @@ async function handler(
         spaceId: space.id,
       });
 
-      const todoSIds = todos.map((t) => t.sId);
+      const todoIds = todos.map((t) => t.sId);
 
       // Fetch sources for all todos (across all version rows).
-      const sourcesByTodoSId =
-        await ProjectTodoResource.fetchSourcesForTodoSIds(auth, {
-          sIds: todoSIds,
-        });
+      const sourcesByTodoId = await ProjectTodoResource.fetchSourcesForTodoIds(
+        auth,
+        {
+          sIds: todoIds,
+        }
+      );
 
       // Combine todo data with enriched sources.
       const todosWithSources: ProjectTodoType[] = todos.map((t) => {
-        const sources = sourcesByTodoSId.get(t.sId) ?? [];
+        const sources = sourcesByTodoId.get(t.sId) ?? [];
         return {
           ...t.toJSON(),
           sources: sources.map((s) => ({
