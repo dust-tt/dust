@@ -104,6 +104,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
         | "markedAsDoneByUserId"
         | "markedAsDoneByAgentConfigurationId"
         | "deletedAt"
+        | "cleanedAt"
       >
     >,
     transaction?: Transaction
@@ -152,6 +153,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       markedAsDoneByAgentConfigurationId:
         this.markedAsDoneByAgentConfigurationId ?? null,
       deletedAt: this.deletedAt ?? null,
+      cleanedAt: this.cleanedAt ?? null,
     };
     await ProjectTodoVersionModel.create(versionData, { transaction });
   }
@@ -170,6 +172,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
         ...where,
         workspaceId: auth.getNonNullableWorkspace().id,
         deletedAt: null,
+        cleanedAt: null,
       },
       ...otherOptions,
       transaction,
@@ -396,6 +399,30 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
   }
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
+
+  // Hides all done todos for the authenticated user in the given space by
+  // setting `cleanedAt`. Items are hidden from normal queries but preserved in
+  // the database for potential future "show completed" views.
+  static async cleanDoneBySpace(
+    auth: Authenticator,
+    { spaceId }: { spaceId: ModelId }
+  ): Promise<Result<{ cleanedCount: number }, Error>> {
+    const doneTodos = await this.baseFetch(auth, {
+      where: { spaceId, userId: auth.getNonNullableUser().id, status: "done" },
+    });
+
+    if (doneTodos.length === 0) {
+      return new Ok({ cleanedCount: 0 });
+    }
+
+    await withTransaction(async (t) => {
+      for (const todo of doneTodos) {
+        await todo.updateWithVersion(auth, { cleanedAt: new Date() }, t);
+      }
+    });
+
+    return new Ok({ cleanedCount: doneTodos.length });
+  }
 
   async softDelete(auth: Authenticator): Promise<Result<undefined, Error>> {
     await this.updateWithVersion(auth, { deletedAt: new Date() });
