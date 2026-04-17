@@ -321,7 +321,9 @@ export function InlineActivitySteps({
             )}
 
             {/* Active writing (streaming content tokens) */}
-            {showActiveWriting && agentMessage.content ? (
+            {showActiveWriting &&
+            agentMessage.content &&
+            completedSteps.length === 0 ? (
               <div>
                 <AgentMessageMarkdown
                   content={agentMessage.content}
@@ -379,6 +381,20 @@ export function InlineActivitySteps({
           </div>
         </div>
       </div>
+
+      {showActiveWriting &&
+      agentMessage.content &&
+      completedSteps.length > 0 ? (
+        <div className="mt-3">
+          <AgentMessageMarkdown
+            content={agentMessage.content}
+            owner={owner}
+            isStreaming={false}
+            streamingState="streaming"
+            isLastMessage={false}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
