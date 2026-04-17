@@ -275,6 +275,19 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     );
   }
 
+  static async listByWebhookSourceIds(
+    auth: Authenticator,
+    webhookSourceIds: ModelId[]
+  ): Promise<WebhookSourcesViewResource[]> {
+    if (webhookSourceIds.length === 0) {
+      return [];
+    }
+    const views = await this.baseFetch(auth, {
+      where: { webhookSourceId: { [Op.in]: webhookSourceIds } },
+    });
+    return views.filter((view) => view.canReadOrAdministrate(auth));
+  }
+
   /**
    * List all webhook source views for a webhook source without space permission filtering.
    * This is used internally for webhook trigger processing where authorization
