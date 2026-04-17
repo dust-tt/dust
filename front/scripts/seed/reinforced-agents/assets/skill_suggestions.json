@@ -41,5 +41,21 @@
         }
       ]
     }
+  },
+  {
+    "skillName": "MeetingNotesFormatter",
+    "kind": "edit",
+    "analysis": "The summary instruction is too brief. Replace it with a more detailed two-part guidance: first explain the expected summary format, then add a note about handling confidential topics.",
+    "state": "pending",
+    "source": "reinforcement",
+    "suggestion": {
+      "instructionEdits": [
+        {
+          "targetBlockId": "mn04outr",
+          "content": "<p>Keep the output clean and professional. Use bullet points for clarity. When summarising, group related items under thematic headings.</p><p>If the meeting covered confidential topics (HR decisions, salary discussions, legal matters), flag them clearly and restrict distribution to attendees only.</p>",
+          "type": "replace"
+        }
+      ]
+    }
   }
 ]

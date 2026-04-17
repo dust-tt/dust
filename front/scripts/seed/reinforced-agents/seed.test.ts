@@ -109,10 +109,10 @@ describe("reinforcement seed script integration test", () => {
     const feedbacksWithContent = allFeedbacks.filter((f) => f.content !== null);
     expect(feedbacksWithContent).toHaveLength(4);
 
-    // Verify skill suggestions: 2 suggestions for SearchInfoContactWithSuggestion
+    // Verify skill suggestions: 2 for SearchInfoContactWithSuggestion + 1 for MeetingNotesFormatter
     const skillSuggestions =
       await SkillSuggestionResource.listByWorkspace(authenticator);
-    expect(skillSuggestions).toHaveLength(2);
+    expect(skillSuggestions).toHaveLength(3);
 
     const allPending = skillSuggestions.every((s) => s.state === "pending");
     expect(allPending).toBe(true);
@@ -139,6 +139,16 @@ describe("reinforcement seed script integration test", () => {
       );
     });
     expect(withOnlyInstructionEdits).toBeDefined();
+
+    // Third suggestion (MeetingNotesFormatter) has a multi-block replacement
+    const multiBlockSuggestion = skillSuggestions.find((s) => {
+      const json = s.toJSON();
+      const edits = json.suggestion.instructionEdits;
+      return (
+        edits && edits.length === 1 && edits[0].content.includes("</p><p>")
+      );
+    });
+    expect(multiBlockSuggestion).toBeDefined();
 
     // Verify idempotency
     await seedReinforcement(ctx, { skipAnalytics: true });
