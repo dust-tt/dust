@@ -373,7 +373,32 @@ export function isCompactionMessageType(
  */
 export type ConversationVisibility = "unlisted" | "deleted" | "test";
 
-export type ConversationMetadata = Record<string, unknown>;
+export const CONVERSATION_URL_ACCESS_MODES = [
+  "participants_only",
+  "workspace_members",
+] as const;
+
+export type ConversationUrlAccessMode =
+  (typeof CONVERSATION_URL_ACCESS_MODES)[number];
+
+export const CONVERSATION_METADATA_URL_ACCESS_MODE_KEY = "urlAccessMode";
+
+export type ConversationMetadata = Record<string, unknown> & {
+  urlAccessMode?: ConversationUrlAccessMode;
+};
+
+export function isConversationUrlAccessMode(
+  value: unknown
+): value is ConversationUrlAccessMode {
+  return value === "participants_only" || value === "workspace_members";
+}
+
+export function getConversationUrlAccessMode(
+  metadata: ConversationMetadata | null | undefined
+): ConversationUrlAccessMode | null {
+  const accessMode = metadata?.[CONVERSATION_METADATA_URL_ACCESS_MODE_KEY];
+  return isConversationUrlAccessMode(accessMode) ? accessMode : null;
+}
 
 export type ConversationForkedFromType = {
   parentConversationId: string;

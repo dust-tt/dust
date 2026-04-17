@@ -3425,6 +3425,42 @@ describe("Space Handling", () => {
       expect(result).toBe("conversation_access_restricted");
     });
 
+    it("should return 'allowed' for non-participants when URL access mode is workspace_members", async () => {
+      const updateResult = await WorkspaceResource.updateMetadata(
+        workspace.id,
+        {
+          privateConversationUrlsByDefault: true,
+        }
+      );
+      assert(updateResult.isOk(), "Failed to enable private conversation URLs");
+
+      await ConversationModel.update(
+        {
+          metadata: {
+            urlAccessMode: "workspace_members",
+          },
+        },
+        {
+          where: {
+            workspaceId: workspace.id,
+            sId: conversations.accessible,
+          },
+        }
+      );
+
+      const refreshedUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        userAuth.getNonNullableUser().sId,
+        workspace.sId
+      );
+
+      const result = await ConversationResource.canAccess(
+        refreshedUserAuth,
+        conversations.accessible
+      );
+
+      expect(result).toBe("allowed");
+    });
+
     it("should return 'allowed' for participants when private conversation URLs are private by default", async () => {
       const updateResult = await WorkspaceResource.updateMetadata(
         workspace.id,

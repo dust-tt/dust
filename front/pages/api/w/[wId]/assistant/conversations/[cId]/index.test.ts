@@ -6,6 +6,7 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { getConversationUrlAccessMode } from "@app/types/assistant/conversation";
 import { assert, describe, expect, it } from "vitest";
 
 import handler from "./index";
@@ -126,5 +127,62 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
+  });
+});
+
+describe("PATCH /api/w/[wId]/assistant/conversations/[cId]", () => {
+  it("updates conversation URL access mode", async () => {
+    const { req, res, workspace, auth, globalSpace } =
+      await createPrivateApiMockRequest({
+        role: "admin",
+        method: "PATCH",
+      });
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      requestedSpaceIds: [globalSpace.id],
+      messagesCreatedAt: [new Date()],
+    });
+
+    req.query.wId = workspace.sId;
+    req.query.cId = conversation.sId;
+    req.url = `/api/w/${workspace.sId}/assistant/conversations/${conversation.sId}`;
+    req.body = { accessMode: "workspace_members" };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    const updatedConversation = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    assert(updatedConversation, "Expected conversation to exist");
+    expect(getConversationUrlAccessMode(updatedConversation.metadata)).toBe(
+      "workspace_members"
+    );
+  });
+
+  it("returns 400 on unsupported URL access mode", async () => {
+    const { req, res, workspace, auth, globalSpace } =
+      await createPrivateApiMockRequest({
+        role: "admin",
+        method: "PATCH",
+      });
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      requestedSpaceIds: [globalSpace.id],
+      messagesCreatedAt: [new Date()],
+    });
+
+    req.query.wId = workspace.sId;
+    req.query.cId = conversation.sId;
+    req.url = `/api/w/${workspace.sId}/assistant/conversations/${conversation.sId}`;
+    req.body = { accessMode: "everyone" };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
   });
 });
