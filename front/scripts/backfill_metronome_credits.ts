@@ -103,8 +103,6 @@ async function backfillCreditsOfType(
     // Create with full initial amount; consumed portion is deducted separately below.
     const initialAmount = initialMicroUsd / 1_000_000;
     const consumedAmount = consumedMicroUsd / 1_000_000;
-    // Stable key based on DB credit id, independent of amounts.
-    const idempotencyKey = `${metronomeItem}-${workspace.sId}-${credit.id}`;
 
     totalAmountMicroUsd += initialMicroUsd;
 
@@ -117,7 +115,6 @@ async function backfillCreditsOfType(
           consumedUsd: consumedAmount,
           startingAt: startingAt.toLocaleDateString("en-GB"),
           endingBefore: endingBefore.toLocaleDateString("en-GB"),
-          idempotencyKey,
         },
         `[Backfill] [DRY RUN] Would create ${metronomeItem} in Metronome`
       );
@@ -134,7 +131,7 @@ async function backfillCreditsOfType(
             startingAt: startingAt.toISOString(),
             endingBefore: endingBefore.toISOString(),
             name: `Monthly credit backfill (${startingAt.toISOString().split("T")[0]})`,
-            idempotencyKey,
+            idempotencyKey: `free-poke-${workspace.sId}-${startingAt.getTime()}`,
           })
         : await createMetronomeCommit({
             metronomeCustomerId,
@@ -144,7 +141,7 @@ async function backfillCreditsOfType(
             startingAt,
             endingBefore,
             name: `Prepaid commit backfill (${startingAt.toISOString().split("T")[0]})`,
-            idempotencyKey,
+            idempotencyKey: `commit-${workspace.sId}-${startingAt.getTime()}-${initialAmount}`,
           });
 
     if (result.isErr()) {
