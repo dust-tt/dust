@@ -3,25 +3,21 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import {
   createMessageReaction,
   deleteMessageReaction,
-  getMessagesReactions,
 } from "@app/lib/api/assistant/reaction";
-import {
-  publishAgentMessagesEvents,
-  publishMessageEventsOnMessagePostOrEdit,
-} from "@app/lib/api/assistant/streaming/events";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { MessageReactionType } from "@app/types/assistant/conversation";
-import {
+import  {
   ConversationError,
-  isAgentMessageType,
+  MessageReactionType,
+} from "@app/types/assistant/conversation";
+import {
   isProjectConversation,
-  isUserMessageType,
 } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -42,7 +38,9 @@ async function handler(
 ): Promise<void> {
   const user = auth.getNonNullableUser();
 
-  if (!isString(req.query.cId) || !isString(req.query.mId)) {
+  const { cId, mId } = req.query;
+
+  if (!isString(cId) || !isString(mId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -53,10 +51,7 @@ async function handler(
     });
   }
 
-  const conversation = await ConversationResource.fetchById(
-    auth,
-    req.query.cId
-  );
+  const conversation = await ConversationResource.fetchById(auth, cId);
   if (!conversation) {
     return apiErrorForConversation(
       req,
@@ -89,7 +84,6 @@ async function handler(
     }
   }
 
-  const messageId = req.query.mId;
   const bodyValidation = MessageReactionRequestBodySchema.decode(req.body);
   if (isLeft(bodyValidation)) {
     const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -102,7 +96,7 @@ async function handler(
     });
   }
 
-  const messageRes = await conversation.getMessageById(auth, messageId);
+  const messageRes = await conversation.getMessageById(auth, mId);
   // Preserve prior behavior: only main-branch user/agent messages are reactable.
   if (
     messageRes.isErr() ||
@@ -131,7 +125,7 @@ async function handler(
   switch (req.method) {
     case "POST":
       const created = await createMessageReaction(auth, {
-        messageId,
+        messageId: mId,
         conversation: serializedConversation,
         user: user.toJSON(),
         context: {
@@ -142,7 +136,6 @@ async function handler(
       });
 
       if (created) {
-        await publishMessageUpdate(req, res, auth, { conversation, message });
         res.status(200).json({ success: true });
         return;
       }
@@ -156,7 +149,7 @@ async function handler(
 
     case "DELETE":
       const deleted = await deleteMessageReaction(auth, {
-        messageId,
+        messageId: mId,
         conversation: serializedConversation,
         user: user.toJSON(),
         context: {
@@ -167,7 +160,6 @@ async function handler(
       });
 
       if (deleted) {
-        await publishMessageUpdate(req, res, auth, { conversation, message });
         res.status(200).json({ success: true });
         return;
       }
@@ -190,55 +182,5 @@ async function handler(
       });
   }
 }
-
-const publishMessageUpdate = async (
-  req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<
-      { reactions: MessageReactionType[] } | { success: boolean }
-    >
-  >,
-  auth: Authenticator,
-  {
-    conversation,
-    message,
-  }: {
-    conversation: ConversationType;
-    message: UserMessageType | ContentFragmentType | AgentMessageType;
-  }
-) => {
-  const reactions = await getMessagesReactions(auth, {
-    messageIds: [message.id],
-  });
-
-  if (isUserMessageType(message)) {
-    return publishMessageEventsOnMessagePostOrEdit(
-      conversation,
-      {
-        ...message,
-        contentFragments: getRelatedContentFragments(conversation, message),
-        reactions: reactions[message.id] ?? [],
-      },
-      []
-    );
-  }
-
-  if (isAgentMessageType(message)) {
-    return publishAgentMessagesEvents(conversation, [
-      {
-        ...message,
-        reactions: reactions[message.id] ?? [],
-      },
-    ]);
-  }
-
-  return apiError(req, res, {
-    status_code: 500,
-    api_error: {
-      type: "internal_server_error",
-      message: "Unexpected message type",
-    },
-  });
-};
 
 export default withSessionAuthenticationForWorkspace(handler);
