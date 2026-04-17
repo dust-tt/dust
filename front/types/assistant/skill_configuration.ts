@@ -25,7 +25,7 @@ export const SkillSourceMetadataSchema = z.object({
 
 export type SkillSourceMetadata = z.infer<typeof SkillSourceMetadataSchema>;
 
-export const SkillSchema = z.object({
+export const SkillWithoutToolsSchema = z.object({
   id: z.number(),
   sId: z.string(),
   createdAt: z.number().nullable(),
@@ -43,7 +43,6 @@ export const SkillSchema = z.object({
   reinforcement: z.enum(SKILL_REINFORCEMENT_MODES).optional(),
   lastReinforcementAnalysisAt: z.string().nullable().optional(),
   requestedSpaceIds: z.array(z.string()),
-  tools: z.array(MCPServerViewSchema),
   fileAttachments: z.array(
     z.object({
       fileId: z.string(),
@@ -54,6 +53,12 @@ export const SkillSchema = z.object({
   isExtendable: z.boolean(),
   isDefault: z.boolean(),
   extendedSkillId: z.string().nullable(),
+});
+
+export type SkillWithoutToolsType = z.infer<typeof SkillWithoutToolsSchema>;
+
+export const SkillSchema = SkillWithoutToolsSchema.extend({
+  tools: z.array(MCPServerViewSchema),
 });
 
 export type SkillType = z.infer<typeof SkillSchema>;
