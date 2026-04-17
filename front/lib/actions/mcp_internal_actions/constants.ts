@@ -1103,7 +1103,7 @@ export const INTERNAL_MCP_SERVERS = {
     metadata: ASK_USER_QUESTION_SERVER,
   },
   clari_copilot: {
-    id: 1029,
+    id: 1030,
     availability: "manual",
     allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) =>
