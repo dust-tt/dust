@@ -1,9 +1,14 @@
 import config from "@app/lib/file_storage/config";
-import { isGCSNotFoundError } from "@app/lib/file_storage/types";
+import {
+  type GCSAPIError,
+  isGCSNotFoundError,
+} from "@app/lib/file_storage/types";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { frameContentType } from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { stripNullBytes } from "@app/types/shared/utils/string_utils";
 import type { Bucket } from "@google-cloud/storage";
@@ -107,12 +112,22 @@ export class FileStorage {
     return textTypes.some((type) => contentType.startsWith(type));
   }
 
-  async getFileContentType(filename: string): Promise<string | undefined> {
-    const gcsFile = this.file(filename);
+  async getFileContentType(
+    filename: string
+  ): Promise<Result<string | undefined, GCSAPIError>> {
+    try {
+      const gcsFile = this.file(filename);
 
-    const [metadata] = await gcsFile.getMetadata();
+      const [metadata] = await gcsFile.getMetadata();
 
-    return metadata.contentType;
+      return new Ok(metadata.contentType);
+    } catch (error) {
+      if (isGCSNotFoundError(error)) {
+        return new Err(error);
+      }
+
+      throw error;
+    }
   }
 
   async getSignedUrl(
