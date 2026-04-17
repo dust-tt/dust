@@ -36,7 +36,7 @@ import {
   isRichAgentMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -142,14 +142,14 @@ export interface InputBarContainerProps {
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   onResetSelections: () => void;
-  onSkillDeselect: (skill: SkillType) => void;
-  onSkillSelect: (skill: SkillType) => void;
+  onSkillDeselect: (skill: SkillWithoutToolsType) => void;
+  onSkillSelect: (skill: SkillWithoutToolsType) => void;
   owner: WorkspaceType;
   saveDraft: (markdown: string, agentMention?: RichAgentMention | null) => void;
   pendingInputText: string | null;
   selectedAgent: RichAgentMention | null;
   selectedMCPServerViews: MCPServerViewType[];
-  selectedSkills: SkillType[];
+  selectedSkills: SkillWithoutToolsType[];
   stickyMentions?: RichMention[];
   user: UserType | null;
 }

@@ -505,7 +505,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const workspace = auth.getNonNullableWorkspace();
     const { agentLoopData, transaction } = context;
 
-    const { where, includes, onlyCustom, ...otherOptions } = options;
+    const {
+      where,
+      includes,
+      onlyCustom,
+      withTools = true,
+      ...otherOptions
+    } = options;
 
     const customSkills = await this.model.findAll({
       ...otherOptions,
@@ -548,16 +554,27 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     let allowedCustomSkillsRes: SkillResource[] = [];
     if (allowedCustomSkills.length > 0) {
-      const mcpServerConfigurations =
-        await SkillMCPServerConfigurationModel.findAll({
-          where: {
-            workspaceId: workspace.id,
-            skillConfigurationId: {
-              [Op.in]: allowedCustomSkillIds,
+      let mcpServerConfigurations: SkillMCPServerConfigurationModel[] = [];
+      let allMCPServerViews: MCPServerViewResource[] = [];
+
+      if (withTools) {
+        mcpServerConfigurations =
+          await SkillMCPServerConfigurationModel.findAll({
+            where: {
+              workspaceId: workspace.id,
+              skillConfigurationId: {
+                [Op.in]: allowedCustomSkillIds,
+              },
             },
-          },
-          transaction,
-        });
+            transaction,
+          });
+
+        allMCPServerViews = await MCPServerViewResource.fetchByModelIds(
+          auth,
+          removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId)),
+          { includeMetadata: false }
+        );
+      }
 
       const skillMCPServerConfigsBySkillId = groupBy(
         mcpServerConfigurations,
@@ -644,12 +661,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         }
       }
 
-      const allMCPServerViews = await MCPServerViewResource.fetchByModelIds(
-        auth,
-        removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId)),
-        { includeMetadata: false, transaction }
-      );
-
       allowedCustomSkillsRes = allowedCustomSkills.map((customSkill) => {
         const skillMCPServerViewIds = skillMCPServerConfigsBySkillId[
           customSkill.id
@@ -695,7 +706,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           if (agentLoopData && def.isDisabledForAgentLoop?.(agentLoopData)) {
             return null;
           }
-          return this.fromGlobalSkill(auth, def, context);
+          return this.fromGlobalSkill(auth, def, context, { withTools });
         },
         { concurrency: 5 }
       )
@@ -1020,6 +1031,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       isDefault,
       updatedAfter,
       reinforcementNotOff,
+      withTools = true,
     }: {
       status?: SkillStatus | SkillStatus[];
       limit?: number;
@@ -1028,6 +1040,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       isDefault?: boolean;
       updatedAfter?: Date;
       reinforcementNotOff?: boolean;
+      withTools?: boolean;
     } = {}
   ): Promise<SkillResource[]> {
     const skills = await this.baseFetch(auth, {
@@ -1039,6 +1052,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
       ...(limit ? { limit } : {}),
       onlyCustom,
+      withTools,
     });
 
     if (globalSpaceOnly) {
@@ -1394,6 +1408,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }: {
       agentLoopData?: AgentLoopExecutionData;
       transaction?: Transaction;
+    } = {},
+    {
+      withTools = true,
+    }: {
+      withTools?: boolean;
     } = {}
   ): Promise<SkillResource> {
     const { agentConfiguration } = agentLoopData ?? {};
@@ -1404,7 +1423,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     let mcpServerConfigurations: SkillMCPServerConfiguration[] = [];
 
-    if (def.mcpServers) {
+    if (withTools && def.mcpServers) {
       const mcpServerConfigurationsByName = await concurrentExecutor(
         def.mcpServers,
         async ({ name, childAgentId, serverNameOverride }) => {

@@ -27,7 +27,7 @@ import {
   trackEvent,
 } from "@app/lib/tracking";
 import type {
-  SkillType,
+  SkillWithoutToolsType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
@@ -50,7 +50,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 type MergedCapabilityItem =
-  | { kind: "skill"; skill: SkillType; sortName: string }
+  | { kind: "skill"; skill: SkillWithoutToolsType; sortName: string }
   | { kind: "tool"; serverView: MCPServerViewType; sortName: string };
 
 function CapabilitiesPickerLoading({ count = 5 }: { count?: number }) {
@@ -72,8 +72,8 @@ function CapabilitiesPickerLoading({ count = 5 }: { count?: number }) {
 }
 
 interface SkillMenuItemProps {
-  skill: SkillType;
-  onSelect: (skill: SkillType) => void;
+  skill: SkillWithoutToolsType;
+  onSelect: (skill: SkillWithoutToolsType) => void;
   onDetails: (skillSId: string) => void;
   closeDropdown: () => void;
 }
@@ -246,8 +246,8 @@ interface CapabilitiesPickerProps {
   user: UserType | null;
   selectedMCPServerViews: MCPServerViewType[];
   onSelect: (serverView: MCPServerViewType) => void;
-  selectedSkills: SkillType[];
-  onSkillSelect: (skill: SkillType) => void;
+  selectedSkills: SkillWithoutToolsType[];
+  onSkillSelect: (skill: SkillWithoutToolsType) => void;
   isLoading?: boolean;
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
@@ -366,6 +366,7 @@ export function CapabilitiesPicker({
     status: "active",
     globalSpaceOnly: true,
     disabled: !shouldFetchToolsData,
+    withTools: false,
   });
 
   const isSkillsDataReady = !isSkillsLoading;
