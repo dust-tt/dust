@@ -146,41 +146,45 @@ export async function getMembers(
         transaction,
       });
 
-  const usersWithWorkspaces = await Promise.all(
-    memberships.map(async (m) => {
-      let role = "none" as RoleType;
-      let origin: MembershipOriginType | undefined = undefined;
-      if (!m.isRevoked()) {
-        switch (m.role) {
-          case "admin":
-          case "builder":
-          case "user":
-            role = m.role;
-            break;
-          default:
-            role = "none";
-        }
-      }
-      origin = m.origin;
+  // Batch-fetch users that weren't preloaded to avoid N+1 queries.
+  const missingUserModelIds = memberships
+    .filter((m) => !m.user)
+    .map((m) => m.userId);
+  const fetchedUsers = missingUserModelIds.length
+    ? await UserResource.fetchByModelIds(missingUserModelIds, { transaction })
+    : [];
+  const userByModelId = new Map(fetchedUsers.map((u) => [u.id, u]));
 
-      let user: UserResource | null;
-      if (!m.user) {
-        user = await UserResource.fetchByModelId(m.userId, transaction);
-      } else {
-        user = new UserResource(UserModel, m.user);
+  const usersWithWorkspaces = memberships.map((m) => {
+    let role = "none" as RoleType;
+    let origin: MembershipOriginType | undefined = undefined;
+    if (!m.isRevoked()) {
+      switch (m.role) {
+        case "admin":
+        case "builder":
+        case "user":
+          role = m.role;
+          break;
+        default:
+          role = "none";
       }
+    }
+    origin = m.origin;
 
-      if (!user) {
-        return null;
-      }
+    const user = m.user
+      ? new UserResource(UserModel, m.user)
+      : (userByModelId.get(m.userId) ?? null);
 
-      return {
-        ...user.toJSON(),
-        workspaces: [{ ...owner, role, flags: null }],
-        origin,
-      };
-    })
-  );
+    if (!user) {
+      return null;
+    }
+
+    return {
+      ...user.toJSON(),
+      workspaces: [{ ...owner, role, flags: null }],
+      origin,
+    };
+  });
 
   return {
     members: removeNulls(usersWithWorkspaces),
