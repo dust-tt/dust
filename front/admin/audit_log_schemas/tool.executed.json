@@ -14,7 +14,10 @@
   "metadata": {
     "toolName": "string",
     "toolType": "string",
+    "mcpServerName": "string",
     "conversationId": "string",
+    "accessedDataSourceIds": "string",
+    "accessedTableIds": "string",
     "actor_type": "string",
     "initiating_user_id": "string",
     "initiating_user_email": "string"
