@@ -259,6 +259,7 @@ export function SkillBuilderInstructionsEditor({
           id: `${suggestion.sId}:${i}`,
           targetBlockId: edit.targetBlockId,
           content: edit.content,
+          multiBlock: true,
         });
       }
     }

@@ -18,6 +18,7 @@ import { ChangeSet } from "prosemirror-changeset";
 interface BlockOperation {
   targetBlockId: string;
   newContent: string; // HTML content.
+  multiBlock: boolean; // When true, newContent may produce multiple blocks replacing the target.
 }
 
 // A stored suggestion with its operations.
@@ -117,11 +118,11 @@ export function diffBlockContent(
   }));
 }
 
-function parseHTMLToBlock(
+function parseHTMLToBlocks(
   html: string,
   schema: Schema,
   targetBlockId: string
-): PMNode | null {
+): PMNode[] {
   const domParser = PMDOMParser.fromSchema(schema);
   const tempDiv = document.createElement("div");
   tempDiv.innerHTML = html;
@@ -131,20 +132,25 @@ function parseHTMLToBlock(
   // The agent builder schema enforces doc > instructionsRoot > blocks.
   // When we parse HTML like "<p>text</p>", the parser returns:
   // doc > instructionsRoot > paragraph
-  // For single-block targets we unwrap past the instructionsRoot to get the
-  // block node. When the target is the instructionsRoot itself, we return it
-  // directly so all child blocks are preserved.
-  let container: PMNode = parsed;
+  // For root targets, return the instructionsRoot directly so all child blocks
+  // are preserved. For single-block targets, return all children of the
+  // instructionsRoot — this supports multi-block replacements where one block
+  // is replaced by several (e.g., "<p>A</p><p>B</p>").
+  const container: PMNode = parsed;
   const first = container.firstChild;
   if (first?.type.name === INSTRUCTIONS_ROOT_NODE_NAME) {
     if (targetBlockId === INSTRUCTIONS_ROOT_TARGET_BLOCK_ID) {
-      return first;
+      return [first];
     }
 
-    return first.firstChild ?? null;
+    const children: PMNode[] = [];
+    first.content.forEach((child) => children.push(child));
+    return children;
   }
 
-  return container.firstChild ?? null;
+  const children: PMNode[] = [];
+  container.content.forEach((child) => children.push(child));
+  return children;
 }
 
 function findBlockByBlockId(
@@ -299,6 +305,54 @@ function addBlockAdditionWidget(
   );
 }
 
+// Create decorations when a single block is replaced by multiple blocks.
+// Diffs the first new node against the old block, then shows remaining new
+// blocks as full addition widgets after the old block.
+function buildMultiBlockDecorations({
+  applyBlockHighlight,
+  blockPos,
+  decorations,
+  isHighlighted,
+  newNodes,
+  oldNode,
+  schema,
+  suggestionId,
+}: {
+  applyBlockHighlight: boolean;
+  blockPos: number;
+  decorations: Decoration[];
+  isHighlighted: boolean;
+  newNodes: PMNode[];
+  oldNode: PMNode;
+  schema: Schema;
+  suggestionId: string;
+}): void {
+  // Diff the first new node against the old block.
+  buildBlockDecorations({
+    applyBlockHighlight,
+    blockPos,
+    decorations,
+    isHighlighted,
+    newNode: newNodes[0],
+    oldNode,
+    schema,
+    suggestionId,
+  });
+
+  // Show remaining new nodes as full addition widgets after the old block.
+  const afterBlockPos = blockPos + oldNode.nodeSize;
+  for (let i = 1; i < newNodes.length; i++) {
+    addBlockAdditionWidget(
+      afterBlockPos,
+      newNodes[i],
+      isHighlighted,
+      decorations,
+      schema,
+      suggestionId
+    );
+  }
+}
+
 // Create per-child-block decorations for root-level targets. Matches old and
 // new children by position and diffs each pair for word-level inline diffs.
 // Extra new blocks are shown as full additions, extra old blocks as deletions.
@@ -430,32 +484,52 @@ function buildDecorations(
 
       const { node: blockNode, pos: blockPos } = found;
 
-      const newNode = parseHTMLToBlock(op.newContent, schema, op.targetBlockId);
-      if (!newNode) {
+      const allNewNodes = parseHTMLToBlocks(
+        op.newContent,
+        schema,
+        op.targetBlockId
+      );
+      if (allNewNodes.length === 0) {
         continue;
       }
 
+      // When multiBlock is false (default), only use the first parsed block
+      // to preserve backward compatibility with agent builder sidekick suggestions.
+      const newNodes = op.multiBlock ? allNewNodes : [allNewNodes[0]];
+
       // For root-level targets, diff per-child block so that word-level diffs stay within their
       // block and block boundaries are preserved. For single-block targets, diff the block directly.
+      // Multi-block replacements (one block → many) get their own rendering path.
       if (
         blockNode.type.name === INSTRUCTIONS_ROOT_NODE_NAME &&
-        newNode.type.name === INSTRUCTIONS_ROOT_NODE_NAME
+        newNodes[0].type.name === INSTRUCTIONS_ROOT_NODE_NAME
       ) {
         buildRootDecorations({
           applyBlockHighlight,
           oldRoot: blockNode,
-          newRoot: newNode,
+          newRoot: newNodes[0],
           rootPos: blockPos,
           schema,
           suggestionId,
           isHighlighted,
           decorations,
         });
-      } else {
+      } else if (newNodes.length === 1) {
         buildBlockDecorations({
           applyBlockHighlight,
           oldNode: blockNode,
-          newNode,
+          newNode: newNodes[0],
+          blockPos,
+          schema,
+          suggestionId,
+          isHighlighted,
+          decorations,
+        });
+      } else {
+        buildMultiBlockDecorations({
+          applyBlockHighlight,
+          oldNode: blockNode,
+          newNodes,
           blockPos,
           schema,
           suggestionId,
@@ -608,6 +682,9 @@ export interface ApplySuggestionOptions {
   targetBlockId: string;
   // HTML content for the block (e.g., '<p>New text with <strong>bold</strong></p>').
   content: string;
+  // When true, content may produce multiple blocks replacing the target block.
+  // Defaults to false (only the first parsed block is used).
+  multiBlock?: boolean;
 }
 
 declare module "@tiptap/core" {
@@ -746,7 +823,7 @@ export const InstructionSuggestionExtension = Extension.create<{
       applySuggestion:
         (options: ApplySuggestionOptions) =>
         ({ tr, state, dispatch }) => {
-          const { id, targetBlockId, content } = options;
+          const { id, targetBlockId, content, multiBlock = false } = options;
 
           if (!findBlockByBlockId(state.doc, targetBlockId)) {
             return false;
@@ -755,7 +832,7 @@ export const InstructionSuggestionExtension = Extension.create<{
           if (dispatch) {
             const suggestion: StoredSuggestion = {
               id,
-              operations: [{ targetBlockId, newContent: content }],
+              operations: [{ targetBlockId, newContent: content, multiBlock }],
             };
             tr.setMeta(pluginKey, { type: "add", suggestion });
             dispatch(tr);
@@ -783,26 +860,39 @@ export const InstructionSuggestionExtension = Extension.create<{
               }
 
               const { node: blockNode, pos: blockPos } = found;
-              const newNode = parseHTMLToBlock(
+              const allNewNodes = parseHTMLToBlocks(
                 op.newContent,
                 schema,
                 op.targetBlockId
               );
-              if (!newNode) {
+              if (allNewNodes.length === 0) {
                 continue;
               }
 
-              if (blockNode.type === newNode.type) {
-                // Same type: replace inner content.
-                const from = blockPos + 1;
-                const to = blockPos + blockNode.nodeSize - 1;
-                tr.replaceWith(from, to, newNode.content);
+              // When multiBlock is false (default), only use the first parsed block.
+              const newNodes = op.multiBlock ? allNewNodes : [allNewNodes[0]];
+
+              if (newNodes.length === 1) {
+                const newNode = newNodes[0];
+                if (blockNode.type === newNode.type) {
+                  // Same type: replace inner content.
+                  const from = blockPos + 1;
+                  const to = blockPos + blockNode.nodeSize - 1;
+                  tr.replaceWith(from, to, newNode.content);
+                } else {
+                  // Cross-type: replace the entire block node.
+                  tr.replaceWith(
+                    blockPos,
+                    blockPos + blockNode.nodeSize,
+                    newNode
+                  );
+                }
               } else {
-                // Cross-type: replace the entire block node.
+                // Multi-block: replace the old block with all new blocks.
                 tr.replaceWith(
                   blockPos,
                   blockPos + blockNode.nodeSize,
-                  newNode
+                  newNodes
                 );
               }
             }

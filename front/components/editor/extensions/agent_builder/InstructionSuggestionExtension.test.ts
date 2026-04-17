@@ -1649,7 +1649,7 @@ describe("Root-targeting suggestions", () => {
       expect(deletedText).toContain("Hello");
     });
 
-    it("should use only the first block when multi-block HTML targets a specific block", () => {
+    it("should use only the first block when multiBlock is not set", () => {
       editor.commands.setContent("Hello world", { contentType: "markdown" });
 
       // Find the paragraph's block-id (not the root).
@@ -1659,9 +1659,8 @@ describe("Root-targeting suggestions", () => {
       );
       expect(paragraphBlockId).toBeDefined();
 
-      // Send multi-block HTML but targeting a specific paragraph.
-      // parseHTMLToBlock should unwrap to the first child (the heading),
-      // not return the instructionsRoot.
+      // Send multi-block HTML but without multiBlock flag.
+      // Only the first child (the heading) should be used.
       editor.commands.applySuggestion({
         id: "multi-block-specific",
         targetBlockId: paragraphBlockId!,
@@ -1679,6 +1678,122 @@ describe("Root-targeting suggestions", () => {
       expect(text).toContain("Role");
       expect(text).not.toContain("Hello");
       expect(text).not.toContain("Hello world");
+    });
+
+    it("should use all blocks when multiBlock is true", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+
+      const ids = getBlockIds(editor);
+      const paragraphBlockId = ids.find(
+        (id) => id !== INSTRUCTIONS_ROOT_TARGET_BLOCK_ID
+      );
+      expect(paragraphBlockId).toBeDefined();
+
+      editor.commands.applySuggestion({
+        id: "multi-block-all",
+        targetBlockId: paragraphBlockId!,
+        content: "<div><h2>Role</h2><p>Hello</p></div>",
+        multiBlock: true,
+      });
+
+      editor.commands.acceptSuggestion("multi-block-all");
+
+      const text = editor.getText();
+      expect(text).toContain("Role");
+      expect(text).toContain("Hello");
+      expect(text).not.toContain("Hello world");
+    });
+
+    it("should show decorations for multi-block replacement with multiBlock flag", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+
+      const ids = getBlockIds(editor);
+      const paragraphBlockId = ids.find(
+        (id) => id !== INSTRUCTIONS_ROOT_TARGET_BLOCK_ID
+      );
+      expect(paragraphBlockId).toBeDefined();
+
+      editor.commands.applySuggestion({
+        id: "multi-block-deco",
+        targetBlockId: paragraphBlockId!,
+        content: "<p>Hello Sir,</p><p>How are you?</p>",
+        multiBlock: true,
+      });
+
+      editor.commands.setHighlightedSuggestion("multi-block-deco");
+
+      // The first block diffs against "Hello world" → "Hello Sir,"
+      const deletions = getDeletions();
+      expect(deletions.length).toBeGreaterThanOrEqual(1);
+      const deletedText = deletions.map((d) => d.text).join("");
+      expect(deletedText).toContain("world");
+
+      // Additions should include the diff from first block + the full second block
+      const additions = getAdditions();
+      expect(additions.length).toBeGreaterThanOrEqual(1);
+      const addedText = additions.map((a) => a.text).join("");
+      expect(addedText).toContain("Sir,");
+      expect(addedText).toContain("How are you?");
+
+      // Outer decoration elements should have the correct suggestion ID.
+      // Inner styled children inherit the CSS class but not the attribute.
+      const deletionIds = deletions.map((d) => d.suggestionId).filter(Boolean);
+      expect(deletionIds.length).toBeGreaterThanOrEqual(1);
+      expect(deletionIds.every((id) => id === "multi-block-deco")).toBe(true);
+
+      const additionIds = additions.map((a) => a.suggestionId).filter(Boolean);
+      expect(additionIds.length).toBeGreaterThanOrEqual(1);
+      expect(additionIds.every((id) => id === "multi-block-deco")).toBe(true);
+    });
+
+    it("should accept multi-block replacement and preserve surrounding blocks", () => {
+      editor.commands.setContent("Hello world\n\nKeep this", {
+        contentType: "markdown",
+      });
+
+      const ids = getBlockIds(editor);
+      const paragraphBlockId = ids.find(
+        (id) => id !== INSTRUCTIONS_ROOT_TARGET_BLOCK_ID
+      );
+      expect(paragraphBlockId).toBeDefined();
+
+      editor.commands.applySuggestion({
+        id: "multi-block-accept",
+        targetBlockId: paragraphBlockId!,
+        content: "<p>Hello Sir,</p><p>How are you?</p>",
+        multiBlock: true,
+      });
+
+      editor.commands.acceptSuggestion("multi-block-accept");
+
+      const text = editor.getText();
+      expect(text).toContain("Hello Sir,");
+      expect(text).toContain("How are you?");
+      expect(text).toContain("Keep this");
+      expect(text).not.toContain("Hello world");
+      expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
+    });
+
+    it("should reject multi-block replacement and keep original content", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+
+      const ids = getBlockIds(editor);
+      const paragraphBlockId = ids.find(
+        (id) => id !== INSTRUCTIONS_ROOT_TARGET_BLOCK_ID
+      );
+      expect(paragraphBlockId).toBeDefined();
+
+      editor.commands.applySuggestion({
+        id: "multi-block-reject",
+        targetBlockId: paragraphBlockId!,
+        content: "<p>Hello Sir,</p><p>How are you?</p>",
+        multiBlock: true,
+      });
+
+      editor.commands.rejectSuggestion("multi-block-reject");
+
+      expect(editor.getText()).toContain("Hello world");
+      expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
     });
   });
 });
