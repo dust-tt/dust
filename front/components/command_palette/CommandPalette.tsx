@@ -5,6 +5,8 @@ import { useCommandPalette } from "@app/components/command_palette/CommandPalett
 import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { CommandPaletteSearchPhase } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
+import { useConversations } from "@app/hooks/conversations/useConversations";
+import { useSearchPrivateConversations } from "@app/hooks/conversations/useSearchPrivateConversations";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useSkills } from "@app/lib/swr/skill_configurations";
@@ -52,6 +54,27 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     owner,
     disabled: !isOpen,
     status: "active",
+  });
+
+  // Conversation search hits the server; the hook debounces internally (300ms)
+  // and skips the fetch when the query is empty.
+  const MAX_DISPLAYED_CONVERSATIONS = 5;
+  const {
+    conversations: searchedConversations,
+    isSearching: isConversationsSearching,
+    hasMore: hasMoreConversations,
+  } = useSearchPrivateConversations({
+    workspaceId: owner.sId,
+    enabled: isOpen,
+    query: searchQuery,
+    limit: MAX_DISPLAYED_CONVERSATIONS,
+  });
+
+  // Recent conversations shown when no query is entered.
+  const { conversations: recentConversations } = useConversations({
+    workspaceId: owner.sId,
+    limit: MAX_DISPLAYED_CONVERSATIONS,
+    disabled: !isOpen,
   });
 
   // Debounce the search query to avoid expensive fuzzy filtering on every keystroke.
@@ -102,8 +125,15 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const hasMoreAgents = allFilteredAgents.length > MAX_DISPLAYED_AGENTS;
   const hasMoreSkills = allFilteredSkills.length > MAX_DISPLAYED_SKILLS;
 
+  const filteredConversations = debouncedQuery
+    ? searchedConversations
+    : recentConversations.slice(0, MAX_DISPLAYED_CONVERSATIONS);
+
   const isLoading =
-    isAgentConfigurationsLoading || isSkillsLoading || isDebouncing;
+    isAgentConfigurationsLoading ||
+    isSkillsLoading ||
+    isDebouncing ||
+    isConversationsSearching;
 
   // Reset state when dialog opens/closes.
   useEffect(() => {
@@ -126,19 +156,23 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
             void router.push(
               getConversationRoute(owner.sId, "new", `agent=${item.agent.sId}`)
             );
+          } else if (item.kind === "conversation") {
+            void router.push(
+              getConversationRoute(owner.sId, item.conversation.sId)
+            );
           }
           break;
         case "view_details":
           if (item.kind === "agent") {
             setAgentDetailsId(item.agent.sId);
-          } else {
+          } else if (item.kind === "skill") {
             setSkillDetailsId(item.skill.sId);
           }
           break;
         case "edit":
           if (item.kind === "agent") {
             void router.push(getAgentBuilderRoute(owner.sId, item.agent.sId));
-          } else {
+          } else if (item.kind === "skill") {
             void router.push(getSkillBuilderRoute(owner.sId, item.skill.sId));
           }
           break;
@@ -149,6 +183,11 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
 
   const handleItemSelect = useCallback(
     (item: CommandPaletteItem) => {
+      // Conversations have a single action (open), so skip the action phase.
+      if (item.kind === "conversation") {
+        executeAction(item, "chat_with");
+        return;
+      }
       // Skills without write access have only one action (view details).
       if (item.kind === "skill" && !item.skill.canWrite) {
         executeAction(item, "view_details");
@@ -193,9 +232,12 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
               onSearchQueryChange={setSearchQuery}
               agents={filteredAgents}
               skills={filteredSkills}
+              conversations={filteredConversations}
               hasMoreAgents={hasMoreAgents}
               hasMoreSkills={hasMoreSkills}
+              hasMoreConversations={hasMoreConversations}
               isLoading={isLoading}
+              isConversationsSearching={isConversationsSearching}
               selectedIndex={selectedIndex}
               onSelectedIndexChange={setSelectedIndex}
               onItemSelect={handleItemSelect}

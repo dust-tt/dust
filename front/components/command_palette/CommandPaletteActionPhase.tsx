@@ -34,6 +34,8 @@ function canEdit(item: CommandPaletteItem): boolean {
       return item.agent.canEdit;
     case "skill":
       return item.skill.canWrite;
+    case "conversation":
+      return false;
   }
 }
 
@@ -110,15 +112,29 @@ export function CommandPaletteActionPhase({
     }
   }
 
-  const itemName =
-    item.kind === "agent" ? `@${item.agent.name}` : item.skill.name;
+  const itemName = (() => {
+    switch (item.kind) {
+      case "agent":
+        return `@${item.agent.name}`;
+      case "skill":
+        return item.skill.name;
+      case "conversation":
+        return item.conversation.title ?? "Untitled conversation";
+    }
+  })();
 
-  const itemAvatar =
-    item.kind === "agent" ? (
-      <Avatar visual={item.agent.pictureUrl} size="xs" />
-    ) : (
-      React.createElement(getSkillAvatarIcon(item.skill.icon), { size: "xs" })
-    );
+  const itemAvatar = (() => {
+    switch (item.kind) {
+      case "agent":
+        return <Avatar visual={item.agent.pictureUrl} size="xs" />;
+      case "skill":
+        return React.createElement(getSkillAvatarIcon(item.skill.icon), {
+          size: "xs",
+        });
+      case "conversation":
+        return <Icon visual={ChatBubbleBottomCenterTextIcon} size="xs" />;
+    }
+  })();
 
   return (
     <div

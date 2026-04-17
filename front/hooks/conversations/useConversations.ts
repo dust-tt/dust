@@ -22,9 +22,11 @@ type MutateOptions = {
 export function useConversations({
   workspaceId,
   limit = DEFAULT_LIMIT,
+  disabled = false,
 }: {
   workspaceId: string;
   limit?: number;
+  disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const conversationsFetcher: Fetcher<GetConversationsResponseBody> = fetcher;
@@ -35,6 +37,10 @@ export function useConversations({
         pageIndex: number,
         previousPageData: GetConversationsResponseBody | null
       ) => {
+        if (disabled) {
+          return null;
+        }
+
         if (previousPageData && !previousPageData.hasMore) {
           return null;
         }
@@ -114,7 +120,7 @@ export function useConversations({
 
   return {
     conversations,
-    isConversationsLoading: !error && !data,
+    isConversationsLoading: !error && !data && !disabled,
     isConversationsError: error,
     mutateConversations,
     hasMore,

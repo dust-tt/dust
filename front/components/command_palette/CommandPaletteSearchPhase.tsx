@@ -6,22 +6,32 @@ import {
 } from "@app/components/command_palette/CommandPaletteItems";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
-import { Avatar, SearchInput } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  ChatBubbleBottomCenterTextIcon,
+  Icon,
+  SearchInput,
+} from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 
 export type CommandPaletteItem =
   | { kind: "agent"; agent: LightAgentConfigurationType }
-  | { kind: "skill"; skill: SkillType };
+  | { kind: "skill"; skill: SkillType }
+  | { kind: "conversation"; conversation: ConversationWithoutContentType };
 
 interface CommandPaletteSearchPhaseProps {
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
   agents: LightAgentConfigurationType[];
   skills: SkillType[];
+  conversations: ConversationWithoutContentType[];
   hasMoreAgents: boolean;
   hasMoreSkills: boolean;
+  hasMoreConversations: boolean;
   isLoading: boolean;
+  isConversationsSearching: boolean;
   selectedIndex: number;
   onSelectedIndexChange: (index: number) => void;
   onItemSelect: (item: CommandPaletteItem) => void;
@@ -30,11 +40,18 @@ interface CommandPaletteSearchPhaseProps {
 
 function getFlatItems(
   agents: LightAgentConfigurationType[],
-  skills: SkillType[]
+  skills: SkillType[],
+  conversations: ConversationWithoutContentType[]
 ): CommandPaletteItem[] {
   return [
     ...agents.map((agent): CommandPaletteItem => ({ kind: "agent", agent })),
     ...skills.map((skill): CommandPaletteItem => ({ kind: "skill", skill })),
+    ...conversations.map(
+      (conversation): CommandPaletteItem => ({
+        kind: "conversation",
+        conversation,
+      })
+    ),
   ];
 }
 
@@ -43,17 +60,20 @@ export function CommandPaletteSearchPhase({
   onSearchQueryChange,
   agents,
   skills,
+  conversations,
   hasMoreAgents,
   hasMoreSkills,
+  hasMoreConversations,
   isLoading,
+  isConversationsSearching,
   selectedIndex,
   onSelectedIndexChange,
   onItemSelect,
   onClose,
 }: CommandPaletteSearchPhaseProps) {
   const flatItems = useMemo(
-    () => getFlatItems(agents, skills),
-    [agents, skills]
+    () => getFlatItems(agents, skills, conversations),
+    [agents, skills, conversations]
   );
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -73,10 +93,15 @@ export function CommandPaletteSearchPhase({
   }, [selectedIndex]);
 
   // Reset selection when the number of results changes (e.g., after typing).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: agents.length and skills.length are intentional triggers
+  // biome-ignore lint/correctness/useExhaustiveDependencies: list lengths are intentional triggers
   useEffect(() => {
     onSelectedIndexChange(0);
-  }, [agents.length, skills.length, onSelectedIndexChange]);
+  }, [
+    agents.length,
+    skills.length,
+    conversations.length,
+    onSelectedIndexChange,
+  ]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     const totalItems = flatItems.length;
@@ -113,7 +138,7 @@ export function CommandPaletteSearchPhase({
         <SearchInput
           ref={searchInputRef}
           name="command-palette-search"
-          placeholder="Search agents and skills…"
+          placeholder="Search agents, skills and conversations…"
           value={searchQuery}
           onChange={onSearchQueryChange}
           onKeyDown={handleKeyDown}
@@ -138,7 +163,9 @@ export function CommandPaletteSearchPhase({
           <ItemEmptyState>No results found.</ItemEmptyState>
         )}
         {!isLoading && flatItems.length === 0 && searchQuery.length === 0 && (
-          <ItemEmptyState>Type to search agents and skills.</ItemEmptyState>
+          <ItemEmptyState>
+            Type to search agents, skills and conversations.
+          </ItemEmptyState>
         )}
 
         {agents.length > 0 && (
@@ -210,6 +237,51 @@ export function CommandPaletteSearchPhase({
             )}
           </div>
         )}
+
+        {conversations.length > 0 && (
+          <div>
+            <ItemTitle>Conversations</ItemTitle>
+            {conversations.map((conversation, i) => {
+              const globalIndex = agents.length + skills.length + i;
+              return (
+                <ItemRow
+                  key={conversation.sId}
+                  ref={(el) => {
+                    itemRefs.current[globalIndex] = el;
+                  }}
+                  isSelected={selectedIndex === globalIndex}
+                  onClick={() =>
+                    onItemSelect({ kind: "conversation", conversation })
+                  }
+                  onMouseEnter={() => onSelectedIndexChange(globalIndex)}
+                >
+                  <Icon
+                    visual={ChatBubbleBottomCenterTextIcon}
+                    size="xs"
+                    className="shrink-0 text-muted-foreground dark:text-muted-foreground-night"
+                  />
+                  <span className="min-w-0 truncate font-medium">
+                    {conversation.title ?? "Untitled conversation"}
+                  </span>
+                </ItemRow>
+              );
+            })}
+            {hasMoreConversations && (
+              <div className="px-3 py-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+                More conversations available. Refine your search to filter.
+              </div>
+            )}
+          </div>
+        )}
+
+        {isConversationsSearching &&
+          conversations.length === 0 &&
+          searchQuery.length > 0 &&
+          !isLoading && (
+            <div className="px-3 py-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+              Searching conversations…
+            </div>
+          )}
       </div>
       <KeyboardHints
         hints={[
