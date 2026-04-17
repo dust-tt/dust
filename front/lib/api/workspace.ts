@@ -432,6 +432,7 @@ export interface WorkspaceMetadata {
   killSwitched?: WorkspaceKillSwitchValue;
   allowContentCreationFileSharing?: boolean;
   allowVoiceTranscription?: boolean;
+  privateConversationUrlsByDefault?: boolean;
   autoCreateSpaceForProvisionedGroups?: boolean;
   disableManualInvitations?: boolean;
   phoneCountry?: string;
