@@ -8,7 +8,10 @@ import {
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { spawnSync } from "child_process";
+import { createHash } from "crypto";
 import fs from "fs";
+import os from "os";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.7.0";
@@ -19,8 +22,12 @@ const AGENT_PROXIED_UID = 1003;
 // Released via the "Release sandbox tool" GitHub Actions workflow.
 const APPLY_PATCH_VERSION = "0.1.0";
 const EGRESS_LOCAL_DIR = path.resolve(__dirname, "egress");
+const FRONT_ROOT_DIR = path.resolve(__dirname, "../../../..");
 const PROFILE_LOCAL_DIR = path.resolve(__dirname, "profile");
+const PROFILE_SRC_DIR = path.join(PROFILE_LOCAL_DIR, "src");
 const TELEMETRY_LOCAL_DIR = path.resolve(__dirname, "telemetry");
+const DUST_TOOLS_ENTRYPOINT = path.join(PROFILE_SRC_DIR, "index.ts");
+const DUST_TOOLS_BINARY_CACHE = new Map<string, Buffer>();
 
 interface PythonLibrary {
   name: string;
@@ -101,6 +108,85 @@ function getAgentProxiedSetupCommand(): string {
     "setfacl -R -d -m g::rwx /home/agent /files/conversation",
     "setfacl -R -m g::rwx /home/agent /files/conversation",
   ].join(" && ");
+}
+
+function walkFiles(dir: string): string[] {
+  return fs
+    .readdirSync(dir, { withFileTypes: true })
+    .flatMap((entry) => {
+      const entryPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        return walkFiles(entryPath);
+      }
+      return [entryPath];
+    })
+    .sort();
+}
+
+function getDustToolsBuildHash(): string {
+  const hash = createHash("sha256");
+  const files = [
+    ...walkFiles(PROFILE_SRC_DIR),
+    path.join(FRONT_ROOT_DIR, "package.json"),
+  ];
+
+  for (const filePath of files) {
+    hash.update(path.relative(FRONT_ROOT_DIR, filePath));
+    hash.update("\0");
+    hash.update(fs.readFileSync(filePath));
+    hash.update("\0");
+  }
+
+  return hash.digest("hex");
+}
+
+function buildDustToolsBinary(): Buffer {
+  const buildHash = getDustToolsBuildHash();
+  const cached = DUST_TOOLS_BINARY_CACHE.get(buildHash);
+  if (cached) {
+    return cached;
+  }
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dust-tools-build-"));
+  const outputPath = path.join(tempDir, "dust-tools");
+
+  try {
+    const result = spawnSync(
+      "bun",
+      [
+        "build",
+        "--compile",
+        "--target=bun-linux-x64",
+        DUST_TOOLS_ENTRYPOINT,
+        "--outfile",
+        outputPath,
+      ],
+      {
+        cwd: FRONT_ROOT_DIR,
+        encoding: "utf8",
+      }
+    );
+
+    if (result.error?.code === "ENOENT") {
+      throw new Error(
+        "bun is required to build the sandbox dust-tools binary, but it was not found on PATH"
+      );
+    }
+
+    if (result.status !== 0) {
+      throw new Error(
+        `Failed to build sandbox dust-tools binary with bun: ${
+          result.stderr || result.stdout || "unknown error"
+        }`
+      );
+    }
+
+    const binary = fs.readFileSync(outputPath);
+    DUST_TOOLS_BINARY_CACHE.set(buildHash, binary);
+    return binary;
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
 }
 
 const DUST_BASE_IMAGE = SandboxImage.fromDocker(
@@ -213,11 +299,9 @@ SHELLEOF`,
     profile: "openai",
   })
   .runCmd(`mkdir -p ${PROFILE_DIR}`, { user: "root" })
-  // Core: Python tools module + shared shell infra
-  .copy(
-    getLocalContent(PROFILE_LOCAL_DIR, "_dust_tools.py"),
-    `${PROFILE_DIR}/_dust_tools.py`
-  )
+  // Core: compiled dust-tools binary + shared shell infra
+  .copy(buildDustToolsBinary, `${PROFILE_DIR}/dust-tools`, { user: "root" })
+  .runCmd(`chmod +x ${PROFILE_DIR}/dust-tools`, { user: "root" })
   .copy(
     getLocalContent(PROFILE_LOCAL_DIR, "common.sh"),
     `${PROFILE_DIR}/common.sh`
@@ -315,9 +399,8 @@ SHELLEOF`,
   .registerTool({
     name: "edit_file",
     description:
-      "Replace text in a file with LLM error correction. Supports --edits-json for multiple sequential edits. Single file only",
-    usage:
-      'edit_file [--replace-all] <old_text> <new_text> <path>\n       edit_file --edits-json \'[{"old":"...","new":"..."}]\' <path>',
+      "Replace exact text in a single file. Supports --replace-all and returns unified diff",
+    usage: "edit_file [--replace-all] <old_text> <new_text> <path>",
     returns: "'Edited <path>' on success, unified diff on stderr",
     runtime: "system",
     profile: "anthropic",

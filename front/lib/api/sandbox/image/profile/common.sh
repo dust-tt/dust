@@ -5,11 +5,19 @@
 set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-export DUST_TOOLS="$SCRIPT_DIR/_dust_tools.py"
+export SCRIPT_DIR
+DUST_TOOLS_CMD="${DUST_TOOLS_CMD:-$SCRIPT_DIR/dust-tools}"
+export DUST_TOOLS_CMD
 
 source "$SCRIPT_DIR/_truncate.sh"
 source "$SCRIPT_DIR/shell.sh"
+
+run_dust_tool() {
+  # shellcheck disable=SC2206
+  local dust_tools_cmd=( $DUST_TOOLS_CMD )
+  "${dust_tools_cmd[@]}" "$@"
+}
+export -f run_dust_tool
 
 ls() {
   command ls -al "$@"

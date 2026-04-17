@@ -1,4 +1,6 @@
 import { execSync } from "child_process";
+import * as fs from "fs";
+import * as path from "path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -49,6 +51,24 @@ describe("shell", () => {
     const { stderr, exitCode } = runBashFunction("shell", tempDir);
     expect(exitCode).toBe(1);
     expect(stderr).toContain("command is required");
+  });
+
+  it("dispatches read_file through the shell wrapper", () => {
+    const filePath = path.join(tempDir, "wrapped.txt");
+    fs.writeFileSync(filePath, "wrapped\n");
+
+    const { stdout, exitCode } = runBashFunction(
+      `read_file "${filePath}" 1 1`,
+      tempDir
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("1\twrapped");
+  });
+
+  it("does not export edit_file for openai", () => {
+    const { exitCode } = runBashFunction("type edit_file", tempDir, "openai");
+    expect(exitCode).not.toBe(0);
   });
 
   it("truncates long output and saves to file", () => {
