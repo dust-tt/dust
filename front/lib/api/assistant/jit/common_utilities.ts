@@ -1,6 +1,7 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -12,13 +13,10 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 export async function getCommonUtilitiesServer(
   auth: Authenticator,
   agentConfiguration: LightAgentConfigurationType,
-  conversation: ConversationWithoutContentType
+  conversation: ConversationWithoutContentType,
+  autoInternalViews: Map<AutoInternalMCPServerNameType, MCPServerViewResource>
 ): Promise<ServerSideMCPServerConfigurationType | null> {
-  const commonUtilitiesView =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "common_utilities"
-    );
+  const commonUtilitiesView = autoInternalViews.get("common_utilities") ?? null;
 
   if (!commonUtilitiesView) {
     logger.warn(
