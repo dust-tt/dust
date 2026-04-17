@@ -62,18 +62,12 @@ async function handler(
       const groupMembers = await group.getActiveMembers(auth);
       const memberships = await getMembers(auth);
 
-      const userWithWorkspaces = groupMembers.reduce<UserTypeWithWorkspaces[]>(
-        (acc, user) => {
-          const member = memberships.members.find((m) => m.sId === user.sId);
+      const memberById = new Map(memberships.members.map((m) => [m.sId, m]));
 
-          if (member) {
-            acc.push(member);
-          }
-
-          return acc;
-        },
-        []
-      );
+      const userWithWorkspaces = groupMembers.flatMap((user) => {
+        const member = memberById.get(user.sId);
+        return member ? [member] : [];
+      });
 
       return res.status(200).json({
         members: userWithWorkspaces,
