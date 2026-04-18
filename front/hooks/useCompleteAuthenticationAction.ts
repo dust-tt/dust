@@ -1,3 +1,4 @@
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useFetcher } from "@app/lib/swr/swr";
 import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -5,13 +6,12 @@ import { useCallback, useState } from "react";
 
 interface UseCompleteAuthenticationActionParams {
   owner: LightWorkspaceType;
-  onError: (errorMessage: string) => void;
 }
 
 export function useCompleteAuthenticationAction({
   owner,
-  onError,
 }: UseCompleteAuthenticationActionParams) {
+  const sendNotification = useSendNotification();
   const { fetcher } = useFetcher();
   const [isCompleting, setIsCompleting] = useState(false);
 
@@ -45,13 +45,17 @@ export function useCompleteAuthenticationAction({
           return { success: true };
         }
 
-        onError("Failed to resume the authenticated tool. Please try again.");
+        sendNotification({
+          type: "error",
+          title: "Failed to resume tool",
+          description: "Failed to resume the authenticated tool. Please try again.",
+        });
         return { success: false };
       } finally {
         setIsCompleting(false);
       }
     },
-    [owner.sId, onError, fetcher]
+    [owner.sId, sendNotification, fetcher]
   );
 
   return { completeAuthenticationAction, isCompleting };

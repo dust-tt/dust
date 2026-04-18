@@ -54,10 +54,7 @@ export function MCPServerPersonalAuthenticationRequired({
   >({});
 
   const { completeAuthenticationAction, isCompleting } =
-    useCompleteAuthenticationAction({
-      owner,
-      onError: setConnectionError,
-    });
+    useCompleteAuthenticationAction({ owner });
 
   const overridableInputs = getOverridablePersonalAuthInputs({ provider });
 

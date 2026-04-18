@@ -1,3 +1,4 @@
+import { isToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
@@ -91,14 +92,8 @@ export async function completeAuthenticationAction(
 
   await getRedisHybridManager().removeEvent((event) => {
     const payload = JSON.parse(event.message["payload"]);
-
     return (
-      typeof payload === "object" &&
-      payload !== null &&
-      "type" in payload &&
-      payload.type === "tool_personal_auth_required" &&
-      "actionId" in payload &&
-      payload.actionId === actionId
+      isToolPersonalAuthRequiredEvent(payload) && payload.actionId === actionId
     );
   }, getMessageChannelId(messageId));
 
