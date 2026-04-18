@@ -48,7 +48,8 @@ export function useCompleteAuthentication({
         sendNotification({
           type: "error",
           title: "Failed to resume tool",
-          description: "Failed to resume the authenticated tool. Please try again.",
+          description:
+            "Failed to resume the authenticated tool. Please try again.",
         });
         return { success: false };
       } finally {

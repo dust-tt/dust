@@ -19,9 +19,7 @@ export type CompleteAuthenticationResponse = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<CompleteAuthenticationResponse>
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<CompleteAuthenticationResponse>>,
   auth: Authenticator
 ): Promise<void> {
   const { cId, mId } = req.query;

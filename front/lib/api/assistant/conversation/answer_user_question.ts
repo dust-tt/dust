@@ -42,7 +42,6 @@ export async function registerUserAnswer(
 
   const {
     agentMessageId,
-    agentMessageModelId,
     agentMessageVersion,
     userMessageId,
     userMessageVersion,
@@ -63,7 +62,7 @@ export async function registerUserAnswer(
   }
 
   const action = await AgentMCPActionResource.fetchById(auth, actionId);
-  if (!action || action.toJSON().agentMessageId !== agentMessageModelId) {
+  if (!action) {
     return new Err(
       new DustError("action_not_found", `Action not found: ${actionId}`)
     );
