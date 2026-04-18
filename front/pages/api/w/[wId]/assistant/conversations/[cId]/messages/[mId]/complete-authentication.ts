@@ -1,5 +1,5 @@
 /** @ignoreswagger */
-import { completeAuthenticationAction } from "@app/lib/api/assistant/conversation/complete_authentication_action";
+import { completeAuthentication } from "@app/lib/api/assistant/conversation/complete_authentication";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -9,18 +9,18 @@ import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
-const CompleteAuthenticationActionSchema = z.object({
+const CompleteAuthenticationSchema = z.object({
   actionId: z.string(),
 });
 
-export type CompleteAuthenticationActionResponse = {
+export type CompleteAuthenticationResponse = {
   success: boolean;
 };
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<CompleteAuthenticationActionResponse>
+    WithAPIErrorResponse<CompleteAuthenticationResponse>
   >,
   auth: Authenticator
 ): Promise<void> {
@@ -45,7 +45,7 @@ async function handler(
     });
   }
 
-  const parseResult = CompleteAuthenticationActionSchema.safeParse(req.body);
+  const parseResult = CompleteAuthenticationSchema.safeParse(req.body);
   if (!parseResult.success) {
     return apiError(req, res, {
       status_code: 400,
@@ -70,7 +70,7 @@ async function handler(
 
   const { actionId } = parseResult.data;
 
-  const result = await completeAuthenticationAction(auth, conversation, {
+  const result = await completeAuthentication(auth, conversation, {
     actionId,
     messageId: mId,
   });

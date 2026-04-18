@@ -11,7 +11,7 @@ import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-export async function completeAuthenticationAction(
+export async function completeAuthentication(
   auth: Authenticator,
   conversation: ConversationResource,
   {

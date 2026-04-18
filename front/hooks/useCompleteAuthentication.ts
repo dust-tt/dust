@@ -4,18 +4,18 @@ import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
 
-interface UseCompleteAuthenticationActionParams {
+interface UseCompleteAuthenticationParams {
   owner: LightWorkspaceType;
 }
 
-export function useCompleteAuthenticationAction({
+export function useCompleteAuthentication({
   owner,
-}: UseCompleteAuthenticationActionParams) {
+}: UseCompleteAuthenticationParams) {
   const sendNotification = useSendNotification();
   const { fetcher } = useFetcher();
   const [isCompleting, setIsCompleting] = useState(false);
 
-  const completeAuthenticationAction = useCallback(
+  const completeAuthentication = useCallback(
     async ({
       conversationId,
       messageId,
@@ -29,7 +29,7 @@ export function useCompleteAuthenticationAction({
 
       try {
         await fetcher(
-          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/complete-authentication-action`,
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/complete-authentication`,
           {
             method: "POST",
             headers: {
@@ -58,5 +58,5 @@ export function useCompleteAuthenticationAction({
     [owner.sId, sendNotification, fetcher]
   );
 
-  return { completeAuthenticationAction, isCompleting };
+  return { completeAuthentication, isCompleting };
 }

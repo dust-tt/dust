@@ -4,7 +4,7 @@ import {
   PersonalAuthCredentialOverrides,
 } from "@app/components/oauth/PersonalAuthCredentialOverrides";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
-import { useCompleteAuthenticationAction } from "@app/hooks/useCompleteAuthenticationAction";
+import { useCompleteAuthentication } from "@app/hooks/useCompleteAuthentication";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/api/mcp";
@@ -53,8 +53,8 @@ export function MCPServerPersonalAuthenticationRequired({
     Record<string, string>
   >({});
 
-  const { completeAuthenticationAction, isCompleting } =
-    useCompleteAuthenticationAction({ owner });
+  const { completeAuthentication, isCompleting } =
+    useCompleteAuthentication({ owner });
 
   const overridableInputs = getOverridablePersonalAuthInputs({ provider });
 
@@ -98,7 +98,7 @@ export function MCPServerPersonalAuthenticationRequired({
         return;
       }
 
-      const completionRes = await completeAuthenticationAction({
+      const completionRes = await completeAuthentication({
         actionId: blockedAction.actionId,
         conversationId: blockedAction.conversationId,
         messageId: blockedAction.messageId,
