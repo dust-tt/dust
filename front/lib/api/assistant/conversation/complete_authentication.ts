@@ -39,6 +39,7 @@ export async function completeAuthentication(
 
   const {
     agentMessageId,
+    agentMessageModelId,
     agentMessageVersion,
     userMessageId,
     userMessageVersion,
@@ -59,7 +60,7 @@ export async function completeAuthentication(
   }
 
   const action = await AgentMCPActionResource.fetchById(auth, actionId);
-  if (!action) {
+  if (!action || action.toJSON().agentMessageId !== agentMessageModelId) {
     return new Err(
       new DustError("action_not_found", `Action not found: ${actionId}`)
     );

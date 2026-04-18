@@ -578,6 +578,7 @@ export async function getUserMessageIdFromMessageId(
   { messageId }: { messageId: string }
 ): Promise<{
   agentMessageId: string;
+  agentMessageModelId: number;
   agentMessageVersion: number;
   userMessageId: string;
   userMessageVersion: number;
@@ -624,6 +625,7 @@ export async function getUserMessageIdFromMessageId(
 
   return {
     agentMessageId: agentMessage.sId,
+    agentMessageModelId: agentMessage.id,
     agentMessageVersion: agentMessage.version,
     userMessageId: parentMessage.sId,
     userMessageVersion: parentMessage.version,
