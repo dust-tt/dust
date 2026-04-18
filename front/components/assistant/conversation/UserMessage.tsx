@@ -227,7 +227,7 @@ export function UserMessage({
   const pendingMessageCount = methods.data
     .get()
     .filter((m) => isUserMessage(m) && m.visibility === "pending").length;
-  const isEmpty = !message.content && message.contentFragments.length === 0;
+  const isEmpty = !message.content;
   const isCurrentUser = message.user?.sId === currentUserId;
   const canDelete =
     (isCurrentUser || isAdmin) && !isDeleted && !isProjectArchived;
