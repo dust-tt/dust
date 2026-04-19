@@ -1,5 +1,5 @@
 ---
-name: writing-react-effects
+name: dust-writing-react-effects
 description: Writes React components without unnecessary useEffect. Use when creating/reviewing React components, refactoring effects, or when code uses useEffect to transform data or handle events.
 ---
 
