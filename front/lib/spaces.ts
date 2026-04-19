@@ -4,6 +4,7 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { SpaceType } from "@app/types/space";
 import {
   BoltIcon,
+  BookOpenIcon,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
   CompanyIcon,
@@ -63,6 +64,10 @@ export const CATEGORY_DETAILS: {
   website: {
     label: "Websites",
     icon: GlobeAltIcon,
+  },
+  brandbook: {
+    label: "Brand Guidelines",
+    icon: BookOpenIcon,
   },
   apps: {
     label: "Apps",
