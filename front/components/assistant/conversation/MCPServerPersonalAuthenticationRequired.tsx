@@ -16,7 +16,12 @@ import {
 import type { OAuthProvider } from "@app/types/oauth/lib";
 import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { ActionCardBlock, Button, CheckIcon, XMarkIcon } from "@dust-tt/sparkle";
+import {
+  ActionCardBlock,
+  Button,
+  CheckIcon,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
 interface MCPServerPersonalAuthenticationRequiredProps {
@@ -141,7 +146,7 @@ export function MCPServerPersonalAuthenticationRequired({
     cardState = "disabled";
   } else if (isConnected) {
     cardState = "accepted";
-  } else if (isConnecting) {
+  } else if (isConnecting || isResolving) {
     cardState = "disabled";
   } else {
     cardState = "active";
@@ -197,7 +202,7 @@ export function MCPServerPersonalAuthenticationRequired({
           size="xs"
           label="Skip"
           icon={XMarkIcon}
-          disabled={isConnecting}
+          disabled={isConnecting || isResolving}
           onClick={() => void onSkipClick()}
         />
         <Button
@@ -207,6 +212,7 @@ export function MCPServerPersonalAuthenticationRequired({
           icon={CheckIcon}
           disabled={
             isConnecting ||
+            isResolving ||
             !areCredentialOverridesValid(
               overridableInputs,
               overriddenCredentials
