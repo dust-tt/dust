@@ -48,7 +48,6 @@ WakeUpModel.init(
     userId: {
       type: DataTypes.BIGINT,
       allowNull: true,
-      defaultValue: null,
       references: {
         model: UserModel,
         key: "id",
