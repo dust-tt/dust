@@ -1,10 +1,20 @@
+import { BrandColorPalette } from "@app/components/branding/BrandColorPalette";
+import { BrandPlaybookPreview } from "@app/components/branding/BrandPlaybookPreview";
+import { BrandTypographyEditor } from "@app/components/branding/BrandTypographyEditor";
 import { BRANDBOOK_NAME_PREFIX } from "@app/lib/data_sources";
+import { serializeBrandPlaybook } from "@app/lib/brandbook_serializer";
+import { DEFAULT_BRAND_PLAYBOOK } from "@app/types/brandbook";
+import type { BrandPlaybookType } from "@app/types/brandbook";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   BookOpenIcon,
   Button,
+  ChatBubbleLeftRightIcon,
+  DocumentTextIcon,
+  EyeIcon,
   Input,
+  PaintIcon,
   Page,
   Sheet,
   SheetContainer,
@@ -12,9 +22,14 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   TextArea,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import type React from "react";
+import { useCallback, useState } from "react";
 
 interface BrandbookCreationModalProps {
   owner: LightWorkspaceType;
@@ -24,43 +39,15 @@ interface BrandbookCreationModalProps {
   onCreated: (dataSourceName: string) => void;
 }
 
-// Sections that make up a brand guideline document.
-// Each section becomes a separate document in the Brandbook folder,
-// so agents can retrieve only the relevant section.
-const BRANDBOOK_SECTIONS = [
-  {
-    key: "identity",
-    label: "Brand Identity",
-    placeholder:
-      "Describe who you are as a brand. What values drive you? What's your mission? Example: 'We are a B2B SaaS company that helps designers build faster. Our core values are clarity, boldness and craft.'",
-  },
-  {
-    key: "tone",
-    label: "Tone of Voice",
-    placeholder:
-      "How does your brand speak? Example: 'Direct and warm. We use the informal "you". No corporate jargon. Short sentences. We explain complex things simply without dumbing them down.'",
-  },
-  {
-    key: "messaging",
-    label: "Key Messages & Taglines",
-    placeholder:
-      "Your main taglines and recurring messages. Example: 'Tagline: Your brand deserves better than DIY. Key message: We build brand systems that work at scale.'",
-  },
-  {
-    key: "audience",
-    label: "Target Audience",
-    placeholder:
-      "Who are you talking to? Example: 'Female entrepreneurs aged 25-45. They are ambitious, tech-savvy, and want professional results without big agency budgets.'",
-  },
-  {
-    key: "visual",
-    label: "Visual Identity (optional)",
-    placeholder:
-      "Colors, typography, visual style. Example: 'Primary colors: Lime #D4FF00 on dark backgrounds, Violet #C084FC for highlights. Fonts: Instrument Serif for headlines, Geist Mono for body text.'",
-  },
-] as const;
+type TabId = "identity" | "colors" | "typography" | "voice" | "preview";
 
-type SectionKey = (typeof BRANDBOOK_SECTIONS)[number]["key"];
+const TABS: Array<{ id: TabId; label: string; icon: React.ComponentType }> = [
+  { id: "identity", label: "Identity", icon: DocumentTextIcon },
+  { id: "colors", label: "Colors", icon: PaintIcon },
+  { id: "typography", label: "Typography", icon: BookOpenIcon },
+  { id: "voice", label: "Voice", icon: ChatBubbleLeftRightIcon },
+  { id: "preview", label: "Preview", icon: EyeIcon },
+];
 
 export function BrandbookCreationModal({
   owner,
@@ -69,24 +56,48 @@ export function BrandbookCreationModal({
   onClose,
   onCreated,
 }: BrandbookCreationModalProps) {
-  const [brandName, setBrandName] = useState("");
-  const [sections, setSections] = useState<Partial<Record<SectionKey, string>>>(
-    {}
-  );
+  const [playbook, setPlaybook] =
+    useState<BrandPlaybookType>(DEFAULT_BRAND_PLAYBOOK);
+  const [activeTab, setActiveTab] = useState<TabId>("identity");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const dataSourceName = brandName.trim()
-    ? `${BRANDBOOK_NAME_PREFIX} ${brandName.trim()}`
+  const dataSourceName = playbook.brand.name.trim()
+    ? `${BRANDBOOK_NAME_PREFIX} ${playbook.brand.name.trim()}`
     : "";
 
-  const handleSectionChange = (key: SectionKey, value: string) => {
-    setSections((prev) => ({ ...prev, [key]: value }));
-  };
+  // ── Partial updaters ─────────────────────────────────────────────────────
+
+  const updateBrand = useCallback(
+    (patch: Partial<BrandPlaybookType["brand"]>) => {
+      setPlaybook((prev) => ({ ...prev, brand: { ...prev.brand, ...patch } }));
+    },
+    []
+  );
+
+  const updateIdentity = useCallback(
+    (patch: Partial<BrandPlaybookType["identity"]>) => {
+      setPlaybook((prev) => ({
+        ...prev,
+        identity: { ...prev.identity, ...patch },
+      }));
+    },
+    []
+  );
+
+  const updateVoice = useCallback(
+    (patch: Partial<BrandPlaybookType["voice"]>) => {
+      setPlaybook((prev) => ({ ...prev, voice: { ...prev.voice, ...patch } }));
+    },
+    []
+  );
+
+  // ── Submit ───────────────────────────────────────────────────────────────
 
   const handleSubmit = async () => {
-    if (!brandName.trim()) {
+    if (!playbook.brand.name.trim()) {
       setError("Brand name is required.");
+      setActiveTab("identity");
       return;
     }
 
@@ -94,7 +105,7 @@ export function BrandbookCreationModal({
     setError(null);
 
     try {
-      // Step 1: Create the folder (data source) with the brandbook name prefix.
+      // Step 1 — Create the data source (folder).
       const createResponse = await fetch(
         `/api/w/${owner.sId}/spaces/${space.sId}/data_sources`,
         {
@@ -102,7 +113,7 @@ export function BrandbookCreationModal({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name: dataSourceName,
-            description: `Brand guidelines for ${brandName.trim()}`,
+            description: `Brand guidelines for ${playbook.brand.name.trim()}`,
             assistantDefaultSelected: true,
           }),
         }
@@ -115,34 +126,26 @@ export function BrandbookCreationModal({
 
       const { dataSource } = await createResponse.json();
 
-      // Step 2: Upload each filled section as a separate document.
-      // Separate documents allow agents to retrieve only the relevant section.
-      // Note: sequential execution (not Promise.all) to comply with BACK7.
-      for (const section of BRANDBOOK_SECTIONS) {
-        const content = sections[section.key]?.trim();
-        if (!content) {
-          continue;
-        }
-
-        const title = `${brandName.trim()} — ${section.label}`;
-
+      // Step 2 — Upload each document from the serializer sequentially (BACK7).
+      const documents = serializeBrandPlaybook(playbook);
+      for (const doc of documents) {
         await fetch(
-          `/api/w/${owner.sId}/spaces/${space.sId}/data_sources/${dataSource.sId}/documents/${section.key}`,
+          `/api/w/${owner.sId}/spaces/${space.sId}/data_sources/${dataSource.sId}/documents/${doc.documentId}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              title,
-              text: `# ${title}\n\n${content}`,
-              tags: ["brandbook", section.key],
-              source_url: null,
+              title: doc.title,
+              text: doc.text,
+              tags: doc.tags,
+              source_url: doc.source_url,
             }),
           }
         );
       }
 
       onCreated(dataSourceName);
-      onClose();
+      handleClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred.");
     } finally {
@@ -151,73 +154,192 @@ export function BrandbookCreationModal({
   };
 
   const handleClose = () => {
-    setBrandName("");
-    setSections({});
+    setPlaybook(DEFAULT_BRAND_PLAYBOOK);
+    setActiveTab("identity");
     setError(null);
     onClose();
   };
+
+  // ── Render ───────────────────────────────────────────────────────────────
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <SheetContent size="xl">
         <SheetHeader>
           <SheetTitle>
-            <div className="flex items-center gap-2">
-              <BookOpenIcon className="h-5 w-5" />
+            <div className="s-flex s-items-center s-gap-2">
+              <BookOpenIcon className="s-h-5 s-w-5" />
               Create a Brandbook
             </div>
           </SheetTitle>
         </SheetHeader>
+
         <SheetContainer>
           <Page.P>
-            A Brandbook is a knowledge base your agents can consult to apply
-            your brand&apos;s voice, visual identity, and messaging
-            consistently. Fill in the sections below — each will be stored as a
-            separate document for precise retrieval.
+            A Brandbook is a knowledge base your agents consult to apply your
+            brand's voice, visual identity, and messaging consistently. Fill in
+            the sections below — each will be stored as a separate document for
+            precise retrieval.
           </Page.P>
 
-          <div className="flex flex-col gap-6 pt-4">
-            {/* Brand name */}
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-foreground">
-                Brand name <span className="text-red-500">*</span>
-              </label>
-              <Input
-                value={brandName}
-                onChange={(e) => setBrandName(e.target.value)}
-                placeholder="e.g. Acme Corp, PlayHub, Studio Noir…"
-              />
-              {dataSourceName && (
-                <p className="text-xs text-muted-foreground">
-                  Will be created as:{" "}
-                  <code className="rounded bg-muted px-1">{dataSourceName}</code>
-                </p>
-              )}
-            </div>
+          <Tabs
+            value={activeTab}
+            onValueChange={(v) => setActiveTab(v as TabId)}
+          >
+            <TabsList>
+              {TABS.map((tab) => (
+                <TabsTrigger
+                  key={tab.id}
+                  value={tab.id}
+                  label={tab.label}
+                  icon={tab.icon}
+                />
+              ))}
+            </TabsList>
 
-            {/* Brand sections */}
-            {BRANDBOOK_SECTIONS.map((section) => (
-              <div key={section.key} className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-foreground">
-                  {section.label}
-                </label>
-                <TextArea
-                  value={sections[section.key] ?? ""}
-                  onChange={(e) =>
-                    handleSectionChange(section.key, e.target.value)
-                  }
-                  placeholder={section.placeholder}
-                  minRows={3}
+            {/* ── Identity tab ── */}
+            <TabsContent value="identity">
+              <div className="s-flex s-flex-col s-gap-4 s-pt-4">
+                <div className="s-flex s-flex-col s-gap-1">
+                  <Input
+                    label="Brand name *"
+                    value={playbook.brand.name}
+                    onChange={(e) => updateBrand({ name: e.target.value })}
+                    placeholder="e.g. Acme Corp, PlayHub, Studio Noir…"
+                  />
+                  {dataSourceName && (
+                    <p className="s-text-xs s-text-muted-foreground">
+                      Will be created as:{" "}
+                      <code className="s-rounded s-bg-muted s-px-1">
+                        {dataSourceName}
+                      </code>
+                    </p>
+                  )}
+                </div>
+
+                <Input
+                  label="Tagline"
+                  value={playbook.brand.tagline}
+                  onChange={(e) => updateBrand({ tagline: e.target.value })}
+                  placeholder="e.g. Your brand deserves better than DIY."
+                />
+
+                <div className="s-flex s-flex-col s-gap-1">
+                  <p className="s-text-sm s-font-medium s-text-foreground">
+                    Mission
+                  </p>
+                  <TextArea
+                    value={playbook.brand.mission}
+                    onChange={(e) => updateBrand({ mission: e.target.value })}
+                    placeholder="Describe what drives your brand and what you're here to do."
+                    minRows={3}
+                  />
+                </div>
+
+                <div className="s-flex s-flex-col s-gap-1">
+                  <p className="s-text-sm s-font-medium s-text-foreground">
+                    Positioning
+                  </p>
+                  <TextArea
+                    value={playbook.brand.positioning}
+                    onChange={(e) =>
+                      updateBrand({ positioning: e.target.value })
+                    }
+                    placeholder="How do you stand out? What's your unique value proposition?"
+                    minRows={3}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* ── Colors tab ── */}
+            <TabsContent value="colors">
+              <div className="s-flex s-flex-col s-gap-4 s-pt-4">
+                <BrandColorPalette
+                  colors={playbook.identity.colors}
+                  onChange={(colors) => updateIdentity({ colors })}
                 />
               </div>
-            ))}
+            </TabsContent>
 
-            {error && (
-              <p className="text-sm text-red-500" role="alert">
-                {error}
-              </p>
-            )}
-          </div>
+            {/* ── Typography tab ── */}
+            <TabsContent value="typography">
+              <div className="s-flex s-flex-col s-gap-4 s-pt-4">
+                <BrandTypographyEditor
+                  typography={playbook.identity.typography}
+                  onChange={(typography) => updateIdentity({ typography })}
+                />
+              </div>
+            </TabsContent>
+
+            {/* ── Voice tab ── */}
+            <TabsContent value="voice">
+              <div className="s-flex s-flex-col s-gap-4 s-pt-4">
+                <div className="s-flex s-flex-col s-gap-1">
+                  <p className="s-text-sm s-font-medium s-text-foreground">
+                    Tone of voice
+                  </p>
+                  <TextArea
+                    value={playbook.voice.tone}
+                    onChange={(e) => updateVoice({ tone: e.target.value })}
+                    placeholder="How does your brand speak? e.g. 'Direct and warm. No corporate jargon. Short sentences.'"
+                    minRows={3}
+                  />
+                </div>
+
+                <div className="s-flex s-flex-col s-gap-1">
+                  <p className="s-text-sm s-font-medium s-text-foreground">
+                    Key messages
+                  </p>
+                  <TextArea
+                    value={playbook.voice.keyMessages}
+                    onChange={(e) =>
+                      updateVoice({ keyMessages: e.target.value })
+                    }
+                    placeholder="Your main taglines and recurring messages."
+                    minRows={3}
+                  />
+                </div>
+
+                <div className="s-flex s-flex-col s-gap-1">
+                  <p className="s-text-sm s-font-medium s-text-foreground">
+                    Do ✓
+                  </p>
+                  <TextArea
+                    value={playbook.voice.doList}
+                    onChange={(e) => updateVoice({ doList: e.target.value })}
+                    placeholder="One item per line. e.g.&#10;Use active voice&#10;Be concise"
+                    minRows={3}
+                  />
+                </div>
+
+                <div className="s-flex s-flex-col s-gap-1">
+                  <p className="s-text-sm s-font-medium s-text-foreground">
+                    Don't ✗
+                  </p>
+                  <TextArea
+                    value={playbook.voice.dontList}
+                    onChange={(e) => updateVoice({ dontList: e.target.value })}
+                    placeholder="One item per line. e.g.&#10;Avoid jargon&#10;Don't use passive voice"
+                    minRows={3}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* ── Preview tab ── */}
+            <TabsContent value="preview">
+              <div className="s-pt-4">
+                <BrandPlaybookPreview playbook={playbook} />
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          {error && (
+            <p className="s-mt-4 s-text-sm s-text-warning" role="alert">
+              {error}
+            </p>
+          )}
         </SheetContainer>
 
         <SheetFooter
@@ -230,7 +352,7 @@ export function BrandbookCreationModal({
           rightButtonProps={{
             label: isSubmitting ? "Creating…" : "Create Brandbook",
             onClick: handleSubmit,
-            disabled: !brandName.trim() || isSubmitting,
+            disabled: !playbook.brand.name.trim() || isSubmitting,
           }}
         />
       </SheetContent>
