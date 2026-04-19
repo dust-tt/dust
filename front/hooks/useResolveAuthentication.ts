@@ -4,38 +4,42 @@ import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
 
-interface UseCompleteAuthenticationParams {
+type ResolveAuthenticationOutcome = "completed" | "denied";
+
+interface UseResolveAuthenticationParams {
   owner: LightWorkspaceType;
 }
 
-export function useCompleteAuthentication({
+export function useResolveAuthentication({
   owner,
-}: UseCompleteAuthenticationParams) {
+}: UseResolveAuthenticationParams) {
   const sendNotification = useSendNotification();
   const { fetcher } = useFetcher();
   const [isCompleting, setIsCompleting] = useState(false);
 
-  const completeAuthentication = useCallback(
+  const resolveAuthentication = useCallback(
     async ({
       conversationId,
       messageId,
       actionId,
+      outcome,
     }: {
       conversationId: string;
       messageId: string;
       actionId: string;
+      outcome: ResolveAuthenticationOutcome;
     }) => {
       setIsCompleting(true);
 
       try {
         await fetcher(
-          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/complete-authentication`,
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/resolve-authentication`,
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ actionId }),
+            body: JSON.stringify({ actionId, outcome }),
           }
         );
 
@@ -47,7 +51,7 @@ export function useCompleteAuthentication({
 
         sendNotification({
           type: "error",
-          title: "Failed to resume tool",
+          title: "Failed to resolve authentication",
           description:
             "Failed to resume the authenticated tool. Please try again.",
         });
@@ -59,5 +63,5 @@ export function useCompleteAuthentication({
     [owner.sId, sendNotification, fetcher]
   );
 
-  return { completeAuthentication, isCompleting };
+  return { resolveAuthentication, isResolving: isCompleting };
 }

@@ -57,7 +57,7 @@ export function renderActionForMultiActionsModel(
       name: action.functionCallName,
       function_call_id: action.functionCallId,
       content:
-        "The user rejected this specific action execution. Using this action is hence forbidden for this message.",
+        "The user rejected or skipped this specific action execution. Using this action is hence forbidden for this message.",
     };
   }
 

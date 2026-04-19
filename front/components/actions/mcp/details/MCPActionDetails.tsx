@@ -160,7 +160,7 @@ export function MCPActionDetails({
     if (status === "denied") {
       const deniedMessage = {
         type: "text" as const,
-        text: "Tool execution rejected by the user.",
+        text: "Tool execution rejected or skipped by the user.",
       };
 
       if (baseOutput === null) {
