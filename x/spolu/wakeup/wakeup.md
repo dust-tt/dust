@@ -4,14 +4,14 @@
 
 Agents today are purely reactive — they respond to user messages and triggers but cannot schedule
 future actions within a session. A common need: "check if the Slack thread got a reply in 10
-minutes", "remind me at 3pm", "poll this endpoint every hour until it returns 200". Today the user
-must come back and manually poke the agent.
+minutes", "remind me at 3pm", "poll this endpoint every hour until it returns 200". Today the
+user must come back and manually poke the agent.
 
 ## Goal
 
 Provide a skill (always enabled) that lets agents schedule wake-ups within a conversation. When the
 wake-up fires, the agent resumes in the same conversation with full context. Supports one-shot
-delays ("in 2 hours"), absolute times ("at 2026-04-16T16:00Z"), and cron patterns
+Delays ("in 2 hours"), absolute times ("at 2026-04-16T16:00Z"), and cron patterns
 ("0 9 * * MON-FRI").
 
 ## Design Overview
@@ -92,6 +92,7 @@ CREATE TABLE wake_ups (
 
 -- Indexes.
 CREATE INDEX idx_wake_ups_conversation ON wake_ups("conversationId");
+CREATE INDEX idx_wake_ups_user ON wake_ups("userId");
 CREATE INDEX idx_wake_ups_workspace_status ON wake_ups("workspaceId", "status");
 ```
 
@@ -322,3 +323,17 @@ When a wake-up fires:
 5. **`when` parsing**: Deterministic. The agent generates structured input — no need for LLM
    parsing. Accepted formats: relative durations (`"in 2h"`, `"in 30m"`), ISO 8601 timestamps,
    standard 5-field cron expressions.
+
+## Additional implementation notes
+
+- In the current codebase, `schedule_wakeup` should be wired through the internal MCP tool
+  architecture rather than a legacy `front/lib/api/assistant/agent_action.ts` registry.
+- The firing path should define idempotency explicitly, e.g. an atomic claim / fire transition and
+  a persisted fired message identifier, so retries cannot post duplicate wake-up messages.
+- Cancel-vs-fire races should be handled explicitly by `WakeUpResource`, not left to best effort.
+- Missing/deleted conversation, user, workspace, or inaccessible agent at fire time should be
+  terminal `cancelled` / `expired` states, not infinite retries.
+- The new private API endpoint should keep Swagger annotations/schemas in sync.
+- Emit audit events for create / cancel / fire / expire.
+- Add focused tests for resource invariants, Temporal behavior, permissions, API, and UI.
+- For V1, the UI can assume max 1 active wake-up per conversation, matching the guardrail above.
