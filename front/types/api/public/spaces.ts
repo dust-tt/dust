@@ -84,8 +84,12 @@ export function isDataSourceViewCategoryWithoutApps(
 
 export function isWebsiteOrFolderCategory(
   category: unknown
-): category is Extract<DataSourceViewCategory, "website" | "folder"> {
-  return category === "website" || category === "folder";
+): category is Extract<DataSourceViewCategory, "website" | "folder" | "brandbook"> {
+  return (
+    category === "website" ||
+    category === "folder" ||
+    category === "brandbook"
+  );
 }
 
 export function isSpreadsheetFolderContentNode(
