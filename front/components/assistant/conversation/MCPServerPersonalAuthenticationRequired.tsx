@@ -118,6 +118,23 @@ export function MCPServerPersonalAuthenticationRequired({
     }
   };
 
+  const onSkipClick = async () => {
+    setConnectionError(null);
+
+    const denyRes = await resolveAuthentication({
+      outcome: "denied",
+      actionId: blockedAction.actionId,
+      conversationId: blockedAction.conversationId,
+      messageId: blockedAction.messageId,
+    });
+
+    if (!denyRes.success) {
+      return;
+    }
+
+    removeCompletedAction(blockedAction.actionId);
+  };
+
   // Determine the ActionCardBlock state.
   let cardState: "active" | "disabled" | "accepted";
   if (!isTriggeredByCurrentUser) {
@@ -174,7 +191,15 @@ export function MCPServerPersonalAuthenticationRequired({
   // Build actions — only show Connect/Retry button for current user when not yet connected.
   const actions =
     isTriggeredByCurrentUser && !isConnected && mcpServer ? (
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          label="Skip this tool"
+          disabled={isConnecting || isResolving}
+          isLoading={isResolving}
+          onClick={() => void onSkipClick()}
+        />
         <Button
           variant="highlight"
           size="sm"
