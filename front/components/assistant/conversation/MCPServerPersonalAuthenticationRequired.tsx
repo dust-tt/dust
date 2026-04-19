@@ -4,7 +4,7 @@ import {
   PersonalAuthCredentialOverrides,
 } from "@app/components/oauth/PersonalAuthCredentialOverrides";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
-import { useCompleteAuthentication } from "@app/hooks/useCompleteAuthentication";
+import { useResolveAuthentication } from "@app/hooks/useResolveAuthentication";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/api/mcp";
@@ -53,7 +53,7 @@ export function MCPServerPersonalAuthenticationRequired({
     Record<string, string>
   >({});
 
-  const { completeAuthentication, isCompleting } = useCompleteAuthentication({
+  const { resolveAuthentication, isResolving } = useResolveAuthentication({
     owner,
   });
 
@@ -99,7 +99,8 @@ export function MCPServerPersonalAuthenticationRequired({
         return;
       }
 
-      const completionRes = await completeAuthentication({
+      const completionRes = await resolveAuthentication({
+        outcome: "completed",
         actionId: blockedAction.actionId,
         conversationId: blockedAction.conversationId,
         messageId: blockedAction.messageId,
@@ -123,7 +124,7 @@ export function MCPServerPersonalAuthenticationRequired({
     cardState = "disabled";
   } else if (isConnected) {
     cardState = "accepted";
-  } else if (isConnecting || isCompleting) {
+  } else if (isConnecting || isResolving) {
     cardState = "disabled";
   } else {
     cardState = "active";
@@ -180,13 +181,13 @@ export function MCPServerPersonalAuthenticationRequired({
           label={connectionError ? "Retry" : "Connect"}
           disabled={
             isConnecting ||
-            isCompleting ||
+            isResolving ||
             !areCredentialOverridesValid(
               overridableInputs,
               overriddenCredentials
             )
           }
-          isLoading={isConnecting || isCompleting}
+          isLoading={isConnecting || isResolving}
           onClick={() => void onConnectClick(mcpServer)}
         />
       </div>

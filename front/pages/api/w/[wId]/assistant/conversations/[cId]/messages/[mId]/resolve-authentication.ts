@@ -1,5 +1,5 @@
 /** @ignoreswagger */
-import { completeAuthentication } from "@app/lib/api/assistant/conversation/complete_authentication";
+import { resolveAuthentication } from "@app/lib/api/assistant/conversation/resolve_authentication";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -9,17 +9,18 @@ import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
-const CompleteAuthenticationSchema = z.object({
+const ResolveAuthenticationSchema = z.object({
   actionId: z.string(),
+  outcome: z.enum(["completed", "denied"]),
 });
 
-export type CompleteAuthenticationResponse = {
+export type ResolveAuthenticationResponse = {
   success: boolean;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<CompleteAuthenticationResponse>>,
+  res: NextApiResponse<WithAPIErrorResponse<ResolveAuthenticationResponse>>,
   auth: Authenticator
 ): Promise<void> {
   const { cId, mId } = req.query;
@@ -43,7 +44,7 @@ async function handler(
     });
   }
 
-  const parseResult = CompleteAuthenticationSchema.safeParse(req.body);
+  const parseResult = ResolveAuthenticationSchema.safeParse(req.body);
   if (!parseResult.success) {
     return apiError(req, res, {
       status_code: 400,
@@ -66,11 +67,12 @@ async function handler(
     });
   }
 
-  const { actionId } = parseResult.data;
+  const { actionId, outcome } = parseResult.data;
 
-  const result = await completeAuthentication(auth, conversation, {
+  const result = await resolveAuthentication(auth, conversation, {
     actionId,
     messageId: mId,
+    outcome,
   });
 
   if (result.isErr()) {
@@ -99,7 +101,7 @@ async function handler(
             status_code: 500,
             api_error: {
               type: "internal_server_error",
-              message: "Failed to complete authentication action",
+              message: "Failed to resolve authentication",
             },
           },
           result.error

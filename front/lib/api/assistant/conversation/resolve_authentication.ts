@@ -11,15 +11,19 @@ import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-export async function completeAuthentication(
+export type ResolveAuthenticationOutcome = "completed" | "denied";
+
+export async function resolveAuthentication(
   auth: Authenticator,
   conversation: ConversationResource,
   {
     actionId,
     messageId,
+    outcome,
   }: {
     actionId: string;
     messageId: string;
+    outcome: ResolveAuthenticationOutcome;
   }
 ): Promise<Result<void, DustError>> {
   const owner = auth.getNonNullableWorkspace();
@@ -31,10 +35,11 @@ export async function completeAuthentication(
       actionId,
       messageId,
       conversationId,
+      outcome,
       workspaceId: owner.sId,
       userId: user?.sId,
     },
-    "Complete authentication action request"
+    "Resolve authentication request"
   );
 
   const {
@@ -53,7 +58,7 @@ export async function completeAuthentication(
     return new Err(
       new DustError(
         "unauthorized",
-        "User is not authorized to complete authentication for this action"
+        "User is not authorized to resolve authentication for this action"
       )
     );
   }
@@ -74,7 +79,9 @@ export async function completeAuthentication(
     );
   }
 
-  const [updatedCount] = await action.updateStatus("ready_allowed_explicitly");
+  const [updatedCount] = await action.updateStatus(
+    outcome === "completed" ? "ready_allowed_explicitly" : "denied"
+  );
 
   if (updatedCount === 0) {
     logger.info(
@@ -84,7 +91,7 @@ export async function completeAuthentication(
         workspaceId: owner.sId,
         userId: user?.sId,
       },
-      "Authentication action already resumed"
+      "Authentication action already resolved"
     );
 
     return new Ok(undefined);
@@ -133,8 +140,9 @@ export async function completeAuthentication(
       conversationId,
       messageId,
       actionId,
+      outcome,
     },
-    "Authentication completed, agent loop resumed"
+    `Authentication ${outcome}, agent loop resumed`
   );
 
   return new Ok(undefined);
