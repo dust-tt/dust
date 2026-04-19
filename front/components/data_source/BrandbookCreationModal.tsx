@@ -117,31 +117,29 @@ export function BrandbookCreationModal({
 
       // Step 2: Upload each filled section as a separate document.
       // Separate documents allow agents to retrieve only the relevant section.
-      const filledSections = BRANDBOOK_SECTIONS.filter(
-        (s) => sections[s.key]?.trim()
-      );
+      // Note: sequential execution (not Promise.all) to comply with BACK7.
+      for (const section of BRANDBOOK_SECTIONS) {
+        const content = sections[section.key]?.trim();
+        if (!content) {
+          continue;
+        }
 
-      await Promise.all(
-        filledSections.map(async (section) => {
-          const content = sections[section.key]?.trim() ?? "";
-          const documentId = `${section.key}`;
-          const title = `${brandName.trim()} — ${section.label}`;
+        const title = `${brandName.trim()} — ${section.label}`;
 
-          await fetch(
-            `/api/w/${owner.sId}/spaces/${space.sId}/data_sources/${dataSource.sId}/documents/${documentId}`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                title,
-                text: `# ${title}\n\n${content}`,
-                tags: ["brandbook", section.key],
-                source_url: null,
-              }),
-            }
-          );
-        })
-      );
+        await fetch(
+          `/api/w/${owner.sId}/spaces/${space.sId}/data_sources/${dataSource.sId}/documents/${section.key}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title,
+              text: `# ${title}\n\n${content}`,
+              tags: ["brandbook", section.key],
+              source_url: null,
+            }),
+          }
+        );
+      }
 
       onCreated(dataSourceName);
       onClose();
