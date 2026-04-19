@@ -83,9 +83,14 @@ export function serializeBrandPlaybook(
   });
 
   // ── 4. Voice (conditional) ──────────────────────────────
-  const { tone, keyMessages, doList, dontList } = playbook.voice;
-  const hasVoiceContent =
-    tone.trim() || keyMessages.trim() || doList.trim() || dontList.trim();
+  // Trim each field once and use the trimmed values everywhere — both for the
+  // "is non-empty" guard and for the rendered content. This avoids storing
+  // sections that contain only whitespace.
+  const tone = playbook.voice.tone.trim();
+  const keyMessages = playbook.voice.keyMessages.trim();
+  const doList = playbook.voice.doList.trim();
+  const dontList = playbook.voice.dontList.trim();
+  const hasVoiceContent = tone || keyMessages || doList || dontList;
 
   if (hasVoiceContent) {
     docs.push({
@@ -99,6 +104,7 @@ export function serializeBrandPlaybook(
         doList
           ? `## Do\n${doList
               .split("\n")
+              .map((l) => l.trim())
               .filter(Boolean)
               .map((l) => `- ${l}`)
               .join("\n")}`
@@ -106,6 +112,7 @@ export function serializeBrandPlaybook(
         dontList
           ? `## Don't\n${dontList
               .split("\n")
+              .map((l) => l.trim())
               .filter(Boolean)
               .map((l) => `- ${l}`)
               .join("\n")}`

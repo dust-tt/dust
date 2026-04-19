@@ -64,7 +64,7 @@ export function BrandTypographyEditor({
                 <Input
                   label="Font family"
                   value={family}
-                  onChange={(e) =>
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     handleFieldChange(role, "family", e.target.value)
                   }
                   placeholder="e.g. Inter, sans-serif"
@@ -74,7 +74,7 @@ export function BrandTypographyEditor({
                 <Input
                   label="Weight"
                   value={weight}
-                  onChange={(e) =>
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     handleFieldChange(role, "weight", e.target.value)
                   }
                   placeholder="400"

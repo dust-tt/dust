@@ -33,10 +33,10 @@ const SAMPLE: BrandPlaybookType = {
 };
 
 describe("serializeBrandPlaybook", () => {
-  it("returns an array of documents, one per non-empty section", () => {
+  it("returns exactly 4 documents when every section has content", () => {
     const docs = serializeBrandPlaybook(SAMPLE);
     // Always: _playbook + brand + identity + voice = 4
-    expect(docs.length).toBeGreaterThanOrEqual(4);
+    expect(docs.length).toBe(4);
   });
 
   it("always includes a _playbook document with full JSON", () => {
@@ -74,5 +74,67 @@ describe("serializeBrandPlaybook", () => {
     const identity = docs.find((d) => d.documentId === "identity");
     expect(identity).toBeDefined();
     expect(identity!.text).toContain("#1C91FF");
+  });
+
+  it("skips the voice document when fields contain only whitespace", () => {
+    const whitespaceOnly: BrandPlaybookType = {
+      ...SAMPLE,
+      voice: {
+        tone: "   ",
+        keyMessages: "\n\n",
+        doList: "\t",
+        dontList: "  \n  ",
+      },
+    };
+    const docs = serializeBrandPlaybook(whitespaceOnly);
+    const voice = docs.find((d) => d.documentId === "voice");
+    expect(voice).toBeUndefined();
+    expect(docs.length).toBe(3);
+  });
+
+  it("trims do/don't list entries (no empty bullets, no leading spaces)", () => {
+    const messy: BrandPlaybookType = {
+      ...SAMPLE,
+      voice: {
+        tone: "  Direct  ",
+        keyMessages: "",
+        doList: "  Be concise  \n\n  Use active voice  \n   ",
+        dontList: "Avoid jargon\n   \nDon't be vague",
+      },
+    };
+    const docs = serializeBrandPlaybook(messy);
+    const voice = docs.find((d) => d.documentId === "voice");
+    expect(voice).toBeDefined();
+    // Tone is trimmed, no leading/trailing whitespace.
+    expect(voice!.text).toContain("## Tone\nDirect");
+    expect(voice!.text).not.toContain("  Direct  ");
+    // Empty lines in lists are filtered out (no `- ` followed by nothing).
+    expect(voice!.text).not.toMatch(/^- $/m);
+    // Each non-empty entry becomes a bullet, trimmed.
+    expect(voice!.text).toContain("- Be concise");
+    expect(voice!.text).toContain("- Use active voice");
+    expect(voice!.text).toContain("- Avoid jargon");
+    expect(voice!.text).toContain("- Don't be vague");
+  });
+
+  it("uses sequential document order suitable for BACK7 upload", () => {
+    const docs = serializeBrandPlaybook(SAMPLE);
+    // Order must be: _playbook, brand, identity, voice.
+    expect(docs.map((d) => d.documentId)).toEqual([
+      "_playbook",
+      "brand",
+      "identity",
+      "voice",
+    ]);
+  });
+
+  it("falls back to 'Brand' when name is empty/whitespace", () => {
+    const noName: BrandPlaybookType = {
+      ...SAMPLE,
+      brand: { ...SAMPLE.brand, name: "  " },
+    };
+    const docs = serializeBrandPlaybook(noName);
+    const brand = docs.find((d) => d.documentId === "brand");
+    expect(brand!.title).toContain("Brand —");
   });
 });

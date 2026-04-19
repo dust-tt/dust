@@ -129,7 +129,7 @@ export function BrandbookCreationModal({
       // Step 2 — Upload each document from the serializer sequentially (BACK7).
       const documents = serializeBrandPlaybook(playbook);
       for (const doc of documents) {
-        await fetch(
+        const uploadResponse = await fetch(
           `/api/w/${owner.sId}/spaces/${space.sId}/data_sources/${dataSource.sId}/documents/${doc.documentId}`,
           {
             method: "POST",
@@ -142,6 +142,14 @@ export function BrandbookCreationModal({
             }),
           }
         );
+
+        if (!uploadResponse.ok) {
+          const body = await uploadResponse.json();
+          throw new Error(
+            body.error?.message ??
+              `Failed to upload document "${doc.title}".`
+          );
+        }
       }
 
       onCreated(dataSourceName);
@@ -163,7 +171,7 @@ export function BrandbookCreationModal({
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+    <Sheet open={isOpen} onOpenChange={(open: boolean) => !open && handleClose()}>
       <SheetContent size="xl">
         <SheetHeader>
           <SheetTitle>
@@ -184,7 +192,7 @@ export function BrandbookCreationModal({
 
           <Tabs
             value={activeTab}
-            onValueChange={(v) => setActiveTab(v as TabId)}
+            onValueChange={(v: string) => setActiveTab(v as TabId)}
           >
             <TabsList>
               {TABS.map((tab) => (
@@ -204,7 +212,9 @@ export function BrandbookCreationModal({
                   <Input
                     label="Brand name *"
                     value={playbook.brand.name}
-                    onChange={(e) => updateBrand({ name: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      updateBrand({ name: e.target.value })
+                    }
                     placeholder="e.g. Acme Corp, PlayHub, Studio Noir…"
                   />
                   {dataSourceName && (
@@ -220,7 +230,9 @@ export function BrandbookCreationModal({
                 <Input
                   label="Tagline"
                   value={playbook.brand.tagline}
-                  onChange={(e) => updateBrand({ tagline: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    updateBrand({ tagline: e.target.value })
+                  }
                   placeholder="e.g. Your brand deserves better than DIY."
                 />
 
@@ -230,7 +242,9 @@ export function BrandbookCreationModal({
                   </p>
                   <TextArea
                     value={playbook.brand.mission}
-                    onChange={(e) => updateBrand({ mission: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                      updateBrand({ mission: e.target.value })
+                    }
                     placeholder="Describe what drives your brand and what you're here to do."
                     minRows={3}
                   />
@@ -242,7 +256,7 @@ export function BrandbookCreationModal({
                   </p>
                   <TextArea
                     value={playbook.brand.positioning}
-                    onChange={(e) =>
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                       updateBrand({ positioning: e.target.value })
                     }
                     placeholder="How do you stand out? What's your unique value proposition?"
@@ -281,7 +295,9 @@ export function BrandbookCreationModal({
                   </p>
                   <TextArea
                     value={playbook.voice.tone}
-                    onChange={(e) => updateVoice({ tone: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                      updateVoice({ tone: e.target.value })
+                    }
                     placeholder="How does your brand speak? e.g. 'Direct and warm. No corporate jargon. Short sentences.'"
                     minRows={3}
                   />
@@ -293,7 +309,7 @@ export function BrandbookCreationModal({
                   </p>
                   <TextArea
                     value={playbook.voice.keyMessages}
-                    onChange={(e) =>
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                       updateVoice({ keyMessages: e.target.value })
                     }
                     placeholder="Your main taglines and recurring messages."
@@ -307,7 +323,9 @@ export function BrandbookCreationModal({
                   </p>
                   <TextArea
                     value={playbook.voice.doList}
-                    onChange={(e) => updateVoice({ doList: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                      updateVoice({ doList: e.target.value })
+                    }
                     placeholder="One item per line. e.g.&#10;Use active voice&#10;Be concise"
                     minRows={3}
                   />
@@ -319,7 +337,9 @@ export function BrandbookCreationModal({
                   </p>
                   <TextArea
                     value={playbook.voice.dontList}
-                    onChange={(e) => updateVoice({ dontList: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                      updateVoice({ dontList: e.target.value })
+                    }
                     placeholder="One item per line. e.g.&#10;Avoid jargon&#10;Don't use passive voice"
                     minRows={3}
                   />
