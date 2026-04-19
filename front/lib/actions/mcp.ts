@@ -283,7 +283,7 @@ export function isMCPApproveExecutionEvent(
   );
 }
 
-function isToolPersonalAuthRequiredEvent(
+export function isToolPersonalAuthRequiredEvent(
   event: unknown
 ): event is ToolPersonalAuthRequiredEvent {
   return (
