@@ -16,7 +16,7 @@ import {
 import type { OAuthProvider } from "@app/types/oauth/lib";
 import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { ActionCardBlock, Button } from "@dust-tt/sparkle";
+import { ActionCardBlock, Button, CheckIcon, XMarkIcon } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
 interface MCPServerPersonalAuthenticationRequiredProps {
@@ -60,7 +60,7 @@ export function MCPServerPersonalAuthenticationRequired({
   const overridableInputs = getOverridablePersonalAuthInputs({ provider });
 
   const visual = mcpServer?.icon
-    ? getAvatarFromIcon(mcpServer.icon, "sm")
+    ? getAvatarFromIcon(mcpServer.icon, "xs")
     : undefined;
 
   const serverDisplayName =
@@ -141,31 +141,31 @@ export function MCPServerPersonalAuthenticationRequired({
     cardState = "disabled";
   } else if (isConnected) {
     cardState = "accepted";
-  } else if (isConnecting || isResolving) {
+  } else if (isConnecting) {
     cardState = "disabled";
   } else {
     cardState = "active";
   }
 
-  const title = serverDisplayName ?? "Personal authentication required";
+  const title = `${serverDisplayName ?? "Personal"} authentication`;
 
   // Build description based on current state.
   let description: React.ReactNode;
   if (!isTriggeredByCurrentUser) {
     description = (
-      <>
+      <div className="text-sm">
         {`${triggeringUser?.fullName} is trying to use ${serverDisplayName ?? "a tool"}.`}
         <br />
         <span className="font-semibold">
           Waiting on them to connect their account to continue...
         </span>
-      </>
+      </div>
     );
   } else if (connectionError) {
     description = connectionError;
   } else if (!isConnected) {
     description = (
-      <>
+      <div className="text-sm">
         {`Your agent is trying to use ${serverDisplayName ?? "a tool"}.`}
         <br />
         <span className="font-semibold">Connect your account to continue.</span>
@@ -184,35 +184,34 @@ export function MCPServerPersonalAuthenticationRequired({
             />
           </div>
         )}
-      </>
+      </div>
     );
   }
 
   // Build actions — only show Connect/Retry button for current user when not yet connected.
   const actions =
     isTriggeredByCurrentUser && !isConnected && mcpServer ? (
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-3">
         <Button
           variant="outline"
-          size="sm"
-          label="Skip this tool"
-          disabled={isConnecting || isResolving}
-          isLoading={isResolving}
+          size="xs"
+          label="Skip"
+          icon={XMarkIcon}
+          disabled={isConnecting}
           onClick={() => void onSkipClick()}
         />
         <Button
           variant="highlight"
-          size="sm"
+          size="xs"
           label={connectionError ? "Retry" : "Connect"}
+          icon={CheckIcon}
           disabled={
             isConnecting ||
-            isResolving ||
             !areCredentialOverridesValid(
               overridableInputs,
               overriddenCredentials
             )
           }
-          isLoading={isConnecting || isResolving}
           onClick={() => void onConnectClick(mcpServer)}
         />
       </div>
@@ -226,6 +225,7 @@ export function MCPServerPersonalAuthenticationRequired({
         title={title}
         visual={visual}
         state={cardState}
+        size="compact"
         acceptedTitle="Connected successfully"
         description={description}
         actions={actions}
