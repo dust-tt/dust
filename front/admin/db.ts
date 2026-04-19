@@ -40,6 +40,7 @@ import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
+import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { WebhookSourceModel } from "@app/lib/models/agent/triggers/webhook_source";
 import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
@@ -166,6 +167,7 @@ export function loadAllModels() {
     ConversationModel,
     ConversationParticipantModel,
     UserConversationReadsModel,
+    WakeUpModel,
     DataSourceModel,
     DataSourceViewModel,
     RunModel,
