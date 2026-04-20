@@ -6473,7 +6473,7 @@
                   "type": "object",
                   "properties": {
                     "conversation": {
-                      "$ref": "#/components/schemas/PrivateConversationDetail"
+                      "$ref": "#/components/schemas/PrivateConversation"
                     }
                   }
                 }
@@ -9660,95 +9660,6 @@
             "$ref": "#/components/schemas/PrivateConversationForkUser"
           }
         }
-      },
-      "PrivateConversationForkUser": {
-        "type": "object",
-        "properties": {
-          "sId": {
-            "type": "string"
-          },
-          "id": {
-            "type": "integer"
-          },
-          "createdAt": {
-            "type": "integer"
-          },
-          "provider": {
-            "type": "string",
-            "nullable": true,
-            "enum": [
-              "auth0",
-              "github",
-              "google",
-              "okta",
-              "samlp",
-              "waad"
-            ]
-          },
-          "username": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string"
-          },
-          "firstName": {
-            "type": "string"
-          },
-          "lastName": {
-            "type": "string",
-            "nullable": true
-          },
-          "fullName": {
-            "type": "string"
-          },
-          "image": {
-            "type": "string",
-            "nullable": true
-          },
-          "lastLoginAt": {
-            "type": "integer",
-            "nullable": true
-          }
-        }
-      },
-      "PrivateConversationForkedChild": {
-        "type": "object",
-        "properties": {
-          "childConversationId": {
-            "type": "string"
-          },
-          "childConversationTitle": {
-            "type": "string",
-            "nullable": true
-          },
-          "sourceMessageId": {
-            "type": "string"
-          },
-          "branchedAt": {
-            "type": "integer"
-          },
-          "user": {
-            "$ref": "#/components/schemas/PrivateConversationForkUser"
-          }
-        }
-      },
-      "PrivateConversationDetail": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/PrivateConversation"
-          },
-          {
-            "type": "object",
-            "properties": {
-              "forkedChildren": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/PrivateConversationForkedChild"
-                }
-              }
-            }
-          }
-        ]
       },
       "PrivateFullConversation": {
         "type": "object",
