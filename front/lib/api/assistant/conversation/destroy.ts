@@ -22,12 +22,12 @@ import { ContentFragmentResource } from "@app/lib/resources/content_fragment_res
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import {
   ProjectTodoConversationModel,
   ProjectTodoSourceModel,
 } from "@app/lib/resources/storage/models/project_todo";
+import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
