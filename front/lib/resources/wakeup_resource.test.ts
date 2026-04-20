@@ -22,7 +22,10 @@ describe("WakeUpResource", () => {
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "admin" });
 
-    auth = await Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId);
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
 
     agentConfiguration = await AgentConfigurationFactory.createTestAgent(auth);
 
@@ -119,13 +122,15 @@ describe("WakeUpResource", () => {
     const cancelResult = await second.value.cancel(auth);
     expect(cancelResult.isOk()).toBe(true);
 
-    const otherAgent = await AgentConfigurationFactory.createTestAgent(
-      secondWorkspaceAuth
+    const otherAgent =
+      await AgentConfigurationFactory.createTestAgent(secondWorkspaceAuth);
+    const otherConversation = await ConversationFactory.create(
+      secondWorkspaceAuth,
+      {
+        agentConfigurationId: otherAgent.sId,
+        messagesCreatedAt: [],
+      }
     );
-    const otherConversation = await ConversationFactory.create(secondWorkspaceAuth, {
-      agentConfigurationId: otherAgent.sId,
-      messagesCreatedAt: [],
-    });
     const otherConversationResource = await ConversationResource.fetchById(
       secondWorkspaceAuth,
       otherConversation.sId

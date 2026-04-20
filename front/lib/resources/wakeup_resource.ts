@@ -1,18 +1,17 @@
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import type {
   WakeUpScheduleType,
   WakeUpStatus,
 } from "@app/lib/resources/storage/models/wakeup";
+import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -274,6 +273,8 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       return new Ok(undefined);
     }
 
-    return new Err(new Error("Wake-up Temporal cancellation is not implemented yet."));
+    return new Err(
+      new Error("Wake-up Temporal cancellation is not implemented yet.")
+    );
   }
 }
