@@ -65,8 +65,6 @@ export async function* runToolWithStreaming(
   | ToolAskUserQuestionEvent,
   void
 > {
-  const owner = auth.getNonNullableWorkspace();
-
   const { toolConfiguration, status, augmentedInputs: inputs } = action;
 
   const signal = options?.signal;
@@ -81,8 +79,6 @@ export async function* runToolWithStreaming(
   const tags = [
     `action:${toolConfiguration.name}`,
     `mcp_server:${toolConfiguration.mcpServerName}`,
-    `workspace:${owner.sId}`,
-    `workspace_name:${owner.name}`,
   ];
 
   const agentLoopRunContext: AgentLoopRunContextType = {
