@@ -19,7 +19,7 @@ makeScript(
       type: "number" as const,
       demandOption: true,
     },
-    conversationSid: {
+    conversationId: {
       alias: "c",
       describe:
         "Optional conversation sId to fix (if omitted, fixes all affected conversations)",
@@ -27,7 +27,7 @@ makeScript(
       demandOption: false,
     },
   },
-  async ({ spaceId, conversationSid, execute }, logger) => {
+  async ({ spaceId, conversationId, execute }, logger) => {
     // Step 1: Validate that the space is deleted (or doesn't exist at all).
     const [activeSpace] =
       // biome-ignore lint/plugin/noRawSql: script uses raw SQL
@@ -45,8 +45,8 @@ makeScript(
     }
 
     // Step 2: Find affected conversations.
-    const conversationFilter = conversationSid
-      ? `AND c."sId" = :conversationSid`
+    const conversationFilter = conversationId
+      ? `AND c."sId" = :conversationId`
       : "";
 
     const affected =
@@ -62,14 +62,14 @@ makeScript(
         {
           replacements: {
             spaceId,
-            ...(conversationSid ? { conversationSid } : {}),
+            ...(conversationId ? { conversationId } : {}),
           },
           type: QueryTypes.SELECT,
         }
       );
 
     logger.info(
-      { count: affected.length, spaceId, conversationSid, execute },
+      { count: affected.length, spaceId, conversationId, execute },
       execute
         ? `Found ${affected.length} conversation(s) to fix`
         : `[DRY RUN] Found ${affected.length} conversation(s) that would be fixed`
@@ -89,7 +89,7 @@ makeScript(
 
       logger.info(
         {
-          conversationSid: conversation.sId,
+          conversationId: conversation.sId,
           workspaceId: conversation.workspaceId,
           originalSpaceIds: conversation.requestedSpaceIds,
           newSpaceIds,
@@ -117,7 +117,7 @@ makeScript(
         } catch (error) {
           logger.error(
             {
-              conversationSid: conversation.sId,
+              conversationId: conversation.sId,
               error: error instanceof Error ? error.message : String(error),
             },
             "Failed to update conversation"

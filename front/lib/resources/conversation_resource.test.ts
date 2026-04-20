@@ -679,9 +679,9 @@ describe("listSkillReinforcementConversations", () => {
       );
 
     expect(results).toHaveLength(2);
-    const resultSIds = results.map((r) => r.sId).sort();
-    const expectedSIds = [aggregationConvo.sId, analysisConvo.sId].sort();
-    expect(resultSIds).toEqual(expectedSIds);
+    const resultIds = results.map((r) => r.sId).sort();
+    const expectedIds = [aggregationConvo.sId, analysisConvo.sId].sort();
+    expect(resultIds).toEqual(expectedIds);
   });
 
   it("should filter conversations by after date when provided", async () => {
@@ -3051,12 +3051,12 @@ describe("Space Handling", () => {
       );
 
       // Try to create a conversation - should fail before creating the object
-      const testSId = generateRandomModelSId();
+      const testId = generateRandomModelSId();
       const attempt = ConversationResource.makeNew(
         userAuth,
         {
           title: "Should not be created",
-          sId: testSId,
+          sId: testId,
           spaceId: restrictedSpace.id,
           requestedSpaceIds: [],
         },
@@ -3071,7 +3071,7 @@ describe("Space Handling", () => {
       // (the conversation should not exist in the database)
       const fetchedConversations = await ConversationResource.listAll(userAuth);
       const foundConversation = fetchedConversations.some(
-        (c) => c.sId === testSId
+        (c) => c.sId === testId
       );
       expect(foundConversation).toBe(false);
     });
@@ -3095,14 +3095,14 @@ describe("Space Handling", () => {
         workspace.sId
       );
 
-      const testSId = generateRandomModelSId();
+      const testId = generateRandomModelSId();
 
       // Attempt should fail at validation, not at creation
       const attempt = ConversationResource.makeNew(
         otherUserAuth,
         {
           title: "Should not be created",
-          sId: testSId,
+          sId: testId,
           spaceId: restrictedSpace.id,
           requestedSpaceIds: [],
         },
@@ -3117,7 +3117,7 @@ describe("Space Handling", () => {
       const fetchedConversations =
         await ConversationResource.listAll(otherUserAuth);
       const foundConversation = fetchedConversations.some(
-        (c) => c.sId === testSId
+        (c) => c.sId === testId
       );
       expect(foundConversation).toBe(false);
     });
@@ -5790,9 +5790,9 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
 
     expect(page1.conversations).toHaveLength(2);
     expect(page1.hasMore).toBe(true);
-    const page1Sids = page1.conversations.map((c) => c.sId);
-    expect(page1Sids).toContain(convo4.sId);
-    expect(page1Sids).toContain(convo3.sId);
+    const page1Ids = page1.conversations.map((c) => c.sId);
+    expect(page1Ids).toContain(convo4.sId);
+    expect(page1Ids).toContain(convo3.sId);
 
     // Second page using lastValue
     const page2 = await ConversationResource.listConversationsInSpacePaginated(
@@ -5805,12 +5805,12 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
 
     expect(page2.conversations).toHaveLength(2);
     expect(page2.hasMore).toBe(false);
-    const page2Sids = page2.conversations.map((c) => c.sId);
-    expect(page2Sids).toContain(convo2.sId);
-    expect(page2Sids).toContain(convo1.sId);
+    const page2Ids = page2.conversations.map((c) => c.sId);
+    expect(page2Ids).toContain(convo2.sId);
+    expect(page2Ids).toContain(convo1.sId);
 
     // No overlap between pages
-    expect(page1Sids.some((sId) => page2Sids.includes(sId))).toBe(false);
+    expect(page1Ids.some((sId) => page2Ids.includes(sId))).toBe(false);
   });
 
   it("should apply updatedSince on every page when using lastValue cursor", async () => {
@@ -5855,7 +5855,7 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
     }
 
     // Collect all conversations through pagination
-    const allSids: string[] = [];
+    const allIds: string[] = [];
     let lastValue: string | undefined;
     let iterations = 0;
     const maxIterations = 10;
@@ -5870,7 +5870,7 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
           }
         );
 
-      allSids.push(...result.conversations.map((c) => c.sId));
+      allIds.push(...result.conversations.map((c) => c.sId));
 
       if (!result.hasMore) {
         break;
@@ -5880,9 +5880,9 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
     }
 
     // Should have all 5 conversations
-    expect(allSids).toHaveLength(5);
+    expect(allIds).toHaveLength(5);
     for (const convo of convos) {
-      expect(allSids).toContain(convo.sId);
+      expect(allIds).toContain(convo.sId);
     }
   });
 

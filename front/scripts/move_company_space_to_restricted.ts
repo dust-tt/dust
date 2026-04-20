@@ -185,8 +185,8 @@ makeScript(
 
       // If group management mode, link provisioned groups.
       if (managementMode === "group" && groupIds) {
-        const groupSIds = groupIds.split(",").map((id) => id.trim());
-        const groupsRes = await GroupResource.fetchByIds(auth, groupSIds);
+        const groupIdsArray = groupIds.split(",").map((id) => id.trim());
+        const groupsRes = await GroupResource.fetchByIds(auth, groupIdsArray);
         if (groupsRes.isErr()) {
           throw new Error(
             `Failed to fetch provisioned groups: ${groupsRes.error.message}`

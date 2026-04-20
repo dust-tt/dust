@@ -167,7 +167,7 @@ async function processSkillsForWorkspace(
           {
             skillId: skill.id,
             skillName: skill.name,
-            workspaceSId: workspace.sId,
+            workspaceId: workspace.sId,
             error: {
               kind: "round-trip-mismatch",
               diff: roundTripMismatchDiff(

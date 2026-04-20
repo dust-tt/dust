@@ -63,10 +63,10 @@ describe("buildDiscoverToolsInstructions", () => {
 
       // Extract sIds and their positions in the output.
       const sIds = toolsets.map((t) => t.sId);
-      const sortedSIds = [...sIds].sort((a, b) => a.localeCompare(b));
+      const sortedIds = [...sIds].sort((a, b) => a.localeCompare(b));
 
       // Verify they appear in alphabetical order by sId.
-      const positions = sortedSIds.map((sId) => result.indexOf(sId));
+      const positions = sortedIds.map((sId) => result.indexOf(sId));
       for (let i = 0; i < positions.length - 1; i++) {
         expect(positions[i]).toBeLessThan(positions[i + 1]);
       }
@@ -112,11 +112,11 @@ describe("buildDiscoverToolsInstructions", () => {
       expect(betaPos).toBeLessThan(zebraPos);
 
       // Within Alphas, the one with smaller sId should come first.
-      const sortedAlphaSIds = [alpha1.sId, alpha2.sId].sort((a, b) =>
+      const sortedAlphaIds = [alpha1.sId, alpha2.sId].sort((a, b) =>
         a.localeCompare(b)
       );
-      const firstAlphaPos = result.indexOf(sortedAlphaSIds[0]);
-      const secondAlphaPos = result.indexOf(sortedAlphaSIds[1]);
+      const firstAlphaPos = result.indexOf(sortedAlphaIds[0]);
+      const secondAlphaPos = result.indexOf(sortedAlphaIds[1]);
       expect(firstAlphaPos).toBeLessThan(secondAlphaPos);
     });
   });

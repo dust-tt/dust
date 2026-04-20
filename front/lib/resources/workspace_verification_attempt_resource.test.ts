@@ -234,11 +234,11 @@ describe("WorkspaceVerificationAttemptResource", () => {
       const attempt = await WorkspaceVerificationAttemptFactory.create(authW1);
       expect(attempt.attemptNumber).toBe(1);
 
-      const newSid = `VA${faker.string.alphanumeric(32)}`;
-      await attempt.recordNewAttempt(newSid);
+      const newId = `VA${faker.string.alphanumeric(32)}`;
+      await attempt.recordNewAttempt(newId);
 
       expect(attempt.attemptNumber).toBe(2);
-      expect(attempt.twilioVerificationSid).toBe(newSid);
+      expect(attempt.twilioVerificationSid).toBe(newId);
     });
 
     it("should increment multiple times", async () => {

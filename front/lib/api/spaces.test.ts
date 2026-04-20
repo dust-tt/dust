@@ -100,9 +100,9 @@ describe("createSpaceAndGroup", () => {
         // Verify members were added
         if (spaceGroup) {
           const members = await spaceGroup.getAllMembers(adminAuth);
-          const memberSIds = members.map((m) => m.sId);
-          expect(memberSIds).toContain(user1.sId);
-          expect(memberSIds).toContain(user2.sId);
+          const memberIds = members.map((m) => m.sId);
+          expect(memberIds).toContain(user1.sId);
+          expect(memberIds).toContain(user2.sId);
         }
       }
     });

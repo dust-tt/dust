@@ -151,9 +151,9 @@ describe("SpaceResource", () => {
         );
         expect(updatedSpace).not.toBeNull();
         const members = await regularGroup.getAllMembers(adminAuth);
-        const memberSIds = members.map((m) => m.sId);
-        expect(memberSIds).toContain(user1.sId);
-        expect(memberSIds).toContain(user2.sId);
+        const memberIds = members.map((m) => m.sId);
+        expect(memberIds).toContain(user1.sId);
+        expect(memberIds).toContain(user2.sId);
       });
 
       it("should update managementMode to manual when switching from group mode", async () => {
@@ -784,14 +784,14 @@ describe("SpaceResource", () => {
 
           // Verify members were added
           const members = await projectMemberGroup.getActiveMembers(adminAuth);
-          const memberSIds = members.map((m) => m.sId);
-          expect(memberSIds).toContain(user1.sId);
-          expect(memberSIds).toContain(user2.sId);
+          const memberIds = members.map((m) => m.sId);
+          expect(memberIds).toContain(user1.sId);
+          expect(memberIds).toContain(user2.sId);
 
           // Verify editor is still in the editor group
           const editors = await projectEditorGroup.getActiveMembers(adminAuth);
-          const editorSIds = editors.map((m) => m.sId);
-          expect(editorSIds).toContain(editorUser.sId);
+          const editorIds = editors.map((m) => m.sId);
+          expect(editorIds).toContain(editorUser.sId);
         });
       });
 

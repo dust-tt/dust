@@ -8,7 +8,7 @@ import { makeRetrieveTranscriptWorkflowId } from "@app/temporal/labs/transcripts
 import { WorkflowNotFoundError } from "@temporalio/client";
 
 type MigrationStatus = {
-  configSId: string;
+  configId: string;
   workspaceId: number;
   workspaceName: string;
   provider: string;
@@ -73,7 +73,7 @@ async function checkOldWorkflowStatus(
       {
         error: e,
         workflowId,
-        configSId: config.sId,
+        configId: config.sId,
       },
       "Error checking old workflow status"
     );
@@ -99,7 +99,7 @@ async function terminateOldWorkflow(
       {
         workflowId,
         runId: description.runId,
-        configSId: config.sId,
+        configId: config.sId,
         historyLength: description.historyLength,
       },
       "Terminated old cron workflow"
@@ -109,7 +109,7 @@ async function terminateOldWorkflow(
     if (e instanceof WorkflowNotFoundError) {
       // Already not running, that's fine
       logger.info(
-        { workflowId, configSId: config.sId },
+        { workflowId, configId: config.sId },
         "Workflow not found (already stopped)"
       );
       return true;
@@ -118,7 +118,7 @@ async function terminateOldWorkflow(
       {
         error: e,
         workflowId,
-        configSId: config.sId,
+        configId: config.sId,
       },
       "Failed to terminate old workflow"
     );
@@ -136,7 +136,7 @@ async function migrateConfiguration(
     MigrationStatus,
     "oldWorkflowStatus" | "migrationStatus"
   > = {
-    configSId: config.sId,
+    configId: config.sId,
     workspaceId: config.workspaceId,
     workspaceName: workspace.name,
     provider: config.provider,
