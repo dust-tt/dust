@@ -1205,7 +1205,7 @@ describe("createConversationFork", () => {
     getContentFragmentBlobSpy.mockRestore();
   });
 
-  it("inherits the parent's requested spaces so the fork does not broaden visibility", async () => {
+  it("drops parent-only requested spaces that are not carried into the fork", async () => {
     const {
       auth: initialAuth,
       globalSpace,
@@ -1272,6 +1272,84 @@ describe("createConversationFork", () => {
       result.value
     );
 
+    expect(childConversation.requestedSpaceIds).toEqual([globalSpace.sId]);
+
+    const childConversationForOtherUser = await ConversationResource.fetchById(
+      otherAuth,
+      childConversation.sId
+    );
+    expect(childConversationForOtherUser?.sId).toBe(childConversation.sId);
+  });
+
+  it("includes copied skill permissions in the child conversation requirements", async () => {
+    const {
+      auth: initialAuth,
+      globalSpace,
+      user,
+      workspace,
+    } = await createPrivateApiMockRequest({ role: "admin" });
+
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const addMembersRes = await restrictedSpace.addMembers(initialAuth, {
+      userIds: [user.sId],
+    });
+    expect(addMembersRes.isOk()).toBe(true);
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+    const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+
+    const parentConversation = await createConversation(auth, {
+      title: "Parent conversation",
+      visibility: "unlisted",
+      spaceId: globalSpace.id,
+    });
+    const restrictedSkill = await SkillFactory.create(auth, {
+      name: "Restricted skill",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    const upsertResult = await SkillResource.upsertConversationSkills(auth, {
+      conversationId: parentConversation.id,
+      skills: [restrictedSkill],
+      enabled: true,
+    });
+    expect(upsertResult.isOk()).toBe(true);
+
+    const userMessage = await createUserMessage(auth, {
+      conversation: parentConversation,
+      rank: 0,
+      content: "Continue with the same skills.",
+    });
+    const sourceMessage = await createAgentMessage(auth, {
+      conversation: parentConversation,
+      rank: 1,
+      parentId: userMessage.id,
+      status: "succeeded",
+    });
+
+    const result = await createConversationFork(auth, {
+      conversationId: parentConversation.sId,
+      sourceMessageId: sourceMessage.sId,
+    });
+
+    expect(result.isErr()).toBe(false);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    const childConversation = await fetchConversationOrThrow(
+      auth,
+      result.value
+    );
+
     expect(childConversation.requestedSpaceIds).toEqual([
       globalSpace.sId,
       restrictedSpace.sId,
@@ -1282,5 +1360,101 @@ describe("createConversationFork", () => {
       childConversation.sId
     );
     expect(childConversationForOtherUser).toBeNull();
+  });
+
+  it("includes carried content node permissions in the child conversation requirements", async () => {
+    const {
+      auth: initialAuth,
+      user,
+      workspace,
+    } = await createPrivateApiMockRequest({ role: "admin" });
+
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const addMembersRes = await restrictedSpace.addMembers(initialAuth, {
+      userIds: [user.sId],
+    });
+    expect(addMembersRes.isOk()).toBe(true);
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+    const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+
+    const parentConversation = await createConversation(auth, {
+      title: "Parent conversation",
+      visibility: "unlisted",
+      spaceId: null,
+    });
+    const restrictedDataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      restrictedSpace,
+      auth.user() ?? null
+    );
+    const getContentFragmentBlobSpy = mockContentNodeAttachments(
+      restrictedDataSourceView.id
+    );
+
+    let parentConversationWithContent = await fetchConversationOrThrow(
+      auth,
+      parentConversation.sId
+    );
+    const contentNodeResult = await postNewContentFragment(
+      auth,
+      parentConversationWithContent,
+      {
+        title: "Restricted note",
+        nodeId: "node_before_fork",
+        nodeDataSourceViewId: restrictedDataSourceView.sId,
+      },
+      null
+    );
+    expect(contentNodeResult.isOk()).toBe(true);
+
+    parentConversationWithContent = await fetchConversationOrThrow(
+      auth,
+      parentConversation.sId
+    );
+    const userMessage = await createUserMessage(auth, {
+      conversation: parentConversationWithContent,
+      rank: 1,
+      content: "Continue from the restricted note.",
+    });
+    const sourceMessage = await createAgentMessage(auth, {
+      conversation: parentConversationWithContent,
+      rank: 2,
+      parentId: userMessage.id,
+      status: "succeeded",
+    });
+
+    const result = await createConversationFork(auth, {
+      conversationId: parentConversation.sId,
+      sourceMessageId: sourceMessage.sId,
+    });
+
+    expect(result.isErr()).toBe(false);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    const childConversation = await fetchConversationOrThrow(
+      auth,
+      result.value
+    );
+
+    expect(childConversation.requestedSpaceIds).toEqual([restrictedSpace.sId]);
+
+    const childConversationForOtherUser = await ConversationResource.fetchById(
+      otherAuth,
+      childConversation.sId
+    );
+    expect(childConversationForOtherUser).toBeNull();
+
+    getContentFragmentBlobSpy.mockRestore();
   });
 });

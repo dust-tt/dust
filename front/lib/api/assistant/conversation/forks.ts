@@ -18,6 +18,7 @@ import { DustError } from "@app/lib/error";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -104,37 +105,22 @@ function getForkInitializationMessageContent(
 async function copyConversationMCPServerViews(
   auth: Authenticator,
   {
-    parentConversation,
     childConversation,
+    mcpServerViews,
     transaction,
   }: {
-    parentConversation: ConversationWithoutContentType;
     childConversation: ConversationWithoutContentType;
+    mcpServerViews: MCPServerViewResource[];
     transaction: Transaction;
   }
 ): Promise<Result<undefined, DustError<CreateConversationForkErrorCode>>> {
-  const parentMCPServerViews = await ConversationResource.fetchMCPServerViews(
-    auth,
-    parentConversation,
-    { onlyEnabled: true }
-  );
-
-  if (parentMCPServerViews.length === 0) {
-    return new Ok(undefined);
-  }
-
-  const readableMCPServerViews = await MCPServerViewResource.fetchByModelIds(
-    auth,
-    parentMCPServerViews.map((view) => view.mcpServerViewId)
-  );
-
-  if (readableMCPServerViews.length === 0) {
+  if (mcpServerViews.length === 0) {
     return new Ok(undefined);
   }
 
   const upsertResult = await ConversationResource.upsertMCPServerViews(auth, {
     conversation: childConversation,
-    mcpServerViews: readableMCPServerViews,
+    mcpServerViews,
     enabled: true,
     source: "conversation",
     agentConfigurationId: null,
@@ -156,21 +142,16 @@ async function copyConversationMCPServerViews(
 async function copyConversationSkills(
   auth: Authenticator,
   {
-    parentConversation,
     childConversation,
+    skills,
     transaction,
   }: {
-    parentConversation: ConversationWithoutContentType;
     childConversation: ConversationWithoutContentType;
+    skills: SkillResource[];
     transaction: Transaction;
   }
 ): Promise<Result<undefined, DustError<CreateConversationForkErrorCode>>> {
-  const parentSkills = await SkillResource.listEnabledByConversation(auth, {
-    conversation: parentConversation,
-    transaction,
-  });
-
-  if (parentSkills.length === 0) {
+  if (skills.length === 0) {
     return new Ok(undefined);
   }
 
@@ -178,7 +159,7 @@ async function copyConversationSkills(
     auth,
     {
       conversationId: childConversation.id,
-      skills: parentSkills,
+      skills,
       enabled: true,
     },
     { transaction }
@@ -194,6 +175,111 @@ async function copyConversationSkills(
   }
 
   return new Ok(undefined);
+}
+
+async function getConversationMCPServerViewsToCopy(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<MCPServerViewResource[]> {
+  const parentMCPServerViews = await ConversationResource.fetchMCPServerViews(
+    auth,
+    conversation,
+    { onlyEnabled: true }
+  );
+
+  if (parentMCPServerViews.length === 0) {
+    return [];
+  }
+
+  return MCPServerViewResource.fetchByModelIds(
+    auth,
+    parentMCPServerViews.map((view) => view.mcpServerViewId)
+  );
+}
+
+async function getConversationSkillsToCopy(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<SkillResource[]> {
+  return SkillResource.listEnabledByConversation(auth, {
+    conversation,
+  });
+}
+
+async function getForkAttachmentSpaceIds(
+  auth: Authenticator,
+  {
+    parentConversation,
+    sourceMessageRank,
+  }: {
+    parentConversation: ConversationType;
+    sourceMessageRank: number;
+  }
+): Promise<number[]> {
+  const parentConversationAtSource = filterConversationContentUpToRank(
+    parentConversation,
+    sourceMessageRank
+  );
+  const attachments = await listAttachments(auth, {
+    conversation: parentConversationAtSource,
+  });
+  const contentNodeDataSourceViewIds = Array.from(
+    new Set(
+      attachments
+        .filter(isContentNodeAttachmentType)
+        .map((attachment) => attachment.nodeDataSourceViewId)
+    )
+  );
+
+  if (contentNodeDataSourceViewIds.length === 0) {
+    return [];
+  }
+
+  const dataSourceViews = await DataSourceViewResource.fetchByIds(
+    auth,
+    contentNodeDataSourceViewIds
+  );
+
+  return Array.from(new Set(dataSourceViews.map((view) => view.space.id)));
+}
+
+async function getForkRequestedSpaceIds(
+  auth: Authenticator,
+  {
+    parentConversation,
+    parentConversationWithContent,
+    sourceMessageRank,
+    mcpServerViews,
+    skills,
+  }: {
+    parentConversation: ConversationResource;
+    parentConversationWithContent: ConversationType;
+    sourceMessageRank: number;
+    mcpServerViews: MCPServerViewResource[];
+    skills: SkillResource[];
+  }
+): Promise<number[]> {
+  const parentSpace = parentConversation.space;
+
+  if (parentSpace?.isProject()) {
+    return [parentSpace.id];
+  }
+
+  // Conversation-owned files inherit the child conversation ACL. Only copied setup and content
+  // nodes contribute additional space requirements.
+  const contentNodeSpaceIds = await getForkAttachmentSpaceIds(auth, {
+    parentConversation: parentConversationWithContent,
+    sourceMessageRank,
+  });
+
+  return Array.from(
+    new Set([
+      ...(parentSpace ? [parentSpace.id] : []),
+      ...mcpServerViews.map((view) => view.space.id),
+      ...skills.flatMap((skill) => skill.requestedSpaceIds),
+      ...contentNodeSpaceIds,
+    ])
+  );
 }
 
 async function createForkInitializationMessage(
@@ -489,24 +575,57 @@ export async function createConversationFork(
     );
   }
 
+  const sourceMessage = await ConversationResource.resolveForkSourceMessage(
+    auth,
+    {
+      conversationId: parentConversation.id,
+      sourceMessageId,
+    }
+  );
+
+  if (sourceMessage.isErr()) {
+    return new Err(
+      new DustError("invalid_request_error", sourceMessage.error.message)
+    );
+  }
+
+  const parentConversationWithContent = await getConversation(
+    auth,
+    conversationId
+  );
+  if (parentConversationWithContent.isErr()) {
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        parentConversationId: conversationId,
+        error: parentConversationWithContent.error,
+      },
+      "Failed to load parent conversation for fork preparation."
+    );
+
+    return new Err(
+      new DustError(
+        "internal_error",
+        "Failed to prepare the conversation fork."
+      )
+    );
+  }
+
+  const [mcpServerViewsToCopy, skillsToCopy] = await Promise.all([
+    getConversationMCPServerViewsToCopy(auth, parentConversation.toJSON()),
+    getConversationSkillsToCopy(auth, parentConversation.toJSON()),
+  ]);
+  const requestedSpaceIds = await getForkRequestedSpaceIds(auth, {
+    parentConversation,
+    parentConversationWithContent: parentConversationWithContent.value,
+    sourceMessageRank: sourceMessage.value.rank,
+    mcpServerViews: mcpServerViewsToCopy,
+    skills: skillsToCopy,
+  });
+
   const branchedAt = new Date();
 
   const childConversationId = await withTransaction(async (transaction) => {
-    const sourceMessage = await ConversationResource.resolveForkSourceMessage(
-      auth,
-      {
-        conversationId: parentConversation.id,
-        sourceMessageId,
-        transaction,
-      }
-    );
-
-    if (sourceMessage.isErr()) {
-      return new Err(
-        new DustError("invalid_request_error", sourceMessage.error.message)
-      );
-    }
-
     const childConversation = await ConversationResource.makeNew(
       auth,
       {
@@ -516,7 +635,7 @@ export async function createConversationFork(
         depth: parentConversation.depth + 1,
         triggerId: null,
         spaceId: parentConversation.space?.id ?? null,
-        requestedSpaceIds: [...parentConversation.requestedSpaceIds],
+        requestedSpaceIds,
         metadata: {},
       },
       parentConversation.space,
@@ -526,8 +645,8 @@ export async function createConversationFork(
     const copyMCPServerViewsResult = await copyConversationMCPServerViews(
       auth,
       {
-        parentConversation: parentConversation.toJSON(),
         childConversation: childConversation.toJSON(),
+        mcpServerViews: mcpServerViewsToCopy,
         transaction,
       }
     );
@@ -537,8 +656,8 @@ export async function createConversationFork(
     }
 
     const copySkillsResult = await copyConversationSkills(auth, {
-      parentConversation: parentConversation.toJSON(),
       childConversation: childConversation.toJSON(),
+      skills: skillsToCopy,
       transaction,
     });
 
@@ -598,23 +717,6 @@ export async function createConversationFork(
     );
 
     return new Ok(childConversationId.value.childConversationId);
-  }
-
-  const parentConversationWithContent = await getConversation(
-    auth,
-    conversationId
-  );
-  if (parentConversationWithContent.isErr()) {
-    logger.error(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        parentConversationId: conversationId,
-        childConversationId: childConversation.value.sId,
-        error: parentConversationWithContent.error,
-      },
-      "Failed to reload parent conversation for fork attachment carryover."
-    );
-    return new Ok(childConversation.value.sId);
   }
 
   await carryOverConversationAttachments(auth, {
