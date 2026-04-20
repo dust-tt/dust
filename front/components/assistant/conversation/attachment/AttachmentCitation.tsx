@@ -115,8 +115,11 @@ export function AttachmentCitation({
           ? {
               onClick: (e: React.MouseEvent<HTMLDivElement>) => {
                 e.preventDefault();
+                if (!attachmentCitation.fileId) {
+                  return;
+                }
                 setPreviewFile({
-                  sId: attachmentCitation.fileId as string,
+                  sId: attachmentCitation.fileId,
                   fileName: attachmentCitation.title,
                   contentType: attachmentCitation.contentType,
                 });
