@@ -1,6 +1,9 @@
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetConversationResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
-import type { ConversationError } from "@app/types/assistant/conversation";
+import type {
+  ConversationError,
+  ConversationWithoutContentType,
+} from "@app/types/assistant/conversation";
 import { isAPIErrorResponse } from "@app/types/error";
 import type { Fetcher } from "swr";
 
@@ -13,7 +16,7 @@ export function useConversation({
   workspaceId: string;
   options?: { disabled: boolean };
 }): {
-  conversation?: GetConversationResponseBody["conversation"];
+  conversation?: ConversationWithoutContentType;
   isConversationLoading: boolean;
   conversationError: ConversationError | null;
   mutateConversation: ReturnType<
