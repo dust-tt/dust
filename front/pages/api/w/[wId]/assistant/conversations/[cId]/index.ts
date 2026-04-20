@@ -183,31 +183,6 @@ export type PatchConversationResponseBody = {
   success: boolean;
 };
 
-async function enrichForkedFromParentConversationTitle(
-  auth: Authenticator,
-  conversation: ConversationWithoutContentType
-): Promise<ConversationWithoutContentType> {
-  if (!conversation.forkedFrom) {
-    return conversation;
-  }
-
-  const parentConversation = await ConversationResource.fetchById(
-    auth,
-    conversation.forkedFrom.parentConversationId
-  );
-  if (!parentConversation) {
-    return conversation;
-  }
-
-  return {
-    ...conversation,
-    forkedFrom: {
-      ...conversation.forkedFrom,
-      parentConversationTitle: parentConversation.title,
-    },
-  };
-}
-
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
@@ -233,6 +208,7 @@ async function handler(
       const conversationRes =
         await ConversationResource.fetchConversationWithoutContent(auth, cId, {
           includeForkedChildrenInfo: true,
+          includeForkedFromParentConversationTitle: true,
         });
 
       if (conversationRes.isErr()) {
@@ -245,10 +221,7 @@ async function handler(
         return apiErrorForConversation(req, res, error);
       }
 
-      const conversation = await enrichForkedFromParentConversationTitle(
-        auth,
-        conversationRes.value
-      );
+      const conversation = conversationRes.value;
 
       void emitAuditLogEvent({
         auth,

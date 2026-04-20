@@ -95,12 +95,11 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
 
     const chipLabel =
       forkedFrom.parentConversationTitle ?? UNTITLED_CONVERSATION_TITLE;
-    const tooltipLabel = `Branched from '${chipLabel}'`;
 
     return (
       <div className="flex h-9 items-center">
         <Tooltip
-          label={tooltipLabel}
+          label={`Branched from '${chipLabel}'`}
           tooltipTriggerAsChild
           trigger={
             <span className="inline-flex h-9 items-center">
