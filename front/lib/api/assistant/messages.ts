@@ -655,7 +655,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       const userMessage = parentMessage.userMessage;
       assert(!!userMessage, "Parent message must be a userMessage.");
 
-      let parentAgentMessage: MessageModel | null = null;
+      let parentAgentMessage: Pick<MessageModel, "sId"> | null = null;
 
       if (
         userMessage.agenticMessageType === "agent_handover" &&
@@ -663,6 +663,19 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       ) {
         parentAgentMessage =
           messagesBySId.get(userMessage.agenticOriginMessageId) ?? null;
+
+        // Fallback to the DB when the origin message isn't in the current batch
+        // (e.g. single-message renders). For `agent_handover`, the origin
+        // always lives in the same conversation as the child, so scope by
+        // conversationId too. Only sId is needed downstream.
+        parentAgentMessage ??= await MessageModel.findOne({
+          attributes: ["sId"],
+          where: {
+            sId: userMessage.agenticOriginMessageId,
+            workspaceId: auth.getNonNullableWorkspace().id,
+            conversationId: message.conversationId,
+          },
+        });
       }
 
       const richMentions = getRichMentionsWithStatusForMessage(
