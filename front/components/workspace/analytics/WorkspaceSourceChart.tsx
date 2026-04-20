@@ -65,17 +65,27 @@ export function WorkspaceSourceChart({
           isAnimationActive={false}
           cursor={false}
           wrapperStyle={{ outline: "none", zIndex: 50 }}
-          content={({ active }) => {
+          content={({ active, payload }) => {
             if (!active || data.length === 0) {
               return null;
             }
+            const rawOrigin = payload?.[0]?.payload?.origin;
+            const activeOrigin =
+              typeof rawOrigin === "string" ? rawOrigin : undefined;
             const rows = data.map((d) => ({
+              key: d.origin,
               label: d.label,
               value: d.count.toLocaleString(),
               percent: d.percent,
               colorClassName: getSourceColor(d.origin),
             }));
-            return <ChartTooltipCard title="Source breakdown" rows={rows} />;
+            return (
+              <ChartTooltipCard
+                title="Source breakdown"
+                rows={rows}
+                activeKey={activeOrigin}
+              />
+            );
           }}
           contentStyle={{
             background: "transparent",
