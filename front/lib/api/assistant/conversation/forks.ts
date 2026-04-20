@@ -319,11 +319,12 @@ async function addFileToConversationDatasource(
     childConversationDataSource: DataSourceResource | null;
   }
 ): Promise<DataSourceResource | null> {
-  if (
-    !carriedFile ||
-    carriedFile.useCaseMetadata?.skipDataSourceIndexing ||
-    !isFileTypeUpsertableForUseCase(carriedFile)
-  ) {
+  const shouldCopyFileToDatasource =
+    !!carriedFile &&
+    !carriedFile.useCaseMetadata?.skipDataSourceIndexing &&
+    isFileTypeUpsertableForUseCase(carriedFile);
+
+  if (!shouldCopyFileToDatasource) {
     return childConversationDataSource;
   }
 
