@@ -400,6 +400,9 @@ export function getConversationUrlAccessMode(
   return isConversationUrlAccessMode(accessMode) ? accessMode : null;
 }
 
+/**
+ * @swaggerschema PrivateConversationForkedFrom (swagger_private_schemas.ts)
+ */
 export type ConversationForkedFromType = {
   parentConversationId: string;
   parentConversationTitle?: string | null;
