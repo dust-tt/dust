@@ -2567,6 +2567,7 @@ describe("Space Handling", () => {
         {
           title: "Test conversation with space",
           sId: generateRandomModelSId(),
+          spaceId: space.id,
           requestedSpaceIds: [],
         },
         space
@@ -2628,6 +2629,7 @@ describe("Space Handling", () => {
         {
           title: "Test conversation",
           sId: generateRandomModelSId(),
+          spaceId: space.id,
           requestedSpaceIds: [],
         },
         space
@@ -2664,6 +2666,7 @@ describe("Space Handling", () => {
         {
           title: "Test conversation",
           sId: generateRandomModelSId(),
+          spaceId: space.id,
           requestedSpaceIds: [],
         },
         space
@@ -2705,17 +2708,23 @@ describe("Space Handling", () => {
         workspace.sId
       );
 
-      // Create a conversation with space but don't provide the space
-      const testConversation = await ConversationResource.makeNew(
+      const conversation = await ConversationModel.create({
+        workspaceId: workspace.id,
+        title: "Test conversation",
+        sId: generateRandomModelSId(),
+        spaceId: globalSpace.id,
+        requestedSpaceIds: [globalSpace.id],
+      });
+
+      const [testConversation] = await ConversationResource.fetchByModelIds(
         auth,
-        {
-          title: "Test conversation",
-          sId: generateRandomModelSId(),
-          spaceId: globalSpace.id,
-          requestedSpaceIds: [],
-        },
-        null
+        [conversation.id]
       );
+
+      expect(testConversation).toBeDefined();
+      if (!testConversation) {
+        return;
+      }
 
       expect(() => {
         return testConversation.space;
@@ -2749,6 +2758,7 @@ describe("Space Handling", () => {
         {
           title: "Test conversation",
           sId: generateRandomModelSId(),
+          spaceId: space.id,
           requestedSpaceIds: [],
         },
         space
@@ -2813,6 +2823,7 @@ describe("Space Handling", () => {
         {
           title: "Test conversation",
           sId: generateRandomModelSId(),
+          spaceId: mainSpace.id,
           requestedSpaceIds: [additionalSpace.id],
         },
         mainSpace
@@ -2858,6 +2869,7 @@ describe("Space Handling", () => {
           {
             title: "Test conversation with access",
             sId: generateRandomModelSId(),
+            spaceId: space.id,
             requestedSpaceIds: [],
           },
           space
@@ -2892,6 +2904,7 @@ describe("Space Handling", () => {
           {
             title: "Test conversation without access",
             sId: generateRandomModelSId(),
+            spaceId: restrictedSpace.id,
             requestedSpaceIds: [],
           },
           restrictedSpace
@@ -2972,6 +2985,7 @@ describe("Space Handling", () => {
         {
           title: "Test conversation with mismatched space",
           sId: generateRandomModelSId(),
+          spaceId: spaceInWorkspace2.id,
           requestedSpaceIds: [],
         },
         spaceInWorkspace2
@@ -3005,6 +3019,7 @@ describe("Space Handling", () => {
         {
           title: "Test conversation with matching workspace",
           sId: generateRandomModelSId(),
+          spaceId: space.id,
           requestedSpaceIds: [],
         },
         space
@@ -3042,6 +3057,7 @@ describe("Space Handling", () => {
         {
           title: "Should not be created",
           sId: testSId,
+          spaceId: restrictedSpace.id,
           requestedSpaceIds: [],
         },
         restrictedSpace
@@ -3087,6 +3103,7 @@ describe("Space Handling", () => {
         {
           title: "Should not be created",
           sId: testSId,
+          spaceId: restrictedSpace.id,
           requestedSpaceIds: [],
         },
         restrictedSpace
