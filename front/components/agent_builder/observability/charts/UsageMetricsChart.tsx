@@ -13,6 +13,7 @@ import {
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { legendFromConstant } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { useHoveredSeries } from "@app/components/charts/useHoveredSeries";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import {
   useAgentUsageMetrics,
@@ -58,9 +59,10 @@ function zeroFactory(timestamp: number) {
 function UsageMetricsTooltip(
   props: TooltipContentProps<number, string> & {
     versionMarkers: AgentVersionMarker[];
+    activeKey?: string;
   }
 ) {
-  const { active, payload, versionMarkers } = props;
+  const { active, payload, versionMarkers, activeKey } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -77,21 +79,25 @@ function UsageMetricsTooltip(
       title={formatTimeSeriesTitle(row.date, row.timestamp, versionMarkers)}
       rows={[
         {
+          key: "messages",
           label: "Messages",
           value: row.count,
           colorClassName: USAGE_METRICS_PALETTE.messages,
         },
         {
+          key: "conversations",
           label: "Conversations",
           value: row.conversations,
           colorClassName: USAGE_METRICS_PALETTE.conversations,
         },
         {
+          key: "activeUsers",
           label: "Active users",
           value: row.activeUsers,
           colorClassName: USAGE_METRICS_PALETTE.activeUsers,
         },
       ]}
+      activeKey={activeKey}
     />
   );
 }
@@ -131,6 +137,8 @@ export function UsageMetricsChart({
         isCustomAgent && mode === "timeRange" && versionMarkers.length > 0,
     }
   );
+
+  const { hoveredKey, hoverHandlers } = useHoveredSeries();
 
   const filteredData = filterTimeSeriesByVersionWindow(
     usageMetrics,
@@ -224,7 +232,11 @@ export function UsageMetricsChart({
         />
         <Tooltip
           content={(props: TooltipContentProps<number, string>) => (
-            <UsageMetricsTooltip {...props} versionMarkers={versionMarkers} />
+            <UsageMetricsTooltip
+              {...props}
+              versionMarkers={versionMarkers}
+              activeKey={hoveredKey}
+            />
           )}
           cursor={false}
           wrapperStyle={{ outline: "none", zIndex: 50 }}
@@ -248,6 +260,7 @@ export function UsageMetricsChart({
           className={USAGE_METRICS_PALETTE.messages}
           stroke="currentColor"
           dot={false}
+          {...hoverHandlers("messages")}
         />
         <Line
           type={
@@ -261,6 +274,7 @@ export function UsageMetricsChart({
           className={USAGE_METRICS_PALETTE.conversations}
           stroke="currentColor"
           dot={false}
+          {...hoverHandlers("conversations")}
         />
         <Line
           type={
@@ -274,6 +288,7 @@ export function UsageMetricsChart({
           className={USAGE_METRICS_PALETTE.activeUsers}
           stroke="currentColor"
           dot={false}
+          {...hoverHandlers("activeUsers")}
         />
         {isCustomAgent && (
           <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />

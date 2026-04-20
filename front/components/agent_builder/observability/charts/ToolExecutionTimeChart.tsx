@@ -11,6 +11,7 @@ import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { legendFromConstant } from "@app/components/charts/ChartLegend";
 import { RoundedBarShape } from "@app/components/charts/ChartShapes";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { useHoveredSeries } from "@app/components/charts/useHoveredSeries";
 import type { ToolLatencyView } from "@app/lib/api/assistant/observability/tool_latency";
 import {
   Button,
@@ -54,9 +55,9 @@ function isToolLatencyDatum(data: unknown): data is ToolLatencyDatum {
 }
 
 function ToolExecutionTimeTooltip(
-  props: TooltipContentProps<number, string>
+  props: TooltipContentProps<number, string> & { activeKey?: string }
 ): JSX.Element | null {
-  const { active, payload } = props;
+  const { active, payload, activeKey } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -73,22 +74,26 @@ function ToolExecutionTimeTooltip(
       title={row.label}
       rows={[
         {
+          key: "avgLatencyMs",
           label: "Average",
           value: formatDurationMs(row.avgLatencyMs),
           colorClassName: TOOL_EXECUTION_TIME_PALETTE.avgLatencyMs,
         },
         {
+          key: "p50LatencyMs",
           label: "P50",
           value: formatDurationMs(row.p50LatencyMs),
           colorClassName: TOOL_EXECUTION_TIME_PALETTE.p50LatencyMs,
         },
         {
+          key: "p95LatencyMs",
           label: "P95",
           value: formatDurationMs(row.p95LatencyMs),
           colorClassName: TOOL_EXECUTION_TIME_PALETTE.p95LatencyMs,
         },
       ]}
       footer={`Executions: ${row.count}`}
+      activeKey={activeKey}
     />
   );
 }
@@ -192,6 +197,8 @@ export function ToolExecutionTimeChart({
     TOOL_EXECUTION_TIME_PALETTE
   );
 
+  const { hoveredKey, hoverHandlers } = useHoveredSeries();
+
   const selectedServerLabel =
     serverOptions.find((server) => server.name === selectedServerName)?.label ??
     (serverLatency.isLoading ? "Loading" : "Select server");
@@ -277,7 +284,9 @@ export function ToolExecutionTimeChart({
           tickFormatter={formatDurationMs}
         />
         <Tooltip
-          content={ToolExecutionTimeTooltip}
+          content={(props: TooltipContentProps<number, string>) => (
+            <ToolExecutionTimeTooltip {...props} activeKey={hoveredKey} />
+          )}
           cursor={false}
           wrapperStyle={{ outline: "none", zIndex: 50 }}
           contentStyle={{
@@ -293,6 +302,7 @@ export function ToolExecutionTimeChart({
           fill="currentColor"
           className={TOOL_EXECUTION_TIME_PALETTE.p50LatencyMs}
           shape={<RoundedBarShape />}
+          {...hoverHandlers("p50LatencyMs")}
         />
         <Bar
           dataKey="avgLatencyMs"
@@ -300,6 +310,7 @@ export function ToolExecutionTimeChart({
           fill="currentColor"
           className={TOOL_EXECUTION_TIME_PALETTE.avgLatencyMs}
           shape={<RoundedBarShape />}
+          {...hoverHandlers("avgLatencyMs")}
         />
         <Bar
           dataKey="p95LatencyMs"
@@ -307,6 +318,7 @@ export function ToolExecutionTimeChart({
           fill="currentColor"
           className={TOOL_EXECUTION_TIME_PALETTE.p95LatencyMs}
           shape={<RoundedBarShape />}
+          {...hoverHandlers("p95LatencyMs")}
         />
       </BarChart>
     </ChartContainer>

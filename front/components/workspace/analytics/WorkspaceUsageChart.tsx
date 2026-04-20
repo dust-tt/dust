@@ -8,6 +8,7 @@ import { padSeriesToTimeRange } from "@app/components/agent_builder/observabilit
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { useHoveredSeries } from "@app/components/charts/useHoveredSeries";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import {
@@ -156,12 +157,14 @@ function activeUsersZeroFactory(timestamp: number): ActiveUsersMetricsDatum {
 
 interface UsageMetricsTooltipProps extends TooltipContentProps<number, string> {
   displayMode: UsageDisplayMode;
+  activeKey?: string;
 }
 
 function UsageMetricsTooltip({
   active,
   payload,
   displayMode,
+  activeKey,
 }: UsageMetricsTooltipProps) {
   if (!active || !payload || payload.length === 0) {
     return null;
@@ -180,22 +183,25 @@ function UsageMetricsTooltip({
     const title = row.date ?? formatShortDate(row.timestamp);
     const rows = [
       {
+        key: "dau",
         label: "DAU (Daily)",
         value: `${row.dau}%`,
         colorClassName: ACTIVE_USERS_PALETTE.dau,
       },
       {
+        key: "wau",
         label: "WAU (7-day)",
         value: `${row.wau}%`,
         colorClassName: ACTIVE_USERS_PALETTE.wau,
       },
       {
+        key: "mau",
         label: "MAU (28-day)",
         value: `${row.mau}%`,
         colorClassName: ACTIVE_USERS_PALETTE.mau,
       },
     ];
-    return <ChartTooltipCard title={title} rows={rows} />;
+    return <ChartTooltipCard title={title} rows={rows} activeKey={activeKey} />;
   }
 
   if (!isWorkspaceUsageMetricsDatum(first.payload)) {
@@ -207,18 +213,20 @@ function UsageMetricsTooltip({
 
   const rows = [
     {
+      key: "messages",
       label: "Messages",
       value: row.count.toLocaleString(),
       colorClassName: USAGE_METRICS_PALETTE.messages,
     },
     {
+      key: "conversations",
       label: "Conversations",
       value: row.conversations.toLocaleString(),
       colorClassName: USAGE_METRICS_PALETTE.conversations,
     },
   ];
 
-  return <ChartTooltipCard title={title} rows={rows} />;
+  return <ChartTooltipCard title={title} rows={rows} activeKey={activeKey} />;
 }
 
 interface WorkspaceUsageChartProps {
@@ -251,6 +259,8 @@ export function WorkspaceUsageChart({
   });
 
   const legendItems = getLegendItemsForMode(displayMode);
+
+  const { hoveredKey, hoverHandlers } = useHoveredSeries();
 
   const usageData = padSeriesToTimeRange<WorkspaceUsageMetricsDatum>(
     usageMetrics,
@@ -359,7 +369,11 @@ export function WorkspaceUsageChart({
         <Tooltip
           isAnimationActive={false}
           content={(props: TooltipContentProps<number, string>) => (
-            <UsageMetricsTooltip {...props} displayMode={displayMode} />
+            <UsageMetricsTooltip
+              {...props}
+              displayMode={displayMode}
+              activeKey={hoveredKey}
+            />
           )}
           cursor={false}
           wrapperStyle={{ outline: "none", zIndex: 50 }}
@@ -380,6 +394,7 @@ export function WorkspaceUsageChart({
               className={USAGE_METRICS_PALETTE.messages}
               stroke="currentColor"
               dot={false}
+              {...hoverHandlers("messages")}
             />
             <Line
               type={getLineType(period)}
@@ -389,6 +404,7 @@ export function WorkspaceUsageChart({
               className={USAGE_METRICS_PALETTE.conversations}
               stroke="currentColor"
               dot={false}
+              {...hoverHandlers("conversations")}
             />
           </>
         ) : (
@@ -401,6 +417,7 @@ export function WorkspaceUsageChart({
               className={ACTIVE_USERS_PALETTE.dau}
               stroke="currentColor"
               dot={false}
+              {...hoverHandlers("dau")}
             />
             <Line
               type={getLineType(period)}
@@ -410,6 +427,7 @@ export function WorkspaceUsageChart({
               className={ACTIVE_USERS_PALETTE.wau}
               stroke="currentColor"
               dot={false}
+              {...hoverHandlers("wau")}
             />
             <Line
               type={getLineType(period)}
@@ -419,6 +437,7 @@ export function WorkspaceUsageChart({
               className={ACTIVE_USERS_PALETTE.mau}
               stroke="currentColor"
               dot={false}
+              {...hoverHandlers("mau")}
             />
           </>
         )}

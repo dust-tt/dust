@@ -12,6 +12,7 @@ import {
 } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { legendFromConstant } from "@app/components/charts/ChartLegend";
+import { useHoveredSeries } from "@app/components/charts/useHoveredSeries";
 import {
   useAgentFeedbackDistribution,
   useAgentVersionMarkers,
@@ -25,6 +26,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 interface FeedbackDistributionChartProps {
   workspaceId: string;
@@ -72,6 +74,8 @@ export function FeedbackDistributionChart({
         isCustomAgent && mode === "timeRange" && versionMarkers.length > 0,
     }
   );
+
+  const { hoveredKey, hoverHandlers } = useHoveredSeries();
 
   const filteredData = filterTimeSeriesByVersionWindow(
     feedbackDistribution,
@@ -124,7 +128,9 @@ export function FeedbackDistributionChart({
           tickMargin={8}
         />
         <Tooltip
-          content={FeedbackDistributionTooltip}
+          content={(props: TooltipContentProps<number, string>) => (
+            <FeedbackDistributionTooltip {...props} activeKey={hoveredKey} />
+          )}
           cursor={false}
           wrapperStyle={{ outline: "none", zIndex: 50 }}
           contentStyle={{
@@ -142,6 +148,7 @@ export function FeedbackDistributionChart({
           stroke="currentColor"
           strokeWidth={2}
           dot={false}
+          {...hoverHandlers("positive")}
         />
         <Line
           type="monotone"
@@ -151,6 +158,7 @@ export function FeedbackDistributionChart({
           stroke="currentColor"
           strokeWidth={2}
           dot={false}
+          {...hoverHandlers("negative")}
         />
         {isCustomAgent && (
           <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
