@@ -500,11 +500,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
 
     const user = auth.user();
-    if (!user || spaceBasedAccessible.length === 0) {
+    // API key auth has no user and never creates participant records, so the
+    // participant-restriction concept doesn't apply.
+    // TODO(2026-04-20 sebastien): Review implementation to support API Keys.
+    if (!user) {
+      return spaceBasedAccessible;
+    }
+
+    if (spaceBasedAccessible.length === 0) {
       const participantRestrictedConversationIds = new Set(
-        participantRestrictedConversations.map(
-          (conversation) => conversation.id
-        )
+        participantRestrictedConversations.map((conversation) => conversation.id)
       );
       return spaceBasedAccessible.filter(
         (conversation) =>
