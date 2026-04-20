@@ -172,12 +172,14 @@ export const JiraConnectionInfoSchema = z.object({
     name: z.string(),
     nickname: z.string(),
   }),
-  instance: z.object({
-    cloud_id: z.string(),
-    site_url: z.string(),
-    site_name: z.string(),
-    api_base_url: z.string(),
-  }),
+  instances: z.array(
+    z.object({
+      cloud_id: z.string(),
+      site_url: z.string(),
+      site_name: z.string(),
+      api_base_url: z.string(),
+    })
+  ),
 });
 
 export const JiraTransitionIssueSchema = z.void();

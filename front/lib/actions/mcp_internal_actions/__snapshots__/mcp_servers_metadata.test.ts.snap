@@ -71,6 +71,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "confluence": {
     "create_page": "low",
+    "get_connection_info": "never_ask",
     "get_current_user": "never_ask",
     "get_page": "never_ask",
     "get_pages": "never_ask",

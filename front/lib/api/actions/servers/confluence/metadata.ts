@@ -6,11 +6,30 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const CONFLUENCE_TOOL_NAME = "confluence" as const;
 
+const CLOUD_ID_FIELD = z
+  .string()
+  .optional()
+  .describe(
+    "Atlassian cloud instance ID. Required when multiple Confluence instances are accessible. Use get_connection_info to list available instances."
+  );
+
 export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
+  get_connection_info: {
+    description:
+      "Lists all Confluence instances accessible through the current OAuth connection (cloud IDs, names, URLs). Call this tool when multiple Confluence instances are accessible to find the cloud_id required by other tools, then present the list to the user and ask which instance they want to use.",
+    schema: {},
+    stake: "never_ask",
+    displayLabels: {
+      running: "Getting Confluence connection info",
+      done: "Get Confluence connection info",
+    },
+  },
   get_current_user: {
     description:
       "Get information about the currently authenticated Confluence user including account ID, display name, and email.",
-    schema: {},
+    schema: {
+      cloud_id: CLOUD_ID_FIELD,
+    },
     stake: "never_ask",
     displayLabels: {
       running: "Getting current Confluence user",
@@ -20,7 +39,9 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
   get_spaces: {
     description:
       "Get a list of Confluence spaces. Returns a list of spaces with their IDs, keys, names, types, and statuses.",
-    schema: {},
+    schema: {
+      cloud_id: CLOUD_ID_FIELD,
+    },
     stake: "never_ask",
     displayLabels: {
       running: "Listing Confluence spaces",
@@ -47,6 +68,7 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
         .number()
         .optional()
         .describe("Number of results per page (default 25)"),
+      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "never_ask",
     displayLabels: {
@@ -66,6 +88,7 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Whether to include the page body content (default: false). When true, returns body in storage format."
         ),
+      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "never_ask",
     displayLabels: {
@@ -101,6 +124,7 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
         })
         .optional()
         .describe("Page body content"),
+      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "low",
     displayLabels: {
@@ -150,6 +174,7 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe("New parent page ID to move the page under"),
+      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "low",
     displayLabels: {
