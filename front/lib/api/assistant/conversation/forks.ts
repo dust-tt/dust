@@ -315,19 +315,10 @@ async function addFileToConversationDatasource(
   }: {
     parentConversationId: string;
     childConversationId: string;
-    carriedFile: FileResource | null;
+    carriedFile: FileResource;
     childConversationDataSource: DataSourceResource | null;
   }
 ): Promise<DataSourceResource | null> {
-  const shouldCopyFileToDatasource =
-    !!carriedFile &&
-    !carriedFile.useCaseMetadata?.skipDataSourceIndexing &&
-    isFileTypeUpsertableForUseCase(carriedFile);
-
-  if (!shouldCopyFileToDatasource) {
-    return childConversationDataSource;
-  }
-
   let nextChildConversationDataSource = childConversationDataSource;
 
   if (!nextChildConversationDataSource) {
@@ -458,12 +449,22 @@ async function carryOverConversationAttachments(
       continue;
     }
 
-    childConversationDataSource = await addFileToConversationDatasource(auth, {
-      parentConversationId: parentConversation.sId,
-      childConversationId: childConversation.sId,
-      carriedFile,
-      childConversationDataSource,
-    });
+    const shouldCopyFileToDatasource =
+      carriedFile !== null &&
+      !carriedFile.useCaseMetadata?.skipDataSourceIndexing &&
+      isFileTypeUpsertableForUseCase(carriedFile);
+
+    if (shouldCopyFileToDatasource) {
+      childConversationDataSource = await addFileToConversationDatasource(
+        auth,
+        {
+          parentConversationId: parentConversation.sId,
+          childConversationId: childConversation.sId,
+          carriedFile,
+          childConversationDataSource,
+        }
+      );
+    }
   }
 }
 
