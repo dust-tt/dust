@@ -128,6 +128,7 @@ export function WorkspacePage() {
   const {
     activeSubscription,
     hasDummyFeature,
+    membersCount,
     metronomeCustomerId,
     stripeSubscription,
     subscriptions,
@@ -208,6 +209,7 @@ export function WorkspacePage() {
               <TabsContent value="workspace">
                 <WorkspaceInfoTable
                   owner={owner}
+                  membersCount={membersCount}
                   metronomeCustomerId={metronomeCustomerId}
                   workspaceVerifiedDomains={workspaceVerifiedDomains}
                   workspaceCreationDay={workspaceCreationDay}
