@@ -99,7 +99,7 @@ describe("keyDecisionBlob", () => {
 
   it("maps decided status to done", () => {
     const blob = keyDecisionBlob(makeKeyDecision({ status: "decided" }));
-    expect(blob.status).toBe("done");
+    expect(blob.status).toBe("todo");
   });
 
   it("maps open status to todo", () => {

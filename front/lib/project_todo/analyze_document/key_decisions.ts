@@ -34,8 +34,11 @@ export function buildPromptKeyDecisions(
     "(e.g., a technical approach chosen, a scope change agreed upon, a trade-off accepted).\n" +
     "- Set status to 'decided' if the decision is finalized, 'open' if it is still being deliberated.\n" +
     "- Do not include minor preferences or passing comments — only significant, consequential decisions.\n" +
-    "- In the description, mention users and agents by their name, NOT via their id or via a generic term like User, Agent or Bot.\n" +
-    "- In the description, refer to the assignee by Your pronouns (e.g., 'You', 'Your', 'Yours'), not by their name.\n" +
+    "- In the description, mention users and agents by their name, NOT via their id or " +
+    "via a generic term like User, Agent or Bot.\n" +
+    "- Write each description as an objective factual statement. Name people by their actual " +
+    "name when relevant. Do not use 'You' or 'Your' — these items are shown to all project " +
+    "members, not just one person.\n" +
     "- Include relevant_user_ids (from the project members list) for people involved in making this decision.\n\n";
   if (previousKeyDecisions.length > 0) {
     prompt +=
