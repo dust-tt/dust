@@ -22,16 +22,6 @@ import { literal } from "sequelize";
 const ENABLE_WAKE_UP_TEMPORAL = false;
 const ACTIVE_WAKE_UP_STATUSES: WakeUpStatus[] = ["scheduled"];
 
-interface MakeNewWakeUpBlob {
-  scheduleType: WakeUpScheduleType;
-  fireAt: Date | null;
-  cronExpression: string | null;
-  cronTimezone: string | null;
-  reason: string;
-  status?: WakeUpStatus;
-  fireCount?: number;
-}
-
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WakeUpResource extends ReadonlyAttributesType<WakeUpModel> {}
 
@@ -64,7 +54,15 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: MakeNewWakeUpBlob,
+    blob: {
+      scheduleType: WakeUpScheduleType;
+      fireAt: Date | null;
+      cronExpression: string | null;
+      cronTimezone: string | null;
+      reason: string;
+      status?: WakeUpStatus;
+      fireCount?: number;
+    },
     conversation: ConversationResource,
     agentConfiguration: AgentConfigurationType,
     { transaction }: { transaction?: Transaction } = {}
@@ -243,9 +241,9 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<number, Error>> {
+  ): Promise<Result<undefined, Error>> {
     try {
-      const deletedCount = await this.model.destroy({
+      await this.model.destroy({
         where: {
           id: this.id,
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -253,7 +251,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
         transaction,
       });
 
-      return new Ok(deletedCount);
+      return new Ok(undefined);
     } catch (error) {
       return new Err(normalizeError(error));
     }
