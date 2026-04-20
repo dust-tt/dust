@@ -68,7 +68,6 @@ export type FetchConversationOptions = {
   excludeTest?: boolean; // Explicitly exclude test conversations
   dangerouslySkipPermissionFiltering?: boolean;
   includeForkedChildrenInfo?: boolean;
-  includeForkedFromParentConversationTitle?: boolean;
   updatedSince?: number; // Filter conversations updated after this timestamp (milliseconds)
 };
 
@@ -98,6 +97,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   private userParticipation?: UserParticipation;
   private userLastReadAt: Date | null = null;
   private forkedFromData?: ConversationForkedFromType;
+  private forkedFromParentConversation?: ConversationModel;
 
   constructor(
     model: ModelStaticWorkspaceAware<ConversationModel>,
@@ -117,7 +117,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           {
             association: "parentConversation" as const,
             required: true,
-            attributes: ["sId", "title"],
+            attributes: [
+              "id",
+              "sId",
+              "title",
+              "spaceId",
+              "requestedSpaceIds",
+              "metadata",
+              "visibility",
+            ],
           },
           {
             association: "sourceMessage" as const,
@@ -204,6 +212,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   ): ConversationResource {
     const resource = new this(this.model, conversation.get(), space);
     resource.forkedFromData = this.getForkedFromData(conversation);
+    resource.forkedFromParentConversation =
+      conversation.forkedFrom?.parentConversation;
 
     return resource;
   }
@@ -253,23 +263,33 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   private static async getSerializedForkedFrom(
     auth: Authenticator,
-    conversation: ConversationResource,
-    options?: FetchConversationOptions
+    conversation: ConversationResource
   ): Promise<ConversationForkedFromType | undefined> {
     const forkedFrom = conversation.forkedFromInfo;
     if (!forkedFrom) {
       return undefined;
     }
 
-    if (!options?.includeForkedFromParentConversationTitle) {
+    const parentConversation = conversation.forkedFromParentConversation;
+    if (!parentConversation || parentConversation.visibility === "deleted") {
       return forkedFrom;
     }
 
-    const parentConversation = await ConversationResource.fetchById(
-      auth,
-      forkedFrom.parentConversationId
-    );
-    if (!parentConversation) {
+    if (
+      !(await ConversationResource.isConversationReadableFromRequestedSpaces(
+        auth,
+        parentConversation
+      ))
+    ) {
+      return forkedFrom;
+    }
+
+    if (
+      !(await ConversationResource.canUserAccessPrivateByDefaultConversation(
+        auth,
+        parentConversation
+      ))
+    ) {
       return forkedFrom;
     }
 
@@ -1328,8 +1348,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       );
     const forkedFrom = await ConversationResource.getSerializedForkedFrom(
       auth,
-      conversation,
-      options
+      conversation
     );
     const forkedChildren = options?.includeForkedChildrenInfo
       ? await ConversationResource.listSerializedChildForks(auth, conversation)
