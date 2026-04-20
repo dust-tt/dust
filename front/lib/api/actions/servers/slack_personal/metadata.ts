@@ -170,7 +170,9 @@ The search_all parameter should only be set to true if the user explicitly reque
     schema: {
       query: z
         .string()
-        .describe("Slack user ID (e.g., 'U01234ABCD'), email address, or user name"),
+        .describe(
+          "Slack user ID (e.g., 'U01234ABCD'), email address, or user name"
+        ),
       search_all: z
         .boolean()
         .optional()

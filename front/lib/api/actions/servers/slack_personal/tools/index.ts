@@ -315,13 +315,13 @@ function buildSlackSearchQuery(
       .join(" ")}`;
   }
   if (usersFrom && usersFrom.length > 0) {
-    query = `${query} ${usersFrom.map((user) => `from:${user}`).join(" ")}`;
+    query = `${query} ${usersFrom.map((user) => `from:<@${user}>`).join(" ")}`;
   }
   if (usersTo && usersTo.length > 0) {
-    query = `${query} ${usersTo.map((user) => `to:${user}`).join(" ")}`;
+    query = `${query} ${usersTo.map((user) => `to:<@${user}>`).join(" ")}`;
   }
   if (usersMentioned && usersMentioned.length > 0) {
-    query = `${query} ${usersMentioned.map((user) => `${user}`).join(" ")}`;
+    query = `${query} ${usersMentioned.map((user) => `<@${user}>`).join(" ")}`;
   }
   return query;
 }
