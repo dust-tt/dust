@@ -13,6 +13,7 @@ import type {
 import type { PatchProjectTodoResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]/index";
 import type { PostCleanDoneTodosResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/clean";
 import type { GetProjectTodosResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/index";
+import type { PostMarkProjectTodosReadResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/mark-read";
 import type { CheckNameResponseBody } from "@app/pages/api/w/[wId]/spaces/check-name";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import type {
@@ -336,9 +337,38 @@ export function useProjectTodos({
 
   return {
     todos: data?.todos ?? [],
+    previousTodos: data?.previousTodos ?? null,
+    previousLastReadAt: data?.previousLastReadAt ?? null,
     isTodosLoading: !disabled && !error && !data,
     isTodosError: !!error,
     mutateTodos: mutate,
+  };
+}
+
+export function useMarkProjectTodosAsRead({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  return async (): Promise<Result<{ lastReadAt: string }, Error>> => {
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_todos/mark-read`,
+        { method: "POST" }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        return new Err(new Error(errorData.message));
+      }
+
+      const data: PostMarkProjectTodosReadResponseBody = await res.json();
+      return new Ok({ lastReadAt: data.lastReadAt });
+    } catch (e) {
+      return new Err(normalizeError(e));
+    }
   };
 }
 

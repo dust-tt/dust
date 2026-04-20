@@ -2,6 +2,7 @@ import { useAppRouter } from "@app/lib/platform";
 import {
   useCleanDoneProjectTodos,
   useDeleteProjectTodo,
+  useMarkProjectTodosAsRead,
   useProjectTodos,
   useUpdateProjectTodo,
 } from "@app/lib/swr/projects";
@@ -30,11 +31,54 @@ import {
   SquareIcon,
   Tooltip,
   TrashIcon,
+  TypingAnimation,
   WindIcon,
 } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+// Total duration of the "what's new" diff animation when a user returns to a
+// project with unread changes. Matches the playground feel.
+const ANIMATION_MS = 600;
+
+// Delay between first paint (page fully loaded with the "before" state showing)
+// and the start of the diff animation. Gives the user a beat to register the
+// current state before changes animate in.
+const DIFF_ANIMATION_START_DELAY_MS = 1_000;
+
+type TodoDiffState = "added" | "text-changed" | "to-done" | "unchanged";
+
+function computeProjectTodoDiff(
+  previousTodos: ProjectTodoType[],
+  currentTodos: ProjectTodoType[]
+): Map<string, TodoDiffState> {
+  const previousBySId = new Map<string, ProjectTodoType>();
+  for (const todo of previousTodos) {
+    previousBySId.set(todo.sId, todo);
+  }
+
+  const diff = new Map<string, TodoDiffState>();
+  for (const todo of currentTodos) {
+    const previous = previousBySId.get(todo.sId);
+    if (!previous) {
+      diff.set(todo.sId, "added");
+      continue;
+    }
+    // Status → done takes priority over text changes so we animate the checkbox
+    // without competing with the typing animation on the same item.
+    if (previous.status !== "done" && todo.status === "done") {
+      diff.set(todo.sId, "to-done");
+      continue;
+    }
+    if (previous.text !== todo.text) {
+      diff.set(todo.sId, "text-changed");
+      continue;
+    }
+    diff.set(todo.sId, "unchanged");
+  }
+  return diff;
+}
 
 // ── Category display configuration ────────────────────────────────────────────
 
@@ -353,6 +397,9 @@ interface EditableTodoItemProps {
   onToggleDone: (todo: ProjectTodoType) => void;
   onDelete: (todo: ProjectTodoType) => void;
   owner: LightWorkspaceType;
+  isEntering?: boolean;
+  isTypingText?: boolean;
+  isAutoChecked?: boolean;
 }
 
 function EditableTodoItem({
@@ -360,8 +407,28 @@ function EditableTodoItem({
   onToggleDone,
   onDelete,
   owner,
+  isEntering = false,
+  isTypingText = false,
+  isAutoChecked = false,
 }: EditableTodoItemProps) {
-  const isDone = todo.status === "done";
+  const realIsDone = todo.status === "done";
+  // When an item is transitioning to "done" as part of the diff animation, we
+  // start unchecked and flip to checked after a short delay so the checkbox
+  // animates visibly. For all other items the value tracks the todo directly.
+  const [displayedChecked, setDisplayedChecked] = useState(
+    isAutoChecked ? false : realIsDone
+  );
+
+  useEffect(() => {
+    if (!isAutoChecked) {
+      setDisplayedChecked(realIsDone);
+      return;
+    }
+    const timer = window.setTimeout(() => setDisplayedChecked(true), 150);
+    return () => window.clearTimeout(timer);
+  }, [isAutoChecked, realIsDone]);
+
+  const isDone = isAutoChecked ? displayedChecked : realIsDone;
 
   const handleToggle = () => {
     onToggleDone(todo);
@@ -370,7 +437,9 @@ function EditableTodoItem({
   return (
     <motion.li
       layout
-      initial={{ opacity: 1, height: "auto" }}
+      initial={
+        isEntering ? { opacity: 0, height: 0 } : { opacity: 1, height: "auto" }
+      }
       animate={{ opacity: 1, height: "auto" }}
       exit={{
         opacity: 0,
@@ -404,7 +473,11 @@ function EditableTodoItem({
               : "text-foreground dark:text-foreground-night"
           )}
         >
-          {todo.text}
+          {isTypingText ? (
+            <TypingAnimation text={todo.text} duration={16} />
+          ) : (
+            todo.text
+          )}
         </span>
         <TodoSources sources={todo.sources} owner={owner} isDone={isDone} />
       </button>
@@ -428,13 +501,16 @@ function EditableProjectTodosPanel({
   owner: LightWorkspaceType;
   spaceId: string;
 }) {
-  const { todos, isTodosLoading, mutateTodos } = useProjectTodos({
-    owner,
-    spaceId,
-  });
+  const { todos, previousTodos, isTodosLoading, mutateTodos } = useProjectTodos(
+    {
+      owner,
+      spaceId,
+    }
+  );
   const doUpdate = useUpdateProjectTodo({ owner, spaceId });
   const doDelete = useDeleteProjectTodo({ owner, spaceId });
   const doCleanDone = useCleanDoneProjectTodos({ owner, spaceId });
+  const markAsRead = useMarkProjectTodosAsRead({ owner, spaceId });
 
   // Tracks todos being animated out during a clean operation.
   const [pendingRemovalIds, setPendingRemovalIds] = useState<Set<string>>(
@@ -442,18 +518,98 @@ function EditableProjectTodosPanel({
   );
   const [isCleaning, setIsCleaning] = useState(false);
 
+  // "What's new" diff animation state. Populated once on mount if the previous
+  // snapshot differs from the current one; cleared after ANIMATION_MS so later
+  // user interactions animate normally.
+  const [displayedTodos, setDisplayedTodos] = useState<
+    ProjectTodoType[] | null
+  >(null);
+  const [enteringKeys, setEnteringKeys] = useState<Set<string>>(new Set());
+  const [typingKeys, setTypingKeys] = useState<Set<string>>(new Set());
+  const [autoCheckedKeys, setAutoCheckedKeys] = useState<Set<string>>(
+    new Set()
+  );
+  const hasStartedDiffAnimationRef = useRef(false);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: diff animation must run once on mount only; re-running on todos/previousTodos/markAsRead changes would replay the animation after user interactions.
+  useEffect(() => {
+    if (hasStartedDiffAnimationRef.current) {
+      return;
+    }
+    if (isTodosLoading) {
+      return;
+    }
+    hasStartedDiffAnimationRef.current = true;
+
+    // Fire-and-forget mark-as-read: silent infrastructure, no notifications.
+    void markAsRead();
+
+    if (!previousTodos) {
+      return;
+    }
+
+    const diff = computeProjectTodoDiff(previousTodos, todos);
+    const hasChanges = Array.from(diff.values()).some((v) => v !== "unchanged");
+    if (!hasChanges) {
+      return;
+    }
+
+    // Render the "before" state first, then swap to the current state on the
+    // next frame so framer-motion picks up the transition.
+    setDisplayedTodos(previousTodos);
+
+    const added = new Set<string>();
+    const textChanged = new Set<string>();
+    const toDone = new Set<string>();
+    for (const [sId, state] of diff) {
+      if (state === "added") {
+        added.add(sId);
+      } else if (state === "text-changed") {
+        textChanged.add(sId);
+      } else if (state === "to-done") {
+        toDone.add(sId);
+      }
+    }
+
+    // Hold the "before" state for a moment so the page is visibly settled
+    // before the animation kicks in, then swap to the current state.
+    const startId = window.setTimeout(() => {
+      setDisplayedTodos(null);
+      setEnteringKeys(added);
+      setTypingKeys(textChanged);
+      setAutoCheckedKeys(toDone);
+    }, DIFF_ANIMATION_START_DELAY_MS);
+
+    const clearId = window.setTimeout(() => {
+      setEnteringKeys(new Set());
+      setTypingKeys(new Set());
+      setAutoCheckedKeys(new Set());
+    }, DIFF_ANIMATION_START_DELAY_MS + ANIMATION_MS);
+
+    return () => {
+      window.clearTimeout(startId);
+      window.clearTimeout(clearId);
+    };
+  }, [isTodosLoading]);
+
   const hasDoneItems = todos.some((t) => t.status === "done");
 
-  const { todosByCategory, activeSections } = groupTodosByCategory(todos);
+  const todosToRender = displayedTodos ?? todos;
+  const { todosByCategory, activeSections } =
+    groupTodosByCategory(todosToRender);
 
   // Optimistically update a todo's status in the SWR cache and send the PATCH.
   // On failure the cache is revalidated from the server.
   const handleSetStatus = useCallback(
     async (todo: ProjectTodoType, status: ProjectTodoStatus) => {
-      const optimistic = (prev: GetProjectTodosResponseBody | undefined) => ({
+      const optimistic = (
+        prev: GetProjectTodosResponseBody | undefined
+      ): GetProjectTodosResponseBody => ({
         todos: (prev?.todos ?? []).map((t) =>
           t.sId === todo.sId ? { ...t, status } : t
         ),
+        previousTodos: prev?.previousTodos ?? null,
+        previousLastReadAt: prev?.previousLastReadAt ?? null,
       });
 
       void mutateTodos(optimistic, { revalidate: false });
@@ -619,6 +775,9 @@ function EditableProjectTodosPanel({
                         onToggleDone={handleToggleDone}
                         onDelete={handleDelete}
                         owner={owner}
+                        isEntering={enteringKeys.has(todo.sId)}
+                        isTypingText={typingKeys.has(todo.sId)}
+                        isAutoChecked={autoCheckedKeys.has(todo.sId)}
                       />
                     ))}
                   </AnimatePresence>

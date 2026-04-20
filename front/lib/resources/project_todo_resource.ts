@@ -234,6 +234,101 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     });
   }
 
+  // Reconstructs the list of todos as they existed at `timestamp` for a given
+  // (space, user) pair. For each main row created `<= timestamp`, we pick the
+  // earliest version row with `createdAt > timestamp` as the snapshot at that
+  // time; if no such version exists, the current row is itself the state at
+  // `timestamp`. Rows whose reconstructed state is already deleted or cleaned
+  // are filtered out. Results are not persisted — resources are built directly
+  // from the reconstructed attribute blobs.
+  static async fetchLatestBySpaceForUserAtTimestamp(
+    auth: Authenticator,
+    {
+      spaceId,
+      userId,
+      timestamp,
+    }: { spaceId: ModelId; userId: ModelId; timestamp: Date }
+  ): Promise<ProjectTodoResource[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Step 1: fetch candidate main rows — includes currently deleted / cleaned
+    // todos, because they may have been live at `timestamp`. Bypasses the
+    // baseFetch filters intentionally.
+    const mainRows = await ProjectTodoModel.findAll({
+      where: {
+        workspaceId,
+        spaceId,
+        userId,
+        createdAt: { [Op.lte]: timestamp },
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    if (mainRows.length === 0) {
+      return [];
+    }
+
+    // Step 2: fetch all versions whose `createdAt > timestamp` for these todos.
+    // The earliest such version per todo holds the snapshot at `timestamp`.
+    const mainIds = mainRows.map((r) => r.id);
+    const versionWhere: WhereOptions<ProjectTodoVersionModel> = {
+      workspaceId,
+      projectTodoId: { [Op.in]: mainIds },
+      createdAt: { [Op.gt]: timestamp },
+    };
+    const laterVersions = await ProjectTodoVersionModel.findAll({
+      where: versionWhere,
+      order: [["createdAt", "ASC"]],
+    });
+
+    const earliestVersionByTodoId = new Map<ModelId, ProjectTodoVersionModel>();
+    for (const version of laterVersions) {
+      if (!earliestVersionByTodoId.has(version.projectTodoId)) {
+        earliestVersionByTodoId.set(version.projectTodoId, version);
+      }
+    }
+
+    // Step 3: build reconstructed attribute blobs.
+    const reconstructed: ProjectTodoResource[] = [];
+    for (const row of mainRows) {
+      const snapshot = earliestVersionByTodoId.get(row.id);
+
+      if (snapshot) {
+        // Use the version snapshot — but keep the main row's id and createdAt
+        // so the reconstructed resource is keyed by the logical todo identity.
+        const rowAttrs = row.get();
+        const snapshotAttrs = snapshot.get();
+        const blob: Attributes<ProjectTodoModel> = {
+          ...rowAttrs,
+          category: snapshotAttrs.category,
+          text: snapshotAttrs.text,
+          status: snapshotAttrs.status,
+          doneAt: snapshotAttrs.doneAt,
+          actorRationale: snapshotAttrs.actorRationale,
+          markedAsDoneByType: snapshotAttrs.markedAsDoneByType,
+          markedAsDoneByUserId: snapshotAttrs.markedAsDoneByUserId,
+          markedAsDoneByAgentConfigurationId:
+            snapshotAttrs.markedAsDoneByAgentConfigurationId,
+          deletedAt: snapshotAttrs.deletedAt,
+          cleanedAt: snapshotAttrs.cleanedAt,
+        };
+        if (blob.deletedAt !== null || blob.cleanedAt !== null) {
+          continue;
+        }
+        reconstructed.push(new this(ProjectTodoModel, blob));
+      } else {
+        // No version created after `timestamp` → the current row is the state
+        // at `timestamp`. Drop it if it is now deleted or cleaned.
+        if (row.deletedAt !== null || row.cleanedAt !== null) {
+          continue;
+        }
+        reconstructed.push(new this(ProjectTodoModel, row.get()));
+      }
+    }
+
+    return reconstructed;
+  }
+
   // Batch variant: fetches the current todo row for each sourceId in one pass.
   // Returns a map from `${sourceId}:${userId}` to the matching ProjectTodoResource.
   static async fetchBySourceIds(
