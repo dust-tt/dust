@@ -226,16 +226,16 @@ function ContentNodeTreeChildren({
   );
 
   if (isResourcesError) {
-    const errorMessage = (() => {
-      switch (resourcesError?.type) {
-        case "rate_limit_error":
-          return "Connected service's API limit reached. Please retry shortly.";
-        case "data_source_auth_error":
-          return "Failed to retrieve permissions due to a revoked authorization. Please re-authorize the connection.";
-        default:
-          return "Failed to retrieve permissions due to an unexpected error. The resource may have been deleted, moved, or its sharing permissions changed.";
-      }
-    })();
+    const PERMISSIONS_ERROR_MESSAGES: Record<string, string> = {
+      rate_limit_error:
+        "Connected service's API limit reached. Please retry shortly.",
+      data_source_auth_error:
+        "Failed to retrieve permissions due to a revoked authorization. Please re-authorize the connection.",
+    };
+    const errorMessage =
+      (resourcesError?.type &&
+        PERMISSIONS_ERROR_MESSAGES[resourcesError.type]) ||
+      "Failed to retrieve permissions due to an unexpected error. The resource may have been deleted, moved, or its sharing permissions changed.";
 
     return <div className="text-sm text-warning">{errorMessage}</div>;
   }
