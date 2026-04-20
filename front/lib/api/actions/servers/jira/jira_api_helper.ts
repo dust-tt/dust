@@ -891,7 +891,6 @@ export async function updateIssue(
   return new Ok(responseData);
 }
 
-
 export async function createIssueLink(
   baseUrl: string,
   accessToken: string,
