@@ -63,7 +63,7 @@ export type RenderContentFragmentToTypeSource =
       conversationId: string;
       message: MessageModel;
       file?: FileResource;
-      dataSourceViewsByModelId?: Map<ModelId, DataSourceViewResource>;
+      dataSourceView?: DataSourceViewResource;
     }
   | {
       kind: "project_context";
@@ -629,12 +629,15 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         const file = contentFragment.fileId
           ? filesByModelId.get(contentFragment.fileId)
           : undefined;
+        const dataSourceView = contentFragment.nodeDataSourceViewId
+          ? dataSourceViewsByModelId.get(contentFragment.nodeDataSourceViewId)
+          : undefined;
 
         return contentFragment.renderFromMessage(auth, {
           conversationId,
           message,
           file,
-          dataSourceViewsByModelId,
+          dataSourceView,
         });
       })
     );
@@ -880,12 +883,10 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       });
       const nodeType: ContentNodeType = fr.nodeType;
 
-      const preloadedDataSourceView =
-        source.kind === "conversation_message"
-          ? source.dataSourceViewsByModelId?.get(fr.nodeDataSourceViewId)
-          : undefined;
       const dsView =
-        preloadedDataSourceView ??
+        (source.kind === "conversation_message"
+          ? source.dataSourceView
+          : undefined) ??
         (
           await DataSourceViewResource.fetchByModelIds(auth, [
             fr.nodeDataSourceViewId,
@@ -927,12 +928,12 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       conversationId,
       message,
       file,
-      dataSourceViewsByModelId,
+      dataSourceView,
     }: {
       conversationId: string;
       message: MessageModel;
       file?: FileResource;
-      dataSourceViewsByModelId?: Map<ModelId, DataSourceViewResource>;
+      dataSourceView?: DataSourceViewResource;
     }
   ): Promise<ContentFragmentType> {
     return ContentFragmentResource.renderToContentFragmentType(auth, this, {
@@ -940,7 +941,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       conversationId,
       message,
       file,
-      dataSourceViewsByModelId,
+      dataSourceView,
     });
   }
 }
