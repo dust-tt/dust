@@ -41,6 +41,21 @@ export function buildPromptForSourceType(
         "IMPORTANT CONTEXT: This is a gdrive document.\n" +
         "It has been added to the project knowledge base explicitly\n\n"
       );
+    case "confluence":
+      return (
+        "IMPORTANT CONTEXT: This is a confluence document.\n" +
+        "It has been added to the project knowledge base explicitly\n\n"
+      );
+    case "github":
+      return (
+        "IMPORTANT CONTEXT: This is a github document (issue, pull request, discussion, or code file).\n" +
+        "It has been added to the project knowledge base explicitly\n\n"
+      );
+    case "microsoft":
+      return (
+        "IMPORTANT CONTEXT: This is a Microsoft document (SharePoint, OneDrive, or Teams file).\n" +
+        "It has been added to the project knowledge base explicitly\n\n"
+      );
     default:
       assertNever(sourceType);
   }

@@ -18,6 +18,9 @@ export const PROJECT_TODO_SOURCE_TYPES = [
   "slack",
   "notion",
   "gdrive",
+  "confluence",
+  "github",
+  "microsoft",
 ] as const;
 
 export type ProjectTodoSourceType = (typeof PROJECT_TODO_SOURCE_TYPES)[number];
