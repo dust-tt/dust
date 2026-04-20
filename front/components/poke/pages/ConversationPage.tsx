@@ -487,6 +487,14 @@ export function ConversationPage() {
   const { conversationDataSourceId, langfuseUiBaseUrl, temporalWorkspace } =
     conversationConfig;
 
+  const allMessages = conversation?.content.flat() ?? [];
+  const pendingUserCount = allMessages.filter(
+    (m) => m.type === "user_message" && m.visibility === "pending"
+  ).length;
+  const createdAgentCount = allMessages.filter(
+    (m) => m.type === "agent_message" && m.status === "created"
+  ).length;
+
   return (
     conversation && (
       <div className="max-w-4xl">
@@ -658,29 +666,26 @@ export function ConversationPage() {
               )}
             </div>
           )}
-
+          {(pendingUserCount > 0 || createdAgentCount > 0) && (
+            <div className="flex flex-col gap-1 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              {pendingUserCount > 0 && (
+                <div>
+                  ⏳ {pendingUserCount} user message
+                  {pendingUserCount > 1 ? "s" : ""} queued
+                </div>
+              )}
+              {createdAgentCount > 0 && (
+                <div>
+                  🔄 {createdAgentCount} agent message
+                  {createdAgentCount > 1 ? "s" : ""} generating
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex w-full flex-1 flex-col justify-start gap-8 py-4">
             {conversation.content.map((messages, i) => {
-              const hasPending = messages.some(
-                (m) =>
-                  (m.type === "user_message" && m.visibility === "pending") ||
-                  (m.type === "agent_message" && m.status === "created")
-              );
-              const isUserGroup = messages.every(
-                (m) =>
-                  m.type === "user_message" || m.type === "content_fragment"
-              );
               return (
-                <div
-                  key={`messages-${i}`}
-                  className={classNames(
-                    "flex flex-col gap-4",
-                    hasPending &&
-                      (isUserGroup
-                        ? "border-r-4 border-amber-400 pr-3"
-                        : "border-l-4 border-amber-400 pl-3")
-                  )}
-                >
+                <div key={`messages-${i}`} className="flex flex-col gap-4">
                   {messages.map((m, j) => {
                     switch (m.type) {
                       case "agent_message": {
