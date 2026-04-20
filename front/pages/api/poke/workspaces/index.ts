@@ -296,7 +296,7 @@ async function handler(
         renderLightWorkspaceType({ workspace, role: "admin" })
       );
       const membersCountByWorkspaceId =
-        await MembershipResource.getMembersCountsForWorkspaces({
+        await MembershipResource.getMembersCountsForWorkspaces(auth, {
           workspaces: lightWorkspaces,
           activeOnly: true,
         });

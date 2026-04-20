@@ -27,6 +27,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { RequireAtLeastOne } from "@app/types/shared/typescipt_utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import assert from "assert";
 import type {
   Attributes,
   FindOptions,
@@ -517,13 +518,21 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
-  static async getMembersCountsForWorkspaces({
-    workspaces,
-    activeOnly,
-  }: {
-    workspaces: LightWorkspaceType[];
-    activeOnly: boolean;
-  }): Promise<Record<string, number>> {
+  static async getMembersCountsForWorkspaces(
+    auth: Authenticator,
+    {
+      workspaces,
+      activeOnly,
+    }: {
+      workspaces: LightWorkspaceType[];
+      activeOnly: boolean;
+    }
+  ): Promise<Record<string, number>> {
+    assert(
+      auth.isDustSuperUser(),
+      "Counting members across different workspaces is only allowed for super users."
+    );
+
     const countByWorkspaceId: Record<string, number> = {};
     for (const w of workspaces) {
       countByWorkspaceId[w.sId] = 0;
