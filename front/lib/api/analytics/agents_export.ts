@@ -58,7 +58,8 @@ export const AGENT_EXPORT_HEADERS: (keyof AgentExportRow)[] = [
 
 export async function fetchAgentExportRows(
   baseQuery: estypes.QueryDslQueryContainer,
-  owner: WorkspaceType
+  owner: WorkspaceType,
+  includeHiddenAgents: boolean
 ): Promise<Result<AgentExportRow[], Error>> {
   const esResult = await searchAnalytics<never, TopAgentsExportAggs>(
     {
@@ -101,8 +102,7 @@ export async function fetchAgentExportRows(
     ])
   );
 
-  const scopeFilter =
-    owner.role === "admin" ? "" : `AND ac."scope" != 'hidden'`;
+  const scopeFilter = includeHiddenAgents ? "" : `AND ac."scope" != 'hidden'`;
 
   // TODO(BACK5): Migrate to AgentConfigurationResource when a suitable method exists.
   const readReplica = getFrontReplicaDbConnection();
