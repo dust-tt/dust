@@ -20,7 +20,7 @@
     "knip": "knip",
     "format": "biome check --write --error-on-warnings .",
     "format:ci": "biome ci --error-on-warnings .",
-    "format:lefthook": "biome check --write --error-on-warnings",
+    "format:lefthook": "biome check --write --error-on-warnings --no-errors-on-unmatched",
     "format:changed": "biome check --write --error-on-warnings --changed",
     "test:grit": "command -v grit >/dev/null 2>&1 || { echo 'Error: grit CLI not found. Install it with: brew install getgrit/tap/grit (or: curl -fsSL https://docs.grit.io/install | bash)'; exit 1; } && grit patterns test"
   },
