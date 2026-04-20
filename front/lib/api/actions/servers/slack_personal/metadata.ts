@@ -481,8 +481,8 @@ export const SLACK_PERSONAL_SERVER = {
     instructions:
       "When posting a message on Slack, you MUST use standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*, `code`). " +
       "Do NOT use Slack-specific markup like <url|text> for links — the system converts Markdown to Slack format automatically. " +
-      "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
-      "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
+      "IMPORTANT: All user-related parameters (usersFrom, usersTo, usersMentioned, user IDs in post_message, etc.) require Slack user IDs (e.g., 'U01234ABCD'), NOT Dust user IDs. Use the search_user tool to find Slack user IDs when needed.\n" +
+      "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID."
   },
   tools: Object.values(SLACK_PERSONAL_TOOLS_METADATA).map((t) => ({
     name: t.name,
