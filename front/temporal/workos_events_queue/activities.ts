@@ -722,7 +722,7 @@ async function handleUserAddedToGroup(
   if (!isMember) {
     const res = await group.dangerouslyAddMember(auth, {
       user: user.toJSON(),
-      allowProvisionnedGroups: true,
+      allowProvisionedGroups: true,
     });
     if (res.isErr()) {
       throw new Error(res.error.message);
@@ -875,7 +875,7 @@ async function handleUserRemovedFromGroup(
   }
   const res = await group.dangerouslyRemoveMember(auth, {
     user: user.toJSON(),
-    allowProvisionnedGroups: true,
+    allowProvisionedGroups: true,
   });
   if (res.isErr() && res.error.code !== "user_not_member") {
     throw new Error(res.error.message);
@@ -1123,7 +1123,7 @@ async function handleDeleteWorkOSUser(
     }
     const removeResult = await group.dangerouslyRemoveMember(auth, {
       user: user.toJSON(),
-      allowProvisionnedGroups: true,
+      allowProvisionedGroups: true,
     });
     if (removeResult.isErr()) {
       logger.warn(

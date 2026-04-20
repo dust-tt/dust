@@ -834,7 +834,7 @@ describe("SpaceResource", () => {
           // Add user as a simple member to the provisioned group
           await provisionedMemberGroup.dangerouslyAddMember(adminAuth, {
             user: memberUser.toJSON(),
-            allowProvisionnedGroups: true,
+            allowProvisionedGroups: true,
           });
 
           // Create an authenticator for the member user
@@ -897,7 +897,7 @@ describe("SpaceResource", () => {
           // Add editor to the provisioned editor group
           await provisionedEditorGroup.dangerouslyAddMember(adminAuth, {
             user: editorUser.toJSON(),
-            allowProvisionnedGroups: true,
+            allowProvisionedGroups: true,
           });
 
           // Create another provisioned group for the new members
@@ -910,7 +910,7 @@ describe("SpaceResource", () => {
           // Add members to the new provisioned group
           await newProvisionedMemberGroup.dangerouslyAddMembers(adminAuth, {
             users: [user1.toJSON(), user2.toJSON(), editorUser.toJSON()],
-            allowProvisionnedGroups: true,
+            allowProvisionedGroups: true,
           });
 
           // Create an authenticator for the editor user
