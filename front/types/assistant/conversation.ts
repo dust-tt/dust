@@ -402,6 +402,7 @@ export function getConversationUrlAccessMode(
 
 export type ConversationForkedFromType = {
   parentConversationId: string;
+  parentConversationTitle?: string | null;
   sourceMessageId: string;
   branchedAt: number;
   user: UserType;
