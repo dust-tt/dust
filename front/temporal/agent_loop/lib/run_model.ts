@@ -305,6 +305,11 @@ export async function runModel(
   }
 
   // Filter out ask_user_question for origins that don't support interactive questions.
+  const ASK_USER_QUESTION_ALLOWED_ORIGINS: UserMessageOrigin[] = [
+    "web",
+    "slack",
+    "onboarding_conversation",
+  ];
   const filteredMcpActions = !ASK_USER_QUESTION_ALLOWED_ORIGINS.includes(
     userMessage.context.origin
   )
