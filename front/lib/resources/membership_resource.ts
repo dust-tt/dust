@@ -517,6 +517,55 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
+  static async getMembersCountsForWorkspaces({
+    workspaces,
+    activeOnly,
+  }: {
+    workspaces: LightWorkspaceType[];
+    activeOnly: boolean;
+  }): Promise<Record<string, number>> {
+    const countByWorkspaceId: Record<string, number> = {};
+    for (const w of workspaces) {
+      countByWorkspaceId[w.sId] = 0;
+    }
+    if (workspaces.length === 0) {
+      return countByWorkspaceId;
+    }
+
+    const workspaceIdByModelId = new Map<ModelId, string>();
+    for (const w of workspaces) {
+      workspaceIdByModelId.set(w.id, w.sId);
+    }
+
+    const now = new Date();
+    const where: WhereOptions<InferAttributes<MembershipModel>> = {
+      workspaceId: { [Op.in]: workspaces.map((w) => w.id) },
+    };
+    if (activeOnly) {
+      where.endAt = { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: now }] };
+      where.startAt = { [Op.lte]: now };
+      where.firstUsedAt = { [Op.ne]: null };
+    }
+
+    const rows = await this.model.count({
+      where,
+      distinct: true,
+      col: "userId",
+      group: "workspaceId",
+    });
+
+    for (const row of rows) {
+      const workspaceModelId = row.workspaceId;
+      if (typeof workspaceModelId === "number") {
+        const workspaceId = workspaceIdByModelId.get(workspaceModelId);
+        if (workspaceId !== undefined) {
+          countByWorkspaceId[workspaceId] = row.count;
+        }
+      }
+    }
+    return countByWorkspaceId;
+  }
+
   static async countActiveMembersForWorkspace({
     workspace,
   }: {

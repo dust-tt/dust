@@ -32,6 +32,7 @@ import { Op } from "sequelize";
 export type PokeWorkspaceType = LightWorkspaceType & {
   createdAt: string;
   subscription: SubscriptionType;
+  membersCount: number;
 };
 
 export type GetPokeWorkspacesResponseBody = {
@@ -291,24 +292,31 @@ async function handler(
         workspaces.splice(originalLimit);
       }
 
+      const lightWorkspaces = workspaces.map((workspace) =>
+        renderLightWorkspaceType({ workspace, role: "admin" })
+      );
+      const membersCountByWorkspaceId =
+        await MembershipResource.getMembersCountsForWorkspaces({
+          workspaces: lightWorkspaces,
+          activeOnly: true,
+        });
+
       return res.status(200).json({
         workspaces: workspaces.map((workspace) => ({
-            ...renderLightWorkspaceType({
-              workspace,
-              role: "admin",
-            }),
-            createdAt: workspace.createdAt.toISOString(),
-            subscription: renderSubscriptionFromModels(
-              {
-                plan: workspace.subscriptions[0]
-                  ? workspace.subscriptions[0].plan
-                  : // If there is no active subscription, we use the free plan data.
-                  FREE_NO_PLAN_DATA,
-                activeSubscription: workspace.subscriptions[0],
-              }
-            ),
-          })
-        ),
+          ...renderLightWorkspaceType({
+            workspace,
+            role: "admin",
+          }),
+          createdAt: workspace.createdAt.toISOString(),
+          subscription: renderSubscriptionFromModels({
+            plan: workspace.subscriptions[0]
+              ? workspace.subscriptions[0].plan
+              : // If there is no active subscription, we use the free plan data.
+                FREE_NO_PLAN_DATA,
+            activeSubscription: workspace.subscriptions[0],
+          }),
+          membersCount: membersCountByWorkspaceId[workspace.sId] ?? 0,
+        })),
       });
 
     default:
