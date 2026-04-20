@@ -3,7 +3,7 @@ import { LinkWrapper } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types/user";
 
-const UNTITLED_CONVERSATION_TITLE = "Untitled conversation";
+const UNTITLED_FORKED_CONVERSATION_TITLE = "Forked conversation";
 
 interface ConversationForkNoticeProps {
   message: ConversationForkNoticeType;
@@ -31,7 +31,7 @@ export function ConversationForkNotice({
           href={getConversationRoute(owner.sId, message.childConversationId)}
           className="text-foreground transition duration-200 hover:underline dark:text-foreground-night"
         >
-          {message.childConversationTitle ?? UNTITLED_CONVERSATION_TITLE}
+          {message.childConversationTitle ?? UNTITLED_FORKED_CONVERSATION_TITLE}
         </LinkWrapper>
       </div>
       <div className="h-px flex-1 bg-border dark:bg-border-dark-night" />
