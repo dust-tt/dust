@@ -6,10 +6,16 @@ import {
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { createUserMessage } from "@app/lib/api/assistant/conversation/messages";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
+import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
+import {
+  isFileTypeUpsertableForUseCase,
+  processAndUpsertToDataSource,
+} from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -252,11 +258,13 @@ async function carryOverConversationAttachments(
 
     return isContentNodeAttachmentType(attachment);
   });
+  let childConversationDataSource: DataSourceResource | null = null;
 
   for (const attachment of directConversationAttachments) {
     let carriedAttachment:
       | ContentFragmentInputWithFileIdType
       | ContentFragmentInputWithContentNode;
+    let carriedFile: FileResource | null = null;
     let attachErrorMessage: string;
     let attachLogMetadata: Record<string, string>;
 
@@ -284,6 +292,7 @@ async function carryOverConversationAttachments(
         title: attachment.title,
         fileId: copiedFile.value.sId,
       };
+      carriedFile = copiedFile.value;
       attachErrorMessage =
         "Failed to attach copied file into forked conversation.";
       attachLogMetadata = {
@@ -323,6 +332,55 @@ async function carryOverConversationAttachments(
         },
         attachErrorMessage
       );
+
+      continue;
+    }
+
+    if (
+      carriedFile &&
+      !carriedFile.useCaseMetadata?.skipDataSourceIndexing &&
+      isFileTypeUpsertableForUseCase(carriedFile)
+    ) {
+      if (!childConversationDataSource) {
+        const childDataSourceRes =
+          await getOrCreateConversationDataSourceFromFile(auth, carriedFile);
+
+        if (childDataSourceRes.isErr()) {
+          logger.error(
+            {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              parentConversationId: parentConversation.sId,
+              childConversationId: childConversation.sId,
+              copiedFileId: carriedFile.sId,
+              error: childDataSourceRes.error,
+            },
+            "Failed to get or create child conversation datasource for forked file."
+          );
+
+          continue;
+        }
+
+        childConversationDataSource = childDataSourceRes.value;
+      }
+
+      const upsertRes = await processAndUpsertToDataSource(
+        auth,
+        childConversationDataSource,
+        { file: carriedFile }
+      );
+
+      if (upsertRes.isErr()) {
+        logger.error(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            parentConversationId: parentConversation.sId,
+            childConversationId: childConversation.sId,
+            copiedFileId: carriedFile.sId,
+            error: upsertRes.error,
+          },
+          "Failed to seed child conversation datasource for forked file."
+        );
+      }
     }
   }
 }

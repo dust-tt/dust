@@ -10,6 +10,8 @@ import * as contentFragmentModule from "@app/lib/api/assistant/conversation/cont
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { createConversationFork } from "@app/lib/api/assistant/conversation/forks";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
+import * as dataSourcesModule from "@app/lib/api/data_sources";
+import * as fileUpsertModule from "@app/lib/api/files/upsert";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPActionModel,
@@ -232,11 +234,13 @@ async function createToolOutputFile(
     fileName,
     snippet = null,
     hideFromUser = false,
+    skipDataSourceIndexing = false,
   }: {
     conversationId: string;
     fileName: string;
     snippet?: string | null;
     hideFromUser?: boolean;
+    skipDataSourceIndexing?: boolean;
   }
 ): Promise<FileResource> {
   return FileFactory.create(auth, auth.getNonNullableUser(), {
@@ -248,6 +252,7 @@ async function createToolOutputFile(
     useCaseMetadata: {
       conversationId,
       ...(hideFromUser ? { hideFromUser: true } : {}),
+      ...(skipDataSourceIndexing ? { skipDataSourceIndexing: true } : {}),
     },
     snippet,
   });
@@ -289,6 +294,24 @@ function mockCopyToConversation() {
 
       return new Ok(copiedFile);
     });
+}
+
+function mockDatasourceSeeding(
+  dataSource: Awaited<
+    ReturnType<typeof DataSourceViewFactory.folder>
+  >["dataSource"]
+) {
+  const getOrCreateConversationDataSourceFromFileSpy = vi
+    .spyOn(dataSourcesModule, "getOrCreateConversationDataSourceFromFile")
+    .mockResolvedValue(new Ok(dataSource));
+  const processAndUpsertToDataSourceSpy = vi
+    .spyOn(fileUpsertModule, "processAndUpsertToDataSource")
+    .mockImplementation(async (_auth, _dataSource, { file }) => new Ok(file));
+
+  return {
+    getOrCreateConversationDataSourceFromFileSpy,
+    processAndUpsertToDataSourceSpy,
+  };
 }
 
 function mockContentNodeAttachments(nodeDataSourceViewId: number) {
@@ -634,8 +657,18 @@ describe("createConversationFork", () => {
   });
 
   it("copies direct conversation file attachments into the child conversation", async () => {
-    const { auth } = await createPrivateApiMockRequest();
+    const { auth, workspace, globalSpace } =
+      await createPrivateApiMockRequest();
     const copyToConversationSpy = mockCopyToConversation();
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace,
+      auth.user() ?? null
+    );
+    const {
+      getOrCreateConversationDataSourceFromFileSpy,
+      processAndUpsertToDataSourceSpy,
+    } = mockDatasourceSeeding(dataSourceView.dataSource);
 
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
@@ -712,13 +745,32 @@ describe("createConversationFork", () => {
       childConversation.sId
     );
     expect(copiedFiles[0]?.snippet).toBe(sourceFile.snippet);
+    expect(getOrCreateConversationDataSourceFromFileSpy).toHaveBeenCalledTimes(
+      1
+    );
+    expect(processAndUpsertToDataSourceSpy).toHaveBeenCalledTimes(1);
+    expect(processAndUpsertToDataSourceSpy.mock.calls[0]?.[2].file.sId).toBe(
+      copiedFiles[0]?.sId
+    );
 
     copyToConversationSpy.mockRestore();
+    getOrCreateConversationDataSourceFromFileSpy.mockRestore();
+    processAndUpsertToDataSourceSpy.mockRestore();
   }, 15_000);
 
   it("only copies attachments that existed at the selected source message", async () => {
-    const { auth } = await createPrivateApiMockRequest();
+    const { auth, workspace, globalSpace } =
+      await createPrivateApiMockRequest();
     const copyToConversationSpy = mockCopyToConversation();
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace,
+      auth.user() ?? null
+    );
+    const {
+      getOrCreateConversationDataSourceFromFileSpy,
+      processAndUpsertToDataSourceSpy,
+    } = mockDatasourceSeeding(dataSourceView.dataSource);
 
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
@@ -807,11 +859,23 @@ describe("createConversationFork", () => {
     expect(childFileAttachments[0]?.title).toBe("First attachment");
 
     copyToConversationSpy.mockRestore();
+    getOrCreateConversationDataSourceFromFileSpy.mockRestore();
+    processAndUpsertToDataSourceSpy.mockRestore();
   }, 15_000);
 
   it("carries over tool output attachments from the selected source message", async () => {
-    const { auth } = await createPrivateApiMockRequest();
+    const { auth, workspace, globalSpace } =
+      await createPrivateApiMockRequest();
     const copyToConversationSpy = mockCopyToConversation();
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace,
+      auth.user() ?? null
+    );
+    const {
+      getOrCreateConversationDataSourceFromFileSpy,
+      processAndUpsertToDataSourceSpy,
+    } = mockDatasourceSeeding(dataSourceView.dataSource);
 
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
@@ -888,13 +952,100 @@ describe("createConversationFork", () => {
       childConversation.sId
     );
     expect(copiedFiles[0]?.snippet).toBe(sourceToolOutput.snippet);
+    expect(getOrCreateConversationDataSourceFromFileSpy).toHaveBeenCalledTimes(
+      1
+    );
+    expect(processAndUpsertToDataSourceSpy).toHaveBeenCalledTimes(1);
+    expect(processAndUpsertToDataSourceSpy.mock.calls[0]?.[2].file.sId).toBe(
+      copiedFiles[0]?.sId
+    );
 
     copyToConversationSpy.mockRestore();
+    getOrCreateConversationDataSourceFromFileSpy.mockRestore();
+    processAndUpsertToDataSourceSpy.mockRestore();
+  }, 15_000);
+
+  it("does not seed the child conversation datasource for skipped tool outputs", async () => {
+    const { auth, workspace, globalSpace } =
+      await createPrivateApiMockRequest();
+    const copyToConversationSpy = mockCopyToConversation();
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace,
+      auth.user() ?? null
+    );
+    const {
+      getOrCreateConversationDataSourceFromFileSpy,
+      processAndUpsertToDataSourceSpy,
+    } = mockDatasourceSeeding(dataSourceView.dataSource);
+
+    const parentConversation = await createConversation(auth, {
+      title: "Parent conversation",
+      visibility: "unlisted",
+      spaceId: null,
+    });
+
+    const skippedToolOutput = await createToolOutputFile(auth, {
+      conversationId: parentConversation.sId,
+      fileName: "offloaded-output.txt",
+      skipDataSourceIndexing: true,
+    });
+
+    const userMessage = await createUserMessage(auth, {
+      conversation: parentConversation,
+      rank: 1,
+      content: "Fork from the next answer.",
+    });
+    const sourceMessage = await createAgentMessage(auth, {
+      conversation: parentConversation,
+      rank: 2,
+      parentId: userMessage.id,
+      status: "succeeded",
+      generatedFileId: skippedToolOutput.id,
+    });
+
+    const result = await createConversationFork(auth, {
+      conversationId: parentConversation.sId,
+      sourceMessageId: sourceMessage.sId,
+    });
+
+    expect(result.isErr()).toBe(false);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    const childConversation = await fetchConversationOrThrow(
+      auth,
+      result.value
+    );
+
+    const childAttachments = await listAttachments(auth, {
+      conversation: childConversation,
+    });
+    const childFileAttachments = childAttachments.filter(isFileAttachmentType);
+
+    expect(childFileAttachments).toHaveLength(1);
+    expect(getOrCreateConversationDataSourceFromFileSpy).not.toHaveBeenCalled();
+    expect(processAndUpsertToDataSourceSpy).not.toHaveBeenCalled();
+
+    copyToConversationSpy.mockRestore();
+    getOrCreateConversationDataSourceFromFileSpy.mockRestore();
+    processAndUpsertToDataSourceSpy.mockRestore();
   }, 15_000);
 
   it("preserves hidden tool output attachments in the forked conversation", async () => {
-    const { auth } = await createPrivateApiMockRequest();
+    const { auth, workspace, globalSpace } =
+      await createPrivateApiMockRequest();
     const copyToConversationSpy = mockCopyToConversation();
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace,
+      auth.user() ?? null
+    );
+    const {
+      getOrCreateConversationDataSourceFromFileSpy,
+      processAndUpsertToDataSourceSpy,
+    } = mockDatasourceSeeding(dataSourceView.dataSource);
 
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
@@ -951,6 +1102,8 @@ describe("createConversationFork", () => {
     expect(copiedFiles[0]?.useCaseMetadata?.hideFromUser).toBe(true);
 
     copyToConversationSpy.mockRestore();
+    getOrCreateConversationDataSourceFromFileSpy.mockRestore();
+    processAndUpsertToDataSourceSpy.mockRestore();
   }, 15_000);
 
   it("reattaches content node attachments that existed at the selected source message", async () => {
