@@ -147,6 +147,8 @@
  *           type: array
  *           items:
  *             type: string
+ *         forkedFrom:
+ *           $ref: '#/components/schemas/PrivateConversationForkedFrom'
  *         forkedChildren:
  *           type: array
  *           items:
@@ -181,6 +183,20 @@
  *         lastLoginAt:
  *           type: integer
  *           nullable: true
+ *     PrivateConversationForkedFrom:
+ *       type: object
+ *       properties:
+ *         parentConversationId:
+ *           type: string
+ *         parentConversationTitle:
+ *           type: string
+ *           nullable: true
+ *         sourceMessageId:
+ *           type: string
+ *         branchedAt:
+ *           type: integer
+ *         user:
+ *           $ref: '#/components/schemas/PrivateConversationForkUser'
  *     PrivateConversationForkedChild:
  *       type: object
  *       properties:
