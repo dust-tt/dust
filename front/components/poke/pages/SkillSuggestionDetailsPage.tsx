@@ -42,9 +42,7 @@ export function SkillSuggestionDetailsPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold">
-        {suggestion.title ?? "Suggestion"}
-      </h2>
+      <h2 className="text-2xl font-bold">{suggestion.title ?? "Suggestion"}</h2>
       <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
         {suggestion.sId} · Skill&nbsp;
         <LinkWrapper
