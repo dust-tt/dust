@@ -14,7 +14,6 @@ import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, Transaction, WhereOptions } from "sequelize";
 import { literal } from "sequelize";
 
@@ -68,30 +67,26 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
   ): Promise<Result<WakeUpResource, Error>> {
     const { status = "scheduled", fireCount = 0, ...wakeUpBlob } = blob;
 
-    try {
-      const row = await this.model.create(
-        {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          conversationId: conversation.id,
-          userId: auth.user()?.id ?? null,
-          agentConfigurationId: agentConfiguration.sId,
-          status,
-          fireCount,
-          ...wakeUpBlob,
-        },
-        { transaction }
-      );
+    const row = await this.model.create(
+      {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: conversation.id,
+        userId: auth.user()?.id ?? null,
+        agentConfigurationId: agentConfiguration.sId,
+        status,
+        fireCount,
+        ...wakeUpBlob,
+      },
+      { transaction }
+    );
 
-      const wakeUp = new this(this.model, row.get());
-      const temporalResult = await wakeUp.startTemporalWorkflow(auth);
-      if (temporalResult.isErr()) {
-        return temporalResult;
-      }
-
-      return new Ok(wakeUp);
-    } catch (error) {
-      return new Err(normalizeError(error));
+    const wakeUp = new this(this.model, row.get());
+    const temporalResult = await wakeUp.startTemporalWorkflow(auth);
+    if (temporalResult.isErr()) {
+      return temporalResult;
     }
+
+    return new Ok(wakeUp);
   }
 
   static async listByConversation(
@@ -167,30 +162,26 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       return temporalResult;
     }
 
-    try {
-      const [affectedCount, affectedRows] = await this.model.update(
-        {
-          status: "cancelled",
-        },
-        {
-          where: {
-            id: this.id,
-            workspaceId: auth.getNonNullableWorkspace().id,
-            status: "scheduled",
-          } as WhereOptions<WakeUpModel>,
-          transaction,
-          returning: true,
-        }
-      );
-
-      if (affectedCount > 0 && affectedRows[0]) {
-        Object.assign(this, affectedRows[0].get());
+    const [affectedCount, affectedRows] = await this.model.update(
+      {
+        status: "cancelled",
+      },
+      {
+        where: {
+          id: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status: "scheduled",
+        } as WhereOptions<WakeUpModel>,
+        transaction,
+        returning: true,
       }
+    );
 
-      return new Ok(undefined);
-    } catch (error) {
-      return new Err(normalizeError(error));
+    if (affectedCount > 0 && affectedRows[0]) {
+      Object.assign(this, affectedRows[0].get());
     }
+
+    return new Ok(undefined);
   }
 
   async markFired(
@@ -204,50 +195,42 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     const nextStatus: WakeUpStatus =
       this.scheduleType === "one_shot" ? "fired" : "scheduled";
 
-    try {
-      const [affectedCount, affectedRows] = await this.model.update(
-        {
-          fireCount: literal('"fireCount" + 1'),
-          status: nextStatus,
-        },
-        {
-          where: {
-            id: this.id,
-            workspaceId: auth.getNonNullableWorkspace().id,
-            status: "scheduled",
-          } as WhereOptions<WakeUpModel>,
-          transaction,
-          returning: true,
-        }
-      );
-
-      if (affectedCount > 0 && affectedRows[0]) {
-        Object.assign(this, affectedRows[0].get());
+    const [affectedCount, affectedRows] = await this.model.update(
+      {
+        fireCount: literal('"fireCount" + 1'),
+        status: nextStatus,
+      },
+      {
+        where: {
+          id: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status: "scheduled",
+        } as WhereOptions<WakeUpModel>,
+        transaction,
+        returning: true,
       }
+    );
 
-      return new Ok(undefined);
-    } catch (error) {
-      return new Err(normalizeError(error));
+    if (affectedCount > 0 && affectedRows[0]) {
+      Object.assign(this, affectedRows[0].get());
     }
+
+    return new Ok(undefined);
   }
 
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    try {
-      await this.model.destroy({
-        where: {
-          id: this.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        } as WhereOptions<WakeUpModel>,
-        transaction,
-      });
+    await this.model.destroy({
+      where: {
+        id: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      } as WhereOptions<WakeUpModel>,
+      transaction,
+    });
 
-      return new Ok(undefined);
-    } catch (error) {
-      return new Err(normalizeError(error));
-    }
+    return new Ok(undefined);
   }
 
   private async startTemporalWorkflow(
