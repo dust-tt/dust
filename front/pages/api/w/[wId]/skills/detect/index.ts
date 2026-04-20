@@ -132,13 +132,17 @@ async function handler(
         });
       }
 
+      const existingSkills = await SkillResource.fetchByNames(
+        auth,
+        detectedSkills.map((s) => s.name)
+      );
+
+      const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
+
       const skillSummaries = await concurrentExecutor(
         detectedSkills,
         async (skill): Promise<DetectedSkillSummary> => {
-          const existing = await SkillResource.fetchActiveByName(
-            auth,
-            skill.name
-          );
+          const existing = existingSkillsMap.get(skill.name);
 
           if (!existing) {
             return {
