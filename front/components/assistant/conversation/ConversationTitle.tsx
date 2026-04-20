@@ -10,19 +10,24 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import { getProjectRoute } from "@app/lib/utils/router";
+import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types/user";
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
+  ActionGitBranchIcon,
   ArrowLeftIcon,
   AttachmentIcon,
   Breadcrumbs,
   Button,
+  Chip,
   MoreIcon,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { EditConversationTitleDialog } from "./EditConversationTitleDialog";
+
+const UNTITLED_CONVERSATION_TITLE = "Untitled conversation";
 
 export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const activeConversationId = useActiveConversationId();
@@ -57,6 +62,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const spaceId = conversation?.spaceId;
   const isProjectConversation = !!spaceId;
   const isLoading = isProjectConversation && !spaceInfo;
+  const forkedFrom = conversation?.forkedFrom;
 
   const breadcrumbItems: BreadcrumbItem[] = [];
 
@@ -79,19 +85,59 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     });
   }
 
+  const hasReadableParentConversation =
+    !!forkedFrom && "parentConversationTitle" in forkedFrom;
+  const parentConversationTitle = hasReadableParentConversation
+    ? (forkedFrom.parentConversationTitle ?? UNTITLED_CONVERSATION_TITLE)
+    : "Parent conversation";
+  const forkedFromTooltipLabel = hasReadableParentConversation
+    ? `Branched from ${parentConversationTitle}`
+    : "Branched from a parent conversation you can no longer access";
+
   return (
     <AppLayoutTitle>
       <div
         className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-3"
         onContextMenu={handleRightClick}
       >
-        <div className="min-w-0 overflow-x-auto scrollbar-hide">
-          <Breadcrumbs
-            items={breadcrumbItems}
-            className="dd-privacy-mask"
-            truncateLengthMiddle={35}
-            truncateLengthEnd={120}
-          />
+        <div className="flex min-w-0 items-center gap-2 overflow-x-auto scrollbar-hide">
+          <div className="min-w-0">
+            <Breadcrumbs
+              items={breadcrumbItems}
+              className="dd-privacy-mask"
+              truncateLengthMiddle={35}
+              truncateLengthEnd={120}
+            />
+          </div>
+          {forkedFrom && (
+            <Tooltip
+              label={forkedFromTooltipLabel}
+              tooltipTriggerAsChild
+              trigger={
+                hasReadableParentConversation ? (
+                  <Chip
+                    className="max-w-44 shrink-0 dd-privacy-mask"
+                    color="primary"
+                    href={getConversationRoute(
+                      owner.sId,
+                      forkedFrom.parentConversationId
+                    )}
+                    icon={ActionGitBranchIcon}
+                    label={parentConversationTitle}
+                    size="mini"
+                  />
+                ) : (
+                  <Chip
+                    className="max-w-44 shrink-0"
+                    color="primary"
+                    icon={ActionGitBranchIcon}
+                    label={parentConversationTitle}
+                    size="mini"
+                  />
+                )
+              }
+            />
+          )}
         </div>
         <EditConversationTitleDialog
           isOpen={showRenameDialog}
