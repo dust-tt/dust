@@ -34,7 +34,7 @@ import {
 } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
 import type React from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // ── Category display configuration ────────────────────────────────────────────
 
@@ -199,6 +199,68 @@ function groupTodosByCategory(todos: ProjectTodoType[]) {
   return { todosByCategory, activeSections };
 }
 
+// ── Collapsible wrapper ──────────────────────────────────────────────────────
+
+const COLLAPSED_MAX_HEIGHT_PX = 260;
+
+interface CollapsibleTodoListProps {
+  children: React.ReactNode;
+}
+
+function CollapsibleTodoList({ children }: CollapsibleTodoListProps) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [needsCollapse, setNeedsCollapse] = useState(false);
+
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) {
+      return;
+    }
+
+    const observer = new ResizeObserver(() => {
+      setNeedsCollapse(el.scrollHeight > COLLAPSED_MAX_HEIGHT_PX);
+    });
+    observer.observe(el);
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="relative">
+        <div
+          ref={contentRef}
+          className="flex flex-col gap-4"
+          style={{
+            maxHeight:
+              isExpanded || !needsCollapse
+                ? undefined
+                : COLLAPSED_MAX_HEIGHT_PX,
+            overflow: "hidden",
+            transition: "max-height 200ms ease",
+          }}
+        >
+          {children}
+        </div>
+        {!isExpanded && needsCollapse && (
+          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-b from-transparent to-background dark:to-background-night" />
+        )}
+      </div>
+      {needsCollapse && (
+        <div>
+          <Button
+            size="xs"
+            variant="outline"
+            label={isExpanded ? "Show less" : "Show more"}
+            onClick={() => setIsExpanded((prev) => !prev)}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Read-only panel (archived projects) ───────────────────────────────────────
 
 function ReadOnlyTodoItem({
@@ -252,7 +314,7 @@ function ReadOnlyProjectTodosPanel({
           <Spinner size="sm" />
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <CollapsibleTodoList>
           {activeSections.map((cat) => {
             const config = CATEGORY_CONFIG[cat];
             const items = todosByCategory[cat] ?? [];
@@ -278,7 +340,7 @@ function ReadOnlyProjectTodosPanel({
               All caught up!
             </p>
           )}
-        </div>
+        </CollapsibleTodoList>
       )}
     </div>
   );
@@ -503,7 +565,7 @@ function EditableProjectTodosPanel({
           <Spinner size="sm" />
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <CollapsibleTodoList>
           {/* Per-category sections */}
           {activeSections.map((cat) => {
             const config = CATEGORY_CONFIG[cat];
@@ -571,7 +633,7 @@ function EditableProjectTodosPanel({
               All caught up!
             </p>
           )}
-        </div>
+        </CollapsibleTodoList>
       )}
     </div>
   );
