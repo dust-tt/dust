@@ -12,6 +12,7 @@ export const toolUseModelEvents: BetaRawMessageStreamEvent[] = [
       role: "assistant",
       content: [],
       stop_reason: "tool_use",
+      stop_details: null,
       stop_sequence: null,
       usage: {
         input_tokens: 0,
@@ -87,6 +88,7 @@ export const toolUseModelEvents: BetaRawMessageStreamEvent[] = [
     type: "message_delta",
     delta: {
       stop_reason: "tool_use",
+      stop_details: null,
       stop_sequence: null,
       container: null,
     },

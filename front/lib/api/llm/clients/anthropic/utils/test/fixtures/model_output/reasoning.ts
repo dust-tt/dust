@@ -12,6 +12,7 @@ export const reasoningModelEvents: BetaRawMessageStreamEvent[] = [
       role: "assistant",
       content: [],
       stop_reason: "end_turn",
+      stop_details: null,
       stop_sequence: null,
       usage: {
         input_tokens: 0,
@@ -94,6 +95,7 @@ export const reasoningModelEvents: BetaRawMessageStreamEvent[] = [
     type: "message_delta",
     delta: {
       stop_reason: "end_turn",
+      stop_details: null,
       stop_sequence: null,
       container: null,
     },

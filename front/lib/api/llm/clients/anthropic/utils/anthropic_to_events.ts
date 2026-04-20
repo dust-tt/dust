@@ -206,6 +206,7 @@ function* handleContentBlockStart(
     case "mcp_tool_result":
     case "container_upload":
     case "compaction":
+    case "advisor_tool_result":
       // We don't use these Anthropic tools
       return;
     default:
