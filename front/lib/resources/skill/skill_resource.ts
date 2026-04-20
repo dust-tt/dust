@@ -1,4 +1,5 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
+import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { hasSharedMembership } from "@app/lib/api/user";
@@ -698,18 +699,43 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where
     );
 
-    // Fetch global skills with their MCP server configurations.
-    const globalSkills = removeNulls(
-      await concurrentExecutor(
-        globalSkillDefinitions,
-        async (def) => {
-          if (agentLoopData && def.isDisabledForAgentLoop?.(agentLoopData)) {
-            return null;
-          }
-          return this.fromGlobalSkill(auth, def, context, { withTools });
-        },
-        { concurrency: 5 }
+    const enabledGlobalSkillDefinitions = globalSkillDefinitions.filter(
+      (def) => !agentLoopData || !def.isDisabledForAgentLoop?.(agentLoopData)
+    );
+
+    const requestedSpaceModelIds = removeNulls(
+      (agentLoopData?.agentConfiguration?.requestedSpaceIds ?? []).map(
+        getResourceIdFromSId
       )
+    );
+
+    // Batch-fetch MCP server views for all enabled global skills in a single query.
+    let mcpServerViews: MCPServerViewResource[] = [];
+    if (withTools) {
+      const mcpServerIds = uniq(
+            enabledGlobalSkillDefinitions.flatMap(
+              (def) => def.mcpServers?.map((s) => s.name) ?? []
+            )
+          ).map((name) =>
+            autoInternalMCPServerNameToSId({ name, workspaceId: workspace.id })
+          );
+      const allMCPServerViews = await MCPServerViewResource.listByMCPServers(
+        auth,
+        mcpServerIds,
+        transaction
+      );
+      mcpServerViews = allMCPServerViews.filter(view => requestedSpaceModelIds.includes(view.vaultId) ||
+        view.space.kind === "global");
+    }
+
+    const globalSkills = await concurrentExecutor(
+      enabledGlobalSkillDefinitions,
+      (def) =>
+        this.fromGlobalSkill(auth, def, {
+          agentLoopData,
+          mcpServerViews,
+        }),
+      { concurrency: 5 }
     );
 
     return [...allowedCustomSkillsRes, ...globalSkills];
@@ -1404,16 +1430,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     def: GlobalSkillDefinition,
     {
       agentLoopData,
-      transaction,
+      mcpServerViews,
     }: {
       agentLoopData?: AgentLoopExecutionData;
-      transaction?: Transaction;
-    } = {},
-    {
-      withTools = true,
-    }: {
-      withTools?: boolean;
-    } = {}
+      mcpServerViews: MCPServerViewResource[];
+    }
   ): Promise<SkillResource> {
     const { agentConfiguration } = agentLoopData ?? {};
     const requestedSpaceIds = agentConfiguration?.requestedSpaceIds ?? [];
@@ -1421,29 +1442,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       requestedSpaceIds.map(getResourceIdFromSId)
     );
 
-    let mcpServerConfigurations: SkillMCPServerConfiguration[] = [];
-
-    if (withTools && def.mcpServers) {
-      const mcpServerConfigurationsByName = await concurrentExecutor(
-        def.mcpServers,
-        async ({ name, childAgentId, serverNameOverride }) => {
-          const views =
-            await MCPServerViewResource.listMCPServerViewsAutoInternalForSpaces(
-              auth,
-              name,
-              requestedSpaceModelIds,
-              transaction
-            );
-          return views.map((view) => ({
-            view,
-            childAgentId,
-            serverNameOverride,
-          }));
-        },
-        { concurrency: 5 }
-      );
-      mcpServerConfigurations = mcpServerConfigurationsByName.flat();
-    }
+    const mcpServerConfigurations: SkillMCPServerConfiguration[] = (
+      def.mcpServers ?? []
+    ).flatMap(({ name, childAgentId, serverNameOverride }) => mcpServerViews
+        .filter((view) => view.internalMCPServerId === autoInternalMCPServerNameToSId({
+          name,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        }))
+        .map((view) => ({ view, childAgentId, serverNameOverride })
+    ));
 
     const instructions = def.fetchInstructions
       ? await def.fetchInstructions(auth, {
