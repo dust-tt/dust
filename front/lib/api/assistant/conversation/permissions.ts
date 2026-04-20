@@ -139,12 +139,12 @@ export async function updateConversationRequirements(
   auth: Authenticator,
   {
     agents,
-    contentFragmentDsvIds,
+    contentFragmentDatasourceViewIds,
     conversation,
     t,
   }: {
     agents?: LightAgentConfigurationType[];
-    contentFragmentDsvIds?: string[];
+    contentFragmentDatasourceViewIds?: string[];
     conversation: ConversationWithoutContentType;
     t?: Transaction;
   }
@@ -178,10 +178,10 @@ export async function updateConversationRequirements(
   if (agents) {
     newSpaceRequirements = agents.flatMap((agent) => agent.requestedSpaceIds);
   }
-  if (contentFragmentDsvIds) {
+  if (!!contentFragmentDatasourceViewIds?.length) {
     const requestedSpaceIds = await getContentFragmentsSpaceIds(
       auth,
-      contentFragmentDsvIds
+      contentFragmentDatasourceViewIds
     );
     newSpaceRequirements.push(...requestedSpaceIds);
   }
@@ -245,7 +245,7 @@ export async function rebuildConversationRequirements(
   // Clear existing requirements so that updateConversationRequirements starts from a clean state.
   await conversationResource.updateRequirements([]);
 
-  const { agentConfigurationIds, contentFragmentDsvIds } =
+  const { agentConfigurationIds, contentFragmentDatasourceViewIds } =
     await conversationResource.fetchAgentConfigurationAndContentFragmentIds(
       auth
     );
@@ -260,7 +260,7 @@ export async function rebuildConversationRequirements(
 
   await updateConversationRequirements(auth, {
     agents,
-    contentFragmentDsvIds,
+    contentFragmentDatasourceViewIds,
     conversation: conversationResource.toJSON(),
   });
 }

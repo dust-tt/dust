@@ -6188,7 +6188,7 @@ describe("ConversationResource cleanup on delete", () => {
         agentConfigurationId: agent1.sId,
       });
 
-      const { agentConfigurationIds, contentFragmentDsvIds } =
+      const { agentConfigurationIds, contentFragmentDatasourceViewIds } =
         await conversationResource.fetchAgentConfigurationAndContentFragmentIds(
           auth
         );
@@ -6199,7 +6199,7 @@ describe("ConversationResource cleanup on delete", () => {
       expect(agentConfigurationIds).toContain(agent2.sId);
 
       // No content fragments, so should be empty.
-      expect(contentFragmentDsvIds).toHaveLength(0);
+      expect(contentFragmentDatasourceViewIds).toHaveLength(0);
     });
 
     it("returns empty arrays when conversation has no agent or content fragment messages", async () => {
@@ -6229,13 +6229,13 @@ describe("ConversationResource cleanup on delete", () => {
       );
       assert(conversationResource, "Conversation not found");
 
-      const { agentConfigurationIds, contentFragmentDsvIds } =
+      const { agentConfigurationIds, contentFragmentDatasourceViewIds } =
         await conversationResource.fetchAgentConfigurationAndContentFragmentIds(
           auth
         );
 
       expect(agentConfigurationIds).toHaveLength(0);
-      expect(contentFragmentDsvIds).toHaveLength(0);
+      expect(contentFragmentDatasourceViewIds).toHaveLength(0);
     });
   });
 });

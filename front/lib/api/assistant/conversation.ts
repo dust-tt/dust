@@ -2053,7 +2053,7 @@ export async function postNewContentFragment(
 
     if (isContentFragmentInputWithContentNode(cf)) {
       await updateConversationRequirements(auth, {
-        contentFragmentDsvIds: [cf.nodeDataSourceViewId],
+        contentFragmentDatasourceViewIds: [cf.nodeDataSourceViewId],
         conversation,
         t,
       });

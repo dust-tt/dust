@@ -98,7 +98,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   constructor(
     model: ModelStaticWorkspaceAware<ConversationModel>,
     blob: Attributes<ConversationModel>,
-    private readonly _space: SpaceResource | null
+    private _space: SpaceResource | null
   ) {
     super(ConversationModel, blob);
   }
@@ -2770,6 +2770,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   async clearSpaceId() {
     await this.update({ spaceId: null });
+    this._space = null;
   }
 
   /**
@@ -2781,7 +2782,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator
   ): Promise<{
     agentConfigurationIds: string[];
-    contentFragmentDsvIds: string[];
+    contentFragmentDatasourceViewIds: string[];
   }> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
@@ -2824,7 +2825,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       ],
     });
 
-    const contentFragmentDsvIds = uniq(
+    const contentFragmentDatasourceViewIds = uniq(
       cfMessages
         .map((m) => {
           const modelId = m.contentFragment?.nodeDataSourceViewId;
@@ -2839,7 +2840,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         .filter((sId): sId is string => sId !== null)
     );
 
-    return { agentConfigurationIds, contentFragmentDsvIds };
+    return { agentConfigurationIds, contentFragmentDatasourceViewIds };
   }
 
   static async markHasError(
