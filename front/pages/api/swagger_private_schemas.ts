@@ -185,6 +185,12 @@
  *           nullable: true
  *     PrivateConversationForkedFrom:
  *       type: object
+ *       required:
+ *         - parentConversationId
+ *         - parentConversationTitle
+ *         - sourceMessageId
+ *         - branchedAt
+ *         - user
  *       properties:
  *         parentConversationId:
  *           type: string

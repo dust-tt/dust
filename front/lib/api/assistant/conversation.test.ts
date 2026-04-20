@@ -3665,15 +3665,12 @@ describe("conversation fetch forkedFrom", () => {
       messagesCreatedAt: [new Date("2026-01-05T00:00:00.000Z")],
     });
     const parentConversationTitle = "Quarterly Review Data";
-    await ConversationModel.update(
-      { title: parentConversationTitle },
-      {
-        where: {
-          id: parentConversation.id,
-          workspaceId: workspace.id,
-        },
-      }
+    const updateTitleRes = await ConversationResource.updateTitle(
+      auth,
+      parentConversation.sId,
+      parentConversationTitle
     );
+    expect(updateTitleRes.isOk()).toBe(true);
     const childConversation = await ConversationFactory.create(auth, {
       agentConfigurationId: agent.sId,
       messagesCreatedAt: [],

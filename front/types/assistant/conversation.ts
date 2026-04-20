@@ -419,7 +419,7 @@ export function isReinforcedSkillNotificationMetadata(
  */
 export type ConversationForkedFromType = {
   parentConversationId: string;
-  parentConversationTitle?: string | null;
+  parentConversationTitle: string | null;
   sourceMessageId: string;
   branchedAt: number;
   user: UserType;
