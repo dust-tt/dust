@@ -713,19 +713,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     let mcpServerViews: MCPServerViewResource[] = [];
     if (withTools) {
       const mcpServerIds = uniq(
-            enabledGlobalSkillDefinitions.flatMap(
-              (def) => def.mcpServers?.map((s) => s.name) ?? []
-            )
-          ).map((name) =>
-            autoInternalMCPServerNameToSId({ name, workspaceId: workspace.id })
-          );
+        enabledGlobalSkillDefinitions.flatMap(
+          (def) => def.mcpServers?.map((s) => s.name) ?? []
+        )
+      ).map((name) =>
+        autoInternalMCPServerNameToSId({ name, workspaceId: workspace.id })
+      );
       const allMCPServerViews = await MCPServerViewResource.listByMCPServers(
         auth,
         mcpServerIds,
         transaction
       );
-      mcpServerViews = allMCPServerViews.filter(view => requestedSpaceModelIds.includes(view.vaultId) ||
-        view.space.kind === "global");
+      mcpServerViews = allMCPServerViews.filter(
+        (view) =>
+          requestedSpaceModelIds.includes(view.vaultId) ||
+          view.space.kind === "global"
+      );
     }
 
     const globalSkills = await concurrentExecutor(
@@ -1444,13 +1447,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const mcpServerConfigurations: SkillMCPServerConfiguration[] = (
       def.mcpServers ?? []
-    ).flatMap(({ name, childAgentId, serverNameOverride }) => mcpServerViews
-        .filter((view) => view.internalMCPServerId === autoInternalMCPServerNameToSId({
-          name,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        }))
-        .map((view) => ({ view, childAgentId, serverNameOverride })
-    ));
+    ).flatMap(({ name, childAgentId, serverNameOverride }) =>
+      mcpServerViews
+        .filter(
+          (view) =>
+            view.internalMCPServerId ===
+            autoInternalMCPServerNameToSId({
+              name,
+              workspaceId: auth.getNonNullableWorkspace().id,
+            })
+        )
+        .map((view) => ({ view, childAgentId, serverNameOverride }))
+    );
 
     const instructions = def.fetchInstructions
       ? await def.fetchInstructions(auth, {
