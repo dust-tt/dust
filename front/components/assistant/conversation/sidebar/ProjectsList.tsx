@@ -107,6 +107,8 @@ const ProjectListItem = memo(
         icon={getSpaceIcon(space)}
         selected={isSpaceSelected && !isDragOver}
         label={space.name}
+        href={spacePath}
+        shallow
         hasActivity={hasUnread}
         count={unreadCount > 0 ? unreadCount : undefined}
         onClick={async () => {
@@ -116,9 +118,6 @@ const ProjectListItem = memo(
             // Wait a bit before moving to the new space to avoid the sidebar from flickering.
             await new Promise((resolve) => setTimeout(resolve, 600));
           }
-          await router.push(spacePath, undefined, {
-            shallow: true,
-          });
         }}
         moreMenu={
           <ProjectMenu
