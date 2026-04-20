@@ -28,6 +28,36 @@ describe("getConversationDisplayTitle", () => {
     ).toBe("New Conversation");
   });
 
+  it("renders a fork title from the parent title", () => {
+    expect(
+      getConversationDisplayTitle(
+        {
+          title: null,
+          created: now.getTime(),
+          forkedFrom: {
+            parentConversationTitle: "Quarterly review",
+          },
+        },
+        now
+      )
+    ).toBe("Branched from 'Quarterly review'");
+  });
+
+  it("renders a generic fork title when the parent title is unavailable", () => {
+    expect(
+      getConversationDisplayTitle(
+        {
+          title: null,
+          created: now.getTime(),
+          forkedFrom: {
+            parentConversationTitle: null,
+          },
+        },
+        now
+      )
+    ).toBe("Forked conversation");
+  });
+
   it("keeps the existing fallback for untitled non-fork conversations", () => {
     expect(
       getConversationDisplayTitle(

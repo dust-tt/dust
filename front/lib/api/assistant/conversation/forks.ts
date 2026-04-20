@@ -51,7 +51,8 @@ export type CreateConversationForkErrorCode =
   | "invalid_request_error"
   | "internal_error";
 
-const FORKED_CONVERSATION_TITLE_SUFFIX = " (forked)";
+const FORK_INITIALIZATION_MESSAGE_RANK = 0;
+const UNTITLED_CONVERSATION_TITLE = "Untitled conversation";
 
 type CarriedAttachment = {
   carriedAttachment:
@@ -62,16 +63,8 @@ type CarriedAttachment = {
   attachLogMetadata: Record<string, string>;
 };
 
-function getForkedConversationTitle(title: string | null): string | null {
-  if (title === null) {
-    return null;
-  }
-
-  if (title.endsWith(FORKED_CONVERSATION_TITLE_SUFFIX)) {
-    return title;
-  }
-
-  return `${title}${FORKED_CONVERSATION_TITLE_SUFFIX}`;
+function escapeMarkdownLinkText(text: string): string {
+  return text.replace(/[\\[\]]/g, "\\$&");
 }
 
 function filterConversationContentUpToRank(
@@ -484,7 +477,7 @@ export async function createConversationFork(
       auth,
       {
         sId: generateRandomModelSId(),
-        title: getForkedConversationTitle(parentConversation.title),
+        title: null,
         visibility: parentConversation.visibility,
         depth: parentConversation.depth + 1,
         triggerId: null,

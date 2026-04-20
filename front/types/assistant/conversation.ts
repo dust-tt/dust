@@ -467,7 +467,12 @@ export type ConversationWithoutContentType = {
 type ConversationDisplayTitleInput = Pick<
   ConversationWithoutContentType,
   "created" | "title"
->;
+> & {
+  forkedFrom?: Pick<
+    NonNullable<ConversationWithoutContentType["forkedFrom"]>,
+    "parentConversationTitle"
+  >;
+};
 
 export function getConversationDisplayTitle(
   conversation: ConversationDisplayTitleInput,
@@ -475,6 +480,12 @@ export function getConversationDisplayTitle(
 ): string {
   if (conversation.title) {
     return conversation.title;
+  }
+
+  if (conversation.forkedFrom) {
+    return conversation.forkedFrom.parentConversationTitle
+      ? `Branched from '${conversation.forkedFrom.parentConversationTitle}'`
+      : "Forked conversation";
   }
 
   return moment(conversation.created).isSame(now, "day")
