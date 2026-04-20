@@ -284,6 +284,14 @@ function buildSearchResults<T>(
   );
 }
 
+// Best-effort detection of Slack user IDs (U* or W* for enterprise grid).
+// When matched, wraps as <@ID> which is the format Slack search expects.
+// Non-matching values (e.g. bot names like "slackbot") are passed through as-is.
+const SLACK_USER_ID_RE = /^[UW][A-Z0-9]+$/;
+function formatUserRef(user: string): string {
+  return SLACK_USER_ID_RE.test(user) ? `<@${user}>` : user;
+}
+
 function buildSlackSearchQuery(
   initial: string,
   {
@@ -315,13 +323,13 @@ function buildSlackSearchQuery(
       .join(" ")}`;
   }
   if (usersFrom && usersFrom.length > 0) {
-    query = `${query} ${usersFrom.map((user) => `from:<@${user}>`).join(" ")}`;
+    query = `${query} ${usersFrom.map((user) => `from:${formatUserRef(user)}`).join(" ")}`;
   }
   if (usersTo && usersTo.length > 0) {
-    query = `${query} ${usersTo.map((user) => `to:<@${user}>`).join(" ")}`;
+    query = `${query} ${usersTo.map((user) => `to:${formatUserRef(user)}`).join(" ")}`;
   }
   if (usersMentioned && usersMentioned.length > 0) {
-    query = `${query} ${usersMentioned.map((user) => `<@${user}>`).join(" ")}`;
+    query = `${query} ${usersMentioned.map((user) => formatUserRef(user)).join(" ")}`;
   }
   return query;
 }
