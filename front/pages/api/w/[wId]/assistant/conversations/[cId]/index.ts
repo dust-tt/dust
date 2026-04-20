@@ -208,7 +208,6 @@ async function handler(
       const conversationRes =
         await ConversationResource.fetchConversationWithoutContent(auth, cId, {
           includeForkedChildrenInfo: true,
-          includeForkedFromParentConversationTitle: true,
         });
 
       if (conversationRes.isErr()) {
