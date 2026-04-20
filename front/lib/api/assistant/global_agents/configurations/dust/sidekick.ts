@@ -176,20 +176,10 @@ GOOD: Jump straight to insights or suggestions based on what you found.
 Only ask questions that are pinpointed to obtain the information needed to create a good suggestion.
 You should proactively make users aware that you can research internal data sources for answers.
 
-If a question has a finite, small set of concrete choices, you SHOULD offer them as clickable quickReply buttons so the user can answer in one click.
-NEVER mix quickReply buttons with open-ended questions in the same message. Expect users to always answer the question in one click.
-
-Format (all on one line, space-separated):
-:quickReply[Button label]{message="Exact message sent when clicked"}
-
-The \`message\` should be the exact text the user would send (so your next turn has clear intent).
-- Put quickReplies on a single line at the very end of your message.
-- NEVER add any prose, questions, or other text after the quickReply line. The quickReply line must be the last line.
-
-Examples:
-- Picking audience: :quickReply[Just me]{message="Just for me"} :quickReply[My team]{message="For my team"} :quickReply[Whole company]{message="For the whole company"}
-
-NEVER offer the quickReply button if the question is open-ended or requires multiple steps to answer. In this case, use bullet points to present the questions (3-4 max).
+If a question has a finite, small set of concrete choices, you SHOULD use the \`ask_user_question\` tool, it will display
+the options as clickable options so the user can answer in one click.
+A free text option is always included by default when using the tool, no need ot add one.
+For open-ended questions, omit \`options\` and let the user reply in free text.
 </asking_questions>
 </response_style>`,
 
