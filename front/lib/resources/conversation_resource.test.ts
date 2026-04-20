@@ -29,6 +29,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -1069,6 +1070,9 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
   let agents: LightAgentConfigurationType[];
   let globalSpace: SpaceResource;
   let restrictedSpace: SpaceResource;
+  let globalGroup: Awaited<
+    ReturnType<typeof createResourceTest>
+  >["globalGroup"];
   let conversations: {
     accessible: string[];
     restricted: string[];
@@ -1078,11 +1082,13 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
     const {
       authenticator,
       globalSpace: gs,
+      globalGroup: gg,
       user,
       workspace: w,
     } = await createResourceTest({
       role: "admin",
     });
+    globalGroup = gg;
 
     workspace = w;
     globalSpace = gs;
@@ -1447,6 +1453,33 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
     expect(adminConversations.map((c) => c.sId)).not.toContain(
       participantRequiredConversation.sId
     );
+  });
+
+  it("should allow API key auth to fetch a conversation it created when private URLs are enabled by default", async () => {
+    const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
+      privateConversationUrlsByDefault: true,
+    });
+    assert(updateResult.isOk(), "Failed to enable private conversation URLs");
+
+    const apiKey = await KeyFactory.regular(globalGroup);
+    const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
+      apiKey,
+      workspace.sId
+    );
+
+    const conversation = await ConversationFactory.create(apiKeyAuth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [dateFromDaysAgo(2)],
+    });
+
+    // API key has no user so no participant record is created, but it should
+    // still be able to fetch the conversation it created via space permissions.
+    const fetched = await ConversationResource.fetchById(
+      apiKeyAuth,
+      conversation.sId
+    );
+    expect(fetched).not.toBeNull();
+    expect(fetched?.sId).toBe(conversation.sId);
   });
 });
 
