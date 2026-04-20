@@ -130,6 +130,7 @@ async function handler(
         endDate: q.data.endDate,
         timezone: q.data.timezone ?? "UTC",
         owner,
+        includeHiddenAgents: auth.isKey(),
       });
 
       if (csv.isErr()) {
