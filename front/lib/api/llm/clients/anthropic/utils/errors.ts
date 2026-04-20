@@ -62,6 +62,22 @@ function categorizeAnthropicError(
   const statusCode = originalError.status ?? 500;
   const isRetryable = shouldRetry(originalError);
 
+  // With eager_input_streaming enabled, the model may produce invalid tool parameter JSON.
+  // The Anthropic API sometimes detects this server-side and aborts the stream with an SSE
+  // error event (instead of reaching content_block_stop where we handle it client-side).
+  // We mark this as retryable so the agent loop retries the full LLM call.
+  if (
+    originalError.type === "invalid_request_error" &&
+    normalized.message.includes("Unable to parse tool parameter JSON")
+  ) {
+    return {
+      type: "invalid_request_error",
+      message: `Model generated invalid tool call JSON (${metadata.clientId}/${metadata.modelId}). ${normalized.message}`,
+      isRetryable: true,
+      originalError,
+    };
+  }
+
   if (originalError instanceof APIConnectionError) {
     return {
       type: "network_error",
