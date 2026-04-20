@@ -206,11 +206,10 @@ function mergeConversationForkNotices(
   for (const forkedChild of forkedChildren) {
     const currentChildren =
       forkedChildrenBySourceMessageId.get(forkedChild.sourceMessageId) ?? [];
-    currentChildren.push(forkedChild);
-    forkedChildrenBySourceMessageId.set(
-      forkedChild.sourceMessageId,
-      currentChildren
-    );
+    forkedChildrenBySourceMessageId.set(forkedChild.sourceMessageId, [
+      ...currentChildren,
+      forkedChild,
+    ]);
   }
 
   const mergedMessages: VirtuosoMessage[] = [];

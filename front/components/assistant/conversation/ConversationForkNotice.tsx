@@ -5,6 +5,11 @@ import type { WorkspaceType } from "@app/types/user";
 
 const UNTITLED_CONVERSATION_TITLE = "Untitled conversation";
 
+interface ConversationForkNoticeProps {
+  message: ConversationForkNoticeMessage;
+  owner: WorkspaceType;
+}
+
 function getForkingUserDisplayName(
   message: ConversationForkNoticeMessage
 ): string {
@@ -14,10 +19,7 @@ function getForkingUserDisplayName(
 export function ConversationForkNotice({
   message,
   owner,
-}: {
-  message: ConversationForkNoticeMessage;
-  owner: WorkspaceType;
-}) {
+}: ConversationForkNoticeProps) {
   return (
     <div className="flex items-center gap-3">
       <div className="h-px flex-1 bg-border dark:bg-border-dark-night" />
