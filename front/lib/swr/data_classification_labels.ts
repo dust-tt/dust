@@ -7,31 +7,31 @@ import type { LightWorkspaceType } from "@app/types/user";
 function buildKey(
   owner: LightWorkspaceType,
   source:
-    | { dataSourceId: string; internalMCPServerName?: never }
-    | { internalMCPServerName: string; dataSourceId?: never }
+    | { dataSourceId: string; internalMCPServerId?: never }
+    | { internalMCPServerId: string; dataSourceId?: never }
 ): string {
   if (source.dataSourceId !== undefined) {
     return `/api/w/${owner.sId}/data-classification-labels?dataSourceId=${source.dataSourceId}`;
   }
-  return `/api/w/${owner.sId}/data-classification-labels?internalMCPServerName=${source.internalMCPServerName}`;
+  return `/api/w/${owner.sId}/data-classification-labels?internalMCPServerId=${source.internalMCPServerId}`;
 }
 
 export function useDataClassificationLabels({
   owner,
   dataSourceId,
-  internalMCPServerName,
+  internalMCPServerId,
 }: {
   owner: LightWorkspaceType;
 } & (
-  | { dataSourceId: string; internalMCPServerName?: never }
-  | { internalMCPServerName: string; dataSourceId?: never }
+  | { dataSourceId: string; internalMCPServerId?: never }
+  | { internalMCPServerId: string; dataSourceId?: never }
 )) {
   const { fetcher } = useFetcher();
   const key = buildKey(
     owner,
     dataSourceId !== undefined
       ? { dataSourceId }
-      : { internalMCPServerName: internalMCPServerName! }
+      : { internalMCPServerId: internalMCPServerId! }
   );
   const { data, error, mutate } = useSWRWithDefaults<
     string,
@@ -49,20 +49,20 @@ export function useDataClassificationLabels({
 export async function saveDataClassificationLabels({
   owner,
   dataSourceId,
-  internalMCPServerName,
+  internalMCPServerId,
   allowedLabels,
 }: {
   owner: LightWorkspaceType;
   allowedLabels: MicrosoftAllowedLabel[];
 } & (
-  | { dataSourceId: string; internalMCPServerName?: never }
-  | { internalMCPServerName: string; dataSourceId?: never }
+  | { dataSourceId: string; internalMCPServerId?: never }
+  | { internalMCPServerId: string; dataSourceId?: never }
 )): Promise<{ success: boolean; error?: string }> {
   const body: Record<string, unknown> = { allowedLabels };
   if (dataSourceId !== undefined) {
     body.dataSourceId = dataSourceId;
   } else {
-    body.internalMCPServerName = internalMCPServerName;
+    body.internalMCPServerId = internalMCPServerId;
   }
 
   const response = await clientFetch(

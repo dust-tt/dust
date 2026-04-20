@@ -1,16 +1,10 @@
 /** @ignoreswagger */
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { MICROSOFT_DRIVE_SERVER_NAME } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
-import { MICROSOFT_TEAMS_SERVER_NAME } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
-import { OUTLOOK_TOOL_NAME } from "@app/lib/api/actions/servers/outlook/mail_metadata";
+import { getSensitivityLabelProviderForServerId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
 import type { Authenticator } from "@app/lib/auth";
-import type {
-  MicrosoftAllowedLabel,
-  SensitivityLabelProvider,
-} from "@app/lib/models/workspace_sensitivity_label_config";
+import type { MicrosoftAllowedLabel } from "@app/lib/models/workspace_sensitivity_label_config";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { WorkspaceSensitivityLabelConfigResource } from "@app/lib/resources/workspace_sensitivity_label_config_resource";
@@ -31,7 +25,6 @@ export type MicrosoftSensitivityLabel = {
 };
 
 export type DataClassificationLabelsResponseBody = {
-  provider: SensitivityLabelProvider;
   labels: MicrosoftSensitivityLabel[];
   allowedLabels: MicrosoftAllowedLabel[];
 };
@@ -39,21 +32,13 @@ export type DataClassificationLabelsResponseBody = {
 // ─── Request schema ──────────────────────────────────────────────────────────
 
 const SourceSchema = z.union([
-  z.object({ dataSourceId: z.string(), internalMCPServerName: z.undefined() }),
-  z.object({ internalMCPServerName: z.string(), dataSourceId: z.undefined() }),
+  z.object({ dataSourceId: z.string(), internalMCPServerId: z.undefined() }),
+  z.object({ internalMCPServerId: z.string(), dataSourceId: z.undefined() }),
 ]);
 
 const PostBodySchema = z.object({
   allowedLabels: z.array(z.string()),
 });
-
-// ─── Provider mapping ────────────────────────────────────────────────────────
-
-const MCP_SERVER_TO_PROVIDER: Record<string, SensitivityLabelProvider> = {
-  [MICROSOFT_DRIVE_SERVER_NAME]: "microsoft",
-  [MICROSOFT_TEAMS_SERVER_NAME]: "microsoft",
-  [OUTLOOK_TOOL_NAME]: "microsoft",
-};
 
 // ─── Token helpers ───────────────────────────────────────────────────────────
 
@@ -84,12 +69,15 @@ async function getConnectorAccessToken(
 
 async function getMCPConnectionAccessToken(
   auth: Authenticator,
-  internalMCPServerName: InternalMCPServerNameType
+  internalMCPServerId: string
 ): Promise<string | null> {
-  const conn = await MCPServerConnectionResource.findByInternalServerName(
-    auth,
-    { serverName: internalMCPServerName, connectionType: "workspace" }
-  );
+  const connsResult = await MCPServerConnectionResource.listByMCPServer(auth, {
+    mcpServerId: internalMCPServerId,
+  });
+  if (connsResult.isErr()) {
+    return null;
+  }
+  const conn = connsResult.value.find((c) => c.connectionType === "workspace");
   if (!conn?.connectionId) {
     return null;
   }
@@ -165,11 +153,10 @@ async function handler(
       },
     });
   }
-  const { dataSourceId, internalMCPServerName } = sourceValidation.data;
+  const { dataSourceId, internalMCPServerId } = sourceValidation.data;
 
-  // ── Resolve provider, sourceType, sourceId, and access token ───────────────
+  // ── Resolve sourceType, sourceId, and access token ───────────────
 
-  let provider: SensitivityLabelProvider;
   let sourceType: "connector" | "mcp_connection";
   let sourceId: string;
   let accessToken: string | null;
@@ -198,7 +185,6 @@ async function handler(
       });
     }
 
-    provider = "microsoft";
     sourceType = "connector";
     sourceId = dataSource.sId;
     accessToken = await getConnectorAccessToken(dataSource);
@@ -211,30 +197,30 @@ async function handler(
     }
   } else {
     // MCP connection path.
-    const serverName = internalMCPServerName as string;
-    const resolvedProvider = MCP_SERVER_TO_PROVIDER[serverName];
+    const resolvedProvider = getSensitivityLabelProviderForServerId(
+      internalMCPServerId as string
+    );
 
     if (!resolvedProvider) {
       return apiError(req, res, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: `Unsupported MCP server for data classification: ${serverName}`,
+          message: `Unsupported MCP server for data classification: ${internalMCPServerId}`,
         },
       });
     }
 
-    provider = resolvedProvider;
     sourceType = "mcp_connection";
-    sourceId = serverName;
+    sourceId = internalMCPServerId as string;
     accessToken = await getMCPConnectionAccessToken(
       auth,
-      serverName as InternalMCPServerNameType
+      internalMCPServerId as string
     );
 
     if (!accessToken) {
       logger.warn(
-        { internalMCPServerName: serverName },
+        { internalMCPServerId },
         "No access token for MCP connection label fetch"
       );
     }
@@ -255,7 +241,6 @@ async function handler(
         : [];
 
       return res.status(200).json({
-        provider,
         labels,
         allowedLabels: (savedConfig?.allowedLabels ??
           []) as MicrosoftAllowedLabel[],
@@ -277,7 +262,7 @@ async function handler(
 
       const updated = await WorkspaceSensitivityLabelConfigResource.upsert(
         auth,
-        { provider, sourceType, sourceId, allowedLabels }
+        { sourceType, sourceId, allowedLabels }
       );
 
       return res.status(200).json({ config: updated });

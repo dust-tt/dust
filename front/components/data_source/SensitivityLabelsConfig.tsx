@@ -60,14 +60,14 @@ export function ConnectorSensitivityLabelsConfig({
 
 interface MCPSensitivityLabelsConfigProps {
   owner: LightWorkspaceType;
-  internalMCPServerName: string;
+  internalMCPServerId: string;
   readOnly?: boolean;
   isAdmin: boolean;
 }
 
 export function MCPSensitivityLabelsConfig({
   owner,
-  internalMCPServerName,
+  internalMCPServerId,
   readOnly = false,
   isAdmin,
 }: MCPSensitivityLabelsConfigProps) {
@@ -75,7 +75,7 @@ export function MCPSensitivityLabelsConfig({
     dataClassificationLabels,
     isDataClassificationLabelsLoading,
     mutateDataClassificationLabels,
-  } = useDataClassificationLabels({ owner, internalMCPServerName });
+  } = useDataClassificationLabels({ owner, internalMCPServerId });
 
   if (isDataClassificationLabelsLoading || !dataClassificationLabels) {
     return null;
@@ -84,7 +84,7 @@ export function MCPSensitivityLabelsConfig({
   return (
     <MicrosoftLabelsSelector
       owner={owner}
-      source={{ internalMCPServerName }}
+      source={{ internalMCPServerId }}
       labels={dataClassificationLabels.labels}
       savedAllowedLabels={dataClassificationLabels.allowedLabels}
       onSaved={mutateDataClassificationLabels}
@@ -97,8 +97,8 @@ export function MCPSensitivityLabelsConfig({
 // ─── Microsoft selector ───────────────────────────────────────────────────────
 
 type Source =
-  | { dataSourceId: string; internalMCPServerName?: never }
-  | { internalMCPServerName: string; dataSourceId?: never };
+  | { dataSourceId: string; internalMCPServerId?: never }
+  | { internalMCPServerId: string; dataSourceId?: never };
 
 interface MicrosoftLabelsSelectorProps {
   owner: LightWorkspaceType;
