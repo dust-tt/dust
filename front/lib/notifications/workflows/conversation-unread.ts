@@ -120,6 +120,7 @@ const ConversationDetailsSchema = z.object({
   authorUserId: z.string().optional(),
   isFromTrigger: z.boolean(),
   isFromEmailAgentConversation: z.boolean(),
+  isFromSlackAgentConversation: z.boolean(),
   workspaceName: z.string(),
   mentionedUserIds: z.array(z.string()),
   hasUnreadMessages: z.boolean(),
@@ -176,6 +177,7 @@ const getConversationDetails = async ({
         authorIsAgent: false,
         isFromTrigger: false,
         isFromEmailAgentConversation: false,
+        isFromSlackAgentConversation: false,
         workspaceName: "Deleted conversation",
         mentionedUserIds: [],
         avatarUrl: undefined,
@@ -251,6 +253,12 @@ const getConversationDetails = async ({
       isUserMessageType(parentUserMessage) &&
       parentUserMessage.context.origin === "email");
 
+  const isFromSlackAgentConversation =
+    (isUserMessageType(message) && message.context.origin === "slack") ||
+    (parentUserMessage !== undefined &&
+      isUserMessageType(parentUserMessage) &&
+      parentUserMessage.context.origin === "slack");
+
   if (isCompactionMessageType(message)) {
     // Compaction messages don't trigger notifications.
     return new Err(new ConversationError("message_not_found"));
@@ -322,6 +330,7 @@ const getConversationDetails = async ({
     authorUserId,
     isFromTrigger,
     isFromEmailAgentConversation,
+    isFromSlackAgentConversation,
     workspaceName,
     mentionedUserIds,
     hasUnreadMessages,
@@ -1174,7 +1183,10 @@ export const triggerConversationUnreadNotifications = async (
     // Conversation or message was deleted - no notification needed.
     return new Ok(undefined);
   }
-  if (detailsResult.value.isFromEmailAgentConversation) {
+  if (
+    detailsResult.value.isFromEmailAgentConversation ||
+    detailsResult.value.isFromSlackAgentConversation
+  ) {
     return new Ok(undefined);
   }
   const { authorUserId } = detailsResult.value;

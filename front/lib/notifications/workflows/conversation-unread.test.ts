@@ -1032,6 +1032,95 @@ describe("conversation-unread workflow business logic", () => {
       expect(result.isOk()).toBe(true);
       expect(vi.mocked(getNovuClient)).not.toHaveBeenCalled();
     });
+
+    it("should skip notifications for slack-origin user messages", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Slack Agent",
+        description: "Test",
+      });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+
+      const { userMessage } = await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Posted from slack",
+        origin: "slack",
+      });
+
+      await ConversationResource.upsertParticipation(auth, {
+        conversation,
+        action: "posted",
+        user: user1.toJSON(),
+        lastReadAt: null,
+      });
+      await ConversationResource.upsertParticipation(auth, {
+        conversation,
+        action: "posted",
+        user: user2.toJSON(),
+        lastReadAt: null,
+      });
+
+      const result = await triggerConversationUnreadNotifications(auth, {
+        conversationId: conversation.sId,
+        messageId: userMessage.sId,
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(vi.mocked(getNovuClient)).not.toHaveBeenCalled();
+    });
+
+    it("should skip notifications for agent replies to slack-origin user messages", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Slack Agent",
+        description: "Test",
+      });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+
+      const { userMessage } = await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Posted from slack",
+        origin: "slack",
+      });
+      const agentMessage = await ConversationFactory.createAgentMessageWithRank(
+        {
+          workspace,
+          conversationId: conversation.id,
+          rank: 1,
+          agentConfigurationId: agent.sId,
+          parentId: userMessage.id,
+        }
+      );
+
+      await ConversationResource.upsertParticipation(auth, {
+        conversation,
+        action: "posted",
+        user: user1.toJSON(),
+        lastReadAt: null,
+      });
+      await ConversationResource.upsertParticipation(auth, {
+        conversation,
+        action: "posted",
+        user: user2.toJSON(),
+        lastReadAt: null,
+      });
+
+      const result = await triggerConversationUnreadNotifications(auth, {
+        conversationId: conversation.sId,
+        messageId: agentMessage.sId,
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(vi.mocked(getNovuClient)).not.toHaveBeenCalled();
+    });
   });
 });
 
@@ -1052,6 +1141,7 @@ describe("getMessagePreviewText", () => {
     isNewProjectConversation: true,
     mentionedUserIds: [],
     isFromEmailAgentConversation: false,
+    isFromSlackAgentConversation: false,
   };
   it("should return retention policy message for conversation retention", () => {
     const details: ConversationDetailsType = {
@@ -1146,6 +1236,7 @@ describe("getMessagePreviewSlack", () => {
     avatarUrl: "https://example.com/avatar.jpg",
     isFromTrigger: false,
     isFromEmailAgentConversation: false,
+    isFromSlackAgentConversation: false,
     workspaceName: "Test Workspace",
     mentionedUserIds: [],
     hasUnreadMessages: true,
@@ -1280,6 +1371,7 @@ describe("getEmailSummary", () => {
     authorIsAgent: false,
     isFromTrigger: false,
     isFromEmailAgentConversation: false,
+    isFromSlackAgentConversation: false,
     workspaceName: "Test Workspace",
     mentionedUserIds: [],
     hasUnreadMessages: true,
