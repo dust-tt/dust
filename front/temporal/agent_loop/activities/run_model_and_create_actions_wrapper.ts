@@ -122,8 +122,7 @@ async function _runModelAndCreateActionsActivity({
   const { auth, ...runAgentData } = runAgentDataRes.value;
   const isRootAgentMessage = !runAgentData.userMessage.agenticMessageData;
   const durationRecorder = DurationRecorder.create([
-    `model:${runAgentData.agentConfiguration.model.modelId}`,
-    `provider:${runAgentData.agentConfiguration.model.providerId}`,
+    `plan:${auth.getNonNullablePlan().code}`,
   ]);
 
   // Intentionally check at step start (not step end) to early exit if dollar amount too high.
