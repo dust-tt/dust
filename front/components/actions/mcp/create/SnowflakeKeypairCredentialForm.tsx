@@ -1,9 +1,11 @@
 import type { StaticCredentialFormHandle } from "@app/components/actions/mcp/MCPServerAuthConnection";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import datadogLogger from "@app/logger/datadogLogger";
 import type { PostCredentialsResponseBody } from "@app/pages/api/w/[wId]/credentials";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Input, TextArea } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -69,34 +71,81 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
     setIsSubmitting(true);
 
     try {
-      const response = await clientFetch(`/api/w/${owner.sId}/credentials`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider: "snowflake",
-          credentials: {
-            auth_type: "keypair",
-            username: values.username,
-            account: values.account,
-            role: values.role,
-            warehouse: values.warehouse,
-            private_key: values.privateKey,
-            private_key_passphrase: values.privateKeyPassphrase,
-          },
-        }),
-      });
-
-      const result: WithAPIErrorResponse<PostCredentialsResponseBody> =
-        await response.json();
-
-      if (!response.ok || isAPIErrorResponse(result)) {
+      let response: Response;
+      try {
+        response = await clientFetch(`/api/w/${owner.sId}/credentials`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            provider: "snowflake",
+            credentials: {
+              auth_type: "keypair",
+              username: values.username,
+              account: values.account,
+              role: values.role,
+              warehouse: values.warehouse,
+              private_key: values.privateKey,
+              private_key_passphrase: values.privateKeyPassphrase,
+            },
+          }),
+        });
+      } catch (err) {
+        const e = normalizeError(err);
         sendNotification({
           type: "error",
           title: "Failed to save Snowflake credentials",
-          description: isAPIErrorResponse(result)
-            ? result.error.message
-            : "An error occurred.",
+          description: e.message,
         });
+        datadogLogger.error(
+          { workspaceSId: owner.sId, err: e.message },
+          "Snowflake keypair credential save failed: network error"
+        );
+        return null;
+      }
+
+      let result: WithAPIErrorResponse<PostCredentialsResponseBody>;
+      try {
+        result = await response.json();
+      } catch (err) {
+        const e = normalizeError(err);
+        sendNotification({
+          type: "error",
+          title: "Failed to save Snowflake credentials",
+          description: `Unexpected response from server (status ${response.status}).`,
+        });
+        datadogLogger.error(
+          {
+            workspaceSId: owner.sId,
+            statusCode: response.status,
+            err: e.message,
+          },
+          "Snowflake keypair credential save failed: response parse error"
+        );
+        return null;
+      }
+
+      if (!response.ok || isAPIErrorResponse(result)) {
+        const description = isAPIErrorResponse(result)
+          ? result.error.message
+          : "An error occurred.";
+        sendNotification({
+          type: "error",
+          title: "Failed to save Snowflake credentials",
+          description,
+        });
+        datadogLogger.error(
+          {
+            workspaceSId: owner.sId,
+            statusCode: response.status,
+            errorType: isAPIErrorResponse(result)
+              ? result.error.type
+              : undefined,
+            errorMessage: isAPIErrorResponse(result)
+              ? result.error.message
+              : undefined,
+          },
+          "Snowflake keypair credential save failed: server error"
+        );
         return null;
       }
 
@@ -109,9 +158,30 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
   useImperativeHandle(ref, () => ({
     submit: async () => {
       let credentialId: string | null = null;
-      await form.handleSubmit(async (values) => {
-        credentialId = await handleSave(values);
-      })();
+      await form.handleSubmit(
+        async (values) => {
+          credentialId = await handleSave(values);
+        },
+        (errors) => {
+          const description =
+            Object.values(errors)
+              .map((err) => err?.message)
+              .filter((m): m is string => typeof m === "string" && m.length > 0)
+              .join(" ") || "One or more fields are invalid.";
+          sendNotification({
+            type: "error",
+            title: "Please check the Snowflake credentials",
+            description,
+          });
+          datadogLogger.warn(
+            {
+              workspaceSId: owner.sId,
+              invalidFields: Object.keys(errors),
+            },
+            "Snowflake keypair credential form validation failed"
+          );
+        }
+      )();
       return credentialId;
     },
   }));
