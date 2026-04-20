@@ -681,7 +681,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_management_tool"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
-  | "ask_user_question_tool"
   | "audit_logs"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
