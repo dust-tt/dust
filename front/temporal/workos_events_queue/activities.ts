@@ -42,16 +42,24 @@ import { GROUP_KINDS } from "@app/types/groups";
 import type { Result } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import type {
-  DirectoryGroup,
   DirectoryUser,
+  DsyncGroupCreatedEvent,
+  DsyncGroupDeletedEvent,
+  DsyncGroupUpdatedEvent,
   DsyncGroupUserAddedEvent,
   DsyncGroupUserRemovedEvent,
+  DsyncUserCreatedEvent,
+  DsyncUserDeletedEvent,
+  DsyncUserUpdatedEvent,
   Event,
-  Organization,
   OrganizationDomain,
+  OrganizationDomainVerificationFailedEvent,
+  OrganizationDomainVerifiedEvent,
+  OrganizationUpdatedEvent,
 } from "@workos-inc/node";
 import { NotFoundException } from "@workos-inc/node";
 import assert from "assert";
+import {isString} from "@app/types/shared/utils/general";
 
 const logger = mainLogger.child(
   {},
@@ -71,10 +79,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * Verify if workspace exist, if it does will call the callback with the found workspace.
  * Otherwise will return undefined
  */
-async function verifyWorkOSWorkspace<E extends object, R>(
+async function verifyWorkOSWorkspace<E extends Event, R>(
   organizationId: string | null,
   event: E,
-  handler: (workspace: LightWorkspaceType, eventData: E) => R
+  handler: (workspace: LightWorkspaceType, event: E) => R
 ) {
   if (!organizationId) {
     return;
@@ -101,7 +109,8 @@ async function verifyWorkOSWorkspace<E extends object, R>(
 
   // For dsync events, verify the plan allows SCIM and the directoryId matches
   // the current organization's active directory.
-  if (isRecord(event) && typeof event.directoryId === "string") {
+  const { data: eventData } = event;
+  if (isRecord(eventData) && "directoryId" in eventData && isString(eventData.directoryId)) {
     const subscription =
       await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
     if (!subscription?.getPlan().limits.users.isSCIMAllowed) {
@@ -125,9 +134,9 @@ async function verifyWorkOSWorkspace<E extends object, R>(
     const activeDirectoryIds = new Set(
       directoriesResult.value.map((d) => d.id)
     );
-    if (!activeDirectoryIds.has(event.directoryId)) {
+    if (!activeDirectoryIds.has(eventData.directoryId)) {
       logger.info(
-        { workspaceId: workspace.sId, directoryId: event.directoryId },
+        { workspaceId: workspace.sId, directoryId: eventData.directoryId },
         "Event from disconnected directory, skipping"
       );
       return;
@@ -267,7 +276,7 @@ export async function processWorkOSEventActivity({
     case "organization_domain.verified":
       await verifyWorkOSWorkspace(
         eventPayload.data.organizationId,
-        eventPayload.data,
+        eventPayload,
         handleOrganizationDomainVerified
       );
       break;
@@ -275,7 +284,7 @@ export async function processWorkOSEventActivity({
     case "organization_domain.verification_failed":
       await verifyWorkOSWorkspace(
         eventPayload.data.organizationId,
-        eventPayload.data,
+        eventPayload,
         handleOrganizationDomainVerificationFailed
       );
       break;
@@ -283,7 +292,7 @@ export async function processWorkOSEventActivity({
     case "organization.updated":
       await verifyWorkOSWorkspace(
         eventPayload.data.id,
-        eventPayload.data,
+        eventPayload,
         handleOrganizationUpdated
       );
       break;
@@ -292,7 +301,7 @@ export async function processWorkOSEventActivity({
     case "dsync.group.updated":
       await verifyWorkOSWorkspace(
         eventPayload.data.organizationId,
-        eventPayload.data,
+        eventPayload,
         handleGroupUpsert
       );
       break;
@@ -300,7 +309,7 @@ export async function processWorkOSEventActivity({
     case "dsync.group.deleted":
       await verifyWorkOSWorkspace(
         eventPayload.data.organizationId,
-        eventPayload.data,
+        eventPayload,
         handleGroupDelete
       );
       break;
@@ -308,7 +317,7 @@ export async function processWorkOSEventActivity({
     case "dsync.group.user_added":
       await verifyWorkOSWorkspace(
         eventPayload.data.user.organizationId,
-        eventPayload.data,
+        eventPayload,
         handleUserAddedToGroup
       );
       break;
@@ -316,7 +325,7 @@ export async function processWorkOSEventActivity({
     case "dsync.group.user_removed":
       await verifyWorkOSWorkspace(
         eventPayload.data.user.organizationId,
-        eventPayload.data,
+        eventPayload,
         handleUserRemovedFromGroup
       );
       break;
@@ -325,7 +334,7 @@ export async function processWorkOSEventActivity({
     case "dsync.user.updated":
       await verifyWorkOSWorkspace(
         eventPayload.data.organizationId,
-        eventPayload.data,
+        eventPayload,
         handleCreateOrUpdateWorkOSUser
       );
       break;
@@ -333,7 +342,7 @@ export async function processWorkOSEventActivity({
     case "dsync.user.deleted":
       await verifyWorkOSWorkspace(
         eventPayload.data.organizationId,
-        eventPayload.data,
+        eventPayload,
         handleDeleteWorkOSUser
       );
       break;
@@ -394,8 +403,9 @@ async function handleOrganizationDomainEvent(
 
 async function handleOrganizationDomainVerified(
   workspace: LightWorkspaceType,
-  eventData: OrganizationDomain
+  event: OrganizationDomainVerifiedEvent
 ) {
+  const { data: eventData } = event;
   await handleOrganizationDomainEvent(workspace, eventData, "verified");
 
   void emitAuditLogEventDirect({
@@ -410,8 +420,9 @@ async function handleOrganizationDomainVerified(
 
 async function handleOrganizationDomainVerificationFailed(
   workspace: LightWorkspaceType,
-  eventData: OrganizationDomain
+  event: OrganizationDomainVerificationFailedEvent
 ) {
+  const { data: eventData } = event;
   await handleOrganizationDomainEvent(workspace, eventData, "failed");
 
   void emitAuditLogEventDirect({
@@ -426,9 +437,9 @@ async function handleOrganizationDomainVerificationFailed(
 
 async function handleOrganizationUpdated(
   workspace: LightWorkspaceType,
-  eventData: Organization
+  event: OrganizationUpdatedEvent
 ) {
-  const { domains } = eventData;
+  const { domains } = event.data;
 
   const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
   if (!workspaceResource) {
@@ -565,17 +576,18 @@ async function autoCreateSpaceForProvisionedGroup(
 
 async function handleGroupUpsert(
   workspace: LightWorkspaceType,
-  event: DirectoryGroup
+  event: DsyncGroupCreatedEvent | DsyncGroupUpdatedEvent
 ) {
+  const { data: eventData } = event;
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-  const groupByName = await GroupResource.fetchByName(auth, event.name);
-  if (groupByName && groupByName.workOSGroupId !== event.id) {
+  const groupByName = await GroupResource.fetchByName(auth, eventData.name);
+  if (groupByName && groupByName.workOSGroupId !== eventData.id) {
     // Conflict - another group with the same name already exists.
 
     // First check if this group still exists in workos.
     try {
-      await getWorkOS().directorySync.getGroup(event.id);
+      await getWorkOS().directorySync.getGroup(eventData.id);
     } catch (error) {
       if (error instanceof NotFoundException) {
         // Group doesn't exist, just ignore the event.
@@ -638,8 +650,8 @@ async function handleGroupUpsert(
         {
           oldWorkOsGroupId: groupByName.workOSGroupId,
           oldDirectoryId: oldGroup.directoryId,
-          newWorkOsGroupId: event.id,
-          newDirectoryId: event.directoryId,
+          newWorkOsGroupId: eventData.id,
+          newDirectoryId: eventData.directoryId,
           groupName: groupByName.name,
           workspaceId: workspace.sId,
         },
@@ -649,7 +661,7 @@ async function handleGroupUpsert(
     }
   }
 
-  const group = await GroupResource.upsertByWorkOSGroupId(auth, event);
+  const group = await GroupResource.upsertByWorkOSGroupId(auth, eventData);
 
   // Auto-create space if workspace setting is enabled
   let spaceCreated = false;
@@ -668,7 +680,7 @@ async function handleGroupUpsert(
     action: "scim.group_created",
     actor: {
       type: "system",
-      id: String(event.directoryId ?? "directory_sync"),
+      id: String(eventData.directoryId ?? "directory_sync"),
       name: "Directory Sync",
     },
     targets: [
@@ -678,7 +690,7 @@ async function handleGroupUpsert(
     context: { location: "system" },
     metadata: {
       groupName: group.name,
-      directoryId: String(event.directoryId ?? "unknown"),
+      directoryId: String(eventData.directoryId ?? "unknown"),
       spaceCreated: String(spaceCreated),
     },
   });
@@ -686,11 +698,14 @@ async function handleGroupUpsert(
 
 async function handleUserAddedToGroup(
   workspace: LightWorkspaceType,
-  event: DsyncGroupUserAddedEvent["data"]
+  event: DsyncGroupUserAddedEvent
 ) {
-  if (!event.user.email) {
+  const { data: eventData, createdAt } = event;
+  const eventCreatedAt = new Date(createdAt);
+
+  if (!eventData.user.email) {
     logger.warn(
-      { workspaceId: workspace.sId, userId: event.user.id },
+      { workspaceId: workspace.sId, userId: eventData.user.id },
       "Try to 'dsync.group.user_added' without an email"
     );
     return;
@@ -698,7 +713,7 @@ async function handleUserAddedToGroup(
 
   const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail({
     workspace,
-    workOSUser: event.user,
+    workOSUser: eventData.user,
   });
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
@@ -711,10 +726,10 @@ async function handleUserAddedToGroup(
   }
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const group = await GroupResource.fetchByWorkOSGroupId(auth, event.group.id);
+  const group = await GroupResource.fetchByWorkOSGroupId(auth, eventData.group.id);
   if (!group) {
     throw new Error(
-      `Group not found for workOSId "${event.group.id}" in workspace "${workspace.sId}"`
+      `Group not found for workOSId "${eventData.group.id}" in workspace "${workspace.sId}"`
     );
   }
 
@@ -777,7 +792,7 @@ async function handleUserAddedToGroup(
       action: "membership.origin_updated",
       actor: {
         type: "system",
-        id: String(event.directoryId ?? "directory_sync"),
+        id: String(eventData.directoryId ?? "directory_sync"),
         name: "Directory Sync",
       },
       targets: [
@@ -800,7 +815,7 @@ async function handleUserAddedToGroup(
     action: "scim.group_user_added",
     actor: {
       type: "system",
-      id: String(event.directoryId ?? "directory_sync"),
+      id: String(eventData.directoryId ?? "directory_sync"),
       name: "Directory Sync",
     },
     targets: [
@@ -815,7 +830,7 @@ async function handleUserAddedToGroup(
     metadata: {
       groupName: group.name,
       userEmail: user.email,
-      directoryId: String(event.user.directoryId ?? "unknown"),
+      directoryId: String(eventData.user.directoryId ?? "unknown"),
       roleGranted: "member",
     },
   });
@@ -823,16 +838,18 @@ async function handleUserAddedToGroup(
 
 async function handleUserRemovedFromGroup(
   workspace: LightWorkspaceType,
-  event: DsyncGroupUserRemovedEvent["data"]
+  event: DsyncGroupUserRemovedEvent
 ) {
-  if (!event.user.email) {
+  const { data: eventData } = event;
+
+  if (!eventData.user.email) {
     logger.warn("Try to 'dsync.group.user_removed' without an email");
     return;
   }
 
   const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail({
     workspace,
-    workOSUser: event.user,
+    workOSUser: eventData.user,
   });
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
@@ -845,10 +862,10 @@ async function handleUserRemovedFromGroup(
   }
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const group = await GroupResource.fetchByWorkOSGroupId(auth, event.group.id);
+  const group = await GroupResource.fetchByWorkOSGroupId(auth, eventData.group.id);
   if (!group) {
     throw new Error(
-      `Group not found for workOSId "${event.group.id}" in workspace "${workspace.sId}"`
+      `Group not found for workOSId "${eventData.group.id}" in workspace "${workspace.sId}"`
     );
   }
 
@@ -894,7 +911,7 @@ async function handleUserRemovedFromGroup(
     action: "scim.group_user_removed",
     actor: {
       type: "system",
-      id: String(event.directoryId ?? "directory_sync"),
+      id: String(eventData.directoryId ?? "directory_sync"),
       name: "Directory Sync",
     },
     targets: [
@@ -909,7 +926,7 @@ async function handleUserRemovedFromGroup(
     metadata: {
       groupName: group.name,
       userEmail: user.email,
-      directoryId: String(event.user.directoryId ?? "unknown"),
+      directoryId: String(eventData.user.directoryId ?? "unknown"),
       roleChange: "removed",
     },
   });
@@ -957,11 +974,13 @@ async function clearCustomAttributesFromUserMetadata(
 
 async function handleCreateOrUpdateWorkOSUser(
   workspace: LightWorkspaceType,
-  event: DirectoryUser
+  event: DsyncUserCreatedEvent | DsyncUserUpdatedEvent
 ) {
+  const { data: eventData} = event;
+
   const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail({
     workspace,
-    workOSUser: event,
+    workOSUser: eventData,
   });
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
@@ -978,7 +997,7 @@ async function handleCreateOrUpdateWorkOSUser(
     given_name: workOSUser.firstName ?? undefined,
     family_name: workOSUser.lastName ?? undefined,
     picture: workOSUser.profilePictureUrl ?? undefined,
-    customAttributes: extractCustomAttributes(event),
+    customAttributes: extractCustomAttributes(eventData),
   };
 
   const { user: createdOrUpdatedUser } = await createOrUpdateUser({
@@ -1013,7 +1032,7 @@ async function handleCreateOrUpdateWorkOSUser(
       action: "membership.origin_updated",
       actor: {
         type: "system",
-        id: String(event.directoryId ?? "directory_sync"),
+        id: String(eventData.directoryId ?? "directory_sync"),
         name: "Directory Sync",
       },
       targets: [
@@ -1035,7 +1054,7 @@ async function handleCreateOrUpdateWorkOSUser(
       action: "scim.user_updated",
       actor: {
         type: "system",
-        id: String(event.directoryId ?? "directory_sync"),
+        id: String(eventData.directoryId ?? "directory_sync"),
         name: "Directory Sync",
       },
       targets: [
@@ -1047,9 +1066,9 @@ async function handleCreateOrUpdateWorkOSUser(
       ],
       context: { location: "system" },
       metadata: {
-        directoryId: String(event.directoryId ?? "unknown"),
+        directoryId: String(eventData.directoryId ?? "unknown"),
         updatedAttributes: JSON.stringify(
-          Object.keys(event.rawAttributes ?? {})
+          Object.keys(eventData.rawAttributes ?? {})
         ),
       },
     });
@@ -1069,7 +1088,7 @@ async function handleCreateOrUpdateWorkOSUser(
     action: "scim.user_provisioned",
     actor: {
       type: "system",
-      id: String(event.directoryId ?? "directory_sync"),
+      id: String(eventData.directoryId ?? "directory_sync"),
       name: "Directory Sync",
     },
     targets: [
@@ -1082,18 +1101,19 @@ async function handleCreateOrUpdateWorkOSUser(
     context: { location: "system" },
     metadata: {
       email: createdOrUpdatedUser.email,
-      directoryId: String(event.directoryId ?? "unknown"),
+      directoryId: String(eventData.directoryId ?? "unknown"),
     },
   });
 }
 
 async function handleDeleteWorkOSUser(
   workspace: LightWorkspaceType,
-  event: DirectoryUser
+  event: DsyncUserDeletedEvent
 ) {
+  const {data:eventData} = event;
   const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail({
     workspace,
-    workOSUser: event,
+    workOSUser: eventData,
   });
   if (workOSUserRes.isErr()) {
     throw workOSUserRes.error;
@@ -1161,7 +1181,7 @@ async function handleDeleteWorkOSUser(
     action: "scim.user_deprovisioned",
     actor: {
       type: "system",
-      id: String(event.directoryId ?? "directory_sync"),
+      id: String(eventData.directoryId ?? "directory_sync"),
       name: "Directory Sync",
     },
     targets: [
@@ -1174,7 +1194,7 @@ async function handleDeleteWorkOSUser(
     context: { location: "system" },
     metadata: {
       email: user.email,
-      directoryId: String(event.directoryId ?? "unknown"),
+      directoryId: String(eventData.directoryId ?? "unknown"),
       triggersDeleted: "true",
     },
   });
@@ -1182,18 +1202,19 @@ async function handleDeleteWorkOSUser(
 
 async function handleGroupDelete(
   workspace: LightWorkspaceType,
-  event: DirectoryGroup
+  event: DsyncGroupDeletedEvent
 ) {
+  const {data:eventData} = event;
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const group = await GroupResource.fetchByWorkOSGroupId(auth, event.id);
+  const group = await GroupResource.fetchByWorkOSGroupId(auth, eventData.id);
 
   if (!group) {
     // Group already deleted, log and return success to avoid blocking the workflow
     logger.info(
       {
         workspaceId: workspace.sId,
-        directoryId: event.directoryId,
-        groupId: event.id,
+        directoryId: eventData.directoryId,
+        groupId: eventData.id,
       },
       "Group to delete not found, likely already deleted"
     );
@@ -1213,7 +1234,7 @@ async function handleGroupDelete(
     action: "scim.group_deleted",
     actor: {
       type: "system",
-      id: String(event.directoryId ?? "directory_sync"),
+      id: String(eventData.directoryId ?? "directory_sync"),
       name: "Directory Sync",
     },
     targets: [
@@ -1223,7 +1244,7 @@ async function handleGroupDelete(
     context: { location: "system" },
     metadata: {
       groupName,
-      directoryId: String(event.directoryId ?? "unknown"),
+      directoryId: String(eventData.directoryId ?? "unknown"),
     },
   });
 }
