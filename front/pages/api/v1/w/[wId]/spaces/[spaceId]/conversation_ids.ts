@@ -85,15 +85,6 @@ async function handler(
 
       const conversationIds = spaceConversations.map((c) => c.sId);
 
-      logger.info(
-        {
-          workspaceId: wId,
-          spaceId,
-          conversationCount: conversationIds.length,
-        },
-        "[GetSpaceConversationIds] Successfully fetched conversation IDs"
-      );
-
       return res.status(200).json({
         conversationIds,
       });

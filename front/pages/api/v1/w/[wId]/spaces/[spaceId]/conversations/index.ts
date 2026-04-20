@@ -110,16 +110,6 @@ async function handler(
         };
       });
 
-      logger.info(
-        {
-          workspaceId: wId,
-          spaceId,
-          conversationCount: responseConversations.length,
-          updatedSince,
-        },
-        "[GetSpaceConversationsForDataSource] Successfully fetched conversations"
-      );
-
       return res.status(200).json({
         conversations: responseConversations.map(
           addBackwardCompatibleConversationFields
