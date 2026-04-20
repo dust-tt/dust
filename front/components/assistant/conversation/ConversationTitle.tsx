@@ -91,8 +91,8 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     ? (forkedFrom.parentConversationTitle ?? UNTITLED_CONVERSATION_TITLE)
     : "Parent conversation";
   const forkedFromTooltipLabel = hasReadableParentConversation
-    ? `Branched from ${parentConversationTitle}`
-    : "Branched from a parent conversation you can no longer access";
+    ? `This conversation was branched from "${parentConversationTitle}".`
+    : "This conversation was branched from a parent conversation you can no longer access.";
 
   return (
     <AppLayoutTitle>
@@ -101,7 +101,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
         onContextMenu={handleRightClick}
       >
         <div className="flex min-w-0 items-center gap-2 overflow-x-auto scrollbar-hide">
-          <div className="min-w-0">
+          <div className="flex min-w-0 items-center">
             <Breadcrumbs
               items={breadcrumbItems}
               className="dd-privacy-mask"
@@ -110,33 +110,35 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
             />
           </div>
           {forkedFrom && (
-            <Tooltip
-              label={forkedFromTooltipLabel}
-              tooltipTriggerAsChild
-              trigger={
-                hasReadableParentConversation ? (
-                  <Chip
-                    className="max-w-44 shrink-0 dd-privacy-mask"
-                    color="primary"
-                    href={getConversationRoute(
-                      owner.sId,
-                      forkedFrom.parentConversationId
-                    )}
-                    icon={ActionGitBranchIcon}
-                    label={parentConversationTitle}
-                    size="mini"
-                  />
-                ) : (
-                  <Chip
-                    className="max-w-44 shrink-0"
-                    color="primary"
-                    icon={ActionGitBranchIcon}
-                    label={parentConversationTitle}
-                    size="mini"
-                  />
-                )
-              }
-            />
+            <div className="flex items-center">
+              <Tooltip
+                label={forkedFromTooltipLabel}
+                tooltipTriggerAsChild
+                trigger={
+                  hasReadableParentConversation ? (
+                    <Chip
+                      className="max-w-44 shrink-0 dd-privacy-mask"
+                      color="primary"
+                      href={getConversationRoute(
+                        owner.sId,
+                        forkedFrom.parentConversationId
+                      )}
+                      icon={ActionGitBranchIcon}
+                      label={parentConversationTitle}
+                      size="mini"
+                    />
+                  ) : (
+                    <Chip
+                      className="max-w-44 shrink-0"
+                      color="primary"
+                      icon={ActionGitBranchIcon}
+                      label={parentConversationTitle}
+                      size="mini"
+                    />
+                  )
+                }
+              />
+            </div>
           )}
         </div>
         <EditConversationTitleDialog
