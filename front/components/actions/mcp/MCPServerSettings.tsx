@@ -3,6 +3,10 @@ import {
   OAUTH_USE_CASE_TO_DESCRIPTION,
   OAUTH_USE_CASE_TO_LABEL,
 } from "@app/components/actions/mcp/MCPServerAuthConnection";
+import { MCPSensitivityLabelsConfig } from "@app/components/data_source/SensitivityLabelsConfig";
+import { MICROSOFT_DRIVE_SERVER_NAME } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
+import { MICROSOFT_TEAMS_SERVER_NAME } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
+import { OUTLOOK_TOOL_NAME } from "@app/lib/api/actions/servers/outlook/mail_metadata";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   useDeleteMCPServerConnection,
@@ -12,6 +16,12 @@ import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, Chip, LoginIcon, XMarkIcon } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
+
+const SENSITIVITY_LABELS_SERVER_IDS = new Set<string>([
+  MICROSOFT_DRIVE_SERVER_NAME,
+  MICROSOFT_TEAMS_SERVER_NAME,
+  OUTLOOK_TOOL_NAME,
+]);
 
 interface MCPServerSettingsProps {
   mcpServerView: MCPServerViewType;
@@ -131,6 +141,20 @@ export function MCPServerSettings({
           </div>
         </div>
       )}
+      {connection &&
+        SENSITIVITY_LABELS_SERVER_IDS.has(mcpServerView.server.name) && (
+          <div className="space-y-2">
+            <div className="heading-base">
+              Data Classification Label Filtering
+            </div>
+            <MCPSensitivityLabelsConfig
+              owner={owner}
+              internalMCPServerName={mcpServerView.server.name}
+              isAdmin={true}
+            />
+          </div>
+        )}
+
       {authorization?.availableScopes &&
         authorization.availableScopes.length > 0 && (
           <div className="space-y-2">

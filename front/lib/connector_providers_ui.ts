@@ -1,5 +1,6 @@
 import { BigQueryUseMetadataForDBMLView } from "@app/components/data_source/BigQueryUseMetadataForDBMLView";
 import { createConnectorOptionsPdfEnabled } from "@app/components/data_source/ConnectorOptionsPdfEnabled";
+import { createConnectorOptionsWithLabels } from "@app/components/data_source/ConnectorOptionsWithLabels";
 import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
 import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
 import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
@@ -293,7 +294,7 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     getLogoComponent: () => {
       return MicrosoftLogo;
     },
-    optionsComponent: createConnectorOptionsPdfEnabled(
+    optionsComponent: createConnectorOptionsWithLabels(
       "When enabled, PDF documents from your Microsoft OneDrive and SharePoint will be synced and processed by Dust."
     ),
     isNested: true,
