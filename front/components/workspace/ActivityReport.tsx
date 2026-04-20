@@ -1,8 +1,17 @@
 import {
   Button,
   Checkbox,
+  ContentMessage,
   ContextItem,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   GoogleSpreadsheetLogo,
+  Hoverable,
   Icon,
   Pagination,
 } from "@dust-tt/sparkle";
@@ -19,6 +28,9 @@ interface ActivityReportProps {
 
 const maxItemsPerPage = 4;
 
+const ANALYTICS_EXPORT_DOCS_URL =
+  "https://docs.dust.tt/reference/get_api-v1-w-wid-analytics-export";
+
 export function ActivityReport({
   monthOptions,
   downloadingMonth,
@@ -30,6 +42,7 @@ export function ActivityReport({
     pageIndex: 0,
     pageSize: maxItemsPerPage,
   });
+  const [pendingMonth, setPendingMonth] = useState<string | null>(null);
 
   const toPrettyDate = (date: string) => {
     const months = [
@@ -91,7 +104,7 @@ export function ActivityReport({
                       size="xs"
                       tooltip="Download"
                       onClick={() => {
-                        handleDownload(item);
+                        setPendingMonth(item);
                       }}
                       disabled={downloadingMonth !== null}
                       isLoading={downloadingMonth === item}
@@ -111,6 +124,54 @@ export function ActivityReport({
           </div>
         </div>
       )}
+      <Dialog
+        open={pendingMonth !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingMonth(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Deprecated download</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
+            <ContentMessage variant="warning" title="Scheduled for removal">
+              This activity report download will be removed on June 1st, 2026.
+              Switch to the new analytics export API before then.{" "}
+              <Hoverable
+                variant="highlight"
+                href={ANALYTICS_EXPORT_DOCS_URL}
+                target="_blank"
+              >
+                View documentation
+              </Hoverable>
+              .
+            </ContentMessage>
+            <DialogDescription>
+              Do you want to continue and download the report for{" "}
+              {pendingMonth ? toPrettyDate(pendingMonth).trim() : ""}?
+            </DialogDescription>
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: () => setPendingMonth(null),
+            }}
+            rightButtonProps={{
+              label: "Download anyway",
+              variant: "warning",
+              onClick: () => {
+                const month = pendingMonth;
+                setPendingMonth(null);
+                handleDownload(month);
+              },
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
