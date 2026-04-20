@@ -28,10 +28,7 @@ import {
   createResourcePermissionsFromSpacesWithMap,
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
-import type {
-  GlobalSkillDefinition,
-  GlobalSkillId,
-} from "@app/lib/resources/skill/global/registry";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -97,7 +94,7 @@ type SkillResourceConstructorOptions =
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
       editorGroup?: undefined;
       fileAttachments: FileResource[];
-      globalSId: GlobalSkillId;
+      globalSId: string;
       mcpServerConfigurations: SkillMCPServerConfiguration[];
       version?: number;
     }
@@ -200,7 +197,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   readonly editorGroup: GroupResource | null = null;
   readonly version: number | null = null;
 
-  private readonly globalSId: GlobalSkillId | null;
+  private readonly globalSId: string | null;
 
   private _mcpServerConfigurations: SkillMCPServerConfiguration[];
 
@@ -835,7 +832,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     refs: {
       customSkillId: ModelId | null;
-      globalSkillId: GlobalSkillId | null;
+      globalSkillId: string | null;
     }[],
     {
       agentLoopData,
@@ -867,7 +864,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * Returns the fields to identify this skill in related tables (e.g., AgentSkillModel).
    */
   private get skillReference():
-    | { globalSkillId: GlobalSkillId }
+    | { globalSkillId: string }
     | { customSkillId: ModelId } {
     return this.globalSId
       ? { globalSkillId: this.globalSId }
@@ -977,7 +974,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<
     {
       customSkillId: ModelId | null;
-      globalSkillId: GlobalSkillId | null;
+      globalSkillId: string | null;
     }[]
   > {
     // For global agents, skills are defined in the config, not in the database.
@@ -985,12 +982,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       isGlobalAgentId(agentConfiguration.sId) &&
       "skills" in agentConfiguration
     ) {
-      return ((agentConfiguration.skills ?? []) as GlobalSkillId[]).map(
-        (globalSkillId) => ({
-          customSkillId: null,
-          globalSkillId,
-        })
-      );
+      return (agentConfiguration.skills ?? []).map((globalSkillId) => ({
+        customSkillId: null,
+        globalSkillId,
+      }));
     }
 
     const workspace = auth.getNonNullableWorkspace();
@@ -1479,7 +1474,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       {
         // Global skills do not have data source configurations.
         dataSourceConfigurations: [],
-        globalSId: def.sId as GlobalSkillId,
+        globalSId: def.sId,
         mcpServerConfigurations,
         fileAttachments: [],
       }
