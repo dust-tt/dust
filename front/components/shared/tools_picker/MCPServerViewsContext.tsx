@@ -130,6 +130,10 @@ export const useMCPServerViewsContext = () => {
   return context;
 };
 
+export const useMaybeMCPServerViewsContext = () => {
+  return useContext(MCPServerViewsContext);
+};
+
 interface MCPServerViewsProviderProps {
   owner: LightWorkspaceType;
   children: ReactNode;
