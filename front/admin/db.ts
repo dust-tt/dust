@@ -64,6 +64,7 @@ import {
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { TagModel } from "@app/lib/models/tags";
+import { WorkspaceSensitivityLabelConfigModel } from "@app/lib/models/workspace_sensitivity_label_config";
 import { AcademyChapterVisitModel } from "@app/lib/resources/storage/models/academy_chapter_visit";
 import { AcademyQuizAttemptModel } from "@app/lib/resources/storage/models/academy_quiz_attempt";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
@@ -243,6 +244,7 @@ export function loadAllModels() {
     TakeawaysVersionModel,
     ProjectTodoTakeawaySourcesModel,
     UserProjectNotificationPreferenceModel,
+    WorkspaceSensitivityLabelConfigModel,
   ];
 }
 
