@@ -277,7 +277,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       );
     }
 
-    if (blob.spaceId !== space?.id) {
+    if ((blob.spaceId ?? null) !== (space?.id ?? null)) {
       throw new Error("Space resource must match space id.");
     }
 
