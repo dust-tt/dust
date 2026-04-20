@@ -239,13 +239,15 @@ async function carryOverConversationAttachments(
   const attachments = await listAttachments(auth, {
     conversation: parentConversationAtSource,
   });
-  // We carry over direct conversation attachments that were explicitly posted into the
-  // conversation. Project-context files remain accessible via the shared project, and agent-
-  // generated files still need a separate follow-up because they are not re-attached through
-  // content fragments today.
+  // We carry over direct conversation attachments and agent-generated tool outputs that were
+  // attached before the fork point. Project-context files remain accessible via the shared
+  // project and are therefore excluded here.
   const directConversationAttachments = attachments.filter((attachment) => {
     if (isFileAttachmentType(attachment)) {
-      return attachment.source === "user" && !attachment.isInProjectContext;
+      return (
+        (attachment.source === "user" || attachment.source === "agent") &&
+        !attachment.isInProjectContext
+      );
     }
 
     return isContentNodeAttachmentType(attachment);
