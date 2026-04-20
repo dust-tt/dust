@@ -1070,7 +1070,9 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
   let agents: LightAgentConfigurationType[];
   let globalSpace: SpaceResource;
   let restrictedSpace: SpaceResource;
-  let globalGroup: Awaited<ReturnType<typeof createResourceTest>>["globalGroup"];
+  let globalGroup: Awaited<
+    ReturnType<typeof createResourceTest>
+  >["globalGroup"];
   let conversations: {
     accessible: string[];
     restricted: string[];
