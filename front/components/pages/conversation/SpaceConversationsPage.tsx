@@ -111,13 +111,20 @@ export function SpaceConversationsPage() {
       const newTab = getCurrentTabFromHash();
       setCurrentTab(newTab);
 
-      // Ensure URL has a hash
+      // Ensure URL has a hash. Defer with setTimeout so the route-change
+      // event fires with the empty hash first (otherwise useHashParam sees a
+      // non-empty hash and won't clear the conversation side-panel state when
+      // navigating into a project).
       if (!window.location.hash) {
-        window.history.replaceState(
-          null,
-          "",
-          `${window.location.pathname}${window.location.search}#${newTab}`
-        );
+        setTimeout(() => {
+          if (!window.location.hash) {
+            window.history.replaceState(
+              null,
+              "",
+              `${window.location.pathname}${window.location.search}#${newTab}`
+            );
+          }
+        }, 0);
       }
     };
 
