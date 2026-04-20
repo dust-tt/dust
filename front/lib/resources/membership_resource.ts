@@ -554,29 +554,20 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       where.firstUsedAt = { [Op.ne]: null };
     }
 
-    const rows = await this.model.findAll({
-      attributes: ["workspaceId", "userId"],
+    const rows = await this.model.count({
       where,
-      // WORKSPACE_ISOLATION_BYPASS: this is a Poke only query where we batch count members across different workspaces
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
-      dangerouslyBypassWorkspaceIsolationSecurity: true,
+      distinct: true,
+      col: "userId",
+      group: ["workspaceId"],
     });
 
-    // Dedupe userIds per workspace.
-    const userModelIdsByWorkspaceModelId = new Map<ModelId, Set<ModelId>>();
     for (const row of rows) {
-      let userIds = userModelIdsByWorkspaceModelId.get(row.workspaceId);
-      if (!userIds) {
-        userIds = new Set();
-        userModelIdsByWorkspaceModelId.set(row.workspaceId, userIds);
-      }
-      userIds.add(row.userId);
-    }
-
-    for (const [workspaceModelId, userIds] of userModelIdsByWorkspaceModelId) {
-      const workspaceId = workspaceIdByModelId.get(workspaceModelId);
-      if (workspaceId) {
-        countByWorkspaceId[workspaceId] = userIds.size;
+      const workspaceModelId = row.workspaceId;
+      if (typeof workspaceModelId === "number") {
+        const workspaceId = workspaceIdByModelId.get(workspaceModelId);
+        if (workspaceId) {
+          countByWorkspaceId[workspaceId] = row.count;
+        }
       }
     }
     return countByWorkspaceId;
