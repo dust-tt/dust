@@ -6,6 +6,7 @@ import { classNames } from "@app/lib/utils";
 import { usePokeConversation } from "@app/poke/swr";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
 import { usePokeConversationConfig } from "@app/poke/swr/conversation_config";
+import { useCopyReinforcementTestCase } from "@app/poke/swr/reinforcement_test_case";
 import type {
   CompactionMessageType,
   UserMessageType,
@@ -385,6 +386,9 @@ export function ConversationPage() {
   const [showRenderControls, setShowRenderControls] = useState(false);
   const [isCopiedJSON, copyJSON] = useCopyToClipboard();
 
+  const { copyTestCase, isLoading: isTestCaseLoading } =
+    useCopyReinforcementTestCase({ owner, conversationId });
+
   useEffect(() => {
     if (!selectedAgentId) {
       if (defaultAgentId) {
@@ -524,6 +528,13 @@ export function ConversationPage() {
                 void handleRenderConversation();
               }}
               disabled={isRendering}
+            />
+            <Button
+              label="Reinforcement test"
+              variant="primary"
+              size="xs"
+              onClick={() => void copyTestCase()}
+              disabled={isTestCaseLoading}
             />
             {isRendering && <Spinner size="xs" />}
             {showRenderControls && (
