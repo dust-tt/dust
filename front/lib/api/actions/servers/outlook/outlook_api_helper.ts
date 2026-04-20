@@ -64,6 +64,12 @@ export const OutlookEventSchema = z.object({
     .optional(),
   isAllDay: z.boolean().optional(),
   isCancelled: z.boolean().optional(),
+  onlineMeeting: z
+    .object({
+      joinUrl: z.string(),
+    })
+    .nullable()
+    .optional(),
   importance: z.string().optional(),
   sensitivity: z.string().optional(),
   showAs: z.string().optional(),
@@ -106,6 +112,7 @@ export interface CreateEventParams {
   attendees?: string[];
   location?: string;
   isAllDay?: boolean;
+  isOnlineMeeting?: boolean;
   importance?: "low" | "normal" | "high";
   showAs?: "free" | "tentative" | "busy" | "oof" | "workingElsewhere";
   userTimezone?: string;
@@ -459,6 +466,7 @@ export async function createEvent(
     attendees,
     location,
     isAllDay = false,
+    isOnlineMeeting = true,
     importance = "normal",
     showAs = "busy",
     userTimezone,
@@ -478,6 +486,11 @@ export async function createEvent(
     importance,
     showAs,
   };
+
+  if (isOnlineMeeting) {
+    event.isOnlineMeeting = true;
+    event.onlineMeetingProvider = "teamsForBusiness";
+  }
 
   if (body) {
     event.body = {

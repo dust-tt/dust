@@ -124,8 +124,17 @@ export function renderOutlookEvent(
     );
   }
 
-  if (enrichedEvent.location?.displayName) {
-    lines.push(`Location: ${enrichedEvent.location.displayName}`);
+  const joinUrl = enrichedEvent.onlineMeeting?.joinUrl;
+  const location = enrichedEvent.location?.displayName;
+
+  // Skip the auto-generated "Microsoft Teams Meeting" location when we have
+  // the actual join URL — otherwise keep it as the only Teams signal available.
+  if (location && (location !== "Microsoft Teams Meeting" || !joinUrl)) {
+    lines.push(`Location: ${location}`);
+  }
+
+  if (joinUrl?.startsWith("https://")) {
+    lines.push(`Teams Meeting: [Join](${joinUrl})`);
   }
 
   if (enrichedEvent.body?.content) {

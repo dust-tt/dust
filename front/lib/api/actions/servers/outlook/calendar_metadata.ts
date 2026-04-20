@@ -144,6 +144,12 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
         .boolean()
         .optional()
         .describe("Whether the event is all day."),
+      isOnlineMeeting: z
+        .boolean()
+        .default(true)
+        .describe(
+          "Whether to generate a Microsoft Teams meeting link for this event. Defaults to true. Set to false only if the user explicitly does not want an online meeting link."
+        ),
       importance: z
         .enum(["low", "normal", "high"])
         .optional()
