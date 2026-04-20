@@ -123,11 +123,11 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     });
   }
 
-  static async cleanupByConversation(
+  static async deleteByConversation(
     auth: Authenticator,
     conversation: ConversationWithoutContentType,
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<void, Error>> {
+  ): Promise<void> {
     const wakeUps = await this.listByConversation(auth, conversation);
 
     const activeWakeUps = wakeUps.filter((wakeUp) =>
@@ -142,22 +142,16 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
 
     const cancellationError = cancelResults.find((result) => result.isErr());
     if (cancellationError?.isErr()) {
-      return cancellationError;
+      throw cancellationError.error;
     }
 
-    try {
-      await this.model.destroy({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          conversationId: conversation.id,
-        } as WhereOptions<WakeUpModel>,
-        transaction,
-      });
-
-      return new Ok(undefined);
-    } catch (error) {
-      return new Err(normalizeError(error));
-    }
+    await this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: conversation.id,
+      } as WhereOptions<WakeUpModel>,
+      transaction,
+    });
   }
 
   async cancel(

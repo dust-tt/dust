@@ -299,13 +299,7 @@ export async function destroyConversation(
     },
   });
 
-  const wakeUpCleanupResult = await WakeUpResource.cleanupByConversation(
-    auth,
-    conversation.toJSON()
-  );
-  if (wakeUpCleanupResult.isErr()) {
-    return wakeUpCleanupResult;
-  }
+  await WakeUpResource.deleteByConversation(auth, conversation.toJSON());
 
   await ProjectTodoConversationModel.destroy({
     where: { workspaceId: owner.id, conversationId: conversation.id },
