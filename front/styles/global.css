@@ -198,7 +198,9 @@ body {
 
 /* Avoid the native focus outline border on Recharts surfaces when clicking charts. */
 .observability-chart-container svg:focus,
-.observability-chart-container svg:focus-visible {
+.observability-chart-container svg :focus,
+.observability-chart-container svg:focus-visible,
+.observability-chart-container svg :focus-visible {
   outline: none;
 }
 
