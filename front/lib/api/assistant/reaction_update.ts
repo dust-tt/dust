@@ -156,6 +156,11 @@ export async function publishReactionUpdate(
   const conversationJSON = conversation.toJSON();
 
   if (isUserMessageType(message)) {
+    // We reuse the post/edit event shape, whose payload is a full user message
+    // including its attached content fragments. Subscribers replace the whole
+    // message on this event, so omitting contentFragments would wipe the
+    // attachments from the UI. A dedicated `reactions_updated` event carrying
+    // just { messageId, reactions } would remove the need for this fetch.
     const contentFragments = await fetchPrecedingContentFragments(auth, {
       conversation,
       targetRank: message.rank,
