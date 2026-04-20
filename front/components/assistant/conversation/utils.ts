@@ -7,10 +7,19 @@ import type {
   UserMessageType,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
+import { isReinforcedSkillNotificationMetadata } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import moment from "moment";
 
 import type { VirtuosoMessage } from "./types";
+
+function isReinforcedSkillConversation(
+  conversation: ConversationWithoutContentType
+): boolean {
+  return isReinforcedSkillNotificationMetadata(
+    conversation.metadata?.reinforcedSkillNotification
+  );
+}
 
 type GroupLabel =
   | "Today"
@@ -22,6 +31,9 @@ type GroupLabel =
 
 // We treat the conversations as unread if they are unread or have an action required
 // (note that action required conversations are never marked as unread).
+// Unread reinforced-skill-notification conversations are split out into their own bucket so
+// the sidebar can show them in a dedicated "Skill suggestions" section above the Inbox; once
+// read they fall back into the date-grouped Conversations list like any other read conversation.
 export function getGroupConversationsByUnreadAndActionRequired(
   conversations: ConversationWithoutContentType[],
   titleFilter: string
@@ -43,7 +55,11 @@ export function getGroupConversationsByUnreadAndActionRequired(
           }
 
           if (conversation.unread || conversation.actionRequired) {
-            acc.inboxConversations.push(conversation);
+            if (isReinforcedSkillConversation(conversation)) {
+              acc.skillSuggestionConversations.push(conversation);
+            } else {
+              acc.inboxConversations.push(conversation);
+            }
             return acc;
           }
 
@@ -53,9 +69,11 @@ export function getGroupConversationsByUnreadAndActionRequired(
         {
           readConversations: [],
           inboxConversations: [],
+          skillSuggestionConversations: [],
         } as {
           readConversations: ConversationWithoutContentType[];
           inboxConversations: ConversationWithoutContentType[];
+          skillSuggestionConversations: ConversationWithoutContentType[];
         }
       )
   );
