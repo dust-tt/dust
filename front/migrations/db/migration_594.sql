@@ -1,0 +1,3 @@
+-- Migration created on Apr 20, 2026
+CREATE TABLE IF NOT EXISTS "workspace_sensitivity_label_configs" ("createdAt" TIMESTAMP WITH TIME ZONE NOT NULL, "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL, "sourceType" VARCHAR(255) NOT NULL, "sourceId" VARCHAR(255) NOT NULL, "allowedLabels" JSONB NOT NULL DEFAULT '[]', "workspaceId" BIGINT NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE, "id"  BIGSERIAL , PRIMARY KEY ("id"));
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "workspace_sensitivity_label_configs_workspace_source_idx" ON "workspace_sensitivity_label_configs" ("workspaceId", "sourceType", "sourceId");
