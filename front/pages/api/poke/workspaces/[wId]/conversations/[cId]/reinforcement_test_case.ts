@@ -152,10 +152,10 @@ async function handler(
         .filter((id): id is number => id !== null)
     ),
   ];
-  const skillSIds = customSkillModelIds.map((id) =>
+  const skillIds = customSkillModelIds.map((id) =>
     makeSId("skill", { id, workspaceId: workspace.id })
   );
-  const skills = await SkillResource.fetchByIds(auth, skillSIds);
+  const skills = await SkillResource.fetchByIds(auth, skillIds);
 
   const skillConfigs: ReinforcementTestCaseMockSkillConfig[] = skills.map(
     (skill) => {
