@@ -633,13 +633,27 @@ export function useAgentMessageStream({
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
             }
-            const steps = cotAtSuccess
+            let steps = cotAtSuccess
               ? appendThinkingStep(
                   m.streaming.inlineActivitySteps,
                   cotAtSuccess,
                   `thinking-final-${Date.now()}`
                 )
               : m.streaming.inlineActivitySteps;
+            // When no tokens streamed after the last tool call (e.g. the agent
+            // handed off or otherwise terminated right after a tool), the text
+            // we flushed as a content step at the last `tool_params` is also
+            // what the server keeps as the message body. Drop that trailing
+            // content step so the same text isn't rendered twice — aligning
+            // with `contentsToActivitySteps`, which is what runs after reload.
+            if (!hadStreamedTokens) {
+              for (let i = steps.length - 1; i >= 0; i--) {
+                if (steps[i].type === "content") {
+                  steps = [...steps.slice(0, i), ...steps.slice(i + 1)];
+                  break;
+                }
+              }
+            }
             return {
               ...m,
               ...getLightAgentMessageFromAgentMessage(messageSuccess.message),
