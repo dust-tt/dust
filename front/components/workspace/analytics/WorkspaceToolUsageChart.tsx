@@ -7,6 +7,7 @@ import {
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { useHoveredSeries } from "@app/components/charts/useHoveredSeries";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import type { AvailableTool } from "@app/lib/api/assistant/observability/tool_usage";
@@ -67,6 +68,7 @@ interface ToolUsageTooltipProps extends TooltipContentProps<number, string> {
   displayMode: ToolUsageDisplayMode;
   toolsWithData: string[];
   displayNameMap: Map<string, string>;
+  activeKey?: string;
 }
 
 function ToolUsageTooltip({
@@ -75,6 +77,7 @@ function ToolUsageTooltip({
   displayNameMap,
   active,
   payload,
+  activeKey,
 }: ToolUsageTooltipProps) {
   if (!active || !payload || payload.length === 0) {
     return null;
@@ -91,6 +94,7 @@ function ToolUsageTooltip({
 
   const values = toolsWithData.map((tool) => point.values[tool] ?? 0);
   const rows = toolsWithData.map((tool, idx) => ({
+    key: tool,
     label: displayNameMap.get(tool) ?? tool,
     value: values[idx].toLocaleString(),
     colorClassName: getIndexedColor(tool, toolsWithData),
@@ -99,13 +103,14 @@ function ToolUsageTooltip({
   if (toolsWithData.length > 1) {
     const total = values.reduce((sum, v) => sum + v, 0);
     rows.push({
+      key: "__total__",
       label: `Total ${label}`,
       value: total.toLocaleString(),
       colorClassName: "",
     });
   }
 
-  return <ChartTooltipCard title={title} rows={rows} />;
+  return <ChartTooltipCard title={title} rows={rows} activeKey={activeKey} />;
 }
 
 interface WorkspaceToolUsageChartProps {
@@ -241,6 +246,8 @@ export function WorkspaceToolUsageChart({
     colorClassName: getIndexedColor(tool, toolsWithData),
   }));
 
+  const { hoveredKey, hoverHandlers } = useHoveredSeries();
+
   const toolSelector = (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
@@ -353,6 +360,7 @@ export function WorkspaceToolUsageChart({
               displayMode={displayMode}
               toolsWithData={toolsWithData}
               displayNameMap={displayNameMap}
+              activeKey={hoveredKey}
             />
           )}
           cursor={false}
@@ -374,6 +382,7 @@ export function WorkspaceToolUsageChart({
             className={getIndexedColor(tool, toolsWithData)}
             stroke="currentColor"
             dot={false}
+            {...hoverHandlers(tool)}
           />
         ))}
       </LineChart>

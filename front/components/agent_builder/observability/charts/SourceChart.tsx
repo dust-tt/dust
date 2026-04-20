@@ -7,6 +7,7 @@ import {
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { useAgentContextOrigin } from "@app/lib/swr/assistants";
+import { isString } from "@app/types/shared/utils/general";
 import { Cell, Pie, PieChart, Tooltip } from "recharts";
 
 interface SourceChartProps {
@@ -65,17 +66,26 @@ export function SourceChart({
         <Tooltip
           cursor={false}
           wrapperStyle={{ outline: "none", zIndex: 50 }}
-          content={({ active }) => {
+          content={({ active, payload }) => {
             if (!active || data.length === 0) {
               return null;
             }
+            const rawOrigin = payload?.[0]?.payload?.origin;
+            const activeOrigin = isString(rawOrigin) ? rawOrigin : undefined;
             const rows = data.map((d) => ({
+              key: d.origin,
               label: d.label,
               value: d.count,
               percent: d.percent,
               colorClassName: getSourceColor(d.origin),
             }));
-            return <ChartTooltipCard title="Source breakdown" rows={rows} />;
+            return (
+              <ChartTooltipCard
+                title="Source breakdown"
+                rows={rows}
+                activeKey={activeOrigin}
+              />
+            );
           }}
           contentStyle={{
             background: "transparent",
