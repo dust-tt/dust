@@ -187,6 +187,92 @@ describe("batchRenderMessages", () => {
       }
     });
 
+    it("falls back to the DB for parentAgentMessageId when the handover origin is not in the batch", async () => {
+      // Simulates an agent_handover in a single conversation:
+      //   rank 0: initial user message
+      //   rank 1: origin agent message (the handover source)
+      //   rank 2: handover user message pointing back to rank 1 by sId
+      //   rank 3: child agent message produced by the sub-agent
+      // A single-message render of rank 3 doesn't include rank 1, so the
+      // fallback has to resolve the origin from the DB.
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agentConfig.sId,
+        messagesCreatedAt: [new Date()],
+      });
+
+      const originAgentMessage = await MessageModel.findOne({
+        where: {
+          conversationId: conversation.id,
+          rank: 1,
+          workspaceId: workspace.id,
+        },
+      });
+      expect(originAgentMessage).not.toBeNull();
+
+      const handoverUserMessageRow = await UserMessageModel.create({
+        userId: auth.getNonNullableUser().id,
+        workspaceId: workspace.id,
+        content: "continue on another agent",
+        userContextUsername: "testuser",
+        userContextTimezone: "UTC",
+        userContextFullName: "Test User",
+        userContextEmail: "test@example.com",
+        userContextProfilePictureUrl: null,
+        userContextOrigin: "web",
+        clientSideMCPServerIds: [],
+        agenticMessageType: "agent_handover",
+        agenticOriginMessageId: originAgentMessage!.sId,
+      });
+      const handoverUserRow = await MessageModel.create({
+        sId: `mes_handover_user_${Date.now()}`,
+        rank: 2,
+        conversationId: conversation.id,
+        parentId: null,
+        userMessageId: handoverUserMessageRow.id,
+        workspaceId: workspace.id,
+      });
+
+      const childAgentRow =
+        await ConversationFactory.createAgentMessageWithRank({
+          workspace,
+          conversationId: conversation.id,
+          rank: 3,
+          agentConfigurationId: agentConfig.sId,
+          parentId: handoverUserRow.id,
+        });
+
+      const childAgentFull = await MessageModel.findOne({
+        where: { id: childAgentRow.id, workspaceId: workspace.id },
+        include: [
+          { model: UserMessageModel, as: "userMessage", required: false },
+          { model: AgentMessageModel, as: "agentMessage", required: false },
+        ],
+      });
+      expect(childAgentFull).not.toBeNull();
+
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      const result = await batchRenderMessages(
+        auth,
+        conversationResource!,
+        [childAgentFull!],
+        "full"
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const rendered = result.value.find((m) => m.type === "agent_message") as
+          | AgentMessageType
+          | undefined;
+        expect(rendered).toBeDefined();
+        expect(rendered?.parentAgentMessageId).toBe(originAgentMessage!.sId);
+      }
+    });
+
     it("should work with light view type", async () => {
       // Create a conversation with a user message and agent message
       const conversation = await ConversationFactory.create(auth, {
