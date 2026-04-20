@@ -50,7 +50,9 @@ async function handler(
         mcpServerId
       );
       const connectionType =
-        views[0]?.oAuthUseCase === "platform_actions" ? "workspace" : "personal";
+        views[0]?.oAuthUseCase === "platform_actions"
+          ? "workspace"
+          : "personal";
 
       const connectionResult =
         await MCPServerConnectionResource.findByMCPServer(auth, {
