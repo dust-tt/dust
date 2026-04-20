@@ -9,7 +9,6 @@ import { getWorkspaceLevelGitHubAccessToken } from "@app/lib/api/skills/detectio
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { DetectedSkillSummary } from "@app/lib/skill_detection";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -139,9 +138,8 @@ async function handler(
 
       const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
 
-      const skillSummaries = await concurrentExecutor(
-        detectedSkills,
-        async (skill): Promise<DetectedSkillSummary> => {
+      const skillSummaries: DetectedSkillSummary[] = detectedSkills.map(
+        (skill) => {
           const existing = existingSkillsMap.get(skill.name);
 
           if (!existing) {
@@ -159,8 +157,7 @@ async function handler(
               : "name_conflict",
             existingSkillId: existing.sId,
           };
-        },
-        { concurrency: 8 }
+        }
       );
 
       return res.status(200).json({ skills: skillSummaries });

@@ -5,7 +5,6 @@ import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_ski
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { DetectedSkillSummary } from "@app/lib/skill_detection";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { DetectSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/detect";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -90,13 +89,16 @@ async function handler(
         });
       }
 
-      const skillSummaries = await concurrentExecutor(
-        detectedSkills,
-        async (skill): Promise<DetectedSkillSummary> => {
-          const existing = await SkillResource.fetchActiveByName(
-            auth,
-            skill.name
-          );
+      const existingSkills = await SkillResource.fetchByNames(
+        auth,
+        detectedSkills.map((s) => s.name)
+      );
+
+      const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
+
+      const skillSummaries: DetectedSkillSummary[] = detectedSkills.map(
+        (skill) => {
+          const existing = existingSkillsMap.get(skill.name);
 
           if (!existing) {
             return {
@@ -119,8 +121,7 @@ async function handler(
             status: "name_conflict",
             existingSkillId: existing.sId,
           };
-        },
-        { concurrency: 8 }
+        }
       );
 
       return res.status(200).json({ skills: skillSummaries });
