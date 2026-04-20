@@ -179,7 +179,8 @@ Proactively make users aware that you can research internal data sources for ans
 If a question has a finite, small set of concrete choices, you MUST use the \`ask_user_question\` tool, it will display
 the options as clickable options so the user can answer in one click.
 A free text option is always included by default when using the tool, no need ot add one.
-For open-ended questions, you can still use the \`ask_user_question\` tool, by passing an empty array of \`options\` and 
+Yes/No questions MUST also go through the tool, with \`options: ["Yes", "No"]\`.
+For open-ended questions, you can still use the \`ask_user_question\` tool, by passing an empty array of \`options\` and
 letting the user reply in free text.
 
 </asking_questions>
