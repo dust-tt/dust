@@ -183,7 +183,7 @@ function makeConversationForkNoticeMessage(
   };
 }
 
-function mergeConversationForkNotices(
+function addConversationForkNotices(
   messages: VirtuosoMessage[],
   forkedChildren: ConversationForkedChildType[] = []
 ): VirtuosoMessage[] {
@@ -357,7 +357,7 @@ export const ConversationViewer = ({
     ) {
       const raw = messages.flatMap((m) => m.messages);
       const renderedMessages = convertLightMessageTypeToVirtuosoMessages(raw);
-      const messagesToRender = mergeConversationForkNotices(
+      const messagesToRender = addConversationForkNotices(
         renderedMessages,
         conversation.forkedChildren
       );
@@ -467,7 +467,7 @@ export const ConversationViewer = ({
         olderMessagesFromBackend
       );
       ref.current.data.prepend(
-        mergeConversationForkNotices(
+        addConversationForkNotices(
           renderedOlderMessages,
           conversation?.forkedChildren
         )
@@ -485,7 +485,7 @@ export const ConversationViewer = ({
         recentMessagesFromBackend
       );
       ref.current.data.append(
-        mergeConversationForkNotices(
+        addConversationForkNotices(
           renderedRecentMessages,
           conversation?.forkedChildren
         )
@@ -499,7 +499,7 @@ export const ConversationViewer = ({
     }
 
     const currentData = ref.current.data.get();
-    const reconciledData = mergeConversationForkNotices(
+    const reconciledData = addConversationForkNotices(
       currentData,
       conversation?.forkedChildren
     );
