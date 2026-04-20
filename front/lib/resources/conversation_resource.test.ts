@@ -5995,6 +5995,7 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   "sandbox",
   "skill_suggestion",
   "user_conversation_reads",
+  "wake_up",
 ];
 
 const KNOWN_MESSAGE_RELATED_MODELS = [
