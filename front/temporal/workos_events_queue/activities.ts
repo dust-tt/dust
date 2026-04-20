@@ -71,6 +71,11 @@ const logger = mainLogger.child(
 const ADMIN_GROUP_NAME = "dust-admins";
 const BUILDER_GROUP_NAME = "dust-builders";
 
+// Grace window for treating a user_added event as stale when the user was
+// revoked around the same time. Covers races where WorkOS emits both events
+// together but the revoke is processed a moment before the add is emitted.
+const STALE_USER_ADDED_GRACE_MS = 1_000;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -740,6 +745,33 @@ async function handleUserAddedToGroup(
       allowProvisionedGroups: true,
     });
     if (res.isErr()) {
+      // Races can occur when WorkOS delivers a user_added event together with a
+      // membership revocation and the revoke is processed first. In that case
+      // we want to drop the event.
+      if (res.error.code === "user_not_found") {
+        const latestMembership =
+          await MembershipResource.getLatestMembershipOfUserInWorkspace({
+            user,
+            workspace,
+          });
+        if (
+          latestMembership?.endAt &&
+          latestMembership.endAt.getTime() >=
+            eventCreatedAt.getTime() - STALE_USER_ADDED_GRACE_MS
+        ) {
+          logger.info(
+            {
+              userId: user.sId,
+              groupId: group.sId,
+              workspaceId: workspace.sId,
+              eventCreatedAt,
+              membershipEndAt: latestMembership.endAt,
+            },
+            "Dropping stale dsync.group.user_added: user revoked after event"
+          );
+          return;
+        }
+      }
       throw new Error(res.error.message);
     }
   } else {
