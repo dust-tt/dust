@@ -140,10 +140,8 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
-import {
-  ConversationError,
-  type ConversationWithoutContentType,
-} from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { ConversationError } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
@@ -208,7 +206,9 @@ async function handler(
   switch (req.method) {
     case "GET": {
       const conversationRes =
-        await ConversationResource.fetchConversationWithoutContent(auth, cId);
+        await ConversationResource.fetchConversationWithoutContent(auth, cId, {
+          includeForkedChildrenInfo: true,
+        });
 
       if (conversationRes.isErr()) {
         // Distinguish between "not found" and "access restricted" for the UI.
