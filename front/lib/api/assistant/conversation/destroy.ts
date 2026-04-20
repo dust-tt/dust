@@ -27,7 +27,7 @@ import {
   ProjectTodoConversationModel,
   ProjectTodoSourceModel,
 } from "@app/lib/resources/storage/models/project_todo";
-import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -299,12 +299,13 @@ export async function destroyConversation(
     },
   });
 
-  await WakeUpModel.destroy({
-    where: {
-      workspaceId: owner.id,
-      conversationId: conversation.id,
-    },
-  });
+  const wakeUpCleanupResult = await WakeUpResource.cleanupByConversation(
+    auth,
+    conversation.toJSON()
+  );
+  if (wakeUpCleanupResult.isErr()) {
+    return wakeUpCleanupResult;
+  }
 
   await ProjectTodoConversationModel.destroy({
     where: { workspaceId: owner.id, conversationId: conversation.id },
