@@ -262,16 +262,16 @@ export async function buildSidekickContext(
     return null;
   }
 
-  const [context, askUserQuestion] = await Promise.all([
-    MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+  const context =
+    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
       AGENT_SIDEKICK_CONTEXT_TOOL_NAME
-    ),
-    MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+    );
+  const askUserQuestion =
+    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
       "ask_user_question"
-    ),
-  ]);
+    );
 
   return {
     mcpServerViews: context ? { context, askUserQuestion } : null,
