@@ -21,6 +21,8 @@ interface SlashCommandTooltip {
   media?: React.ReactNode;
 }
 
+const DEFAULT_EMPTY_MESSAGE = "No commands found";
+
 export interface SlashCommand {
   action: string;
   description?: string;
@@ -35,10 +37,8 @@ export interface SlashCommandDropdownProps
     SuggestionProps<SlashCommand>,
     "clientRect" | "command" | "items"
   > {
-  className?: string;
   emptyMessage?: string;
-  header?: React.ReactNode;
-  itemsClassName?: string;
+  header?: string;
   onClose?: () => void;
 }
 
@@ -55,10 +55,8 @@ export const SlashCommandDropdown = forwardRef<
       items,
       command,
       clientRect,
-      className = "w-64",
-      emptyMessage = "No commands found",
+      emptyMessage = DEFAULT_EMPTY_MESSAGE,
       header,
-      itemsClassName,
       onClose,
     },
     ref
@@ -153,7 +151,7 @@ export const SlashCommandDropdown = forwardRef<
         </DropdownMenuTrigger>
         <DropdownMenuContent
           ref={containerRef}
-          className={className}
+          className="w-64"
           align="start"
           avoidCollisions
           collisionPadding={12}
@@ -164,13 +162,17 @@ export const SlashCommandDropdown = forwardRef<
           onCloseAutoFocus={(e) => e.preventDefault()}
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          {header}
+          {header ? (
+            <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:text-muted-foreground-night">
+              {header}
+            </div>
+          ) : null}
           {items.length === 0 ? (
-            <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+            <div className="px-2 py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
               {emptyMessage}
             </div>
           ) : (
-            <div className={itemsClassName}>
+            <div className="max-h-96 overflow-y-auto">
               {items.map((item, index) => {
                 const menuItem = (
                   <DropdownMenuItem
