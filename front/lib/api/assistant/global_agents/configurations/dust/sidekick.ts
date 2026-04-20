@@ -317,8 +317,15 @@ export function _getSidekickGlobalAgent(
       })
     : null;
 
+  const askUserQuestionAction = sidekickContext?.mcpServerViews?.askUserQuestion
+    ? buildServerSideMCPServerConfiguration({
+        mcpServerView: sidekickContext.mcpServerViews.askUserQuestion,
+      })
+    : null;
+
   const actions = [
     ...(contextAction ? [contextAction] : []),
+    ...(askUserQuestionAction ? [askUserQuestionAction] : []),
     ...(companyDataAction ? [companyDataAction] : []),
   ];
 
