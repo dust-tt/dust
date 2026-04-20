@@ -6152,4 +6152,107 @@ describe("ConversationResource cleanup on delete", () => {
       expect(modelsWithMessageFK).toEqual(knownModels);
     });
   });
+
+  describe("fetchSpaceRequirementSourceData", () => {
+    it("returns distinct agent configuration ids from agent messages", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "admin" });
+
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      const agent1 = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Agent 1",
+        description: "Agent 1 Description",
+      });
+      const agent2 = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Agent 2",
+        description: "Agent 2 Description",
+      });
+
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent1.sId,
+        messagesCreatedAt: [],
+      });
+
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation not found");
+
+      // Add agent messages from two different agents (including a duplicate).
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversationResource.id,
+        rank: 1,
+        agentConfigurationId: agent1.sId,
+      });
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversationResource.id,
+        rank: 3,
+        agentConfigurationId: agent2.sId,
+      });
+      // Duplicate agent1 message — should be deduplicated.
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversationResource.id,
+        rank: 5,
+        agentConfigurationId: agent1.sId,
+      });
+
+      const { agentConfigurationIds, contentFragmentDatasourceViewIds } =
+        await conversationResource.fetchAgentConfigurationAndContentFragmentIds(
+          auth
+        );
+
+      // Should return exactly 2 distinct agent configuration ids.
+      expect(agentConfigurationIds).toHaveLength(2);
+      expect(agentConfigurationIds).toContain(agent1.sId);
+      expect(agentConfigurationIds).toContain(agent2.sId);
+
+      // No content fragments, so should be empty.
+      expect(contentFragmentDatasourceViewIds).toHaveLength(0);
+    });
+
+    it("returns empty arrays when conversation has no agent or content fragment messages", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "admin" });
+
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Agent",
+        description: "Agent Description",
+      });
+
+      // Create conversation with no messages (empty messagesCreatedAt).
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation not found");
+
+      const { agentConfigurationIds, contentFragmentDatasourceViewIds } =
+        await conversationResource.fetchAgentConfigurationAndContentFragmentIds(
+          auth
+        );
+
+      expect(agentConfigurationIds).toHaveLength(0);
+      expect(contentFragmentDatasourceViewIds).toHaveLength(0);
+    });
+  });
 });

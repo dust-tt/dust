@@ -1,4 +1,7 @@
-import { moveConversationToProject } from "@app/lib/api/projects/conversations";
+import {
+  moveConversationOutOfProject,
+  moveConversationToProject,
+} from "@app/lib/api/projects/conversations";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { UserConversationReadsModel } from "@app/lib/models/agent/conversation";
@@ -674,6 +677,424 @@ describe("moveConversationToProject", () => {
       expect(result.error.message).toBe(
         "Conversation is already in the project"
       );
+    }
+  });
+});
+
+describe("moveConversationOutOfProject", () => {
+  let auth: Authenticator;
+  let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    auth = setup.authenticator;
+    workspace = setup.workspace;
+  });
+
+  it("moves a project conversation out and clears its spaceId", async () => {
+    const user = auth.getNonNullableUser();
+
+    // Create project with user as editor and add user as member.
+    const projectSpace = await SpaceFactory.project(workspace, user.id);
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const projectSpaceGroup = projectSpace.groups.find(
+      (g) => g.kind === "regular"
+    );
+    if (!projectSpaceGroup) {
+      throw new Error("Project space regular group not found");
+    }
+    await projectSpaceGroup.dangerouslyAddMember(internalAdminAuth, {
+      user: user.toJSON(),
+    });
+
+    // Create conversation in the project.
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent Description",
+    });
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      spaceId: projectSpace.id,
+    });
+
+    await auth.refresh();
+
+    // Verify conversation is in the project.
+    expect(isProjectConversation(conversation)).toBe(true);
+
+    const result = await moveConversationOutOfProject(auth, {
+      conversation,
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    const updatedConversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    expect(updatedConversationResource).not.toBeNull();
+    if (!updatedConversationResource) {
+      throw new Error("Conversation not found after move");
+    }
+    const updatedConversation = updatedConversationResource.toJSON();
+
+    // The conversation should no longer be associated to a project.
+    expect(updatedConversation.spaceId).toBeNull();
+    expect(isProjectConversation(updatedConversation)).toBe(false);
+  });
+
+  it("returns internal_error when conversation is not in a project", async () => {
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+
+    const result = await moveConversationOutOfProject(auth, {
+      conversation,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(DustError);
+      expect(result.error.code).toBe("internal_error");
+      expect(result.error.message).toBe("Conversation is not in a project");
+    }
+  });
+
+  it("returns unauthorized when user is not an editor of the project", async () => {
+    const user = auth.getNonNullableUser();
+
+    // Create another user who will be the editor of the project.
+    const editorUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, editorUser, { role: "user" });
+
+    // Create project with editorUser as editor (not the current user).
+    const projectSpace = await SpaceFactory.project(workspace, editorUser.id);
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    // Add current user as member (but not editor) of project.
+    const projectSpaceGroup = projectSpace.groups.find(
+      (g) => g.kind === "regular"
+    );
+    if (!projectSpaceGroup) {
+      throw new Error("Project space regular group not found");
+    }
+    await projectSpaceGroup.dangerouslyAddMember(internalAdminAuth, {
+      user: user.toJSON(),
+    });
+
+    // Create conversation in the project.
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent Description",
+    });
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      spaceId: projectSpace.id,
+    });
+
+    await auth.refresh();
+
+    const result = await moveConversationOutOfProject(auth, {
+      conversation,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(DustError);
+      expect(result.error.code).toBe("unauthorized");
+      expect(result.error.message).toContain("You must be an editor of");
+      expect(result.error.message).toContain(projectSpace.name);
+    }
+  });
+
+  it("preserves unread status for participants when moving conversation out of project", async () => {
+    // Create multiple users.
+    const user1 = auth.getNonNullableUser();
+    const user2 = await UserFactory.basic();
+    const user3 = await UserFactory.basic();
+
+    // Add users to workspace.
+    await MembershipFactory.associate(workspace, user2, { role: "user" });
+    await MembershipFactory.associate(workspace, user3, { role: "user" });
+
+    // Create authenticators for each user.
+    const auth1 = auth;
+    const auth2 = await Authenticator.fromUserIdAndWorkspaceId(
+      user2.sId,
+      workspace.sId
+    );
+    const auth3 = await Authenticator.fromUserIdAndWorkspaceId(
+      user3.sId,
+      workspace.sId
+    );
+
+    // Create project with user1 as editor and add all users as members.
+    const projectSpace = await SpaceFactory.project(workspace, user1.id);
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const projectSpaceGroup = projectSpace.groups.find(
+      (g) => g.kind === "regular"
+    );
+    if (!projectSpaceGroup) {
+      throw new Error("Project space regular group not found");
+    }
+
+    await projectSpaceGroup.dangerouslyAddMember(internalAdminAuth, {
+      user: user1.toJSON(),
+    });
+    await projectSpaceGroup.dangerouslyAddMember(internalAdminAuth, {
+      user: user2.toJSON(),
+    });
+    await projectSpaceGroup.dangerouslyAddMember(internalAdminAuth, {
+      user: user3.toJSON(),
+    });
+
+    await auth1.refresh();
+    await auth2.refresh();
+    await auth3.refresh();
+
+    // Create agent and conversation in the project.
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth1, {
+      name: "Test Agent",
+      description: "Test Agent Description",
+    });
+
+    const conversation = await ConversationFactory.create(auth1, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      spaceId: projectSpace.id,
+    });
+
+    // Add all users as participants.
+    // user1 and user2 will be marked as read later, user3 should remain unread.
+    await ConversationResource.upsertParticipation(auth1, {
+      conversation,
+      action: "posted",
+      user: user1.toJSON(),
+    });
+    await ConversationResource.upsertParticipation(auth2, {
+      conversation,
+      action: "posted",
+      user: user2.toJSON(),
+    });
+    // Explicitly set lastReadAt to null for user3 to keep them unread.
+    await ConversationResource.upsertParticipation(auth3, {
+      conversation,
+      action: "posted",
+      user: user3.toJSON(),
+      lastReadAt: null,
+    });
+
+    // Get conversation resource to check updatedAt.
+    const conversationResourceBefore = await ConversationResource.fetchById(
+      auth1,
+      conversation.sId
+    );
+    if (!conversationResourceBefore) {
+      throw new Error("Conversation not found");
+    }
+    const oldUpdatedAt = conversationResourceBefore.updatedAt;
+
+    // Mark user1 and user2 as read (they have read the conversation).
+    await ConversationResource.markAsReadForAuthUser(auth1, {
+      conversation,
+    });
+    await ConversationResource.markAsReadForAuthUser(auth2, {
+      conversation,
+    });
+    // user3 remains unread (no markAsRead call).
+
+    // Verify initial state: user1 and user2 are read, user3 is unread.
+    const participantsBefore =
+      await conversationResourceBefore.listParticipants(auth1);
+    const user1Before = participantsBefore.find((p) => p.sId === user1.sId);
+    const user2Before = participantsBefore.find((p) => p.sId === user2.sId);
+    const user3Before = participantsBefore.find((p) => p.sId === user3.sId);
+
+    expect(user1Before).toBeDefined();
+    expect(user2Before).toBeDefined();
+    expect(user3Before).toBeDefined();
+    expect(user1Before?.lastReadAt).not.toBeNull();
+    expect(user2Before?.lastReadAt).not.toBeNull();
+    expect(user3Before?.lastReadAt).toBeNull();
+
+    if (user1Before?.lastReadAt) {
+      expect(user1Before.lastReadAt >= oldUpdatedAt).toBe(true);
+    }
+    if (user2Before?.lastReadAt) {
+      expect(user2Before.lastReadAt >= oldUpdatedAt).toBe(true);
+    }
+
+    // Move conversation out of the project.
+    const result = await moveConversationOutOfProject(auth1, {
+      conversation,
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    // Get updated conversation resource.
+    const conversationResourceAfter = await ConversationResource.fetchById(
+      auth1,
+      conversation.sId
+    );
+    if (!conversationResourceAfter) {
+      throw new Error("Conversation not found after move");
+    }
+    const newUpdatedAt = conversationResourceAfter.updatedAt;
+
+    // Verify conversation was moved out.
+    const updatedConversation = conversationResourceAfter.toJSON();
+    expect(updatedConversation.spaceId).toBeNull();
+    expect(isProjectConversation(updatedConversation)).toBe(false);
+
+    // Get participants after move.
+    const participantsAfter =
+      await conversationResourceAfter.listParticipants(auth1);
+    const user1After = participantsAfter.find((p) => p.sId === user1.sId);
+    const user2After = participantsAfter.find((p) => p.sId === user2.sId);
+    const user3After = participantsAfter.find((p) => p.sId === user3.sId);
+
+    expect(user1After).toBeDefined();
+    expect(user2After).toBeDefined();
+    expect(user3After).toBeDefined();
+
+    // Verify user1 and user2 remain read (lastReadAt should be >= newUpdatedAt).
+    expect(user1After?.lastReadAt).not.toBeNull();
+    expect(user2After?.lastReadAt).not.toBeNull();
+    if (user1After?.lastReadAt) {
+      expect(user1After.lastReadAt >= newUpdatedAt).toBe(true);
+    }
+    if (user2After?.lastReadAt) {
+      expect(user2After.lastReadAt >= newUpdatedAt).toBe(true);
+    }
+
+    // Verify user3 remains unread (lastReadAt should still be null).
+    expect(user3After?.lastReadAt).toBeNull();
+  });
+
+  it("preserves unread status when some participants have old lastReadAt", async () => {
+    // Create users.
+    const user1 = auth.getNonNullableUser();
+    const user2 = await UserFactory.basic();
+
+    await MembershipFactory.associate(workspace, user2, { role: "user" });
+
+    const auth1 = auth;
+    const auth2 = await Authenticator.fromUserIdAndWorkspaceId(
+      user2.sId,
+      workspace.sId
+    );
+
+    // Create project with user1 as editor and add both users as members.
+    const projectSpace = await SpaceFactory.project(workspace, user1.id);
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const projectSpaceGroup = projectSpace.groups.find(
+      (g) => g.kind === "regular"
+    );
+    if (!projectSpaceGroup) {
+      throw new Error("Project space regular group not found");
+    }
+
+    await projectSpaceGroup.dangerouslyAddMember(internalAdminAuth, {
+      user: user1.toJSON(),
+    });
+    await projectSpaceGroup.dangerouslyAddMember(internalAdminAuth, {
+      user: user2.toJSON(),
+    });
+
+    await auth1.refresh();
+    await auth2.refresh();
+
+    // Create conversation in the project.
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth1);
+    const conversation = await ConversationFactory.create(auth1, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      spaceId: projectSpace.id,
+    });
+
+    // Add participants.
+    await ConversationResource.upsertParticipation(auth1, {
+      conversation,
+      action: "posted",
+      user: user1.toJSON(),
+    });
+    await ConversationResource.upsertParticipation(auth2, {
+      conversation,
+      action: "posted",
+      user: user2.toJSON(),
+    });
+
+    // Get conversation resource.
+    const conversationResource = await ConversationResource.fetchById(
+      auth1,
+      conversation.sId
+    );
+    if (!conversationResource) {
+      throw new Error("Conversation not found");
+    }
+    const oldUpdatedAt = conversationResource.updatedAt;
+
+    // Mark user1 as read with a timestamp that's >= oldUpdatedAt.
+    await ConversationResource.markAsReadForAuthUser(auth1, {
+      conversation,
+    });
+
+    // Manually set user2's lastReadAt to be before oldUpdatedAt (simulating an old read).
+    const oldReadTime = new Date(oldUpdatedAt.getTime() - 10000); // 10 seconds before
+    await UserConversationReadsModel.upsert({
+      conversationId: conversation.id,
+      userId: user2.id,
+      workspaceId: workspace.id,
+      lastReadAt: oldReadTime,
+    });
+
+    // Move conversation out of the project.
+    const result = await moveConversationOutOfProject(auth1, {
+      conversation,
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    // Verify results.
+    const conversationResourceAfter = await ConversationResource.fetchById(
+      auth1,
+      conversation.sId
+    );
+    if (!conversationResourceAfter) {
+      throw new Error("Conversation not found after move");
+    }
+    const newUpdatedAt = conversationResourceAfter.updatedAt;
+
+    const participantsAfter =
+      await conversationResourceAfter.listParticipants(auth1);
+    const user1After = participantsAfter.find((p) => p.sId === user1.sId);
+    const user2After = participantsAfter.find((p) => p.sId === user2.sId);
+
+    // user1 should remain read (was read before move).
+    expect(user1After?.lastReadAt).not.toBeNull();
+    if (user1After?.lastReadAt) {
+      expect(user1After.lastReadAt >= newUpdatedAt).toBe(true);
+    }
+
+    // user2 should remain unread (had old read timestamp, so was effectively unread).
+    // Their lastReadAt should not have been updated.
+    expect(user2After?.lastReadAt).not.toBeNull();
+    if (user2After?.lastReadAt) {
+      expect(user2After.lastReadAt < newUpdatedAt).toBe(true);
     }
   });
 });

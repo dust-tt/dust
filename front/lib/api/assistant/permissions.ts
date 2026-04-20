@@ -127,20 +127,22 @@ export async function getContentFragmentGroupIds(
   return [groups].filter((arr) => arr.length > 0);
 }
 
-export async function getContentFragmentSpaceIds(
+export async function getContentFragmentsSpaceIds(
   auth: Authenticator,
-  contentFragment: ContentFragmentInputWithContentNode
-): Promise<string> {
-  const dsView = await DataSourceViewResource.fetchById(
+  nodeDataSourceViewIds: string[]
+): Promise<string[]> {
+  const dsViews = await DataSourceViewResource.fetchByIds(
     auth,
-    contentFragment.nodeDataSourceViewId
+    nodeDataSourceViewIds
   );
-  if (!dsView) {
+  if (!dsViews || dsViews.length === 0) {
     throw new Error(`Unexpected dataSourceView not found`);
   }
 
-  return SpaceResource.modelIdToSId({
-    id: dsView.space.id,
-    workspaceId: auth.getNonNullableWorkspace().id,
-  });
+  return dsViews.map((dsView) =>
+    SpaceResource.modelIdToSId({
+      id: dsView.space.id,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    })
+  );
 }

@@ -15,6 +15,7 @@ import { REINFORCEMENT_METADATA_KEYS } from "@app/lib/reinforced_agent/types";
 import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
   createResourcePermissionsFromSpacesWithMap,
@@ -97,7 +98,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   constructor(
     model: ModelStaticWorkspaceAware<ConversationModel>,
     blob: Attributes<ConversationModel>,
-    private readonly _space: SpaceResource | null
+    private _space: SpaceResource | null
   ) {
     super(ConversationModel, blob);
   }
@@ -2769,6 +2770,81 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   async updateSpaceId(space: SpaceResource, transaction?: Transaction) {
     await this.update({ spaceId: space.id }, transaction);
+  }
+
+  async clearSpaceId() {
+    await this.update({ spaceId: null });
+    this._space = null;
+  }
+
+  /**
+   * Get the distinct agent configuration IDs and content fragment DataSourceView ids
+   * used in this conversation. This data is needed to rebuild the conversation's
+   * requestedSpaceIds when moving out of a project.
+   */
+  async fetchAgentConfigurationAndContentFragmentIds(
+    auth: Authenticator
+  ): Promise<{
+    agentConfigurationIds: string[];
+    contentFragmentDatasourceViewIds: string[];
+  }> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const agentMessages = await MessageModel.findAll({
+      where: {
+        conversationId: this.id,
+        workspaceId,
+        agentMessageId: { [Op.ne]: null },
+        branchId: { [Op.is]: null },
+      },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: ["agentConfigurationId"],
+        },
+      ],
+    });
+
+    const agentConfigurationIds = uniq(
+      agentMessages
+        .map((m) => m.agentMessage?.agentConfigurationId)
+        .filter((id): id is string => Boolean(id))
+    );
+
+    const cfMessages = await MessageModel.findAll({
+      where: {
+        conversationId: this.id,
+        workspaceId,
+        contentFragmentId: { [Op.ne]: null },
+        branchId: { [Op.is]: null },
+      },
+      include: [
+        {
+          model: ContentFragmentModel,
+          as: "contentFragment",
+          required: true,
+        },
+      ],
+    });
+
+    const contentFragmentDatasourceViewIds = uniq(
+      cfMessages
+        .map((m) => {
+          const modelId = m.contentFragment?.nodeDataSourceViewId;
+          if (modelId == null) {
+            return null;
+          }
+          return DataSourceViewResource.modelIdToSId({
+            id: modelId,
+            workspaceId,
+          });
+        })
+        .filter((sId): sId is string => sId !== null)
+    );
+
+    return { agentConfigurationIds, contentFragmentDatasourceViewIds };
   }
 
   static async markHasError(
