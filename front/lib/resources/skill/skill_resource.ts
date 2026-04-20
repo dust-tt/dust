@@ -2415,6 +2415,25 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
+  static async listByConversationModelId(
+    auth: Authenticator,
+    conversationModelId: ModelId
+  ): Promise<SkillResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const agentMessageSkills = await AgentMessageSkillModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: conversationModelId,
+      },
+    });
+
+    // Include all statuses for historical accuracy.
+    return this.fetchBySkillReferences(auth, agentMessageSkills, {
+      status: ["active", "archived", "suggested"],
+    });
+  }
+
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 

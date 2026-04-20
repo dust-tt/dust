@@ -6,10 +6,8 @@ import { listAvailableTools } from "@app/lib/api/assistant/workspace_capabilitie
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { AgentMessageSkillModel } from "@app/lib/models/skill/conversation_skill";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { makeSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
 import {
   isAgentMessageType,
@@ -135,27 +133,11 @@ async function handler(
     });
   }
   const conversation = conversationRes.value;
-  const workspace = auth.getNonNullableWorkspace();
 
-  // Discover custom skills used in this conversation via AgentMessageSkillModel.
-  const skillRecords = await AgentMessageSkillModel.findAll({
-    attributes: ["customSkillId"],
-    where: {
-      workspaceId: workspace.id,
-      conversationId: conversation.id,
-    },
-  });
-  const customSkillModelIds: ModelId[] = [
-    ...new Set(
-      skillRecords
-        .map((r) => r.customSkillId)
-        .filter((id): id is number => id !== null)
-    ),
-  ];
-  const skillIds = customSkillModelIds.map((id) =>
-    makeSId("skill", { id, workspaceId: workspace.id })
+  const skills = await SkillResource.listByConversationModelId(
+    auth,
+    conversation.id
   );
-  const skills = await SkillResource.fetchByIds(auth, skillIds);
 
   const skillConfigs: ReinforcementTestCaseMockSkillConfig[] = skills.map(
     (skill) => {
