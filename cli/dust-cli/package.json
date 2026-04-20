@@ -55,7 +55,7 @@
     "@types/express": "^5.0.1",
     "@types/lodash": "^4.17.16",
     "@types/mime-types": "^3.0.1",
-    "@types/node": "^22.19.11",
+    "@types/node": "^24.12.2",
     "@types/react": "^18.3.18",
     "@types/update-notifier": "^6.0.8",
     "diff": "^8.0.2",
