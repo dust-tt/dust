@@ -27,6 +27,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { RequireAtLeastOne } from "@app/types/shared/typescipt_utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import assert from "assert";
 import type {
   Attributes,
   FindOptions,
@@ -515,6 +516,64 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       col: "userId",
       transaction,
     });
+  }
+
+  static async getMembersCountsForWorkspaces(
+    auth: Authenticator,
+    {
+      workspaces,
+      activeOnly,
+    }: {
+      workspaces: LightWorkspaceType[];
+      activeOnly: boolean;
+    }
+  ): Promise<Record<string, number>> {
+    assert(
+      auth.isDustSuperUser(),
+      "Counting members across different workspaces is only allowed for super users."
+    );
+
+    const countByWorkspaceId: Record<string, number> = {};
+    if (workspaces.length === 0) {
+      return countByWorkspaceId;
+    }
+
+    const workspaceIdByModelId = new Map<ModelId, string>();
+    for (const w of workspaces) {
+      countByWorkspaceId[w.sId] = 0;
+      workspaceIdByModelId.set(w.id, w.sId);
+    }
+
+    const now = new Date();
+    let where: WhereOptions<InferAttributes<MembershipModel>> = {
+      workspaceId: { [Op.in]: workspaces.map((w) => w.id) },
+    };
+    if (activeOnly) {
+      where = {
+        ...where,
+        endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: now }] },
+        startAt: { [Op.lte]: now },
+        firstUsedAt: { [Op.ne]: null },
+      };
+    }
+
+    const rows = await this.model.count({
+      where,
+      distinct: true,
+      col: "userId",
+      group: ["workspaceId"],
+    });
+
+    for (const row of rows) {
+      const workspaceModelId = row.workspaceId;
+      if (typeof workspaceModelId === "number") {
+        const workspaceId = workspaceIdByModelId.get(workspaceModelId);
+        if (workspaceId) {
+          countByWorkspaceId[workspaceId] = row.count;
+        }
+      }
+    }
+    return countByWorkspaceId;
   }
 
   static async countActiveMembersForWorkspace({
