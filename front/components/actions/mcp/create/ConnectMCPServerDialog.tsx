@@ -29,10 +29,12 @@ import {
   useDiscoverOAuthMetadata,
   useUpdateMCPServerView,
 } from "@app/lib/swr/mcp_servers";
+import datadogLogger from "@app/logger/datadogLogger";
 import {
   OAUTH_PROVIDER_NAMES,
   validateOAuthCredentials,
 } from "@app/types/oauth/lib";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Dialog,
@@ -268,8 +270,36 @@ export function ConnectMCPServerDialog({
     setExternalIsLoading(true);
 
     try {
-      const credentialId = await staticFormRef.current?.submit();
+      const formHandle = staticFormRef.current;
+      if (!formHandle) {
+        sendNotification({
+          type: "error",
+          title: "Cannot submit credentials",
+          description: "The credentials form is not ready. Please retry.",
+        });
+        datadogLogger.error(
+          {
+            workspaceId: owner.sId,
+            mcpServerSId: mcpServerView.server.sId,
+            hasAuthorization: !!authorization,
+            useCase,
+          },
+          "Static credential form ref is null at submit time"
+        );
+        return;
+      }
+
+      const credentialId = await formHandle.submit();
       if (!credentialId) {
+        // The form surfaced its own notification for the specific failure;
+        // log here so we also have a parent-side breadcrumb.
+        datadogLogger.warn(
+          {
+            workspaceId: owner.sId,
+            mcpServerSId: mcpServerView.server.sId,
+          },
+          "Static credential form submit returned null"
+        );
         return;
       }
 
@@ -280,6 +310,14 @@ export function ConnectMCPServerDialog({
         provider: authorization.provider,
       });
       if (!connectionCreationRes) {
+        datadogLogger.error(
+          {
+            workspaceId: owner.sId,
+            mcpServerSId: mcpServerView.server.sId,
+            credentialId,
+          },
+          "createMCPServerConnection returned falsy result"
+        );
         return;
       }
 
@@ -287,11 +325,29 @@ export function ConnectMCPServerDialog({
         oAuthUseCase: useCase,
       });
       if (!updateServerViewRes) {
+        datadogLogger.error(
+          {
+            workspaceId: owner.sId,
+            mcpServerSId: mcpServerView.server.sId,
+          },
+          "updateServerView returned falsy result"
+        );
         return;
       }
 
       setIsOpen(false);
       resetState();
+    } catch (err) {
+      const e = normalizeError(err);
+      sendNotification({
+        type: "error",
+        title: "Failed to connect the tool",
+        description: e.message,
+      });
+      datadogLogger.error(
+        { workspaceId: owner.sId, err: e },
+        "Unexpected error in handleStaticCredentialSave"
+      );
     } finally {
       setIsLoading(false);
       setExternalIsLoading(false);

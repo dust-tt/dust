@@ -36,7 +36,9 @@ import {
   useCreateRemoteMCPServer,
   useDiscoverOAuthMetadata,
 } from "@app/lib/swr/mcp_servers";
+import datadogLogger from "@app/logger/datadogLogger";
 import { validateOAuthCredentials } from "@app/types/oauth/lib";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ContentMessage,
@@ -423,8 +425,36 @@ export function CreateMCPServerDialog({
       const createdServer = createRes.value.server;
 
       // Submit the static credential form — returns credentialId or null.
-      const credentialId = await staticFormRef.current?.submit();
+      const formHandle = staticFormRef.current;
+      if (!formHandle) {
+        sendNotification({
+          type: "error",
+          title: "Cannot submit credentials",
+          description: "The credentials form is not ready. Please retry.",
+        });
+        datadogLogger.error(
+          {
+            workspaceId: owner.sId,
+            mcpServerSId: createdServer.sId,
+            hasAuthorization: !!authorization,
+            useCase,
+          },
+          "Static credential form ref is null at submit time"
+        );
+        return;
+      }
+
+      const credentialId = await formHandle.submit();
       if (!credentialId) {
+        // The form surfaced its own notification for the specific failure;
+        // log here so we also have a parent-side breadcrumb.
+        datadogLogger.warn(
+          {
+            workspaceId: owner.sId,
+            mcpServerSId: createdServer.sId,
+          },
+          "Static credential form submit returned null"
+        );
         return;
       }
 
@@ -435,6 +465,14 @@ export function CreateMCPServerDialog({
         provider: authorization.provider,
       });
       if (!connectionCreationRes) {
+        datadogLogger.error(
+          {
+            workspaceId: owner.sId,
+            mcpServerSId: createdServer.sId,
+            credentialId,
+          },
+          "createMCPServerConnection returned falsy result"
+        );
         return;
       }
 
@@ -446,6 +484,17 @@ export function CreateMCPServerDialog({
       setMCPServerToShow(createdServer);
       setIsOpen(false);
       resetState();
+    } catch (err) {
+      const e = normalizeError(err);
+      sendNotification({
+        type: "error",
+        title: "Failed to add the tool",
+        description: e.message,
+      });
+      datadogLogger.error(
+        { workspaceId: owner.sId, err: e },
+        "Unexpected error in handleCreateServerAndSubmitStaticCredentials"
+      );
     } finally {
       setIsLoading(false);
       setExternalIsLoading(false);
