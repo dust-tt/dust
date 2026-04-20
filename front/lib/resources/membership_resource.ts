@@ -562,7 +562,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
-    // Dedupe userIds per workspace in memory (faster than a COUNT(DISTINCT ...) in SQL).
+    // Dedupe userIds per workspace.
     const userModelIdsByWorkspaceModelId = new Map<ModelId, Set<ModelId>>();
     for (const row of rows) {
       let userIds = userModelIdsByWorkspaceModelId.get(row.workspaceId);
