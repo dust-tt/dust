@@ -291,6 +291,7 @@ export async function runModel(
   const ASK_USER_QUESTION_ALLOWED_ORIGINS: UserMessageOrigin[] = [
     "web",
     "slack",
+    "onboarding_conversation"
   ];
   const filteredMcpActions = !ASK_USER_QUESTION_ALLOWED_ORIGINS.includes(
     userMessage.context.origin
