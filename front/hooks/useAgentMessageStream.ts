@@ -278,7 +278,6 @@ interface UseAgentMessageStreamParams {
     data: AgentMessageStateWithControlEvent;
   }) => void;
   streamId: string;
-  useFullChainOfThought: boolean;
 }
 
 export function useAgentMessageStream({

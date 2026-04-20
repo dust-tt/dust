@@ -185,7 +185,6 @@ export function createPlaceholderAgentMessage({
       lastUpdated: new Date(),
       actionProgress: new Map(),
       pendingToolCalls: [],
-      useFullChainOfThought: false,
     },
   };
 }

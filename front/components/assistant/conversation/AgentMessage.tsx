@@ -79,7 +79,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
-import type { DropdownMenuItemProps, StreamingState } from "@dust-tt/sparkle";
+import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
   ActionGitBranchIcon,
   ArrowPathIcon,
@@ -391,7 +391,6 @@ export function AgentMessage({
       ]
     ),
     streamId,
-    useFullChainOfThought: false,
   });
 
   const isDeleted = agentMessage.visibility === "deleted";
@@ -953,7 +952,6 @@ export function AgentMessage({
           references={references}
           streaming={shouldStream}
           streamError={streamError}
-          lastTokenClassification={null}
           activeReferences={activeReferences}
           setActiveReferences={setActiveReferences}
           triggeringUser={triggeringUser}
@@ -1040,7 +1038,6 @@ function AgentMessageContent({
   references,
   streaming,
   streamError,
-  lastTokenClassification,
   owner,
   conversationId,
   activeReferences,
@@ -1072,7 +1069,6 @@ function AgentMessageContent({
   references: { [key: string]: MCPReferenceCitation };
   streaming: boolean;
   streamError: Error | null;
-  lastTokenClassification: null | "tokens" | "chain_of_thought";
   activeReferences: { index: number; document: MCPReferenceCitation }[];
   setActiveReferences: (
     references: {
@@ -1323,11 +1319,9 @@ function AgentMessageContent({
               <AgentMessageMarkdown
                 content={sanitizeVisualizationContent(agentMessage.content)}
                 owner={owner}
-                isStreaming={streaming && lastTokenClassification === "tokens"}
-                streamingState={getStreamingState(
-                  streaming && lastTokenClassification === "tokens",
-                  agentMessage.status
-                )}
+                streamingState={
+                  agentMessage.status === "cancelled" ? "cancelled" : "none"
+                }
                 isLastMessage={isLastMessage}
                 additionalMarkdownComponents={additionalMarkdownComponents}
                 additionalMarkdownPlugins={additionalMarkdownPlugins}
@@ -1387,19 +1381,6 @@ function AgentMessageContent({
       </div>
     </CitationsContext.Provider>
   );
-}
-
-function getStreamingState(
-  isStreaming: boolean,
-  messageStatus: string
-): StreamingState {
-  if (isStreaming) {
-    return "streaming";
-  }
-  if (messageStatus === "cancelled") {
-    return "cancelled";
-  }
-  return "none";
 }
 
 function getCitations({

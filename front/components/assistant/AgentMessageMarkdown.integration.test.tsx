@@ -351,17 +351,6 @@ More content after.`;
       );
       expect(container).toBeInTheDocument();
     });
-
-    it("handles isStreaming prop", () => {
-      const { container } = render(
-        <AgentMessageMarkdown
-          owner={mockOwner}
-          content="Test"
-          isStreaming={true}
-        />
-      );
-      expect(container).toBeInTheDocument();
-    });
   });
 
   describe("Content Consistency", () => {
