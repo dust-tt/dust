@@ -83,6 +83,7 @@ import { ConversationForkResource } from "@app/lib/resources/conversation_fork_r
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 // Mock rateLimiter from the utils module
 import * as rateLimiterModule from "@app/lib/utils/rate_limiter";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -1185,6 +1186,9 @@ describe("softDeleteAgentMessage", () => {
 describe("postUserMessage", () => {
   let auth: Authenticator;
   let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
+  let globalGroup: Awaited<
+    ReturnType<typeof createResourceTest>
+  >["globalGroup"];
   let conversation: ConversationType;
   let agentConfig1: LightAgentConfigurationType;
 
@@ -1192,6 +1196,7 @@ describe("postUserMessage", () => {
     const setup = await createResourceTest({});
     auth = setup.authenticator;
     workspace = setup.workspace;
+    globalGroup = setup.globalGroup;
 
     agentConfig1 = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent 1",
@@ -2188,6 +2193,46 @@ describe("postUserMessage", () => {
         expect(result.value.userMessage.content).toBe(
           "Hello from a non-member to regular conversation"
         );
+      }
+    });
+  });
+
+  describe("API key auth on workspace with privateConversationUrlsByDefault", () => {
+    it("should succeed when posting via API key on a workspace with private URLs by default", async () => {
+      // Enable private conversation URLs by default for the workspace.
+      // Testing API key auth (which has no user), even though the message was just posted.
+      const updateResult = await WorkspaceResource.updateMetadata(
+        workspace.id,
+        {
+          privateConversationUrlsByDefault: true,
+        }
+      );
+      expect(updateResult.isOk()).toBe(true);
+
+      const apiKey = await KeyFactory.regular(globalGroup);
+      const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
+        apiKey,
+        workspace.sId
+      );
+
+      const result = await postUserMessage(apiKeyAuth, {
+        conversation,
+        content: "Hello from API key",
+        mentions: [],
+        context: {
+          username: "api-user",
+          timezone: "UTC",
+          fullName: null,
+          email: null,
+          profilePictureUrl: null,
+          origin: "api",
+        },
+        skipToolsValidation: false,
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.userMessage.content).toBe("Hello from API key");
       }
     });
   });

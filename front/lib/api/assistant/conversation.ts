@@ -1003,17 +1003,8 @@ export async function postUserMessage(
     });
   }
 
-  const conversationRes = await ConversationResource.fetchById(
-    auth,
-    conversation.sId
-  );
-  if (!conversationRes) {
-    throw new Error(
-      "Unexpected: Conversation not found after posting message."
-    );
-  }
   await triggerConversationUnreadNotifications(auth, {
-    conversationId: conversationRes.sId,
+    conversationId: conversation.sId,
     messageId: userMessage.sId,
   });
 
