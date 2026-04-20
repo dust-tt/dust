@@ -280,7 +280,7 @@ export function ConnectMCPServerDialog({
         datadogLogger.error(
           {
             workspaceId: owner.sId,
-            mcpServerSId: mcpServerView.server.sId,
+            mcpServerId: mcpServerView.server.sId,
             hasAuthorization: !!authorization,
             useCase,
           },
@@ -296,7 +296,7 @@ export function ConnectMCPServerDialog({
         datadogLogger.warn(
           {
             workspaceId: owner.sId,
-            mcpServerSId: mcpServerView.server.sId,
+            mcpServerId: mcpServerView.server.sId,
           },
           "Static credential form submit returned null"
         );
@@ -313,7 +313,7 @@ export function ConnectMCPServerDialog({
         datadogLogger.error(
           {
             workspaceId: owner.sId,
-            mcpServerSId: mcpServerView.server.sId,
+            mcpServerId: mcpServerView.server.sId,
             credentialId,
           },
           "createMCPServerConnection returned falsy result"
@@ -328,7 +328,7 @@ export function ConnectMCPServerDialog({
         datadogLogger.error(
           {
             workspaceId: owner.sId,
-            mcpServerSId: mcpServerView.server.sId,
+            mcpServerId: mcpServerView.server.sId,
           },
           "updateServerView returned falsy result"
         );

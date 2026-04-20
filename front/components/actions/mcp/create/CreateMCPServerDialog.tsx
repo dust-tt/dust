@@ -435,7 +435,7 @@ export function CreateMCPServerDialog({
         datadogLogger.error(
           {
             workspaceId: owner.sId,
-            mcpServerSId: createdServer.sId,
+            mcpServerId: createdServer.sId,
             hasAuthorization: !!authorization,
             useCase,
           },
@@ -451,7 +451,7 @@ export function CreateMCPServerDialog({
         datadogLogger.warn(
           {
             workspaceId: owner.sId,
-            mcpServerSId: createdServer.sId,
+            mcpServerId: createdServer.sId,
           },
           "Static credential form submit returned null"
         );
@@ -468,7 +468,7 @@ export function CreateMCPServerDialog({
         datadogLogger.error(
           {
             workspaceId: owner.sId,
-            mcpServerSId: createdServer.sId,
+            mcpServerId: createdServer.sId,
             credentialId,
           },
           "createMCPServerConnection returned falsy result"
