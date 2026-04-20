@@ -356,13 +356,13 @@ export const ConversationViewer = ({
       !isValidating
     ) {
       const raw = messages.flatMap((m) => m.messages);
-      const renderedMessages = convertLightMessageTypeToVirtuosoMessages(raw);
-      const messagesToRender = addConversationForkNotices(
-        renderedMessages,
+      const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
+      const messagesAndNotices = addConversationForkNotices(
+        messagesToRender,
         conversation.forkedChildren
       );
 
-      setInitialListData(messagesToRender);
+      setInitialListData(messagesAndNotices);
 
       // Fetch the message to scroll to from the URL hash.
       const hash = window.location.hash;
@@ -375,7 +375,7 @@ export const ConversationViewer = ({
         }
 
         // Find the message index in the current data.
-        const messageIndex = messagesToRender.findIndex(
+        const messageIndex = messagesAndNotices.findIndex(
           (m) => m.sId === messageId
         );
 
@@ -393,7 +393,7 @@ export const ConversationViewer = ({
         }
 
         const firstUnreadIndex = findFirstUnreadMessageIndex(
-          messagesToRender,
+          messagesAndNotices,
           lastReadMs
         );
 
