@@ -4,17 +4,13 @@ import { ManageUsersPanel } from "@app/components/assistant/conversation/space/M
 import { ProjectHeaderActions } from "@app/components/assistant/conversation/space/ProjectHeaderActions";
 import { SpaceAlphaTab } from "@app/components/assistant/conversation/space/SpaceAlphaTab";
 import { SpaceKnowledgeTab } from "@app/components/assistant/conversation/space/SpaceKnowledgeTab";
-import { SpaceTodoTab } from "@app/components/assistant/conversation/space/SpaceTodoTab";
+
 import { useSpaceConversations } from "@app/hooks/conversations";
 import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
@@ -35,7 +31,6 @@ import {
   BookOpenIcon,
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
-  ListCheckIcon,
   Spinner,
   Tabs,
   TabsContent,
@@ -45,12 +40,11 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useCallback, useRef, useState } from "react";
 
-type SpaceTab = "conversations" | "knowledge" | "settings" | "todo";
+type SpaceTab = "conversations" | "knowledge" | "settings";
 
 export function SpaceConversationsPage() {
   const owner = useWorkspace();
   const { user } = useAuth();
-  const { hasFeature } = useFeatureFlags();
   const clientType = useClientType();
   const router = useAppRouter();
   const spaceId = useActiveSpaceId();
@@ -101,8 +95,7 @@ export function SpaceConversationsPage() {
     if (
       hash === "knowledge" ||
       hash === "settings" ||
-      hash === "conversations" ||
-      hash === "todo"
+      hash === "conversations"
     ) {
       return hash;
     }
@@ -337,9 +330,6 @@ export function SpaceConversationsPage() {
               label="Knowledge"
               icon={BookOpenIcon}
             />
-            {hasFeature("project_todo") && (
-              <TabsTrigger value="todo" label="Todo" icon={ListCheckIcon} />
-            )}
             <TabsTrigger
               value="settings"
               icon={Cog6ToothIcon}
@@ -394,17 +384,6 @@ export function SpaceConversationsPage() {
             onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
           />
         </TabsContent>
-
-        {hasFeature("project_todo") && (
-          <TabsContent value="todo">
-            <SpaceTodoTab
-              key={spaceId}
-              owner={owner}
-              spaceInfo={spaceInfo}
-              hasConversations={conversations.length > 0}
-            />
-          </TabsContent>
-        )}
 
         <TabsContent value="alpha">
           <SpaceAlphaTab key={spaceId} />
