@@ -1,6 +1,20 @@
 import type { SpecificationType } from "@app/types/app";
 import type { BlockType } from "@app/types/run";
 
+export function cleanSpecificationFromCore(
+  specification: SpecificationType
+): void {
+  for (const block of specification) {
+    if (block.type === "input") {
+      block.config = {};
+    }
+    if (block.type === "data") {
+      delete block.spec.dataset_id;
+      delete block.spec.hash;
+    }
+  }
+}
+
 export function recomputeIndents(spec: SpecificationType): SpecificationType {
   let indent = 0;
   for (let i = 0; i < spec.length; i++) {

@@ -1,6 +1,5 @@
 import { issueSchema } from "@app/lib/triggers/built-in-webhooks/linear/schemas/issue";
 import { projectSchema } from "@app/lib/triggers/built-in-webhooks/linear/schemas/project";
-import { LinearWebhookService } from "@app/lib/triggers/built-in-webhooks/linear/service";
 import type {
   PresetWebhook,
   WebhookEvent,
@@ -33,5 +32,4 @@ export const LINEAR_WEBHOOK_PRESET: PresetWebhook<"linear"> = {
   description: "Receive events from Linear.",
   filterGenerationInstructions: null,
   webhookPageUrl: "https://linear.app/settings/api",
-  webhookService: new LinearWebhookService(),
 };

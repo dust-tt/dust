@@ -12,10 +12,8 @@ import type {
   WebhookProvider,
   WebhookServiceDataForProvider,
 } from "@app/types/triggers/webhooks";
-import {
-  isWebhookProvider,
-  WEBHOOK_PRESETS,
-} from "@app/types/triggers/webhooks";
+import { isWebhookProvider } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS_SERVER } from "@app/types/triggers/webhooks_server";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetServiceDataResponseType<
@@ -130,7 +128,7 @@ async function handler(
 
       // Call getServiceData on the webhook service
       const serviceDataResult =
-        await WEBHOOK_PRESETS[provider].webhookService.getServiceData(
+        await WEBHOOK_PRESETS_SERVER[provider].webhookService.getServiceData(
           accessToken
         );
 

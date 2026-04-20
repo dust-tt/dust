@@ -17,10 +17,8 @@ import type {
   WebhookSourceForAdminType,
   WebhookSourceWithViewsAndUsageType,
 } from "@app/types/triggers/webhooks";
-import {
-  WEBHOOK_PRESETS,
-  WebhookSourcesSchema,
-} from "@app/types/triggers/webhooks";
+import { WebhookSourcesSchema } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS_SERVER } from "@app/types/triggers/webhooks_server";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -208,7 +206,7 @@ async function handler(
           workspaceId: workspace.sId,
           webhookSource: webhookSource.toJSONForAdmin(),
         });
-        const service = WEBHOOK_PRESETS[provider].webhookService;
+        const service = WEBHOOK_PRESETS_SERVER[provider].webhookService;
         const result = await service.createWebhooks({
           auth,
           connectionId,

@@ -56,12 +56,15 @@ export type PresetWebhook<P extends WebhookProvider = WebhookProvider> = {
   // Optional URL to the webhook provider's webhook management page.
   webhookPageUrl?: string;
 
-  // The service that will handle creating the webhooks for a given provider.
-  // Likely implements OAuth flow to manage webhooks on behalf of users.
-  webhookService: RemoteWebhookService<P>;
-
   featureFlag?: WhitelistableFeature;
 };
+
+// Server-only preset type — adds the webhook service. Only import this from
+// server-side code; importing it in the SPA pulls in undici via oauth_api.ts.
+export type ServerPresetWebhook<P extends WebhookProvider = WebhookProvider> =
+  PresetWebhook<P> & {
+    webhookService: RemoteWebhookService<P>;
+  };
 
 // Full preset type including React components for UI rendering.
 export type PresetWebhookUi<P extends WebhookProvider = WebhookProvider> =

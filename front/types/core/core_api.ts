@@ -1,4 +1,6 @@
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { internalFetch } from "@app/lib/api/internal_fetch";
+import { formatDataSourceDisplayName } from "@app/types/core/utils";
 import type { ProviderVisibility } from "@app/types/connectors/connectors_api";
 import type { CoreAPIContentNode } from "@app/types/core/content_node";
 import type {
@@ -241,8 +243,7 @@ export type CoreAPIDatasourceViewFilter = t.TypeOf<
   typeof CoreAPIDatasourceViewFilterSchema
 >;
 
-// Edge-ngram starts at 2 characters.
-export const MIN_SEARCH_QUERY_SIZE = 2;
+// Edge-ngram starts at 2 characters. See types/core/utils.ts.
 
 export const CoreAPINodesSearchFilterSchema = t.intersection([
   t.type({
@@ -292,16 +293,6 @@ export interface CoreAPIUpsertDataSourceDocumentPayload {
   mimeType: string;
 }
 
-// TODO(keyword-search): Until we remove the `managed-` prefix, we need to
-// sanitize the search name.
-export function formatDataSourceDisplayName(name: string) {
-  return name
-    .replace(/[-_]/g, " ") // Replace both hyphens and underscores with spaces.
-    .split(" ")
-    .filter((part) => part !== "managed")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
 
 // Counter-part of `DatabasesTablesUpsertPayload` in `core/bin/core_api.rs`.
 type UpsertTableParams = {
@@ -2366,8 +2357,7 @@ export class CoreAPI {
           Authorization: `Bearer ${this._apiKey}`,
         };
       }
-      // eslint-disable-next-line no-restricted-globals
-      const res = await fetch(url, params);
+      const res = await internalFetch(url, params);
       return new Ok({ response: res, duration: Date.now() - now });
     } catch (e) {
       const duration = Date.now() - now;

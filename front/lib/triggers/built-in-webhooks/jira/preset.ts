@@ -10,7 +10,6 @@ import {
   issueUpdatedExample,
   issueUpdatedSchema,
 } from "@app/lib/triggers/built-in-webhooks/jira/schemas/issue_updated";
-import { JiraWebhookService } from "@app/lib/triggers/built-in-webhooks/jira/service";
 import type {
   PresetWebhook,
   WebhookEvent,
@@ -58,5 +57,4 @@ export const JIRA_WEBHOOK_PRESET: PresetWebhook<"jira"> = {
   description: "Receive events from Jira such as creation of issues.",
   filterGenerationInstructions: null,
   webhookPageUrl: `https://id.atlassian.com/manage-profile/security/api-tokens`,
-  webhookService: new JiraWebhookService(),
 };

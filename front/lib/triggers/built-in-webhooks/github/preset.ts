@@ -22,7 +22,6 @@ import {
   releaseExample,
   releaseSchema,
 } from "@app/lib/triggers/built-in-webhooks/github/schemas/release";
-import { GitHubWebhookService } from "@app/lib/triggers/built-in-webhooks/github/service";
 import type {
   PresetWebhook,
   WebhookEvent,
@@ -101,5 +100,4 @@ export const GITHUB_WEBHOOK_PRESET: PresetWebhook<"github"> = {
     "Receive events from GitHub such as creation or edition of issues or pull requests.",
   filterGenerationInstructions: null,
   webhookPageUrl: `https://github.com/settings/connections/applications/${process.env.NEXT_PUBLIC_OAUTH_GITHUB_APP_WEBHOOKS_CLIENT_ID}`,
-  webhookService: new GitHubWebhookService(),
 };

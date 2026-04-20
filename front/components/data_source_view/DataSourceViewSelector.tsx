@@ -33,7 +33,7 @@ import { useInfiniteDataSourceViewContentNodes } from "@app/lib/swr/data_source_
 import { useSpacesSearch } from "@app/lib/swr/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { SearchWarningCode } from "@app/types/core/core_api";
-import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import type {
   DataSourceViewContentNode,
   DataSourceViewSelectionConfiguration,
