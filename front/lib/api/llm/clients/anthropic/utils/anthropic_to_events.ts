@@ -286,7 +286,7 @@ function* handleContentBlockStop(
               toolName: stateContainer.state.toolInfo.name,
               inputLength: input.length,
             },
-            "Tool input failed JSON validation, wrapping as INVALID_JSON tool call"
+            `Tool input failed JSON validation, wrapping as INVALID_JSON tool call. Invalid JSON: ${input}`
           );
           yield toolCallWithInvalidJson({
             ...stateContainer.state.toolInfo,
