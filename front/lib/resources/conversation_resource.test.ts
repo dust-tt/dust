@@ -257,6 +257,16 @@ describe("ConversationResource", () => {
         requestedSpaceIds: [restrictedSpace.id],
         spaceId: restrictedSpace.id,
       });
+      const parentConversationTitle = "Restricted parent conversation";
+      const updateTitleRes = await ConversationResource.updateTitle(
+        adminAuth,
+        parentConversation.sId,
+        parentConversationTitle
+      );
+      assert(
+        updateTitleRes.isOk(),
+        "Failed to update parent conversation title"
+      );
       const childConversation = await ConversationFactory.create(userAuth, {
         agentConfigurationId: agent.sId,
         messagesCreatedAt: [],
@@ -302,7 +312,7 @@ describe("ConversationResource", () => {
 
       expect(fetchedChildConversation.toJSON().forkedFrom).toEqual({
         parentConversationId: parentConversation.sId,
-        parentConversationTitle: null,
+        parentConversationTitle,
         sourceMessageId: sourceMessage.sId,
         branchedAt: branchedAt.getTime(),
         user: adminAuth.getNonNullableUser().toJSON(),
