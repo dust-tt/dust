@@ -116,15 +116,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           {
             association: "parentConversation" as const,
             required: true,
-            attributes: [
-              "id",
-              "sId",
-              "title",
-              "spaceId",
-              "requestedSpaceIds",
-              "metadata",
-              "visibility",
-            ],
+            attributes: ["sId", "title"],
           },
           {
             association: "sourceMessage" as const,
@@ -152,37 +144,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     ];
   }
 
-  private static async canReadForkedFromParentConversationTitle(
-    auth: Authenticator,
-    parentConversation: ConversationModel
-  ): Promise<boolean> {
-    if (parentConversation.visibility === "deleted") {
-      return false;
-    }
-
-    try {
-      if (
-        !(await ConversationResource.isConversationReadableFromRequestedSpaces(
-          auth,
-          parentConversation
-        ))
-      ) {
-        return false;
-      }
-    } catch (_error) {
-      return false;
-    }
-
-    return ConversationResource.canUserAccessPrivateByDefaultConversation(
-      auth,
-      parentConversation
-    );
-  }
-
-  private static async getForkedFromData(
-    auth: Authenticator,
+  private static getForkedFromData(
     conversation: ConversationModel
-  ): Promise<ConversationForkedFromType | undefined> {
+  ): ConversationForkedFromType | undefined {
     const fork = conversation.forkedFrom;
     if (!fork) {
       return undefined;
@@ -198,28 +162,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
     assert(fork.createdByUser, "Forked conversation creator must be loaded.");
 
-    const forkedFrom: ConversationForkedFromType = {
+    return {
       parentConversationId: fork.parentConversation.sId,
+      parentConversationTitle: fork.parentConversation.title,
       sourceMessageId: fork.sourceMessage.sId,
       branchedAt: fork.branchedAt.getTime(),
       user: new UserResource(
         UserResource.model,
         fork.createdByUser.get()
       ).toJSON(),
-    };
-
-    if (
-      !(await ConversationResource.canReadForkedFromParentConversationTitle(
-        auth,
-        fork.parentConversation
-      ))
-    ) {
-      return forkedFrom;
-    }
-
-    return {
-      ...forkedFrom,
-      parentConversationTitle: fork.parentConversation.title,
     };
   }
 
@@ -246,13 +197,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return conversation.spaceId === null;
   }
 
-  private static async fromModel(
-    auth: Authenticator,
+  private static fromModel(
     conversation: ConversationModel,
     space: SpaceResource | null
-  ): Promise<ConversationResource> {
+  ): ConversationResource {
     const resource = new this(this.model, conversation.get(), space);
-    resource.forkedFromData = await this.getForkedFromData(auth, conversation);
+    resource.forkedFromData = this.getForkedFromData(conversation);
 
     return resource;
   }
@@ -293,12 +243,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
 
     // Note: no permission filtering here. Callers must ensure the auth is allowed.
-    const resources: ConversationResource[] = [];
-    for (const conversation of conversations) {
-      resources.push(await this.fromModel(auth, conversation, null));
-    }
-
-    return resources;
+    return conversations.map((c) => this.fromModel(c, null));
   }
 
   get forkedFromInfo(): ConversationForkedFromType | undefined {
@@ -610,20 +555,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));
 
     if (fetchConversationOptions?.dangerouslySkipPermissionFiltering) {
-      const resources: ConversationResource[] = [];
-      for (const conversation of conversations) {
-        resources.push(
-          await this.fromModel(
-            auth,
-            conversation,
-            conversation.spaceId
-              ? (spaceIdToSpaceMap.get(conversation.spaceId) ?? null)
-              : null
-          )
-        );
-      }
-
-      return resources;
+      return conversations.map((c) =>
+        this.fromModel(
+          c,
+          c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null
+        )
+      );
     }
 
     // Filter out conversations that reference missing/deleted spaces.
@@ -634,24 +571,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // Note from seb, for Space Conversations, we probably want to be more subtle about the conversation accessible logic.
     // We should probably only filter out conversations where the spaceId is deleted but keep the one that referenced a deleted space.
     const foundSpaceIds = new Set(spaces.map((s) => s.id));
-    const validConversations: ConversationResource[] = [];
-    for (const conversation of conversations) {
-      if (
-        !conversation.requestedSpaceIds.every((id) => foundSpaceIds.has(id))
-      ) {
-        continue;
-      }
-
-      validConversations.push(
-        await this.fromModel(
-          auth,
-          conversation,
-          conversation.spaceId
-            ? (spaceIdToSpaceMap.get(conversation.spaceId) ?? null)
-            : null
+    const validConversations = conversations
+      .filter((c) => c.requestedSpaceIds.every((id) => foundSpaceIds.has(id)))
+      .map((c) =>
+        this.fromModel(
+          c,
+          c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null
         )
       );
-    }
 
     // Create space-to-groups mapping once for efficient permission checks.
     const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);

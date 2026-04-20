@@ -217,7 +217,7 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]", () => {
     expect(res._getStatusCode()).toBe(200);
   });
 
-  it("omits the parent conversation title when the parent is unreadable", async () => {
+  it("includes the parent conversation title when the parent is unreadable", async () => {
     const {
       req,
       res,
@@ -309,13 +309,11 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]", () => {
     const responseConversation = res._getJSONData().conversation;
     expect(responseConversation.forkedFrom).toEqual({
       parentConversationId: parentConversation.sId,
+      parentConversationTitle,
       sourceMessageId: sourceMessage.sId,
       branchedAt: branchedAt.getTime(),
       user: adminAuth.getNonNullableUser().toJSON(),
     });
-    expect(responseConversation.forkedFrom).not.toHaveProperty(
-      "parentConversationTitle"
-    );
   });
 
   it("returns 404 conversation_not_found for admins when private conversation URLs are enabled and they are not participants", async () => {

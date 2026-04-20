@@ -224,7 +224,7 @@ describe("ConversationResource", () => {
       }
     });
 
-    it("should expose forkedFrom even when the parent conversation is unreadable", async () => {
+    it("should expose forkedFrom title even when the parent conversation is unreadable", async () => {
       const {
         workspace,
         authenticator: adminAuth,
@@ -302,6 +302,7 @@ describe("ConversationResource", () => {
 
       expect(fetchedChildConversation.toJSON().forkedFrom).toEqual({
         parentConversationId: parentConversation.sId,
+        parentConversationTitle: null,
         sourceMessageId: sourceMessage.sId,
         branchedAt: branchedAt.getTime(),
         user: adminAuth.getNonNullableUser().toJSON(),
