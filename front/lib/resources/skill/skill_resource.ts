@@ -1454,13 +1454,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const mcpServerConfigurations: SkillMCPServerConfiguration[] = (
       def.mcpServers ?? []
-    ).flatMap(({ name, childAgentId, serverNameOverride }) => {
-      const views =
+    ).flatMap(({ name, childAgentId, serverNameOverride }) =>
+      (
         viewsByServerId[
           autoInternalMCPServerNameToSId({ name, workspaceId })
-        ] ?? [];
-      return views.map((view) => ({ view, childAgentId, serverNameOverride }));
-    });
+        ] ?? []
+      ).map((view) => ({ view, childAgentId, serverNameOverride }))
+    );
 
     const instructions = def.fetchInstructions
       ? await def.fetchInstructions(auth, {
