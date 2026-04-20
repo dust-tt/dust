@@ -2,7 +2,7 @@
 
 ## Milestone 1: Data layer (no runtime behavior)
 
-### PR 1 — WakeUpModel + migration
+### [x] PR 1 — WakeUpModel + migration
 
 Add the `wake_ups` table (migration), `WakeUpModel` Sequelize model, indexes on `conversationId`,
 `userId`, and `(workspaceId, status)`. Add `"wakeup"` to `UserMessageOrigin` union type and usage
