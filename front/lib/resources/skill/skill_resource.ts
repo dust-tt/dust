@@ -1439,26 +1439,27 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcpServerViews: MCPServerViewResource[];
     }
   ): Promise<SkillResource> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
     const { agentConfiguration } = agentLoopData ?? {};
     const requestedSpaceIds = agentConfiguration?.requestedSpaceIds ?? [];
     const requestedSpaceModelIds = removeNulls(
       requestedSpaceIds.map(getResourceIdFromSId)
     );
 
+    const viewsByServerId = groupBy(
+      mcpServerViews.filter((v) => v.internalMCPServerId !== null),
+      "internalMCPServerId"
+    );
+
     const mcpServerConfigurations: SkillMCPServerConfiguration[] = (
       def.mcpServers ?? []
-    ).flatMap(({ name, childAgentId, serverNameOverride }) =>
-      mcpServerViews
-        .filter(
-          (view) =>
-            view.internalMCPServerId ===
-            autoInternalMCPServerNameToSId({
-              name,
-              workspaceId: auth.getNonNullableWorkspace().id,
-            })
-        )
-        .map((view) => ({ view, childAgentId, serverNameOverride }))
-    );
+    ).flatMap(({ name, childAgentId, serverNameOverride }) => {
+      const views =
+        viewsByServerId[autoInternalMCPServerNameToSId({ name, workspaceId })] ??
+        [];
+      return views.map((view) => ({ view, childAgentId, serverNameOverride }));
+    });
 
     const instructions = def.fetchInstructions
       ? await def.fetchInstructions(auth, {
@@ -1482,7 +1483,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         requestedSpaceIds: requestedSpaceModelIds,
         status: "active",
         updatedAt: new Date(),
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId,
         icon: def.icon,
         extendedSkillId: null,
         source: null,
