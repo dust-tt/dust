@@ -545,13 +545,16 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     }
 
     const now = new Date();
-    const where: WhereOptions<InferAttributes<MembershipModel>> = {
+    let where: WhereOptions<InferAttributes<MembershipModel>> = {
       workspaceId: { [Op.in]: workspaces.map((w) => w.id) },
     };
     if (activeOnly) {
-      where.endAt = { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: now }] };
-      where.startAt = { [Op.lte]: now };
-      where.firstUsedAt = { [Op.ne]: null };
+      where = {
+        ...where,
+        endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: now }] },
+        startAt: { [Op.lte]: now },
+        firstUsedAt: { [Op.ne]: null },
+      };
     }
 
     const rows = await this.model.count({
