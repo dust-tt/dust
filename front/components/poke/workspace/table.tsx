@@ -137,7 +137,7 @@ export function WorkspaceInfoTable({
               <PokeTableCell>{workspaceCreationDay}</PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
-              <PokeTableCell>Members</PokeTableCell>
+              <PokeTableCell>Members count</PokeTableCell>
               <PokeTableCell>{membersCount}</PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
