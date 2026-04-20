@@ -226,18 +226,18 @@ function ContentNodeTreeChildren({
   );
 
   if (isResourcesError) {
-    return (
-      <div className="text-sm text-warning">
-        {resourcesError?.type === "rate_limit_error" ? (
-          <>Connected service's API limit reached. Please retry shortly.</>
-        ) : (
-          <>
-            Failed to retrieve permissions likely due to a revoked
-            authorization.
-          </>
-        )}
-      </div>
-    );
+    const errorMessage = (() => {
+      switch (resourcesError?.type) {
+        case "rate_limit_error":
+          return "Connected service's API limit reached. Please retry shortly.";
+        case "data_source_auth_error":
+          return "Failed to retrieve permissions due to a revoked authorization. Please re-authorize the connection.";
+        default:
+          return "Failed to retrieve permissions due to an unexpected error. The resource may have been deleted, moved, or its sharing permissions changed.";
+      }
+    })();
+
+    return <div className="text-sm text-warning">{errorMessage}</div>;
   }
 
   const tree = (

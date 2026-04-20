@@ -10,7 +10,11 @@ import type { GetPokeFeaturesResponseBody } from "@app/pages/api/poke/workspaces
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
 import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
 import type { DataSourceType } from "@app/types/data_source";
-import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
+import type {
+  APIError,
+  APIErrorResponse,
+  RegionRedirectError,
+} from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useEffect } from "react";
 import type { Fetcher } from "swr";
@@ -61,6 +65,7 @@ export function usePokeConnectorPermissions({
     resources: data?.resources ?? emptyArray(),
     isResourcesLoading: !error && !data,
     isResourcesError: error,
+    resourcesError: error ? (error.error as APIError) : null,
   };
 }
 
