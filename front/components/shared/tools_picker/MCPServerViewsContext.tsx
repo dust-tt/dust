@@ -48,7 +48,7 @@ interface MCPServerViewsContextType {
   isMCPServerViewsError: boolean;
 }
 
-const MCPServerViewsContext = createContext<
+export const MCPServerViewsContext = createContext<
   MCPServerViewsContextType | undefined
 >(undefined);
 
