@@ -25,7 +25,6 @@ interface AgentStepProps {
     | "failed"
     | "cancelled"
     | "gracefully_stopped";
-  showSeparator?: boolean;
 }
 
 export function PanelAgentStep({
@@ -46,7 +45,6 @@ export function PanelAgentStep({
           <ContentMessage variant="primary" size="lg">
             <Markdown
               content={reasoningContent}
-              isStreaming={isStreaming}
               streamingState={isStreaming ? "streaming" : "none"}
               enableAnimation
               animationDurationSeconds={0.3}
@@ -67,7 +65,6 @@ export function PanelAgentStep({
               <ContentMessage variant="primary" size="lg">
                 <Markdown
                   content={entry.content}
-                  isStreaming={false}
                   forcedTextSize="text-sm"
                   textColor="text-muted-foreground dark:text-muted-foreground-night"
                   isLastMessage={false}

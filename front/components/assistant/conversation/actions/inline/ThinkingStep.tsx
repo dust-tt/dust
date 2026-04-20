@@ -23,7 +23,6 @@ export function ThinkingStep({
   const markdown = content ? (
     <Markdown
       content={content}
-      isStreaming={isStreaming}
       streamingState={isStreaming ? "streaming" : "none"}
       enableAnimation={isStreaming}
       animationDurationSeconds={0.3}

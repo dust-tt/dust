@@ -75,7 +75,6 @@ export type AgentMessageWithStreaming = LightAgentMessageWithActionsType & {
     lastUpdated: Date;
     actionProgress: ActionProgressState;
     pendingToolCalls: PendingToolCall[];
-    useFullChainOfThought: boolean;
     inlineActivitySteps: InlineActivityStep[];
   };
 };
@@ -193,7 +192,6 @@ export const makeInitialMessageStreamState = (
       isRetrying: false,
       lastUpdated: new Date(),
       pendingToolCalls: [],
-      useFullChainOfThought: false,
     },
   };
 };

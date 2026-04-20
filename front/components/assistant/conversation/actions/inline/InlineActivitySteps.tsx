@@ -267,7 +267,6 @@ export function InlineActivitySteps({
                       <AgentMessageMarkdown
                         content={step.content}
                         owner={owner}
-                        isStreaming={false}
                         isLastMessage={false}
                       />
                     </div>
@@ -328,7 +327,6 @@ export function InlineActivitySteps({
                 <AgentMessageMarkdown
                   content={agentMessage.content}
                   owner={owner}
-                  isStreaming={false}
                   streamingState="streaming"
                   isLastMessage={false}
                 />
@@ -389,7 +387,6 @@ export function InlineActivitySteps({
           <AgentMessageMarkdown
             content={agentMessage.content}
             owner={owner}
-            isStreaming={false}
             streamingState="streaming"
             isLastMessage={false}
           />
