@@ -33,7 +33,6 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
-  ConversationForkedChildType,
   ConversationForkedFromType,
   ConversationMCPServerViewType,
   ConversationVisibility,
@@ -69,6 +68,14 @@ interface UserParticipation {
   actionRequired: boolean;
   updated: number;
 }
+
+type ForkedChildInfo = {
+  childConversationId: string;
+  childConversationTitle: string | null;
+  sourceMessageId: string;
+  branchedAt: number;
+  user: ReturnType<UserResource["toJSON"]>;
+};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -217,7 +224,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static async listReadableForkedChildren(
     auth: Authenticator,
     conversation: ConversationResource
-  ): Promise<ConversationForkedChildType[]> {
+  ): Promise<ForkedChildInfo[]> {
     const workspace = auth.getNonNullableWorkspace();
 
     const forks = await ConversationForkModel.findAll({
