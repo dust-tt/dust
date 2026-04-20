@@ -8,7 +8,7 @@ Add the `wake_ups` table (migration), `WakeUpModel` Sequelize model, indexes on 
 `userId`, and `(workspaceId, status)`. Add `"wakeup"` to `UserMessageOrigin` union type and usage
 classification.
 
-### PR 2 — WakeUpResource
+### [x] PR 2 — WakeUpResource
 
 `WakeUpResource` wrapping the model: `makeNew`, `cancel`, `markFired`, `listByConversation`,
 `listActiveByWorkspace`. Includes cleanup logic for conversation deletion (cancel Temporal
