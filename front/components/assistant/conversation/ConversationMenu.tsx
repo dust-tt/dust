@@ -8,6 +8,7 @@ import {
   useConversationParticipationOptions,
   useConversationUrlAccessMode,
   useJoinConversation,
+  useSpaceConversationsSummary,
 } from "@app/hooks/conversations";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useMoveConversationOutOfProject } from "@app/hooks/useMoveConversationOutOfProject";
@@ -19,7 +20,7 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
-import { useSpaceInfo, useSpaces } from "@app/lib/swr/spaces";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import {
   getAgentBuilderRoute,
@@ -225,11 +226,15 @@ export function ConversationMenu({
       disabled: shouldWaitBeforeFetching,
     },
   });
-  const { spaces: projects } = useSpaces({
-    kinds: ["project"],
+
+  const { summary } = useSpaceConversationsSummary({
     workspaceId: owner.sId,
-    disabled: shouldWaitBeforeFetching || !hasFeature("projects"),
+    options: { disabled: shouldWaitBeforeFetching || !hasFeature("projects") },
   });
+
+  const filteredProjects = summary
+    .map(({ space }) => space)
+    .filter((space) => space.sId !== conversation?.spaceId);
 
   const conversationSpaceId =
     conversation && isProjectConversation(conversation)
@@ -399,7 +404,9 @@ export function ConversationMenu({
               <DropdownMenuSubTrigger
                 icon={ArrowRightIcon}
                 label={canMoveOutOfProject ? "Move to..." : "Move to project"}
-                disabled={!projects.length}
+                disabled={
+                  canMoveOutOfProject ? false : !filteredProjects.length
+                }
               />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent
@@ -419,21 +426,19 @@ export function ConversationMenu({
                       <DropdownMenuLabel label="Projects" />
                     </>
                   )}
-                  {projects
-                    .filter((project) => project.sId !== conversation?.spaceId)
-                    .map((project) => (
-                      <DropdownMenuItem
-                        key={project.sId}
-                        icon={getSpaceIcon(project)}
-                        label={project.name}
-                        truncateText
-                        onClick={async () =>
-                          conversation
-                            ? moveConversationToProject(conversation, project)
-                            : Promise.resolve(false)
-                        }
-                      />
-                    ))}
+                  {filteredProjects.map((project) => (
+                    <DropdownMenuItem
+                      key={project.sId}
+                      icon={getSpaceIcon(project)}
+                      label={project.name}
+                      truncateText
+                      onClick={async () =>
+                        conversation
+                          ? moveConversationToProject(conversation, project)
+                          : Promise.resolve(false)
+                      }
+                    />
+                  ))}
                 </DropdownMenuSubContent>
               </DropdownMenuPortal>
             </DropdownMenuSub>
