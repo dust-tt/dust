@@ -13,7 +13,6 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import { tryParsePhoneNumber } from "@app/lib/plans/trial/phone";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -24,10 +23,8 @@ import { isDomain, isEmailValid } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { MembershipRoleType } from "@app/types/memberships";
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
-import type { WorkspaceDomain } from "@app/types/workspace";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { FindOptions, Order, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
@@ -35,10 +32,6 @@ import { Op } from "sequelize";
 export type PokeWorkspaceType = LightWorkspaceType & {
   createdAt: string;
   subscription: SubscriptionType;
-  adminEmail: string | null;
-  membersCount: number;
-  dataSourcesCount: number;
-  workspaceDomains: WorkspaceDomain[];
 };
 
 export type GetPokeWorkspacesResponseBody = {
@@ -299,67 +292,21 @@ async function handler(
       }
 
       return res.status(200).json({
-        workspaces: await Promise.all(
-          workspaces.map(async (ws): Promise<PokeWorkspaceType> => {
-            // Note: TypeScript may incorrectly assume that `subscriptions` is always defined.
-            const [activeSubscription] = ws.subscriptions;
-
-            const subscription: SubscriptionType = renderSubscriptionFromModels(
-              {
-                plan: activeSubscription
-                  ? activeSubscription.plan
-                  : // If there is no active subscription, we use the free plan data.
-                    FREE_NO_PLAN_DATA,
-                activeSubscription: activeSubscription,
-              }
-            );
-
-            const lightWorkspace = renderLightWorkspaceType({
-              workspace: ws,
+        workspaces: workspaces.map((workspace) => ({
+            ...renderLightWorkspaceType({
+              workspace,
               role: "admin",
-            });
-
-            const auth = await Authenticator.internalAdminForWorkspace(ws.sId);
-            const dataSources = await DataSourceResource.listByWorkspace(auth);
-            const dataSourcesCount = dataSources.length;
-
-            const { memberships: admins, total } =
-              await MembershipResource.getActiveMemberships({
-                workspace: lightWorkspace,
-                roles: ["admin" as MembershipRoleType],
-              });
-
-            const firstAdmin = total
-              ? await UserResource.fetchByModelId(
-                  admins.sort(
-                    (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
-                  )[0].userId
-                )
-              : null;
-
-            const membersCount =
-              await MembershipResource.getMembersCountForWorkspace({
-                workspace: lightWorkspace,
-                activeOnly: true,
-              });
-
-            const workspaceResource = await WorkspaceResource.fetchById(ws.sId);
-            if (!workspaceResource) {
-              throw new Error(`Workspace not found: ${ws.sId}`);
-            }
-
-            const verifiedDomains =
-              await workspaceResource.getVerifiedDomains();
-
-            return {
-              ...lightWorkspace,
-              createdAt: ws.createdAt.toISOString(),
-              subscription,
-              adminEmail: firstAdmin?.email ?? null,
-              membersCount,
-              dataSourcesCount,
-              workspaceDomains: verifiedDomains,
-            };
+            }),
+            createdAt: workspace.createdAt.toISOString(),
+            subscription: renderSubscriptionFromModels(
+              {
+                plan: workspace.subscriptions[0]
+                  ? workspace.subscriptions[0].plan
+                  : // If there is no active subscription, we use the free plan data.
+                  FREE_NO_PLAN_DATA,
+                activeSubscription: workspace.subscriptions[0],
+              }
+            ),
           })
         ),
       });

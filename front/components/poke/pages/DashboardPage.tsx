@@ -19,15 +19,7 @@ import { usePokeRegion } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
 import type { PokeWorkspaceWithRegion } from "@app/poke/swr/search";
 import { usePokeWorkspacesAllRegions } from "@app/poke/swr/search";
-import {
-  BookOpenIcon,
-  Chip,
-  Icon,
-  Input,
-  LinkWrapper,
-  Spinner,
-} from "@dust-tt/sparkle";
-import { UsersIcon } from "lucide-react";
+import { Chip, Input, LinkWrapper, Spinner } from "@dust-tt/sparkle";
 import moment from "moment";
 import type { ChangeEvent } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -74,30 +66,6 @@ function WorkspaceList({
                       <PokeTableCell className="space-x-2" colSpan={3}>
                         <label>
                           Created: {moment(ws.createdAt).format("DD-MM-YYYY")}
-                        </label>
-                      </PokeTableCell>
-                    </PokeTableRow>
-                    <PokeTableRow>
-                      <PokeTableCell className="max-w-[200px] overflow-hidden text-ellipsis">
-                        {ws.adminEmail}{" "}
-                        {ws.workspaceDomains && (
-                          <label>
-                            (
-                            {ws.workspaceDomains
-                              .map((d) => d.domain)
-                              .join(", ")}
-                            )
-                          </label>
-                        )}
-                      </PokeTableCell>
-                      <PokeTableCell align="center">
-                        <label>
-                          <Icon visual={UsersIcon} /> {ws.membersCount}
-                        </label>
-                      </PokeTableCell>
-                      <PokeTableCell align="center">
-                        <label>
-                          <Icon visual={BookOpenIcon} /> {ws.dataSourcesCount}
                         </label>
                       </PokeTableCell>
                     </PokeTableRow>
