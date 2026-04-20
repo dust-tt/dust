@@ -22,22 +22,25 @@ function truncate(text: string | null, maxLength: number): string {
 function ClickableCell({
   text,
   maxLength,
-  onClick,
+  href,
 }: {
   text: string | null;
   maxLength: number;
-  onClick: () => void;
+  href: string;
 }) {
   const truncated = truncate(text, maxLength);
   const isTruncated = text && text.length > maxLength;
+  if (!isTruncated) {
+    return <span>{truncated}</span>;
+  }
   return (
-    <span
-      onClick={isTruncated ? onClick : undefined}
-      className={isTruncated ? "cursor-pointer hover:underline" : ""}
-      title={isTruncated ? "Click to see full content" : undefined}
+    <a
+      href={href}
+      className="cursor-pointer hover:underline"
+      title="Click to see full content"
     >
       {truncated}
-    </span>
+    </a>
   );
 }
 
@@ -77,8 +80,7 @@ async function deleteSuggestion(
 export function makeColumnsForSkillSuggestions(
   owner: LightWorkspaceType,
   skillId: string,
-  onSuggestionDeleted: () => Promise<void>,
-  onSuggestionClick: (suggestion: SkillSuggestionType) => void
+  onSuggestionDeleted: () => Promise<void>
 ): ColumnDef<SkillSuggestionType>[] {
   return [
     {
@@ -86,6 +88,16 @@ export function makeColumnsForSkillSuggestions(
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="sId" />
       ),
+      cell: ({ row }) => {
+        return (
+          <a
+            href={`/${owner.sId}/suggestions/${row.original.sId}`}
+            className="text-action-500 hover:underline"
+          >
+            {row.original.sId}
+          </a>
+        );
+      },
     },
     {
       accessorKey: "kind",
@@ -168,7 +180,7 @@ export function makeColumnsForSkillSuggestions(
           <ClickableCell
             text={row.original.analysis}
             maxLength={MAX_ANALYSIS_LENGTH}
-            onClick={() => onSuggestionClick(row.original)}
+            href={`/${owner.sId}/suggestions/${row.original.sId}`}
           />
         );
       },
@@ -191,7 +203,7 @@ export function makeColumnsForSkillSuggestions(
           <ClickableCell
             text={content}
             maxLength={MAX_CONTENT_LENGTH}
-            onClick={() => onSuggestionClick(row.original)}
+            href={`/${owner.sId}/suggestions/${row.original.sId}`}
           />
         );
       },

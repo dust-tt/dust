@@ -1,6 +1,6 @@
 import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
-import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { useMaybeMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { getBlockOuterHtml } from "@app/components/shared/utils";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type {
@@ -15,19 +15,19 @@ import { useMemo } from "react";
 function useToolDisplayNames(
   toolEdits: SkillToolEditItemType[]
 ): Map<string, string> {
-  const { mcpServerViews } = useMCPServerViewsContext();
+  const ctx = useMaybeMCPServerViewsContext();
 
   return useMemo(() => {
     const map = new Map<string, string>();
     for (const edit of toolEdits) {
-      const view = mcpServerViews.find((v) => v.sId === edit.toolId);
+      const view = ctx?.mcpServerViews.find((v) => v.sId === edit.toolId);
       map.set(
         edit.toolId,
         view ? getMcpServerViewDisplayName(view) : edit.toolId
       );
     }
     return map;
-  }, [toolEdits, mcpServerViews]);
+  }, [toolEdits, ctx]);
 }
 
 interface ToolEditsSectionProps {
@@ -128,11 +128,11 @@ function InstructionEditDiffBlock({
 
 interface SkillSuggestionCardProps {
   suggestion: SkillSuggestionType;
-  onAccept: (suggestion: SkillSuggestionType) => void;
-  onDecline: (suggestion: SkillSuggestionType) => void;
+  onAccept?: (suggestion: SkillSuggestionType) => void;
+  onDecline?: (suggestion: SkillSuggestionType) => void;
   getSkillInstructionsHtml: () => string;
-  isSelected: boolean;
-  onSelect: () => void;
+  isSelected?: boolean;
+  onSelect?: () => void;
 }
 
 export function SkillSuggestionCard({
@@ -140,14 +140,16 @@ export function SkillSuggestionCard({
   onAccept,
   onDecline,
   getSkillInstructionsHtml,
-  isSelected,
+  isSelected = false,
   onSelect,
 }: SkillSuggestionCardProps) {
   const { instructionEdits, toolEdits } = suggestion.suggestion;
+  const isClickable = !!onSelect;
+  const hasActions = !!onAccept && !!onDecline;
 
   return (
     <div
-      className={`cursor-pointer rounded-xl transition-shadow ${isSelected ? "ring-2 ring-highlight-300 dark:ring-highlight-300-night" : ""}`}
+      className={`rounded-xl ${isClickable ? "cursor-pointer transition-shadow" : ""} ${isSelected ? "ring-2 ring-highlight-300 dark:ring-highlight-300-night" : ""}`}
       onClick={onSelect}
     >
       <Card variant="primary" size="md" className="flex-col gap-3">
@@ -155,20 +157,22 @@ export function SkillSuggestionCard({
           <span className="heading-base text-foreground dark:text-foreground-night">
             {suggestion.title ?? "Suggestion"}
           </span>
-          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-            <Button
-              variant="outline"
-              size="sm"
-              label="Decline"
-              onClick={() => onDecline(suggestion)}
-            />
-            <Button
-              variant="highlight"
-              size="sm"
-              label="Accept"
-              onClick={() => onAccept(suggestion)}
-            />
-          </div>
+          {hasActions && (
+            <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+              <Button
+                variant="outline"
+                size="sm"
+                label="Decline"
+                onClick={() => onDecline(suggestion)}
+              />
+              <Button
+                variant="highlight"
+                size="sm"
+                label="Accept"
+                onClick={() => onAccept(suggestion)}
+              />
+            </div>
+          )}
         </div>
 
         {suggestion.analysis && (
