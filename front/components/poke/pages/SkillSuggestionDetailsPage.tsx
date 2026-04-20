@@ -55,15 +55,6 @@ export function SkillSuggestionDetailsPage() {
 
       <div className="mt-4 space-y-6">
         <div>
-          <h2 className="text-md pb-2 font-bold">Analysis</h2>
-          <div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-900">
-            <pre className="overflow-x-auto whitespace-pre-wrap text-sm">
-              {suggestion.analysis ?? "No analysis"}
-            </pre>
-          </div>
-        </div>
-
-        <div>
           <h2 className="text-md pb-2 font-bold">Content</h2>
           <div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-900">
             <pre className="overflow-x-auto whitespace-pre-wrap text-sm">
