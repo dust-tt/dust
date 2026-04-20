@@ -29,7 +29,7 @@
 //   actionItems  (open)    → "to_do",   status: "todo"
 //   actionItems  (done)    → "to_do",   status: "done"
 //   keyDecisions (open)    → "to_know", status: "todo"
-//   keyDecisions (decided) → "to_know", status: "done"
+//   keyDecisions (decided) → "to_know", status: "todo"
 //   notableFacts           → "to_know", status: "todo"
 
 import { getFastestWhitelistedModel } from "@app/lib/assistant";
@@ -456,7 +456,7 @@ export function keyDecisionBlob(item: TodoVersionedKeyDecision): TodoBlob {
   return {
     category: "to_know",
     text: item.shortDescription,
-    status: item.status === "decided" ? "done" : "todo",
+    status: "todo",
     doneAt: null,
   };
 }
