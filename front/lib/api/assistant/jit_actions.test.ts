@@ -641,10 +641,10 @@ describe("getJITServers", () => {
       });
 
       const sIds = jitServers.map((s) => s.sId);
-      const uniqueSIds = new Set(sIds);
+      const uniqueIds = new Set(sIds);
 
       // All sIds should be unique.
-      expect(sIds.length).toBe(uniqueSIds.size);
+      expect(sIds.length).toBe(uniqueIds.size);
     });
   });
 });

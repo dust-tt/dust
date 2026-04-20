@@ -25,7 +25,7 @@ describe("createAgentConfiguration with pending agent", () => {
     });
 
     // Create a pending agent using the helper function
-    const { sId: pendingSId } =
+    const { sId: pendingId } =
       await createPendingAgentConfiguration(authenticator);
 
     // Convert the pending agent to active by passing its sId as agentConfigurationId
@@ -42,7 +42,7 @@ describe("createAgentConfiguration with pending agent", () => {
         modelId: "claude-sonnet-4-5-20250929",
         temperature: 0.5,
       },
-      agentConfigurationId: pendingSId,
+      agentConfigurationId: pendingId,
       templateId: null,
       requestedSpaceIds: [],
       tags: [],
@@ -52,14 +52,14 @@ describe("createAgentConfiguration with pending agent", () => {
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      expect(result.value.sId).toBe(pendingSId);
+      expect(result.value.sId).toBe(pendingId);
       expect(result.value.status).toBe("active");
       expect(result.value.name).toBe("My New Agent");
       expect(result.value.description).toBe("A test agent");
     }
 
     const agent = await AgentConfigurationModel.findOne({
-      where: { sId: pendingSId, workspaceId: workspace.id },
+      where: { sId: pendingId, workspaceId: workspace.id },
     });
     expect(agent).not.toBeNull();
     expect(agent!.status).toBe("active");
@@ -72,7 +72,7 @@ describe("createAgentConfiguration with pending agent", () => {
       role: "admin",
     });
 
-    const nonExistentSId = generateRandomModelSId();
+    const nonExistentId = generateRandomModelSId();
 
     const result = await createAgentConfiguration(authenticator, {
       name: "Fallback Agent",
@@ -87,7 +87,7 @@ describe("createAgentConfiguration with pending agent", () => {
         modelId: "claude-sonnet-4-5-20250929",
         temperature: 0.7,
       },
-      agentConfigurationId: nonExistentSId,
+      agentConfigurationId: nonExistentId,
       templateId: null,
       requestedSpaceIds: [],
       tags: [],
@@ -98,7 +98,7 @@ describe("createAgentConfiguration with pending agent", () => {
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       // Should have created a new agent with the provided sId
-      expect(result.value.sId).toBe(nonExistentSId);
+      expect(result.value.sId).toBe(nonExistentId);
       expect(result.value.name).toBe("Fallback Agent");
       expect(result.value.status).toBe("active");
     }
@@ -120,7 +120,7 @@ describe("createAgentConfiguration with pending agent", () => {
     );
 
     // Create a pending agent owned by the other user using the helper function
-    const { sId: pendingSId } =
+    const { sId: pendingId } =
       await createPendingAgentConfiguration(otherAuthenticator);
 
     // Should return an error because pending agents owned by other users cannot be updated
@@ -137,7 +137,7 @@ describe("createAgentConfiguration with pending agent", () => {
         modelId: "claude-sonnet-4-5-20250929",
         temperature: 0.7,
       },
-      agentConfigurationId: pendingSId,
+      agentConfigurationId: pendingId,
       templateId: null,
       requestedSpaceIds: [],
       tags: [],
@@ -196,10 +196,10 @@ describe("createAgentConfiguration with pending agent", () => {
     const { authenticator, user } = await createResourceTest({
       role: "builder",
     });
-    const { sId: pendingSId } =
+    const { sId: pendingId } =
       await createPendingAgentConfiguration(authenticator);
     const pendingAgent = await getAgentConfiguration(authenticator, {
-      agentId: pendingSId,
+      agentId: pendingId,
       variant: "light",
     });
     expect(pendingAgent).not.toBeNull();
@@ -231,7 +231,7 @@ describe("createAgentConfiguration with pending agent", () => {
         modelId: "claude-sonnet-4-5-20250929",
         temperature: 0.5,
       },
-      agentConfigurationId: pendingSId,
+      agentConfigurationId: pendingId,
       templateId: null,
       requestedSpaceIds: [],
       tags: [],
@@ -241,7 +241,7 @@ describe("createAgentConfiguration with pending agent", () => {
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      expect(result.value.sId).toBe(pendingSId);
+      expect(result.value.sId).toBe(pendingId);
       expect(result.value.status).toBe("active");
       expect(result.value.id).toBe(originalAgentId);
 

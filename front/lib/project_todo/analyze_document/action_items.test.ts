@@ -7,16 +7,16 @@ import { describe, expect, it } from "vitest";
 
 describe("buildActionItems", () => {
   it("reuses sId when it matches a previous sId", () => {
-    const knownSId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+    const knownId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
     const raw = [
       {
-        sId: knownSId,
+        sId: knownId,
         short_description: "Review PR",
         status: "open" as const,
       },
     ];
-    const result = buildActionItems(raw, [{ sId: knownSId }], new Set());
-    expect(result[0].sId).toBe(knownSId);
+    const result = buildActionItems(raw, [{ sId: knownId }], new Set());
+    expect(result[0].sId).toBe(knownId);
   });
 
   it("maps open status correctly", () => {

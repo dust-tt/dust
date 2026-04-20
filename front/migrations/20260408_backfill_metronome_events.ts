@@ -5,7 +5,7 @@
  * Directly builds and ingests events — no Temporal workflows.
  *
  * Usage:
- *   npx tsx migrations/20260408_backfill_metronome_events.ts [--days 30] [--until <ISO>] [--execute] [-w workspaceSId]
+ *   npx tsx migrations/20260408_backfill_metronome_events.ts [--days 30] [--until <ISO>] [--execute] [-w workspaceId]
  *
  * Without --execute, runs in dry-run mode (counts messages, no events emitted).
  */
@@ -79,7 +79,7 @@ async function backfillWorkspace(
   );
 
   // Cache conversation numeric id → sId to avoid repeated lookups.
-  const conversationSIdCache = new Map<number, string>();
+  const conversationIdCache = new Map<number, string>();
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
@@ -153,7 +153,7 @@ async function backfillWorkspace(
       ...new Set(
         rows
           .map((r) => r.conversationId)
-          .filter((id) => !conversationSIdCache.has(id))
+          .filter((id) => !conversationIdCache.has(id))
       ),
     ];
     if (uncachedConvIds.length > 0) {
@@ -162,7 +162,7 @@ async function backfillWorkspace(
         attributes: ["id", "sId"],
       });
       for (const c of convs) {
-        conversationSIdCache.set(c.id, c.sId);
+        conversationIdCache.set(c.id, c.sId);
       }
     }
 
@@ -243,7 +243,7 @@ async function backfillWorkspace(
           .slice(0, 8);
 
         const conversationId =
-          conversationSIdCache.get(row.conversationId) ?? "";
+          conversationIdCache.get(row.conversationId) ?? "";
 
         const llmEvents = buildLlmUsageEvents({
           workspaceId: workspace.sId,

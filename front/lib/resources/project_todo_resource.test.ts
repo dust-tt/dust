@@ -119,11 +119,11 @@ describe("ProjectTodoResource", () => {
         auth,
         makeTodoBlob(space.id, user.id, { text: "Original" })
       );
-      const originalSId = todo.sId;
+      const originalId = todo.sId;
 
       const updated = await todo.updateWithVersion(auth, { text: "Updated" });
 
-      expect(updated.sId).toBe(originalSId);
+      expect(updated.sId).toBe(originalId);
       expect(updated.text).toBe("Updated");
     });
 

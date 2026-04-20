@@ -2291,9 +2291,9 @@ describe("agent_sidekick_context tools", () => {
       expect(getSuggestedTemplatesForQuery).toHaveBeenCalledOnce();
       const callArgs = vi.mocked(getSuggestedTemplatesForQuery).mock.calls[0];
       const passedTemplates = callArgs[1].templates;
-      const passedSIds = passedTemplates.map((t) => t.sId);
-      expect(passedSIds).toContain(salesTemplate.sId);
-      expect(passedSIds).not.toContain(engineeringTemplate.sId);
+      const passedIds = passedTemplates.map((t) => t.sId);
+      expect(passedIds).toContain(salesTemplate.sId);
+      expect(passedIds).not.toContain(engineeringTemplate.sId);
     });
   });
 

@@ -35,16 +35,16 @@ async function resolveToolEdits(
       serverNamesToResolve
     );
 
-  const serverNameToViewSId = new Map<string, string>();
+  const serverNameToViewId = new Map<string, string>();
   for (const view of mcpServerViews) {
     const viewJson = view.toJSON();
     if (viewJson) {
-      serverNameToViewSId.set(viewJson.server.name, viewJson.sId);
+      serverNameToViewId.set(viewJson.server.name, viewJson.sId);
     }
   }
 
   return toolEdits.map((edit) => {
-    const resolvedId = serverNameToViewSId.get(edit.toolId);
+    const resolvedId = serverNameToViewId.get(edit.toolId);
     if (isInternalMCPServerName(edit.toolId) && resolvedId === undefined) {
       throw new Error(
         `Failed to resolve MCP server view ID for tool "${edit.toolId}"`

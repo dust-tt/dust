@@ -998,12 +998,12 @@ describe("validateAction", () => {
       },
     });
 
-    const actionSId = AgentMCPActionResource.modelIdToSId({
+    const actionId = AgentMCPActionResource.modelIdToSId({
       id: action.id,
       workspaceId: workspace.id,
     });
 
-    return { action, actionSId, stepContent };
+    return { action, actionId, stepContent };
   }
 
   describe("authorization", () => {
@@ -1050,7 +1050,7 @@ describe("validateAction", () => {
       });
 
       // Create a blocked action
-      const { actionSId } = await createBlockedAction({
+      const { actionId } = await createBlockedAction({
         agentMessageId: agentMessageRow.id,
       });
 
@@ -1066,7 +1066,7 @@ describe("validateAction", () => {
         otherUserAuth,
         conversationResource!,
         {
-          actionId: actionSId,
+          actionId,
           approvalState: "approved",
           messageId: agentMessageMessage.sId,
         }
@@ -1111,7 +1111,7 @@ describe("validateAction", () => {
       });
 
       // Create a blocked action
-      const { action, actionSId } = await createBlockedAction({
+      const { action, actionId } = await createBlockedAction({
         agentMessageId: agentMessageRow.id,
       });
 
@@ -1124,7 +1124,7 @@ describe("validateAction", () => {
 
       // Validate as the same user (should succeed)
       const result = await validateAction(auth, conversationResource!, {
-        actionId: actionSId,
+        actionId,
         approvalState: "approved",
         messageId: agentMessageMessage.sId,
       });
@@ -1226,7 +1226,7 @@ describe("validateAction", () => {
       });
 
       // Create an action that is NOT blocked (e.g., already succeeded)
-      const { actionSId } = await createBlockedAction({
+      const { actionId } = await createBlockedAction({
         agentMessageId: agentMessageRow.id,
         status: "succeeded", // Not blocked
       });
@@ -1240,7 +1240,7 @@ describe("validateAction", () => {
 
       // Try to validate an action that is not blocked
       const result = await validateAction(auth, conversationResource!, {
-        actionId: actionSId,
+        actionId,
         approvalState: "approved",
         messageId: agentMessageMessage.sId,
       });
@@ -1286,7 +1286,7 @@ describe("validateAction", () => {
       });
 
       // Create a blocked action
-      const { action, actionSId } = await createBlockedAction({
+      const { action, actionId } = await createBlockedAction({
         agentMessageId: agentMessageRow.id,
       });
 
@@ -1299,7 +1299,7 @@ describe("validateAction", () => {
 
       // Reject the action
       const result = await validateAction(auth, conversationResource!, {
-        actionId: actionSId,
+        actionId,
         approvalState: "rejected",
         messageId: agentMessageMessage.sId,
       });
@@ -1346,7 +1346,7 @@ describe("validateAction", () => {
       });
 
       // Create two blocked actions for the same message
-      const { actionSId: actionSId1 } = await createBlockedAction({
+      const { actionId: actionId1 } = await createBlockedAction({
         agentMessageId: agentMessageRow.id,
       });
       await createBlockedAction({
@@ -1362,7 +1362,7 @@ describe("validateAction", () => {
 
       // Validate only the first action
       const result = await validateAction(auth, conversationResource!, {
-        actionId: actionSId1,
+        actionId: actionId1,
         approvalState: "approved",
         messageId: agentMessageMessage.sId,
       });

@@ -42,7 +42,7 @@ describe("TakeawaysResource", () => {
   describe("updateWithVersion", () => {
     it("should update the content and preserve the sId", async () => {
       const takeaway = await TakeawaysFactory.create(auth, space);
-      const originalSId = takeaway.sId;
+      const originalId = takeaway.sId;
 
       const fact = {
         sId: "fact_001",
@@ -55,7 +55,7 @@ describe("TakeawaysResource", () => {
         keyDecisions: [],
       });
 
-      expect(updated.sId).toBe(originalSId);
+      expect(updated.sId).toBe(originalId);
       expect(updated.notableFacts).toHaveLength(1);
       expect(updated.notableFacts[0].shortDescription).toBe("A notable fact");
     });

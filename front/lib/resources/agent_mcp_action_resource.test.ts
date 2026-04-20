@@ -334,11 +334,11 @@ describe("listBlockedActionsForConversation", () => {
     expect(result).toHaveLength(1);
 
     // Verify the returned action belongs to the v1 agent message (not v0).
-    const expectedActionSId = AgentMCPActionResource.modelIdToSId({
+    const expectedActionId = AgentMCPActionResource.modelIdToSId({
       id: v1Action.id,
       workspaceId: workspace.id,
     });
-    expect(result[0].actionId).toBe(expectedActionSId);
+    expect(result[0].actionId).toBe(expectedActionId);
   });
 });
 

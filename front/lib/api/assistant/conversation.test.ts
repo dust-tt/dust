@@ -242,8 +242,8 @@ describe("retryAgentMessage", () => {
   it("should create a new agent message version", async () => {
     const originalVersion = agentMessage.version;
     const originalRank = agentMessage.rank;
-    const originalId = agentMessage.id;
-    const originalSId = agentMessage.sId;
+    const originalModelId = agentMessage.id;
+    const originalId = agentMessage.sId;
 
     const result = await retryAgentMessage(auth, {
       conversation,
@@ -258,8 +258,8 @@ describe("retryAgentMessage", () => {
       // Version should be increased
       expect(newAgentMessage.version).toBe(originalVersion + 1);
       // ID should be different (both database id and sId)
-      expect(newAgentMessage.id).not.toBe(originalId);
-      expect(newAgentMessage.sId).not.toBe(originalSId);
+      expect(newAgentMessage.id).not.toBe(originalModelId);
+      expect(newAgentMessage.sId).not.toBe(originalId);
       // Status should be created
       expect(newAgentMessage.status).toBe("created");
       // Configuration should remain the same

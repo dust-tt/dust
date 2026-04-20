@@ -683,10 +683,10 @@ describe("rebuildConversationRequirements", () => {
     await auth.refresh();
   });
 
-  const fetchConversationResource = async (conversationSId: string) => {
+  const fetchConversationResource = async (conversationId: string) => {
     const conversationResource = await ConversationResource.fetchById(
       auth,
-      conversationSId
+      conversationId
     );
     if (!conversationResource) {
       throw new Error("Failed to fetch conversation resource");
@@ -719,9 +719,9 @@ describe("rebuildConversationRequirements", () => {
   };
 
   // Simulates the move-out flow: clear the space association and rebuild.
-  const moveOutAndRebuild = async (conversationSId: string) => {
+  const moveOutAndRebuild = async (conversationId: string) => {
     const conversationResource =
-      await fetchConversationResource(conversationSId);
+      await fetchConversationResource(conversationId);
     await conversationResource.clearSpaceId();
     await rebuildConversationRequirements(auth, conversationResource);
   };

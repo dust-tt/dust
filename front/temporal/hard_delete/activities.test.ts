@@ -166,10 +166,10 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     });
 
     // Create a pending agent that will expire.
-    const { sId: expiredSId } =
+    const { sId: expiredId } =
       await createPendingAgentConfiguration(authenticator);
     const expiredAgent = await AgentConfigurationModel.findOne({
-      where: { sId: expiredSId, workspaceId: workspace.id },
+      where: { sId: expiredId, workspaceId: workspace.id },
     });
     const expiredGroupId = await getEditorGroupId(
       expiredAgent!.id,
@@ -180,10 +180,10 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     vi.advanceTimersByTime(PAST_THRESHOLD_MS);
 
     // Create a fresh pending agent (after time advance, so it's young).
-    const { sId: freshSId } =
+    const { sId: freshId } =
       await createPendingAgentConfiguration(authenticator);
     const freshAgent = await AgentConfigurationModel.findOne({
-      where: { sId: freshSId, workspaceId: workspace.id },
+      where: { sId: freshId, workspaceId: workspace.id },
     });
     const freshGroupId = await getEditorGroupId(freshAgent!.id, workspace.id);
 
@@ -199,7 +199,7 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     // Expired pending agent + group: deleted.
     expect(
       await AgentConfigurationModel.findOne({
-        where: { sId: expiredSId, workspaceId: workspace.id },
+        where: { sId: expiredId, workspaceId: workspace.id },
       })
     ).toBeNull();
     expect(
@@ -208,7 +208,7 @@ describe("purgeExpiredPendingAgentsActivity", () => {
 
     // Fresh pending agent + group: survived.
     const freshAfter = await AgentConfigurationModel.findOne({
-      where: { sId: freshSId, workspaceId: workspace.id },
+      where: { sId: freshId, workspaceId: workspace.id },
     });
     expect(freshAfter).not.toBeNull();
     expect(freshAfter!.status).toBe("pending");

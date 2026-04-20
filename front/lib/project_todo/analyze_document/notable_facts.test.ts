@@ -7,10 +7,10 @@ import { describe, expect, it } from "vitest";
 
 describe("buildNotableFacts", () => {
   it("reuses sId when it matches a previous sId", () => {
-    const knownSId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
-    const raw = [{ sId: knownSId, short_description: "Launch date is Q3" }];
-    const result = buildNotableFacts(raw, [{ sId: knownSId }], new Set());
-    expect(result[0].sId).toBe(knownSId);
+    const knownId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+    const raw = [{ sId: knownId, short_description: "Launch date is Q3" }];
+    const result = buildNotableFacts(raw, [{ sId: knownId }], new Set());
+    expect(result[0].sId).toBe(knownId);
   });
 
   it("returns empty relevantUserIds when no user ids provided", () => {

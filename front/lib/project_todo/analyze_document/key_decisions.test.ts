@@ -7,16 +7,16 @@ import { describe, expect, it } from "vitest";
 
 describe("buildKeyDecisions", () => {
   it("reuses sId when it matches a previous sId", () => {
-    const knownSId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+    const knownId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
     const raw = [
       {
-        sId: knownSId,
+        sId: knownId,
         short_description: "Use PostgreSQL",
         status: "decided" as const,
       },
     ];
-    const result = buildKeyDecisions(raw, [{ sId: knownSId }], new Set());
-    expect(result[0].sId).toBe(knownSId);
+    const result = buildKeyDecisions(raw, [{ sId: knownId }], new Set());
+    expect(result[0].sId).toBe(knownId);
   });
 
   it("maps decided status", () => {

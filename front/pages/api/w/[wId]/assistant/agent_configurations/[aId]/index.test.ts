@@ -150,9 +150,9 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId] - pending agen
     await SpaceFactory.defaults(auth);
 
     // Create a pending agent using the helper function
-    const { sId: pendingSId } = await createPendingAgentConfiguration(auth);
+    const { sId: pendingId } = await createPendingAgentConfiguration(auth);
 
-    req.query = { ...req.query, wId: workspace.sId, aId: pendingSId };
+    req.query = { ...req.query, wId: workspace.sId, aId: pendingId };
     req.body = {
       assistant: {
         name: "My New Agent",
@@ -181,7 +181,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId] - pending agen
     const data = res._getJSONData();
     expect(data).toHaveProperty("agentConfiguration");
     // Verify the sId is preserved
-    expect(data.agentConfiguration.sId).toBe(pendingSId);
+    expect(data.agentConfiguration.sId).toBe(pendingId);
     // Verify the status changed to active
     expect(data.agentConfiguration.status).toBe("active");
     // Verify the name was updated
@@ -191,7 +191,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId] - pending agen
 
     // Verify only one record exists for this sId (pending was deleted)
     const agents = await AgentConfigurationModel.findAll({
-      where: { sId: pendingSId, workspaceId: workspace.id },
+      where: { sId: pendingId, workspaceId: workspace.id },
     });
     expect(agents).toHaveLength(1);
     expect(agents[0].status).toBe("active");
