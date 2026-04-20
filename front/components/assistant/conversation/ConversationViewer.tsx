@@ -13,7 +13,7 @@ import {
 } from "@app/components/assistant/conversation/lib";
 import { MessageItem } from "@app/components/assistant/conversation/MessageItem";
 import type {
-  ConversationForkNoticeMessage,
+  ConversationForkNotice,
   VirtuosoMessage,
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
@@ -58,7 +58,6 @@ import {
   type ConversationForkedChildType,
   type ConversationWithoutContentType,
   isUserMessageTypeWithContentFragments,
-  type LightMessageType,
 } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import {
@@ -169,7 +168,7 @@ export function getBranchedInsertIndex(
 function makeConversationForkNoticeMessage(
   sourceMessage: VirtuosoMessage,
   forkedChild: ConversationForkedChildType
-): ConversationForkNoticeMessage {
+): ConversationForkNotice {
   return {
     type: "conversation_fork_notice",
     sId: `conversation-fork-notice-${forkedChild.childConversationId}`,
@@ -177,8 +176,6 @@ function makeConversationForkNoticeMessage(
     rank: sourceMessage.rank,
     branchId: null,
     visibility: "visible",
-    reactions: [],
-    richMentions: [],
     sourceMessageId: forkedChild.sourceMessageId,
     childConversationId: forkedChild.childConversationId,
     childConversationTitle: forkedChild.childConversationTitle,
@@ -234,17 +231,6 @@ function mergeConversationForkNotices(
 
   return mergedMessages;
 }
-
-export function addConversationForkNotices(
-  messages: LightMessageType[],
-  forkedChildren: ConversationForkedChildType[] = []
-): VirtuosoMessage[] {
-  return mergeConversationForkNotices(
-    convertLightMessageTypeToVirtuosoMessages(messages),
-    forkedChildren
-  );
-}
-
 export const ConversationViewer = ({
   owner,
   user,
@@ -370,8 +356,9 @@ export const ConversationViewer = ({
       !isValidating
     ) {
       const raw = messages.flatMap((m) => m.messages);
-      const messagesToRender = addConversationForkNotices(
-        raw,
+      const renderedMessages = convertLightMessageTypeToVirtuosoMessages(raw);
+      const messagesToRender = mergeConversationForkNotices(
+        renderedMessages,
         conversation.forkedChildren
       );
 
@@ -476,9 +463,12 @@ export const ConversationViewer = ({
     );
 
     if (olderMessagesFromBackend.length > 0) {
+      const renderedOlderMessages = convertLightMessageTypeToVirtuosoMessages(
+        olderMessagesFromBackend
+      );
       ref.current.data.prepend(
-        addConversationForkNotices(
-          olderMessagesFromBackend,
+        mergeConversationForkNotices(
+          renderedOlderMessages,
           conversation?.forkedChildren
         )
       );
@@ -491,9 +481,12 @@ export const ConversationViewer = ({
     );
 
     if (recentMessagesFromBackend.length > 0) {
+      const renderedRecentMessages = convertLightMessageTypeToVirtuosoMessages(
+        recentMessagesFromBackend
+      );
       ref.current.data.append(
-        addConversationForkNotices(
-          recentMessagesFromBackend,
+        mergeConversationForkNotices(
+          renderedRecentMessages,
           conversation?.forkedChildren
         )
       );
@@ -1040,8 +1033,7 @@ export const ConversationViewer = ({
 
   const onConversationBranched = useCallback(() => {
     void mutateConversations();
-    void mutateConversation();
-  }, [mutateConversation, mutateConversations]);
+  }, [mutateConversations]);
 
   // After reversal in the hook, messages[0] is the oldest page. This only
   // returns the actual first conversation message when all pages are loaded

@@ -54,6 +54,7 @@ function getMessageTopMargin({
   // Previous message has reactions — add extra space to clear them.
   if (
     prevData &&
+    !isConversationForkNotice(prevData) &&
     !isCompactionMessage(prevData) &&
     prevData.reactions.length > 0
   ) {

@@ -1,4 +1,4 @@
-import type { ConversationForkNoticeMessage } from "@app/components/assistant/conversation/types";
+import type { ConversationForkNotice as ConversationForkNoticeType } from "@app/components/assistant/conversation/types";
 import { LinkWrapper } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types/user";
@@ -6,12 +6,12 @@ import type { WorkspaceType } from "@app/types/user";
 const UNTITLED_CONVERSATION_TITLE = "Untitled conversation";
 
 interface ConversationForkNoticeProps {
-  message: ConversationForkNoticeMessage;
+  message: ConversationForkNoticeType;
   owner: WorkspaceType;
 }
 
 function getForkingUserDisplayName(
-  message: ConversationForkNoticeMessage
+  message: ConversationForkNoticeType
 ): string {
   return message.user.fullName || message.user.username;
 }

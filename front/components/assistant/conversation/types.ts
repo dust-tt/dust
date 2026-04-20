@@ -79,15 +79,13 @@ export type AgentMessageWithStreaming = LightAgentMessageWithActionsType & {
   };
 };
 
-export type ConversationForkNoticeMessage = {
+export type ConversationForkNotice = {
   type: "conversation_fork_notice";
   sId: string;
   created: number;
   rank: number;
   branchId: null;
   visibility: "visible";
-  reactions: [];
-  richMentions: [];
   sourceMessageId: string;
   childConversationId: string;
   childConversationTitle: string | null;
@@ -107,7 +105,7 @@ export type VirtuosoMessage =
   | AgentMessageWithStreaming
   | UserMessageTypeWithContentFragments
   | CompactionMessageType
-  | ConversationForkNoticeMessage;
+  | ConversationForkNotice;
 
 export type VirtuosoMessageListContext = {
   owner: LightWorkspaceType;
@@ -181,8 +179,7 @@ export const isCompactionMessage = (
 
 export const isConversationForkNotice = (
   msg: VirtuosoMessage
-): msg is ConversationForkNoticeMessage =>
-  msg.type === "conversation_fork_notice";
+): msg is ConversationForkNotice => msg.type === "conversation_fork_notice";
 
 export const isUserMessage = (
   msg: VirtuosoMessage
