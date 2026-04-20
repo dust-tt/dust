@@ -55,20 +55,20 @@ export function SkillSuggestionDetailsPage() {
 
       <div className="mt-4 space-y-6">
         <div>
-          <h2 className="text-md pb-2 font-bold">Content</h2>
+          <h2 className="text-md pb-2 font-bold">Suggestion card</h2>
+          <SkillSuggestionCard
+            suggestion={suggestion}
+            getSkillInstructionsHtml={getSkillInstructionsHtml}
+          />
+        </div>
+
+        <div>
+          <h2 className="text-md pb-2 font-bold">Raw suggestion</h2>
           <div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-900">
             <pre className="overflow-x-auto whitespace-pre-wrap text-sm">
               {JSON.stringify(suggestion.suggestion, null, 2)}
             </pre>
           </div>
-        </div>
-
-        <div>
-          <h2 className="text-md pb-2 font-bold">In context</h2>
-          <SkillSuggestionCard
-            suggestion={suggestion}
-            getSkillInstructionsHtml={getSkillInstructionsHtml}
-          />
         </div>
       </div>
     </div>
