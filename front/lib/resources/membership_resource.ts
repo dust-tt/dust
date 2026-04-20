@@ -534,15 +534,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     );
 
     const countByWorkspaceId: Record<string, number> = {};
-    for (const w of workspaces) {
-      countByWorkspaceId[w.sId] = 0;
-    }
     if (workspaces.length === 0) {
       return countByWorkspaceId;
     }
 
     const workspaceIdByModelId = new Map<ModelId, string>();
     for (const w of workspaces) {
+      countByWorkspaceId[w.sId] = 0;
       workspaceIdByModelId.set(w.id, w.sId);
     }
 
@@ -556,20 +554,29 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       where.firstUsedAt = { [Op.ne]: null };
     }
 
-    const rows = await this.model.count({
+    const rows = await this.model.findAll({
+      attributes: ["workspaceId", "userId"],
       where,
-      distinct: true,
-      col: "userId",
-      group: "workspaceId",
+      // WORKSPACE_ISOLATION_BYPASS: this is a Poke only query where we batch count members across different workspaces
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
+    // Dedupe userIds per workspace in memory (faster than a COUNT(DISTINCT ...) in SQL).
+    const userModelIdsByWorkspaceModelId = new Map<ModelId, Set<ModelId>>();
     for (const row of rows) {
-      const workspaceModelId = row.workspaceId;
-      if (typeof workspaceModelId === "number") {
-        const workspaceId = workspaceIdByModelId.get(workspaceModelId);
-        if (workspaceId !== undefined) {
-          countByWorkspaceId[workspaceId] = row.count;
-        }
+      let userIds = userModelIdsByWorkspaceModelId.get(row.workspaceId);
+      if (!userIds) {
+        userIds = new Set();
+        userModelIdsByWorkspaceModelId.set(row.workspaceId, userIds);
+      }
+      userIds.add(row.userId);
+    }
+
+    for (const [workspaceModelId, userIds] of userModelIdsByWorkspaceModelId) {
+      const workspaceId = workspaceIdByModelId.get(workspaceModelId);
+      if (workspaceId) {
+        countByWorkspaceId[workspaceId] = userIds.size;
       }
     }
     return countByWorkspaceId;
