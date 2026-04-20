@@ -76,8 +76,8 @@ function WorkspaceList({
                         <div className="flex items-center gap-1.5">
                           <Icon visual={UsersIcon} size="xs" />
                           <span>
-                            {ws.membersCount}&nbsp;
-                            member{pluralize(ws.membersCount)}
+                            {ws.membersCount}&nbsp; member
+                            {pluralize(ws.membersCount)}
                           </span>
                         </div>
                       </PokeTableCell>
