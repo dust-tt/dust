@@ -115,6 +115,15 @@ async function handler(
       },
     });
   }
+  if (targetKind === "content_fragment") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Reactions are not allowed on content fragments.",
+      },
+    });
+  }
 
   const conversationJSON = conversation.toJSON();
 

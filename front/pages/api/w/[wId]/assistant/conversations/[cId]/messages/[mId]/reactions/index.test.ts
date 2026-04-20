@@ -102,6 +102,39 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/reactio
     expect(res._getJSONData().error.type).toBe("invalid_request_error");
   });
 
+  it("returns 400 when reacting to a content fragment", async () => {
+    const { req, res, auth, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+    const contentFragmentMsg =
+      await ConversationFactory.createContentFragmentMessage({
+        auth,
+        workspace,
+        conversationId: conversation.id,
+        rank: 2,
+        title: "attachment.txt",
+      });
+
+    req.query.cId = conversation.sId;
+    req.query.mId = contentFragmentMsg.sId;
+    req.body = { reaction: "👍" };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain("content fragment");
+
+    // Ensure the mutation was not persisted.
+    const reactions = await MessageReactionModel.findAll({
+      where: { workspaceId: workspace.id, messageId: contentFragmentMsg.id },
+    });
+    expect(reactions).toHaveLength(0);
+  });
+
   it("returns 400 when reacting to a compaction message", async () => {
     const { req, res, auth, workspace } = await createPrivateApiMockRequest({
       method: "POST",
