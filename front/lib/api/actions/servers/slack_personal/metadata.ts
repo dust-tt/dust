@@ -18,21 +18,21 @@ const commonSearchParams = {
     .array()
     .optional()
     .describe(
-      "Narrow the search to messages wrote by specific users ids (optional)"
+      "Narrow the search to messages written by specific Slack user IDs (e.g., 'U01234ABCD'). Use the search_user tool to find Slack user IDs if needed (optional)"
     ),
   usersTo: z
     .string()
     .array()
     .optional()
     .describe(
-      "Narrow the search to direct messages sent to specific user IDs (optional)"
+      "Narrow the search to direct messages sent to specific Slack user IDs (e.g., 'U01234ABCD'). Use the search_user tool to find Slack user IDs if needed (optional)"
     ),
   usersMentioned: z
     .string()
     .array()
     .optional()
     .describe(
-      "Narrow the search to messages mentioning specific users ids (optional)"
+      "Narrow the search to messages mentioning specific Slack user IDs (e.g., 'U01234ABCD'). Use the search_user tool to find Slack user IDs if needed (optional)"
     ),
   relativeTimeFrame: z
     .string()
