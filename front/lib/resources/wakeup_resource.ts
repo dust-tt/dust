@@ -17,7 +17,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { Attributes, Transaction, WhereOptions } from "sequelize";
 import { literal } from "sequelize";
 
-const ENABLE_WAKE_UP_TEMPORAL = false;
 const ACTIVE_WAKE_UP_STATUSES: WakeUpStatus[] = ["scheduled"];
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -236,22 +235,14 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
   private async startTemporalWorkflow(
     _auth: Authenticator
   ): Promise<Result<void, Error>> {
-    if (!ENABLE_WAKE_UP_TEMPORAL) {
-      return new Ok(undefined);
-    }
-
-    return new Err(new Error("Wake-up Temporal start is not implemented yet."));
+    // Temporal wiring will be added in a follow-up PR.
+    return new Ok(undefined);
   }
 
   private async cancelTemporalWorkflow(
     _auth: Authenticator
   ): Promise<Result<void, Error>> {
-    if (!ENABLE_WAKE_UP_TEMPORAL) {
-      return new Ok(undefined);
-    }
-
-    return new Err(
-      new Error("Wake-up Temporal cancellation is not implemented yet.")
-    );
+    // Temporal wiring will be added in a follow-up PR.
+    return new Ok(undefined);
   }
 }
