@@ -1,0 +1,5 @@
+-- Migration created on Apr 19, 2026
+CREATE TABLE IF NOT EXISTS "wake_ups" ("createdAt" TIMESTAMP WITH TIME ZONE NOT NULL, "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL, "conversationId" BIGINT NOT NULL REFERENCES "conversations" ("id") ON DELETE RESTRICT ON UPDATE CASCADE, "userId" BIGINT REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE, "agentConfigurationId" VARCHAR(255) NOT NULL, "scheduleType" VARCHAR(255) NOT NULL, "fireAt" TIMESTAMP WITH TIME ZONE DEFAULT NULL, "cronExpression" TEXT DEFAULT NULL, "cronTimezone" TEXT DEFAULT NULL, "reason" TEXT NOT NULL, "status" VARCHAR(255) NOT NULL DEFAULT 'scheduled', "fireCount" INTEGER NOT NULL DEFAULT 0, "workspaceId" BIGINT NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE, "id"  BIGSERIAL , PRIMARY KEY ("id"));
+CREATE INDEX CONCURRENTLY "wake_ups_workspace_id_conversation_id_status_idx" ON "wake_ups" ("workspaceId", "conversationId", "status");
+CREATE INDEX CONCURRENTLY "wake_ups_workspace_id_user_id_idx" ON "wake_ups" ("workspaceId", "userId");
+CREATE INDEX CONCURRENTLY "wake_ups_workspace_id_status_idx" ON "wake_ups" ("workspaceId", "status");

@@ -124,6 +124,7 @@ import {
   UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
 import { UserProjectNotificationPreferenceModel } from "@app/lib/resources/storage/models/user_project_notification_preferences";
+import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
@@ -166,6 +167,7 @@ export function loadAllModels() {
     ConversationModel,
     ConversationParticipantModel,
     UserConversationReadsModel,
+    WakeUpModel,
     DataSourceModel,
     DataSourceViewModel,
     RunModel,
