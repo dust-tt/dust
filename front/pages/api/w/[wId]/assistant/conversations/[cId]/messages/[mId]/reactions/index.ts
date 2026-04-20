@@ -1,33 +1,18 @@
 /** @ignoreswagger */
-import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import {
   createMessageReaction,
   deleteMessageReaction,
-  getMessagesReactions,
 } from "@app/lib/api/assistant/reaction";
 import {
-  publishAgentMessagesEvents,
-  publishMessageEventsOnMessagePostOrEdit,
-} from "@app/lib/api/assistant/streaming/events";
+  getReactionTargetMessageType,
+  publishReactionUpdate,
+} from "@app/lib/api/assistant/reaction_update";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  AgentMessageType,
-  ConversationType,
-  MessageReactionType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
-import {
-  isAgentMessageType,
-  isCompactionMessageType,
-  isProjectConversation,
-  isUserMessageType,
-} from "@app/types/assistant/conversation";
-import type { ContentFragmentType } from "@app/types/content_fragment";
+import type { MessageReactionType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -60,31 +45,29 @@ async function handler(
   }
 
   const conversationId = req.query.cId;
-  const conversationRes = await getConversation(auth, conversationId);
 
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+  if (!conversation) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "Conversation not found.",
+      },
+    });
   }
 
-  const conversation = conversationRes.value;
-
-  if (isProjectConversation(conversation)) {
-    const space = await SpaceResource.fetchById(auth, conversation.spaceId);
-    if (!space) {
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: { type: "space_not_found", message: "Space not found." },
-      });
-    }
-    if (!space.isMember(auth)) {
-      return apiError(req, res, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message: "You are not a member of the project.",
-        },
-      });
-    }
+  if (conversation.space && !conversation.space.isMember(auth)) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "You are not a member of the project.",
+      },
+    });
   }
 
   if (!(typeof req.query.mId === "string")) {
@@ -110,8 +93,11 @@ async function handler(
     });
   }
 
-  const message = conversation.content.flat().find((m) => m.sId === messageId);
-  if (!message) {
+  const targetKind = await getReactionTargetMessageType(auth, {
+    conversation,
+    messageId,
+  });
+  if (targetKind === null) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -120,7 +106,7 @@ async function handler(
       },
     });
   }
-  if (isCompactionMessageType(message)) {
+  if (targetKind === "compaction") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -130,11 +116,13 @@ async function handler(
     });
   }
 
+  const conversationJSON = conversation.toJSON();
+
   switch (req.method) {
     case "POST":
       const created = await createMessageReaction(auth, {
         messageId,
-        conversation,
+        conversation: conversationJSON,
         user: user.toJSON(),
         context: {
           username: user.username,
@@ -144,7 +132,16 @@ async function handler(
       });
 
       if (created) {
-        await publishMessageUpdate(req, res, auth, { conversation, message });
+        const pubRes = await publishReactionUpdate(auth, {
+          conversation,
+          messageId,
+        });
+        if (pubRes.isErr()) {
+          logger.error(
+            { err: pubRes.error, conversationId, messageId },
+            "Failed to publish reaction update."
+          );
+        }
         res.status(200).json({ success: true });
         return;
       }
@@ -159,7 +156,7 @@ async function handler(
     case "DELETE":
       const deleted = await deleteMessageReaction(auth, {
         messageId,
-        conversation,
+        conversation: conversationJSON,
         user: user.toJSON(),
         context: {
           username: user.username,
@@ -169,7 +166,16 @@ async function handler(
       });
 
       if (deleted) {
-        await publishMessageUpdate(req, res, auth, { conversation, message });
+        const pubRes = await publishReactionUpdate(auth, {
+          conversation,
+          messageId,
+        });
+        if (pubRes.isErr()) {
+          logger.error(
+            { err: pubRes.error, conversationId, messageId },
+            "Failed to publish reaction update."
+          );
+        }
         res.status(200).json({ success: true });
         return;
       }
@@ -192,55 +198,5 @@ async function handler(
       });
   }
 }
-
-const publishMessageUpdate = async (
-  req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<
-      { reactions: MessageReactionType[] } | { success: boolean }
-    >
-  >,
-  auth: Authenticator,
-  {
-    conversation,
-    message,
-  }: {
-    conversation: ConversationType;
-    message: UserMessageType | ContentFragmentType | AgentMessageType;
-  }
-) => {
-  const reactions = await getMessagesReactions(auth, {
-    messageIds: [message.id],
-  });
-
-  if (isUserMessageType(message)) {
-    return publishMessageEventsOnMessagePostOrEdit(
-      conversation,
-      {
-        ...message,
-        contentFragments: getRelatedContentFragments(conversation, message),
-        reactions: reactions[message.id] ?? [],
-      },
-      []
-    );
-  }
-
-  if (isAgentMessageType(message)) {
-    return publishAgentMessagesEvents(conversation, [
-      {
-        ...message,
-        reactions: reactions[message.id] ?? [],
-      },
-    ]);
-  }
-
-  return apiError(req, res, {
-    status_code: 500,
-    api_error: {
-      type: "internal_server_error",
-      message: "Unexpected message type",
-    },
-  });
-};
 
 export default withSessionAuthenticationForWorkspace(handler);
