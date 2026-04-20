@@ -68,6 +68,7 @@ export type FetchConversationOptions = {
   excludeTest?: boolean; // Explicitly exclude test conversations
   dangerouslySkipPermissionFiltering?: boolean;
   includeForkedChildrenInfo?: boolean;
+  includeForkedFromParentConversationTitle?: boolean;
   updatedSince?: number; // Filter conversations updated after this timestamp (milliseconds)
 };
 
@@ -247,6 +248,34 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   get forkedFromInfo(): ConversationForkedFromType | undefined {
     return this.forkedFromData;
+  }
+
+  private static async getSerializedForkedFrom(
+    auth: Authenticator,
+    conversation: ConversationResource,
+    options?: FetchConversationOptions
+  ): Promise<ConversationForkedFromType | undefined> {
+    const forkedFrom = conversation.forkedFromInfo;
+    if (!forkedFrom) {
+      return undefined;
+    }
+
+    if (!options?.includeForkedFromParentConversationTitle) {
+      return forkedFrom;
+    }
+
+    const parentConversation = await ConversationResource.fetchById(
+      auth,
+      forkedFrom.parentConversationId
+    );
+    if (!parentConversation) {
+      return forkedFrom;
+    }
+
+    return {
+      ...forkedFrom,
+      parentConversationTitle: parentConversation.title,
+    };
   }
 
   private static async listSerializedChildForks(
@@ -1296,6 +1325,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         auth,
         conversation.id
       );
+    const forkedFrom = await ConversationResource.getSerializedForkedFrom(
+      auth,
+      conversation,
+      options
+    );
 
     const forkedChildren = options?.includeForkedChildrenInfo
       ? await ConversationResource.listSerializedChildForks(auth, conversation)
@@ -1318,9 +1352,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       depth: conversation.depth,
       metadata: conversation.metadata,
       branchId: null,
-      ...(conversation.forkedFromInfo && {
-        forkedFrom: conversation.forkedFromInfo,
-      }),
+      ...(forkedFrom && { forkedFrom }),
       ...(forkedChildren.length > 0 && { forkedChildren }),
     });
   }
