@@ -97,7 +97,7 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
           description: e.message,
         });
         datadogLogger.error(
-          { workspaceSId: owner.sId, err: e.message },
+          { workspaceId: owner.sId, err: e.message },
           "Snowflake keypair credential save failed: network error"
         );
         return null;
@@ -115,7 +115,7 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
         });
         datadogLogger.error(
           {
-            workspaceSId: owner.sId,
+            workspaceId: owner.sId,
             statusCode: response.status,
             err: e.message,
           },
@@ -135,7 +135,7 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
         });
         datadogLogger.error(
           {
-            workspaceSId: owner.sId,
+            workspaceId: owner.sId,
             statusCode: response.status,
             errorType: isAPIErrorResponse(result)
               ? result.error.type
@@ -175,7 +175,7 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
           });
           datadogLogger.warn(
             {
-              workspaceSId: owner.sId,
+              workspaceId: owner.sId,
               invalidFields: Object.keys(errors),
             },
             "Snowflake keypair credential form validation failed"
