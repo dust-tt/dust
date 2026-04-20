@@ -19,6 +19,7 @@ import { usePokeRegion } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
 import type { PokeWorkspaceWithRegion } from "@app/poke/swr/search";
 import { usePokeWorkspacesAllRegions } from "@app/poke/swr/search";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import { Chip, Icon, Input, LinkWrapper, Spinner } from "@dust-tt/sparkle";
 import { UsersIcon } from "lucide-react";
 import moment from "moment";
@@ -72,9 +73,13 @@ function WorkspaceList({
                     </PokeTableRow>
                     <PokeTableRow>
                       <PokeTableCell className="space-x-2" colSpan={3}>
-                        <label>
-                          <Icon visual={UsersIcon} /> {ws.membersCount}
-                        </label>
+                        <div className="flex items-center gap-1.5">
+                          <Icon visual={UsersIcon} size="xs" />
+                          <span>
+                            {ws.membersCount}&nbsp;
+                            member{pluralize(ws.membersCount)}
+                          </span>
+                        </div>
                       </PokeTableCell>
                     </PokeTableRow>
                     <PokeTableRow>
