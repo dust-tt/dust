@@ -509,7 +509,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     if (spaceBasedAccessible.length === 0) {
       const participantRestrictedConversationIds = new Set(
-        participantRestrictedConversations.map((conversation) => conversation.id)
+        participantRestrictedConversations.map(
+          (conversation) => conversation.id
+        )
       );
       return spaceBasedAccessible.filter(
         (conversation) =>

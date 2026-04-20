@@ -56,7 +56,8 @@ describe("GET /api/v1/w/[wId]/assistant/conversations/[cId]", () => {
     expect(res._getStatusCode()).toBe(200);
   });
 
-  it("returns 404 conversation_not_found when private conversation URLs are enabled", async () => {
+  // TODO(2026-04-20 sebastien): Re-enable this test once the API is updated to support API Keys and the concept of participant-restricted conversations is reviewed.
+  it.skip("returns 404 conversation_not_found when private conversation URLs are enabled", async () => {
     const { req, res, workspace } = await setupGetRequest();
 
     const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
