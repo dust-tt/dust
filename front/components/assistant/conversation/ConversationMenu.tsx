@@ -38,6 +38,7 @@ import {
   ActionGitBranchIcon,
   ArrowRightIcon,
   Avatar,
+  ChatBubbleBottomCenterTextIcon,
   ContactsUserIcon,
   DropdownMenu,
   DropdownMenuContent,
@@ -408,7 +409,7 @@ export function ConversationMenu({
                   {canMoveOutOfProject && (
                     <>
                       <DropdownMenuItem
-                        icon={XMarkIcon}
+                        icon={ChatBubbleBottomCenterTextIcon}
                         label="Personal conversations"
                         onClick={async () =>
                           moveConversationOutOfProject(conversation)
