@@ -9,6 +9,7 @@ import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import { useWorkspaceContextOrigin } from "@app/lib/swr/workspaces";
+import { isString } from "@app/types/shared/utils/general";
 import { Cell, Pie, PieChart, Tooltip } from "recharts";
 
 interface WorkspaceSourceChartProps {
@@ -70,8 +71,7 @@ export function WorkspaceSourceChart({
               return null;
             }
             const rawOrigin = payload?.[0]?.payload?.origin;
-            const activeOrigin =
-              typeof rawOrigin === "string" ? rawOrigin : undefined;
+            const activeOrigin = isString(rawOrigin) ? rawOrigin : undefined;
             const rows = data.map((d) => ({
               key: d.origin,
               label: d.label,

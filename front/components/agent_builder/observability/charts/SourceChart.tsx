@@ -7,6 +7,7 @@ import {
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { useAgentContextOrigin } from "@app/lib/swr/assistants";
+import { isString } from "@app/types/shared/utils/general";
 import { Cell, Pie, PieChart, Tooltip } from "recharts";
 
 interface SourceChartProps {
@@ -70,8 +71,7 @@ export function SourceChart({
               return null;
             }
             const rawOrigin = payload?.[0]?.payload?.origin;
-            const activeOrigin =
-              typeof rawOrigin === "string" ? rawOrigin : undefined;
+            const activeOrigin = isString(rawOrigin) ? rawOrigin : undefined;
             const rows = data.map((d) => ({
               key: d.origin,
               label: d.label,
