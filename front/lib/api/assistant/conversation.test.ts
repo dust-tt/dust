@@ -3788,15 +3788,16 @@ describe("conversation fetch forkedFrom", () => {
       },
     ];
 
-    const conversationDetailResult =
-      await ConversationResource.fetchConversationDetail(
+    const conversationResult =
+      await ConversationResource.fetchConversationWithoutContent(
         auth,
-        parentConversation.sId
+        parentConversation.sId,
+        { includeForkedChildrenInfo: true }
       );
-    expect(conversationDetailResult.isOk()).toBe(true);
+    expect(conversationResult.isOk()).toBe(true);
 
-    if (conversationDetailResult.isOk()) {
-      expect(conversationDetailResult.value.forkedChildren).toEqual(
+    if (conversationResult.isOk()) {
+      expect(conversationResult.value.forkedChildren).toEqual(
         expectedForkedChildren
       );
     }

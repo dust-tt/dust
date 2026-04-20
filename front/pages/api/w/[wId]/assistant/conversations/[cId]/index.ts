@@ -30,7 +30,7 @@
  *               type: object
  *               properties:
  *                 conversation:
- *                   $ref: '#/components/schemas/PrivateConversationDetail'
+ *                   $ref: '#/components/schemas/PrivateConversation'
  *       401:
  *         description: Unauthorized
  *   delete:
@@ -128,10 +128,8 @@ import { moveConversationToProject } from "@app/lib/api/projects/conversations";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
-import {
-  type ConversationDetailType,
-  ConversationError,
-} from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { ConversationError } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
@@ -157,7 +155,7 @@ export type PatchConversationsRequestBody = t.TypeOf<
 >;
 
 export type GetConversationResponseBody = {
-  conversation: ConversationDetailType;
+  conversation: ConversationWithoutContentType;
 };
 
 export type PatchConversationResponseBody = {
@@ -187,7 +185,9 @@ async function handler(
   switch (req.method) {
     case "GET": {
       const conversationRes =
-        await ConversationResource.fetchConversationDetail(auth, cId);
+        await ConversationResource.fetchConversationWithoutContent(auth, cId, {
+          includeForkedChildrenInfo: true,
+        });
 
       if (conversationRes.isErr()) {
         // Distinguish between "not found" and "access restricted" for the UI.

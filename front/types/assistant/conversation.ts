@@ -414,16 +414,10 @@ export type ConversationWithoutContentType = {
   metadata: ConversationMetadata;
   branchId: string | null;
   forkedFrom?: ConversationForkedFromType;
+  forkedChildren?: ConversationForkedChildType[];
 
   // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];
-};
-
-/**
- * @swaggerschema PrivateConversationDetail (swagger_private_schemas.ts)
- */
-export type ConversationDetailType = ConversationWithoutContentType & {
-  forkedChildren?: ConversationForkedChildType[];
 };
 
 /**

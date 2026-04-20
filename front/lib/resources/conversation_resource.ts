@@ -33,7 +33,6 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
-  ConversationDetailType,
   ConversationForkedChildType,
   ConversationForkedFromType,
   ConversationMCPServerViewType,
@@ -62,6 +61,7 @@ export type FetchConversationOptions = {
   includeDeleted?: boolean;
   excludeTest?: boolean; // Explicitly exclude test conversations
   dangerouslySkipPermissionFiltering?: boolean;
+  includeForkedChildrenInfo?: boolean;
   updatedSince?: number; // Filter conversations updated after this timestamp (milliseconds)
 };
 
@@ -1130,9 +1130,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static async fetchConversationWithoutContent(
     auth: Authenticator,
     sId: string,
-    options?: FetchConversationOptions & {
-      dangerouslySkipPermissionFiltering?: boolean;
-    }
+    options?: FetchConversationOptions
   ): Promise<Result<ConversationWithoutContentType, ConversationError>> {
     const conversation = await this.fetchById(auth, sId, {
       includeDeleted: options?.includeDeleted,
@@ -1149,6 +1147,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         auth,
         conversation.id
       );
+
+    const forkedChildren = options?.includeForkedChildrenInfo
+      ? await ConversationResource.listReadableForkedChildren(
+          auth,
+          conversation
+        )
+      : [];
 
     return new Ok({
       id: conversation.id,
@@ -1170,41 +1175,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       ...(conversation.forkedFromInfo && {
         forkedFrom: conversation.forkedFromInfo,
       }),
-    });
-  }
-
-  static async fetchConversationDetail(
-    auth: Authenticator,
-    sId: string,
-    options?: FetchConversationOptions & {
-      dangerouslySkipPermissionFiltering?: boolean;
-    }
-  ): Promise<Result<ConversationDetailType, ConversationError>> {
-    const conversationResult = await this.fetchConversationWithoutContent(
-      auth,
-      sId,
-      options
-    );
-
-    if (conversationResult.isErr()) {
-      return conversationResult;
-    }
-
-    const conversation = await this.fetchById(auth, sId, {
-      includeDeleted: options?.includeDeleted,
-      dangerouslySkipPermissionFiltering:
-        options?.dangerouslySkipPermissionFiltering,
-    });
-
-    if (!conversation) {
-      return new Err(new ConversationError("conversation_not_found"));
-    }
-
-    const forkedChildren =
-      await ConversationResource.listReadableForkedChildren(auth, conversation);
-
-    return new Ok({
-      ...conversationResult.value,
       ...(forkedChildren.length > 0 && { forkedChildren }),
     });
   }
