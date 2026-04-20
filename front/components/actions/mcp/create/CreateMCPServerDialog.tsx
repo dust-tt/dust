@@ -218,11 +218,21 @@ export function CreateMCPServerDialog({
     connectionType: "workspace",
   });
 
+  // Only reset on the closed→open transition. Resetting whenever
+  // `defaultValues` changes is unsafe: SWR mutations triggered during submit
+  // (e.g. `createInternalMCPServer` invalidating the servers list) bubble up
+  // to `existingViewNames`, which recomputes `defaultValues` here and would
+  // clobber in-flight user state — most visibly, it resets `useCase` to null
+  // and unmounts the static credential form mid-submit.
+  const prevIsOpenRef = useRef(false);
+  const defaultValuesRef = useRef(defaultValues);
+  defaultValuesRef.current = defaultValues;
   useEffect(() => {
-    if (isOpen) {
-      form.reset(defaultValues);
+    if (isOpen && !prevIsOpenRef.current) {
+      form.reset(defaultValuesRef.current);
     }
-  }, [defaultValues, form, isOpen]);
+    prevIsOpenRef.current = isOpen;
+  }, [isOpen, form]);
 
   // Initialize authorization from internalMCPServer when dialog opens.
   useEffect(() => {
@@ -401,6 +411,29 @@ export function CreateMCPServerDialog({
       return;
     }
 
+    // Capture the form handle before any async work. SWR mutations that fire
+    // during submit (e.g. `createInternalMCPServer` invalidating the servers
+    // list) can re-render the dialog and unmount the static credential form,
+    // which nulls `staticFormRef.current`. Grabbing it up front avoids that
+    // race.
+    const formHandle = staticFormRef.current;
+    if (!formHandle) {
+      sendNotification({
+        type: "error",
+        title: "Cannot submit credentials",
+        description: "The credentials form is not ready. Please retry.",
+      });
+      datadogLogger.error(
+        {
+          workspaceId: owner.sId,
+          hasAuthorization: !!authorization,
+          useCase,
+        },
+        "Static credential form ref is null at submit time"
+      );
+      return;
+    }
+
     setIsLoading(true);
     setExternalIsLoading(true);
 
@@ -423,26 +456,6 @@ export function CreateMCPServerDialog({
       }
 
       const createdServer = createRes.value.server;
-
-      // Submit the static credential form — returns credentialId or null.
-      const formHandle = staticFormRef.current;
-      if (!formHandle) {
-        sendNotification({
-          type: "error",
-          title: "Cannot submit credentials",
-          description: "The credentials form is not ready. Please retry.",
-        });
-        datadogLogger.error(
-          {
-            workspaceId: owner.sId,
-            mcpServerId: createdServer.sId,
-            hasAuthorization: !!authorization,
-            useCase,
-          },
-          "Static credential form ref is null at submit time"
-        );
-        return;
-      }
 
       const credentialId = await formHandle.submit();
       if (!credentialId) {
