@@ -17,6 +17,7 @@ import { Chip, LinkWrapper } from "@dust-tt/sparkle";
 
 export function WorkspaceInfoTable({
   owner,
+  membersCount,
   metronomeCustomerId,
   workspaceVerifiedDomains,
   workspaceCreationDay,
@@ -27,6 +28,7 @@ export function WorkspaceInfoTable({
   temporalFrontNamespace,
 }: {
   owner: WorkspaceType;
+  membersCount: number;
   metronomeCustomerId: string | null;
   workspaceVerifiedDomains: WorkspaceDomain[];
   workspaceCreationDay: string;
@@ -133,6 +135,10 @@ export function WorkspaceInfoTable({
             <PokeTableRow>
               <PokeTableCell>Creation</PokeTableCell>
               <PokeTableCell>{workspaceCreationDay}</PokeTableCell>
+            </PokeTableRow>
+            <PokeTableRow>
+              <PokeTableCell>Members count</PokeTableCell>
+              <PokeTableCell>{membersCount}</PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>SSO Enforced</PokeTableCell>
