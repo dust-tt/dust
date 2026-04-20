@@ -54,7 +54,8 @@ WorkspaceSensitivityLabelConfigModel.init(
     indexes: [
       {
         fields: ["workspaceId", "sourceType", "sourceId"],
-        name: "workspace_sensitivity_label_configs_workspace_id_source_type_source_id",
+        name: "workspace_sensitivity_label_configs_workspace_source_idx",
+        concurrently: true,
       },
     ],
   }
