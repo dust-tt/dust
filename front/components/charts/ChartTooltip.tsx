@@ -20,6 +20,7 @@ export function LegendDot({ className, rounded = "sm" }: LegendDotProps) {
 }
 
 interface TooltipRow {
+  key?: string;
   label: string;
   value: string | number;
   colorClassName?: string;
@@ -30,9 +31,15 @@ interface ChartTooltipProps {
   title?: string;
   rows: TooltipRow[];
   footer?: string;
+  activeKey?: string;
 }
 
-export function ChartTooltipCard({ title, rows, footer }: ChartTooltipProps) {
+export function ChartTooltipCard({
+  title,
+  rows,
+  footer,
+  activeKey,
+}: ChartTooltipProps) {
   return (
     <div
       role="tooltip"
@@ -44,22 +51,39 @@ export function ChartTooltipCard({ title, rows, footer }: ChartTooltipProps) {
         </div>
       )}
       <ul className="space-y-1.5">
-        {rows.map((r) => (
-          <li key={r.label} className="flex items-center gap-2">
-            {r.colorClassName && <LegendDot className={r.colorClassName} />}
-            <span className="text-muted-foreground dark:text-muted-foreground-night">
-              {r.label}
-            </span>
-            <span className="ml-auto font-mono font-medium tabular-nums text-foreground dark:text-foreground-night">
-              {r.value.toLocaleString()}
-            </span>
-            {typeof r.percent === "number" && (
-              <span className="text-muted-foreground dark:text-muted-foreground-night">
-                ({r.percent}%)
+        {rows.map((r) => {
+          const rowKey = r.key ?? r.label;
+          const isActive = rowKey === activeKey;
+          return (
+            <li
+              key={rowKey}
+              className={cn(
+                "flex items-center gap-2 rounded",
+                isActive &&
+                  "-mx-1.5 bg-muted-background/60 px-1.5 dark:bg-muted-background-night/60"
+              )}
+            >
+              {r.colorClassName && <LegendDot className={r.colorClassName} />}
+              <span
+                className={cn(
+                  isActive
+                    ? "font-medium text-foreground dark:text-foreground-night"
+                    : "text-muted-foreground dark:text-muted-foreground-night"
+                )}
+              >
+                {r.label}
               </span>
-            )}
-          </li>
-        ))}
+              <span className="ml-auto font-mono font-medium tabular-nums text-foreground dark:text-foreground-night">
+                {r.value.toLocaleString()}
+              </span>
+              {typeof r.percent === "number" && (
+                <span className="text-muted-foreground dark:text-muted-foreground-night">
+                  ({r.percent}%)
+                </span>
+              )}
+            </li>
+          );
+        })}
       </ul>
       {footer && (
         <div className="mt-1 border-t border-border/50 pt-1 text-muted-foreground dark:border-border-night/50 dark:text-muted-foreground-night">
