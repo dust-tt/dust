@@ -30,6 +30,7 @@ const CASE_STUDIES: Record<string, string> = {
     "/customers/less-admin-more-selling-how-dust-frees-up-payfits-sales-team-to-close-more-deals",
   pennylane: "/customers/pennylane-customer-support-journey",
   persona: "/customers/how-persona-hit-80-ai-agent-adoption-with-dust",
+  profound: "/customers/profound-post-sales-team-reclaimed-1800-hours",
   qonto: "/customers/qonto-dust-ai-partnership",
   wakam:
     "/customers/how-wakam-cut-legal-contract-analysis-time-by-50-with-dust",
@@ -259,7 +260,11 @@ export default function TrustedBy({
           )}
         >
           {logos.map((logo, index) => {
-            const caseStudyUrl = CASE_STUDIES[logo.name];
+            const caseStudyPath = CASE_STUDIES[logo.name];
+            const caseStudyUrl =
+              caseStudyPath && (logo.name !== "profound" || region === "us")
+                ? caseStudyPath
+                : undefined;
             return (
               <div
                 key={`${logo.name}-${index}`}
