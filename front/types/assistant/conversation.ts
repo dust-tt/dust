@@ -400,6 +400,20 @@ export function getConversationUrlAccessMode(
   return isConversationUrlAccessMode(accessMode) ? accessMode : null;
 }
 
+export function isReinforcedSkillNotificationMetadata(
+  value: unknown
+): value is { skillName: string; skillId: string } {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  return (
+    "skillName" in value &&
+    typeof value.skillName === "string" &&
+    "skillId" in value &&
+    typeof value.skillId === "string"
+  );
+}
+
 export type ConversationForkedFromType = {
   parentConversationId: string;
   sourceMessageId: string;
