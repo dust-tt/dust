@@ -1,6 +1,6 @@
+import { AdvancedLabelsOptions } from "@app/components/data_source/AdvancedLabelsOptions";
 import { BigQueryUseMetadataForDBMLView } from "@app/components/data_source/BigQueryUseMetadataForDBMLView";
 import { createConnectorOptionsPdfEnabled } from "@app/components/data_source/ConnectorOptionsPdfEnabled";
-import { createConnectorOptionsWithLabels } from "@app/components/data_source/ConnectorOptionsWithLabels";
 import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
 import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
 import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
@@ -68,6 +68,7 @@ export type ConnectorProviderUIDetails = {
     isDark?: boolean
   ) => (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
   optionsComponent?: ComponentType<ConnectorOptionsProps>;
+  advancedOptionsComponent?: ComponentType<ConnectorOptionsProps>;
   description: string;
   mismatchError: string;
   limitations: string | null;
@@ -294,9 +295,10 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     getLogoComponent: () => {
       return MicrosoftLogo;
     },
-    optionsComponent: createConnectorOptionsWithLabels(
+    optionsComponent: createConnectorOptionsPdfEnabled(
       "When enabled, PDF documents from your Microsoft OneDrive and SharePoint will be synced and processed by Dust."
     ),
+    advancedOptionsComponent: AdvancedLabelsOptions,
     isNested: true,
     isTitleFilterEnabled: true,
     oauthExtraConfigComponent: MicrosoftOAuthExtraConfig,

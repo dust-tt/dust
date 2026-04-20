@@ -169,21 +169,8 @@ function MicrosoftLabelsSelector({
       ? "Select labels"
       : `${selected.size} label${selected.size === 1 ? "" : "s"} selected`;
 
-  if (labels.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        No Microsoft Purview labels found. Configure them in your Microsoft
-        Purview console first.
-      </p>
-    );
-  }
-
   return (
-    <div className="flex flex-col gap-3">
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        Only files with the selected sensitivity labels will be synced into
-        Dust. Unlabeled files are always allowed.
-      </p>
+    <div className="mb-4 flex flex-col gap-3">
       <div className="flex items-center gap-2">
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
@@ -198,25 +185,34 @@ function MicrosoftLabelsSelector({
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-80">
             <div className="max-h-80 overflow-auto">
-              {labels.map((label) => (
-                <DropdownMenuCheckboxItem
-                  key={label.id}
-                  label={label.name}
-                  checked={selected.has(label.id)}
-                  onCheckedChange={() => toggle(label.id)}
-                  onSelect={(e) => e.preventDefault()}
-                />
-              ))}
+              {labels.length === 0 ? (
+                <p className="px-2 py-3 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  No labels found. Configure them in your Microsoft Purview
+                  console first.
+                </p>
+              ) : (
+                labels.map((label) => (
+                  <DropdownMenuCheckboxItem
+                    key={label.id}
+                    label={label.name}
+                    checked={selected.has(label.id)}
+                    onCheckedChange={() => toggle(label.id)}
+                    onSelect={(e) => e.preventDefault()}
+                  />
+                ))
+              )}
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button
-          label="Save"
-          size="sm"
-          variant="primary"
-          disabled={readOnly || !isAdmin || isSaving}
-          onClick={() => void handleSave()}
-        />
+        {labels.length > 0 && (
+          <Button
+            label="Save"
+            size="sm"
+            variant="primary"
+            disabled={readOnly || !isAdmin || isSaving}
+            onClick={() => void handleSave()}
+          />
+        )}
       </div>
     </div>
   );
