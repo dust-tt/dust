@@ -47,7 +47,7 @@ describe("renderAllMessages", () => {
         }) as UserMessageTypeModel
     );
 
-    vi.mocked(getSteps).mockReturnValue([
+    vi.mocked(getSteps).mockResolvedValue([
       {
         contents: [{ type: "text_content", value: "Agent response" }],
         actions: [],
@@ -352,7 +352,7 @@ describe("renderAllMessages", () => {
       ]);
 
       // Mock getSteps to return a step with both text_content and function_call
-      vi.mocked(getSteps).mockReturnValue([
+      vi.mocked(getSteps).mockResolvedValue([
         {
           contents: [
             { type: "text_content", value: "Agent response" },
@@ -404,7 +404,7 @@ describe("renderAllMessages", () => {
       ]);
 
       // Mock getSteps to return a step with both text_content and function_call
-      vi.mocked(getSteps).mockReturnValue([
+      vi.mocked(getSteps).mockResolvedValue([
         {
           contents: [
             { type: "text_content", value: "Agent response" },

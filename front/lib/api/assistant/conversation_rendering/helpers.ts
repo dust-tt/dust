@@ -6,12 +6,14 @@
 import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
 import type { Authenticator } from "@app/lib/auth";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
   replaceMentionsWithAt,
   serializeMention,
 } from "@app/lib/mentions/format";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
@@ -26,12 +28,14 @@ import type {
 } from "@app/types/assistant/conversation";
 import type {
   CompactionMessageTypeModel,
+  Content,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelMessageTypeMultiActions,
   UserMessageTypeModel,
 } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import { isLLMVisionSupportedImageContentType } from "@app/types/files";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 /**
@@ -48,9 +52,11 @@ export type Step = {
 /**
  * Renders an action result for multi-actions model
  */
-export function renderActionForMultiActionsModel(
+export async function renderActionForMultiActionsModel(
+  auth: Authenticator,
+  model: ModelConfigurationType,
   action: AgentMCPActionWithOutputType
-): FunctionMessageTypeModel {
+): Promise<FunctionMessageTypeModel> {
   if (action.status === "denied") {
     return {
       role: "function" as const,
@@ -88,27 +94,59 @@ export function renderActionForMultiActionsModel(
     action.output?.map(rewriteContentForModel) ?? []
   );
 
-  let output;
+  let textOutput: string;
   if (outputItems.length === 0) {
-    output = "Successfully executed action, no output.";
+    textOutput = "Successfully executed action, no output.";
   } else if (outputItems.every((item) => isTextContent(item))) {
-    output = outputItems.map((item) => item.text).join("\n");
+    textOutput = outputItems.map((item) => item.text).join("\n");
   } else {
-    output = JSON.stringify(outputItems);
+    textOutput = JSON.stringify(outputItems);
+  }
+
+  // For vision-capable models, include image files as vision blocks so the model can
+  // directly interpret them (e.g. reading a schema from a PNG).
+  if (model.supportsVision) {
+    const imageFiles = action.generatedFiles.filter(
+      (f) => !f.hidden && isLLMVisionSupportedImageContentType(f.contentType)
+    );
+
+    if (imageFiles.length > 0) {
+      const bucket = getPrivateUploadBucket();
+      const workspaceId = auth.getNonNullableWorkspace().sId;
+
+      const imageBlocks = await Promise.all(
+        imageFiles.map(async (imageFile): Promise<Content> => {
+          const filePath = FileResource.getCloudStoragePathForId({
+            fileId: imageFile.fileId,
+            workspaceId,
+            version: "processed",
+          });
+          const signedUrl = await bucket.getSignedUrl(filePath);
+          return { type: "image_url", image_url: { url: signedUrl } };
+        })
+      );
+
+      return {
+        role: "function" as const,
+        name: action.functionCallName,
+        function_call_id: action.functionCallId,
+        content: [{ type: "text", text: textOutput }, ...imageBlocks],
+      };
+    }
   }
 
   return {
     role: "function" as const,
     name: action.functionCallName,
     function_call_id: action.functionCallId,
-    content: output,
+    content: textOutput,
   };
 }
 
 /**
  * Processes agent message steps
  */
-export function getSteps(
+export async function getSteps(
   auth: Authenticator,
   {
     model,
@@ -123,7 +161,7 @@ export function getSteps(
     conversationId: string;
     onMissingAction: "inject-placeholder" | "skip";
   }
-): Step[] {
+): Promise<Step[]> {
   const supportedModel = getSupportedModelConfig(model);
   if (!supportedModel) {
     return [];
@@ -143,15 +181,13 @@ export function getSteps(
   for (const action of actions) {
     const stepIndex = action.step;
     stepByStepIndex[stepIndex] = stepByStepIndex[stepIndex] || emptyStep();
-    // All these calls are not async, so we're not doing a Promise.all for now but might need to
-    // be reconsidered in the future.
     stepByStepIndex[stepIndex].actions.push({
       call: {
         id: action.functionCallId,
         name: action.functionCallName,
         arguments: JSON.stringify(action.params),
       },
-      result: renderActionForMultiActionsModel(action),
+      result: await renderActionForMultiActionsModel(auth, model, action),
     });
   }
 

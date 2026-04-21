@@ -19,6 +19,7 @@ import {
 } from "@app/lib/api/actions/servers/microsoft/utils";
 import { MICROSOFT_DRIVE_TOOLS_METADATA } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
 import { untrustedFetch } from "@app/lib/egress/server";
+import { isSupportedImageContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type AdmZip from "adm-zip";
@@ -260,6 +261,17 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         );
       }
       const buffer = Buffer.from(await fileResponse.arrayBuffer());
+
+      // Images are passed as MCP image blocks so the model can see them via vision.
+      if (isSupportedImageContentType(mimeType)) {
+        return new Ok([
+          {
+            type: "image" as const,
+            data: buffer.toString("base64"),
+            mimeType,
+          },
+        ]);
+      }
 
       const result = await processAttachment({
         mimeType,
