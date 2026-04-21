@@ -581,7 +581,12 @@ function ActivityPopover({
         }
         /* Hide scrollbar while keeping scroll behaviour */
         .activity-scroll::-webkit-scrollbar { display: none; }
-        .activity-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        .activity-scroll {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+          -webkit-mask-image: linear-gradient(to bottom, transparent 0px, black 56px);
+          mask-image: linear-gradient(to bottom, transparent 0px, black 56px);
+        }
       `}</style>
       {/* Wrapper: no opacity/filter/transform that would create a stacking
           context and break backdrop-blur on child bubbles. */}
