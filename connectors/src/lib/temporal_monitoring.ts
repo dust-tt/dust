@@ -57,8 +57,13 @@ export class ActivityInboundLogInterceptor
     this.context = ctx;
     this.provider = provider;
     this.logger = logger.child({
+      activityType: ctx.info.activityType,
+      workflowType: ctx.info.workflowType,
+
+      // to remove, it's confusing
       activityName: ctx.info.activityType,
       workflowName: ctx.info.workflowType,
+
       workflowId: ctx.info.workflowExecution.workflowId,
       workflowRunId: ctx.info.workflowExecution.runId,
       activityId: ctx.info.activityId,
@@ -78,8 +83,13 @@ export class ActivityInboundLogInterceptor
     let error: Error | any = undefined;
     const startTime = new Date();
     const tags = [
+      `activity_type:${this.context.info.activityType}`,
+      `workflow_type:${this.context.info.workflowType}`,
+
+      // to remove, it's confusing
       `activity_name:${this.context.info.activityType}`,
       `workflow_name:${this.context.info.workflowType}`,
+
       `attempt:${this.context.info.attempt}`,
       `provider:${this.provider}`,
     ];
@@ -135,6 +145,9 @@ export class ActivityInboundLogInterceptor
     if (this.context.info.attempt > 25) {
       this.logger.error(
         {
+          activity_type: this.context.info.activityType,
+          workflow_type: this.context.info.workflowType,
+          // to remove, it's confusing
           activity_name: this.context.info.activityType,
           workflow_name: this.context.info.workflowType,
           attempt: this.context.info.attempt,
