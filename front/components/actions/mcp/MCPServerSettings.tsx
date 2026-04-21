@@ -6,6 +6,7 @@ import {
 import { AdvancedLabelsOptions } from "@app/components/shared/labels/AdvancedLabelsOptions";
 import { getSensitivityLabelProviderForServerId } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   useDeleteMCPServerConnection,
   useMCPServerConnections,
@@ -51,6 +52,8 @@ export function MCPServerSettings({
   const [selectedUseCase, setSelectedUseCase] =
     useState<MCPOAuthUseCase | null>(null);
 
+  const { featureFlags } = useFeatureFlags();
+  const hasSensitivityLabels = featureFlags.includes("sensitivity_labels");
   const useCase = selectedUseCase ?? mcpServerView.oAuthUseCase;
   const sensitivityLabelProvider = getSensitivityLabelProviderForServerId(
     mcpServerView.server.sId
@@ -136,13 +139,15 @@ export function MCPServerSettings({
           </div>
         </div>
       )}
-      {connection && sensitivityLabelProvider !== null && (
-        <AdvancedLabelsOptions
-          owner={owner}
-          source={{ internalMCPServerId: mcpServerView.server.sId }}
-          isAdmin={true}
-        />
-      )}
+      {connection &&
+        hasSensitivityLabels &&
+        sensitivityLabelProvider !== null && (
+          <AdvancedLabelsOptions
+            owner={owner}
+            source={{ internalMCPServerId: mcpServerView.server.sId }}
+            isAdmin={true}
+          />
+        )}
 
       {authorization?.availableScopes &&
         authorization.availableScopes.length > 0 && (

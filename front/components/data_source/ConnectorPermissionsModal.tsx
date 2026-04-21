@@ -1033,18 +1033,20 @@ export function ConnectorPermissionsModal({
                       />
                     </>
                   )}
-                  {AdvancedOptionsComponent && plan && (
-                    <Collapsible className="mb-4">
-                      <CollapsibleTrigger>
-                        <div className="heading-lg">Advanced</div>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <AdvancedOptionsComponent
-                          {...{ owner, readOnly, isAdmin, dataSource, plan }}
-                        />
-                      </CollapsibleContent>
-                    </Collapsible>
-                  )}
+                  {AdvancedOptionsComponent &&
+                    plan &&
+                    featureFlags.includes("sensitivity_labels") && (
+                      <Collapsible className="mb-4">
+                        <CollapsibleTrigger>
+                          <div className="heading-lg">Advanced</div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <AdvancedOptionsComponent
+                            {...{ owner, readOnly, isAdmin, dataSource, plan }}
+                          />
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
 
                   {advancedNotionManagement && (
                     <AdvancedNotionManagement

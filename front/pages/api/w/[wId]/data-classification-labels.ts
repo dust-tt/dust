@@ -4,6 +4,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import config from "@app/lib/api/config";
 import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type { MicrosoftAllowedLabel } from "@app/lib/models/workspace_sensitivity_label_config";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -133,6 +134,17 @@ async function handler(
       api_error: {
         type: "workspace_auth_error",
         message: "You are not authorized to perform this action.",
+      },
+    });
+  }
+
+  const featureFlags = await getFeatureFlags(auth);
+  if (!featureFlags.includes("sensitivity_labels")) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "The sensitivity_labels feature is not enabled.",
       },
     });
   }
