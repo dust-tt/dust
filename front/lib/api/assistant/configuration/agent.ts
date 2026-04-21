@@ -1774,30 +1774,26 @@ async function disableTriggersForNonEditors(
     ? editorGroupsRes.value
     : {};
 
-  // Dedupe editor groups so we fetch members once per unique group.
-  const uniqueGroupsByGroupModelId = new Map<ModelId, GroupResource>();
+  // Fetch members once per unique editor group.
+  const editorModelIdsByGroupModelId = new Map<ModelId, Set<ModelId>>();
   for (const group of Object.values(editorGroupsByAgentId)) {
-    uniqueGroupsByGroupModelId.set(group.id, group);
-  }
-
-  const editorIdsByGroupModelId = new Map<ModelId, Set<ModelId>>();
-  for (const group of uniqueGroupsByGroupModelId.values()) {
+    if (editorModelIdsByGroupModelId.has(group.id)) {
+      continue;
+    }
     const members = await group.getActiveMembers(auth);
-    editorIdsByGroupModelId.set(group.id, new Set(members.map((m) => m.id)));
-  }
-
-  const editorIdsByAgentId = new Map<string, Set<ModelId>>();
-  for (const agent of agents) {
-    const group = editorGroupsByAgentId[agent.sId];
-    const editorIds = group
-      ? (editorIdsByGroupModelId.get(group.id) ?? new Set<ModelId>())
-      : new Set<ModelId>();
-    editorIdsByAgentId.set(agent.sId, editorIds);
+    editorModelIdsByGroupModelId.set(
+      group.id,
+      new Set(members.map((m) => m.id))
+    );
   }
 
   const triggersToDisable = triggers.filter((trigger) => {
-    const editorIds = editorIdsByAgentId.get(trigger.agentConfigurationId);
-    return editorIds !== undefined && !editorIds.has(trigger.editor);
+    const group = editorGroupsByAgentId[trigger.agentConfigurationId];
+    const editorModelIds = group
+      ? editorModelIdsByGroupModelId.get(group.id)
+      : undefined;
+    // No editor group resolved → disable all triggers for that agent (matches prior behavior).
+    return !editorModelIds || !editorModelIds.has(trigger.editor);
   });
 
   if (triggersToDisable.length === 0) {
