@@ -30,6 +30,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { launchCompactionWorkflow } from "@app/temporal/agent_loop/client";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -44,9 +45,15 @@ import type {
   ConversationType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import { isCompactionMessageType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/temporal/agent_loop/client", () => ({
+  launchAgentLoopWorkflow: vi.fn(),
+  launchCompactionWorkflow: vi.fn(),
+}));
 
 async function createUserMessage(
   auth: Authenticator,
@@ -384,6 +391,25 @@ describe("createConversationFork", () => {
       branchedAt: expect.any(Number),
       user: user.toJSON(),
     });
+    expect(childConversation.content).toHaveLength(1);
+    expect(isCompactionMessageType(childConversation.content[0]![0]!)).toBe(
+      true
+    );
+    expect(
+      isCompactionMessageType(childConversation.content[0]![0]!)
+        ? childConversation.content[0]![0]!.status
+        : null
+    ).toBe("created");
+    expect(vi.mocked(launchCompactionWorkflow)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auth,
+        conversationId: childConversation.sId,
+        sourceConversation: {
+          conversationId: parentConversation.sId,
+          messageRank: sourceMessage.rank,
+        },
+      })
+    );
 
     const forkRow = await ConversationForkModel.findOne({
       where: {
