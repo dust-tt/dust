@@ -90,7 +90,7 @@ export async function sandboxSupportsEgressForwarding(
 ): Promise<Result<boolean, Error>> {
   const probeResult = await sandbox.exec(
     auth,
-    "test -d /etc/dust && id agent-proxied >/dev/null 2>&1 && id dust-fwd >/dev/null 2>&1 && test -x /opt/bin/dsbx && systemctl is-active --quiet dust-egress-nftables.service"
+    "test -d /etc/dust && id agent-proxied >/dev/null 2>&1 && test -x /opt/bin/dsbx && systemctl is-active --quiet dust-egress-nftables.service"
   );
 
   if (probeResult.isErr()) {
@@ -145,17 +145,17 @@ export async function setupEgressForwarder(
   const chmodResult = await runSuccessfulSandboxCommand(
     auth,
     sandbox,
-    `chown dust-fwd:dust-fwd ${shellEscape(EGRESS_TOKEN_PATH)} && chmod 600 ${shellEscape(EGRESS_TOKEN_PATH)}`,
+    `chmod 600 ${shellEscape(EGRESS_TOKEN_PATH)}`,
     "root"
   );
   if (chmodResult.isErr()) {
     return chmodResult;
   }
 
-  // Run as root with runuser to drop to dust-fwd. E2B exec requires the
-  // target user to have a real login shell; dust-fwd is created with
-  // nologin in bedrock, so exec-as-dust-fwd fails with EACCES.
-  const forwarderBin =
+  // The forwarder runs as root. The nftables rules only redirect traffic
+  // from agent-proxied (uid 1003), so root's outbound connections go
+  // straight to the internet without looping back through the proxy.
+  const startForwarderCommand =
     "nohup /opt/bin/dsbx forward " +
     `--token-file ${shellEscape(EGRESS_TOKEN_PATH)} ` +
     `--proxy-addr ${shellEscape(`${proxyAddr}:${config.getEgressProxyPort()}`)} ` +
@@ -163,8 +163,6 @@ export async function setupEgressForwarder(
     `--listen ${shellEscape(EGRESS_FORWARDER_LISTEN_ADDR)} ` +
     `--deny-log ${shellEscape(EGRESS_DENY_LOG_PATH)} ` +
     `>${shellEscape(EGRESS_FORWARDER_LOG_PATH)} 2>&1 &`;
-
-  const startForwarderCommand = `runuser -u dust-fwd -- bash -c ${shellEscape(forwarderBin)}`;
 
   const startResult = await runSuccessfulSandboxCommand(
     auth,
