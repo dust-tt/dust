@@ -30,6 +30,7 @@ import type {
   ConversationError,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import { ResizablePanel, ResizablePanelGroup } from "@dust-tt/sparkle";
@@ -111,8 +112,8 @@ const ConversationLayoutContent = ({
     // Focus back on input bar
   };
 
-  const pageTitle = conversation?.title
-    ? `Dust - ${conversation.title}`
+  const pageTitle = conversation
+    ? `Dust - ${getConversationDisplayTitle(conversation)}`
     : "Dust - New Conversation";
 
   const navChildren = useMemo(

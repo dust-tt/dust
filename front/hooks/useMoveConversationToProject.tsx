@@ -6,7 +6,10 @@ import {
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import {
+  type ConversationWithoutContentType,
+  getConversationDisplayTitle,
+} from "@app/types/assistant/conversation";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useContext } from "react";
@@ -32,8 +35,9 @@ export function useMoveConversationToProject(owner: LightWorkspaceType) {
         message: (
           <div>
             The content of the conversation{" "}
-            <strong>{conversation.title}</strong> will be available to all
-            members of the project <strong>{space.name}</strong>.
+            <strong>{getConversationDisplayTitle(conversation)}</strong> will be
+            available to all members of the project{" "}
+            <strong>{space.name}</strong>.
           </div>
         ),
         validateLabel: "Move",

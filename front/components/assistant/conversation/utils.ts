@@ -7,7 +7,10 @@ import type {
   UserMessageType,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
-import { isReinforcedSkillNotificationMetadata } from "@app/types/assistant/conversation";
+import {
+  getConversationDisplayTitle,
+  isReinforcedSkillNotificationMetadata,
+} from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import moment from "moment";
 
@@ -48,7 +51,9 @@ export function getGroupConversationsByUnreadAndActionRequired(
             titleFilter &&
             !subFilter(
               removeDiacritics(titleFilter).toLowerCase(),
-              removeDiacritics(conversation.title ?? "").toLowerCase()
+              removeDiacritics(
+                getConversationDisplayTitle(conversation)
+              ).toLowerCase()
             )
           ) {
             return acc;
@@ -106,7 +111,9 @@ export function getGroupConversationsByDate({
       titleFilter &&
       !subFilter(
         removeDiacritics(titleFilter).toLowerCase(),
-        removeDiacritics(conversation.title ?? "").toLowerCase()
+        removeDiacritics(
+          getConversationDisplayTitle(conversation)
+        ).toLowerCase()
       )
     ) {
       return;

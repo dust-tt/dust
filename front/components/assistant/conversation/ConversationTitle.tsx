@@ -11,6 +11,7 @@ import { useAppRouter } from "@app/lib/platform";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
+import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
@@ -53,7 +54,9 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     handleMenuOpenChange,
   } = useConversationMenu();
 
-  const currentTitle = conversation?.title ?? "";
+  const currentTitle = conversation
+    ? getConversationDisplayTitle(conversation)
+    : "";
 
   if (!activeConversationId) {
     return null;

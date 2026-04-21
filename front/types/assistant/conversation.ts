@@ -3,7 +3,7 @@ import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_act
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
-
+import moment from "moment";
 import type { ContentFragmentType } from "../content_fragment";
 import type { AllSupportedWithDustSpecificFileContentType } from "../files";
 import type { ModelId } from "../shared/model_id";
@@ -462,6 +462,28 @@ export type ConversationWithoutContentType = {
   // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];
 };
+
+type ConversationDisplayTitleInput = Pick<
+  ConversationWithoutContentType,
+  "created" | "title"
+>;
+
+function isSameLocalDay(timestamp: number, now: Date): boolean {
+  return moment(timestamp).isSame(now, "day");
+}
+
+export function getConversationDisplayTitle(
+  conversation: ConversationDisplayTitleInput,
+  now = new Date()
+): string {
+  if (conversation.title) {
+    return conversation.title;
+  }
+
+  return isSameLocalDay(conversation.created, now)
+    ? "New Conversation"
+    : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`;
+}
 
 /**
  * content [][] structure is intended to allow retries (of agent messages) or edits (of user

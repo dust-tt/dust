@@ -12,6 +12,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
+import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -74,7 +75,7 @@ const getFeedbackDetails = async ({
 
     if (conversation) {
       workspaceName = auth.getNonNullableWorkspace().name;
-      conversationTitle = conversation.title ?? "Dust conversation";
+      conversationTitle = getConversationDisplayTitle(conversation.toJSON());
 
       const userWhoGaveFeedback = await UserResource.fetchById(
         payload.userWhoGaveFeedbackId

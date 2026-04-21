@@ -47,7 +47,10 @@ import {
   getProjectRoute,
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import {
+  type ConversationWithoutContentType,
+  getConversationDisplayTitle,
+} from "@app/types/assistant/conversation";
 import type { ProjectType, SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
@@ -90,7 +93,6 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import moment from "moment";
 import {
   memo,
   useCallback,
@@ -1224,11 +1226,7 @@ const ConversationListItem = memo(
       handleMenuOpenChange,
     } = useConversationMenu();
 
-    const conversationLabel =
-      conversation.title ??
-      (moment(conversation.created).isSame(moment(), "day")
-        ? "New Conversation"
-        : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
+    const conversationLabel = getConversationDisplayTitle(conversation);
 
     const handleDragStart = useCallback(
       (e: React.DragEvent) => {
