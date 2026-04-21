@@ -219,6 +219,7 @@ async function handler(
             : conversationRes.error;
         return apiErrorForConversation(req, res, error);
       }
+
       const conversation = conversationRes.value;
 
       void emitAuditLogEvent({
