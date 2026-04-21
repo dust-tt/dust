@@ -7,6 +7,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { WorkflowNotFoundError } from "@temporalio/client";
 
 import { wakeUpWorkflow } from "./workflows";
 
@@ -20,7 +21,7 @@ export function makeWakeUpWorkflowId({
   return `wakeup-${workspaceId}-${wakeUpId}`;
 }
 
-export async function createWakeUpTemporal({
+export async function launchOrScheduleWakeUpTemporalWorkflow({
   auth,
   wakeUp,
 }: {
@@ -73,6 +74,56 @@ export async function createWakeUpTemporal({
     }
 
     case "cron": {
+      //TODO(wakeup): Implement schedule creation
+
+      return new Err(new Error("Cron wake-ups are not supported yet."));
+    }
+
+    default:
+      return assertNever(wakeUp.scheduleConfig);
+  }
+}
+
+export async function cancelWakeUpTemporalWorkflow({
+  auth,
+  wakeUp,
+}: {
+  auth: Authenticator;
+  wakeUp: WakeUpType;
+}): Promise<Result<void, Error>> {
+  const client = await getTemporalClientForAgentNamespace();
+  const owner = auth.getNonNullableWorkspace();
+
+  switch (wakeUp.scheduleConfig.type) {
+    case "one_shot": {
+      const workflowId = makeWakeUpWorkflowId({
+        workspaceId: owner.sId,
+        wakeUpId: wakeUp.sId,
+      });
+
+      try {
+        await client.workflow.getHandle(workflowId).cancel();
+      } catch (error) {
+        if (!(error instanceof WorkflowNotFoundError)) {
+          logger.warn(
+            {
+              workspaceId: owner.sId,
+              wakeUpId: wakeUp.sId,
+              workflowId,
+              error,
+            },
+            "Failed cancelling wake-up workflow."
+          );
+          return new Err(normalizeError(error));
+        }
+      }
+
+      return new Ok(undefined);
+    }
+
+    case "cron": {
+      //TODO(wakeup): Implement schedule deletion
+
       return new Err(new Error("Cron wake-ups are not supported yet."));
     }
 
