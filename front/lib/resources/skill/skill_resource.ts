@@ -671,7 +671,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           dataSourceConfigsBySkillId[customSkill.id] ?? [];
 
         const skillMCPServerViews = removeNulls(
-          (skillMCPServerViewIds ?? []).map(
+          [...new Set(skillMCPServerViewIds ?? [])].map(
             (viewId) => mcpServerViewsById.get(viewId) ?? null
           )
         );
