@@ -30,8 +30,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 class TriggerNonRetryableError extends Error {}
-
-export class WakeUpNonRetryableError extends Error {}
+class WakeUpNonRetryableError extends Error {}
 
 async function createConversationForAgentConfiguration({
   auth,
