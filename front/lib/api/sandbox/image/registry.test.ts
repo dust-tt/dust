@@ -60,7 +60,7 @@ describe("sandbox image registry", () => {
 
     expect(dockerfile).toContain("netcat-openbsd nftables acl");
     expect(dockerfile).toContain(
-      "useradd --system --no-create-home --uid 9990 --shell /usr/sbin/nologin dust-fwd"
+      "useradd --system --no-create-home --uid 9990 --shell /bin/bash dust-fwd"
     );
     expect(dockerfile).toContain("mkdir -p /etc/dust");
     expect(dockerfile).toContain("command -v sudo >/dev/null 2>&1");
@@ -73,11 +73,11 @@ describe("sandbox image registry", () => {
     if (imageResult.isOk()) {
       expect(imageResult.value.baseImage).toEqual({
         type: "docker",
-        imageRef: "dust-sbx-bedrock:1.6.0",
+        imageRef: "dust-sbx-bedrock:1.7.0",
       });
       expect(imageResult.value.imageId).toEqual({
         imageName: "dust-base",
-        tag: "0.7.10",
+        tag: "0.7.11",
       });
     }
   });

@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   ca-certificates curl git unzip xz-utils gnupg lsb-release netcat-openbsd nftables acl \
   && rm -rf /var/lib/apt/lists/*
 
-RUN useradd --system --no-create-home --uid 9990 --shell /usr/sbin/nologin dust-fwd \
+RUN useradd --system --no-create-home --uid 9990 --shell /bin/bash dust-fwd \
   && mkdir -p /etc/dust \
   && chmod 755 /etc/dust
 
