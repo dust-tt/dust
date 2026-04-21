@@ -3,6 +3,7 @@ import { compactConversation } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { Authenticator } from "@app/lib/auth";
 import { CompactionMessageModel } from "@app/lib/models/agent/conversation";
+import { launchCompactionWorkflow } from "@app/temporal/agent_loop/client";
 import { runCompaction } from "@app/temporal/agent_loop/lib/compaction";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -12,6 +13,7 @@ import type {
   CompactionMessageType,
   ConversationType,
 } from "@app/types/assistant/conversation";
+import { isCompactionMessageType } from "@app/types/assistant/conversation";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -69,9 +71,11 @@ describe("runCompaction", () => {
     vi.clearAllMocks();
   });
 
-  async function createCompactionMessage(): Promise<CompactionMessageType> {
+  async function createCompactionMessage(
+    targetConversation: ConversationType = conversation
+  ): Promise<CompactionMessageType> {
     const result = await compactConversation(auth, {
-      conversation,
+      conversation: targetConversation,
       model: MODEL,
     });
 
@@ -82,6 +86,32 @@ describe("runCompaction", () => {
 
     return result.value.compactionMessage;
   }
+
+  it("forwards source overrides when launching compaction", async () => {
+    const result = await compactConversation(auth, {
+      conversation,
+      model: MODEL,
+      sourceConversationId: "conv_source",
+      sourceMessageRank: 3,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(vi.mocked(launchCompactionWorkflow)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auth,
+        conversationId: conversation.sId,
+        compactionMessageId: result.isOk()
+          ? result.value.compactionMessage.sId
+          : undefined,
+        compactionMessageVersion: result.isOk()
+          ? result.value.compactionMessage.version
+          : undefined,
+        model: MODEL,
+        sourceConversationId: "conv_source",
+        sourceMessageRank: 3,
+      })
+    );
+  });
 
   it("stores the run id before marking compaction as succeeded", async () => {
     const compactionMessage = await createCompactionMessage();
@@ -183,5 +213,101 @@ describe("runCompaction", () => {
     });
 
     expect(compactionMessageRow?.runIds).toEqual(["llm_trace_run_'quoted'"]);
+  });
+
+  it("summarizes a source snapshot into the target compaction message", async () => {
+    const sourceConversationWithoutContent = await ConversationFactory.create(
+      auth,
+      {
+        agentConfigurationId: agentConfig.sId,
+        messagesCreatedAt: [],
+      }
+    );
+
+    await ConversationFactory.createUserMessageWithRank({
+      auth,
+      workspace,
+      conversationId: sourceConversationWithoutContent.id,
+      rank: 0,
+      content: "source before cutoff",
+    });
+    await ConversationFactory.createUserMessageWithRank({
+      auth,
+      workspace,
+      conversationId: sourceConversationWithoutContent.id,
+      rank: 1,
+      content: "source at cutoff",
+    });
+    await ConversationFactory.createUserMessageWithRank({
+      auth,
+      workspace,
+      conversationId: sourceConversationWithoutContent.id,
+      rank: 2,
+      content: "source after cutoff",
+    });
+
+    const compactionMessage = await createCompactionMessage();
+    let summarizedText: string | null = null;
+
+    vi.mocked(runMultiActionsAgent).mockImplementationOnce(
+      async (_auth, _config, input) => {
+        const firstMessage = input.conversation.messages[0];
+        const firstContent = firstMessage?.content?.[0];
+
+        if (
+          !firstContent ||
+          typeof firstContent === "string" ||
+          firstContent.type !== "text"
+        ) {
+          throw new Error("Expected compaction prompt text input");
+        }
+
+        summarizedText = firstContent.text;
+
+        return new Ok({
+          actions: [],
+          generation:
+            "<analysis>Scratchpad.</analysis><summary>Summary from source.</summary>",
+        });
+      }
+    );
+
+    const result = await runCompaction(auth, {
+      conversationId: conversation.sId,
+      compactionMessageId: compactionMessage.sId,
+      compactionMessageVersion: compactionMessage.version,
+      model: MODEL,
+      sourceConversationId: sourceConversationWithoutContent.sId,
+      sourceMessageRank: 1,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(summarizedText).toContain("source before cutoff");
+    expect(summarizedText).toContain("source at cutoff");
+    expect(summarizedText).not.toContain("source after cutoff");
+
+    const updatedCompactionMessageRow = await CompactionMessageModel.findOne({
+      where: {
+        id: compactionMessage.compactionMessageId,
+        workspaceId: workspace.id,
+      },
+    });
+    expect(updatedCompactionMessageRow?.status).toBe("succeeded");
+    expect(updatedCompactionMessageRow?.content).toBe("Summary from source.");
+
+    const sourceConversation = await getConversation(
+      auth,
+      sourceConversationWithoutContent.sId
+    );
+    expect(sourceConversation.isOk()).toBe(true);
+    if (sourceConversation.isErr()) {
+      return;
+    }
+
+    expect(
+      sourceConversation.value.content
+        .flat()
+        .some((message) => isCompactionMessageType(message))
+    ).toBe(false);
   });
 });

@@ -68,41 +68,25 @@ function extractSummary(generation: string): string {
   return generation.replace(/<analysis>[\s\S]*?<\/analysis>/g, "").trim();
 }
 
-export async function runCompaction(
-  auth: Authenticator,
-  {
-    conversationId,
-    compactionMessageId,
-    compactionMessageVersion,
-    model,
-  }: {
-    conversationId: string;
-    compactionMessageId: string;
-    compactionMessageVersion: number;
-    model: SupportedModel;
-  }
-): Promise<Result<void, Error>> {
-  const owner = auth.getNonNullableWorkspace();
+function filterConversationContentUpToRank(
+  conversation: ConversationType,
+  maxRank: number
+): ConversationType {
+  return {
+    ...conversation,
+    content: conversation.content.filter((versions) => {
+      const latestVersion = versions[versions.length - 1];
+      return latestVersion ? latestVersion.rank <= maxRank : false;
+    }),
+  };
+}
 
-  const conversationRes = await getConversation(
-    auth,
-    conversationId,
-    false,
-    null,
-    PREVIOUS_INTERACTIONS_TO_PRESERVE + 1 // X previous + the last one
-  );
-  if (conversationRes.isErr()) {
-    return conversationRes;
-  }
-  const conversation = conversationRes.value;
-
-  let compactionMessage: CompactionMessageType | undefined;
-
-  for (
-    let i = conversation.content.length - 1;
-    i >= 0 && !compactionMessage;
-    i--
-  ) {
+function findCompactionMessage(
+  conversation: ConversationType,
+  compactionMessageId: string,
+  compactionMessageVersion: number
+): CompactionMessageType | undefined {
+  for (let i = conversation.content.length - 1; i >= 0; i--) {
     const messageGroup = conversation.content[i];
     for (const msg of messageGroup) {
       if (
@@ -110,11 +94,58 @@ export async function runCompaction(
         msg.sId === compactionMessageId &&
         msg.version === compactionMessageVersion
       ) {
-        compactionMessage = msg;
-        break;
+        return msg;
       }
     }
   }
+
+  return undefined;
+}
+
+export async function runCompaction(
+  auth: Authenticator,
+  {
+    conversationId,
+    compactionMessageId,
+    compactionMessageVersion,
+    model,
+    sourceConversationId,
+    sourceMessageRank,
+  }: {
+    conversationId: string;
+    compactionMessageId: string;
+    compactionMessageVersion: number;
+    model: SupportedModel;
+  } & (
+    | {
+        sourceConversationId?: undefined;
+        sourceMessageRank?: undefined;
+      }
+    | {
+        sourceConversationId: string;
+        sourceMessageRank: number;
+      }
+  )
+): Promise<Result<void, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const targetConversationRes = await getConversation(
+    auth,
+    conversationId,
+    false,
+    null,
+    PREVIOUS_INTERACTIONS_TO_PRESERVE + 1 // X previous + the last one
+  );
+  if (targetConversationRes.isErr()) {
+    return targetConversationRes;
+  }
+  const targetConversation = targetConversationRes.value;
+
+  const compactionMessage = findCompactionMessage(
+    targetConversation,
+    compactionMessageId,
+    compactionMessageVersion
+  );
 
   if (!compactionMessage) {
     return new Err(new Error("Compaction message not found"));
@@ -128,8 +159,32 @@ export async function runCompaction(
     );
   }
 
+  let sourceConversation = targetConversation;
+  if (sourceConversationId && sourceConversationId !== conversationId) {
+    const sourceConversationRes = await getConversation(
+      auth,
+      sourceConversationId,
+      false,
+      null,
+      PREVIOUS_INTERACTIONS_TO_PRESERVE + 1
+    );
+    if (sourceConversationRes.isErr()) {
+      return sourceConversationRes;
+    }
+
+    sourceConversation = sourceConversationRes.value;
+  }
+
+  if (sourceMessageRank !== undefined) {
+    sourceConversation = filterConversationContentUpToRank(
+      sourceConversation,
+      sourceMessageRank
+    );
+  }
+
   const summaryRes = await generateCompactionSummary(auth, {
-    conversation,
+    sourceConversation,
+    targetConversationId: targetConversation.sId,
     compactionMessage,
     model,
   });
@@ -142,7 +197,13 @@ export async function runCompaction(
     status = "succeeded";
 
     logger.info(
-      { workspaceId: owner.sId, conversationId, compactionMessageId, status },
+      {
+        workspaceId: owner.sId,
+        conversationId,
+        sourceConversationId,
+        compactionMessageId,
+        status,
+      },
       "Compaction generation succeeded"
     );
   } else {
@@ -153,6 +214,7 @@ export async function runCompaction(
       {
         workspaceId: owner.sId,
         conversationId,
+        sourceConversationId,
         compactionMessageId,
         error: summaryRes.error,
       },
@@ -161,7 +223,7 @@ export async function runCompaction(
   }
 
   const result = await updateCompactionMessageWithContentAndFinalStatus(auth, {
-    conversation,
+    conversation: targetConversation,
     compactionMessage,
     status,
     content,
@@ -177,7 +239,7 @@ export async function runCompaction(
       messageId: compactionMessage.sId,
       message: compactionMessage,
     },
-    { conversationId }
+    { conversationId: targetConversation.sId }
   );
 
   return new Ok(undefined);
@@ -186,11 +248,13 @@ export async function runCompaction(
 async function generateCompactionSummary(
   auth: Authenticator,
   {
-    conversation,
+    sourceConversation,
+    targetConversationId,
     compactionMessage,
     model,
   }: {
-    conversation: ConversationType;
+    sourceConversation: ConversationType;
+    targetConversationId: string;
     compactionMessage: CompactionMessageType;
     model: SupportedModel;
   }
@@ -199,7 +263,7 @@ async function generateCompactionSummary(
 
   // renderConversationAsText stops at the last succeeded compaction boundary by default and skips
   // running agent messages, producing exactly the messages that need to be summarized.
-  const renderedMessages = renderConversationAsText(conversation, {
+  const renderedMessages = renderConversationAsText(sourceConversation, {
     includeTimestamps: true,
     includeActions: true,
     includeActionDetails: true,
@@ -244,7 +308,7 @@ async function generateCompactionSummary(
     {
       context: {
         operationType: "compaction",
-        conversationId: conversation.sId,
+        conversationId: targetConversationId,
         userId: auth.user()?.sId,
         workspaceId: owner.sId,
       },
