@@ -709,7 +709,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
             agentConfigurationId: trigger.agentConfigurationId,
             error: r.error,
           },
-          `Failed to remove temporal workflow while disabling trigger ${trigger.sId}`
+          "Failed to remove Temporal workflow while disabling trigger"
         );
       }
     }
