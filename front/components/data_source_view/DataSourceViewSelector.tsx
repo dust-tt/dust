@@ -28,6 +28,7 @@ import {
   isRemoteDatabase,
   isWebsite,
 } from "@app/lib/data_sources";
+import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import type { UseInfiniteContentNodes } from "@app/lib/swr/data_source_views";
 import { useInfiniteDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpacesSearch } from "@app/lib/swr/spaces";
@@ -1025,6 +1026,11 @@ export function DataSourceViewSelector({
               )
             }
             defaultExpandedIds={defaultExpandedIds}
+            getLabel={(n) =>
+              getDisplayTitleForDataSourceViewContentNode(
+                n as DataSourceViewContentNode
+              )
+            }
             {...(selectionMode === "radio"
               ? { "data-selection-mode": "radio" }
               : {})}
