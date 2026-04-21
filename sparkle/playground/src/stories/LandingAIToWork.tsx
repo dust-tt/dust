@@ -106,7 +106,7 @@ const LOG: LogEntry[] = [
     kind: "message",
     from: ELENA,
     text: "@Aria — check Ares-7 telemetry pipeline. Something feels off since last night.",
-    durationMs: 3200,
+    durationMs: 0,
   },
   {
     id: 2,
@@ -470,10 +470,10 @@ function LogRow({
   const isAgentSender = entry.from.kind === "agent";
 
   if (isLocutor) {
-    // Elena: blue bubble, right-aligned, avatar + name left-aligned inside
+    // Elena: blue bubble, left-aligned (same layout as interlocutor)
     return (
-      <div className="s-flex s-justify-end" style={animStyle}>
-        <div className="s-max-w-[85%] s-rounded-2xl s-border s-border-blue-300/30 s-bg-blue-500/70 s-px-3 s-py-3 s-shadow-md s-backdrop-blur-md">
+      <div className="s-flex s-max-w-[85%]" style={animStyle}>
+        <div className="s-min-w-0 s-rounded-2xl s-border s-border-blue-300/30 s-bg-blue-500/70 s-px-3 s-py-3 s-shadow-md s-backdrop-blur-md">
           <div className="s-mb-1 s-flex s-items-center s-gap-1.5">
             <ActorAvatar actor={entry.from} size="sm" />
             <span className="s-text-sm s-font-semibold s-text-blue-100">
