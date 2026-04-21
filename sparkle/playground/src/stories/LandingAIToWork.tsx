@@ -510,8 +510,6 @@ function LogRow({
 
 // ─── Activity popover (cursor-following) ─────────────────────────────────────
 
-const POPOVER_HEIGHT = 380;
-
 function ActivityPopover({
   pagePos,
   visible,
@@ -521,17 +519,6 @@ function ActivityPopover({
 }) {
   const [tick, setTick] = useState(0);
   const [mounted, setMounted] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  // Smooth-scroll to bottom sentinel on each new entry
-  useEffect(() => {
-    if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-      });
-    }
-  }, [tick]);
 
   useEffect(() => {
     if (visible) {
@@ -596,19 +583,16 @@ function ActivityPopover({
         className="s-pointer-events-none s-fixed s-z-50"
         style={{
           left: pagePos.x + 16,
-          top: pagePos.y - 12 - POPOVER_HEIGHT,
+          bottom: window.innerHeight - pagePos.y + 12,
         }}
       >
         <div className="s-w-96">
-          {/* overflow: scroll (not hidden) so scrollIntoView works */}
           <div
             className="activity-scroll"
             style={{
-              height: POPOVER_HEIGHT,
-              overflowY: "scroll",
+              overflowY: "visible",
               display: "flex",
               flexDirection: "column",
-              justifyContent: "flex-end",
             }}
           >
             <div className="s-flex s-flex-col s-gap-1.5 s-px-0.5 s-py-0.5">
@@ -620,8 +604,6 @@ function ActivityPopover({
                   prevEntry={visibleEntries[i - 1]}
                 />
               ))}
-              {/* Sentinel — smooth scroll target */}
-              <div ref={bottomRef} style={{ height: 1 }} />
             </div>
           </div>
         </div>
