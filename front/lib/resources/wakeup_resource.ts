@@ -4,7 +4,7 @@ import type { ConversationResource } from "@app/lib/resources/conversation_resou
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { makeSId } from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
@@ -123,6 +123,24 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     return new Ok(wakeUp);
   }
 
+  static async fetchById(
+    auth: Authenticator,
+    wakeUpId: string
+  ): Promise<WakeUpResource | null> {
+    const modelId = getResourceIdFromSId(wakeUpId);
+    if (!modelId) {
+      return null;
+    }
+
+    const [wakeUp] = await this.baseFetch(auth, {
+      where: {
+        id: modelId,
+      },
+    });
+
+    return wakeUp ?? null;
+  }
+
   static async listByConversation(
     auth: Authenticator,
     conversation: ConversationWithoutContentType
@@ -196,22 +214,49 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       return temporalResult;
     }
 
+    await this.markCancelled(auth, { transaction });
+
+    return new Ok(undefined);
+  }
+
+  async markCancelled(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    if (this.status === "cancelled") {
+      return;
+    }
+
     await this.update(
       {
         status: "cancelled",
       },
       transaction
     );
+  }
 
-    return new Ok(undefined);
+  async markExpired(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    if (this.status === "expired") {
+      return;
+    }
+
+    await this.update(
+      {
+        status: "expired",
+      },
+      transaction
+    );
   }
 
   async markFired(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<void, Error>> {
+  ): Promise<void> {
     if (this.status !== "scheduled") {
-      return new Ok(undefined);
+      return;
     }
 
     const nextStatus: WakeUpStatus =
@@ -224,8 +269,6 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       },
       transaction
     );
-
-    return new Ok(undefined);
   }
 
   async delete(
