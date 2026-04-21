@@ -697,7 +697,13 @@ const PORTRAITS: Portrait[] = [
   },
 ];
 
-function PortraitCard({ portrait }: { portrait: Portrait }) {
+function PortraitCard({
+  portrait,
+  aspectRatio = "1 / 1",
+}: {
+  portrait: Portrait;
+  aspectRatio?: string;
+}) {
   const [hovered, setHovered] = useState(false);
   // card-relative coords for the plain pill
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
@@ -730,7 +736,7 @@ function PortraitCard({ portrait }: { portrait: Portrait }) {
     <div
       ref={cardRef}
       className="s-relative s-overflow-hidden s-rounded-2xl s-cursor-none"
-      style={{ aspectRatio: "1 / 1" }}
+      style={{ aspectRatio }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onMouseMove={handleMouseMove}
@@ -805,9 +811,71 @@ function PortraitCard({ portrait }: { portrait: Portrait }) {
   );
 }
 
+// ─── Layout variants ──────────────────────────────────────────────────────────
+
+type LayoutVariant = "grid-4x3" | "row-portrait" | "grid-6x2";
+
+const LAYOUTS: { id: LayoutVariant; label: string }[] = [
+  { id: "grid-4x3", label: "4 × 3 grid" },
+  { id: "row-portrait", label: "Single row" },
+  { id: "grid-6x2", label: "6 × 2 wide" },
+];
+
+function MosaicGrid({ layout }: { layout: LayoutVariant }) {
+  if (layout === "row-portrait") {
+    return (
+      <div className="s-w-full s-overflow-x-auto s-pb-2">
+        <div style={{ display: "flex", gap: "12px", width: "max-content" }}>
+          {PORTRAITS.map((portrait) => (
+            <div key={portrait.id} style={{ width: 160, flexShrink: 0 }}>
+              <PortraitCard portrait={portrait} aspectRatio="3 / 4" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (layout === "grid-6x2") {
+    return (
+      <div
+        className="s-w-full"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(6, 1fr)",
+          gap: "12px",
+          maxWidth: "none",
+        }}
+      >
+        {PORTRAITS.map((portrait) => (
+          <PortraitCard key={portrait.id} portrait={portrait} />
+        ))}
+      </div>
+    );
+  }
+
+  // Default: 4 × 3 squares
+  return (
+    <div
+      className="s-w-full s-max-w-4xl"
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(4, 1fr)",
+        gap: "12px",
+      }}
+    >
+      {PORTRAITS.map((portrait) => (
+        <PortraitCard key={portrait.id} portrait={portrait} />
+      ))}
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LandingAIToWork() {
+  const [layout, setLayout] = useState<LayoutVariant>("grid-4x3");
+
   return (
     <div className="s-flex s-min-h-screen s-flex-col s-items-center s-justify-center s-bg-white s-px-8 s-py-16">
       <style>{`
@@ -824,24 +892,31 @@ export default function LandingAIToWork() {
           animation: radarPulse 3.2s ease-out infinite;
         }
       `}</style>
+
       <div className="s-mb-12 s-max-w-3xl s-text-center">
         <h2 className="s-text-4xl s-font-bold s-tracking-tight s-text-slate-900">
           AI that works for everyone on your team — and brings everyone closer.
         </h2>
       </div>
 
-      <div
-        className="s-w-full s-max-w-4xl"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: "12px",
-        }}
-      >
-        {PORTRAITS.map((portrait) => (
-          <PortraitCard key={portrait.id} portrait={portrait} />
+      {/* Layout selector */}
+      <div className="s-mb-8 s-flex s-gap-2">
+        {LAYOUTS.map((l) => (
+          <button
+            key={l.id}
+            onClick={() => setLayout(l.id)}
+            className={`s-rounded-lg s-px-4 s-py-1.5 s-text-sm s-font-medium s-transition-colors ${
+              layout === l.id
+                ? "s-bg-slate-900 s-text-white"
+                : "s-bg-slate-100 s-text-slate-600 hover:s-bg-slate-200"
+            }`}
+          >
+            {l.label}
+          </button>
         ))}
       </div>
+
+      <MosaicGrid layout={layout} />
     </div>
   );
 }
