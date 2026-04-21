@@ -66,6 +66,15 @@ export async function launchOrScheduleWakeUpTemporalWorkflow(
             wakeUpId: wakeUp.sId,
           },
         });
+        logger.info(
+          {
+            workspaceId: owner.sId,
+            wakeUpId: wakeUp.sId,
+            workflowId,
+            wakeUp,
+          },
+          "Created new wake-up workflow (one_shot)."
+        );
       } catch (error) {
         // We log and error even if this is a WorkflowExecutionAlreadyStartedError, because it means
         // that the existing workflow is still running, which is unexpected (since this is a
@@ -77,12 +86,11 @@ export async function launchOrScheduleWakeUpTemporalWorkflow(
             workflowId,
             error,
           },
-          "Failed starting wake-up workflow."
+          "Failed starting wake-up workflow (one_shot)."
         );
 
         return new Err(normalizeError(error));
       }
-
       return new Ok(undefined);
     }
 
@@ -90,13 +98,6 @@ export async function launchOrScheduleWakeUpTemporalWorkflow(
       const scheduleId = makeWakeUpScheduleId({
         workspaceId: owner.sId,
         wakeUpId: wakeUp.sId,
-      });
-
-      const childLogger = logger.child({
-        workspaceId: owner.sId,
-        wakeUpId: wakeUp.sId,
-        scheduleId,
-        wakeUp,
       });
 
       const scheduleOptions: ScheduleOptions = {
@@ -113,35 +114,31 @@ export async function launchOrScheduleWakeUpTemporalWorkflow(
         spec: buildCronScheduleSpec(wakeUp.scheduleConfig),
       };
 
-      const existingSchedule = client.schedule.getHandle(scheduleId);
-      try {
-        await existingSchedule.update((previous) => {
-          return {
-            ...scheduleOptions,
-            state: previous.state,
-          };
-        });
-
-        childLogger.info("Updated existing wake-up schedule.");
-        return new Ok(undefined);
-      } catch (error) {
-        if (!(error instanceof ScheduleNotFoundError)) {
-          childLogger.error(
-            { error },
-            "Failed to update existing wake-up schedule."
-          );
-          return new Err(normalizeError(error));
-        }
-      }
-
       try {
         await client.schedule.create(scheduleOptions);
-        childLogger.info("Created new wake-up schedule.");
-        return new Ok(undefined);
+        logger.info(
+          {
+            workspaceId: owner.sId,
+            wakeUpId: wakeUp.sId,
+            scheduleId,
+            wakeUp,
+          },
+          "Created new wake-up schedule (cron)."
+        );
       } catch (error) {
-        childLogger.error({ error }, "Failed to create wake-up schedule.");
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            wakeUpId: wakeUp.sId,
+            scheduleId,
+            wakeUp,
+            error,
+          },
+          "Failed to create wake-up schedule (cron)."
+        );
         return new Err(normalizeError(error));
       }
+      return new Ok(undefined);
     }
 
     default:
