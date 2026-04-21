@@ -56,17 +56,20 @@ export async function getAgentConfigurationAsYAMLConfig(
     });
   }
 
-  const [
-    { dataSourceViews, mcpServerViews },
-    skills,
-    editorsResult,
-    spaceResources,
-  ] = await Promise.all([
-    getAccessibleSourcesAndAppsForActions(auth),
-    SkillResource.listByAgentConfiguration(auth, agentConfiguration),
-    GroupResource.findEditorGroupForAgent(auth, agentConfiguration),
-    SpaceResource.fetchByIds(auth, agentConfiguration.requestedSpaceIds),
-  ]);
+  const { dataSourceViews, mcpServerViews } =
+    await getAccessibleSourcesAndAppsForActions(auth);
+  const skills = await SkillResource.listByAgentConfiguration(
+    auth,
+    agentConfiguration
+  );
+  const editorsResult = await GroupResource.findEditorGroupForAgent(
+    auth,
+    agentConfiguration
+  );
+  const spaceResources = await SpaceResource.fetchByIds(
+    auth,
+    agentConfiguration.requestedSpaceIds
+  );
 
   const spaces = spaceResources.map((space) => ({
     space_id: space.sId,
@@ -89,10 +92,14 @@ export async function getAgentConfigurationAsYAMLConfig(
   let slackChannels: { slackChannelId: string; slackChannelName: string }[] =
     [];
 
-  const [[slackDs], [slackBotDs]] = await Promise.all([
-    DataSourceResource.listByConnectorProvider(auth, "slack"),
-    DataSourceResource.listByConnectorProvider(auth, "slack_bot"),
-  ]);
+  const [slackDs] = await DataSourceResource.listByConnectorProvider(
+    auth,
+    "slack"
+  );
+  const [slackBotDs] = await DataSourceResource.listByConnectorProvider(
+    auth,
+    "slack_bot"
+  );
 
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
