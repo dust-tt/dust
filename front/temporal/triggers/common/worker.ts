@@ -8,7 +8,7 @@ import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 
-import * as activities from "./activities";
+import * as activities from "../activities";
 import { QUEUE_NAME } from "./config";
 
 export async function runAgentTriggerWorker() {
@@ -17,7 +17,7 @@ export async function runAgentTriggerWorker() {
   const worker = await Worker.create({
     ...getWorkflowConfig({
       workerName: "agent_schedule",
-      getWorkflowsPath: () => require.resolve("./workflows"),
+      getWorkflowsPath: () => require.resolve("../workflows"),
     }),
     activities,
     taskQueue: QUEUE_NAME,
