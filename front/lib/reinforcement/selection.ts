@@ -1,5 +1,4 @@
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMessageSkillModel } from "@app/lib/models/skill/conversation_skill";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -9,7 +8,6 @@ import { daysAgo } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Op } from "sequelize";
 
 import {
   DEFAULT_MAX_CONVERSATIONS_PER_RUN,
@@ -122,14 +120,10 @@ async function discoverConversations(
     return { conversationSkillMap: new Map(), convModelIdToId: new Map() };
   }
 
-  // Query AgentMessageSkillModel for eligible custom skills.
-  const skillRecords = await AgentMessageSkillModel.findAll({
-    attributes: ["conversationId", "customSkillId", "agentConfigurationId"],
-    where: {
-      workspaceId: workspace.id,
-      customSkillId: { [Op.in]: [...eligibleSkillIds] },
-    },
-  });
+  const skillRecords =
+    await SkillResource.listAgentMessageSkillsByCustomSkillModelIds(auth, [
+      ...eligibleSkillIds,
+    ]);
 
   if (skillRecords.length === 0) {
     return { conversationSkillMap: new Map(), convModelIdToId: new Map() };
@@ -152,7 +146,9 @@ async function discoverConversations(
   }
 
   // Get unique conversation IDs and fetch qualifying conversations.
-  const allConvIds = [...new Set(filteredRecords.map((r) => r.conversationId))];
+  const allConvIds = [
+    ...new Set(filteredRecords.map((r) => r.conversationModelId)),
+  ];
 
   const conversations = await ConversationResource.fetchByModelIds(
     auth,
@@ -168,18 +164,13 @@ async function discoverConversations(
   const conversationSkillMap = new Map<ModelId, Set<string>>();
 
   for (const record of filteredRecords) {
-    const convId = convModelIdToId.get(record.conversationId);
+    const convId = convModelIdToId.get(record.conversationModelId);
     if (!convId) {
       continue;
     }
 
-    const customSkillId = record.customSkillId;
-    if (!customSkillId) {
-      continue;
-    }
-
     const localSkillId = makeSId("skill", {
-      id: customSkillId,
+      id: record.customSkillModelId,
       workspaceId: workspace.id,
     });
 
@@ -188,10 +179,10 @@ async function discoverConversations(
       continue;
     }
 
-    if (!conversationSkillMap.has(record.conversationId)) {
-      conversationSkillMap.set(record.conversationId, new Set());
+    if (!conversationSkillMap.has(record.conversationModelId)) {
+      conversationSkillMap.set(record.conversationModelId, new Set());
     }
-    conversationSkillMap.get(record.conversationId)!.add(localSkillId);
+    conversationSkillMap.get(record.conversationModelId)!.add(localSkillId);
   }
 
   logger.info(
