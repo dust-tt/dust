@@ -1791,7 +1791,7 @@ async function disableTriggersForNonEditors(
     const group = editorGroupsByAgentId[trigger.agentConfigurationId];
     const editorModelIds = group
       ? editorModelIdsByGroupModelId.get(group.id)
-      : undefined;
+      : null;
     return !editorModelIds || !editorModelIds.has(trigger.editor);
   });
 
