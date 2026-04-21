@@ -85,14 +85,60 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     });
   }
 
-  const hasReadableParentConversation =
-    !!forkedFrom && "parentConversationTitle" in forkedFrom;
-  const parentConversationTitle = hasReadableParentConversation
-    ? (forkedFrom.parentConversationTitle ?? UNTITLED_CONVERSATION_TITLE)
-    : "Parent conversation";
-  const forkedFromTooltipLabel = hasReadableParentConversation
-    ? `This conversation was branched from "${parentConversationTitle}".`
-    : "This conversation was branched from a parent conversation you can no longer access.";
+  const ForkedFromChip = () => {
+    if (!forkedFrom) {
+      return null;
+    }
+
+    if ("parentConversationTitle" in forkedFrom) {
+      const readableParentConversationTitle =
+        forkedFrom.parentConversationTitle ?? UNTITLED_CONVERSATION_TITLE;
+
+      return (
+        <div className="flex h-9 items-center">
+          <Tooltip
+            label={`This conversation was branched from "${readableParentConversationTitle}".`}
+            tooltipTriggerAsChild
+            trigger={
+              <span className="inline-flex h-9 items-center">
+                <Chip
+                  className="max-w-44 shrink-0 dd-privacy-mask"
+                  color="primary"
+                  href={getConversationRoute(
+                    owner.sId,
+                    forkedFrom.parentConversationId
+                  )}
+                  icon={ActionGitBranchIcon}
+                  label={readableParentConversationTitle}
+                  size="mini"
+                />
+              </span>
+            }
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex h-9 items-center">
+        <Tooltip
+          label="This conversation was branched from a parent conversation you can no longer access."
+          tooltipTriggerAsChild
+          trigger={
+            <span className="inline-flex h-9 items-center">
+              <Chip
+                className="max-w-44 shrink-0"
+                color="primary"
+                icon={ActionGitBranchIcon}
+                label="Parent conversation"
+                size="mini"
+              />
+            </span>
+          }
+        />
+      </div>
+    );
+  };
 
   return (
     <AppLayoutTitle>
@@ -109,39 +155,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
               truncateLengthEnd={120}
             />
           </div>
-          {forkedFrom && (
-            <div className="flex h-9 items-center">
-              <Tooltip
-                label={forkedFromTooltipLabel}
-                tooltipTriggerAsChild
-                trigger={
-                  <span className="inline-flex h-9 items-center">
-                    {hasReadableParentConversation ? (
-                      <Chip
-                        className="max-w-44 shrink-0 dd-privacy-mask"
-                        color="primary"
-                        href={getConversationRoute(
-                          owner.sId,
-                          forkedFrom.parentConversationId
-                        )}
-                        icon={ActionGitBranchIcon}
-                        label={parentConversationTitle}
-                        size="mini"
-                      />
-                    ) : (
-                      <Chip
-                        className="max-w-44 shrink-0"
-                        color="primary"
-                        icon={ActionGitBranchIcon}
-                        label={parentConversationTitle}
-                        size="mini"
-                      />
-                    )}
-                  </span>
-                }
-              />
-            </div>
-          )}
+          <ForkedFromChip />
         </div>
         <EditConversationTitleDialog
           isOpen={showRenameDialog}
