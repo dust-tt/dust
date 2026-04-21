@@ -2,6 +2,7 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
+import { WEBHOOK_SERVICES } from "@app/lib/api/triggers/built-in-webhooks/services";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -12,10 +13,7 @@ import type {
   WebhookProvider,
   WebhookServiceDataForProvider,
 } from "@app/types/triggers/webhooks";
-import {
-  isWebhookProvider,
-  WEBHOOK_PRESETS,
-} from "@app/types/triggers/webhooks";
+import { isWebhookProvider } from "@app/types/triggers/webhooks";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetServiceDataResponseType<
@@ -130,9 +128,7 @@ async function handler(
 
       // Call getServiceData on the webhook service
       const serviceDataResult =
-        await WEBHOOK_PRESETS[provider].webhookService.getServiceData(
-          accessToken
-        );
+        await WEBHOOK_SERVICES[provider].getServiceData(accessToken);
 
       if (serviceDataResult.isErr()) {
         return apiError(req, res, {

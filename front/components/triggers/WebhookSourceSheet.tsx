@@ -34,6 +34,7 @@ import type {
   WebhookSourceWithSystemViewType,
 } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/types/triggers/webhooks_client_side";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { MultiPageSheetPage, RegularButtonProps } from "@dust-tt/sparkle";
 import {
@@ -255,7 +256,7 @@ function WebhookSourceSheetContent({
         ...(remoteMetadata ? { remoteMetadata } : {}),
         ...(connectionId ? { connectionId } : {}),
         icon: normalizeWebhookIcon(
-          data.provider ? WEBHOOK_PRESETS[data.provider].icon : null
+          data.provider ? CLIENT_SIDE_WEBHOOK_PRESETS[data.provider].icon : null
         ),
       };
 
@@ -560,7 +561,9 @@ function WebhookSourceSheetContent({
         description: "",
         icon: getIcon(
           normalizeWebhookIcon(
-            mode.provider ? WEBHOOK_PRESETS[mode.provider].icon : null
+            mode.provider
+              ? CLIENT_SIDE_WEBHOOK_PRESETS[mode.provider].icon
+              : null
           )
         ),
         content: (
@@ -590,7 +593,9 @@ function WebhookSourceSheetContent({
           ? () => <WebhookSourceViewIcon webhookSourceView={systemView} />
           : getIcon(
               normalizeWebhookIcon(
-                mode.provider ? WEBHOOK_PRESETS[mode.provider].icon : null
+                mode.provider
+                  ? CLIENT_SIDE_WEBHOOK_PRESETS[mode.provider].icon
+                  : null
               )
             ),
         content:

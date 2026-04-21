@@ -1,6 +1,6 @@
 import config from "@app/lib/api/config";
+import { LinearClient } from "@app/lib/api/triggers/built-in-webhooks/linear/linear_client";
 import type { Authenticator } from "@app/lib/auth";
-import { LinearClient } from "@app/lib/triggers/built-in-webhooks/linear/linear_client";
 import type { LinearAdditionalData } from "@app/lib/triggers/built-in-webhooks/linear/types";
 import {
   isLinearWebhookCreateMetadata,

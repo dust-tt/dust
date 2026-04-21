@@ -1,3 +1,4 @@
+import { WEBHOOK_SERVICES } from "@app/lib/api/triggers/built-in-webhooks/services";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -7,7 +8,6 @@ import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_v
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
-import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import assert from "assert";
 import type { Transaction } from "sequelize";
 
@@ -33,7 +33,7 @@ export async function deleteWebhookSource(
     webhookSource.remoteMetadata &&
     webhookSource.oauthConnectionId
   ) {
-    const service = WEBHOOK_PRESETS[webhookSource.provider].webhookService;
+    const service = WEBHOOK_SERVICES[webhookSource.provider];
     const result = await service.deleteWebhooks({
       auth,
       connectionId: webhookSource.oauthConnectionId,

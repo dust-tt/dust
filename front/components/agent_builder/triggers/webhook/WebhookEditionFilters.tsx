@@ -9,7 +9,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type {
-  PresetWebhook,
+  BaseWebhookPreset,
   WebhookEvent,
 } from "@app/types/triggers/webhooks_source_preset";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -29,7 +29,7 @@ import { useController, useFormContext, useWatch } from "react-hook-form";
 interface WebhookEditionFiltersProps {
   isEditor: boolean;
   webhookSourceView: WebhookSourceViewType | null;
-  selectedPreset: PresetWebhook | null;
+  selectedPreset: BaseWebhookPreset | null;
   availableEvents: WebhookEvent[];
   workspace: LightWorkspaceType;
 }

@@ -22,9 +22,8 @@ import {
   releaseExample,
   releaseSchema,
 } from "@app/lib/triggers/built-in-webhooks/github/schemas/release";
-import { GitHubWebhookService } from "@app/lib/triggers/built-in-webhooks/github/service";
 import type {
-  PresetWebhook,
+  BaseWebhookPreset,
   WebhookEvent,
 } from "@app/types/triggers/webhooks_source_preset";
 
@@ -81,7 +80,7 @@ const GITHUB_RELEASE_EVENT: WebhookEvent = {
   sample: releaseExample,
 };
 
-export const GITHUB_WEBHOOK_PRESET: PresetWebhook<"github"> = {
+export const GITHUB_WEBHOOK_PRESET: BaseWebhookPreset = {
   name: "GitHub",
   eventCheck: {
     type: "headers",
@@ -96,10 +95,8 @@ export const GITHUB_WEBHOOK_PRESET: PresetWebhook<"github"> = {
     GITHUB_PROJECTS_V2_ITEM_EVENT,
   ],
   event_blacklist: ["ping"],
-  icon: "GithubLogo",
   description:
     "Receive events from GitHub such as creation or edition of issues or pull requests.",
   filterGenerationInstructions: null,
   webhookPageUrl: `https://github.com/settings/connections/applications/${process.env.NEXT_PUBLIC_OAUTH_GITHUB_APP_WEBHOOKS_CLIENT_ID}`,
-  webhookService: new GitHubWebhookService(),
 };

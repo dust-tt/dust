@@ -3,10 +3,8 @@ import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhookSource";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
-import {
-  isWebhookProvider,
-  WEBHOOK_PRESETS,
-} from "@app/types/triggers/webhooks";
+import { isWebhookProvider } from "@app/types/triggers/webhooks";
+import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/types/triggers/webhooks_client_side";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -39,7 +37,7 @@ export const AddTriggerMenu = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {Object.entries(WEBHOOK_PRESETS)
+        {Object.entries(CLIENT_SIDE_WEBHOOK_PRESETS)
           .filter(([_, { featureFlag }]) => {
             return featureFlag === undefined || hasFeature(featureFlag);
           })

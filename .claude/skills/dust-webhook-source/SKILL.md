@@ -5,9 +5,18 @@ description: Implement a new built-in webhook source provider in `front`. Use wh
 
 # Front Webhook Sources
 
-Implement built-in webhook providers under `front/lib/triggers/built-in-webhooks/<provider>/`.
+Implement built-in webhook providers across two trees:
+
+- `front/lib/triggers/built-in-webhooks/<provider>/` — UI-safe: presets, schemas, types, React components
+- `front/lib/api/triggers/built-in-webhooks/<provider>/` — server-only: service + provider HTTP client
+
+The boundary is load-bearing. Anything reached from the UI must never transitively import
+`@app/lib/api/config`, `OAuthAPI`, or other backend modules — putting server code under `lib/api/`
+is how we enforce that. Do not re-introduce a `webhookService` field on the preset or instantiate
+the service from `preset.ts`: the leak that motivated the split will come right back.
+
 The work spans provider research, OAuth prerequisites, typed remote metadata, a provider client,
-the remote webhook service, preset registration, and the setup/details UI.
+the remote webhook service, preset registration, services-map registration, and the setup/details UI.
 
 ## Hard Prerequisites
 
@@ -40,12 +49,13 @@ This research determines the metadata types, client methods, event schemas, and 
 Minimal implementation:
 
 - `front/types/triggers/webhooks.ts`
-- `front/types/triggers/webhooks_ui.ts`
+- `front/types/triggers/webhooks_client_side.ts`
+- `front/lib/api/triggers/built-in-webhooks/services.ts` (register the service instance)
+- `front/lib/api/triggers/built-in-webhooks/<provider>/<provider>_client.ts` (server-only)
+- `front/lib/api/triggers/built-in-webhooks/<provider>/service.ts` (server-only)
 - `front/lib/triggers/built-in-webhooks/<provider>/types.ts`
-- `front/lib/triggers/built-in-webhooks/<provider>/<provider>_client.ts`
-- `front/lib/triggers/built-in-webhooks/<provider>/service.ts`
 - `front/lib/triggers/built-in-webhooks/<provider>/preset.ts`
-- `front/lib/triggers/built-in-webhooks/<provider>/preset_ui.ts`
+- `front/lib/triggers/built-in-webhooks/<provider>/client_side.ts`
 - `front/lib/triggers/built-in-webhooks/<provider>/schemas/*`
 - `front/lib/triggers/built-in-webhooks/<provider>/components/*`
 
@@ -65,10 +75,16 @@ In `front/types/triggers/webhooks.ts`:
 - extend `WebhookProviderServiceDataMap` if the provider needs extra OAuth-fetched data
 - register the preset in `WEBHOOK_PRESETS`
 
-In `front/types/triggers/webhooks_ui.ts`:
+In `front/types/triggers/webhooks_client_side.ts`:
 
-- import the provider UI preset
-- register it in `WEBHOOK_PRESETS_UI`
+- import the provider client-side preset
+- register it in `CLIENT_SIDE_WEBHOOK_PRESETS`
+
+In `front/lib/api/triggers/built-in-webhooks/services.ts`:
+
+- import the provider service class (from `lib/api/...`, not `lib/...`)
+- register an instance in `WEBHOOK_SERVICES`. This map is the server-only dispatch used by
+  webhook create/delete/service-data endpoints. It must never be imported from UI code.
 
 ### 2. Define metadata and type guards
 
@@ -83,7 +99,8 @@ Always keep remote metadata serializable. No functions or class instances.
 
 ### 3. Implement the provider client
 
-`<provider>_client.ts` should be a thin wrapper over the provider API.
+`<provider>_client.ts` lives under `front/lib/api/triggers/built-in-webhooks/<provider>/` and
+should be a thin wrapper over the provider API. It is server-only; do not import it from UI code.
 
 Typical methods:
 
@@ -95,7 +112,9 @@ Return typed results and map the provider response into the local metadata shape
 
 ### 4. Implement the remote webhook service
 
-In `service.ts`, implement `RemoteWebhookService<"<provider>">`.
+In `front/lib/api/triggers/built-in-webhooks/<provider>/service.ts`, implement
+`RemoteWebhookService<"<provider>">`. This file is server-only — it will import `OAuthAPI` and
+`@app/lib/api/config`, which must never reach the client bundle.
 
 Core responsibilities:
 
@@ -121,16 +140,23 @@ Each event entry should provide:
 
 Split preset code correctly:
 
-- `preset.ts` is data-only and worker-safe; do not import React there
-- `preset_ui.ts` adds the React components
+- `preset.ts` exports a `BaseWebhookPreset` — data-only, UI-safe, worker-safe. Do not import
+  React, icons, or the service here. The service is registered separately in `WEBHOOK_SERVICES`
+  (see step 1).
+- `client_side.ts` exports a `ClientSideWebhookPreset` — it spreads the base preset and adds
+  the provider icon plus React components.
 
-Set:
+Set on the base preset (`preset.ts`):
 
 - `eventCheck` to match how the provider exposes event type
 - the full list of supported events
-- the provider icon
 - optional `webhookPageUrl`
-- the concrete webhook service instance
+
+Set on the client-side preset (`client_side.ts`):
+
+- `icon`
+- the React components (`detailsComponent`, `createFormComponent`, and
+  optionally `oauthExtraConfigInput`)
 
 ### 7. Build the UI components
 
@@ -153,8 +179,14 @@ The details component should stay read-only and summarize the persisted remote m
 
 ## Common Gotchas
 
-- forgetting to add the preset to `WEBHOOK_PRESETS`
-- importing React from `preset.ts`
+- forgetting to register the data preset in `WEBHOOK_PRESETS` or the client-side preset in
+  `CLIENT_SIDE_WEBHOOK_PRESETS`
+- forgetting to register the service in `WEBHOOK_SERVICES`
+- putting the service or provider client under `lib/triggers/...` instead of `lib/api/triggers/...`
+  (leaks `OAuthAPI` and backend config into the client bundle)
+- importing React, icons, or the service from `preset.ts` (any of those turn `BaseWebhookPreset`
+  into a client-only module and reintroduces the bundle leak)
+- putting the icon on the base preset rather than the client-side preset
 - storing non-serializable remote metadata
 - skipping type guards before using `remoteMetadata`
 - assuming a single webhook when the provider needs one per team or repository
