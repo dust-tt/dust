@@ -1058,13 +1058,12 @@ describe("SkillResource", () => {
     });
   });
 
-  describe("listAgentMessageSkillsByCustomSkillModelIds", () => {
-    it("returns an empty array when no skill ids are provided", async () => {
-      const results =
-        await SkillResource.listAgentMessageSkillsByCustomSkillModelIds(
-          testContext.authenticator,
-          []
-        );
+  describe("listAgentMessageSkillsByCustomSkills", () => {
+    it("returns an empty array when no skills are provided", async () => {
+      const results = await SkillResource.listAgentMessageSkillsByCustomSkills(
+        testContext.authenticator,
+        []
+      );
       expect(results).toEqual([]);
     });
 
@@ -1147,18 +1146,15 @@ describe("SkillResource", () => {
         }
       );
 
-      const results =
-        await SkillResource.listAgentMessageSkillsByCustomSkillModelIds(
-          testContext.authenticator,
-          [skillA.id]
-        );
+      const results = await SkillResource.listAgentMessageSkillsByCustomSkills(
+        testContext.authenticator,
+        [skillA]
+      );
 
       expect(results).toHaveLength(1);
-      expect(results[0]).toEqual({
-        conversationModelId: conv1.id,
-        customSkillModelId: skillA.id,
-        agentConfigurationId: agent.sId,
-      });
+      expect(results[0].skill.id).toEqual(skillA.id);
+      expect(results[0].conversationModelId).toEqual(conv1.id);
+      expect(results[0].agentConfigurationId).toEqual(agent.sId);
     });
   });
 });

@@ -2446,27 +2446,29 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  static async listAgentMessageSkillsByCustomSkillModelIds(
+  static async listAgentMessageSkillsByCustomSkills(
     auth: Authenticator,
-    customSkillModelIds: ModelId[]
+    customSkills: SkillResource[]
   ): Promise<
     {
+      skill: SkillResource;
       conversationModelId: ModelId;
-      customSkillModelId: ModelId;
       agentConfigurationId: string | null;
     }[]
   > {
-    if (customSkillModelIds.length === 0) {
+    if (customSkills.length === 0) {
       return [];
     }
 
     const workspace = auth.getNonNullableWorkspace();
 
+    const skillsById = new Map(customSkills.map((s) => [s.id, s]));
+
     const records = await AgentMessageSkillModel.findAll({
       attributes: ["conversationId", "customSkillId", "agentConfigurationId"],
       where: {
         workspaceId: workspace.id,
-        customSkillId: { [Op.in]: customSkillModelIds },
+        customSkillId: { [Op.in]: [...skillsById.keys()] },
       },
     });
 
@@ -2474,13 +2476,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       records.map((r) => {
         if (r.customSkillId === null) {
           return null;
-        } else {
-          return {
-            conversationModelId: r.conversationId,
-            customSkillModelId: r.customSkillId,
-            agentConfigurationId: r.agentConfigurationId,
-          };
         }
+        const skill = skillsById.get(r.customSkillId);
+        if (!skill) {
+          return null;
+        }
+        return {
+          skill,
+          conversationModelId: r.conversationId,
+          agentConfigurationId: r.agentConfigurationId,
+        };
       })
     );
   }

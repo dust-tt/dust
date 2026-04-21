@@ -3,7 +3,6 @@ import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_f
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
-import { makeSId } from "@app/lib/resources/string_ids";
 import { daysAgo } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
@@ -52,7 +51,7 @@ interface ScoredConversation {
  */
 async function fetchEligibleSkillIds(
   auth: Authenticator
-): Promise<Set<ModelId>> {
+): Promise<Set<SkillResource>> {
   const workspace = auth.getNonNullableWorkspace();
   const stalenessThreshold = daysAgo(SKILL_STALENESS_THRESHOLD_DAYS);
   const pendingSuggestionCutoff = daysAgo(PENDING_SUGGESTION_MAX_AGE_DAYS);
@@ -75,10 +74,10 @@ async function fetchEligibleSkillIds(
     pendingSuggestions.map((s) => s.skillConfigurationId)
   );
 
-  const eligibleIds = new Set<ModelId>();
+  const eligibleSkills = new Set<SkillResource>();
   for (const skill of recentSkills) {
     if (!skillsWithPendingSuggestions.has(skill.id)) {
-      eligibleIds.add(skill.id);
+      eligibleSkills.add(skill);
     }
   }
 
@@ -87,12 +86,12 @@ async function fetchEligibleSkillIds(
       workspaceId: workspace.sId,
       recentSkillCount: recentSkills.length,
       pendingSuggestionSkillCount: skillsWithPendingSuggestions.size,
-      eligibleSkillCount: eligibleIds.size,
+      eligibleSkillCount: eligibleSkills.size,
     },
     "ReinforcedSkills: eligible skill determination"
   );
 
-  return eligibleIds;
+  return eligibleSkills;
 }
 
 /**
@@ -102,11 +101,11 @@ async function fetchEligibleSkillIds(
 async function discoverConversations(
   auth: Authenticator,
   {
-    eligibleSkillIds,
+    eligibleSkills,
     cutoffDate,
     skillId,
   }: {
-    eligibleSkillIds: Set<ModelId>;
+    eligibleSkills: Set<SkillResource>;
     cutoffDate: Date;
     skillId?: string;
   }
@@ -116,14 +115,14 @@ async function discoverConversations(
 }> {
   const workspace = auth.getNonNullableWorkspace();
 
-  if (eligibleSkillIds.size === 0) {
+  if (eligibleSkills.size === 0) {
     return { conversationSkillMap: new Map(), convModelIdToId: new Map() };
   }
 
-  const skillRecords =
-    await SkillResource.listAgentMessageSkillsByCustomSkillModelIds(auth, [
-      ...eligibleSkillIds,
-    ]);
+  const skillRecords = await SkillResource.listAgentMessageSkillsByCustomSkills(
+    auth,
+    [...eligibleSkills]
+  );
 
   if (skillRecords.length === 0) {
     return { conversationSkillMap: new Map(), convModelIdToId: new Map() };
@@ -169,10 +168,7 @@ async function discoverConversations(
       continue;
     }
 
-    const localSkillId = makeSId("skill", {
-      id: record.customSkillModelId,
-      workspaceId: workspace.id,
-    });
+    const localSkillId = record.skill.sId;
 
     // If filtering by a specific skill, only include matching skills.
     if (skillId && localSkillId !== skillId) {
@@ -372,8 +368,8 @@ export async function findConversationsWithSkills(
   const workspace = auth.getNonNullableWorkspace();
 
   // Stage 1: Eligible skills.
-  const eligibleSkillIds = await fetchEligibleSkillIds(auth);
-  if (eligibleSkillIds.size === 0) {
+  const eligibleSkills = await fetchEligibleSkillIds(auth);
+  if (eligibleSkills.size === 0) {
     logger.info(
       { workspaceId: workspace.sId },
       "ReinforcedSkills: no eligible skills found, skipping"
@@ -385,7 +381,7 @@ export async function findConversationsWithSkills(
   const { conversationSkillMap, convModelIdToId } = await discoverConversations(
     auth,
     {
-      eligibleSkillIds,
+      eligibleSkills,
       cutoffDate,
       skillId,
     }
