@@ -22,7 +22,6 @@ import {
   Button,
   ChatBubbleLeftRightIcon,
   Checkbox,
-  CircleIcon,
   ConfluenceLogo,
   cn,
   DriveLogo,
@@ -36,11 +35,13 @@ import {
   SquareIcon,
   Tooltip,
   TrashIcon,
+  TriangleIcon,
   WindIcon,
 } from "@dust-tt/sparkle";
-import { AnimatePresence, motion } from "framer-motion";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+const SUMMARY_ITEM_TRANSITION_MS = 240;
 
 // ── Category display configuration ────────────────────────────────────────────
 
@@ -52,12 +53,12 @@ type CategoryConfig = {
 
 const CATEGORY_CONFIG: Record<ProjectTodoCategory, CategoryConfig> = {
   to_do: {
-    label: "To do",
-    icon: CircleIcon,
-    iconClassName: "text-blue-300 dark:text-blue-300-night",
+    label: "Need to do",
+    icon: TriangleIcon,
+    iconClassName: "text-warning-300 dark:text-warning-300-night",
   },
   to_know: {
-    label: "To know",
+    label: "Need to know",
     icon: SquareIcon,
     iconClassName: "text-golden-300 dark:text-golden-300-night",
   },
@@ -376,15 +377,15 @@ function ReadOnlyTodoItem({
   const isDone = todo.status === "done";
 
   return (
-    <li className="flex items-start gap-2 py-0.5">
-      <div className="mt-0.5 shrink-0">
+    <div className="flex items-start gap-3 overflow-hidden">
+      <div className="mt-1 shrink-0">
         <Checkbox size="xs" checked={isDone} disabled />
       </div>
       <TodoMetadataTooltip todo={todo} agentNameById={agentNameById}>
         <div className="flex flex-col gap-0.5">
           <span
             className={cn(
-              "text-sm leading-5",
+              "text-base min-h-6",
               isDone
                 ? "text-faint dark:text-faint-night line-through"
                 : "text-foreground dark:text-foreground-night"
@@ -395,7 +396,7 @@ function ReadOnlyTodoItem({
           <TodoSources sources={todo.sources} owner={owner} isDone={isDone} />
         </div>
       </TodoMetadataTooltip>
-    </li>
+    </div>
   );
 }
 
@@ -413,7 +414,7 @@ function ReadOnlyProjectTodosPanel({
   return (
     <div className="flex flex-col gap-3">
       <h3 className="heading-2xl text-foreground dark:text-foreground-night">
-        Todos
+        What's new?
       </h3>
       {isTodosLoading ? (
         <div className="flex justify-center py-4">
@@ -428,7 +429,7 @@ function ReadOnlyProjectTodosPanel({
             return (
               <div key={cat} className="flex flex-col gap-1">
                 <CategorySectionHeader config={config} />
-                <ul className="flex flex-col pl-7">
+                <div className="flex flex-col">
                   {items.map((todo) => (
                     <ReadOnlyTodoItem
                       key={todo.sId}
@@ -437,14 +438,14 @@ function ReadOnlyProjectTodosPanel({
                       agentNameById={agentNameById}
                     />
                   ))}
-                </ul>
+                </div>
               </div>
             );
           })}
 
           {activeSections.length === 0 && (
-            <p className="text-sm italic text-faint dark:text-faint-night">
-              All caught up!
+            <p className="text-base italic text-faint dark:text-faint-night">
+              You're all caught up!
             </p>
           )}
         </CollapsibleTodoList>
@@ -461,6 +462,7 @@ interface EditableTodoItemProps {
   onDelete: (todo: ProjectTodoType) => void;
   owner: LightWorkspaceType;
   agentNameById: Map<string, string>;
+  isExiting: boolean;
 }
 
 function EditableTodoItem({
@@ -469,6 +471,7 @@ function EditableTodoItem({
   onDelete,
   owner,
   agentNameById,
+  isExiting,
 }: EditableTodoItemProps) {
   const isDone = todo.status === "done";
 
@@ -477,22 +480,14 @@ function EditableTodoItem({
   };
 
   return (
-    <motion.li
-      layout
-      initial={{ opacity: 1, height: "auto" }}
-      animate={{ opacity: 1, height: "auto" }}
-      exit={{
-        opacity: 0,
-        height: 0,
-        marginTop: 0,
-        marginBottom: 0,
-        paddingTop: 0,
-        paddingBottom: 0,
-      }}
-      transition={{ duration: 0.3, ease: "easeInOut" }}
-      className="group/todo flex items-center gap-2 overflow-hidden py-0.5"
+    <div
+      className={cn(
+        "group/todo flex items-start gap-3 overflow-hidden",
+        "transition-all duration-200",
+        isExiting ? "max-h-0 opacity-0" : "max-h-32 opacity-100"
+      )}
     >
-      <div className="shrink-0">
+      <div className="mt-1 shrink-0">
         <Checkbox
           size="xs"
           checked={isDone}
@@ -508,7 +503,7 @@ function EditableTodoItem({
         >
           <span
             className={cn(
-              "text-sm leading-5 transition-all duration-300",
+              "text-base min-h-6 transition-all duration-300",
               isDone
                 ? "text-faint dark:text-faint-night line-through"
                 : "text-foreground dark:text-foreground-night"
@@ -519,7 +514,7 @@ function EditableTodoItem({
           <TodoSources sources={todo.sources} owner={owner} isDone={isDone} />
         </button>
       </TodoMetadataTooltip>
-      <div className="shrink-0 opacity-0 transition-opacity group-hover/todo:opacity-100">
+      <div className="mt-0.5 shrink-0 opacity-0 transition-opacity group-hover/todo:opacity-100">
         <IconButton
           icon={TrashIcon}
           size="xs"
@@ -528,7 +523,7 @@ function EditableTodoItem({
           onClick={() => onDelete(todo)}
         />
       </div>
-    </motion.li>
+    </div>
   );
 }
 
@@ -590,22 +585,12 @@ function EditableProjectTodosPanel({
     [handleSetStatus]
   );
 
-  const handleToggleSection = useCallback(
+  const handleCheckAllInSection = useCallback(
     async (category: ProjectTodoCategory) => {
       const sectionTodos = todosByCategory[category] ?? [];
-      if (sectionTodos.length === 0) {
-        return;
-      }
-
-      const nextStatus: ProjectTodoStatus = sectionTodos.every(
-        (t) => t.status === "done"
-      )
-        ? "todo"
-        : "done";
-
       for (const todo of sectionTodos) {
-        if (todo.status !== nextStatus) {
-          void handleSetStatus(todo, nextStatus);
+        if (todo.status !== "done") {
+          void handleSetStatus(todo, "done");
         }
       }
     },
@@ -632,7 +617,7 @@ function EditableProjectTodosPanel({
         await mutateTodos();
         setPendingRemovalIds(new Set());
         setIsCleaning(false);
-      }, 350);
+      }, SUMMARY_ITEM_TRANSITION_MS);
     } else {
       // Revert on failure.
       setPendingRemovalIds(new Set());
@@ -655,7 +640,7 @@ function EditableProjectTodosPanel({
       {/* Header */}
       <div className="inline-flex items-center gap-2">
         <h3 className="heading-2xl text-foreground dark:text-foreground-night">
-          Todos
+          What's new?
         </h3>
         <div className="flex-1" />
         {hasDoneItems && (
@@ -682,9 +667,6 @@ function EditableProjectTodosPanel({
           {activeSections.map((cat) => {
             const config = CATEGORY_CONFIG[cat];
             const items = todosByCategory[cat] ?? [];
-            const visibleItems = items.filter(
-              (t) => !pendingRemovalIds.has(t.sId)
-            );
             const allDone =
               items.length > 0 && items.every((t) => t.status === "done");
 
@@ -703,47 +685,42 @@ function EditableProjectTodosPanel({
                     />
                     <Checkbox
                       size="xs"
-                      className="hidden group-hover/section-title:flex"
+                      className="hidden group-hover/section-title:inline-block"
                       checked={allDone}
-                      isMutedAfterCheck
-                      onCheckedChange={() => {
-                        void handleToggleSection(cat);
+                      onCheckedChange={(checked) => {
+                        if (checked === true) {
+                          void handleCheckAllInSection(cat);
+                        }
                       }}
                     />
                   </div>
-                  <h4
-                    className="heading-lg cursor-pointer text-foreground dark:text-foreground-night"
-                    onClick={() => {
-                      void handleToggleSection(cat);
-                    }}
-                  >
+                  <h4 className="heading-lg text-foreground dark:text-foreground-night">
                     {config.label}
                   </h4>
                 </div>
 
                 {/* Todo items */}
-                <ul className="flex flex-col pl-7">
-                  <AnimatePresence>
-                    {visibleItems.map((todo) => (
-                      <EditableTodoItem
-                        key={todo.sId}
-                        todo={todo}
-                        onToggleDone={handleToggleDone}
-                        onDelete={handleDelete}
-                        owner={owner}
-                        agentNameById={agentNameById}
-                      />
-                    ))}
-                  </AnimatePresence>
-                </ul>
+                <div className="flex flex-col">
+                  {items.map((todo) => (
+                    <EditableTodoItem
+                      key={todo.sId}
+                      todo={todo}
+                      onToggleDone={handleToggleDone}
+                      onDelete={handleDelete}
+                      owner={owner}
+                      agentNameById={agentNameById}
+                      isExiting={pendingRemovalIds.has(todo.sId)}
+                    />
+                  ))}
+                </div>
               </div>
             );
           })}
 
           {/* Empty state */}
           {activeSections.length === 0 && (
-            <p className="text-sm italic text-faint dark:text-faint-night">
-              All caught up!
+            <p className="text-base italic text-faint dark:text-faint-night">
+              You're all caught up!
             </p>
           )}
         </CollapsibleTodoList>
