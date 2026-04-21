@@ -28,6 +28,10 @@ when firing, and treat missing/deleted conversation, user, workspace, or agent a
 cancelled/expired states. Back-off + retry only when a different agent is running (retryable
 error, 10min max window).
 
+Status: Temporal scaffolding for one-shot wake-ups is in place (`front/temporal/triggers/wakeup/*`,
+worker wiring, and `WakeUpResource` integration). Remaining work is implementing the activity
+logic and retry/terminal-state behavior.
+
 ### PR 4 — Wire WakeUpResource to Temporal
 
 Connect `WakeUpResource.makeNew` and `cancel` to actual Temporal workflow start/terminate. Remove
