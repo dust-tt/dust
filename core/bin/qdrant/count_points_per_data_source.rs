@@ -14,8 +14,7 @@ use std::env;
 #[tokio::main]
 async fn main() -> Result<()> {
     let store = PostgresStore::new(
-        &env::var("CORE_DATABASE_URI")
-            .map_err(|_| anyhow!("CORE_DATABASE_URI is required"))?,
+        &env::var("CORE_DATABASE_URI").map_err(|_| anyhow!("CORE_DATABASE_URI is required"))?,
     )
     .await?;
 
@@ -94,7 +93,12 @@ async fn main() -> Result<()> {
         let qdrant_client = ds.main_qdrant_client(&qdrant_clients);
 
         let (point_count_str, error_str) = match qdrant_client
-            .count_points(&ds.embedder_config(), &ds.internal_id().to_string(), None, false)
+            .count_points(
+                &ds.embedder_config(),
+                &ds.internal_id().to_string(),
+                None,
+                false,
+            )
             .await
         {
             Ok(response) => {
