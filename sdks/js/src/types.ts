@@ -337,6 +337,7 @@ const USER_MESSAGE_ORIGINS = [
   "transcript",
   "triggered_programmatic",
   "triggered",
+  "wakeup",
   "web",
   "zapier",
   "zendesk",

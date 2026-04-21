@@ -29,6 +29,7 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   transcript: "user",
   triggered_programmatic: "programmatic",
   triggered: "user",
+  wakeup: "programmatic",
   web: "user",
   zapier: "programmatic",
   zendesk: "user",

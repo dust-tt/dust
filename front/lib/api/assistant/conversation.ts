@@ -543,6 +543,7 @@ export function isUserMessageContextValid(
     case "transcript":
     case "triggered":
     case "triggered_programmatic":
+    case "wakeup":
     case "onboarding_conversation":
     case "agent_sidekick":
     case "project_kickoff":

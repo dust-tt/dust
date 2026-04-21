@@ -149,6 +149,10 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
     label: "Trigger",
     color: buildColorClass("orange", 300),
   },
+  wakeup: {
+    label: "Wake-up",
+    color: buildColorClass("violet", 700),
+  },
   onboarding_conversation: {
     label: "Onboarding",
     color: buildColorClass("rose", 300),
