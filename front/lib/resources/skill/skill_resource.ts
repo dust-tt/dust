@@ -1577,74 +1577,70 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const workspace = auth.getNonNullableWorkspace();
 
-    await concurrentExecutor(
-      agents,
-      async (agent) => {
-        const spaceIdsToRemoveFromAgent = new Set<ModelId>();
+    for (const agent of agents) {
+      const spaceIdsToRemoveFromAgent = new Set<ModelId>();
 
-        // Some spaces were removed from the skill: we must check if they need to be
-        // removed from the agent. In order to achieve this, we check if the agent has
-        // any other capabilities that require the removed spaces.
-        if (spaceIdsRemovedFromThisSkill.length > 0) {
-          const actionsMap = await fetchMCPServerActionConfigurations(auth, {
-            configurationIds: [agent.id],
-            variant: "full",
+      // Some spaces were removed from the skill: we must check if they need to be
+      // removed from the agent. In order to achieve this, we check if the agent has
+      // any other capabilities that require the removed spaces.
+      if (spaceIdsRemovedFromThisSkill.length > 0) {
+        const actionsMap = await fetchMCPServerActionConfigurations(auth, {
+          configurationIds: [agent.id],
+          variant: "full",
+        });
+        const actions = actionsMap.get(agent.id) ?? [];
+
+        const agentSkillModels = await AgentSkillModel.findAll({
+          where: {
+            agentConfigurationId: agent.id,
+            workspaceId: workspace.id,
+          },
+        });
+        const agentSkills = await SkillResource.fetchBySkillReferences(
+          auth,
+          agentSkillModels.map((s) => ({
+            customSkillId: s.customSkillId,
+            globalSkillId: s.globalSkillId,
+          }))
+        );
+        const otherAgentSkills = agentSkills.filter(
+          (skill) => skill.sId !== this.sId
+        );
+
+        const agentOtherCapabilitiesRequirements =
+          await getAgentConfigurationRequirementsFromCapabilities(auth, {
+            actions,
+            skills: otherAgentSkills,
           });
-          const actions = actionsMap.get(agent.id) ?? [];
 
-          const agentSkillModels = await AgentSkillModel.findAll({
-            where: {
-              agentConfigurationId: agent.id,
-              workspaceId: workspace.id,
-            },
-          });
-          const agentSkills = await SkillResource.fetchBySkillReferences(
-            auth,
-            agentSkillModels.map((s) => ({
-              customSkillId: s.customSkillId,
-              globalSkillId: s.globalSkillId,
-            }))
-          );
-          const otherAgentSkills = agentSkills.filter(
-            (skill) => skill.sId !== this.sId
-          );
+        const otherCapabilitiesRequestedSpaceIds = new Set(
+          agentOtherCapabilitiesRequirements.requestedSpaceIds
+        );
 
-          const agentOtherCapabilitiesRequirements =
-            await getAgentConfigurationRequirementsFromCapabilities(auth, {
-              actions,
-              skills: otherAgentSkills,
-            });
-
-          const otherCapabilitiesRequestedSpaceIds = new Set(
-            agentOtherCapabilitiesRequirements.requestedSpaceIds
-          );
-
-          for (const spaceId of spaceIdsRemovedFromThisSkill) {
-            if (!otherCapabilitiesRequestedSpaceIds.has(spaceId)) {
-              // This space is not required by any other capabilities of the agent, so
-              // we must remove it from the config.
-              spaceIdsToRemoveFromAgent.add(spaceId);
-            }
+        for (const spaceId of spaceIdsRemovedFromThisSkill) {
+          if (!otherCapabilitiesRequestedSpaceIds.has(spaceId)) {
+            // This space is not required by any other capabilities of the agent, so
+            // we must remove it from the config.
+            spaceIdsToRemoveFromAgent.add(spaceId);
           }
         }
+      }
 
-        const newSpaceIds = uniq(
-          agent.requestedSpaceIds
-            .filter((id) => !spaceIdsToRemoveFromAgent.has(id))
-            .concat(this.requestedSpaceIds)
-        );
+      const newSpaceIds = uniq(
+        agent.requestedSpaceIds
+          .filter((id) => !spaceIdsToRemoveFromAgent.has(id))
+          .concat(this.requestedSpaceIds)
+      );
 
-        await updateAgentRequirements(
-          auth,
-          {
-            agentModelId: agent.id,
-            newSpaceIds,
-          },
-          { transaction }
-        );
-      },
-      { concurrency: 5 }
-    );
+      await updateAgentRequirements(
+        auth,
+        {
+          agentModelId: agent.id,
+          newSpaceIds,
+        },
+        { transaction }
+      );
+    }
   }
 
   async listVersions(
