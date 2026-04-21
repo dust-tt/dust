@@ -99,6 +99,7 @@ export async function seedSkillSuggestions(
         kind: suggestionAsset.kind,
         suggestion: resolvedSuggestion,
         analysis: suggestionAsset.analysis,
+        title: suggestionAsset.title ?? null,
         state: suggestionAsset.state,
         source: suggestionAsset.source,
       });

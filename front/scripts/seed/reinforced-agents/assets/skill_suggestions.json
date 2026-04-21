@@ -2,6 +2,7 @@
   {
     "skillName": "SearchInfoContactWithSuggestion",
     "kind": "edit",
+    "title": "Add web search fallback",
     "analysis": "The skill should leverage web search to find up-to-date contact information and include instructions on how to use the web search tool effectively.",
     "state": "pending",
     "source": "reinforcement",
@@ -24,6 +25,7 @@
   {
     "skillName": "SearchInfoContactWithSuggestion",
     "kind": "edit",
+    "title": "Strengthen privacy rules",
     "analysis": "Improve privacy handling and add a step for verifying information currency.",
     "state": "pending",
     "source": "reinforcement",
@@ -45,6 +47,7 @@
   {
     "skillName": "MeetingNotesFormatter",
     "kind": "edit",
+    "title": "Flag confidential topics",
     "analysis": "The summary instruction is too brief. Replace it with a more detailed two-part guidance: first explain the expected summary format, then add a note about handling confidential topics.",
     "state": "pending",
     "source": "reinforcement",
@@ -61,6 +64,7 @@
   {
     "skillName": "MeetingNotesFormatter",
     "kind": "edit",
+    "title": "Add decisions to example",
     "analysis": "The example code block should include a Decisions section between Summary and Action Items to match the skill's own guidelines about extracting key decisions.",
     "state": "pending",
     "source": "reinforcement",
