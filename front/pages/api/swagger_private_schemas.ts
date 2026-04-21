@@ -147,12 +147,8 @@
  *           type: array
  *           items:
  *             type: string
- *         forkedFrom:
- *           $ref: '#/components/schemas/PrivateConversationForkedFrom'
- *         forkedChildren:
- *           type: array
- *           items:
- *             $ref: '#/components/schemas/PrivateConversationForkedChild'
+ *         forkingData:
+ *           $ref: '#/components/schemas/PrivateConversationForkingData'
  *     PrivateConversationForkUser:
  *       type: object
  *       properties:
@@ -217,6 +213,15 @@
  *           type: integer
  *         user:
  *           $ref: '#/components/schemas/PrivateConversationForkUser'
+ *     PrivateConversationForkingData:
+ *       type: object
+ *       properties:
+ *         forkedFrom:
+ *           $ref: '#/components/schemas/PrivateConversationForkedFrom'
+ *         forkedChildren:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/PrivateConversationForkedChild'
  *     PrivateFullConversation:
  *       type: object
  *       description: Full conversation including content, owner, and visibility.

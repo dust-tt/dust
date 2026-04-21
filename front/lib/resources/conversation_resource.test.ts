@@ -137,7 +137,7 @@ describe("ConversationResource", () => {
       expect(fetched.length).toBe(0);
     });
 
-    it("should preload forkedFrom on forked child conversations", async () => {
+    it("should include forkingData on forked child conversations when requested", async () => {
       const { workspace, authenticator: auth } = await createResourceTest({
         role: "admin",
       });
@@ -194,16 +194,22 @@ describe("ConversationResource", () => {
       });
 
       const [fetchedChildConversation] =
-        await ConversationResource.fetchByModelIds(auth, [
-          childConversation.id,
-        ]);
+        await ConversationResource.fetchByModelIds(
+          auth,
+          [childConversation.id],
+          {
+            includeForkingData: true,
+          }
+        );
 
-      expect(fetchedChildConversation.toJSON().forkedFrom).toEqual({
-        parentConversationId: parentConversation.sId,
-        parentConversationTitle,
-        sourceMessageId: sourceMessage.sId,
-        branchedAt: branchedAt.getTime(),
-        user: auth.getNonNullableUser().toJSON(),
+      expect(fetchedChildConversation.toJSON().forkingData).toEqual({
+        forkedFrom: {
+          parentConversationId: parentConversation.sId,
+          parentConversationTitle,
+          sourceMessageId: sourceMessage.sId,
+          branchedAt: branchedAt.getTime(),
+          user: auth.getNonNullableUser().toJSON(),
+        },
       });
 
       const childConversationWithoutContent =
@@ -214,12 +220,28 @@ describe("ConversationResource", () => {
       expect(childConversationWithoutContent.isOk()).toBe(true);
 
       if (childConversationWithoutContent.isOk()) {
-        expect(childConversationWithoutContent.value.forkedFrom).toEqual({
-          parentConversationId: parentConversation.sId,
-          parentConversationTitle,
-          sourceMessageId: sourceMessage.sId,
-          branchedAt: branchedAt.getTime(),
-          user: auth.getNonNullableUser().toJSON(),
+        expect(
+          childConversationWithoutContent.value.forkingData
+        ).toBeUndefined();
+      }
+
+      const childConversationWithForkingData =
+        await ConversationResource.fetchConversationWithoutContent(
+          auth,
+          childConversation.sId,
+          { includeForkingData: true }
+        );
+      expect(childConversationWithForkingData.isOk()).toBe(true);
+
+      if (childConversationWithForkingData.isOk()) {
+        expect(childConversationWithForkingData.value.forkingData).toEqual({
+          forkedFrom: {
+            parentConversationId: parentConversation.sId,
+            parentConversationTitle,
+            sourceMessageId: sourceMessage.sId,
+            branchedAt: branchedAt.getTime(),
+            user: auth.getNonNullableUser().toJSON(),
+          },
         });
       }
     });
@@ -306,16 +328,19 @@ describe("ConversationResource", () => {
 
       const fetchedChildConversation = await ConversationResource.fetchById(
         userAuth,
-        childConversation.sId
+        childConversation.sId,
+        { includeForkingData: true }
       );
       assert(fetchedChildConversation, "Child conversation not found");
 
-      expect(fetchedChildConversation.toJSON().forkedFrom).toEqual({
-        parentConversationId: parentConversation.sId,
-        parentConversationTitle,
-        sourceMessageId: sourceMessage.sId,
-        branchedAt: branchedAt.getTime(),
-        user: adminAuth.getNonNullableUser().toJSON(),
+      expect(fetchedChildConversation.toJSON().forkingData).toEqual({
+        forkedFrom: {
+          parentConversationId: parentConversation.sId,
+          parentConversationTitle,
+          sourceMessageId: sourceMessage.sId,
+          branchedAt: branchedAt.getTime(),
+          user: adminAuth.getNonNullableUser().toJSON(),
+        },
       });
     });
   });
