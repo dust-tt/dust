@@ -1,6 +1,7 @@
 import { ContextUsageIndicator } from "@app/components/assistant/conversation/input_bar/ContextUsageIndicator";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarButtons } from "@app/components/assistant/conversation/input_bar/InputBarButtons";
+import { InputBarSkillChip } from "@app/components/assistant/conversation/input_bar/InputBarSkillChip";
 import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
@@ -21,11 +22,9 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
-import { getSkillIcon } from "@app/lib/skill";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
-import { getManageSkillsRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
@@ -42,7 +41,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
 import {
   ArrowUpIcon,
   AttachmentIcon,
@@ -948,32 +946,19 @@ const InputBarContainer = ({
           >
             {selectedSkills.map((skill) => (
               <React.Fragment key={skill.sId}>
-                {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
-                <Chip
-                  size="xs"
-                  label={skill.name}
-                  icon={getSkillIcon(skill.icon)}
-                  href={
-                    isBuilder(owner)
-                      ? getManageSkillsRoute(owner.sId, skill.sId)
-                      : undefined
-                  }
-                  target="_blank"
-                  className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:flex"
+                <InputBarSkillChip
+                  owner={owner}
+                  skill={skill}
+                  className="m-0.5 hidden xs:flex"
                   onRemove={() => {
                     onSkillDeselect(skill);
                   }}
                 />
-                <Chip
-                  size="xs"
-                  icon={getSkillIcon(skill.icon)}
-                  href={
-                    isBuilder(owner)
-                      ? getManageSkillsRoute(owner.sId, skill.sId)
-                      : undefined
-                  }
-                  target="_blank"
-                  className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:hidden"
+                <InputBarSkillChip
+                  owner={owner}
+                  skill={skill}
+                  compact
+                  className="m-0.5 flex xs:hidden"
                   onRemove={() => {
                     onSkillDeselect(skill);
                   }}
