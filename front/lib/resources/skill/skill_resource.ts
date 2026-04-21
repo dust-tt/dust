@@ -1579,11 +1579,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const workspace = auth.getNonNullableWorkspace();
     const agentIds = agents.map((a) => a.id);
 
-    let actionsByAgentId = new Map<ModelId, MCPServerConfigurationType[]>();
+    let actionsByAgentModelId = new Map<ModelId, MCPServerConfigurationType[]>();
     let skillByAgentModelId = new Map<ModelId, SkillResource[]>();
 
     if (spaceIdsRemovedFromThisSkill.length > 0) {
-      actionsByAgentId = await fetchMCPServerActionConfigurations(auth, {
+      actionsByAgentModelId = await fetchMCPServerActionConfigurations(auth, {
         configurationIds: agentIds,
         variant: "full",
       });
@@ -1623,7 +1623,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       // removed from the agent. In order to achieve this, we check if the agent has
       // any other capabilities that require the removed spaces.
       if (spaceIdsRemovedFromThisSkill.length > 0) {
-        const actions = actionsByAgentId.get(agent.id) ?? [];
+        const actions = actionsByAgentModelId.get(agent.id) ?? [];
         const otherAgentSkills = (skillByAgentModelId.get(agent.id) ?? []).filter(
           (skill) => skill.sId !== this.sId
         );
