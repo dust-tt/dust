@@ -189,9 +189,6 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       return new Err(new Error("WakeUp not found"));
     }
 
-    if (!wakeUp.userId) {
-      return new Err(new Error("WakeUp has no associated user"));
-    }
     const [user] = await UserResource.fetchByModelIds([wakeUp.userId]);
     if (!user) {
       return new Err(new Error("WakeUp user not found"));
