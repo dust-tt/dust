@@ -813,7 +813,7 @@ function PortraitCard({ portrait }: { portrait: Portrait }) {
           />
           {/* Center dot */}
           <div
-            className="s-absolute s-left-1/2 s-top-1/2 s-h-2.5 s-w-2.5 s-rounded-full s-bg-emerald-500"
+            className="s-absolute s-left-1/2 s-top-1/2 s-h-2.5 s-w-2.5 s-rounded-full s-bg-emerald-500 s-ring-2 s-ring-white"
             style={{ transform: "translate(-50%, -50%)" }}
           />
         </div>
@@ -837,7 +837,7 @@ export default function LandingAIToWork() {
           left: 50%; top: 50%;
           width: 28px; height: 28px;
           border-radius: 9999px;
-          border: 2px solid #10b981;
+          background: #10b981;
           animation: radarPulse 3.2s ease-out infinite;
         }
       `}</style>
