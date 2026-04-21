@@ -77,7 +77,7 @@ describe("sandbox image registry", () => {
       });
       expect(imageResult.value.imageId).toEqual({
         imageName: "dust-base",
-        tag: "0.7.9",
+        tag: "0.7.10",
       });
     }
   });
