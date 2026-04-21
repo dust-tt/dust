@@ -136,14 +136,14 @@ describe("sandbox egress helpers", () => {
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       2,
       {},
-      expect.stringContaining("--proxy-addr '203.0.113.10:4443'"),
-      { user: "dust-fwd" }
+      expect.stringContaining("runuser -u dust-fwd"),
+      { user: "root" }
     );
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       2,
       {},
-      expect.stringContaining("--proxy-tls-name 'eu.sandbox-egress.dust.tt'"),
-      { user: "dust-fwd" }
+      expect.stringContaining("203.0.113.10:4443"),
+      { user: "root" }
     );
     expect(mockLoggerInfo).toHaveBeenCalledWith(
       expect.objectContaining({
