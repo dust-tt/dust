@@ -1816,8 +1816,6 @@ async function disableTriggersForNonEditors(
   }
 }
 
-export { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
-
 export async function filterAgentsByRequestedSpaces(
   auth: Authenticator,
   agents: AgentConfigurationModel[]
