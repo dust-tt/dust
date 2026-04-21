@@ -28,8 +28,6 @@ import { useState } from "react";
 
 import { EditConversationTitleDialog } from "./EditConversationTitleDialog";
 
-const UNTITLED_CONVERSATION_TITLE = "Untitled conversation";
-
 export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const activeConversationId = useActiveConversationId();
   const { user } = useAuth();
@@ -94,7 +92,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     }
 
     const chipLabel =
-      forkedFrom.parentConversationTitle ?? UNTITLED_CONVERSATION_TITLE;
+      forkedFrom.parentConversationTitle ?? "Unnamed parent conversation";
 
     return (
       <div className="flex h-9 items-center">
