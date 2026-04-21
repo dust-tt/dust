@@ -20,12 +20,13 @@ import {
   getAvailabilityOfInternalMCPServerById,
   getInternalMCPServerMetadata,
   getInternalMCPServerNameAndWorkspaceId,
+  INTERNAL_MCP_SERVERS,
   isAutoInternalMCPServerName,
   matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions/enabled";
+import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
 import type { MCPServerType } from "@app/lib/api/mcp";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
@@ -82,49 +83,25 @@ export class InternalMCPServerInMemoryResource {
     this.internalServerCredential = internalServerCredential;
   }
 
-  constructor(
-    readonly id: string,
-    readonly availability: MCPServerAvailability
-  ) {}
-
-  private static async init(
+  private static async computeEnabledServerNames(
     auth: Authenticator,
-    id: string
-  ): Promise<InternalMCPServerInMemoryResource | null> {
-    const r = getInternalMCPServerNameAndWorkspaceId(id);
-    if (r.isErr()) {
-      return null;
-    }
+    names: readonly InternalMCPServerNameType[]
+  ): Promise<Set<InternalMCPServerNameType>> {
+    const uniqueNames = [...new Set(names)];
+    const featureFlags = await getFeatureFlags(auth);
+    const isDeepDiveDisabled = await isDeepDiveDisabledByAdmin(auth);
+    const plan = auth.getNonNullablePlan();
 
-    const name = r.value.name;
-
-    const isEnabled = await isEnabledForWorkspace(auth, name);
-    if (!isEnabled) {
-      // This means a server which could not be newly created is being used from an existing MCP server view.
-      // This is not a problem, but we log it to get a sense of whether it happens often and for which server names.
-      logger.info(
-        {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          serverName: name,
-        },
-        "Initializing restricted internal MCP server from existing view"
-      );
-    }
-
-    const availability = getAvailabilityOfInternalMCPServerById(id);
-
-    const server = new InternalMCPServerInMemoryResource(id, availability);
-
-    const serverMetadata = getInternalMCPServerMetadata(name);
-
-    server.metadata = {
-      ...serverMetadata.serverInfo,
-      tools: serverMetadata.tools,
-    };
-    server.internalServerCredential =
-      await server.fetchInternalServerCredential(auth);
-
-    return server;
+    return new Set(
+      uniqueNames.filter(
+        (name) =>
+          !INTERNAL_MCP_SERVERS[name].isRestricted?.({
+            featureFlags,
+            isDeepDiveDisabled,
+            plan,
+          })
+      )
+    );
   }
 
   static async makeNew(
@@ -201,14 +178,45 @@ export class InternalMCPServerInMemoryResource {
       );
     }
 
-    const server = await InternalMCPServerInMemoryResource.init(auth, sid);
-
-    if (!server) {
+    const resolvedServerName = getInternalMCPServerNameAndWorkspaceId(sid);
+    if (resolvedServerName.isErr()) {
       throw new DustError(
         "internal_server_not_found",
         "Failed to create internal MCP server, the id is probably invalid."
       );
     }
+
+    const serverName = resolvedServerName.value.name;
+    const mcpServer = INTERNAL_MCP_SERVERS[serverName];
+
+    let isEnabled = true;
+    if (mcpServer.isRestricted) {
+      const featureFlags = await getFeatureFlags(auth);
+      const isDeepDiveDisabled = await isDeepDiveDisabledByAdmin(auth);
+      isEnabled = !mcpServer.isRestricted({
+        featureFlags,
+        isDeepDiveDisabled,
+        plan: auth.getNonNullablePlan(),
+      });
+    }
+    if (!isEnabled) {
+      logger.info(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          serverName,
+        },
+        "Initializing restricted internal MCP server from existing view"
+      );
+    }
+
+    const serverMetadata = getInternalMCPServerMetadata(serverName);
+    const server = new this(sid, getAvailabilityOfInternalMCPServerById(sid), {
+      metadata: {
+        ...serverMetadata.serverInfo,
+        tools: serverMetadata.tools,
+      },
+      internalServerCredential: null,
+    });
 
     await MCPServerViewModel.create({
       workspaceId: auth.getNonNullableWorkspace().id,
@@ -309,11 +317,13 @@ export class InternalMCPServerInMemoryResource {
     }
 
     // Fast path: Do not check for default internal MCP servers as they are always available.
-    const validIds = ids.filter(
+    const uniqueIds = [...new Set(ids)];
+
+    const validIds = uniqueIds.filter(
       (id) => getAvailabilityOfInternalMCPServerById(id) !== "manual"
     );
 
-    const manualIds = ids.filter(
+    const manualIds = uniqueIds.filter(
       (id) => getAvailabilityOfInternalMCPServerById(id) === "manual"
     );
 
@@ -328,26 +338,68 @@ export class InternalMCPServerInMemoryResource {
     });
     validIds.push(...removeNulls(servers.map((s) => s.internalMCPServerId)));
 
-    const resources = await concurrentExecutor(
-      validIds,
-      (id) => InternalMCPServerInMemoryResource.init(auth, id),
-      { concurrency: 10 }
+    const availableIds = [...new Set(validIds)];
+    const resolvedIds = removeNulls(
+      availableIds.map((id) => {
+        const resolvedName = getInternalMCPServerNameAndWorkspaceId(id);
+        return resolvedName.isOk()
+          ? { id, name: resolvedName.value.name }
+          : null;
+      })
     );
 
-    return removeNulls(resources);
+    // Filter out the names of the servers that are not enabled (e.g. gated behind a feature flag that is not enabled).
+    const enabledServerNames = await this.computeEnabledServerNames(
+      auth,
+      resolvedIds.map(({ name }) => name)
+    );
+
+    // Fetch the credentials (API keys, headers) for MCP servers that have some.
+    const decryptedCredentials = await this.fetchDecryptedCredentialsByIds(
+      auth,
+      resolvedIds.map(({ id }) => id)
+    );
+    const credentialsById = new Map(
+      decryptedCredentials.map((credential) => [
+        credential.internalMCPServerId,
+        {
+          sharedSecret: credential.sharedSecret,
+          customHeaders: credential.customHeaders,
+        },
+      ])
+    );
+
+    return resolvedIds.map(({ id, name }) => {
+      if (!enabledServerNames.has(name)) {
+        logger.info(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            serverName: name,
+          },
+          "Initializing restricted internal MCP server from existing view"
+        );
+      }
+
+      const serverMetadata = getInternalMCPServerMetadata(name);
+      return new this(id, getAvailabilityOfInternalMCPServerById(id), {
+        metadata: {
+          ...serverMetadata.serverInfo,
+          tools: serverMetadata.tools,
+        },
+        internalServerCredential: credentialsById.get(id) ?? null,
+      });
+    });
   }
 
   static async listAvailableInternalMCPServers(auth: Authenticator) {
-    // Hide servers with flags that are not enabled for the workspace.
-    const names: InternalMCPServerNameType[] = [];
+    const enabledServerNames = await this.computeEnabledServerNames(
+      auth,
+      AVAILABLE_INTERNAL_MCP_SERVER_NAMES
+    );
 
-    for (const name of AVAILABLE_INTERNAL_MCP_SERVER_NAMES) {
-      const isEnabled = await isEnabledForWorkspace(auth, name);
-
-      if (isEnabled) {
-        names.push(name);
-      }
-    }
+    const names = AVAILABLE_INTERNAL_MCP_SERVER_NAMES.filter((name) =>
+      enabledServerNames.has(name)
+    );
 
     const ids = names.map((name) =>
       internalMCPServerNameToSId({
@@ -357,15 +409,31 @@ export class InternalMCPServerInMemoryResource {
       })
     );
 
-    const resources = await concurrentExecutor(
-      ids,
-      (id) => InternalMCPServerInMemoryResource.init(auth, id),
-      {
-        concurrency: 10,
-      }
+    const decryptedCredentials = await this.fetchDecryptedCredentialsByIds(
+      auth,
+      ids
+    );
+    const credentialsById = new Map(
+      decryptedCredentials.map((credential) => [
+        credential.internalMCPServerId,
+        {
+          sharedSecret: credential.sharedSecret,
+          customHeaders: credential.customHeaders,
+        },
+      ])
     );
 
-    return removeNulls(resources);
+    return names.map((name, index) => {
+      const id = ids[index];
+      const serverMetadata = getInternalMCPServerMetadata(name);
+      return new this(id, getAvailabilityOfInternalMCPServerById(id), {
+        metadata: {
+          ...serverMetadata.serverInfo,
+          tools: serverMetadata.tools,
+        },
+        internalServerCredential: credentialsById.get(id) ?? null,
+      });
+    });
   }
 
   static async listByWorkspace(auth: Authenticator) {
@@ -384,17 +452,61 @@ export class InternalMCPServerInMemoryResource {
       },
     });
 
-    const resources = await concurrentExecutor(
-      removeNulls(servers.map((server) => server.internalMCPServerId)),
-      async (internalMCPServerId) =>
-        // This does not create them in the workspace, only in memory, we need to call "makeNew" to create them in the workspace.
-        InternalMCPServerInMemoryResource.init(auth, internalMCPServerId),
-      {
-        concurrency: 10,
-      }
+    const ids = [
+      ...new Set(
+        removeNulls(servers.map((server) => server.internalMCPServerId))
+      ),
+    ];
+    const resolvedIds = ids
+      .map((id) => {
+        const resolvedName = getInternalMCPServerNameAndWorkspaceId(id);
+        return resolvedName.isErr()
+          ? null
+          : { id, name: resolvedName.value.name };
+      })
+      .filter(
+        (entry): entry is { id: string; name: InternalMCPServerNameType } =>
+          entry !== null
+      );
+
+    const enabledServerNames = await this.computeEnabledServerNames(
+      auth,
+      resolvedIds.map(({ name }) => name)
+    );
+    const decryptedCredentials = await this.fetchDecryptedCredentialsByIds(
+      auth,
+      resolvedIds.map(({ id }) => id)
+    );
+    const credentialsById = new Map(
+      decryptedCredentials.map((credential) => [
+        credential.internalMCPServerId,
+        {
+          sharedSecret: credential.sharedSecret,
+          customHeaders: credential.customHeaders,
+        },
+      ])
     );
 
-    return removeNulls(resources);
+    return resolvedIds.map(({ id, name }) => {
+      if (!enabledServerNames.has(name)) {
+        logger.info(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            serverName: name,
+          },
+          "Initializing restricted internal MCP server from existing view"
+        );
+      }
+
+      const serverMetadata = getInternalMCPServerMetadata(name);
+      return new this(id, getAvailabilityOfInternalMCPServerById(id), {
+        metadata: {
+          ...serverMetadata.serverInfo,
+          tools: serverMetadata.tools,
+        },
+        internalServerCredential: credentialsById.get(id) ?? null,
+      });
+    });
   }
 
   async upsertCredentials(
@@ -503,13 +615,6 @@ export class InternalMCPServerInMemoryResource {
     };
   }
 
-  private async fetchInternalServerCredential(auth: Authenticator) {
-    return InternalMCPServerInMemoryResource.fetchDecryptedCredentials(
-      auth,
-      this.id
-    );
-  }
-
   static async fetchDecryptedCredentials(
     auth: Authenticator,
     internalMCPServerId: string
@@ -517,11 +622,46 @@ export class InternalMCPServerInMemoryResource {
     sharedSecret: string | null;
     customHeaders: Record<string, string> | null;
   } | null> {
-    if (!doesInternalMCPServerRequireBearerToken(internalMCPServerId)) {
-      return null;
+    const decryptedCredentials = await this.fetchDecryptedCredentialsByIds(
+      auth,
+      [internalMCPServerId]
+    );
+
+    const credential = decryptedCredentials.find(
+      (entry) => entry.internalMCPServerId === internalMCPServerId
+    );
+
+    return credential
+      ? {
+          sharedSecret: credential.sharedSecret,
+          customHeaders: credential.customHeaders,
+        }
+      : null;
+  }
+
+  static async fetchDecryptedCredentialsByIds(
+    auth: Authenticator,
+    internalMCPServerIds: string[]
+  ): Promise<
+    {
+      internalMCPServerId: string;
+      sharedSecret: string | null;
+      customHeaders: Record<string, string> | null;
+    }[]
+  > {
+    const idsRequiringBearerToken = [
+      ...new Set(
+        internalMCPServerIds.filter((id) =>
+          doesInternalMCPServerRequireBearerToken(id)
+        )
+      ),
+    ];
+
+    if (idsRequiringBearerToken.length === 0) {
+      return [];
     }
 
-    const credential = await InternalMCPServerCredentialModel.findOne({
+    const credentials = await InternalMCPServerCredentialModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         internalMCPServerId,
