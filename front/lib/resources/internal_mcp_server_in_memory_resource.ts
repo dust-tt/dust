@@ -457,17 +457,13 @@ export class InternalMCPServerInMemoryResource {
         removeNulls(servers.map((server) => server.internalMCPServerId))
       ),
     ];
-    const resolvedIds = ids
+    const resolvedIds = removeNulls(ids
       .map((id) => {
         const resolvedName = getInternalMCPServerNameAndWorkspaceId(id);
         return resolvedName.isErr()
           ? null
           : { id, name: resolvedName.value.name };
-      })
-      .filter(
-        (entry): entry is { id: string; name: InternalMCPServerNameType } =>
-          entry !== null
-      );
+      }));
 
     const enabledServerNames = await this.computeEnabledServerNames(
       auth,
@@ -613,30 +609,6 @@ export class InternalMCPServerInMemoryResource {
       sharedSecret: redactedSecret,
       customHeaders: redactedHeaders,
     };
-  }
-
-  static async fetchDecryptedCredentials(
-    auth: Authenticator,
-    internalMCPServerId: string
-  ): Promise<{
-    sharedSecret: string | null;
-    customHeaders: Record<string, string> | null;
-  } | null> {
-    const decryptedCredentials = await this.fetchDecryptedCredentials(
-      auth,
-      [internalMCPServerId]
-    );
-
-    const credential = decryptedCredentials.find(
-      (entry) => entry.internalMCPServerId === internalMCPServerId
-    );
-
-    return credential
-      ? {
-          sharedSecret: credential.sharedSecret,
-          customHeaders: credential.customHeaders,
-        }
-      : null;
   }
 
   static async fetchDecryptedCredentials(
