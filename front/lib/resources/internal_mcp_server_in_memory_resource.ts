@@ -355,7 +355,7 @@ export class InternalMCPServerInMemoryResource {
     );
 
     // Fetch the credentials (API keys, headers) for MCP servers that have some.
-    const decryptedCredentials = await this.fetchDecryptedCredentialsByIds(
+    const decryptedCredentials = await this.fetchDecryptedCredentials(
       auth,
       resolvedIds.map(({ id }) => id)
     );
@@ -409,7 +409,7 @@ export class InternalMCPServerInMemoryResource {
       })
     );
 
-    const decryptedCredentials = await this.fetchDecryptedCredentialsByIds(
+    const decryptedCredentials = await this.fetchDecryptedCredentials(
       auth,
       ids
     );
@@ -473,7 +473,7 @@ export class InternalMCPServerInMemoryResource {
       auth,
       resolvedIds.map(({ name }) => name)
     );
-    const decryptedCredentials = await this.fetchDecryptedCredentialsByIds(
+    const decryptedCredentials = await this.fetchDecryptedCredentials(
       auth,
       resolvedIds.map(({ id }) => id)
     );
@@ -622,7 +622,7 @@ export class InternalMCPServerInMemoryResource {
     sharedSecret: string | null;
     customHeaders: Record<string, string> | null;
   } | null> {
-    const decryptedCredentials = await this.fetchDecryptedCredentialsByIds(
+    const decryptedCredentials = await this.fetchDecryptedCredentials(
       auth,
       [internalMCPServerId]
     );
@@ -639,7 +639,7 @@ export class InternalMCPServerInMemoryResource {
       : null;
   }
 
-  static async fetchDecryptedCredentialsByIds(
+  static async fetchDecryptedCredentials(
     auth: Authenticator,
     internalMCPServerIds: string[]
   ): Promise<
@@ -664,26 +664,23 @@ export class InternalMCPServerInMemoryResource {
     const credentials = await InternalMCPServerCredentialModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        internalMCPServerId,
+        internalMCPServerId: {
+          [Op.in]: idsRequiringBearerToken,
+        },
       },
     });
 
-    if (!credential) {
-      return null;
-    }
-
-    const { encryptedKey, customHeaders } = credential;
-
-    return {
-      sharedSecret: encryptedKey
+    return credentials.map((credential) => ({
+      internalMCPServerId: credential.internalMCPServerId,
+      sharedSecret: credential.encryptedKey
         ? decrypt({
-            encrypted: encryptedKey,
+            encrypted: credential.encryptedKey,
             key: auth.getNonNullableWorkspace().sId,
             useCase: "mcp_server_credentials",
           })
         : null,
-      customHeaders,
-    };
+      customHeaders: credential.customHeaders,
+    }));
   }
 
   // Serialization.
