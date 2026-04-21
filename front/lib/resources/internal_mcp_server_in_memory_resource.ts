@@ -656,6 +656,26 @@ export class InternalMCPServerInMemoryResource {
     }));
   }
 
+  static async fetchDecryptedCredentials(
+    auth: Authenticator,
+    internalMCPServerId: string
+  ): Promise<{
+    sharedSecret: string | null;
+    customHeaders: Record<string, string> | null;
+  } | null> {
+    const [credential] = await this.fetchDecryptedCredentialsByIds(
+      auth,
+      [internalMCPServerId]
+    );
+
+    return credential
+      ? {
+        sharedSecret: credential.sharedSecret,
+        customHeaders: credential.customHeaders,
+      }
+      : null;
+  }
+
   // Serialization.
   toJSON(): MCPServerType {
     return {
