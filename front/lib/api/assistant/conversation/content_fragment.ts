@@ -79,7 +79,9 @@ export async function toFileContentFragment(
     userId: auth.user()?.id,
     workspaceId: auth.getNonNullableWorkspace().id,
     useCase: "conversation",
-    useCaseMetadata: skipDataSourceIndexing ? {skipDataSourceIndexing: true} : undefined,
+    useCaseMetadata: skipDataSourceIndexing
+      ? { skipDataSourceIndexing: true }
+      : undefined,
   });
 
   const processRes = await processAndStoreFile(auth, {
