@@ -1,10 +1,11 @@
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { LightConversationType } from "@app/types/assistant/conversation";
 import {
+  getConversationDisplayTitle,
   isCompactionMessageType,
   isLightAgentMessageType,
   isUserMessageTypeWithContentFragments,
+  type LightConversationType,
 } from "@app/types/assistant/conversation";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { stripMarkdown } from "@app/types/shared/utils/string_utils";
@@ -93,11 +94,7 @@ export function SpaceConversationListItem({
     return null;
   }
 
-  const conversationLabel =
-    conversation.title ??
-    (moment(conversation.created).isSame(moment(), "day")
-      ? "New Conversation"
-      : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
+  const conversationLabel = getConversationDisplayTitle(conversation);
 
   const time = moment(conversation.updated).fromNow();
 
