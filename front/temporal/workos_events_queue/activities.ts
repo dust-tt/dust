@@ -40,6 +40,7 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import mainLogger from "@app/logger/logger";
 import { GROUP_KINDS } from "@app/types/groups";
 import type { Result } from "@app/types/shared/result";
+import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import type {
   DirectoryUser,
@@ -59,7 +60,6 @@ import type {
 } from "@workos-inc/node";
 import { NotFoundException } from "@workos-inc/node";
 import assert from "assert";
-import {isString} from "@app/types/shared/utils/general";
 
 const logger = mainLogger.child(
   {},
@@ -115,7 +115,11 @@ async function verifyWorkOSWorkspace<E extends Event, R>(
   // For dsync events, verify the plan allows SCIM and the directoryId matches
   // the current organization's active directory.
   const { data: eventData } = event;
-  if (isRecord(eventData) && "directoryId" in eventData && isString(eventData.directoryId)) {
+  if (
+    isRecord(eventData) &&
+    "directoryId" in eventData &&
+    isString(eventData.directoryId)
+  ) {
     const subscription =
       await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
     if (!subscription?.getPlan().limits.users.isSCIMAllowed) {
@@ -731,7 +735,10 @@ async function handleUserAddedToGroup(
   }
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const group = await GroupResource.fetchByWorkOSGroupId(auth, eventData.group.id);
+  const group = await GroupResource.fetchByWorkOSGroupId(
+    auth,
+    eventData.group.id
+  );
   if (!group) {
     throw new Error(
       `Group not found for workOSId "${eventData.group.id}" in workspace "${workspace.sId}"`
@@ -894,7 +901,10 @@ async function handleUserRemovedFromGroup(
   }
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const group = await GroupResource.fetchByWorkOSGroupId(auth, eventData.group.id);
+  const group = await GroupResource.fetchByWorkOSGroupId(
+    auth,
+    eventData.group.id
+  );
   if (!group) {
     throw new Error(
       `Group not found for workOSId "${eventData.group.id}" in workspace "${workspace.sId}"`
@@ -1008,7 +1018,7 @@ async function handleCreateOrUpdateWorkOSUser(
   workspace: LightWorkspaceType,
   event: DsyncUserCreatedEvent | DsyncUserUpdatedEvent
 ) {
-  const { data: eventData} = event;
+  const { data: eventData } = event;
 
   const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail({
     workspace,
@@ -1142,7 +1152,7 @@ async function handleDeleteWorkOSUser(
   workspace: LightWorkspaceType,
   event: DsyncUserDeletedEvent
 ) {
-  const {data:eventData} = event;
+  const { data: eventData } = event;
   const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail({
     workspace,
     workOSUser: eventData,
@@ -1236,7 +1246,7 @@ async function handleGroupDelete(
   workspace: LightWorkspaceType,
   event: DsyncGroupDeletedEvent
 ) {
-  const {data:eventData} = event;
+  const { data: eventData } = event;
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const group = await GroupResource.fetchByWorkOSGroupId(auth, eventData.id);
 
