@@ -8,6 +8,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import type { MicrosoftAllowedLabel } from "@app/lib/models/workspace_sensitivity_label_config";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import type { WorkspaceSensitivityLabelConfigType } from "@app/lib/resources/workspace_sensitivity_label_config_resource";
 import { WorkspaceSensitivityLabelConfigResource } from "@app/lib/resources/workspace_sensitivity_label_config_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -32,10 +33,19 @@ export type DataClassificationLabelsResponseBody = {
 
 // ─── Request schema ──────────────────────────────────────────────────────────
 
-const SourceSchema = z.union([
-  z.object({ dataSourceId: z.string(), internalMCPServerId: z.undefined() }),
-  z.object({ internalMCPServerId: z.string(), dataSourceId: z.undefined() }),
-]);
+const SourceSchema = z
+  .object({
+    dataSourceId: z.string().optional(),
+    internalMCPServerId: z.string().optional(),
+  })
+  .refine(
+    ({ dataSourceId, internalMCPServerId }) =>
+      !!dataSourceId !== !!internalMCPServerId,
+    {
+      message:
+        "Exactly one of dataSourceId or internalMCPServerId must be provided.",
+    }
+  );
 
 const PostBodySchema = z.object({
   allowedLabels: z.array(z.string()),
@@ -123,7 +133,8 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      DataClassificationLabelsResponseBody | { config: unknown }
+      | DataClassificationLabelsResponseBody
+      | { config: WorkspaceSensitivityLabelConfigType }
     >
   >,
   auth: Authenticator
@@ -287,7 +298,7 @@ async function handler(
         { sourceType, sourceId, allowedLabels }
       );
 
-      return res.status(200).json({ config: updated });
+      return res.status(200).json({ config: updated.toJSON() });
     }
 
     default:
