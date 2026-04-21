@@ -9,11 +9,16 @@ export async function compactionActivity(
     compactionMessageId,
     compactionMessageVersion,
     model,
+    sourceConversation,
   }: {
     conversationId: string;
     compactionMessageId: string;
     compactionMessageVersion: number;
     model: SupportedModel;
+    sourceConversation?: {
+      conversationId: string;
+      messageRank: number;
+    };
   }
 ): Promise<void> {
   const authResult = await Authenticator.fromJSON(authType);
@@ -23,12 +28,12 @@ export async function compactionActivity(
     );
   }
   const auth = authResult.value;
-
   const compactionRes = await runCompaction(auth, {
     conversationId,
     compactionMessageId,
     compactionMessageVersion,
     model,
+    sourceConversation,
   });
 
   if (compactionRes.isErr()) {

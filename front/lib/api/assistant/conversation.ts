@@ -2580,9 +2580,14 @@ export async function compactConversation(
   {
     conversation,
     model,
+    sourceConversation,
   }: {
     conversation: ConversationType;
     model: SupportedModel;
+    sourceConversation?: {
+      conversationId: string;
+      messageRank: number;
+    };
   }
 ): Promise<
   Result<{ compactionMessage: CompactionMessageType }, APIErrorWithStatusCode>
@@ -2703,6 +2708,7 @@ export async function compactConversation(
     compactionMessageId: compactionMessage.sId,
     compactionMessageVersion: compactionMessage.version,
     model,
+    sourceConversation,
   });
 
   return new Ok({ compactionMessage });
