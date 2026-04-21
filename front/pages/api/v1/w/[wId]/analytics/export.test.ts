@@ -289,7 +289,7 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     expect(csv).toContain("alice@example.com");
   });
 
-  it("returns JSON when format=json", async () => {
+  it("returns typed JSON when format=json for usage_metrics", async () => {
     const { req, res } = await setupTest({
       table: "usage_metrics",
       format: "json",
@@ -301,10 +301,103 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     expect(res.getHeader("Content-Type")).toBe("application/json");
     const data = res._getJSONData();
     expect(Array.isArray(data)).toBe(true);
-    expect(data[0]).toHaveProperty("date");
-    expect(data[0]).toHaveProperty("messages");
-    expect(data[0]).toHaveProperty("conversations");
-    expect(data[0]).toHaveProperty("activeUsers");
+    expect(data[0]).toEqual({
+      date: "2024-06-01",
+      messages: 12,
+      conversations: 3,
+      activeUsers: 2,
+    });
+  });
+
+  it("returns typed JSON for active_users", async () => {
+    const { req, res } = await setupTest({
+      table: "active_users",
+      format: "json",
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data[0]).toEqual({
+      date: "2024-06-01",
+      dau: 5,
+      wau: 10,
+      mau: 20,
+    });
+  });
+
+  it("returns typed JSON for source", async () => {
+    const { req, res } = await setupTest({
+      table: "source",
+      format: "json",
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data[0]).toEqual({
+      date: "2024-06-01",
+      source: "web",
+      messageCount: 10,
+    });
+  });
+
+  it("returns typed JSON for agents", async () => {
+    const { req, res } = await setupTest({
+      table: "agents",
+      format: "json",
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data[0]).toEqual({
+      agentId: "agent-123",
+      name: "TestAgent",
+      messages: 5,
+    });
+  });
+
+  it("returns typed JSON for users", async () => {
+    const { req, res } = await setupTest({
+      table: "users",
+      format: "json",
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data[0]).toEqual({
+      userName: "Alice",
+      messageCount: 7,
+    });
+  });
+
+  it("returns typed JSON for messages", async () => {
+    const { req, res } = await setupTest({
+      table: "messages",
+      format: "json",
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data[0]).toEqual({
+      messageId: "msg-1",
+      createdAt: "2024-06-01 10:00:00",
+      assistantId: "agent-1",
+      assistantName: "TestAgent",
+      assistantSettings: "published",
+      conversationId: "conv-1",
+      userId: "user-1",
+      userEmail: "alice@example.com",
+      source: "web",
+    });
   });
 
   it("returns CSV by default (no format param)", async () => {

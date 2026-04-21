@@ -1,12 +1,15 @@
+import type { AgentExportRow } from "@app/lib/api/analytics/agents_export";
 import {
   AGENT_EXPORT_HEADERS,
   fetchAgentExportRows,
 } from "@app/lib/api/analytics/agents_export";
 import { sanitizeCsvCell } from "@app/lib/api/analytics/csv_utils";
+import type { MessageExportRow } from "@app/lib/api/analytics/messages_export";
 import {
   fetchMessageExportRows,
   MESSAGE_EXPORT_HEADERS,
 } from "@app/lib/api/analytics/messages_export";
+import type { UserExportRow } from "@app/lib/api/analytics/users_export";
 import {
   fetchUserExportRows,
   USER_EXPORT_HEADERS,
@@ -29,7 +32,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
-import type { estypes } from "@elastic/elasticsearch";
 import { stringify } from "csv-stringify/sync";
 
 type AnalyticsExportTable =
@@ -42,12 +44,115 @@ type AnalyticsExportTable =
   | "tool_usage"
   | "messages";
 
-interface UsageExportRow {
+interface UsageMetricsRow {
   date: string;
-  name: string;
+  messages: number;
+  conversations: number;
+  activeUsers: number;
+}
+
+interface ActiveUsersRow {
+  date: string;
+  dau: number;
+  wau: number;
+  mau: number;
+}
+
+interface SourceRow {
+  date: string;
+  source: string;
+  messageCount: number;
+}
+
+interface SkillUsageRow {
+  date: string;
+  skillName: string;
   executions: number;
   uniqueUsers: number;
 }
+
+interface ToolUsageRow {
+  date: string;
+  toolName: string;
+  executions: number;
+  uniqueUsers: number;
+}
+
+const USAGE_METRICS_HEADERS = [
+  "date",
+  "messages",
+  "conversations",
+  "activeUsers",
+] as const satisfies readonly (keyof UsageMetricsRow)[];
+
+const ACTIVE_USERS_HEADERS = [
+  "date",
+  "dau",
+  "wau",
+  "mau",
+] as const satisfies readonly (keyof ActiveUsersRow)[];
+
+const SOURCE_HEADERS = [
+  "date",
+  "source",
+  "messageCount",
+] as const satisfies readonly (keyof SourceRow)[];
+
+const SKILL_USAGE_HEADERS = [
+  "date",
+  "skillName",
+  "executions",
+  "uniqueUsers",
+] as const satisfies readonly (keyof SkillUsageRow)[];
+
+const TOOL_USAGE_HEADERS = [
+  "date",
+  "toolName",
+  "executions",
+  "uniqueUsers",
+] as const satisfies readonly (keyof ToolUsageRow)[];
+
+export type ExportTableData =
+  | {
+      table: "usage_metrics";
+      headers: typeof USAGE_METRICS_HEADERS;
+      rows: UsageMetricsRow[];
+    }
+  | {
+      table: "active_users";
+      headers: typeof ACTIVE_USERS_HEADERS;
+      rows: ActiveUsersRow[];
+    }
+  | {
+      table: "source";
+      headers: typeof SOURCE_HEADERS;
+      rows: SourceRow[];
+    }
+  | {
+      table: "agents";
+      headers: typeof AGENT_EXPORT_HEADERS;
+      rows: AgentExportRow[];
+    }
+  | {
+      table: "users";
+      headers: typeof USER_EXPORT_HEADERS;
+      rows: UserExportRow[];
+    }
+  | {
+      table: "skill_usage";
+      headers: typeof SKILL_USAGE_HEADERS;
+      rows: SkillUsageRow[];
+    }
+  | {
+      table: "tool_usage";
+      headers: typeof TOOL_USAGE_HEADERS;
+      rows: ToolUsageRow[];
+    }
+  | {
+      table: "messages";
+      headers: typeof MESSAGE_EXPORT_HEADERS;
+      rows: MessageExportRow[];
+    };
 
 export async function exportTable({
   table,
@@ -63,7 +168,7 @@ export async function exportTable({
   timezone: string;
   owner: WorkspaceType;
   includeHiddenAgents: boolean;
-}): Promise<Result<string, Error>> {
+}): Promise<Result<ExportTableData, Error>> {
   switch (table) {
     case "usage_metrics":
       return exportUsageMetrics({ startDate, endDate, timezone, owner });
@@ -76,40 +181,47 @@ export async function exportTable({
     case "users":
       return exportUsers({ startDate, endDate, timezone, owner });
     case "skill_usage":
-      return exportItemUsage({
-        startDate,
-        endDate,
-        timezone,
-        owner,
-        headerLabel: "skillName",
-        fetchItems: async (q) => {
-          const r = await fetchAvailableSkills(q);
-          return r.isOk()
-            ? new Ok(r.value.map((s) => ({ name: s.skillName })))
-            : r;
-        },
-        fetchMetrics: fetchSkillUsageMetrics,
-      });
+      return exportSkillUsage({ startDate, endDate, timezone, owner });
     case "tool_usage":
-      return exportItemUsage({
-        startDate,
-        endDate,
-        timezone,
-        owner,
-        headerLabel: "toolName",
-        fetchItems: async (q) => {
-          const r = await fetchAvailableTools(q);
-          return r.isOk()
-            ? new Ok(r.value.map((t) => ({ name: t.serverName })))
-            : r;
-        },
-        fetchMetrics: fetchToolUsageMetrics,
-      });
+      return exportToolUsage({ startDate, endDate, timezone, owner });
     case "messages":
       return exportMessages({ startDate, endDate, timezone, owner });
     default:
       assertNever(table);
   }
+}
+
+export function stringifyExportTableAsCsv(data: ExportTableData): string {
+  switch (data.table) {
+    case "usage_metrics":
+      return stringifyRowsAsCsv(data.headers, data.rows);
+    case "active_users":
+      return stringifyRowsAsCsv(data.headers, data.rows);
+    case "source":
+      return stringifyRowsAsCsv(data.headers, data.rows);
+    case "agents":
+      return stringifyRowsAsCsv(data.headers, data.rows);
+    case "users":
+      return stringifyRowsAsCsv(data.headers, data.rows);
+    case "skill_usage":
+      return stringifyRowsAsCsv(data.headers, data.rows);
+    case "tool_usage":
+      return stringifyRowsAsCsv(data.headers, data.rows);
+    case "messages":
+      return stringifyRowsAsCsv(data.headers, data.rows);
+    default:
+      assertNever(data);
+  }
+}
+
+function stringifyRowsAsCsv<
+  K extends string,
+  R extends Record<K, string | number>,
+>(headers: readonly K[], rows: readonly R[]): string {
+  const csvData = rows.map((row) =>
+    headers.map((h) => sanitizeCsvCell(row[h]))
+  );
+  return stringify([[...headers], ...csvData], { header: false });
 }
 
 async function exportUsageMetrics({
@@ -122,7 +234,7 @@ async function exportUsageMetrics({
   endDate: string;
   timezone: string;
   owner: WorkspaceType;
-}): Promise<Result<string, Error>> {
+}): Promise<Result<ExportTableData, Error>> {
   const baseQuery = buildAgentAnalyticsBaseQuery({
     workspaceId: owner.sId,
     startDate,
@@ -142,15 +254,18 @@ async function exportUsageMetrics({
     );
   }
 
-  const headers = ["date", "messages", "conversations", "activeUsers"];
-  const csvData = result.value.map((point) => [
-    formatUTCDateFromMillis(point.timestamp),
-    point.count,
-    point.conversations,
-    point.activeUsers,
-  ]);
+  const rows: UsageMetricsRow[] = result.value.map((point) => ({
+    date: formatUTCDateFromMillis(point.timestamp),
+    messages: point.count,
+    conversations: point.conversations,
+    activeUsers: point.activeUsers,
+  }));
 
-  return new Ok(stringify([headers, ...csvData], { header: false }));
+  return new Ok({
+    table: "usage_metrics",
+    headers: USAGE_METRICS_HEADERS,
+    rows,
+  });
 }
 
 async function exportActiveUsers({
@@ -163,7 +278,7 @@ async function exportActiveUsers({
   endDate: string;
   timezone: string;
   owner: WorkspaceType;
-}): Promise<Result<string, Error>> {
+}): Promise<Result<ExportTableData, Error>> {
   const result = await fetchActiveUsersMetrics(
     owner,
     startDate,
@@ -179,15 +294,18 @@ async function exportActiveUsers({
     );
   }
 
-  const headers = ["date", "dau", "wau", "mau"];
-  const csvData = result.value.map((point) => [
-    point.date,
-    point.dau,
-    point.wau,
-    point.mau,
-  ]);
+  const rows: ActiveUsersRow[] = result.value.map((point) => ({
+    date: point.date,
+    dau: point.dau,
+    wau: point.wau,
+    mau: point.mau,
+  }));
 
-  return new Ok(stringify([headers, ...csvData], { header: false }));
+  return new Ok({
+    table: "active_users",
+    headers: ACTIVE_USERS_HEADERS,
+    rows,
+  });
 }
 
 async function exportSource({
@@ -200,7 +318,7 @@ async function exportSource({
   endDate: string;
   timezone: string;
   owner: WorkspaceType;
-}): Promise<Result<string, Error>> {
+}): Promise<Result<ExportTableData, Error>> {
   const baseQuery = buildAgentAnalyticsBaseQuery({
     workspaceId: owner.sId,
     startDate,
@@ -215,22 +333,21 @@ async function exportSource({
     );
   }
 
-  const rows = [...result.value].sort((a, b) => {
-    const dateCompare = a.date.localeCompare(b.date);
-    if (dateCompare !== 0) {
-      return dateCompare;
-    }
-    return a.origin.localeCompare(b.origin);
-  });
+  const rows: SourceRow[] = [...result.value]
+    .sort((a, b) => {
+      const dateCompare = a.date.localeCompare(b.date);
+      if (dateCompare !== 0) {
+        return dateCompare;
+      }
+      return a.origin.localeCompare(b.origin);
+    })
+    .map((row) => ({
+      date: row.date,
+      source: row.origin,
+      messageCount: row.messageCount,
+    }));
 
-  const headers = ["date", "source", "messageCount"];
-  const csvData = rows.map((row) => [
-    row.date,
-    sanitizeCsvCell(row.origin),
-    row.messageCount,
-  ]);
-
-  return new Ok(stringify([headers, ...csvData], { header: false }));
+  return new Ok({ table: "source", headers: SOURCE_HEADERS, rows });
 }
 
 async function exportAgents({
@@ -243,7 +360,7 @@ async function exportAgents({
   endDate: string;
   owner: WorkspaceType;
   includeHiddenAgents: boolean;
-}): Promise<Result<string, Error>> {
+}): Promise<Result<ExportTableData, Error>> {
   const baseQuery = buildAgentAnalyticsBaseQuery({
     workspaceId: owner.sId,
     startDate,
@@ -262,13 +379,11 @@ async function exportAgents({
     );
   }
 
-  const csvData = result.value.map((row) =>
-    AGENT_EXPORT_HEADERS.map((h) => sanitizeCsvCell(row[h]))
-  );
-
-  return new Ok(
-    stringify([AGENT_EXPORT_HEADERS, ...csvData], { header: false })
-  );
+  return new Ok({
+    table: "agents",
+    headers: AGENT_EXPORT_HEADERS,
+    rows: result.value,
+  });
 }
 
 async function exportUsers({
@@ -281,7 +396,7 @@ async function exportUsers({
   endDate: string;
   timezone: string;
   owner: WorkspaceType;
-}): Promise<Result<string, Error>> {
+}): Promise<Result<ExportTableData, Error>> {
   const baseQuery = buildAgentAnalyticsBaseQuery({
     workspaceId: owner.sId,
     startDate,
@@ -302,70 +417,55 @@ async function exportUsers({
     );
   }
 
-  const csvData = result.value.map((row) =>
-    USER_EXPORT_HEADERS.map((h) => sanitizeCsvCell(row[h]))
-  );
-
-  return new Ok(
-    stringify([USER_EXPORT_HEADERS, ...csvData], { header: false })
-  );
+  return new Ok({
+    table: "users",
+    headers: USER_EXPORT_HEADERS,
+    rows: result.value,
+  });
 }
 
-async function exportItemUsage({
+async function exportSkillUsage({
   startDate,
   endDate,
   timezone,
   owner,
-  headerLabel,
-  fetchItems,
-  fetchMetrics,
 }: {
   startDate: string;
   endDate: string;
   timezone: string;
   owner: WorkspaceType;
-  headerLabel: string;
-  fetchItems: (
-    q: estypes.QueryDslQueryContainer
-  ) => Promise<Result<{ name: string }[], Error>>;
-  fetchMetrics: (
-    q: estypes.QueryDslQueryContainer,
-    name: string,
-    tz: string
-  ) => Promise<
-    Result<
-      { date: string; executionCount: number; uniqueUsers: number }[],
-      Error
-    >
-  >;
-}): Promise<Result<string, Error>> {
+}): Promise<Result<ExportTableData, Error>> {
   const baseQuery = buildAgentAnalyticsBaseQuery({
     workspaceId: owner.sId,
     startDate,
     endDate,
   });
 
-  const itemsResult = await fetchItems(baseQuery);
-  if (itemsResult.isErr()) {
+  const skillsResult = await fetchAvailableSkills(baseQuery);
+  if (skillsResult.isErr()) {
     return new Err(
       new Error(
-        `Failed to retrieve available ${headerLabel}s: ${itemsResult.error.message}`
+        `Failed to retrieve available skills: ${skillsResult.error.message}`
       )
     );
   }
 
   const nestedRows = await concurrentExecutor(
-    itemsResult.value,
+    skillsResult.value,
     async (item) => {
-      const usageResult = await fetchMetrics(baseQuery, item.name, timezone);
+      const usageResult = await fetchSkillUsageMetrics(
+        baseQuery,
+        item.skillName,
+        timezone
+      );
       if (usageResult.isErr()) {
         throw new Error(
-          `Failed to retrieve ${headerLabel} usage for ${item.name}: ${usageResult.error.message}`
+          `Failed to retrieve skill usage for ${item.skillName}: ${usageResult.error.message}`
         );
       }
-      return usageResult.value.map((point) => ({
+      return usageResult.value.map<SkillUsageRow>((point) => ({
         date: point.date,
-        name: item.name,
+        skillName: item.skillName,
         executions: point.executionCount,
         uniqueUsers: point.uniqueUsers,
       }));
@@ -373,25 +473,83 @@ async function exportItemUsage({
     { concurrency: 8 }
   );
 
-  const rows: UsageExportRow[] = nestedRows.flat();
-
-  rows.sort((a, b) => {
+  const rows = nestedRows.flat().sort((a, b) => {
     const dateCompare = a.date.localeCompare(b.date);
     if (dateCompare !== 0) {
       return dateCompare;
     }
-    return a.name.localeCompare(b.name);
+    return a.skillName.localeCompare(b.skillName);
   });
 
-  const headers: string[] = ["date", headerLabel, "executions", "uniqueUsers"];
-  const csvData = rows.map((row) => [
-    sanitizeCsvCell(row.date),
-    sanitizeCsvCell(row.name),
-    row.executions,
-    row.uniqueUsers,
-  ]);
+  return new Ok({
+    table: "skill_usage",
+    headers: SKILL_USAGE_HEADERS,
+    rows,
+  });
+}
 
-  return new Ok(stringify([headers, ...csvData], { header: false }));
+async function exportToolUsage({
+  startDate,
+  endDate,
+  timezone,
+  owner,
+}: {
+  startDate: string;
+  endDate: string;
+  timezone: string;
+  owner: WorkspaceType;
+}): Promise<Result<ExportTableData, Error>> {
+  const baseQuery = buildAgentAnalyticsBaseQuery({
+    workspaceId: owner.sId,
+    startDate,
+    endDate,
+  });
+
+  const toolsResult = await fetchAvailableTools(baseQuery);
+  if (toolsResult.isErr()) {
+    return new Err(
+      new Error(
+        `Failed to retrieve available tools: ${toolsResult.error.message}`
+      )
+    );
+  }
+
+  const nestedRows = await concurrentExecutor(
+    toolsResult.value,
+    async (item) => {
+      const usageResult = await fetchToolUsageMetrics(
+        baseQuery,
+        item.serverName,
+        timezone
+      );
+      if (usageResult.isErr()) {
+        throw new Error(
+          `Failed to retrieve tool usage for ${item.serverName}: ${usageResult.error.message}`
+        );
+      }
+      return usageResult.value.map<ToolUsageRow>((point) => ({
+        date: point.date,
+        toolName: item.serverName,
+        executions: point.executionCount,
+        uniqueUsers: point.uniqueUsers,
+      }));
+    },
+    { concurrency: 8 }
+  );
+
+  const rows = nestedRows.flat().sort((a, b) => {
+    const dateCompare = a.date.localeCompare(b.date);
+    if (dateCompare !== 0) {
+      return dateCompare;
+    }
+    return a.toolName.localeCompare(b.toolName);
+  });
+
+  return new Ok({
+    table: "tool_usage",
+    headers: TOOL_USAGE_HEADERS,
+    rows,
+  });
 }
 
 async function exportMessages({
@@ -404,7 +562,7 @@ async function exportMessages({
   endDate: string;
   timezone: string;
   owner: WorkspaceType;
-}): Promise<Result<string, Error>> {
+}): Promise<Result<ExportTableData, Error>> {
   const result = await fetchMessageExportRows({
     workspaceId: owner.sId,
     workspaceModelId: owner.id,
@@ -419,11 +577,9 @@ async function exportMessages({
     );
   }
 
-  const csvData = result.value.map((row) =>
-    MESSAGE_EXPORT_HEADERS.map((h) => sanitizeCsvCell(row[h]))
-  );
-
-  return new Ok(
-    stringify([MESSAGE_EXPORT_HEADERS, ...csvData], { header: false })
-  );
+  return new Ok({
+    table: "messages",
+    headers: MESSAGE_EXPORT_HEADERS,
+    rows: result.value,
+  });
 }
