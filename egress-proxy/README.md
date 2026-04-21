@@ -22,7 +22,7 @@ Not implemented yet:
 ## Configuration
 
 ```text
-EGRESS_PROXY_LISTEN_ADDR=0.0.0.0:4443
+EGRESS_PROXY_LISTEN_ADDR=0.0.0.0:443
 EGRESS_PROXY_HEALTH_ADDR=0.0.0.0:8080
 EGRESS_PROXY_TLS_CERT=/etc/certs/tls.crt
 EGRESS_PROXY_TLS_KEY=/etc/certs/tls.key
