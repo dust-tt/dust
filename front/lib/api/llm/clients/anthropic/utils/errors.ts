@@ -1,5 +1,5 @@
 import type { APIError } from "@anthropic-ai/sdk";
-import { APIConnectionError } from "@anthropic-ai/sdk";
+import { AnthropicError, APIConnectionError } from "@anthropic-ai/sdk";
 
 import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
@@ -165,4 +165,36 @@ function categorizeAnthropicError(
     isRetryable,
     originalError,
   };
+}
+
+/**
+ * Type guard for an AnthropicError thrown by the SDK's BetaMessageStream when
+ * it fails to parse tool parameter JSON client-side.
+ */
+export function isAnthropicErrorUnableToParseToolParam(
+  err: unknown
+): err is AnthropicError {
+  return (
+    err instanceof AnthropicError &&
+    err.message.includes("Unable to parse tool parameter JSON")
+  );
+}
+
+/**
+ * Handles the SDK-thrown AnthropicError when BetaMessageStream fails to parse
+ * tool parameter JSON client-side. Returns an EventError marked as retryable.
+ */
+export function handleInvalidToolJsonAnthropicError(
+  err: AnthropicError,
+  metadata: LLMClientMetadata
+): LLMEvent {
+  return new EventError(
+    {
+      type: "invalid_request_error",
+      message: `Model generated invalid tool call JSON (${metadata.clientId}/${metadata.modelId}). ${err.message}`,
+      isRetryable: true,
+      originalError: err,
+    },
+    metadata
+  );
 }
