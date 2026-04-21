@@ -16,11 +16,20 @@ interface WorkspaceSourceChartProps {
   period: ObservabilityTimeRangeType;
 }
 
-const CARD_CHART_HEIGHT = 56;
+const CARD_CHART_HEIGHT = 72;
 const BAR_MAX_SIZE = 40;
 const CORNER_RADIUS = 4;
-const SEGMENT_GAP = 2;
+const MIN_SEGMENT_WIDTH = 6;
 const MIN_LABEL_SEGMENT_WIDTH = 32;
+
+function getSegmentRadius(
+  index: number,
+  count: number
+): [number, number, number, number] {
+  const left = index === 0 ? CORNER_RADIUS : 0;
+  const right = index === count - 1 ? CORNER_RADIUS : 0;
+  return [left, right, right, left];
+}
 
 // Picks black or white text based on the Tailwind shade in `sourceColor`
 // (e.g. `text-emerald-300`). Dust's bar colors render at the same luminance in
@@ -78,54 +87,6 @@ function PercentLabel({
   );
 }
 
-interface SegmentShapeProps {
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  fill?: string;
-  isFirst?: boolean;
-  isLast?: boolean;
-}
-
-function SegmentShape({
-  x,
-  y,
-  width,
-  height,
-  fill,
-  isFirst,
-  isLast,
-}: SegmentShapeProps) {
-  if (
-    typeof x !== "number" ||
-    typeof y !== "number" ||
-    typeof width !== "number" ||
-    typeof height !== "number"
-  ) {
-    return null;
-  }
-  const gap = isLast ? 0 : SEGMENT_GAP;
-  if (width - gap <= 0) {
-    return null;
-  }
-  const leftRadius = isFirst ? CORNER_RADIUS : 0;
-  const rightRadius = isLast ? CORNER_RADIUS : 0;
-  const right = x + width - gap;
-  const bottom = y + height;
-  const d =
-    `M ${x + leftRadius} ${y} ` +
-    `L ${right - rightRadius} ${y} ` +
-    `A ${rightRadius} ${rightRadius} 0 0 1 ${right} ${y + rightRadius} ` +
-    `L ${right} ${bottom - rightRadius} ` +
-    `A ${rightRadius} ${rightRadius} 0 0 1 ${right - rightRadius} ${bottom} ` +
-    `L ${x + leftRadius} ${bottom} ` +
-    `A ${leftRadius} ${leftRadius} 0 0 1 ${x} ${bottom - leftRadius} ` +
-    `L ${x} ${y + leftRadius} ` +
-    `A ${leftRadius} ${leftRadius} 0 0 1 ${x + leftRadius} ${y} Z`;
-  return <path d={d} fill={fill} />;
-}
-
 export function WorkspaceSourceChart({
   workspaceId,
   period,
@@ -162,13 +123,6 @@ export function WorkspaceSourceChart({
 
   const controls = <CsvDownloadButton {...csvDownload} />;
 
-  const statusChip =
-    total > 0 ? (
-      <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        {total.toLocaleString()} messages
-      </span>
-    ) : null;
-
   return (
     <ChartContainer
       title="Source"
@@ -182,7 +136,6 @@ export function WorkspaceSourceChart({
       }
       height={CARD_CHART_HEIGHT}
       legendItems={legendItems}
-      statusChip={statusChip}
       additionalControls={controls}
     >
       <BarChart
@@ -235,12 +188,8 @@ export function WorkspaceSourceChart({
             fill="currentColor"
             isAnimationActive={false}
             maxBarSize={BAR_MAX_SIZE}
-            shape={
-              <SegmentShape
-                isFirst={idx === 0}
-                isLast={idx === data.length - 1}
-              />
-            }
+            minPointSize={MIN_SEGMENT_WIDTH}
+            radius={getSegmentRadius(idx, data.length)}
           >
             <LabelList
               dataKey={entry.origin}
