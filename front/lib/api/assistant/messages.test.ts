@@ -7,8 +7,13 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -21,17 +26,19 @@ import {
   isRichAgentMention,
   isRichUserMention,
 } from "@app/types/assistant/mentions";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("batchRenderMessages", () => {
   let auth: Authenticator;
   let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
+  let globalSpace: SpaceResource;
   let agentConfig: LightAgentConfigurationType;
 
   beforeEach(async () => {
     const setup = await createResourceTest({});
     auth = setup.authenticator;
     workspace = setup.workspace;
+    globalSpace = setup.globalSpace;
 
     agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent",
@@ -331,6 +338,132 @@ describe("batchRenderMessages", () => {
         expect(renderedAgentMessage).toBeDefined();
       }
     });
+  });
+
+  it("batch fetches data source views for multiple content-node fragments", async () => {
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+    const user = auth.getNonNullableUser();
+
+    const firstDataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace,
+      user
+    );
+    const secondDataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace,
+      user
+    );
+    const firstContentFragmentSId = generateRandomModelSId("cf");
+    const secondContentFragmentSId = generateRandomModelSId("cf");
+    const firstMessageSId = generateRandomModelSId();
+    const secondMessageSId = generateRandomModelSId();
+
+    const firstContentFragment = await ContentFragmentModel.create({
+      sId: firstContentFragmentSId,
+      version: "latest",
+      workspaceId: workspace.id,
+      title: "First content node",
+      contentType: "text/plain",
+      fileId: null,
+      userId: user.id,
+      userContextUsername: "testuser",
+      userContextFullName: "Test User",
+      userContextEmail: "test@example.com",
+      userContextProfilePictureUrl: null,
+      sourceUrl: null,
+      textBytes: null,
+      nodeId: "node-1",
+      nodeDataSourceViewId: firstDataSourceView.id,
+      nodeType: "document",
+      expiredReason: null,
+    });
+    const secondContentFragment = await ContentFragmentModel.create({
+      sId: secondContentFragmentSId,
+      version: "latest",
+      workspaceId: workspace.id,
+      title: "Second content node",
+      contentType: "text/plain",
+      fileId: null,
+      userId: user.id,
+      userContextUsername: "testuser",
+      userContextFullName: "Test User",
+      userContextEmail: "test@example.com",
+      userContextProfilePictureUrl: null,
+      sourceUrl: null,
+      textBytes: null,
+      nodeId: "node-2",
+      nodeDataSourceViewId: secondDataSourceView.id,
+      nodeType: "document",
+      expiredReason: null,
+    });
+
+    await MessageModel.bulkCreate([
+      {
+        sId: firstMessageSId,
+        rank: 0,
+        conversationId: conversation.id,
+        parentId: null,
+        contentFragmentId: firstContentFragment.id,
+        workspaceId: workspace.id,
+      },
+      {
+        sId: secondMessageSId,
+        rank: 1,
+        conversationId: conversation.id,
+        parentId: null,
+        contentFragmentId: secondContentFragment.id,
+        workspaceId: workspace.id,
+      },
+    ]);
+
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    expect(conversationResource).not.toBeNull();
+    if (!conversationResource) {
+      throw new Error("Conversation resource should exist.");
+    }
+
+    const messages = await MessageModel.findAll({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: workspace.id,
+      },
+      include: [
+        {
+          model: ContentFragmentModel,
+          as: "contentFragment",
+          required: true,
+        },
+      ],
+      order: [["rank", "ASC"]],
+    });
+
+    const fetchByModelIdsSpy = vi.spyOn(
+      DataSourceViewResource,
+      "fetchByModelIds"
+    );
+
+    const result = await batchRenderMessages(
+      auth,
+      conversationResource,
+      messages,
+      "full"
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(fetchByModelIdsSpy).toHaveBeenCalledTimes(1);
+    expect(fetchByModelIdsSpy).toHaveBeenCalledWith(auth, [
+      firstDataSourceView.id,
+      secondDataSourceView.id,
+    ]);
+
+    fetchByModelIdsSpy.mockRestore();
   });
 
   describe("user context updates", () => {

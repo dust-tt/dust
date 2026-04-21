@@ -63,6 +63,7 @@ export type RenderContentFragmentToTypeSource =
       conversationId: string;
       message: MessageModel;
       file?: FileResource;
+      dataSourceView?: DataSourceViewResource;
     }
   | {
       kind: "project_context";
@@ -600,8 +601,26 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     const fileIds = removeNulls(
       messagesWithContentFragment.map((m) => m.contentFragment?.fileId)
     );
-    const files = await FileResource.fetchByModelIdsWithAuth(auth, fileIds);
+    const nodeDataSourceViewIds = [
+      ...new Set(
+        removeNulls(
+          messagesWithContentFragment.map(
+            (m) => m.contentFragment?.nodeDataSourceViewId
+          )
+        )
+      ),
+    ];
+
+    const [files, dataSourceViews] = await Promise.all([
+      FileResource.fetchByModelIdsWithAuth(auth, fileIds),
+      nodeDataSourceViewIds.length > 0
+        ? DataSourceViewResource.fetchByModelIds(auth, nodeDataSourceViewIds)
+        : Promise.resolve([]),
+    ]);
     const filesByModelId = new Map(files.map((f) => [f.id, f]));
+    const dataSourceViewsByModelId = new Map(
+      dataSourceViews.map((dsv) => [dsv.id, dsv])
+    );
 
     // Render all content fragments with pre-fetched files.
     return Promise.all(
@@ -610,11 +629,15 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         const file = contentFragment.fileId
           ? filesByModelId.get(contentFragment.fileId)
           : undefined;
+        const dataSourceView = contentFragment.nodeDataSourceViewId
+          ? dataSourceViewsByModelId.get(contentFragment.nodeDataSourceViewId)
+          : undefined;
 
         return contentFragment.renderFromMessage(auth, {
           conversationId,
           message,
           file,
+          dataSourceView,
         });
       })
     );
@@ -860,15 +883,19 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       });
       const nodeType: ContentNodeType = fr.nodeType;
 
-      const dsViews = await DataSourceViewResource.fetchByModelIds(auth, [
-        fr.nodeDataSourceViewId,
-      ]);
+      const dsView =
+        (source.kind === "conversation_message"
+          ? source.dataSourceView
+          : undefined) ??
+        (
+          await DataSourceViewResource.fetchByModelIds(auth, [
+            fr.nodeDataSourceViewId,
+          ])
+        )[0];
       assert(
-        dsViews.length === 1,
+        dsView,
         `Data source view not found for content node content fragment (sId: ${fr.sId})`
       );
-
-      const [dsView] = dsViews;
 
       const contentNodeData = {
         nodeId,
@@ -901,10 +928,12 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       conversationId,
       message,
       file,
+      dataSourceView,
     }: {
       conversationId: string;
       message: MessageModel;
       file?: FileResource;
+      dataSourceView?: DataSourceViewResource;
     }
   ): Promise<ContentFragmentType> {
     return ContentFragmentResource.renderToContentFragmentType(auth, this, {
@@ -912,6 +941,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       conversationId,
       message,
       file,
+      dataSourceView,
     });
   }
 }
