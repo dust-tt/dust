@@ -35,9 +35,9 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
     case "agent_loop":
       return path.join(baseDir, "temporal/agent_loop");
     case "agent_schedule":
-      return path.join(baseDir, "temporal/triggers/common");
+      return path.join(baseDir, "temporal/triggers");
     case "agent_trigger_webhook":
-      return path.join(baseDir, "temporal/triggers/webhook");
+      return path.join(baseDir, "temporal/triggers_garbage_collect");
     case "analytics_queue":
       return path.join(baseDir, "temporal/analytics_queue");
     case "project_todo":

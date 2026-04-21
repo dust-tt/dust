@@ -1,4 +1,4 @@
-import { createOrUpdateWebhookCleanupSchedule } from "@app/temporal/triggers/webhook/client";
+import { createOrUpdateWebhookCleanupSchedule } from "@app/temporal/triggers_garbage_collect/client";
 import parseArgs from "minimist";
 
 const main = async () => {

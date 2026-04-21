@@ -10,7 +10,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   cancelWakeUpTemporalWorkflow,
   launchOrScheduleWakeUpTemporalWorkflow,
-} from "@app/temporal/triggers/wakeup/client";
+} from "@app/temporal/triggers/wakeup_client";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {

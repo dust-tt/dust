@@ -14,7 +14,7 @@ import logger from "@app/logger/logger";
 import {
   createOrUpdateAgentSchedule,
   deleteTriggerSchedule,
-} from "@app/temporal/triggers/schedule/client";
+} from "@app/temporal/triggers/schedule_client";
 import type {
   ScheduleConfig,
   TriggerExecutionMode,

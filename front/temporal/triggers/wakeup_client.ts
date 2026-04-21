@@ -1,7 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import { QUEUE_NAME } from "@app/temporal/triggers/common/config";
+import { QUEUE_NAME } from "@app/temporal/triggers/config";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
