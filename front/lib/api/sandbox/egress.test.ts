@@ -97,7 +97,9 @@ describe("sandbox egress helpers", () => {
     );
     expect(sandbox.exec).toHaveBeenCalledWith(
       {},
-      expect.stringContaining("systemctl is-active --quiet dust-egress-nftables.service")
+      expect.stringContaining(
+        "systemctl is-active --quiet dust-egress-nftables.service"
+      )
     );
   });
 
