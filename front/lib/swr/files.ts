@@ -20,6 +20,7 @@ import type {
   FileTypeWithMetadata,
   SharingGrantType,
 } from "@app/types/files";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher, SWRConfiguration } from "swr";
 
@@ -213,14 +214,21 @@ export function useFileContent({
     async (url: string) => {
       // Use custom fetcher to parse as text.
       const response = await clientFetch(url);
-
+      if (!response.ok) {
+        const errorData = await getErrorFromResponse(response);
+        throw new Error(errorData.message);
+      }
       return response.text();
     },
     { disabled: !fileId || config?.disabled, ...config }
   );
 
+  // SWR's error can be an Error object, which React cannot render as a child.
+  // Normalize it to so FrameRenderer can safely render it.
+  const normalizedError = error ? normalizeError(error) : null;
+
   return {
-    error,
+    error: normalizedError,
     fileContent: data,
     isFileContentLoading: !error && !data && !config?.disabled,
     mutateFileContent: mutate,
