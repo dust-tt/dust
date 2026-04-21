@@ -13,21 +13,12 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-const CLOUD_ID_FIELD = z
-  .string()
-  .optional()
-  .describe(
-    "Atlassian cloud instance ID. Required when multiple Jira instances are accessible. Use get_connection_info to list available instances."
-  );
-
 export const JIRA_TOOLS_METADATA = createToolsRecord({
   // Read operations
   get_issue_read_fields: {
     description:
       "Lists available Jira field keys/ids and names for use in the get_issue.fields parameter (read-time).",
-    schema: {
-      cloud_id: CLOUD_ID_FIELD,
-    },
+    schema: {},
     stake: "never_ask",
     displayLabels: {
       running: "Listing Jira issue fields",
@@ -44,7 +35,6 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Optional list of fields to include. Defaults to a minimal set for performance."
         ),
-      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "never_ask",
     displayLabels: {
@@ -54,9 +44,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   get_projects: {
     description: "Retrieves a list of JIRA projects.",
-    schema: {
-      cloud_id: CLOUD_ID_FIELD,
-    },
+    schema: {},
     stake: "never_ask",
     displayLabels: {
       running: "Listing Jira projects",
@@ -67,7 +55,6 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     description: "Retrieves a single JIRA project by its key (e.g., 'PROJ').",
     schema: {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
-      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "never_ask",
     displayLabels: {
@@ -80,7 +67,6 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       "Retrieves all versions (releases) for a JIRA project. Useful for getting release reports and understanding which versions are available for filtering issues.",
     schema: {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
-      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "never_ask",
     displayLabels: {
@@ -93,7 +79,6 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       "Gets available transitions for a JIRA issue based on its current status and workflow.",
     schema: {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
-      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "never_ask",
     displayLabels: {
@@ -116,7 +101,6 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe("Token for next page of results (for pagination)"),
-      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "never_ask",
     displayLabels: {
@@ -147,7 +131,6 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe("Token for next page of results (for pagination)"),
-      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "never_ask",
     displayLabels: {
@@ -159,7 +142,6 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     description: "Retrieves available issue types for a JIRA project.",
     schema: {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
-      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "never_ask",
     displayLabels: {
@@ -175,7 +157,6 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       issueTypeId: z
         .string()
         .describe("The issue type ID to get fields for (required)"),
-      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "never_ask",
     displayLabels: {
@@ -185,7 +166,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   get_connection_info: {
     description:
-      "Lists all Jira instances accessible through the current OAuth connection (cloud IDs, names, URLs) along with the authenticated user's details. Call this tool when multiple Jira instances are accessible to find the cloud_id required by other tools, then present the list to the user and ask which instance they want to use. Also use this tool when the user is referring about themselves.",
+      "Gets comprehensive connection information including user details, cloud ID, and site URL for the currently authenticated JIRA instance. This tool is used when the user is referring about themselves",
     schema: {},
     stake: "never_ask",
     displayLabels: {
@@ -196,9 +177,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   get_issue_link_types: {
     description:
       "Retrieves all available issue link types that can be used when creating issue links.",
-    schema: {
-      cloud_id: CLOUD_ID_FIELD,
-    },
+    schema: {},
     stake: "never_ask",
     displayLabels: {
       running: "Retrieving Jira link types",
@@ -238,7 +217,6 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Pagination offset. Pass the previous response's nextStartAt to fetch the next page."
         ),
-      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "never_ask",
     displayLabels: {
@@ -251,7 +229,6 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       "Retrieve all attachments for a Jira issue, including metadata like filename, size, MIME type, and download URLs.",
     schema: {
       issueKey: z.string().describe("The Jira issue key (e.g., 'PROJ-123')"),
-      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "never_ask",
     displayLabels: {
@@ -265,7 +242,6 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     schema: {
       issueKey: z.string().describe("The Jira issue key (e.g., 'PROJ-123')"),
       attachmentId: z.string().describe("The ID of the attachment to read"),
-      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "never_ask",
     displayLabels: {
@@ -293,7 +269,6 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe("Group or role name for visibility restriction"),
-      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "low",
     displayLabels: {
@@ -307,7 +282,6 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     schema: {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       transitionId: z.string().describe("The ID of the transition to perform"),
-      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "low",
     displayLabels: {
@@ -322,7 +296,6 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       issueData: JiraCreateIssueRequestSchema.describe(
         "The description of the issue"
       ),
-      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "low",
     displayLabels: {
@@ -338,7 +311,6 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       updateData: JiraCreateIssueRequestSchema.partial().describe(
         "The partial data to update the issue with - description field supports both plain text and ADF format"
       ),
-      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "low",
     displayLabels: {
@@ -353,7 +325,6 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       linkData: JiraCreateIssueLinkRequestSchema.describe(
         "Link configuration including type and issues to link"
       ),
-      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "low",
     displayLabels: {
@@ -365,7 +336,6 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     description: "Deletes an existing link between JIRA issues.",
     schema: {
       linkId: z.string().describe("The ID of the issue link to delete"),
-      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "low",
     displayLabels: {
@@ -406,7 +376,6 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
           base64Data: z.string().describe("Base64 encoded file data"),
         }),
       ]),
-      cloud_id: CLOUD_ID_FIELD,
     },
     stake: "low",
     displayLabels: {
