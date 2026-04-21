@@ -290,14 +290,14 @@ export function SkillBuilderInstructionsEditor({
           class: cn(
             editorVariants({
               error: displayError,
-              disabled: isDiffMode,
+              disabled: isDiffMode || hasSuggestions,
             }),
             INSTRUCTIONS_EDITOR_SIZE
           ),
         },
       },
     });
-  }, [editor, displayError, isDiffMode]);
+  }, [editor, displayError, isDiffMode, hasSuggestions]);
 
   // Sync external changes to the editor content
   useEffect(() => {

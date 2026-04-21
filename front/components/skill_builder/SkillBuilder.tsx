@@ -189,7 +189,7 @@ export default function SkillBuilder({
         className="mx-4"
         title={skill ? `Edit skill ${skill.name}` : "Create new skill"}
         centerActions={
-          skill && skillHistory ? (
+          skill && skillHistory && !hasPendingSuggestions ? (
             <SkillVersionHistoryPicker
               skill={skill}
               skillHistory={skillHistory}
