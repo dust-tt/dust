@@ -81,11 +81,14 @@ export async function* streamLLMEvents(
     // produces invalid tool parameter JSON. When we have a tool in progress in our
     // state, we recover by emitting a toolCallWithInvalidJson event so the agent
     // loop can send it back as a tool result and let the model self-correct.
-    const invalidJson = extractInvalidJsonFromError(err);
     if (
-      invalidJson !== null &&
+      isInvalidToolJsonError(err) &&
       stateContainer.state?.accumulatorType === "tool_use"
     ) {
+      const { message } = err.error.error;
+      const invalidJson = message.slice(
+        message.lastIndexOf(INVALID_JSON_MARKER) + INVALID_JSON_MARKER.length
+      );
       const ev = toolCallWithInvalidJson({
         ...stateContainer.state.toolInfo,
         invalidJson,
@@ -564,38 +567,43 @@ function toolCallWithInvalidJson({
   };
 }
 
+type InvalidToolJsonError = APIError & {
+  error: { error: { message: string } };
+};
+
 /**
- * Checks if an error is an Anthropic "Unable to parse tool parameter JSON" error
- * and extracts the invalid JSON content from the error message.
+ * Checks if an error is an Anthropic "Unable to parse tool parameter JSON" error.
  * The Anthropic API error message format ends with `JSON: <raw invalid json>`.
- * Returns the invalid JSON string, or null if the error doesn't match.
+ * The invalid JSON can be extracted from `err.error.error.message` at the call site.
  */
-function extractInvalidJsonFromError(err: unknown): string | null {
+function isInvalidToolJsonError(err: unknown): err is InvalidToolJsonError {
   if (!(err instanceof APIError)) {
-    return null;
+    return false;
   }
   if (err.type !== "invalid_request_error") {
-    return null;
+    return false;
   }
-  // The error body contains the original message from Anthropic.
   // err.error is the parsed JSON body: { type: "error", error: { type, message } }.
   const body = err.error;
-  const innerError =
-    isRecord(body) && typeof body.error === "object" && body.error !== null
-      ? body.error
-      : undefined;
-  const message =
-    innerError && isRecord(innerError) && typeof innerError.message === "string"
-      ? innerError.message
-      : err.message;
+  if (typeof body !== "object" || body === null || !isRecord(body)) {
+    return false;
+  }
+  const innerError = body.error;
+  if (
+    typeof innerError !== "object" ||
+    innerError === null ||
+    !isRecord(innerError)
+  ) {
+    return false;
+  }
+  const { message } = innerError;
+  if (typeof message !== "string") {
+    return false;
+  }
   if (!message.includes("Unable to parse tool parameter JSON")) {
-    return null;
+    return false;
   }
-  const jsonIndex = message.lastIndexOf(INVALID_JSON_MARKER);
-  if (jsonIndex === -1) {
-    return null;
-  }
-  return message.slice(jsonIndex + INVALID_JSON_MARKER.length);
+  return message.lastIndexOf(INVALID_JSON_MARKER) !== -1;
 }
 
 /**
