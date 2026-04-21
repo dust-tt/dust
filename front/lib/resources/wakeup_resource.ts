@@ -1,10 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type {
-  WakeUpScheduleType,
-  WakeUpStatus,
-} from "@app/lib/resources/storage/models/wakeup";
+import type { WakeUpStatus } from "@app/lib/resources/storage/models/wakeup";
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -13,7 +10,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import type { Attributes, Transaction, WhereOptions } from "sequelize";
 
 const ACTIVE_WAKE_UP_STATUSES: WakeUpStatus[] = ["scheduled"];
