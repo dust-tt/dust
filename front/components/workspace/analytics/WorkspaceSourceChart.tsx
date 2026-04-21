@@ -206,7 +206,9 @@ export function WorkspaceSourceChart({
               content={
                 <PercentLabel
                   total={total}
-                  fillClassName={getLabelFillClass(getSourceColor(entry.origin))}
+                  fillClassName={getLabelFillClass(
+                    getSourceColor(entry.origin)
+                  )}
                 />
               }
             />
