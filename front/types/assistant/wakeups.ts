@@ -36,6 +36,7 @@ export type WakeUpScheduleType = WakeUpScheduleConfig["type"];
 
 export const WakeUpSchema = z.object({
   id: z.number(),
+  sId: z.string(),
   createdAt: z.number(),
   agentConfigurationId: z.string(),
   scheduleConfig: WakeUpScheduleConfigSchema,
