@@ -7,6 +7,10 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import {
+  cancelWakeUpTemporalWorkflow,
+  launchOrScheduleWakeUpTemporalWorkflow,
+} from "@app/temporal/triggers/wakeup/client";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
@@ -282,16 +286,20 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
   }
 
   private async startTemporalWorkflow(
-    _auth: Authenticator
+    auth: Authenticator
   ): Promise<Result<void, Error>> {
-    // Temporal wiring will be added in a follow-up PR.
-    return new Ok(undefined);
+    return launchOrScheduleWakeUpTemporalWorkflow({
+      auth,
+      wakeUp: this.toJSON(),
+    });
   }
 
   private async cancelTemporalWorkflow(
-    _auth: Authenticator
+    auth: Authenticator
   ): Promise<Result<void, Error>> {
-    // Temporal wiring will be added in a follow-up PR.
-    return new Ok(undefined);
+    return cancelWakeUpTemporalWorkflow({
+      auth,
+      wakeUp: this.toJSON(),
+    });
   }
 }
