@@ -355,7 +355,7 @@ export class InternalMCPServerInMemoryResource {
     );
 
     // Fetch the credentials (API keys, headers) for MCP servers that have some.
-    const decryptedCredentials = await this.fetchDecryptedCredentials(
+    const decryptedCredentials = await this.fetchDecryptedCredentialsByIds(
       auth,
       resolvedIds.map(({ id }) => id)
     );
@@ -409,7 +409,7 @@ export class InternalMCPServerInMemoryResource {
       })
     );
 
-    const decryptedCredentials = await this.fetchDecryptedCredentials(
+    const decryptedCredentials = await this.fetchDecryptedCredentialsByIds(
       auth,
       ids
     );
@@ -470,7 +470,7 @@ export class InternalMCPServerInMemoryResource {
       auth,
       resolvedIds.map(({ name }) => name)
     );
-    const decryptedCredentials = await this.fetchDecryptedCredentials(
+    const decryptedCredentials = await this.fetchDecryptedCredentialsByIds(
       auth,
       resolvedIds.map(({ id }) => id)
     );
@@ -612,7 +612,7 @@ export class InternalMCPServerInMemoryResource {
     };
   }
 
-  static async fetchDecryptedCredentials(
+  static async fetchDecryptedCredentialsByIds(
     auth: Authenticator,
     internalMCPServerIds: string[]
   ): Promise<
