@@ -1,10 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type {
-  WakeUpScheduleType,
-  WakeUpStatus,
-} from "@app/lib/resources/storage/models/wakeup";
+import type { WakeUpStatus } from "@app/lib/resources/storage/models/wakeup";
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -15,7 +12,6 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { Attributes, Transaction, WhereOptions } from "sequelize";
-import { literal } from "sequelize";
 
 const ACTIVE_WAKE_UP_STATUSES: WakeUpStatus[] = ["scheduled"];
 
@@ -37,13 +33,13 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     auth: Authenticator,
     options?: ResourceFindOptions<WakeUpModel>
   ): Promise<WakeUpResource[]> {
-    const { where, ...otherOptions } = options ?? {};
+    const { where, ...rest } = options ?? {};
     const rows = await this.model.findAll({
       where: {
         ...where,
         workspaceId: auth.getNonNullableWorkspace().id,
-      } as WhereOptions<WakeUpModel>,
-      ...otherOptions,
+      },
+      ...rest,
     });
 
     return rows.map((row) => new this(this.model, row.get()));
@@ -51,20 +47,26 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: {
-      scheduleType: WakeUpScheduleType;
-      fireAt: Date | null;
-      cronExpression: string | null;
-      cronTimezone: string | null;
-      reason: string;
-      status?: WakeUpStatus;
-      fireCount?: number;
-    },
+    blob:
+      | {
+          scheduleType: "one_shot";
+          fireAt: Date;
+          cronExpression: null;
+          cronTimezone: null;
+          reason: string;
+        }
+      | {
+          scheduleType: "cron";
+          fireAt: null;
+          cronExpression: string;
+          cronTimezone: string;
+          reason: string;
+        },
     conversation: ConversationResource,
     agentConfiguration: AgentConfigurationType,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<WakeUpResource, Error>> {
-    const { status = "scheduled", fireCount = 0, ...wakeUpBlob } = blob;
+    const { scheduleType, fireAt, cronExpression, cronTimezone, reason } = blob;
 
     const row = await this.model.create(
       {
@@ -72,9 +74,13 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
         conversationId: conversation.id,
         userId: auth.user()?.id ?? null,
         agentConfigurationId: agentConfiguration.sId,
-        status,
-        fireCount,
-        ...wakeUpBlob,
+        status: "scheduled",
+        fireCount: 0,
+        scheduleType,
+        fireAt,
+        cronExpression,
+        cronTimezone,
+        reason,
       },
       { transaction }
     );
@@ -130,7 +136,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
 
     const cancelResults = await concurrentExecutor(
       activeWakeUps,
-      async (wakeUp) => wakeUp.cancel(auth, { transaction }),
+      async (wakeUp) => wakeUp.cancelTemporalWorkflow(auth),
       { concurrency: 10 }
     );
 
@@ -161,24 +167,12 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       return temporalResult;
     }
 
-    const [affectedCount, affectedRows] = await this.model.update(
+    await this.update(
       {
         status: "cancelled",
       },
-      {
-        where: {
-          id: this.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          status: "scheduled",
-        } as WhereOptions<WakeUpModel>,
-        transaction,
-        returning: true,
-      }
+      transaction
     );
-
-    if (affectedCount > 0 && affectedRows[0]) {
-      Object.assign(this, affectedRows[0].get());
-    }
 
     return new Ok(undefined);
   }
@@ -194,25 +188,13 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     const nextStatus: WakeUpStatus =
       this.scheduleType === "one_shot" ? "fired" : "scheduled";
 
-    const [affectedCount, affectedRows] = await this.model.update(
+    await this.update(
       {
-        fireCount: literal('"fireCount" + 1'),
+        fireCount: this.fireCount + 1,
         status: nextStatus,
       },
-      {
-        where: {
-          id: this.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          status: "scheduled",
-        } as WhereOptions<WakeUpModel>,
-        transaction,
-        returning: true,
-      }
+      transaction
     );
-
-    if (affectedCount > 0 && affectedRows[0]) {
-      Object.assign(this, affectedRows[0].get());
-    }
 
     return new Ok(undefined);
   }
