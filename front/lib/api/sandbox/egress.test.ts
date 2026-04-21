@@ -97,7 +97,9 @@ describe("sandbox egress helpers", () => {
     );
     expect(sandbox.exec).toHaveBeenCalledWith(
       {},
-      expect.stringContaining("grep -q 'skuid 1003'")
+      expect.stringContaining(
+        "systemctl is-active --quiet dust-egress-nftables.service"
+      )
     );
   });
 
