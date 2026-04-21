@@ -109,10 +109,10 @@ describe("reinforcement seed script integration test", () => {
     const feedbacksWithContent = allFeedbacks.filter((f) => f.content !== null);
     expect(feedbacksWithContent).toHaveLength(4);
 
-    // Verify skill suggestions: 2 for SearchInfoContactWithSuggestion + 1 for MeetingNotesFormatter
+    // Verify skill suggestions: 2 for SearchInfoContactWithSuggestion + 2 for MeetingNotesFormatter
     const skillSuggestions =
       await SkillSuggestionResource.listByWorkspace(authenticator);
-    expect(skillSuggestions).toHaveLength(3);
+    expect(skillSuggestions).toHaveLength(4);
 
     const allPending = skillSuggestions.every((s) => s.state === "pending");
     expect(allPending).toBe(true);

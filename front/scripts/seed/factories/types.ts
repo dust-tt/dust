@@ -43,6 +43,7 @@ export interface SkillAsset {
 export interface SkillSuggestionAsset {
   skillName: string;
   kind: "edit";
+  title?: string;
   analysis: string | null;
   state: "pending" | "approved" | "rejected" | "outdated";
   source: "reinforcement" | "synthetic";

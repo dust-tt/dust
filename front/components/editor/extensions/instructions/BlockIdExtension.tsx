@@ -5,6 +5,7 @@ export const BLOCK_ID_ATTRIBUTE = "block-id";
 
 // Node types that receive block IDs
 export const BLOCK_ID_UNIQUE_ID_NODE_TYPES = [
+  "codeBlock",
   "heading",
   "instructionBlock",
   "orderedList",

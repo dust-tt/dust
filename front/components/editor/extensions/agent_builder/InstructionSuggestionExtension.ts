@@ -236,6 +236,10 @@ function buildBlockDecorations({
             span.className = isHighlighted ? CLASSES.add : CLASSES.addDimmed;
             span.setAttribute(SUGGESTION_ID_ATTRIBUTE, suggestionId);
             span.contentEditable = "false";
+            // ProseMirror sets `white-space: normal` on [contenteditable="false"]
+            // elements, which collapses \n in code blocks. Override to inherit
+            // the parent <pre>'s `white-space: pre-wrap`.
+            span.style.whiteSpace = "inherit";
 
             const serializer = DOMSerializer.fromSchema(schema);
             if (isCrossType) {
