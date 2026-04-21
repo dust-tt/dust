@@ -3,12 +3,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { GetWorkspaceFeatureFlagsResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-type GetWorkspaceFeatureFlagsResponseType = {
-  feature_flags: WhitelistableFeature[];
-};
 
 /**
  * @ignoreswagger
