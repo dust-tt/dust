@@ -1792,7 +1792,6 @@ async function disableTriggersForNonEditors(
     const editorModelIds = group
       ? editorModelIdsByGroupModelId.get(group.id)
       : undefined;
-    // No editor group resolved → disable all triggers for that agent (matches prior behavior).
     return !editorModelIds || !editorModelIds.has(trigger.editor);
   });
 
