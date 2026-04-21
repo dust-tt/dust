@@ -12,12 +12,13 @@ import {
 } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { legendFromConstant } from "@app/components/charts/ChartLegend";
-import { useHoveredSeries } from "@app/components/charts/useHoveredSeries";
+import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import {
   useAgentFeedbackDistribution,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
 import { formatShortDate } from "@app/lib/utils/timestamps";
+import { cn } from "@dust-tt/sparkle";
 import {
   CartesianGrid,
   Line,
@@ -66,16 +67,20 @@ export function FeedbackDistributionChart({
     disabled: !workspaceId || !agentConfigurationId || !isCustomAgent,
   });
 
-  const legendItems = legendFromConstant(
-    FEEDBACK_DISTRIBUTION_LEGEND,
-    FEEDBACK_DISTRIBUTION_PALETTE,
-    {
-      includeVersionMarker:
-        isCustomAgent && mode === "timeRange" && versionMarkers.length > 0,
-    }
-  );
+  const { activeKey, isDimmed, decorate, hoverHandlers } =
+    useSelectableSeries();
 
-  const { hoveredKey, hoverHandlers } = useHoveredSeries();
+  const legendItems = decorate(
+    legendFromConstant(
+      FEEDBACK_DISTRIBUTION_LEGEND,
+      FEEDBACK_DISTRIBUTION_PALETTE,
+      {
+        includeVersionMarker:
+          isCustomAgent && mode === "timeRange" && versionMarkers.length > 0,
+      }
+    ),
+    { skip: (item) => item.key === "versionMarkers" }
+  );
 
   const filteredData = filterTimeSeriesByVersionWindow(
     feedbackDistribution,
@@ -129,7 +134,7 @@ export function FeedbackDistributionChart({
         />
         <Tooltip
           content={(props: TooltipContentProps<number, string>) => (
-            <FeedbackDistributionTooltip {...props} activeKey={hoveredKey} />
+            <FeedbackDistributionTooltip {...props} activeKey={activeKey} />
           )}
           cursor={false}
           wrapperStyle={{ outline: "none", zIndex: 50 }}
@@ -144,7 +149,11 @@ export function FeedbackDistributionChart({
           type="monotone"
           dataKey="positive"
           name="Positive"
-          className={FEEDBACK_DISTRIBUTION_PALETTE.positive}
+          className={cn(
+            FEEDBACK_DISTRIBUTION_PALETTE.positive,
+            "transition-opacity",
+            isDimmed("positive") && "opacity-25"
+          )}
           stroke="currentColor"
           strokeWidth={2}
           dot={false}
@@ -154,7 +163,11 @@ export function FeedbackDistributionChart({
           type="monotone"
           dataKey="negative"
           name="Negative"
-          className={FEEDBACK_DISTRIBUTION_PALETTE.negative}
+          className={cn(
+            FEEDBACK_DISTRIBUTION_PALETTE.negative,
+            "transition-opacity",
+            isDimmed("negative") && "opacity-25"
+          )}
           stroke="currentColor"
           strokeWidth={2}
           dot={false}

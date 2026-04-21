@@ -5,10 +5,12 @@ import {
 } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import { useWorkspaceContextOrigin } from "@app/lib/swr/workspaces";
 import { isString } from "@app/types/shared/utils/general";
+import { cn } from "@dust-tt/sparkle";
 import { Bar, BarChart, LabelList, Tooltip, XAxis, YAxis } from "recharts";
 
 interface WorkspaceSourceChartProps {
@@ -101,6 +103,8 @@ export function WorkspaceSourceChart({
   const total = contextOrigin.total;
   const data = buildSourceChartData(contextOrigin.buckets, total);
 
+  const { selectedKey, isDimmed, decorate } = useSelectableSeries();
+
   // Pivot the breakdown into a single-row dataset so recharts renders a
   // horizontal stacked bar (one segment per origin).
   const chartData =
@@ -108,11 +112,13 @@ export function WorkspaceSourceChart({
       ? [Object.fromEntries(data.map((d) => [d.origin, d.count]))]
       : [];
 
-  const legendItems = data.map((d) => ({
-    key: d.label,
-    label: d.label,
-    colorClassName: getSourceColor(d.origin),
-  }));
+  const legendItems = decorate(
+    data.map((d) => ({
+      key: d.origin,
+      label: d.label,
+      colorClassName: getSourceColor(d.origin),
+    }))
+  );
 
   const csvDownload = useDownloadCsv({
     url: `/api/w/${workspaceId}/analytics/source-export?days=${period}`,
@@ -155,7 +161,7 @@ export function WorkspaceSourceChart({
               return null;
             }
             const rawOrigin = payload?.[0]?.dataKey;
-            const activeOrigin = isString(rawOrigin) ? rawOrigin : undefined;
+            const hoveredOrigin = isString(rawOrigin) ? rawOrigin : undefined;
             const rows = data.map((d) => ({
               key: d.origin,
               label: d.label,
@@ -167,7 +173,7 @@ export function WorkspaceSourceChart({
               <ChartTooltipCard
                 title="Source breakdown"
                 rows={rows}
-                activeKey={activeOrigin}
+                activeKey={hoveredOrigin ?? selectedKey}
               />
             );
           }}
@@ -184,7 +190,11 @@ export function WorkspaceSourceChart({
             dataKey={entry.origin}
             stackId="source"
             name={entry.label}
-            className={getSourceColor(entry.origin)}
+            className={cn(
+              getSourceColor(entry.origin),
+              "transition-opacity",
+              isDimmed(entry.origin) && "opacity-25"
+            )}
             fill="currentColor"
             isAnimationActive={false}
             maxBarSize={BAR_MAX_SIZE}

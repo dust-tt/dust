@@ -8,7 +8,7 @@ import { padSeriesToTimeRange } from "@app/components/agent_builder/observabilit
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
-import { useHoveredSeries } from "@app/components/charts/useHoveredSeries";
+import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import {
@@ -17,7 +17,7 @@ import {
   useWorkspaceUsageMetrics,
 } from "@app/lib/swr/workspaces";
 import { formatShortDate } from "@app/lib/utils/timestamps";
-import { ButtonsSwitch, ButtonsSwitchList } from "@dust-tt/sparkle";
+import { ButtonsSwitch, ButtonsSwitchList, cn } from "@dust-tt/sparkle";
 import { useState } from "react";
 import {
   CartesianGrid,
@@ -258,9 +258,10 @@ export function WorkspaceUsageChart({
     disabled: !workspaceId || displayMode !== "users",
   });
 
-  const legendItems = getLegendItemsForMode(displayMode);
+  const { activeKey, isDimmed, decorate, hoverHandlers } =
+    useSelectableSeries();
 
-  const { hoveredKey, hoverHandlers } = useHoveredSeries();
+  const legendItems = decorate(getLegendItemsForMode(displayMode));
 
   const usageData = padSeriesToTimeRange<WorkspaceUsageMetricsDatum>(
     usageMetrics,
@@ -372,7 +373,7 @@ export function WorkspaceUsageChart({
             <UsageMetricsTooltip
               {...props}
               displayMode={displayMode}
-              activeKey={hoveredKey}
+              activeKey={activeKey}
             />
           )}
           cursor={false}
@@ -391,7 +392,11 @@ export function WorkspaceUsageChart({
               strokeWidth={2}
               dataKey="count"
               name="Messages"
-              className={USAGE_METRICS_PALETTE.messages}
+              className={cn(
+                USAGE_METRICS_PALETTE.messages,
+                "transition-opacity",
+                isDimmed("messages") && "opacity-25"
+              )}
               stroke="currentColor"
               dot={false}
               {...hoverHandlers("messages")}
@@ -401,7 +406,11 @@ export function WorkspaceUsageChart({
               strokeWidth={2}
               dataKey="conversations"
               name="Conversations"
-              className={USAGE_METRICS_PALETTE.conversations}
+              className={cn(
+                USAGE_METRICS_PALETTE.conversations,
+                "transition-opacity",
+                isDimmed("conversations") && "opacity-25"
+              )}
               stroke="currentColor"
               dot={false}
               {...hoverHandlers("conversations")}
@@ -414,7 +423,11 @@ export function WorkspaceUsageChart({
               strokeWidth={2}
               dataKey="dau"
               name="DAU"
-              className={ACTIVE_USERS_PALETTE.dau}
+              className={cn(
+                ACTIVE_USERS_PALETTE.dau,
+                "transition-opacity",
+                isDimmed("dau") && "opacity-25"
+              )}
               stroke="currentColor"
               dot={false}
               {...hoverHandlers("dau")}
@@ -424,7 +437,11 @@ export function WorkspaceUsageChart({
               strokeWidth={2}
               dataKey="wau"
               name="WAU"
-              className={ACTIVE_USERS_PALETTE.wau}
+              className={cn(
+                ACTIVE_USERS_PALETTE.wau,
+                "transition-opacity",
+                isDimmed("wau") && "opacity-25"
+              )}
               stroke="currentColor"
               dot={false}
               {...hoverHandlers("wau")}
@@ -434,7 +451,11 @@ export function WorkspaceUsageChart({
               strokeWidth={2}
               dataKey="mau"
               name="MAU"
-              className={ACTIVE_USERS_PALETTE.mau}
+              className={cn(
+                ACTIVE_USERS_PALETTE.mau,
+                "transition-opacity",
+                isDimmed("mau") && "opacity-25"
+              )}
               stroke="currentColor"
               dot={false}
               {...hoverHandlers("mau")}

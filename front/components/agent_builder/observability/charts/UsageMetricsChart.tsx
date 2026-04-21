@@ -13,13 +13,14 @@ import {
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { legendFromConstant } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
-import { useHoveredSeries } from "@app/components/charts/useHoveredSeries";
+import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import {
   useAgentUsageMetrics,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
 import { BROWSER_TIMEZONE } from "@app/lib/swr/workspaces";
+import { cn } from "@dust-tt/sparkle";
 import {
   CartesianGrid,
   Line,
@@ -129,16 +130,16 @@ export function UsageMetricsChart({
     disabled: !workspaceId || !agentConfigurationId || !isCustomAgent,
   });
 
-  const legendItems = legendFromConstant(
-    USAGE_METRICS_LEGEND,
-    USAGE_METRICS_PALETTE,
-    {
+  const { activeKey, isDimmed, decorate, hoverHandlers } =
+    useSelectableSeries();
+
+  const legendItems = decorate(
+    legendFromConstant(USAGE_METRICS_LEGEND, USAGE_METRICS_PALETTE, {
       includeVersionMarker:
         isCustomAgent && mode === "timeRange" && versionMarkers.length > 0,
-    }
+    }),
+    { skip: (item) => item.key === "versionMarkers" }
   );
-
-  const { hoveredKey, hoverHandlers } = useHoveredSeries();
 
   const filteredData = filterTimeSeriesByVersionWindow(
     usageMetrics,
@@ -235,7 +236,7 @@ export function UsageMetricsChart({
             <UsageMetricsTooltip
               {...props}
               versionMarkers={versionMarkers}
-              activeKey={hoveredKey}
+              activeKey={activeKey}
             />
           )}
           cursor={false}
@@ -257,7 +258,11 @@ export function UsageMetricsChart({
           strokeWidth={2}
           dataKey="count"
           name="Messages"
-          className={USAGE_METRICS_PALETTE.messages}
+          className={cn(
+            USAGE_METRICS_PALETTE.messages,
+            "transition-opacity",
+            isDimmed("messages") && "opacity-25"
+          )}
           stroke="currentColor"
           dot={false}
           {...hoverHandlers("messages")}
@@ -271,7 +276,11 @@ export function UsageMetricsChart({
           strokeWidth={2}
           dataKey="conversations"
           name="Conversations"
-          className={USAGE_METRICS_PALETTE.conversations}
+          className={cn(
+            USAGE_METRICS_PALETTE.conversations,
+            "transition-opacity",
+            isDimmed("conversations") && "opacity-25"
+          )}
           stroke="currentColor"
           dot={false}
           {...hoverHandlers("conversations")}
@@ -285,7 +294,11 @@ export function UsageMetricsChart({
           strokeWidth={2}
           dataKey="activeUsers"
           name="Active users"
-          className={USAGE_METRICS_PALETTE.activeUsers}
+          className={cn(
+            USAGE_METRICS_PALETTE.activeUsers,
+            "transition-opacity",
+            isDimmed("activeUsers") && "opacity-25"
+          )}
           stroke="currentColor"
           dot={false}
           {...hoverHandlers("activeUsers")}

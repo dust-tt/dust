@@ -9,8 +9,9 @@ import type {
 import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { RoundedBarShape } from "@app/components/charts/ChartShapes";
+import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import { useAgentMcpConfigurations } from "@app/lib/swr/assistants";
-import { ButtonsSwitch, ButtonsSwitchList } from "@dust-tt/sparkle";
+import { ButtonsSwitch, ButtonsSwitchList, cn } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
 import {
   Bar,
@@ -75,14 +76,18 @@ export function ToolUsageChart({
     configurationNames,
   });
 
+  const { isDimmed, decorate } = useSelectableSeries();
+
   const legendItems = useMemo(
     () =>
-      topTools.map((t) => ({
-        key: t,
-        label: t,
-        colorClassName: getIndexedColor(t, topTools),
-      })),
-    [topTools]
+      decorate(
+        topTools.map((t) => ({
+          key: t,
+          label: t,
+          colorClassName: getIndexedColor(t, topTools),
+        }))
+      ),
+    [topTools, decorate]
   );
 
   const renderToolUsageTooltip = useCallback(
@@ -179,7 +184,11 @@ export function ToolUsageChart({
             dataKey={(row: ChartDatum) => row.values[toolName]?.count ?? 0}
             stackId="a"
             fill="currentColor"
-            className={getIndexedColor(toolName, topTools)}
+            className={cn(
+              getIndexedColor(toolName, topTools),
+              "transition-opacity",
+              isDimmed(toolName) && "opacity-25"
+            )}
             name={toolName}
             shape={
               <RoundedBarShape seriesKey={toolName} stackOrderKeys={topTools} />

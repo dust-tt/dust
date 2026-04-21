@@ -12,11 +12,12 @@ import { padSeriesToTimeRange } from "@app/components/agent_builder/observabilit
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { legendFromConstant } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
-import { useHoveredSeries } from "@app/components/charts/useHoveredSeries";
+import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 import { BROWSER_TIMEZONE } from "@app/lib/swr/workspaces";
 import { formatShortDate } from "@app/lib/utils/timestamps";
+import { cn } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 import {
   CartesianGrid,
@@ -137,12 +138,16 @@ export function LatencyChart({
     }));
   }, [rawData, mode, period]);
 
-  const legendItems = legendFromConstant(LATENCY_LEGEND, LATENCY_PALETTE, {
-    includeVersionMarker:
-      isCustomAgent && mode === "timeRange" && versionMarkers.length > 0,
-  });
+  const { activeKey, isDimmed, decorate, hoverHandlers } =
+    useSelectableSeries();
 
-  const { hoveredKey, hoverHandlers } = useHoveredSeries();
+  const legendItems = decorate(
+    legendFromConstant(LATENCY_LEGEND, LATENCY_PALETTE, {
+      includeVersionMarker:
+        isCustomAgent && mode === "timeRange" && versionMarkers.length > 0,
+    }),
+    { skip: (item) => item.key === "versionMarkers" }
+  );
 
   return (
     <ChartContainer
@@ -199,7 +204,7 @@ export function LatencyChart({
             <LatencyTooltip
               {...props}
               versionMarkers={versionMarkers}
-              activeKey={hoveredKey}
+              activeKey={activeKey}
             />
           )}
           cursor={false}
@@ -216,7 +221,11 @@ export function LatencyChart({
           strokeWidth={2}
           dataKey="avgLatencyMs"
           name="Average time to complete output"
-          className={LATENCY_PALETTE.average}
+          className={cn(
+            LATENCY_PALETTE.average,
+            "transition-opacity",
+            isDimmed("average") && "opacity-25"
+          )}
           fill="url(#fillAverage)"
           stroke="currentColor"
           dot={false}
@@ -227,7 +236,11 @@ export function LatencyChart({
           strokeWidth={2}
           dataKey="percentilesLatencyMs"
           name="Median time to complete output"
-          className={LATENCY_PALETTE.median}
+          className={cn(
+            LATENCY_PALETTE.median,
+            "transition-opacity",
+            isDimmed("median") && "opacity-25"
+          )}
           stroke="currentColor"
           dot={false}
           {...hoverHandlers("median")}
