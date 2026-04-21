@@ -238,6 +238,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable reinforcement: background analysis of conversations to suggest improvements to skills.",
     stage: "dust_only",
   },
+  reinforcement_on_openai: {
+    description:
+      "Use OpenAI large model for reinforcement workflow when available, falling back to default model selection.",
+    stage: "dust_only",
+  },
   reinforcement_ui: {
     description:
       "Enable the reinforcement suggestions UI panel in the Skills Builder.",
