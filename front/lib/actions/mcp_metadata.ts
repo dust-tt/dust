@@ -62,7 +62,10 @@ import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import type { StreamableHTTPClientTransportOptions } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
+import type {
+  OAuthClientInformation,
+  OAuthTokens,
+} from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { McpError, type Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -124,6 +127,8 @@ interface ConnectViaRemoteMCPServerUrl {
   type: "remoteMCPServerUrl";
   remoteMCPServerUrl: string;
   headers?: Record<string, string>;
+  oauthTokens?: OAuthTokens;
+  oauthClientInfo?: OAuthClientInformation;
 }
 
 interface ConnectViaClientSideMCPServer {
@@ -229,6 +234,7 @@ async function resolveRemoteServerOAuthToken(
   Result<
     {
       token: OAuthTokens | undefined;
+      clientInfo: OAuthClientInformation | undefined;
       oauthConnectionType: "personal" | "workspace" | undefined;
       oauthConnectionId: string | undefined;
     },
@@ -244,6 +250,7 @@ async function resolveRemoteServerOAuthToken(
         expires_in: undefined,
         scope: "",
       },
+      clientInfo: undefined,
       oauthConnectionType: undefined,
       oauthConnectionId: undefined,
     });
@@ -253,6 +260,7 @@ async function resolveRemoteServerOAuthToken(
   if (!remoteMCPServer.authorization) {
     return new Ok({
       token: undefined,
+      clientInfo: undefined,
       oauthConnectionType: undefined,
       oauthConnectionId: undefined,
     });
@@ -276,6 +284,11 @@ async function resolveRemoteServerOAuthToken(
           expires_in: personalConnection.value.access_token_expiry ?? undefined,
           scope: personalConnection.value.connection.metadata.scope,
         },
+        clientInfo: personalConnection.value.connection.metadata.client_id
+          ? {
+              client_id: personalConnection.value.connection.metadata.client_id,
+            }
+          : undefined,
         oauthConnectionType: "personal",
         oauthConnectionId: personalConnection.value.connection.connection_id,
       });
@@ -299,6 +312,9 @@ async function resolveRemoteServerOAuthToken(
         expires_in: c.value.access_token_expiry ?? undefined,
         scope: c.value.connection.metadata.scope,
       },
+      clientInfo: c.value.connection.metadata.client_id
+        ? { client_id: c.value.connection.metadata.client_id }
+        : undefined,
       oauthConnectionType: connectionType,
       oauthConnectionId: c.value.connection.connection_id,
     });
@@ -565,7 +581,7 @@ export async function connectToMCPServer(
           if (tokenRes.isErr()) {
             return tokenRes;
           }
-          const { token, oauthConnectionType, oauthConnectionId } =
+          const { token, clientInfo, oauthConnectionType, oauthConnectionId } =
             tokenRes.value;
 
           const {
@@ -581,7 +597,7 @@ export async function connectToMCPServer(
                 headers: remoteMCPServer.customHeaders ?? {},
                 dispatcher,
               },
-              authProvider: new MCPOAuthProvider(token),
+              authProvider: new MCPOAuthProvider(token, clientInfo),
               fetch: proxyFetch,
             };
 
@@ -663,7 +679,10 @@ export async function connectToMCPServer(
           dispatcher,
           headers: { ...(params.headers ?? {}) },
         },
-        authProvider: new MCPOAuthProvider(),
+        authProvider: new MCPOAuthProvider(
+          params.oauthTokens,
+          params.oauthClientInfo
+        ),
         fetch: proxyFetch,
       };
       try {
@@ -841,13 +860,19 @@ export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
 export async function fetchRemoteServerMetaDataByURL(
   auth: Authenticator,
   url: string,
-  headers?: Record<string, string>
+  headers?: Record<string, string>,
+  oauth?: {
+    tokens?: OAuthTokens;
+    clientInfo?: OAuthClientInformation;
+  }
 ): ReturnType<typeof fetchRemoteServerMetaData> {
   const r = await connectToMCPServer(auth, {
     params: {
       type: "remoteMCPServerUrl",
       remoteMCPServerUrl: url,
       headers,
+      oauthTokens: oauth?.tokens,
+      oauthClientInfo: oauth?.clientInfo,
     },
   });
 

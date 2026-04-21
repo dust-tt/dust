@@ -176,6 +176,7 @@ async function handler(
           // Default to the shared secret if it exists.
           let bearerToken = sharedSecret ?? null;
           let authorization: AuthorizationInfo | null = null;
+          let oauthClientId: string | null = null;
 
           // If a connectionId is provided, we use it to fetch the access token that must have been created by the admin.
           if (body.connectionId) {
@@ -199,6 +200,7 @@ async function handler(
               provider: token.value.connection.provider,
               supported_use_cases: ["platform_actions", "personal_actions"],
             };
+            oauthClientId = token.value.connection.metadata.client_id ?? null;
           }
 
           // Merge custom headers (if any) with Authorization when probing the server.
@@ -214,7 +216,28 @@ async function handler(
               }
             : sanitizedCustomHeaders;
 
-          const r = await fetchRemoteServerMetaDataByURL(auth, url, headers);
+          // Pass the static client_id to the MCP SDK so that, if the remote
+          // server returns 401 and triggers the SDK's auth retry, the SDK does
+          // not fall back to dynamic client registration (RFC 7591) — which
+          // Entra ID and most enterprise IdPs don't support.
+          const oauth = bearerToken
+            ? {
+                tokens: {
+                  access_token: bearerToken,
+                  token_type: "bearer" as const,
+                },
+                clientInfo: oauthClientId
+                  ? { client_id: oauthClientId }
+                  : undefined,
+              }
+            : undefined;
+
+          const r = await fetchRemoteServerMetaDataByURL(
+            auth,
+            url,
+            headers,
+            oauth
+          );
           if (r.isErr()) {
             res.status(400).json({
               error: {

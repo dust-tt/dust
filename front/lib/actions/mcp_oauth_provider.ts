@@ -3,7 +3,7 @@ import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import { isDevelopment } from "@app/types/shared/env";
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import type {
-  OAuthClientInformationFull,
+  OAuthClientInformation,
   OAuthClientInformationMixed,
   OAuthClientMetadata,
   OAuthTokens,
@@ -18,9 +18,11 @@ export class MCPOAuthProviderError extends Error {
 
 export class MCPOAuthProvider implements OAuthClientProvider {
   private token: OAuthTokens | undefined;
+  private clientInfo: OAuthClientInformation | undefined;
 
-  constructor(tokens?: OAuthTokens) {
+  constructor(tokens?: OAuthTokens, clientInfo?: OAuthClientInformation) {
     this.token = tokens;
+    this.clientInfo = clientInfo;
   }
   get redirectUrl(): string {
     throw new MCPOAuthProviderError("redirectUrl");
@@ -59,8 +61,13 @@ export class MCPOAuthProvider implements OAuthClientProvider {
     };
   }
 
-  clientInformation(): OAuthClientInformationFull | undefined {
-    return undefined;
+  clientInformation(): OAuthClientInformation | undefined {
+    // Returning static client info here prevents the MCP SDK from attempting
+    // RFC 7591 dynamic client registration on 401. Providers that don't expose
+    // a `registration_endpoint` (Entra ID, Cognito, etc.) would otherwise fail
+    // with "Incompatible auth server: does not support dynamic client
+    // registration" before tokens() is ever consulted.
+    return this.clientInfo;
   }
 
   saveClientInformation(_clientInformation: OAuthClientInformationMixed): void {
