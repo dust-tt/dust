@@ -60,7 +60,7 @@ describe("sandbox egress helpers", () => {
 
     mockGetEgressProxyHost.mockReturnValue(undefined);
     mockGetEgressProxyJwtSecret.mockReturnValue("egress-secret");
-    mockGetEgressProxyPort.mockReturnValue(443);
+    mockGetEgressProxyPort.mockReturnValue(4443);
     mockGetEgressProxyTlsName.mockReturnValue(undefined);
     mockGetCurrentRegion.mockReturnValue("europe-west1");
     mockLookup.mockResolvedValue({ address: "203.0.113.10", family: 4 });
@@ -136,7 +136,7 @@ describe("sandbox egress helpers", () => {
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       2,
       {},
-      expect.stringContaining("--proxy-addr '203.0.113.10:443'"),
+      expect.stringContaining("--proxy-addr '203.0.113.10:4443'"),
       { user: "root" }
     );
     expect(sandbox.exec).toHaveBeenNthCalledWith(
