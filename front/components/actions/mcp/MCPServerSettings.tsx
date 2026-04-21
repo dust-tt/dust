@@ -3,7 +3,7 @@ import {
   OAUTH_USE_CASE_TO_DESCRIPTION,
   OAUTH_USE_CASE_TO_LABEL,
 } from "@app/components/actions/mcp/MCPServerAuthConnection";
-import { MCPSensitivityLabelsConfig } from "@app/components/shared/labels/SensitivityLabelsConfig";
+import { SensitivityLabelsConfig } from "@app/components/shared/labels/SensitivityLabelsConfig";
 import { getSensitivityLabelProviderForServerId } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
@@ -137,12 +137,10 @@ export function MCPServerSettings({
         getSensitivityLabelProviderForServerId(mcpServerView.server.sId) !==
           null && (
           <div className="space-y-2">
-            <div className="heading-base">
-              Data Classification Label Filtering
-            </div>
-            <MCPSensitivityLabelsConfig
+            <div className="heading-base">Allowed labels</div>
+            <SensitivityLabelsConfig
               owner={owner}
-              internalMCPServerId={mcpServerView.server.sId}
+              source={{ internalMCPServerId: mcpServerView.server.sId }}
               isAdmin={true}
             />
           </div>

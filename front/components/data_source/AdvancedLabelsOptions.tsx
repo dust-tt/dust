@@ -1,4 +1,4 @@
-import { ConnectorSensitivityLabelsConfig } from "@app/components/shared/labels/SensitivityLabelsConfig";
+import { SensitivityLabelsConfig } from "@app/components/shared/labels/SensitivityLabelsConfig";
 import type { ConnectorOptionsProps } from "@app/lib/connector_providers_ui";
 
 export const AdvancedLabelsOptions = ({
@@ -16,9 +16,9 @@ export const AdvancedLabelsOptions = ({
         Only labeled content matching one of these labels will be synced.
         Unlabeled content is always included.
       </span>
-      <ConnectorSensitivityLabelsConfig
+      <SensitivityLabelsConfig
         owner={owner}
-        dataSource={dataSource}
+        source={{ dataSourceId: dataSource.sId }}
         readOnly={readOnly}
         isAdmin={isAdmin}
       />
