@@ -4,7 +4,7 @@ import {
 } from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionDropdown";
 import type { SkillWithoutToolsType } from "@app/types/assistant/skill_configuration";
 import { Extension, type Range } from "@tiptap/core";
-import { Plugin, PluginKey, type EditorState } from "@tiptap/pm/state";
+import { type EditorState, Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { ReactRenderer } from "@tiptap/react";
 import { exitSuggestion, Suggestion } from "@tiptap/suggestion";
@@ -45,7 +45,9 @@ function isAllowedSlashQuery(state: EditorState, range: Range) {
 
 export interface InputBarSkillSuggestionExtensionOptions {
   enabledRef: RefObject<boolean>;
-  onSkillSelectRef: RefObject<((skill: SkillWithoutToolsType) => void) | undefined>;
+  onSkillSelectRef: RefObject<
+    ((skill: SkillWithoutToolsType) => void) | undefined
+  >;
   selectedSkillIdsRef: RefObject<Set<string>>;
   skillsRef: RefObject<SkillWithoutToolsType[]>;
 }
@@ -108,7 +110,10 @@ export const InputBarSkillSuggestionExtension =
               }
 
               if (activeEditorView) {
-                exitSuggestion(activeEditorView, inputBarSkillSuggestionPluginKey);
+                exitSuggestion(
+                  activeEditorView,
+                  inputBarSkillSuggestionPluginKey
+                );
               }
             };
 
@@ -172,7 +177,8 @@ export const InputBarSkillSuggestionExtension =
           key: new PluginKey("inputBarSkillSuggestionCleanup"),
           view: () => ({
             update: (view) => {
-              const dismissedTriggerStart = extensionStorage.dismissedTriggerStart;
+              const dismissedTriggerStart =
+                extensionStorage.dismissedTriggerStart;
 
               if (
                 dismissedTriggerStart !== null &&
