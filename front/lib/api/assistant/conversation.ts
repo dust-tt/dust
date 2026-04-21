@@ -2579,21 +2579,15 @@ export async function compactConversation(
   {
     conversation,
     model,
-    sourceConversationId,
-    sourceMessageRank,
+    sourceConversation,
   }: {
     conversation: ConversationType;
     model: SupportedModel;
-  } & (
-    | {
-        sourceConversationId?: undefined;
-        sourceMessageRank?: undefined;
-      }
-    | {
-        sourceConversationId: string;
-        sourceMessageRank: number;
-      }
-  )
+    sourceConversation?: {
+      conversationId: string;
+      messageRank: number;
+    };
+  }
 ): Promise<
   Result<{ compactionMessage: CompactionMessageType }, APIErrorWithStatusCode>
 > {
@@ -2707,18 +2701,13 @@ export async function compactConversation(
     { conversationId: conversation.sId }
   );
 
-  const sourceOverride =
-    sourceConversationId === undefined || sourceMessageRank === undefined
-      ? {}
-      : { sourceConversationId, sourceMessageRank };
-
   void launchCompactionWorkflow({
     auth,
     conversationId: conversation.sId,
     compactionMessageId: compactionMessage.sId,
     compactionMessageVersion: compactionMessage.version,
     model,
-    ...sourceOverride,
+    sourceConversation,
   });
 
   return new Ok({ compactionMessage });

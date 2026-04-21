@@ -119,24 +119,18 @@ export async function launchCompactionWorkflow({
   compactionMessageId,
   compactionMessageVersion,
   model,
-  sourceConversationId,
-  sourceMessageRank,
+  sourceConversation,
 }: {
   auth: Authenticator;
   conversationId: string;
   compactionMessageId: string;
   compactionMessageVersion: number;
   model: SupportedModel;
-} & (
-  | {
-      sourceConversationId?: undefined;
-      sourceMessageRank?: undefined;
-    }
-  | {
-      sourceConversationId: string;
-      sourceMessageRank: number;
-    }
-)): Promise<
+  sourceConversation?: {
+    conversationId: string;
+    messageRank: number;
+  };
+}): Promise<
   Result<undefined, Error | DustError<"compaction_already_running">>
 > {
   const authType = auth.toJSON();
@@ -147,11 +141,6 @@ export async function launchCompactionWorkflow({
     workspaceId,
     conversationId,
   });
-  const sourceOverride =
-    sourceConversationId === undefined || sourceMessageRank === undefined
-      ? {}
-      : { sourceConversationId, sourceMessageRank };
-
   try {
     await client.workflow.start(compactionWorkflow, {
       args: [
@@ -161,7 +150,7 @@ export async function launchCompactionWorkflow({
           compactionMessageId,
           compactionMessageVersion,
           model,
-          ...sourceOverride,
+          sourceConversation,
         },
       ],
       taskQueue: QUEUE_NAME,

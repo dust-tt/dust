@@ -141,35 +141,24 @@ export async function compactionWorkflow({
   compactionMessageId,
   compactionMessageVersion,
   model,
-  sourceConversationId,
-  sourceMessageRank,
+  sourceConversation,
 }: {
   authType: AuthenticatorType;
   conversationId: string;
   compactionMessageId: string;
   compactionMessageVersion: number;
   model: SupportedModel;
-} & (
-  | {
-      sourceConversationId?: undefined;
-      sourceMessageRank?: undefined;
-    }
-  | {
-      sourceConversationId: string;
-      sourceMessageRank: number;
-    }
-)) {
-  const sourceOverride =
-    sourceConversationId === undefined || sourceMessageRank === undefined
-      ? {}
-      : { sourceConversationId, sourceMessageRank };
-
+  sourceConversation?: {
+    conversationId: string;
+    messageRank: number;
+  };
+}) {
   await compactionActivity(authType, {
     conversationId,
     compactionMessageId,
     compactionMessageVersion,
     model,
-    ...sourceOverride,
+    sourceConversation,
   });
 }
 

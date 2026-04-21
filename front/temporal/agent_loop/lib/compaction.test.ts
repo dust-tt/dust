@@ -91,8 +91,10 @@ describe("runCompaction", () => {
     const result = await compactConversation(auth, {
       conversation,
       model: MODEL,
-      sourceConversationId: "conv_source",
-      sourceMessageRank: 3,
+      sourceConversation: {
+        conversationId: "conv_source",
+        messageRank: 3,
+      },
     });
 
     expect(result.isOk()).toBe(true);
@@ -107,8 +109,10 @@ describe("runCompaction", () => {
           ? result.value.compactionMessage.version
           : undefined,
         model: MODEL,
-        sourceConversationId: "conv_source",
-        sourceMessageRank: 3,
+        sourceConversation: {
+          conversationId: "conv_source",
+          messageRank: 3,
+        },
       })
     );
   });
@@ -277,8 +281,10 @@ describe("runCompaction", () => {
       compactionMessageId: compactionMessage.sId,
       compactionMessageVersion: compactionMessage.version,
       model: MODEL,
-      sourceConversationId: sourceConversationWithoutContent.sId,
-      sourceMessageRank: 1,
+      sourceConversation: {
+        conversationId: sourceConversationWithoutContent.sId,
+        messageRank: 1,
+      },
     });
 
     expect(result.isOk()).toBe(true);

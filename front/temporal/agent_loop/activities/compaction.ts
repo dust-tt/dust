@@ -9,23 +9,17 @@ export async function compactionActivity(
     compactionMessageId,
     compactionMessageVersion,
     model,
-    sourceConversationId,
-    sourceMessageRank,
+    sourceConversation,
   }: {
     conversationId: string;
     compactionMessageId: string;
     compactionMessageVersion: number;
     model: SupportedModel;
-  } & (
-    | {
-        sourceConversationId?: undefined;
-        sourceMessageRank?: undefined;
-      }
-    | {
-        sourceConversationId: string;
-        sourceMessageRank: number;
-      }
-  )
+    sourceConversation?: {
+      conversationId: string;
+      messageRank: number;
+    };
+  }
 ): Promise<void> {
   const authResult = await Authenticator.fromJSON(authType);
   if (authResult.isErr()) {
@@ -34,17 +28,12 @@ export async function compactionActivity(
     );
   }
   const auth = authResult.value;
-  const sourceOverride =
-    sourceConversationId === undefined || sourceMessageRank === undefined
-      ? {}
-      : { sourceConversationId, sourceMessageRank };
-
   const compactionRes = await runCompaction(auth, {
     conversationId,
     compactionMessageId,
     compactionMessageVersion,
     model,
-    ...sourceOverride,
+    sourceConversation,
   });
 
   if (compactionRes.isErr()) {

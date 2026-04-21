@@ -109,23 +109,17 @@ export async function runCompaction(
     compactionMessageId,
     compactionMessageVersion,
     model,
-    sourceConversationId,
-    sourceMessageRank,
+    sourceConversation,
   }: {
     conversationId: string;
     compactionMessageId: string;
     compactionMessageVersion: number;
     model: SupportedModel;
-  } & (
-    | {
-        sourceConversationId?: undefined;
-        sourceMessageRank?: undefined;
-      }
-    | {
-        sourceConversationId: string;
-        sourceMessageRank: number;
-      }
-  )
+    sourceConversation?: {
+      conversationId: string;
+      messageRank: number;
+    };
+  }
 ): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
@@ -159,11 +153,14 @@ export async function runCompaction(
     );
   }
 
-  let sourceConversation = targetConversation;
-  if (sourceConversationId && sourceConversationId !== conversationId) {
+  let conversationToSummarize = targetConversation;
+  if (
+    sourceConversation &&
+    sourceConversation.conversationId !== conversationId
+  ) {
     const sourceConversationRes = await getConversation(
       auth,
-      sourceConversationId,
+      sourceConversation.conversationId,
       false,
       null,
       PREVIOUS_INTERACTIONS_TO_PRESERVE + 1
@@ -172,18 +169,18 @@ export async function runCompaction(
       return sourceConversationRes;
     }
 
-    sourceConversation = sourceConversationRes.value;
+    conversationToSummarize = sourceConversationRes.value;
   }
 
-  if (sourceMessageRank !== undefined) {
-    sourceConversation = filterConversationContentUpToRank(
-      sourceConversation,
-      sourceMessageRank
+  if (sourceConversation) {
+    conversationToSummarize = filterConversationContentUpToRank(
+      conversationToSummarize,
+      sourceConversation.messageRank
     );
   }
 
   const summaryRes = await generateCompactionSummary(auth, {
-    sourceConversation,
+    sourceConversation: conversationToSummarize,
     targetConversationId: targetConversation.sId,
     compactionMessage,
     model,
@@ -200,7 +197,7 @@ export async function runCompaction(
       {
         workspaceId: owner.sId,
         conversationId,
-        sourceConversationId,
+        sourceConversationId: sourceConversation?.conversationId,
         compactionMessageId,
         status,
       },
@@ -214,7 +211,7 @@ export async function runCompaction(
       {
         workspaceId: owner.sId,
         conversationId,
-        sourceConversationId,
+        sourceConversationId: sourceConversation?.conversationId,
         compactionMessageId,
         error: summaryRes.error,
       },
