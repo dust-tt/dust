@@ -20,10 +20,13 @@ import {
   ChatBubbleLeftRightIcon,
   Checkbox,
   CircleIcon,
+  ConfluenceLogo,
   cn,
   DriveLogo,
+  GithubLogo,
   Icon,
   IconButton,
+  MicrosoftLogo,
   NotionLogo,
   SlackLogo,
   Spinner,
@@ -72,6 +75,9 @@ function getSourceDisplay(source: ProjectTodoType["sources"][number]) {
     slack: SlackLogo,
     notion: NotionLogo,
     gdrive: DriveLogo,
+    confluence: ConfluenceLogo,
+    github: GithubLogo,
+    microsoft: MicrosoftLogo,
   };
 
   const originalLabel = source.sourceTitle ?? source.sourceId;

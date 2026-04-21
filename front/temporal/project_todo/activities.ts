@@ -39,6 +39,15 @@ function resultToTakeawaySourceDocument(
       case "notion":
         sourceType = "notion";
         break;
+      case "confluence":
+        sourceType = "confluence";
+        break;
+      case "github":
+        sourceType = "github";
+        break;
+      case "microsoft":
+        sourceType = "microsoft";
+        break;
       default:
         logger.info(
           {
