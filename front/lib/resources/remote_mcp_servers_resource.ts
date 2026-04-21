@@ -58,6 +58,22 @@ import { Op } from "sequelize";
 
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
 
+export type DiscoverOAuthMetadataResult =
+  | {
+      connectionMetadata: MCPOAuthConnectionMetadataType;
+      dcrNotSupported?: never;
+    }
+  | {
+      dcrNotSupported: true;
+      discoveredMetadata: {
+        authorization_endpoint: string;
+        token_endpoint: string;
+        token_endpoint_auth_method?: string;
+        scope?: string;
+        resource?: string;
+      };
+    };
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface RemoteMCPServerResource
@@ -443,7 +459,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     extraScopes?: string;
     customHeaders?: Record<string, string>;
   }): Promise<
-    Result<MCPOAuthConnectionMetadataType, DustError<"internal_error">>
+    Result<DiscoverOAuthMetadataResult, DustError<"internal_error">>
   > {
     // More or less copied from the official "MCP Inspector" code, but adapted to our needs.
     // Basically, we do the 2 first steps of the Guided Tour.
@@ -553,18 +569,38 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
         scope: clientMetadata.scope,
         client_secret: fullInformation.client_secret,
       };
-      return new Ok(connectionMetadata);
+      return new Ok({ connectionMetadata });
     } catch (e) {
-      logger.error(
-        { error: e },
-        "Failed to register client, this server might require a pre-approval process."
+      // DCR is not supported by this server — return the metadata we already
+      // discovered so the caller can fall back to static OAuth credentials.
+      logger.info(
+        { error: e, serverUrl },
+        "Dynamic client registration not supported, returning partial metadata for static OAuth fallback."
       );
-      return new Err(
-        new DustError(
-          "internal_error",
-          "Failed to register client, this server might require a pre-approval process. Please contact support@dust.com."
-        )
-      );
+
+      const supportedTokenAuthMethods =
+        metadata.token_endpoint_auth_methods_supported;
+
+      const tokenEndpointAuthMethod = supportedTokenAuthMethods?.includes(
+        "client_secret_post"
+      )
+        ? "client_secret_post"
+        : supportedTokenAuthMethods?.includes("client_secret_basic")
+          ? "client_secret_basic"
+          : undefined;
+
+      return new Ok({
+        dcrNotSupported: true as const,
+        discoveredMetadata: {
+          authorization_endpoint: metadata.authorization_endpoint,
+          token_endpoint: metadata.token_endpoint,
+          token_endpoint_auth_method: tokenEndpointAuthMethod,
+          resource: resource
+            ? url.format(resource, { fragment: false })
+            : undefined,
+          scope: clientMetadata.scope,
+        },
+      });
     }
   }
 

@@ -145,15 +145,33 @@ export async function submitCreateMCPServerDialogForm({
 
       if (discoverOAuthMetadataRes.isOk()) {
         nextRemoteMCPServerOAuthDiscoveryDone = true;
-        if (discoverOAuthMetadataRes.value.oauthRequired) {
+        const discoveryResult = discoverOAuthMetadataRes.value;
+        if (discoveryResult.oauthRequired) {
+          // DCR not supported: fall back to static OAuth with pre-filled
+          // endpoints from discovery.
+          if (discoveryResult.dcrNotSupported) {
+            return new Ok({
+              type: "oauth_required",
+              authorization: {
+                provider: "mcp_static",
+                supported_use_cases: [
+                  "platform_actions",
+                  "personal_actions",
+                ],
+              },
+              authCredentials: discoveryResult.discoveredMetadata,
+              remoteMCPServerOAuthDiscoveryDone:
+                nextRemoteMCPServerOAuthDiscoveryDone,
+            });
+          }
+
           return new Ok({
             type: "oauth_required",
             authorization: {
               provider: "mcp",
               supported_use_cases: ["platform_actions", "personal_actions"],
             },
-            authCredentials:
-              discoverOAuthMetadataRes.value.connectionMetadata ?? null,
+            authCredentials: discoveryResult.connectionMetadata ?? null,
             remoteMCPServerOAuthDiscoveryDone:
               nextRemoteMCPServerOAuthDiscoveryDone,
           });

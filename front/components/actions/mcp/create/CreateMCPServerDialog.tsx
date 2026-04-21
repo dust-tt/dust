@@ -337,6 +337,11 @@ export function CreateMCPServerDialog({
     if (submitRes.value.type === "oauth_required") {
       setAuthorization(submitRes.value.authorization);
       form.setValue("authCredentials", submitRes.value.authCredentials);
+      // When DCR is not supported, auto-switch to static OAuth so the user
+      // can provide their own client credentials.
+      if (submitRes.value.authorization.provider === "mcp_static") {
+        form.setValue("authMethod", "oauth-static");
+      }
       // Returning here as now the user must select the use case.
       setIsLoading(false);
       return;

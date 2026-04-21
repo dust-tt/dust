@@ -145,13 +145,32 @@ export function ConnectMCPServerDialog({
             discoverOAuthMetadataRes.isOk() &&
             discoverOAuthMetadataRes.value.oauthRequired
           ) {
-            setAuthorization({
-              provider: "mcp",
-              supported_use_cases: ["platform_actions", "personal_actions"],
-            });
-            form.setValue("authCredentials", {
-              ...discoverOAuthMetadataRes.value.connectionMetadata,
-            });
+            const discoveryResult = discoverOAuthMetadataRes.value;
+            if (discoveryResult.dcrNotSupported) {
+              // DCR not supported: fall back to static OAuth with pre-filled
+              // endpoints from discovery.
+              setAuthorization({
+                provider: "mcp_static",
+                supported_use_cases: [
+                  "platform_actions",
+                  "personal_actions",
+                ],
+              });
+              form.setValue("authCredentials", {
+                ...discoveryResult.discoveredMetadata,
+              });
+            } else {
+              setAuthorization({
+                provider: "mcp",
+                supported_use_cases: [
+                  "platform_actions",
+                  "personal_actions",
+                ],
+              });
+              form.setValue("authCredentials", {
+                ...discoveryResult.connectionMetadata,
+              });
+            }
             setRemoteMCPServerOAuthDiscoveryDone(true);
           } else if (discoverOAuthMetadataRes.isErr()) {
             sendNotification({

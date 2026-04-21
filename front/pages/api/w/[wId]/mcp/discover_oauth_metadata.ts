@@ -16,7 +16,19 @@ import type { NextApiRequest, NextApiResponse } from "next";
 export type DiscoverOAuthMetadataResponseBody =
   | {
       oauthRequired: true;
+      dcrNotSupported?: never;
       connectionMetadata: MCPOAuthConnectionMetadataType;
+    }
+  | {
+      oauthRequired: true;
+      dcrNotSupported: true;
+      discoveredMetadata: {
+        authorization_endpoint: string;
+        token_endpoint: string;
+        token_endpoint_auth_method?: string;
+        scope?: string;
+        resource?: string;
+      };
     }
   | {
       oauthRequired: false;
@@ -105,9 +117,17 @@ async function handler(
       });
 
       if (discoveryRes.isOk()) {
+        const result = discoveryRes.value;
+        if (result.dcrNotSupported) {
+          return res.status(200).json({
+            oauthRequired: true,
+            dcrNotSupported: true,
+            discoveredMetadata: result.discoveredMetadata,
+          });
+        }
         return res.status(200).json({
           oauthRequired: true,
-          connectionMetadata: discoveryRes.value,
+          connectionMetadata: result.connectionMetadata,
         });
       } else {
         return apiError(req, res, {
