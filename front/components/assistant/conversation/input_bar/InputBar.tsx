@@ -217,6 +217,11 @@ export const InputBar = React.memo(function InputBar({
     setSelectedSkills(conversationSkills);
   }, [conversationSkills]);
 
+  const selectedSkillIds = useMemo(
+    () => new Set(selectedSkills.map((skill) => skill.sId)),
+    [selectedSkills]
+  );
+
   // JIT skills apply to all agents in the conversation, so we pass null for agentConfigurationId
   const { addSkill, deleteSkill } = useAddDeleteConversationSkill({
     conversationId: conversation?.sId,
