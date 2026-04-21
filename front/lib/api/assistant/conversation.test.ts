@@ -84,6 +84,7 @@ vi.mock("@app/lib/api/assistant/conversation/content_fragment", () => ({
   getContentFragmentBlob: vi.fn(),
 }));
 
+import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -3788,6 +3789,124 @@ describe("postNewContentFragment", () => {
         },
       });
       expect(messageCountAfterSecond).toBe(1);
+    });
+
+    it("does not create a second message row when the project fragment has a newer latest version", async () => {
+      const user = auth.getNonNullableUser();
+      const projectFile = await ProjectFileFactory.create(
+        auth,
+        user,
+        projectSpace,
+        {
+          contentType: "text/plain",
+          fileName: "project-doc-versioned.txt",
+          fileSize: 12,
+          status: "ready",
+        }
+      );
+
+      const latestContext = await fetchLatestProjectContextFileContentFragment(
+        auth,
+        projectSpace,
+        projectFile.sId
+      );
+      expect(latestContext).not.toBeNull();
+
+      const conversationWithoutContent = await ConversationFactory.create(
+        auth,
+        {
+          agentConfigurationId: agentConfig.sId,
+          messagesCreatedAt: [],
+          spaceId: projectSpace.id,
+        }
+      );
+
+      const fetchedConversationResult = await getConversation(
+        auth,
+        conversationWithoutContent.sId
+      );
+      if (fetchedConversationResult.isErr()) {
+        throw new Error("Failed to fetch conversation");
+      }
+
+      const context = {
+        username: user.username,
+        fullName: user.fullName(),
+        email: user.email,
+        profilePictureUrl: null,
+      };
+      const input: ContentFragmentInputWithFileIdType = {
+        title: projectFile.fileName,
+        fileId: projectFile.sId,
+      };
+
+      const first = await postNewContentFragment(
+        auth,
+        fetchedConversationResult.value,
+        input,
+        context
+      );
+      expect(first.isOk()).toBe(true);
+
+      await ContentFragmentResource.makeNewVersion(
+        latestContext!.fragment.sId,
+        {
+          workspaceId: workspace.id,
+          title: latestContext!.fragment.title,
+          contentType: latestContext!.fragment.contentType,
+          sourceUrl: latestContext!.fragment.sourceUrl,
+          textBytes: latestContext!.fragment.textBytes,
+          userId: latestContext!.fragment.userId,
+          userContextUsername: latestContext!.fragment.userContextUsername,
+          userContextFullName: latestContext!.fragment.userContextFullName,
+          userContextEmail: latestContext!.fragment.userContextEmail,
+          userContextProfilePictureUrl:
+            latestContext!.fragment.userContextProfilePictureUrl,
+          fileId: latestContext!.fragment.fileId,
+          spaceId: latestContext!.fragment.spaceId,
+          nodeId: latestContext!.fragment.nodeId,
+          nodeDataSourceViewId: latestContext!.fragment.nodeDataSourceViewId,
+          nodeType: latestContext!.fragment.nodeType,
+          expiredReason: latestContext!.fragment.expiredReason,
+        }
+      );
+
+      const conversationMetadataResult =
+        await ConversationResource.fetchConversationWithoutContent(
+          auth,
+          conversationWithoutContent.sId
+        );
+      expect(conversationMetadataResult.isOk()).toBe(true);
+      if (conversationMetadataResult.isErr()) {
+        throw new Error("Failed to fetch conversation metadata");
+      }
+
+      const second = await postNewContentFragment(
+        auth,
+        conversationMetadataResult.value,
+        input,
+        context
+      );
+      expect(second.isOk()).toBe(true);
+
+      const messageCountAcrossSeries = await MessageModel.count({
+        where: {
+          conversationId: fetchedConversationResult.value.id,
+        },
+        include: [
+          {
+            model: ContentFragmentResource.model,
+            as: "contentFragment",
+            attributes: [],
+            required: true,
+            where: {
+              workspaceId: workspace.id,
+              sId: latestContext!.fragment.sId,
+            },
+          },
+        ],
+      });
+      expect(messageCountAcrossSeries).toBe(1);
     });
 
     it("allows superseding a content fragment with conversation metadata only", async () => {

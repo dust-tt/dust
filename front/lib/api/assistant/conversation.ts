@@ -516,29 +516,6 @@ function getConversationBranchModelId(
   return branchModelId;
 }
 
-async function hasContentFragmentMessageInConversation(
-  auth: Authenticator,
-  {
-    conversation,
-    contentFragmentModelId,
-  }: {
-    conversation: ConversationWithoutContentType;
-    contentFragmentModelId: ModelId;
-  }
-): Promise<boolean> {
-  const message = await MessageModel.findOne({
-    attributes: ["id"],
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      conversationId: conversation.id,
-      branchId: getConversationBranchModelId(conversation),
-      contentFragmentId: contentFragmentModelId,
-    },
-  });
-
-  return !!message;
-}
-
 async function hasContentFragmentSeriesInConversation(
   auth: Authenticator,
   {
@@ -2042,11 +2019,11 @@ export async function postNewContentFragment(
         cf.fileId
       );
       if (r) {
-        const alreadyPresent = await hasContentFragmentMessageInConversation(
+        const alreadyPresent = await hasContentFragmentSeriesInConversation(
           auth,
           {
             conversation,
-            contentFragmentModelId: r.fragment.id,
+            contentFragmentSId: r.fragment.sId,
           }
         );
 
