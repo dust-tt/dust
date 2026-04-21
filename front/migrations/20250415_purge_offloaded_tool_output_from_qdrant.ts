@@ -14,8 +14,9 @@ import { isToolGeneratedFile } from "@dust-tt/client";
 import * as fs from "fs";
 import { Op } from "sequelize";
 
-const CONCURRENCY = 8;
 const BATCH_SIZE = 100;
+const CONCURRENCY = 8;
+const WORKSPACE_CONCURRENCY = 20;
 
 /**
  * Purges tool-output files that were offloaded to disk because their content exceeded the size
@@ -234,8 +235,13 @@ makeScript(
       describe:
         "Path to the NDJSON manifest file for deleted documents (defaults to purge_manifest_<timestamp>.ndjson in cwd)",
     },
+    concurrency: {
+      type: "number",
+      default: WORKSPACE_CONCURRENCY,
+      describe: "Number of concurrent file deletions and API calls",
+    },
   },
-  async ({ execute, manifest }, scriptLogger) => {
+  async ({ concurrency, execute, manifest }, scriptLogger) => {
     let manifestPath: string | null = null;
     let manifestFd: number | null = null;
 
@@ -259,7 +265,7 @@ makeScript(
             scriptLogger.child({ workspaceId: workspace.sId })
           );
         },
-        { concurrency: 1 }
+        { concurrency }
       );
     } finally {
       if (manifestFd !== null) {
