@@ -152,7 +152,10 @@ export async function setupEgressForwarder(
     return chmodResult;
   }
 
-  const startForwarderCommand =
+  // Run as root with runuser to drop to dust-fwd. E2B exec requires the
+  // target user to have a real login shell; dust-fwd is created with
+  // nologin in bedrock, so exec-as-dust-fwd fails with EACCES.
+  const forwarderBin =
     "nohup /opt/bin/dsbx forward " +
     `--token-file ${shellEscape(EGRESS_TOKEN_PATH)} ` +
     `--proxy-addr ${shellEscape(`${proxyAddr}:${config.getEgressProxyPort()}`)} ` +
@@ -161,11 +164,13 @@ export async function setupEgressForwarder(
     `--deny-log ${shellEscape(EGRESS_DENY_LOG_PATH)} ` +
     `>${shellEscape(EGRESS_FORWARDER_LOG_PATH)} 2>&1 &`;
 
+  const startForwarderCommand = `runuser -u dust-fwd -- bash -c ${shellEscape(forwarderBin)}`;
+
   const startResult = await runSuccessfulSandboxCommand(
     auth,
     sandbox,
     startForwarderCommand,
-    "dust-fwd"
+    "root"
   );
   if (startResult.isErr()) {
     return startResult;
