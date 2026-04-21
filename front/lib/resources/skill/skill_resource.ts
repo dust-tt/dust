@@ -1,4 +1,5 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
@@ -1576,9 +1577,51 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     const workspace = auth.getNonNullableWorkspace();
+    const agentIds = agents.map((a) => a.id);
 
-    // We specifically don't want to use concurrentExecutor here to avoid
-    // too much DB concurrency
+    let actionsByAgentModelId = new Map<
+      ModelId,
+      MCPServerConfigurationType[]
+    >();
+    let skillByAgentModelId = new Map<ModelId, SkillResource[]>();
+
+    if (spaceIdsRemovedFromThisSkill.length > 0) {
+      actionsByAgentModelId = await fetchMCPServerActionConfigurations(auth, {
+        configurationIds: agentIds,
+        variant: "full",
+      });
+
+      const agentSkillModels = await AgentSkillModel.findAll({
+        where: {
+          agentConfigurationId: { [Op.in]: agentIds },
+          workspaceId: workspace.id,
+        },
+      });
+
+      // We only need to consider custom skills, as global skill have no effect on space requirements.
+      const customSkills = await SkillResource.fetchByModelIds(
+        auth,
+        removeNulls(agentSkillModels.map((skill) => skill.customSkillId))
+      );
+
+      const skillByModelId = new Map<ModelId, SkillResource>(
+        customSkills.map((skill) => [skill.id, skill])
+      );
+      for (const agentSkill of agentSkillModels) {
+        if (!agentSkill.customSkillId) {
+          continue;
+        }
+        const skill = skillByModelId.get(agentSkill.customSkillId);
+        if (!skill) {
+          continue;
+        }
+        const list =
+          skillByAgentModelId.get(agentSkill.agentConfigurationId) ?? [];
+        list.push(skill);
+        skillByAgentModelId.set(agentSkill.agentConfigurationId, list);
+      }
+    }
+
     for (const agent of agents) {
       const spaceIdsToRemoveFromAgent = new Set<ModelId>();
 
@@ -1586,28 +1629,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       // removed from the agent. In order to achieve this, we check if the agent has
       // any other capabilities that require the removed spaces.
       if (spaceIdsRemovedFromThisSkill.length > 0) {
-        const actionsMap = await fetchMCPServerActionConfigurations(auth, {
-          configurationIds: [agent.id],
-          variant: "full",
-        });
-        const actions = actionsMap.get(agent.id) ?? [];
-
-        const agentSkillModels = await AgentSkillModel.findAll({
-          where: {
-            agentConfigurationId: agent.id,
-            workspaceId: workspace.id,
-          },
-        });
-        const agentSkills = await SkillResource.fetchBySkillReferences(
-          auth,
-          agentSkillModels.map((s) => ({
-            customSkillId: s.customSkillId,
-            globalSkillId: s.globalSkillId,
-          }))
-        );
-        const otherAgentSkills = agentSkills.filter(
-          (skill) => skill.sId !== this.sId
-        );
+        const actions = actionsByAgentModelId.get(agent.id) ?? [];
+        const otherAgentSkills = (
+          skillByAgentModelId.get(agent.id) ?? []
+        ).filter((skill) => skill.sId !== this.sId);
 
         const agentOtherCapabilitiesRequirements =
           await getAgentConfigurationRequirementsFromCapabilities(auth, {
