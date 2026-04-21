@@ -470,7 +470,7 @@ const InputBarContainer = ({
   const handleSkillPickerSelection = useCallback(
     (skill: SkillWithoutToolsType) => {
       onSkillSelect(skill);
-      queueMicrotask(() => editorRef.current?.commands.focus("end"));
+      queueMicrotask(() => editorRef.current?.commands.focus());
     },
     [onSkillSelect]
   );
