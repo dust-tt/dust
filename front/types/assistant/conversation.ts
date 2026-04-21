@@ -473,7 +473,6 @@ type ConversationDisplayTitleInput = Pick<
     "parentConversationTitle"
   >;
 };
-
 export function getConversationDisplayTitle(
   conversation: ConversationDisplayTitleInput,
   now = new Date()
