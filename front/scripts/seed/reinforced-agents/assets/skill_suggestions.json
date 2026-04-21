@@ -57,5 +57,21 @@
         }
       ]
     }
+  },
+  {
+    "skillName": "MeetingNotesFormatter",
+    "kind": "edit",
+    "analysis": "The example code block should include a Decisions section between Summary and Action Items to match the skill's own guidelines about extracting key decisions.",
+    "state": "pending",
+    "source": "reinforcement",
+    "suggestion": {
+      "instructionEdits": [
+        {
+          "targetBlockId": "mn06code",
+          "content": "<pre><code>## Meeting: Q3 Planning Review\n**Date**: 2024-09-15\n**Attendees**: Alice, Bob, Charlie\n\n### Summary\nThe team reviewed Q3 goals and identified two blockers.\n\n### Key Decisions\n- Postpone the infrastructure migration to Q4\n\n### Action Items\n- [ ] Alice: Update the roadmap by Friday\n- [ ] Bob: Schedule follow-up with design team</code></pre>",
+          "type": "replace"
+        }
+      ]
+    }
   }
 ]
