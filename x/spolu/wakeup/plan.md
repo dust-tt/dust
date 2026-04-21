@@ -11,9 +11,10 @@ classification.
 ### [x] PR 2 — WakeUpResource
 
 `WakeUpResource` wrapping the model: `makeNew`, `cancel`, `markFired`, `listByConversation`,
-`listActiveByWorkspace`. Includes cleanup logic for conversation deletion (cancel Temporal
-workflows + delete rows). No Temporal calls yet — stub them behind a flag. Also define the
-idempotency / cancel-vs-fire behavior here so later wiring is deterministic.
+`listActiveByWorkspace`, `toJSON`. Includes cleanup logic for conversation deletion (cancel
+Temporal workflows + delete rows). No Temporal calls yet — stub them behind a flag. Also add
+shared `WakeUp` Zod schemas / types in `front/types/assistant/wakeups.ts` so API and UI code can
+reuse the same serialized shape.
 
 ## Milestone 2: Temporal execution (one-shot only)
 
