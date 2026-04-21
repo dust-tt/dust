@@ -117,7 +117,7 @@ const runAgent = async (
   );
 
   const abortSignal = signal ?? null;
-  let childCancellationPromise: Promise<void> | null = null;
+  let childCancellationPromise: Promise<string[] | void> | null = null;
   const finalizeAndReturn = async <T>(
     result: Result<T, MCPError>
   ): Promise<Result<T, MCPError>> => {

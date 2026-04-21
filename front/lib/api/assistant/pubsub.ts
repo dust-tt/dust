@@ -109,9 +109,10 @@ export async function cancelMessageGenerationEvent(
     messageIds,
     conversationId,
   }: { messageIds: string[]; conversationId: string }
-): Promise<void> {
+): Promise<string[]> {
   const client = await getTemporalClientForAgentNamespace();
   const workspaceId = auth.getNonNullableWorkspace().sId;
+  const failedIds: string[] = [];
 
   await concurrentExecutor(
     messageIds,
@@ -134,10 +135,13 @@ export async function cancelMessageGenerationEvent(
           { error: signalError, messageId },
           "Failed to signal agent loop workflow for cancellation"
         );
+        failedIds.push(messageId);
       }
     },
     { concurrency: 8 }
   );
+
+  return failedIds;
 }
 
 export async function gracefullyStopAgentLoop(
