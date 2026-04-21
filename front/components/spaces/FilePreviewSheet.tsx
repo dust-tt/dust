@@ -31,6 +31,8 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   ArrowDownOnSquareIcon,
   Button,
+  ClipboardCheckIcon,
+  ClipboardIcon,
   CodeBlock,
   ExternalLinkIcon,
   Markdown,
@@ -40,6 +42,7 @@ import {
   SheetHeader,
   SheetTitle,
   Spinner,
+  useCopyToClipboard,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useEffect, useState } from "react";
@@ -78,6 +81,7 @@ interface FilePreviewConfig {
   category: FilePreviewCategory;
   needsProcessedVersion: boolean;
   supportsExternalViewer: boolean;
+  supportsCopyContent: boolean;
 }
 
 export function getFilePreviewConfig(contentType: string): FilePreviewConfig {
@@ -88,6 +92,7 @@ export function getFilePreviewConfig(contentType: string): FilePreviewConfig {
       category: "frame",
       needsProcessedVersion: false,
       supportsExternalViewer: false,
+      supportsCopyContent: false,
     };
   }
 
@@ -96,6 +101,7 @@ export function getFilePreviewConfig(contentType: string): FilePreviewConfig {
       category: "pdf",
       needsProcessedVersion: true,
       supportsExternalViewer: true,
+      supportsCopyContent: false,
     };
   }
 
@@ -104,6 +110,7 @@ export function getFilePreviewConfig(contentType: string): FilePreviewConfig {
       category: "viewer",
       needsProcessedVersion: true,
       supportsExternalViewer: true,
+      supportsCopyContent: false,
     };
   }
 
@@ -112,6 +119,7 @@ export function getFilePreviewConfig(contentType: string): FilePreviewConfig {
       category: "markdown",
       needsProcessedVersion: false,
       supportsExternalViewer: false,
+      supportsCopyContent: true,
     };
   }
 
@@ -120,6 +128,7 @@ export function getFilePreviewConfig(contentType: string): FilePreviewConfig {
       category: "code",
       needsProcessedVersion: false,
       supportsExternalViewer: false,
+      supportsCopyContent: true,
     };
   }
 
@@ -128,6 +137,7 @@ export function getFilePreviewConfig(contentType: string): FilePreviewConfig {
       category: "audio",
       needsProcessedVersion: true,
       supportsExternalViewer: false,
+      supportsCopyContent: false,
     };
   }
 
@@ -136,6 +146,7 @@ export function getFilePreviewConfig(contentType: string): FilePreviewConfig {
       category: "delimited",
       needsProcessedVersion: false,
       supportsExternalViewer: false,
+      supportsCopyContent: false,
     };
   }
 
@@ -144,6 +155,7 @@ export function getFilePreviewConfig(contentType: string): FilePreviewConfig {
       category: "image",
       needsProcessedVersion: false,
       supportsExternalViewer: false,
+      supportsCopyContent: false,
     };
   }
 
@@ -151,6 +163,7 @@ export function getFilePreviewConfig(contentType: string): FilePreviewConfig {
     category: "text",
     needsProcessedVersion: false,
     supportsExternalViewer: false,
+    supportsCopyContent: true,
   };
 }
 
@@ -282,14 +295,49 @@ function FileContentRenderer({
   }
 }
 
-interface FilePreviewContentProps {
-  file: MinimalFileForPreview | null;
+interface FilePreviewSheetProps {
   owner: WorkspaceType;
+  file: MinimalFileForPreview | null;
   isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-function FilePreviewContent({ file, owner, isOpen }: FilePreviewContentProps) {
+export function FilePreviewSheet({
+  file,
+  owner,
+  isOpen,
+  onOpenChange,
+}: FilePreviewSheetProps) {
   const previewConfig = getFilePreviewConfig(file?.contentType ?? "");
+  const isViewer = previewConfig.category === "viewer";
+
+  const {
+    signedUrl: viewerSignedUrl,
+    isLoading: isViewerSignedUrlLoading,
+    error: viewerSignedUrlError,
+  } = useFileSignedUrl({
+    fileId: file?.sId ?? null,
+    owner,
+    config: { disabled: !isOpen || !file || !isViewer },
+  });
+
+  const [isCopied, copy] = useCopyToClipboard();
+
+  const handleDownload = () => {
+    if (file) {
+      window.open(getFileDownloadUrl(owner, file.sId), "_blank");
+    }
+  };
+
+  const handleOpenInBrowser = () => {
+    if (file) {
+      if (isViewer && viewerSignedUrl) {
+        window.open(getViewerUrl(viewerSignedUrl), "_blank");
+      } else {
+        window.open(getFileViewUrl(owner, file.sId), "_blank");
+      }
+    }
+  };
 
   // Fetch processed content directly (bypasses SWR to avoid caching Response
   // objects whose body can only be read once).
@@ -340,18 +388,7 @@ function FilePreviewContent({ file, owner, isOpen }: FilePreviewContentProps) {
       },
     });
 
-  const isViewer = previewConfig.category === "viewer";
   const isPdf = previewConfig.category === "pdf";
-
-  const {
-    signedUrl: viewerSignedUrl,
-    isLoading: isViewerSignedUrlLoading,
-    error: viewerSignedUrlError,
-  } = useFileSignedUrl({
-    fileId: file?.sId ?? null,
-    owner,
-    config: { disabled: !isOpen || !file || !isViewer },
-  });
 
   const rawFileContent = previewConfig.needsProcessedVersion
     ? processedText
@@ -377,6 +414,9 @@ function FilePreviewContent({ file, owner, isOpen }: FilePreviewContentProps) {
     rawFileContent && file
       ? processFileContent(rawFileContent, file.contentType)
       : null;
+
+  const canCopyContent =
+    previewConfig.supportsCopyContent && !!processedContent?.text;
 
   const renderContent = () => {
     if (isContentLoading || isViewerLoading) {
@@ -408,47 +448,6 @@ function FilePreviewContent({ file, owner, isOpen }: FilePreviewContentProps) {
     );
   };
 
-  return <SheetContainer>{renderContent()}</SheetContainer>;
-}
-
-interface FilePreviewSheetProps {
-  owner: WorkspaceType;
-  file: MinimalFileForPreview | null;
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-export function FilePreviewSheet({
-  owner,
-  file,
-  isOpen,
-  onOpenChange,
-}: FilePreviewSheetProps) {
-  const previewConfig = getFilePreviewConfig(file?.contentType ?? "");
-  const isViewer = previewConfig.category === "viewer";
-
-  const { signedUrl: viewerSignedUrl } = useFileSignedUrl({
-    fileId: file?.sId ?? null,
-    owner,
-    config: { disabled: !isOpen || !file || !isViewer },
-  });
-
-  const handleDownload = () => {
-    if (file) {
-      window.open(getFileDownloadUrl(owner, file.sId), "_blank");
-    }
-  };
-
-  const handleOpenInBrowser = () => {
-    if (file) {
-      if (isViewer && viewerSignedUrl) {
-        window.open(getViewerUrl(viewerSignedUrl), "_blank");
-      } else {
-        window.open(getFileViewUrl(owner, file.sId), "_blank");
-      }
-    }
-  };
-
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent size="xl">
@@ -464,6 +463,15 @@ export function FilePreviewSheet({
               <span className="flex-1 truncate">{file?.fileName}</span>
               {file && (
                 <div className="flex items-center gap-2">
+                  {canCopyContent && (
+                    <Button
+                      tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
+                      variant="outline"
+                      size="icon-xs"
+                      icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                      onClick={() => copy(processedContent?.text ?? "")}
+                    />
+                  )}
                   <Button
                     variant="outline"
                     size="icon-xs"
@@ -485,7 +493,7 @@ export function FilePreviewSheet({
             </div>
           </SheetTitle>
         </SheetHeader>
-        <FilePreviewContent file={file} owner={owner} isOpen={isOpen} />
+        <SheetContainer>{renderContent()}</SheetContainer>
       </SheetContent>
     </Sheet>
   );
