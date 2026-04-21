@@ -5,9 +5,8 @@ import {
   getIndexedColor,
 } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
-import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
-import { useHoveredSeries } from "@app/components/charts/useHoveredSeries";
+import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import type { AvailableTool } from "@app/lib/api/assistant/observability/tool_usage";
@@ -20,6 +19,7 @@ import {
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
+  cn,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -240,13 +240,16 @@ export function WorkspaceToolUsageChart({
     }
   };
 
-  const legendItems: LegendItem[] = toolsWithData.map((tool) => ({
-    key: tool,
-    label: displayNameMap.get(tool) ?? tool,
-    colorClassName: getIndexedColor(tool, toolsWithData),
-  }));
+  const { activeKey, isDimmed, decorate, hoverHandlers } =
+    useSelectableSeries();
 
-  const { hoveredKey, hoverHandlers } = useHoveredSeries();
+  const legendItems = decorate(
+    toolsWithData.map((tool) => ({
+      key: tool,
+      label: displayNameMap.get(tool) ?? tool,
+      colorClassName: getIndexedColor(tool, toolsWithData),
+    }))
+  );
 
   const toolSelector = (
     <DropdownMenu modal={false}>
@@ -360,7 +363,7 @@ export function WorkspaceToolUsageChart({
               displayMode={displayMode}
               toolsWithData={toolsWithData}
               displayNameMap={displayNameMap}
-              activeKey={hoveredKey}
+              activeKey={activeKey}
             />
           )}
           cursor={false}
@@ -379,7 +382,11 @@ export function WorkspaceToolUsageChart({
             strokeWidth={2}
             dataKey={(point: ToolUsageChartPoint) => point.values[tool] ?? 0}
             name={displayNameMap.get(tool) ?? tool}
-            className={getIndexedColor(tool, toolsWithData)}
+            className={cn(
+              getIndexedColor(tool, toolsWithData),
+              "transition-opacity",
+              isDimmed(tool) && "opacity-25"
+            )}
             stroke="currentColor"
             dot={false}
             {...hoverHandlers(tool)}

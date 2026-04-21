@@ -14,10 +14,12 @@ import { getIndexedColor } from "@app/components/agent_builder/observability/uti
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { RoundedBarShape } from "@app/components/charts/ChartShapes";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import {
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
+  cn,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -128,20 +130,26 @@ export function SkillUsageChart({
       ? versionData.chartData.length === 0
       : filteredSourceItems.length === 0;
 
+  const { isDimmed, decorate } = useSelectableSeries();
+
   const legendItems = useMemo(() => {
     if (skillMode === "version") {
-      return versionData.topTools.map((t) => ({
-        key: t,
-        label: t,
-        colorClassName: getIndexedColor(t, versionData.topTools),
-      }));
+      return decorate(
+        versionData.topTools.map((t) => ({
+          key: t,
+          label: t,
+          colorClassName: getIndexedColor(t, versionData.topTools),
+        }))
+      );
     }
-    return filteredSkillNames.map((name) => ({
-      key: name,
-      label: name,
-      colorClassName: getIndexedColor(name, filteredSkillNames),
-    }));
-  }, [skillMode, versionData.topTools, filteredSkillNames]);
+    return decorate(
+      filteredSkillNames.map((name) => ({
+        key: name,
+        label: name,
+        colorClassName: getIndexedColor(name, filteredSkillNames),
+      }))
+    );
+  }, [skillMode, versionData.topTools, filteredSkillNames, decorate]);
 
   const renderVersionTooltip = useCallback(
     (props: TooltipContentProps<number, string>) => (
@@ -317,7 +325,11 @@ export function SkillUsageChart({
               dataKey={(row: ChartDatum) => row.values[toolName]?.count ?? 0}
               stackId="a"
               fill="currentColor"
-              className={getIndexedColor(toolName, versionData.topTools)}
+              className={cn(
+                getIndexedColor(toolName, versionData.topTools),
+                "transition-opacity",
+                isDimmed(toolName) && "opacity-25"
+              )}
               name={toolName}
               shape={
                 <RoundedBarShape
@@ -362,7 +374,11 @@ export function SkillUsageChart({
               <Cell
                 key={item.skillName}
                 fill="currentColor"
-                className={getIndexedColor(item.skillName, filteredSkillNames)}
+                className={cn(
+                  getIndexedColor(item.skillName, filteredSkillNames),
+                  "transition-opacity",
+                  isDimmed(item.skillName) && "opacity-25"
+                )}
               />
             ))}
           </Bar>
