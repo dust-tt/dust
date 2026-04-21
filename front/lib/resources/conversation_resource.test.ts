@@ -150,6 +150,16 @@ describe("ConversationResource", () => {
         agentConfigurationId: agent.sId,
         messagesCreatedAt: [new Date("2026-01-01T00:00:00.000Z")],
       });
+      const parentConversationTitle = "Quarterly Review Data";
+      await ConversationModel.update(
+        { title: parentConversationTitle },
+        {
+          where: {
+            id: parentConversation.id,
+            workspaceId: workspace.id,
+          },
+        }
+      );
       const childConversation = await ConversationFactory.create(auth, {
         agentConfigurationId: agent.sId,
         messagesCreatedAt: [],
@@ -190,6 +200,7 @@ describe("ConversationResource", () => {
 
       expect(fetchedChildConversation.toJSON().forkedFrom).toEqual({
         parentConversationId: parentConversation.sId,
+        parentConversationTitle,
         sourceMessageId: sourceMessage.sId,
         branchedAt: branchedAt.getTime(),
         user: auth.getNonNullableUser().toJSON(),
@@ -205,6 +216,7 @@ describe("ConversationResource", () => {
       if (childConversationWithoutContent.isOk()) {
         expect(childConversationWithoutContent.value.forkedFrom).toEqual({
           parentConversationId: parentConversation.sId,
+          parentConversationTitle,
           sourceMessageId: sourceMessage.sId,
           branchedAt: branchedAt.getTime(),
           user: auth.getNonNullableUser().toJSON(),
@@ -212,7 +224,7 @@ describe("ConversationResource", () => {
       }
     });
 
-    it("should expose forkedFrom even when the parent conversation is unreadable", async () => {
+    it("should expose forkedFrom title even when the parent conversation is unreadable", async () => {
       const {
         workspace,
         authenticator: adminAuth,
@@ -245,6 +257,16 @@ describe("ConversationResource", () => {
         requestedSpaceIds: [restrictedSpace.id],
         spaceId: restrictedSpace.id,
       });
+      const parentConversationTitle = "Restricted parent conversation";
+      const updateTitleRes = await ConversationResource.updateTitle(
+        adminAuth,
+        parentConversation.sId,
+        parentConversationTitle
+      );
+      assert(
+        updateTitleRes.isOk(),
+        "Failed to update parent conversation title"
+      );
       const childConversation = await ConversationFactory.create(userAuth, {
         agentConfigurationId: agent.sId,
         messagesCreatedAt: [],
@@ -290,6 +312,7 @@ describe("ConversationResource", () => {
 
       expect(fetchedChildConversation.toJSON().forkedFrom).toEqual({
         parentConversationId: parentConversation.sId,
+        parentConversationTitle,
         sourceMessageId: sourceMessage.sId,
         branchedAt: branchedAt.getTime(),
         user: adminAuth.getNonNullableUser().toJSON(),

@@ -414,8 +414,12 @@ export function isReinforcedSkillNotificationMetadata(
   );
 }
 
+/**
+ * @swaggerschema PrivateConversationForkedFrom (swagger_private_schemas.ts)
+ */
 export type ConversationForkedFromType = {
   parentConversationId: string;
+  parentConversationTitle: string | null;
   sourceMessageId: string;
   branchedAt: number;
   user: UserType;

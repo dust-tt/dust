@@ -3664,6 +3664,13 @@ describe("conversation fetch forkedFrom", () => {
       agentConfigurationId: agent.sId,
       messagesCreatedAt: [new Date("2026-01-05T00:00:00.000Z")],
     });
+    const parentConversationTitle = "Quarterly Review Data";
+    const updateTitleRes = await ConversationResource.updateTitle(
+      auth,
+      parentConversation.sId,
+      parentConversationTitle
+    );
+    expect(updateTitleRes.isOk()).toBe(true);
     const childConversation = await ConversationFactory.create(auth, {
       agentConfigurationId: agent.sId,
       messagesCreatedAt: [],
@@ -3712,6 +3719,7 @@ describe("conversation fetch forkedFrom", () => {
     if (fullConversationResult.isOk()) {
       expect(fullConversationResult.value.forkedFrom).toEqual({
         parentConversationId: parentConversation.sId,
+        parentConversationTitle,
         sourceMessageId: sourceMessage.sId,
         branchedAt: branchedAt.getTime(),
         user: auth.getNonNullableUser().toJSON(),
@@ -3727,6 +3735,7 @@ describe("conversation fetch forkedFrom", () => {
     if (lightConversationResult.isOk()) {
       expect(lightConversationResult.value.forkedFrom).toEqual({
         parentConversationId: parentConversation.sId,
+        parentConversationTitle,
         sourceMessageId: sourceMessage.sId,
         branchedAt: branchedAt.getTime(),
         user: auth.getNonNullableUser().toJSON(),

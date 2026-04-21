@@ -379,6 +379,7 @@ describe("createConversationFork", () => {
     expect(childConversation.depth).toBe(parentConversation.depth + 1);
     expect(childConversation.forkedFrom).toEqual({
       parentConversationId: parentConversation.sId,
+      parentConversationTitle: "Parent conversation",
       sourceMessageId: sourceMessage.sId,
       branchedAt: expect.any(Number),
       user: user.toJSON(),

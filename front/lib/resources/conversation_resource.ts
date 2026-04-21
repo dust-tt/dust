@@ -116,7 +116,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           {
             association: "parentConversation" as const,
             required: true,
-            attributes: ["sId"],
+            attributes: ["sId", "title"],
           },
           {
             association: "sourceMessage" as const,
@@ -164,6 +164,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     return {
       parentConversationId: fork.parentConversation.sId,
+      parentConversationTitle: fork.parentConversation.title,
       sourceMessageId: fork.sourceMessage.sId,
       branchedAt: fork.branchedAt.getTime(),
       user: new UserResource(
@@ -1296,7 +1297,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         auth,
         conversation.id
       );
-
     const forkedChildren = options?.includeForkedChildrenInfo
       ? await ConversationResource.listSerializedChildForks(auth, conversation)
       : [];

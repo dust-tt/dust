@@ -163,6 +163,7 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
     expect(conversation.title).toBe("Parent conversation (forked)");
     expect(conversation.forkedFrom).toEqual({
       parentConversationId: parentConversation.sId,
+      parentConversationTitle: "Parent conversation",
       sourceMessageId: sourceMessage.sId,
       branchedAt: expect.any(Number),
       user: auth.getNonNullableUser().toJSON(),
@@ -207,6 +208,7 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
 
     expect(conversation.forkedFrom).toEqual({
       parentConversationId: parentConversation.sId,
+      parentConversationTitle: "Parent conversation",
       sourceMessageId: sourceMessage.sId,
       branchedAt: expect.any(Number),
       user: auth.getNonNullableUser().toJSON(),
