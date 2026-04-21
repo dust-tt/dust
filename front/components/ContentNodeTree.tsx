@@ -146,6 +146,13 @@ function ContentNodeTreeInfiniteScroll({
   );
 }
 
+const PERMISSIONS_ERROR_MESSAGES: Record<string, string> = {
+  rate_limit_error:
+    "Connected service's API limit reached. Please retry shortly.",
+  data_source_auth_error:
+    "Failed to retrieve permissions due to a revoked authorization. Please re-authorize the connection.",
+};
+
 interface ContentNodeTreeChildrenProps {
   depth: number;
   isRoundedBackground?: boolean;
@@ -226,12 +233,6 @@ function ContentNodeTreeChildren({
   );
 
   if (isResourcesError) {
-    const PERMISSIONS_ERROR_MESSAGES: Record<string, string> = {
-      rate_limit_error:
-        "Connected service's API limit reached. Please retry shortly.",
-      data_source_auth_error:
-        "Failed to retrieve permissions due to a revoked authorization. Please re-authorize the connection.",
-    };
     const errorMessage =
       (resourcesError?.type &&
         PERMISSIONS_ERROR_MESSAGES[resourcesError.type]) ||
