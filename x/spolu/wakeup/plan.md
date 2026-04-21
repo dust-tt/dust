@@ -39,7 +39,8 @@ Current terminal / retry behavior:
 - Retry exhaustion or timeout: mark `expired` via `expireWakeUpActivity(...)`.
 
 Current retry policy: 3 attempts, exponential backoff starting at 30 seconds, max interval
-5 minutes. Cron wake-ups still return an unsupported error for now.
+5 minutes. Cron firing semantics are still follow-up work, but the Temporal schedule create /
+delete path now exists in `front/temporal/triggers/wakeup_client.ts`.
 
 ### [x] PR 4 — Wire WakeUpResource to Temporal
 
@@ -54,10 +55,12 @@ classification, audit events, and the cron path.
 
 ### PR 5 — Cron scheduling path
 
-Create the cron Temporal path for wake-ups. Replace the current unsupported-error branch with
-Temporal Schedule creation / deletion. Reuse the existing trigger schedule patterns where helpful,
-track `fireCount`, expire recurring wake-ups after the chosen max-fire policy, and add
-cron-specific guardrails.
+Create the cron Temporal path for wake-ups. Reuse the existing trigger schedule patterns where
+helpful.
+
+Status: in progress. This PR now implements Temporal Schedule creation / deletion in
+`front/temporal/triggers/wakeup_client.ts`. Remaining work is cron validation, recurring fire
+semantics (`fireCount`, expiry / max-fire policy), and cron-specific guardrails.
 
 ## Milestone 4: Agent action
 
