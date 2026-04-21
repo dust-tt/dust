@@ -1,6 +1,6 @@
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import * as temporalClient from "@app/temporal/triggers/schedule/client";
+import * as temporalClient from "@app/temporal/triggers/schedule_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Ok } from "@app/types/shared/result";

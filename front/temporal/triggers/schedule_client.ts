@@ -2,8 +2,8 @@ import type { Authenticator } from "@app/lib/auth";
 import type { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import { QUEUE_NAME as COMMON_QUEUE_NAME } from "@app/temporal/triggers/common/config";
-import { agentTriggerWorkflow } from "@app/temporal/triggers/common/workflows";
+import { QUEUE_NAME } from "@app/temporal/triggers/config";
+import { agentTriggerWorkflow } from "@app/temporal/triggers/workflows";
 import type {
   IntervalScheduleConfig,
   ScheduleConfig,
@@ -98,7 +98,7 @@ function getTriggerScheduleOptions(
           triggerId: triggerData.sId,
         },
       ],
-      taskQueue: COMMON_QUEUE_NAME,
+      taskQueue: QUEUE_NAME,
     },
     scheduleId,
     policies: {
