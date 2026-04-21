@@ -1,4 +1,5 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
