@@ -15,7 +15,6 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { Attributes, Transaction, WhereOptions } from "sequelize";
-import { literal } from "sequelize";
 
 const ACTIVE_WAKE_UP_STATUSES: WakeUpStatus[] = ["scheduled"];
 
@@ -171,24 +170,12 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       return temporalResult;
     }
 
-    const [affectedCount, affectedRows] = await this.model.update(
+    await this.update(
       {
         status: "cancelled",
       },
-      {
-        where: {
-          id: this.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          status: "scheduled",
-        } as WhereOptions<WakeUpModel>,
-        transaction,
-        returning: true,
-      }
+      transaction
     );
-
-    if (affectedCount > 0 && affectedRows[0]) {
-      Object.assign(this, affectedRows[0].get());
-    }
 
     return new Ok(undefined);
   }
@@ -204,25 +191,13 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     const nextStatus: WakeUpStatus =
       this.scheduleType === "one_shot" ? "fired" : "scheduled";
 
-    const [affectedCount, affectedRows] = await this.model.update(
+    await this.update(
       {
-        fireCount: literal('"fireCount" + 1'),
+        fireCount: this.fireCount + 1,
         status: nextStatus,
       },
-      {
-        where: {
-          id: this.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          status: "scheduled",
-        } as WhereOptions<WakeUpModel>,
-        transaction,
-        returning: true,
-      }
+      transaction
     );
-
-    if (affectedCount > 0 && affectedRows[0]) {
-      Object.assign(this, affectedRows[0].get());
-    }
 
     return new Ok(undefined);
   }
