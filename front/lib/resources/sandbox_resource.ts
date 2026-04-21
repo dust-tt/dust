@@ -720,7 +720,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   /**
    * Write a file to the sandbox filesystem.
    */
-  private async writeFile(
+  async writeFile(
     auth: Authenticator,
     path: string,
     data: ArrayBuffer
